@@ -526,7 +526,7 @@ body.tile-selected .bsq:not(.used){
 .omode-btn .omode-label{font-size:13px;font-weight:900;display:block;}
 .omode-btn .omode-desc{font-size:10px;color:rgba(255,255,255,.5);font-weight:400;display:block;margin-top:2px;}
 .code-display{background:#1a2a1a;border:2px solid #4a8a4a;border-radius:6px;padding:10px 14px;text-align:center;letter-spacing:8px;font-size:28px;font-weight:900;color:var(--lcd);font-family:'Courier New',monospace;text-shadow:0 0 8px rgba(200,255,0,.4);margin:8px 0;}
-.code-input{width:100%;padding:10px 14px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:22px;font-family:'Courier New',monospace;text-align:center;letter-spacing:6px;outline:none;text-transform:uppercase;direction:ltr;}
+.code-input{width:100%;padding:10px 14px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:22px;font-family:'Courier New',monospace;text-align:center;letter-spacing:4px;outline:none;direction:ltr;}
 .code-input:focus{border-color:var(--by);}
 .waiting-spinner{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0;}
 .spinner-dots{display:flex;gap:5px;}
@@ -5397,7 +5397,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=202603242112').then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=202603242212').then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
