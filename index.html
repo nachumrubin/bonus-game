@@ -5329,14 +5329,18 @@ function backConfirmStay(){
   ].join('\n');
 
   if('serviceWorker' in navigator){
-    var swBlob = new Blob([SW_CODE], {type: 'application/javascript'});
-    var swUrl = URL.createObjectURL(swBlob);
-    navigator.serviceWorker.register(swUrl).then(function(reg){
+    // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
       console.log('SW registered:', reg.scope);
-    }).catch(function(e){
-      // SW from blob URL won't work on all browsers — that's OK
-      // When deployed as a real file, use a proper sw.js file
-      console.log('SW blob registration skipped:', e.message);
+    }).catch(function(){
+      // Fallback: blob-based SW (works when file is opened directly)
+      var swBlob = new Blob([SW_CODE], {type: 'application/javascript'});
+      var swUrl = URL.createObjectURL(swBlob);
+      navigator.serviceWorker.register(swUrl).then(function(reg){
+        console.log('SW (blob) registered');
+      }).catch(function(e){
+        console.log('SW unavailable:', e.message);
+      });
     });
   }
 
