@@ -569,7 +569,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
     <div class="credit">גרסה מודרנית · יעקב שויקה / מטח 1993</div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 202603242041</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 202603242112</div>
   </div>
 </div>
 
@@ -665,7 +665,7 @@ body.tile-selected .bsq:not(.used){
     <div class="sf" style="margin-bottom:8px"><label style="font-size:10px;color:rgba(255,255,255,.5);display:block;margin-bottom:3px">השם שלך</label>
       <input class="ri" id="jc-name" type="text" value="שחקן 2" maxlength="10">
     </div>
-    <input class="code-input" id="jc-code" type="text" placeholder="XXXXXX" maxlength="6" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+    <input class="code-input" id="jc-code" type="tel" placeholder="000000" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
     <div id="jc-error" style="color:#ff8e8e;font-size:11px;text-align:center;min-height:18px;margin-top:4px;"></div>
     <div class="ovbtns" style="margin-top:8px">
       <button class="ovb p" onclick="jcConfirm()">הצטרף</button>
@@ -1722,7 +1722,7 @@ function renderBoard(){
     const pp   = rep || placed.find(p => p.r===r && p.c===c);
     const tile = rep ? null : bData[r][c];
     const lk   = lockedCells[`${r},${c}`];
-    cell.classList.remove('np','lk','ht','locked-cell');
+    cell.classList.remove('np','lk','ht','locked-cell','last-move');
     cell.style.background = '';
     if (tile) {
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
@@ -2013,7 +2013,7 @@ function scheduleBotMove(){
     botThinkTimeout = null;
     const result = doBotSearch(); // returns {pp, word} or null
     const elapsed = Date.now() - thinkStart;
-    const minDisplay = 600; // at least 600ms "thinking" for UX
+    const minDisplay = 3000; // at least 3s so player can see the move
     const remaining = Math.max(0, minDisplay - elapsed);
     setTimeout(()=>{
       clearMoveTimer();
@@ -3519,9 +3519,10 @@ function bonusSkip(){ clearT(); ovClose('ov-bonus'); if(bonusPend.bsqIdxs)bonusP
 // ═══════════════════════════════════════════════════
 function commitPlay(sc,ws,bonus,pi){
   let fs = (isNaN(sc) || sc == null) ? 0 : sc;
-  // Apply future bonus multipliers
-  if(futBon[pi] && futBon[pi].quadNext>0){fs*=4;futBon[pi].quadNext--;setS('✦ ×4 הפעם!','bon');}
-  else if(futBon[pi] && futBon[pi].doubleNext>0){fs*=2;futBon[pi].doubleNext--;}
+  // Apply future bonus multipliers — track multiplier for status message
+  let _multLabel = '';
+  if(futBon[pi] && futBon[pi].quadNext>0){fs*=4;futBon[pi].quadNext--;_multLabel='×4 🔥';}
+  else if(futBon[pi] && futBon[pi].doubleNext>0){fs*=2;futBon[pi].doubleNext--;_multLabel='×2 ✨';}
   // Save last move cells for highlighting
   lastMoveCells = placed.map(p=>({r:p.r,c:p.c}));
   if(replacedThisTurn) lastMoveCells.push({r:replacedThisTurn.r, c:replacedThisTurn.c});
@@ -3543,7 +3544,8 @@ function commitPlay(sc,ws,bonus,pi){
   placed=[]; replacedThisTurn=null; exchUsed=false; lastRejWord=''; lastRejPlaced=[];
   selTile=null; selPlaced=null; document.body.classList.remove('tile-selected');
   draw(racks[pi]);
-  setS(`"${ws}" — ${fs} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50&&sc>=50?' ★':''}✓`,'ok');
+  const _baseMsg = _multLabel ? `${sc} ${_multLabel} = ${fs}` : `${fs}`;
+  setS(`"${ws}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
   updateUI(); renderBoard(); renderRack(); renderBonusStrips();
   if(racks[pi].length===0&&bag.length===0){endGame();return;}
   if(settings.moveLimitOn && moveCount>=settings.moveLimit){endGame();return;}
@@ -3817,12 +3819,13 @@ function renderBoard(){
     const pp   = rep || placed.find(p => p.r===r && p.c===c);
     const tile = rep ? null : bData[r][c];
     const lk   = lockedCells[`${r},${c}`];
-    cell.classList.remove('np','lk','ht','locked-cell','illegal-tile','rollback-pop');
+    cell.classList.remove('np','lk','ht','locked-cell','illegal-tile','rollback-pop','last-move');
     cell.style.background = '';
     if (tile) {
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
       cell.innerHTML=`<div class="${tile.isJoker?'btile jk':'btile'}"><div class="bt-l" style="font-size:${fs}px">${tile.letter}</div><div class="bt-v" style="font-size:${vs}px">${tile.val||''}</div></div>`;
       cell.classList.add('ht','lk');
+      if(lastMoveCells.some(m=>m.r===r&&m.c===c)) cell.classList.add('last-move');
     } else if (pp) {
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
       const isPicked = selPlaced && selPlaced.r===r && selPlaced.c===c;
@@ -3857,6 +3860,7 @@ function renderBoard(){
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
       el.innerHTML=`<div class="${t.isJoker?'btile jk':'btile'}" style="width:100%;height:100%"><div class="bt-l" style="font-size:${fs}px">${t.letter}</div><div class="bt-v" style="font-size:${vs}px">${t.val||''}</div></div>`;
       el.classList.add('used');
+      if(lastMoveCells.some(m=>m.r===b.br&&m.c===b.bc)) el.classList.add('last-move');
     } else {
       el.innerHTML=`<div class="bsq-ic">${(bonusAssignment[idx]||BONUS_TYPES[idx%BONUS_TYPES.length]).ic}</div>`;
       el.classList.toggle('used', committed);
@@ -4467,10 +4471,8 @@ function fbRef(path){ return fbDb.ref(path); }
 
 // ── Room code generator ──
 function genRoomCode(){
-  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code='';
-  for(let i=0;i<6;i++) code+=chars[Math.floor(Math.random()*chars.length)];
-  return code;
+  // 6-digit numeric code (100000-999999)
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 // ── Navigation ──
@@ -4603,12 +4605,12 @@ function onlineJoinByCode(){
 }
 
 async function jcConfirm(){
-  const code = document.getElementById('jc-code').value.trim().toUpperCase();
+  const code = document.getElementById('jc-code').value.trim();
   const name = document.getElementById('jc-name').value.trim() || 'שחקן 2';
   const errEl = document.getElementById('jc-error');
   errEl.textContent = '';
 
-  if(code.length !== 6){ errEl.textContent = 'הקוד חייב להכיל 6 תווים'; return; }
+  if(code.length !== 6){ errEl.textContent = 'הקוד חייב להכיל 6 ספרות'; return; }
 
   const snap = await fbRef('rooms/' + code).once('value');
   if(!snap.exists()){ errEl.textContent = 'קוד לא נמצא — בדוק שוב'; return; }
@@ -5395,7 +5397,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=202603242041').then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=202603242112').then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
