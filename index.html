@@ -5410,7 +5410,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=202603242247').then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=202603242302').then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -5632,4 +5632,81 @@ function checkForOnlineSession(){
     else if(remove) removeOnlineSession(remove);
   };
 }
->
+
+async function rejoinOnlineGame(code){
+  var sessions = _loadSessions();
+  var s = sessions[code];
+  if(!s){ checkForOnlineSession(); return; }
+
+  if(!initFirebase()){
+    loadFirebaseSDK(function(){ initFirebase(); rejoinOnlineGame(code); });
+    return;
+  }
+
+  var snap;
+  try { snap = await fbRef('rooms/' + s.roomCode).once('value'); } catch(e){
+    alert('לא ניתן להתחבר לשרת'); return;
+  }
+
+  if(!snap.exists()){
+    removeOnlineSession(code);
+    alert('המשחק כבר לא קיים');
+    return;
+  }
+  var room = snap.val();
+  if(room.status === 'abandoned'){
+    removeOnlineSession(code);
+    alert('המשחק הסתיים');
+    return;
+  }
+
+  // Restore session state
+  roomCode = s.roomCode;
+  myRole = s.myRole;
+  onlineMode = s.onlineMode;
+  pNames[0] = s.pNames ? s.pNames[0] : 'שחקן 1';
+  pNames[1] = s.pNames ? s.pNames[1] : 'שחקן 2';
+  window._myPlayerIndex = s.myPlayerIndex;
+  if(s.gameSettings) Object.assign(gameSettings, s.gameSettings);
+  gMode = 'online';
+
+  ['sn1','sn2','en1','en2'].forEach(function(id, i){
+    var el = document.getElementById(id);
+    if(el) el.textContent = pNames[i%2];
+  });
+
+  var stateSnap;
+  try { stateSnap = await fbRef('rooms/' + roomCode + '/state').once('value'); } catch(e){ return; }
+  if(stateSnap && stateSnap.exists()) loadGameState(stateSnap.val());
+
+  showSc('sg');
+  if(gameSettings.music && !musicPlaying) startMusic();
+  setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
+  updateUI(); renderBoard(); renderRack('turn');
+
+  var myTurn = (turn === window._myPlayerIndex);
+  if(myTurn){
+    setS('תורך — בחר אות מהמגש');
+    if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
+  } else {
+    setS('ממתין ל-' + pNames[1 - window._myPlayerIndex] + '...');
+  }
+
+  saveOnlineSession();
+  setupPresence();
+  listenForMoves();
+}
+
+// Check on home load
+document.addEventListener('DOMContentLoaded', checkForOnlineSession);
+
+// Save session on hide/close
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden' && gMode === 'online') saveOnlineSession();
+});
+window.addEventListener('pagehide', function(){ if(gMode === 'online') saveOnlineSession(); });
+window.addEventListener('beforeunload', function(){ if(gMode === 'online') saveOnlineSession(); });
+
+</script>
+</body>
+</html>
