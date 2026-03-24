@@ -562,7 +562,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none;background:linear-gradient(180deg,#e8a020,#c07010);border-color:#a05000;color:#fff;box-shadow:0 3px 0 #703000">▶ המשך משחק שמור</button>
       <button class="bd g" onclick="startSetup('vs')">👥 שני שחקנים</button>
       <button class="bd b" onclick="startSetup('bot')">🤖 נגד המחשב</button>
-      <button class="bd" style="background:linear-gradient(180deg,#5ab8a0,#3a8a78);border-color:#2a6a58;color:#fff;box-shadow:0 3px 0 #1a4a40" onclick="showOnlineLobby()">🌐 משחק אונליין</button>
+      <button class="bd" id="btn-online-lobby" style="background:linear-gradient(180deg,#5ab8a0,#3a8a78);border-color:#2a6a58;color:#fff;box-shadow:0 3px 0 #1a4a40;position:relative;" onclick="showOnlineLobby()">🌐 משחק אונליין<span id="online-badge" style="display:none;position:absolute;top:-6px;left:-6px;background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 6px rgba(231,76,60,.6);animation:onpulse 1.5s ease-in-out infinite;"></span></button>
       <button class="bd" onclick="showLegend()">📋 מקרא ואותיות</button>
       <button class="bd" onclick="openChampions()">🏆 טבלת אלופים</button>
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
@@ -579,6 +579,7 @@ body.tile-selected .bsq:not(.used){
   <div class="online-wrap">
     <div class="online-title">🌐 משחק אונליין</div>
     <div class="online-subtitle">בחר כיצד תרצה לשחק</div>
+    <div id="online-sessions-wrap" style="display:none;width:100%;margin-bottom:8px;"></div>
     <div style="width:100%">
       <button class="omode-btn" onclick="onlineCreateRoom()">
         <span class="omode-ic">🏠</span>
@@ -4249,7 +4250,8 @@ function getMaxMoves(){ return gameSettings.movelimit ? gameSettings.maxMoves : 
 const STORAGE_KEYS = {
   settings: 'bonusGameSettingsV1',
   champions: 'bonusChampionsV1',
-  pausedGame: 'bonusPausedGameV1'
+  pausedGame: 'bonusPausedGameV1',
+  onlineSession: 'bonusOnlineSessionV1'
 };
 
 function saveSettings(){
@@ -4419,6 +4421,8 @@ endGame = function(){
   renderChampions();
   // Clear saved game on end
   try { localStorage.removeItem(STORAGE_KEYS.pausedGame); } catch(e){}
+  if(gMode === 'online' && roomCode) removeOnlineSession(roomCode);
+  else try { localStorage.removeItem(STORAGE_KEYS.onlineSession); } catch(e){}
   checkForSavedGame();
 };
 
@@ -4478,11 +4482,11 @@ function genRoomCode(){
 // ── Navigation ──
 function showOnlineLobby(){
   if(!initFirebase()){
-    // Firebase not loaded yet — load it then retry
     loadFirebaseSDK(()=>{ initFirebase(); showOnlineLobby(); });
     return;
   }
   showSc('so');
+  checkForOnlineSession();
 }
 
 function loadFirebaseSDK(cb){
@@ -4779,6 +4783,7 @@ function startOnlineGame(){
         setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
         setS('תורך — בחר אות מהמגש');
         if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
+        saveOnlineSession();
         setupPresence();
         listenForMoves();
       })
@@ -4810,6 +4815,7 @@ function waitForGameStart(){
     setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
     updateUI(); renderRack(); renderBoard();
     setS(pNames[0] + ' מתחיל...');
+    saveOnlineSession();
     setupPresence();
     listenForMoves();
   }
@@ -5027,6 +5033,7 @@ function listenForMoves(){
     updateUI(); renderBoard(); renderRack('turn'); renderBonusStrips();
     setS('תורך — בחר אות מהמגש');
     if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
+    saveOnlineSession(); // keep session fresh after opponent's move
   });
   onlineListeners.push({ ref: stateRef, type:'value', fn: moveListener });
 }
@@ -5039,6 +5046,7 @@ function pushMoveToFirebase(){
   fbRef('rooms/' + roomCode + '/state').set(state).catch(function(e){
     console.error('pushMoveToFirebase error:', e);
   });
+  saveOnlineSession(); // keep session fresh after every move
   if(onlineMode === 'async'){
     var nudge = document.getElementById('async-nudge');
     if(nudge) nudge.style.display = 'flex';
@@ -5084,9 +5092,13 @@ goHome = function(){
   if(gMode === 'online'){
     cleanupOnlineListeners();
     if(roomCode) fbRef('rooms/' + roomCode + '/presence/' + myRole).remove();
+    // For async games, save session so player can rejoin; for live, remove it
+    if(onlineMode === 'async') saveOnlineSession();
+    else if(roomCode) removeOnlineSession(roomCode);
     gMode = 'bot'; roomCode = null; myRole = null; window._myPlayerIndex = null;
   }
   _origGoHome.apply(this, arguments);
+  checkForOnlineSession();
 };
 
 // ── ONLINE PILL ──
@@ -5276,6 +5288,7 @@ goHome = function(){
   ovClose('ov-pause');
   _origGoHome2.apply(this, arguments);
   checkForSavedGame();
+  checkForOnlineSession();
 };
 
 // ═══════════════════════════════════════════════════
@@ -5397,7 +5410,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=202603242212').then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=202603242247').then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -5526,6 +5539,97 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 
-</script>
-</body>
-</html>
+// ═══════════════════════════════════════════════════
+// ONLINE SESSION PERSISTENCE — multiple games support
+// Sessions stored as object keyed by roomCode
+// ═══════════════════════════════════════════════════
+
+function _loadSessions(){
+  try {
+    var raw = localStorage.getItem(STORAGE_KEYS.onlineSession);
+    if(!raw) return {};
+    var data = JSON.parse(raw);
+    // Migrate old single-session format
+    if(data && data.roomCode && !data._multi){ var m={}; m[data.roomCode]=data; return m; }
+    return data._multi ? data._multi : {};
+  } catch(e){ return {}; }
+}
+
+function _saveSessions(sessions){
+  try { localStorage.setItem(STORAGE_KEYS.onlineSession, JSON.stringify({_multi: sessions})); } catch(e){}
+}
+
+function saveOnlineSession(){
+  if(gMode !== 'online' || !roomCode || !myRole) return;
+  var sessions = _loadSessions();
+  sessions[roomCode] = {
+    roomCode: roomCode,
+    myRole: myRole,
+    onlineMode: onlineMode,
+    pNames: pNames.slice(),
+    myPlayerIndex: window._myPlayerIndex,
+    gameSettings: JSON.parse(JSON.stringify(gameSettings)),
+    savedAt: Date.now()
+  };
+  _saveSessions(sessions);
+}
+
+function removeOnlineSession(code){
+  var sessions = _loadSessions();
+  delete sessions[code];
+  _saveSessions(sessions);
+  checkForOnlineSession();
+}
+
+function checkForOnlineSession(){
+  var sessions = _loadSessions();
+  var codes = Object.keys(sessions);
+
+  // Update badge on home screen
+  var badge = document.getElementById('online-badge');
+  if(badge){
+    badge.style.display = codes.length ? 'block' : 'none';
+    if(codes.length) badge.textContent = String(codes.length);
+  }
+
+  // Render session list inside online lobby
+  var wrap = document.getElementById('online-sessions-wrap');
+  if(!wrap) return;
+
+  if(!codes.length){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+
+  wrap.style.display = '';
+  var rows = '';
+  codes.forEach(function(code){
+    var s = sessions[code];
+    var opp = s.pNames ? s.pNames[1 - s.myPlayerIndex] : '?';
+    var modeIc = s.onlineMode === 'async' ? '\uD83D\uDCEC' : '\u26A1';
+    var timeAgo = '';
+    if(s.savedAt){
+      var mins = Math.floor((Date.now() - s.savedAt) / 60000);
+      timeAgo = mins < 60 ? mins + ' \u05D3\u05E7' : mins < 1440 ? Math.floor(mins/60) + ' \u05E9\u05E2' : Math.floor(mins/1440) + ' \u05D9\u05DE\u05D9\u05DD';
+    }
+    rows += '<div style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.07);">'
+      + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:12px;font-weight:900;color:#fff;">' + modeIc + ' \u05E0\u05D2\u05D3 ' + opp + '</div>'
+        + '<div style="font-size:9px;color:rgba(255,255,255,.35);">' + (timeAgo ? '\u05DC\u05E4\u05E0\u05D9 ' + timeAgo : '') + '</div>'
+      + '</div>'
+      + '<button data-rejoin="' + code + '" style="background:#e8c840;border:none;border-radius:5px;font-family:Heebo,sans-serif;font-size:11px;font-weight:900;color:#000;padding:5px 10px;cursor:pointer;">\u05D4\u05DE\u05E9\u05DA</button>'
+      + '<button data-remove="' + code + '" style="background:none;border:none;font-size:15px;color:rgba(255,255,255,.3);padding:2px 6px;cursor:pointer;">\u00D7</button>'
+    + '</div>';
+  });
+
+  wrap.innerHTML = '<div style="background:rgba(0,0,0,.18);border-radius:8px;padding:8px;">'
+    + '<div style="font-size:10px;color:rgba(255,255,255,.5);font-weight:700;text-align:center;margin-bottom:4px;">\u05DE\u05E9\u05D7\u05E7\u05D9\u05DD \u05E4\u05E2\u05D9\u05DC\u05D9\u05DD</div>'
+    + rows + '</div>';
+
+  wrap.onclick = function(e){
+    var btn = e.target.tagName === 'BUTTON' ? e.target : (e.target.closest ? e.target.closest('button') : null);
+    if(!btn) return;
+    var rejoin = btn.getAttribute('data-rejoin');
+    var remove = btn.getAttribute('data-remove');
+    if(rejoin) rejoinOnlineGame(rejoin);
+    else if(remove) removeOnlineSession(remove);
+  };
+}
+>
