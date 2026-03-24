@@ -1568,12 +1568,14 @@ function computeSizes() {
   document.querySelectorAll('.bt-v').forEach(el => el.style.fontSize = valFont+'px');
   document.querySelectorAll('.bsq-ic').forEach(el => el.style.fontSize = bsqIc+'px');
 
-  // Bottom rack tiles — measure actual button widths so tiles + buttons always fit in one row
+  // Bottom rack tiles — use actual .bot container width for correct sizing at all resolutions
   const btnRecall = document.getElementById('btn-recall');
   const btnPlay   = document.getElementById('btn-play');
-  const btnW = (btnRecall ? btnRecall.offsetWidth : 52) + (btnPlay ? btnPlay.offsetWidth : 52) + 16; // 16px gaps
-  const rackAvail = window.innerWidth - lpW - rpW - btnW - 12;
-  const tileW = Math.max(20, Math.floor(rackAvail / 8.4));
+  const btnW = (btnRecall ? btnRecall.offsetWidth : 52) + (btnPlay ? btnPlay.offsetWidth : 52) + 16;
+  const botEl = document.querySelector('.bot');
+  const rackContainerW = botEl ? botEl.clientWidth : (window.innerWidth - lpW - rpW);
+  const rackAvail = rackContainerW - btnW - 12;
+  const tileW = Math.max(20, Math.min(72, Math.floor(rackAvail / 8.4)));
   const tileH = Math.floor(tileW * 1.18);
   document.querySelectorAll('#brack .bt2').forEach(el => { el.style.width=tileW+'px'; el.style.height=tileH+'px'; });
   document.querySelectorAll('#brack .bt2-l').forEach(el => el.style.fontSize=Math.max(10,tileW*.52)+'px');
