@@ -215,6 +215,8 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 .cell:active:not(.lk):not(.ht):not(.locked-cell){background:#7bbfe0;}
 .cell.ht{cursor:default;}
 .cell.np{outline:2px solid #e8d040;outline-offset:-2px;}
+.cell.last-move{outline:2px solid rgba(100,220,100,.8);outline-offset:-2px;background:#4a9a6a!important;}
+.bsq.last-move{outline:2px solid rgba(100,220,100,.8);outline-offset:-2px;}
 .cell.lk{cursor:default;}
 .cell.locked-cell{cursor:not-allowed;}
 
@@ -566,6 +568,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
     <div class="credit">גרסה מודרנית · יעקב שויקה / מטח 1993</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.0</div>
   </div>
 </div>
 
@@ -800,6 +803,7 @@ body.tile-selected .bsq:not(.used){
     </div>
     <!-- status -->
     <div class="sbar" id="sbar">בחר אות מהמגש ולחץ על משבצת</div>
+    <div id="turn-banner" style="display:none;text-align:center;font-size:13px;font-weight:900;padding:3px 8px;flex-shrink:0;letter-spacing:.5px;"></div>
 
     <!-- MOBILE INFO STRIP — replaces side panels on small screens -->
     <div class="info-strip" id="info-strip">
@@ -1511,6 +1515,7 @@ let botBusy=false, bonusPend=null, timerInt=null;
 let moveTimerInt=null, botThinkTimeout=null;
 let lastRejWord='', lastRejScore=0, lastRejPlaced=[];
 let replacedThisTurn=null, pendingReview=null;
+let lastMoveCells=[]; // coords of last committed move for highlighting
 let appealsUsed=[0,0];
 let pendingMoveSnapshot=null;
 let jokerTarget=null, exchUsed=false;
@@ -1722,6 +1727,7 @@ function renderBoard(){
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
       cell.innerHTML=`<div class="${tile.isJoker?'btile jk':'btile'}"><div class="bt-l" style="font-size:${fs}px">${tile.letter}</div><div class="bt-v" style="font-size:${vs}px">${tile.val||''}</div></div>`;
       cell.classList.add('ht','lk');
+      if(lastMoveCells.some(m=>m.r===r&&m.c===c)) cell.classList.add('last-move');
     } else if (pp) {
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
       const isPicked = selPlaced && selPlaced.r===r && selPlaced.c===c;
@@ -1996,17 +2002,92 @@ function startMoveTimer(){
 function scheduleBotMove(){
   botBusy=true;
   setS(`${pNames[1]} חושב...`);
-  // Don't wipe the rack — player should always see their tiles
-  // Show thinking indicator in status bar only
   const limitMs = getMoveTimeLimit();
-  const botDelay = 800 + Math.random()*700; // fixed 0.8-1.5s regardless of time limit
   if(limitMs) startMoveTimer();
   clearBotThinkTimeout();
+  // Bot runs immediately in a non-blocking way using setTimeout(0)
+  // Then commits result after a short "thinking" display delay (min 600ms so move feels natural)
+  const thinkStart = Date.now();
   botThinkTimeout = setTimeout(()=>{
-    botThinkTimeout=null;
-    clearMoveTimer();
-    botGo();
-  }, botDelay);
+    botThinkTimeout = null;
+    const result = doBotSearch(); // returns {pp, word} or null
+    const elapsed = Date.now() - thinkStart;
+    const minDisplay = 600; // at least 600ms "thinking" for UX
+    const remaining = Math.max(0, minDisplay - elapsed);
+    setTimeout(()=>{
+      clearMoveTimer();
+      botCommit(result);
+    }, remaining);
+  }, 0);
+}
+
+// Separate bot search from commit so timing is clean
+function doBotSearch(){
+  ensureBotWords();
+  const av=racks[1];
+  const wl=diff===0?BOT_EASY:diff===1?BOT_MED:BOT_ALL;
+  const cands=wl.filter(w=>canMk(w,av)&&isValid(w)).sort((a,b)=>b.length-a.length);
+  if(firstMove){
+    const midR=~~(BS/2), midC=~~(BS/2);
+    for(const w of cands.slice(0,30)){
+      const p=mkP(w,midR,midC,'H')||mkP(w,midR,midC-2,'H')||mkP(w,midR,midC,'V');
+      if(p&&!p.some(t=>isBonusPos(t.r,t.c))) return {pp:p,word:w};
+    }
+    return null;
+  }
+  const anch=[];
+  for(let r=0;r<BS;r++) for(let c=0;c<BS;c++){
+    const lk=lockedCells[`${r},${c}`]; if(lk&&lk.owner!==1&&lk.rounds>0)continue;
+    if(!bData[r][c]&&[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].some(([ar,ac])=>getTile(ar,ac)))anch.push({r,c});
+  }
+  BDEFS.forEach((b,idx)=>{
+    if(bonusSqUsed[idx]||bBoardData[`${b.br},${b.bc}`]) return;
+    const neighbors=[[b.br-1,b.bc],[b.br+1,b.bc],[b.br,b.bc-1],[b.br,b.bc+1]];
+    if(neighbors.some(([ar,ac])=>getTile(ar,ac))) anch.push({r:b.br,c:b.bc});
+  });
+  let best=null;
+  const tries=Math.min(cands.length, diff===2?120:diff===1?60:20);
+  for(let i=0;i<tries;i++){
+    const w=cands[i];
+    const anchLimit=diff===2?20:diff===1?14:9;
+    for(const{r,c}of anch.sort(()=>Math.random()-.5).slice(0,anchLimit)){
+      const isBonusAnch=isBonusPos(r,c);
+      const bonusDirs=isBonusAnch?(r===-1||r===BS?['V']:['H']):['H','V'];
+      for(const d of bonusDirs){
+        const offsets=isBonusAnch?[0]:Array.from({length:w.length},(_,k)=>k);
+        for(const offset of offsets){
+          const sr=d==='H'?r:r-offset;
+          const sc=d==='H'?c-offset:c;
+          const p=mkP(w,sr,sc,d);
+          if(p){
+            placed=p;const ws=getAllWords(p);placed=[];
+            if(ws.some(ww=>!isValid(ww.map(t=>t.letter).join(''))))continue;
+            const sc2=calcTotal(p);if(!best||sc2>best.sc)best={pp:p,word:w,sc:sc2};
+          }
+        }
+      }
+    }
+  }
+  return best;
+}
+
+function botCommit(result){
+  botBusy=false;
+  if(!result){
+    // No move found — pass
+    passCount++;
+    if(bag.length>0&&racks[1].length>0){
+      const n=Math.min(2,racks[1].length);
+      for(let i=0;i<n;i++)bag.unshift(racks[1].pop());
+      draw(racks[1]);
+    }
+    if(passCount>=6){endGame();return;}
+    turn=0; updateUI();renderRack();renderBoard();
+    setS('תורך — בחר אות מהמגש');
+    startMoveTimer();
+    return;
+  }
+  execBot(result.pp, result.word);
 }
 
 // ═══════════════════════════════════════════════════
@@ -2060,7 +2141,7 @@ function initGame(){
   bData = Array.from({length:BS}, () => Array(BS).fill(null));
   racks=[[],[]]; scores=[0,0]; futBon=[{},{}]; lockedCells={}; bonusSqUsed={}; bBoardData={};
   turn=0; firstMove=true; passCount=0; moveCount=0;
-  placed=[]; selTile=null; selPlaced=null; dir='H'; botBusy=false; bonusPend=null;
+  placed=[]; selTile=null; selPlaced=null; dir='H'; botBusy=false; bonusPend=null; lastMoveCells=[];
   lastRejWord=''; lastRejScore=0; lastRejPlaced=[]; exchUsed=false;
   replacedThisTurn=null; pendingReview=null;
   appealsUsed=[0,0];
@@ -2068,7 +2149,15 @@ function initGame(){
   lockInventory=[[3,3,5],[3,3,5]];
   draw(racks[0]); draw(racks[1]);
   // Shuffle bonus types and assign to slots
-  bonusAssignment = [...BONUS_TYPES].sort(()=>Math.random()-.5);
+  // Each bonus type appears at most once per game
+  var _uniqueTypes = [];
+  var _seen = {};
+  BONUS_TYPES.forEach(function(b){ if(!_seen[b.type]){ _seen[b.type]=true; _uniqueTypes.push(b); } });
+  // Shuffle and take up to 12 (one per bonus slot)
+  _uniqueTypes.sort(()=>Math.random()-.5);
+  // Pad to 12 slots with free-point bonuses if fewer than 12 unique types
+  while(_uniqueTypes.length < BDEFS.length){ _uniqueTypes.push({type:'B9',pts:25,ic:'♠'}); }
+  bonusAssignment = _uniqueTypes.slice(0, BDEFS.length);
   buildUnifiedGrid(); renderBoard(); renderRack(); renderBonusStrips(); updateUI();
   setS('תורך — בחר אות ולחץ על משבצת');
   startMoveTimer();
@@ -2080,6 +2169,8 @@ function initGame(){
 function selT(i){
   if(botBusy)return; if(gMode==='bot'&&turn===1)return;
   if(selPlaced!==null){ selPlaced=null; renderBoard(); } // cancel board pick
+  // Clear last-move highlight when player starts their turn
+  if(lastMoveCells.length && selTile===null){ lastMoveCells=[]; renderBoard(); }
   selTile=(selTile===i)?null:i;
   document.body.classList.toggle('tile-selected', selTile!==null);
   renderRack();
@@ -3430,6 +3521,9 @@ function commitPlay(sc,ws,bonus,pi){
   // Apply future bonus multipliers
   if(futBon[pi] && futBon[pi].quadNext>0){fs*=4;futBon[pi].quadNext--;setS('✦ ×4 הפעם!','bon');}
   else if(futBon[pi] && futBon[pi].doubleNext>0){fs*=2;futBon[pi].doubleNext--;}
+  // Save last move cells for highlighting
+  lastMoveCells = placed.map(p=>({r:p.r,c:p.c}));
+  if(replacedThisTurn) lastMoveCells.push({r:replacedThisTurn.r, c:replacedThisTurn.c});
   placed.forEach(({r,c,letter,val,isJoker})=>{
     if(isBonusPos(r,c)){
       bBoardData[`${r},${c}`]={letter,val,isJoker:!!isJoker};
@@ -3500,60 +3594,10 @@ function nextTurn(){
 // ═══════════════════════════════════════════════════
 // BOT
 // ═══════════════════════════════════════════════════
-function botGo(){ const ok=tryBot(); botBusy=false; if(!ok){passCount++;if(bag.length>0&&racks[1].length>0){const n=Math.min(2,racks[1].length);for(let i=0;i<n;i++)bag.unshift(racks[1].pop());draw(racks[1]);}if(passCount>=6){endGame();return;}turn=0;updateUI();renderRack();renderBoard();setS('תורך — בחר אות מהמגש');startMoveTimer();} }
+function botGo(){ var r=doBotSearch(); botBusy=false; botCommit(r); }
 function canMk(w,av){ let a=[...av]; for(const ch of w){const i=a.indexOf(ch);if(i>=0)a.splice(i,1);else{const bi=a.indexOf('?');if(bi>=0)a.splice(bi,1);else return false;}}return true; }
-function tryBot(){
-  ensureBotWords();
-  const av=racks[1]; const wl=diff===0?BOT_EASY:diff===1?BOT_MED:BOT_ALL;
-  const cands=wl.filter(w=>canMk(w,av)&&isValid(w)).sort((a,b)=>b.length-a.length);
-  if(firstMove){
-    // place first word somewhere in the middle area, not on bonus slots
-    const midR=~~(BS/2), midC=~~(BS/2);
-    for(const w of cands.slice(0,20)){
-      const p=mkP(w,midR,midC,'H')||mkP(w,midR,midC-2,'H')||mkP(w,midR,midC,'V');
-      if(p&&!p.some(t=>isBonusPos(t.r,t.c))){execBot(p,w);return true;}
-    }
-    return false;
-  }
-  const anch=[];
-  // Regular board anchors — empty cells adjacent to existing tiles
-  for(let r=0;r<BS;r++)for(let c=0;c<BS;c++){
-    const lk=lockedCells[`${r},${c}`]; if(lk&&lk.owner!==1&&lk.rounds>0)continue;
-    if(!bData[r][c]&&[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].some(([ar,ac])=>getTile(ar,ac)))anch.push({r,c});
-  }
-  // Bonus slot anchors — empty bonus positions adjacent to existing board tiles
-  BDEFS.forEach((b,idx)=>{
-    if(bonusSqUsed[idx]) return; // already used
-    if(bBoardData[`${b.br},${b.bc}`]) return; // already has a tile
-    // Check if adjacent cell has a tile (bonus slots are on the edge, so one neighbor is inside board)
-    const neighbors=[[b.br-1,b.bc],[b.br+1,b.bc],[b.br,b.bc-1],[b.br,b.bc+1]];
-    if(neighbors.some(([ar,ac])=>getTile(ar,ac))) anch.push({r:b.br,c:b.bc});
-  });
-  let best=null; const tries=Math.min(cands.length,diff===2?80:diff===1?40:15);
-  for(let i=0;i<tries;i++){
-    const w=cands[i];
-    const anchLimit = diff===2?16:diff===1?12:8;
-    for(const{r,c}of anch.sort(()=>Math.random()-.5).slice(0,anchLimit)){
-      const isBonusAnch = isBonusPos(r,c);
-      for(const d of['H','V']){
-        // For bonus-slot anchors: only try offset=0 (bonus is first tile) and offset=w.length-1 (bonus is last tile)
-        // For regular anchors: try all offsets
-        const offsets = isBonusAnch ? [0, w.length-1] : Array.from({length:w.length},(_,k)=>k);
-        for(const offset of offsets){
-          const sr = d==='H' ? r : r-offset;
-          const sc = d==='H' ? c-offset : c;
-          const p=mkP(w,sr,sc,d);
-          if(p){
-            placed=p;const ws=getAllWords(p);placed=[];
-            if(ws.some(ww=>!isValid(ww.map(t=>t.letter).join(''))))continue;
-            const sc2=calcTotal(p);if(!best||sc2>best.sc)best={p,w,sc:sc2};
-          }
-        }
-      }
-    }
-  }
-  if(best){execBot(best.p,best.w);return true;} return false;
-}
+function tryBot(){ return !!doBotSearch(); } // legacy stub
+
 function mkP(word,sr,sc2,d){
   const W=[...word]; let pp=[],r=sr,c=sc2,used=[...racks[1]];
   for(let i=0;i<W.length;i++){
@@ -3591,6 +3635,7 @@ function execBot(pp,word){
   placed=pp; const bsqIdxs=getActivatedBonuses(); placed=[];
   let bonus=0; bsqIdxs.forEach(i=>{ const ba=bonusAssignment[i]||BONUS_TYPES[i%BONUS_TYPES.length]; bonus+=({B1:50,B2:20,B3:15,B4:1,B5:0,B6:0,B7:0,B8:20,B9:25,B10:20}[ba.type]||0); bonusSqUsed[i]=true;});
   scores[1]+=fs+bonus; if(isNaN(scores[1])){ console.error('Bot NaN score! fs=',fs,'bonus=',bonus); scores[1]-=NaN; scores[1]=scores[1]||0; } firstMove=false; passCount=0; moveCount++; exchUsed=false;
+  lastMoveCells = pp.map(p=>({r:p.r,c:p.c}));
   draw(racks[1]); updateUI(); renderBoard(); renderRack(); renderBonusStrips();
   setS(`${pNames[1]}: "${word}" — ${fs+bonus} נקודות. תורך!`,'ok');
   if(racks[1].length===0&&bag.length===0){setTimeout(endGame,600);return;}
@@ -3932,6 +3977,23 @@ function updateUI(){
   document.getElementById('lcd').textContent = String(moveCount).padStart(2,'0');
   const tn = document.getElementById('turn-name');
   if(tn) tn.textContent = pNames[turn];
+  // Turn banner — clear indication whose turn it is
+  const tb = document.getElementById('turn-banner');
+  if(tb){
+    const colors = ['var(--p1)','var(--p2)'];
+    const isMyTurnNow = !(gMode==='bot' && turn===1) && !botBusy;
+    if(gMode==='bot' && turn===1){
+      tb.style.display='block';
+      tb.style.background='rgba(0,0,0,.25)';
+      tb.style.color='rgba(255,255,255,.6)';
+      tb.textContent=`🤖 ${pNames[1]} חושב...`;
+    } else {
+      tb.style.display='block';
+      tb.style.background= turn===0 ? 'rgba(231,76,139,.25)' : 'rgba(245,166,35,.25)';
+      tb.style.color= colors[turn];
+      tb.textContent=`◀ תור ${pNames[turn]}`;
+    }
+  }
   // (active-rack-label removed)
 
   // Disable שבץ/בטל when not the human player's turn
