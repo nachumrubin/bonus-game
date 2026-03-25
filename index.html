@@ -1242,6 +1242,9 @@ loadDict();
 // BONUS LIGHT ENGINE — ported from bonus_light/engine.py
 // classic mode: rejects prefixed particles and possessives
 
+// Common defective spellings (כתיב חסר) that should be accepted
+// even though only the plene (כתיב מלא) form is in the dictionary
+const DEFECTIVE_ACCEPT = new Set(["כסא","זכרון","שלטון","מסדרון","ספרון","פתרון","עגלון","חנון","ישרון","קטון"]);
 const EXACT_REJECTS  = new Set(["אותה","אותו","אותי","אותך","אותכם","אותכן","אותם","אותן","אותנו","אחריה","אחריהם","אחריהן","אחריו","אחריי","אחרייך","אחריך","אחריכם","אחריכן","אחרינו","איתה","איתו","איתי","איתך","איתכם","איתכן","איתם","איתן","איתנו","אלי","אליה","אליהם","אליהן","אליו","אלייך","אליך","אליכם","אליכן","אלינו","אצלה","אצלו","אצלי","אצלך","אצלכם","אצלכן","אצלם","אצלן","אצלנו","בלעדי","בלעדיה","בלעדיהם","בלעדיהן","בלעדיו","בלעדייך","בלעדיך","בלעדיכם","בלעדיכן","בלעדינו","בשבילה","בשבילהן","בשבילו","בשבילי","בשבילך","בשבילכם","בשבילכן","בשבילם","בשבילנו","כמוה","כמוהו","כמוך","כמוכם","כמוכן","כמונו","כמוני","כמותם","כמותן","לידה","לידו","לידי","לידך","לידכם","לידכן","לידם","לידן","לידנו","למענה","למענו","למעני","למענך","למענכם","למענכן","למענם","למענן","למעננו","לפניה","לפניהם","לפניהן","לפניו","לפניי","לפנייך","לפניך","לפניכם","לפניכן","לפנינו","מאחוריה","מאחוריהם","מאחוריהן","מאחוריו","מאחוריי","מאחורייך","מאחוריך","מאחוריכם","מאחוריכן","מאחורינו","מולה","מולו","מולי","מולך","מולכם","מולכן","מולם","מולן","מולנו","ממך","ממכם","ממכן","ממנה","ממנו","ממני","נגדה","נגדו","נגדי","נגדך","נגדכם","נגדכן","נגדם","נגדן","נגדנו","עלי","עליה","עליהם","עליהן","עליו","עלייך","עליך","עליכם","עליכן","עלינו","עמה","עמהן","עמו","עמי","עמך","עמכם","עמכן","עמם","עמנו","שלה","שלהם","שלהן","שלו","שלי","שלך","שלכם","שלכן","שלנו","תוכה","תוכו","תוכי","תוכך","תוכם","תוכן","תוכנו"]);
 const CLASSIC_ALLOW  = new Set(["בה","בהם","בהן","בו","בי","בך","בכם","בכן","בנו","לה","להם","להן","לו","לי","לך","לכם","לכן","לנו"]);
 const COMMON_FALSE_POSSESSIVE = new Set(["מים","חיים","פנים","פני","שני","אחי","אחותי","אדוני","גוי","תוי"]);
@@ -1298,7 +1301,10 @@ function* candidateLemmas(word){
   }
   if(wordN.endsWith("ה")&&wordN.length>3){
     const s=wordN.slice(0,-1);
-    if(s.length>=3){ yield* em(s); if(!s.endsWith("ו")) yield* em(s+"ו"); }
+    // Don't strip ה from future-tense verb forms (י/ת/נ/א prefix)
+    // e.g. יפברקה -> יפברק is wrong; ה doesn't attach to masculine future
+    const futurePrefix = s.length>=3 && "יתנא".includes(s[0]) && !"אהוי".includes(s[1]);
+    if(s.length>=3 && !futurePrefix){ yield* em(s); if(!s.endsWith("ו")) yield* em(s+"ו"); }
   }
 }
 
@@ -1341,10 +1347,16 @@ function* spellingVariants(word){
       const r=emit(s); if(r) yield r;
     }
   }
-  // Also try stripping from the last position if it is ו (common: שלום→שלם)
-  if(word.length>3 && (word[word.length-1]==='ו')){
-    const s=word.slice(0,-1);
-    const r=emit(s); if(r) yield r;
+  // Also try stripping from the last position if it is ו
+  if(word.length>3 && word[word.length-1]==='ו'){
+    const r=emit(word.slice(0,-1)); if(r) yield r;
+  }
+  // Insert י or ו at interior positions (defective→plene: כסא→כיסא, שמש→שימש)
+  for(let i=1;i<word.length;i++){
+    for(const ins of ['י','ו']){
+      const s=word.slice(0,i)+ins+word.slice(i);
+      const r=emit(s); if(r) yield r;
+    }
   }
 }
 
@@ -1368,9 +1380,13 @@ function analyze(rawWord){
   }
   // Only apply possessive filter for words NOT in the dictionary directly
   if(looksLikePossessive(word)) return {valid:false,word,lemma:null,reason:"possessive-suffix"};
-  const lemma=guessLemmaFromMissing(word);
+  // Only apply heuristic for words that don't look like verb conjugations
+  // Future tense verbs (start with י/ת/נ/א + consonant) should NOT be guessed via lemma
+  const _looksLikeVerb = word.length >= 4 && 'יתנא'.includes(word[0]) && !'אויה'.includes(word[1]);
+  const lemma = _looksLikeVerb ? null : guessLemmaFromMissing(word);
   if(lemma) return {valid:true,word,lemma,reason:"heuristic-lemma"};
   // כתיב מלא/חסר: accept if a plene or defective spelling variant is in the dictionary
+  if(DEFECTIVE_ACCEPT.has(word)) return {valid:true,word,lemma:word,reason:"defective-accept"};
   const pleneMatch=dictHasPlene(word);
   if(pleneMatch){
     return {valid:true,word,lemma:pleneMatch,reason:"plene-variant"};
@@ -2684,7 +2700,12 @@ function openMoveReview(review){
     title.textContent = pNames[turn] + ', אחד מקבל';
     checkmark.textContent = '✓'; checkmark.style.color='#8eff8e';
     header.style.background='#2a5878';
-    sub.textContent = `${pNames[turn]} מקבל ${review.total} נקודות.`;
+    const _multSub = (typeof futBon !== 'undefined') && futBon[turn];
+    const _isQ = _multSub && _multSub.quadNext > 0;
+    const _isD = _multSub && !_isQ && (_multSub.doubleNext||0) > 0;
+    const _finalPts = _isQ ? review.total*4 : _isD ? review.total*2 : review.total;
+    const _multStr = _isQ ? ' (×4 🔥 = '+_finalPts+')' : _isD ? ' (×2 ✨ = '+_finalPts+')' : '';
+    sub.textContent = `${pNames[turn]} מקבל ${_finalPts} נקודות${_multStr}.`;
     // Arms up — happy joker
     if(armL) armL.setAttribute('d','M10,46 Q4,36 9,28');
     if(armR) armR.setAttribute('d','M44,46 Q50,36 45,28');
@@ -2866,8 +2887,9 @@ function getBonusPools(){
   var primary = (_commonWords && _commonWords.length) ? _commonWords : [];
   var short=[], medium=[], long=[], fillable=[];
 
-  // Primary curated words first
-  primary.forEach(function(w){
+  // Primary curated words - shuffle so same words don't always appear first
+  var shuffledPrimary = sh(primary.slice());
+  shuffledPrimary.forEach(function(w){
     if(isGoodWord(w,3,5)) short.push(w);
     if(isGoodWord(w,4,5)) medium.push(w);
     if(isGoodWord(w,5,6)) long.push(w);
@@ -3510,7 +3532,7 @@ function bonusOk(ok=true){
   if(ok&&extra>0)setS(`🎉 בונוס! +${extra} נקודות!`,'bon');
   else if(!ok&&bonusPend.ct!=='auto')setS('❌ לא נכון — ללא בונוס','err');
   if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
-  commitPlay(bonusPend.sc+extra,bonusPend.ws,extra,pi);
+  commitPlay(bonusPend.sc,bonusPend.ws,extra,pi); // pass word score and bonus separately
   bonusPend=null;
 }
 function bonusSkip(){ clearT(); ovClose('ov-bonus'); if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true); commitPlay(bonusPend.sc,bonusPend.ws,0,bonusPend.player); bonusPend=null; }
@@ -3519,11 +3541,19 @@ function bonusSkip(){ clearT(); ovClose('ov-bonus'); if(bonusPend.bsqIdxs)bonusP
 // COMMIT
 // ═══════════════════════════════════════════════════
 function commitPlay(sc,ws,bonus,pi){
-  let fs = (isNaN(sc) || sc == null) ? 0 : sc;
-  // Apply future bonus multipliers — track multiplier for status message
+  // sc = base word score only (bonus extra is passed separately)
+  let wordSc = (isNaN(sc) || sc == null) ? 0 : sc;
+  // bonus = extra points from bonus square (not multiplied)
+  let bonusExtra = (isNaN(bonus) || bonus == null) ? 0 : bonus;
+  // Subtract bonus from sc to get pure word score for multiplier
+  let fs = wordSc - bonusExtra;
+  if(fs < 0) fs = 0;
+  // Apply future bonus multipliers — only to word score, not bonus points
   let _multLabel = '';
   if(futBon[pi] && futBon[pi].quadNext>0){fs*=4;futBon[pi].quadNext--;_multLabel='×4 🔥';}
   else if(futBon[pi] && futBon[pi].doubleNext>0){fs*=2;futBon[pi].doubleNext--;_multLabel='×2 ✨';}
+  // Re-add bonus points (never multiplied)
+  fs = fs + bonusExtra;
   // Save last move cells for highlighting
   lastMoveCells = placed.map(p=>({r:p.r,c:p.c}));
   if(replacedThisTurn) lastMoveCells.push({r:replacedThisTurn.r, c:replacedThisTurn.c});
@@ -3545,7 +3575,7 @@ function commitPlay(sc,ws,bonus,pi){
   placed=[]; replacedThisTurn=null; exchUsed=false; lastRejWord=''; lastRejPlaced=[];
   selTile=null; selPlaced=null; document.body.classList.remove('tile-selected');
   draw(racks[pi]);
-  const _baseMsg = _multLabel ? `${sc} ${_multLabel} = ${fs}` : `${fs}`;
+  const _baseMsg = _multLabel ? `${wordSc - bonusExtra} ${_multLabel} = ${fs - bonusExtra}` : `${fs}`;
   setS(`"${ws}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
   updateUI(); renderBoard(); renderRack(); renderBonusStrips();
   if(racks[pi].length===0&&bag.length===0){endGame();return;}
@@ -5257,7 +5287,10 @@ function resumeSavedGame(){
   });
   if(bonusAssignment.length < BONUS_TYPES.length) bonusAssignment = [...BONUS_TYPES].sort(function(){ return Math.random()-.5; });
 
+  // buildUnifiedGrid resets bData/lockedCells/bonusSqUsed — save and restore
+  var _bData = bData, _lockedCells = lockedCells, _bonusSqUsed = bonusSqUsed, _bBoardData = bBoardData;
   buildUnifiedGrid();
+  bData = _bData; lockedCells = _lockedCells; bonusSqUsed = _bonusSqUsed; bBoardData = _bBoardData;
   updateUI(); renderBoard(); renderRack(); renderBonusStrips();
   showSc('sg');
   if(gameSettings.music && !musicPlaying) startMusic();
@@ -5410,7 +5443,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=202603242302').then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=202603251819').then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
