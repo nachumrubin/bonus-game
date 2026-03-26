@@ -3541,18 +3541,15 @@ function bonusSkip(){ clearT(); ovClose('ov-bonus'); if(bonusPend.bsqIdxs)bonusP
 // COMMIT
 // ═══════════════════════════════════════════════════
 function commitPlay(sc,ws,bonus,pi){
-  // sc = base word score only (bonus extra is passed separately)
+  // sc = word score only; bonus = extra points from bonus square (added separately, not multiplied)
   let wordSc = (isNaN(sc) || sc == null) ? 0 : sc;
-  // bonus = extra points from bonus square (not multiplied)
   let bonusExtra = (isNaN(bonus) || bonus == null) ? 0 : bonus;
-  // Subtract bonus from sc to get pure word score for multiplier
-  let fs = wordSc - bonusExtra;
-  if(fs < 0) fs = 0;
-  // Apply future bonus multipliers — only to word score, not bonus points
+  // Apply multiplier to word score only
+  let fs = wordSc;
   let _multLabel = '';
   if(futBon[pi] && futBon[pi].quadNext>0){fs*=4;futBon[pi].quadNext--;_multLabel='×4 🔥';}
   else if(futBon[pi] && futBon[pi].doubleNext>0){fs*=2;futBon[pi].doubleNext--;_multLabel='×2 ✨';}
-  // Re-add bonus points (never multiplied)
+  // Add bonus points after multiplier (bonus is never multiplied)
   fs = fs + bonusExtra;
   // Save last move cells for highlighting
   lastMoveCells = placed.map(p=>({r:p.r,c:p.c}));
@@ -3575,7 +3572,7 @@ function commitPlay(sc,ws,bonus,pi){
   placed=[]; replacedThisTurn=null; exchUsed=false; lastRejWord=''; lastRejPlaced=[];
   selTile=null; selPlaced=null; document.body.classList.remove('tile-selected');
   draw(racks[pi]);
-  const _baseMsg = _multLabel ? `${wordSc - bonusExtra} ${_multLabel} = ${fs - bonusExtra}` : `${fs}`;
+  const _baseMsg = _multLabel ? `${wordSc} ${_multLabel} = ${fs - bonusExtra}` : `${fs}`;
   setS(`"${ws}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
   updateUI(); renderBoard(); renderRack(); renderBonusStrips();
   if(racks[pi].length===0&&bag.length===0){endGame();return;}
@@ -5443,7 +5440,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=202603251819').then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=202603261526').then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
