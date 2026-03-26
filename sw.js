@@ -1,11 +1,10 @@
 // בונוס — Service Worker
 // Cache name includes build timestamp — auto-invalidates on every deploy
-var CACHE_NAME = 'bonus-202603261402';
+var CACHE_NAME = 'bonus-20260326140921';
 var ASSETS = [
   './',
   './index.html',
-  './sw.js',
-];
+];  // sw.js intentionally excluded — browser fetches it fresh
 
 self.addEventListener('install', function(e){
   e.waitUntil(
