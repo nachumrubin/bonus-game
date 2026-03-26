@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בונוס">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בונוס">
-<meta name="version" content="202603242040">
+<meta name="version" content="202603261355">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -569,7 +569,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
     <div class="credit">גרסה מודרנית · יעקב שויקה / מטח 1993</div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 202603242112</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 202603261355</div>
   </div>
 </div>
 
@@ -1916,7 +1916,7 @@ function clearMoveTimer(){ if(moveTimerInt){ clearInterval(moveTimerInt); moveTi
 function clearBotThinkTimeout(){ if(botThinkTimeout){ clearTimeout(botThinkTimeout); botThinkTimeout=null; } }
 function getMoveTimeLimit(){ return gameSettings.timelimit ? gameSettings.botTime * 1000 : null; }
 function moveTimerBaseMessage(){
-  return (gMode==='bot' && turn===1) ? `${pNames[1]} חושב...` : 'תורך — בחר אות מהמגש';
+  return (gMode==='bot' && turn===1) ? `${pNames[1]} חושב...` : myTurnMsg();
 }
 function updateMoveTimerStatus(secLeft){
   const cls = secLeft <= 5 ? 'err' : '';
@@ -2101,7 +2101,7 @@ function botCommit(result){
     }
     if(passCount>=6){endGame();return;}
     turn=0; updateUI();renderRack();renderBoard();
-    setS('תורך — בחר אות מהמגש');
+    setS(myTurnMsg());
     startMoveTimer();
     return;
   }
@@ -2126,7 +2126,21 @@ function clearChampions(){
   renderChampions('champions-wrap-home');
 }
 function openEndMenu(){ if(confirm('לסיים את המשחק?'))endGame(); }
-function rematch(){ ovClose('ov-end'); initGame(); }
+function rematch(){
+  ovClose('ov-end');
+  // Preserve player names across rematch
+  var _names = pNames.slice();
+  var _diff = diff;
+  var _gMode = gMode;
+  initGame();
+  pNames[0] = _names[0];
+  pNames[1] = _names[1];
+  diff = _diff;
+  // Re-apply names to UI
+  ['sn1','sn2','en1','en2'].forEach(function(id,i){ var el=document.getElementById(id); if(el) el.textContent=pNames[i%2]; });
+  var ip1=document.getElementById('ip1'); if(ip1) ip1.value=_names[0];
+  var ip2=document.getElementById('ip2'); if(ip2) ip2.value=_names[1];
+}
 
 function buildVtbl(){
   const el = document.getElementById('vtbl'); if(el.children.length>0)return;
@@ -2177,7 +2191,7 @@ function initGame(){
   while(_uniqueTypes.length < BDEFS.length){ _uniqueTypes.push({type:'B9',pts:25,ic:'♠'}); }
   bonusAssignment = _uniqueTypes.slice(0, BDEFS.length);
   buildUnifiedGrid(); renderBoard(); renderRack(); renderBonusStrips(); updateUI();
-  setS('תורך — בחר אות ולחץ על משבצת');
+  setS(myTurnMsg());
   startMoveTimer();
 }
 
@@ -2816,11 +2830,11 @@ function playWord(){
     createPendingMoveSnapshot();
     openMoveReview(review);
   } else {
-    // Invalid words, no recourse — highlight and reject
+    // Invalid words, no recourse — forfeit turn (consistent with appeals logic)
     highlightIllegalWords(review.invalid);
     const badWords=review.invalid.map(w=>w.text).join(', ');
-    setS(`מילה לא חוקית: ${badWords} — המהלך נדחה`,'err');
-    setTimeout(clearIllegalHighlights, 2000);
+    setS(`מילה לא חוקית: ${badWords} — התור עובר`,'err');
+    setTimeout(()=>{ clearIllegalHighlights(); doRecall(); nextTurn(); }, 1800);
     lastRejWord=review.invalid[0]?review.invalid[0].text:'';
     lastRejScore=review.total;
     lastRejPlaced=[...placed];
@@ -3610,13 +3624,13 @@ function nextTurn(){
   } else if(gMode==='online'){
     const myTurn=(myRole==='host')?0:1;
     if(turn===myTurn){
-      setS('תורך — בחר אות מהמגש');
+      setS(myTurnMsg());
       if(onlineMode==='live' && gameSettings.timelimit) startMoveTimer();
     } else {
       setS(`ממתין ל-${pNames[1-myTurn]}...`);
     }
   } else {
-    setS('תורך — בחר אות מהמגש');
+    setS(myTurnMsg());
     startMoveTimer();
   }
 }
@@ -4808,7 +4822,7 @@ function startOnlineGame(){
         showSc('sg');
         if(gameSettings.music && !musicPlaying) startMusic();
         setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
-        setS('תורך — בחר אות מהמגש');
+        setS(myTurnMsg());
         if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
         saveOnlineSession();
         setupPresence();
@@ -5040,6 +5054,8 @@ function stopDcTimer(){
 // ── LISTEN FOR OPPONENT MOVES ──
 function listenForMoves(){
   var stateRef = fbRef('rooms/' + roomCode + '/state');
+  var _lastSeenMoveCount = undefined;
+  var _lastSeenTurn = undefined;
   var moveListener = stateRef.on('value', function(snap){
     if(!snap || !snap.exists() || gMode !== 'online') return;
     var s = snap.val();
@@ -5047,20 +5063,29 @@ function listenForMoves(){
     var myIdx = window._myPlayerIndex;
     // Skip our own push
     if(window._myLastPush !== undefined && s.moveCount === window._myLastPush){
+      window._myLastPush = undefined;
+      _lastSeenMoveCount = s.moveCount;
+      _lastSeenTurn = s.turn;
       return;
     }
-    // Skip if it's NOT my turn yet
+    // Skip if nothing changed since last update
+    if(s.moveCount === _lastSeenMoveCount && s.turn === _lastSeenTurn){
+      return;
+    }
+    _lastSeenMoveCount = s.moveCount;
+    _lastSeenTurn = s.turn;
+    // Skip if it's still NOT my turn (opponent still thinking)
     if(s.turn !== myIdx){
       return;
     }
-    // Opponent played — update board
+    // It's now my turn — opponent played or timed out
     window._myLastPush = undefined;
     clearMoveTimer();
     loadGameState(s);
     updateUI(); renderBoard(); renderRack('turn'); renderBonusStrips();
-    setS('תורך — בחר אות מהמגש');
+    setS(myTurnMsg());
     if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
-    saveOnlineSession(); // keep session fresh after opponent's move
+    saveOnlineSession();
   });
   onlineListeners.push({ ref: stateRef, type:'value', fn: moveListener });
 }
@@ -5440,7 +5465,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=202603261526').then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=202603261355').then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -5716,7 +5741,7 @@ async function rejoinOnlineGame(code){
 
   var myTurn = (turn === window._myPlayerIndex);
   if(myTurn){
-    setS('תורך — בחר אות מהמגש');
+    setS(myTurnMsg());
     if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
   } else {
     setS('ממתין ל-' + pNames[1 - window._myPlayerIndex] + '...');
