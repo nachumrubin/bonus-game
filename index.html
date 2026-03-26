@@ -1396,17 +1396,13 @@ function analyze(rawWord){
   return {valid:false,word,lemma:null,reason:"not-found"};
 }
 
-function isValid(w){
-  // Use new HebrewValidator when ready (better accuracy)
-  let result, reason;
-  if(window.HebrewValidator && window.HebrewValidator.init && DICT.size > 0){
-    const v = window.HebrewValidator.validate(w, {mode:'classic'});
-    result = v.valid; reason = v.reason + (v.confidence ? ' ['+v.confidence+']' : '');
-  } else {
-    const a = analyze(w);
-    result = a.valid; reason = a.reason;
-  }
-  console.log('[isValid]', JSON.stringify(w), '->', result ? '✓ VALID' : '✗ INVALID', '|', reason);
+function isValid(w){function isValid(w) {
+  if (!window.HebrewValidator) return false;
+
+  const result = window.HebrewValidator.validate(w, DICT);
+
+  console.log('[VALIDATION]', w, result);
+
   return result;
 }
 
@@ -5835,18 +5831,18 @@ const FORCE_ALLOW = new Set([
   // Very common defective spellings (כתיב חסר) whose plene form is in DICT
   'כסא','זכרון','שלטון','מסדרון','ספרון','פתרון','עגלון',
   'חנון','ישרון','קטון','גנון','ספון','כלון',
+
   // Short but valid standalone words
   'אל','כן','לא','גם','רק','עם','כי','אם','או','כל','של','עד',
   'מה','זה','זו','הם','הן','הוא','היא','אנו','אני',
-  // Common prefixed forms that look suspicious but are fine
-  'בה','בהם','בהן','בו','בי','בך','בכם','בכן','בנו',
-  'לה','להם','להן','לו','לי','לך','לכם','לכן','לנו',
-  // Words with common ambiguous letters
-  'מים','חיים','פנים','שני','אחי','אדוני',
+
+  // Safe irregular/common words
+  'מים','חיים','פנים',
 ]);
 
 // Words that must always be rejected (pronouns, preposition+pronoun combos, etc.)
 const FORCE_REJECT = new Set([
+  'רא',
   'אותה','אותו','אותי','אותך','אותכם','אותכן','אותם','אותן','אותנו',
   'אחריה','אחריהם','אחריהן','אחריו','אחריי','אחרייך','אחריך','אחריכם','אחריכן','אחרינו',
   'איתה','איתו','איתי','איתך','איתכם','איתכן','איתם','איתן','איתנו',
@@ -5866,40 +5862,30 @@ const FORCE_REJECT = new Set([
   'עמה','עמהן','עמו','עמי','עמך','עמכם','עמכן','עמם','עמנו',
   'שלה','שלהם','שלהן','שלו','שלי','שלך','שלכם','שלכן','שלנו',
   'תוכה','תוכו','תוכי','תוכך','תוכם','תוכן','תוכנו',
-  // Obscure verb conjugations rejected for game fairness
-  'הנבטתם','הנבטתן','הנבטתמ','הנבטתנ',
 ]);
 
 // Legal prefix letters and their combinations
-const PREFIX_LETTERS = new Set(['ו','ה','ל','ב','כ','ש','מ']);
+const PREFIX_LETTERS = new Set(['ו','ה','ל','ב','כ']);
 
 // Suffix patterns: [suffix_string, kind, min_stem_length]
 const SUFFIX_RULES = [
-  // Possessive / pronoun — generally rejected in game
+  // Possessive / pronoun — always suspicious in this game
   ['יהם','possessive', 3], ['יהן','possessive', 3],
   ['יכם','possessive', 3], ['יכן','possessive', 3],
   ['ינו','possessive', 3], ['ייך','possessive', 3],
   ['יך', 'possessive', 3], ['יה', 'possessive', 3],
   ['יו', 'possessive', 3], ['כם', 'possessive', 3],
   ['כן', 'possessive', 3], ['נו', 'possessive', 3],
-  // Plural / feminine — generally accepted
-  ['ים','plural',    3],
-  ['ות','plural',    3],
-  ['יות','plural',   3],
-  // Feminine singular — accepted
+
+  // Safer nominal endings
+  ['ים','plural',  3],
+  ['ות','plural',  3],
+  ['יות','plural', 3],
   ['ה',  'feminine', 3],
-  ['ת',  'feminine', 3],
-  // Verb conjugation endings — accepted if stem is valid
+
+  // Optional: keep only the safest verb endings
   ['תי', 'verb_1sg', 3],
-  ['ת',  'verb_2sg', 3],
-  ['נו',  'verb_1pl', 3],
-  ['ו',   'verb_3pl', 3],
-  // Short pronoun/possessive endings — cautious, only accepted if stem >= 3 chars AND stem is in dict
-  ['הו', 'possessive', 3],  // her/its (noun+הו)
-  ['יו', 'possessive', 3],  // his (noun+יו) — already covered above but ensure
-  ['ו',  'possessive', 3],  // his/its (noun+ו) — e.g. סופהו, ביתו
-  ['י',  'pronoun_or_fem', 2],
-  ['ך',  'pronoun_2sg',    2],
+  ['נו', 'verb_1pl', 3],
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -5952,15 +5938,15 @@ function generateFinalLetterVariants(word) {
  * @param {string} word  (already normalized, no final letters)
  * @returns {Array}
  */
-function generateValidationCandidates(word) {
+function generateValidationCandidates(word, options = {}) {
+  const allowKtivMale = options.allowKtivMale === true;
   const seen = new Set();
   const results = [];
-  const MAX_CANDIDATES = 24;
+  const MAX_CANDIDATES = 16;
 
   function push(surface, source) {
     if (results.length >= MAX_CANDIDATES) return;
     const { normalized } = normalizeSurface(surface);
-    // Deduplicate by normalized form
     if (seen.has(normalized)) return;
     seen.add(normalized);
     results.push({ surface, normalized, source });
@@ -5971,7 +5957,7 @@ function generateValidationCandidates(word) {
     push(v, 'exact');
   }
 
-  // 2. ktiv variant: strip one interior ו or י (מלא→חסר)
+  // 2. Conservative: strip one interior ו/י (מלא→חסר)
   for (let i = 1; i < word.length - 1; i++) {
     if (word[i] === 'ו' || word[i] === 'י') {
       const stripped = word.slice(0, i) + word.slice(i + 1);
@@ -5980,22 +5966,24 @@ function generateValidationCandidates(word) {
       }
     }
   }
-  // Strip trailing ו (common: שלו without possessive meaning)
-  if (word.length > 3 && word[word.length - 1] === 'ו') {
+
+  // Strip trailing ו only for longer words
+  if (word.length > 4 && word[word.length - 1] === 'ו') {
     const stripped = word.slice(0, -1);
     for (const v of generateFinalLetterVariants(stripped)) {
       push(v, 'ktiv_haser');
     }
   }
 
-  // 3. ktiv variant: insert one ו or י at each interior position (חסר→מלא)
-  // Cap insertions to avoid explosion
-  const insertCap = Math.min(word.length - 1, 5);
-  for (let i = 1; i <= insertCap; i++) {
-    for (const ins of ['י', 'ו']) {
-      const inserted = word.slice(0, i) + ins + word.slice(i);
-      for (const v of generateFinalLetterVariants(inserted)) {
-        push(v, 'ktiv_male');
+  // 3. חסר→מלא is too noisy for classic mode
+  if (allowKtivMale) {
+    const insertCap = Math.min(word.length - 1, 4);
+    for (let i = 1; i <= insertCap; i++) {
+      for (const ins of ['י', 'ו']) {
+        const inserted = word.slice(0, i) + ins + word.slice(i);
+        for (const v of generateFinalLetterVariants(inserted)) {
+          push(v, 'ktiv_male');
+        }
       }
     }
   }
@@ -6013,12 +6001,13 @@ function generateValidationCandidates(word) {
  * @param {string} word (normalized)
  * @returns {Array<{ prefixes: string[], stem: string }>}
  */
-function generatePrefixHypotheses(word) {
+function generatePrefixHypotheses(word, options = {}) {
+  const allowDoublePrefixes = options.allowDoublePrefixes === true;
   const results = [];
   const seen = new Set();
 
   function add(prefixes, stem) {
-    if (stem.length < 2) return;
+    if (stem.length < 3) return;
     const key = prefixes.join('') + '|' + stem;
     if (seen.has(key)) return;
     seen.add(key);
@@ -6028,16 +6017,19 @@ function generatePrefixHypotheses(word) {
   // No prefix
   add([], word);
 
-  // One prefix
-  if (PREFIX_LETTERS.has(word[0]) && word.length >= 3) {
+  // One prefix only, and only if enough stem remains
+  if (PREFIX_LETTERS.has(word[0]) && word.length >= 4) {
     const stem1 = word.slice(1);
-    add([word[0]], stem1);
+    if (stem1.length >= 3) add([word[0]], stem1);
+  }
 
-    // Two prefixes
-    if (PREFIX_LETTERS.has(stem1[0]) && stem1.length >= 3) {
-      // Don't double-strip the same letter (e.g. בב is rarely a valid double prefix)
+  // Double prefixes are off in strict/classic mode
+  if (allowDoublePrefixes && PREFIX_LETTERS.has(word[0]) && word.length >= 5) {
+    const stem1 = word.slice(1);
+    if (PREFIX_LETTERS.has(stem1[0]) && stem1.length >= 4) {
       if (stem1[0] !== word[0] || word[0] === 'ו') {
-        add([word[0], stem1[0]], stem1.slice(1));
+        const stem2 = stem1.slice(1);
+        if (stem2.length >= 3) add([word[0], stem1[0]], stem2);
       }
     }
   }
@@ -6122,20 +6114,24 @@ function _dictHasCandidates(candidates) {
  */
 function _confidence(path) {
   switch (path) {
-    case 'force_allow':    return 'high';
-    case 'exact':          return 'high';
-    case 'final_variant':  return 'high';
-    case 'ktiv_haser':     return 'medium';
-    case 'ktiv_male':      return 'medium';
-    case 'suffix_plural':  return 'medium';
-    case 'suffix_fem':     return 'medium';
-    case 'suffix_verb':    return 'medium';
-    case 'prefix_1':       return 'medium';
-    case 'prefix_1_suffix':return 'low';
-    case 'prefix_2':       return 'low';
-    case 'prefix_2_suffix':return 'reject'; // almost always wrong in a game context
-    case 'possessive':     return 'reject';
-    default:               return 'low';
+    case 'force_allow':     return 'high';
+    case 'exact':           return 'high';
+    case 'final_variant':   return 'high';
+
+    case 'ktiv_haser':      return 'medium';
+
+    // Too risky for classic mode
+    case 'ktiv_male':       return 'low';
+    case 'suffix_plural':   return 'medium';
+    case 'suffix_fem':      return 'medium';
+    case 'suffix_verb':     return 'low';
+    case 'prefix_1':        return 'low';
+    case 'prefix_1_suffix': return 'reject';
+    case 'prefix_2':        return 'reject';
+    case 'prefix_2_suffix': return 'reject';
+    case 'possessive':      return 'reject';
+
+    default:                return 'reject';
   }
 }
 
@@ -6148,17 +6144,20 @@ function _confidence(path) {
 function passesGamePolicy(analysis, mode = 'classic') {
   const conf = _confidence(analysis.path);
 
-  // Reject is always rejected
   if (conf === 'reject') return false;
-
-  // Possessive suffixes are rejected in both modes
   if (analysis.kind === 'possessive') return false;
 
-  // Low confidence only allowed in modern mode
-  if (conf === 'low' && mode === 'classic') return false;
+  if (mode === 'classic') {
+    // Classic mode accepts only high + medium
+    // low is rejected
+    if (conf === 'low') return false;
 
-  // Double prefix + any suffix: too speculative
-  if (analysis.prefixes.length >= 2 && analysis.suffix) return false;
+    // No multi-prefix guessing in classic mode
+    if (analysis.prefixes.length >= 2) return false;
+
+    // Prefix + suffix together is too speculative
+    if (analysis.prefixes.length >= 1 && analysis.suffix) return false;
+  }
 
   return true;
 }
@@ -6177,7 +6176,6 @@ function analyzeHebrewWord(word, options = {}) {
   const allowPossessives = options.allowPossessives || false;
   const allowOrtho = options.allowOrthographicVariants !== false;
 
-  // Strip non-Hebrew chars
   const cleaned = word.trim().split('').filter(ch => ch >= 'א' && ch <= 'ת').join('');
   const { normalized } = normalizeSurface(cleaned);
 
@@ -6196,42 +6194,69 @@ function analyzeHebrewWord(word, options = {}) {
     return result;
   }
 
-  // ── Fast path: FORCE_REJECT ──
+  // Fast path: force reject
   if (FORCE_REJECT.has(normalized)) {
     result.rejectedReasons.push('force_reject');
     return result;
   }
 
-  // ── Fast path: FORCE_ALLOW ──
+  // Fast path: force allow
   if (FORCE_ALLOW.has(normalized)) {
     result.accepted = true;
-    result.acceptedBy = { path: 'force_allow', surface: normalized, lemma: normalized, prefixes: [], suffix: '', kind: 'none', confidence: 'high' };
+    result.acceptedBy = {
+      path: 'force_allow',
+      surface: normalized,
+      lemma: normalized,
+      prefixes: [],
+      suffix: '',
+      kind: 'none',
+      confidence: 'high'
+    };
     return result;
   }
 
-  // ── Try each prefix hypothesis ──
+  // NEW: words of length <= 2 may pass ONLY via exact dictionary hit
+  if (normalized.length <= 2) {
+    if (_dictHas(normalized)) {
+      result.accepted = true;
+      result.acceptedBy = {
+        path: 'exact',
+        surface: normalized,
+        lemma: normalized,
+        prefixes: [],
+        suffix: '',
+        kind: 'none',
+        confidence: 'high'
+      };
+      return result;
+    }
+    result.rejectedReasons.push('short_word_requires_exact');
+    return result;
+  }
+
   const prefixHyps = allowPrefixes
-    ? generatePrefixHypotheses(normalized)
+    ? generatePrefixHypotheses(normalized, {
+        allowDoublePrefixes: mode !== 'classic'
+      })
     : [{ prefixes: [], stem: normalized }];
 
   for (const ph of prefixHyps) {
     const { prefixes, stem } = ph;
 
-    // ── Try each suffix hypothesis for this stem ──
     const suffixHyps = generateSuffixHypotheses(stem);
 
     for (const sh of suffixHyps) {
       const { base, suffix, kind } = sh;
 
-      // Skip possessive unless explicitly allowed
       if (kind === 'possessive' && !allowPossessives) {
         result.rejectedReasons.push(`possessive_suffix:${suffix}`);
         continue;
       }
 
-      // Generate orthographic candidates for this base
       const candidates = allowOrtho
-        ? generateValidationCandidates(base)
+        ? generateValidationCandidates(base, {
+            allowKtivMale: mode !== 'classic'
+          })
         : [{ surface: base, normalized: base, source: 'exact' }];
 
       result.candidatesTried.push(...candidates.map(c => c.surface));
@@ -6239,7 +6264,6 @@ function analyzeHebrewWord(word, options = {}) {
       const hit = _dictHasCandidates(candidates);
       if (!hit) continue;
 
-      // Determine path label for policy check
       let path;
       if (prefixes.length === 0 && !suffix) {
         path = hit.source === 'exact' ? 'exact'
@@ -6261,15 +6285,21 @@ function analyzeHebrewWord(word, options = {}) {
       }
 
       const confidence = _confidence(path);
-      const analysis = { path, surface: hit.surface, lemma: hit.surface, prefixes, suffix, kind, confidence };
+      const analysis = {
+        path,
+        surface: hit.surface,
+        lemma: hit.surface,
+        prefixes,
+        suffix,
+        kind,
+        confidence
+      };
 
-      // Apply game policy
       if (!passesGamePolicy(analysis, mode)) {
         result.rejectedReasons.push(`policy:${path}:${confidence}`);
         continue;
       }
 
-      // Accepted!
       result.accepted = true;
       result.acceptedBy = analysis;
       return result;
@@ -6448,7 +6478,6 @@ window.HebrewValidator = {
   FORCE_ALLOW,
   FORCE_REJECT,
 };
-
 
 </script>
 </body>
