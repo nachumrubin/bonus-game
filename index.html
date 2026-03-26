@@ -2056,7 +2056,7 @@ function scheduleBotMove(){
 // Separate bot search from commit so timing is clean
 /**
  * Stricter validity check used for incidental cross-words during bot search.
- * Short cross-words (2–3 letters) must be a direct dictionary hit — no ortho
+ * Short cross-words (2-3 letters) must be a direct dictionary hit — no ortho
  * variants, no prefix/suffix stripping — to prevent nonsense like חר, קי, וקי.
  */
 function isBotCrossWordValid(w){
@@ -5867,21 +5867,6 @@ const FORCE_ALLOW = new Set([
 
 // Words that must always be rejected (pronouns, preposition+pronoun combos, etc.)
 const FORCE_REJECT = new Set([
-  'זפ',
-  'מו',
-  'ומו',
-  'בזפ',
-  'בלס',
-  'ירבבות',
-  'הלספוד',
-  'התנדה',
-  'מציצהו',
-  'בלסו',
-  'בלסוה',
-  'התנדהו',
-  'ייאוחו',
-  'תלט',
-  'יירבבות',
   'אותה','אותו','אותי','אותך','אותכם','אותכן','אותם','אותן','אותנו',
   'אחריה','אחריהם','אחריהן','אחריו','אחריי','אחרייך','אחריך','אחריכם','אחריכן','אחרינו',
   'איתה','איתו','איתי','איתך','איתכם','איתכן','איתם','איתן','איתנו',

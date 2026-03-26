@@ -44,7 +44,7 @@ const FORCE_ALLOW = new Set([
   'כסא','זכרון','שלטון','מסדרון','ספרון','פתרון','עגלון',
   'חנון','ישרון','קטון','גנון','ספון','כלון',
   // Short but valid standalone words
-  'אל','כן','לא','גם','רק','עם','כי','אם','או','כל','של','עד','וו',
+  'אל','כן','לא','גם','רק','עם','כי','אם','או','כל','של','עד',
   'מה','זה','זו','הם','הן','הוא','היא','אנו','אני',
   // Common prefixed forms that look suspicious but are fine
   'בה','בהם','בהן','בו','בי','בך','בכם','בכן','בנו',
@@ -55,21 +55,6 @@ const FORCE_ALLOW = new Set([
 
 // Words that must always be rejected (pronouns, preposition+pronoun combos, etc.)
 const FORCE_REJECT = new Set([
-  'זפ',
-  'מו',
-  'ומו',
-  'בזפ',
-  'בלס',
-  'ירבבות',
-  'הלספוד',
-  'התנדה',
-  'מציצהו',
-  'בלסו',
-  'בלסוה',
-  'התנדהו',
-  'ייאוחו',
-  'תלט',
-  'יירבבות',
   'אותה','אותו','אותי','אותך','אותכם','אותכן','אותם','אותן','אותנו',
   'אחריה','אחריהם','אחריהן','אחריו','אחריי','אחרייך','אחריך','אחריכם','אחריכן','אחרינו',
   'איתה','איתו','איתי','איתך','איתכם','איתכן','איתם','איתן','איתנו',
@@ -88,7 +73,7 @@ const FORCE_REJECT = new Set([
   'עלי','עליה','עליהם','עליהן','עליו','עלייך','עליך','עליכם','עליכן','עלינו',
   'עמה','עמהן','עמו','עמי','עמך','עמכם','עמכן','עמם','עמנו',
   'שלה','שלהם','שלהן','שלו','שלי','שלך','שלכם','שלכן','שלנו',
-  'תוכה','תוכו','תוכך','תוכם','תוכנו',
+  'תוכה','תוכו','תוכי','תוכך','תוכם','תוכן','תוכנו',
 ]);
 
 // Legal prefix letters and their combinations
@@ -346,9 +331,12 @@ function _confidence(path) {
     case 'final_variant':  return 'high';
     case 'ktiv_haser':     return 'medium';
     case 'ktiv_male':      return 'medium';
-    case 'suffix_plural':  return 'medium';
-    case 'suffix_fem':     return 'medium';
-    case 'suffix_verb':    return 'medium';
+    case 'suffix_plural':        return 'medium';
+    case 'suffix_feminine':      return 'medium';   // was 'suffix_fem' — never matched, caused feminine words to be rejected
+    case 'suffix_verb':          return 'medium';
+    case 'suffix_pronoun_or_fem':return 'low';      // י ending — ambiguous, needs stem validation
+    case 'suffix_pronoun_2sg':   return 'low';      // ך ending
+    case 'suffix_pronoun_3sg':   return 'low';      // ו ending
     case 'prefix_1':       return 'medium';
     case 'prefix_1_suffix':return 'low';
     case 'prefix_2':       return 'low';
@@ -504,8 +492,10 @@ function analyzeHebrewWord(word, options = {}) {
  * Returns { valid, normalizedAcceptedForm, lemma, reason, confidence, debug }
  */
 function validateHebrewWord(word, options = {}) {
-  // Cache check
-  const cacheKey = word + '|' + (options.mode || 'classic');
+  // Cache check — key must include all options that affect the result
+  const cacheKey = word + '|' + (options.mode || 'classic')
+    + '|p' + (options.allowPrefixes === false ? '0' : '1')
+    + '|o' + (options.allowOrthographicVariants === false ? '0' : '1');
   if (_HV.cache.has(cacheKey)) return _HV.cache.get(cacheKey);
 
   const debug = analyzeHebrewWord(word, options);
