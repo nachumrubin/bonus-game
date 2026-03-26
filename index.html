@@ -1399,7 +1399,7 @@ function analyze(rawWord){
 function isValid(w){
   // Use new HebrewValidator when ready (better accuracy)
   let result, reason;
-  if(window.HebrewValidator && window.HebrewValidator.init && DICT.size > 0){
+  if(window.HebrewValidator && window.HebrewValidator.ready && DICT.size > 0){
     const v = window.HebrewValidator.validate(w, {mode:'classic'});
     result = v.valid; reason = v.reason + (v.confidence ? ' ['+v.confidence+']' : '');
   } else {

@@ -44,7 +44,7 @@ const FORCE_ALLOW = new Set([
   'כסא','זכרון','שלטון','מסדרון','ספרון','פתרון','עגלון',
   'חנון','ישרון','קטון','גנון','ספון','כלון',
   // Short but valid standalone words
-  'אל','כן','לא','גם','רק','עם','כי','אם','או','כל','של','עד',
+  'אל','כן','לא','גם','רק','עם','כי','אם','או','כל','של','עד','וו',
   'מה','זה','זו','הם','הן','הוא','היא','אנו','אני',
   // Common prefixed forms that look suspicious but are fine
   'בה','בהם','בהן','בו','בי','בך','בכם','בכן','בנו',
@@ -88,7 +88,7 @@ const FORCE_REJECT = new Set([
   'עלי','עליה','עליהם','עליהן','עליו','עלייך','עליך','עליכם','עליכן','עלינו',
   'עמה','עמהן','עמו','עמי','עמך','עמכם','עמכן','עמם','עמנו',
   'שלה','שלהם','שלהן','שלו','שלי','שלך','שלכם','שלכן','שלנו',
-  'תוכה','תוכו','תוכי','תוכך','תוכם','תוכן','תוכנו',
+  'תוכה','תוכו','תוכך','תוכם','תוכנו',
 ]);
 
 // Legal prefix letters and their combinations
@@ -620,6 +620,7 @@ function HV_init(dict) {
   _HV.DICT = dict;
   _HV.cache.clear();
   _HV.ready = true;
+  window.HebrewValidator.ready = true;  // exposes ready flag for external callers
   console.log('[HV] Hebrew validator ready. DICT size:', dict.size);
 }
 
@@ -629,6 +630,7 @@ function HV_init(dict) {
 
 window.HebrewValidator = {
   // Initialisation
+  ready: false,   // set to true by HV_init(); use this (not .init) as the "ready" flag
   init: HV_init,
 
   // Layer 1
