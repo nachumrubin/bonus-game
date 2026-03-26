@@ -2054,12 +2054,32 @@ function scheduleBotMove(){
 }
 
 // Separate bot search from commit so timing is clean
+/**
+ * Stricter validity check used for incidental cross-words during bot search.
+ * Short cross-words (2–3 letters) must be a direct dictionary hit — no ortho
+ * variants, no prefix/suffix stripping — to prevent nonsense like חר, קי, וקי.
+ */
+function isBotCrossWordValid(w){
+  if(window.HebrewValidator && window.HebrewValidator.ready && DICT.size>0){
+    if(w.length<=3){
+      // Short cross-words: only accept high-confidence exact / final-letter hits
+      const v=window.HebrewValidator.validate(w,{
+        mode:'classic',
+        allowOrthographicVariants:false,
+        allowPrefixes:false,
+      });
+      return v.valid && (v.confidence==='high');
+    }
+    return window.HebrewValidator.isBotSafeWord(w);
+  }
+  return isValid(w);
+}
 function doBotSearch(){
   ensureBotWords();
   const av=racks[1];
   const wl=diff===0?BOT_EASY:diff===1?BOT_MED:BOT_ALL;
   const cands=wl.filter(w=>canMk(w,av)&&(
-    window.HebrewValidator && DICT.size>0
+    window.HebrewValidator && window.HebrewValidator.ready && DICT.size>0
       ? window.HebrewValidator.isBotSafeWord(w)
       : isValid(w)
   )).sort((a,b)=>b.length-a.length);
@@ -2097,7 +2117,7 @@ function doBotSearch(){
           const p=mkP(w,sr,sc,d);
           if(p){
             placed=p;const ws=getAllWords(p);placed=[];
-            if(ws.some(ww=>!isValid(ww.map(t=>t.letter).join(''))))continue;
+            if(ws.some(ww=>!isBotCrossWordValid(ww.map(t=>t.letter).join(''))))continue;
             const sc2=calcTotal(p);if(!best||sc2>best.sc)best={pp:p,word:w,sc:sc2};
           }
         }
