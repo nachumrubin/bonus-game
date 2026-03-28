@@ -6279,9 +6279,12 @@ function _confidence(path) {
     case 'final_variant':  return 'high';
     case 'ktiv_haser':     return 'medium';
     case 'ktiv_male':      return 'medium';
-    case 'suffix_plural':  return 'medium';
-    case 'suffix_fem':     return 'medium';
-    case 'suffix_verb':    return 'medium';
+    case 'suffix_plural':        return 'medium';
+    case 'suffix_feminine':      return 'medium';   // was 'suffix_fem' — never matched
+    case 'suffix_verb':          return 'medium';
+    case 'suffix_pronoun_or_fem':return 'low';
+    case 'suffix_pronoun_2sg':   return 'low';
+    case 'suffix_pronoun_3sg':   return 'low';
     case 'prefix_1':       return 'medium';
     case 'prefix_1_suffix':return 'low';
     case 'prefix_2':       return 'low';
@@ -6437,8 +6440,10 @@ function analyzeHebrewWord(word, options = {}) {
  * Returns { valid, normalizedAcceptedForm, lemma, reason, confidence, debug }
  */
 function validateHebrewWord(word, options = {}) {
-  // Cache check
-  const cacheKey = word + '|' + (options.mode || 'classic');
+  // Cache check — key must include all options that affect the result
+  const cacheKey = word + '|' + (options.mode || 'classic')
+    + '|p' + (options.allowPrefixes === false ? '0' : '1')
+    + '|o' + (options.allowOrthographicVariants === false ? '0' : '1');
   if (_HV.cache.has(cacheKey)) return _HV.cache.get(cacheKey);
 
   const debug = analyzeHebrewWord(word, options);
@@ -6553,6 +6558,7 @@ function HV_init(dict) {
   _HV.DICT = dict;
   _HV.cache.clear();
   _HV.ready = true;
+  window.HebrewValidator.ready = true;  // exposes ready flag for external .ready checks
   console.log('[HV] Hebrew validator ready. DICT size:', dict.size);
 }
 
@@ -6562,6 +6568,7 @@ function HV_init(dict) {
 
 window.HebrewValidator = {
   // Initialisation
+  ready: false,   // set to true by HV_init(); check this, not .init
   init: HV_init,
 
   // Layer 1
