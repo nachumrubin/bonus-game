@@ -1215,25 +1215,92 @@ let dictReady = false;
 
 // ── MOVE LOGGER ──
 const MOVE_LOG = [];
+
+/**
+ * Build a structured word entry from a HebrewValidator result.
+ * Captures how the word was accepted: exact dict hit, which prefix/suffix stripped, etc.
+ */
+function _mkWordEntry(txt, v, isMain){
+  let how = '(no validator)';
+  if(v && v.reason){
+    const r = v.reason;
+    const ab = v.debug && v.debug.acceptedBy;
+    if(!v.valid){
+      how = `REJECTED: ${r}`;
+    } else if(r === 'exact' || r === 'final_variant'){
+      how = `dict exact: "${ab&&ab.lemma||txt}"`;
+    } else if(r === 'force_allow'){
+      how = `force-allow list`;
+    } else if(r === 'ktiv_haser'){
+      how = `dict (ktiv haser → "${ab&&ab.surface||'?'}")`;
+    } else if(r === 'ktiv_male'){
+      how = `dict (ktiv male → "${ab&&ab.surface||'?'}")`;
+    } else if(r === 'suffix_plural'){
+      how = `dict stem+"${ab&&ab.suffix||'ים/ות'}" plural`;
+    } else if(r === 'suffix_feminine'){
+      how = `dict stem+"${ab&&ab.suffix||'ה/ת'}" feminine`;
+    } else if(r === 'suffix_verb'){
+      how = `dict stem+"${ab&&ab.suffix||''}" verb conjugation`;
+    } else if(r === 'prefix_1'){
+      const px = ab&&ab.prefixes&&ab.prefixes[0]||'?';
+      how = `dict "${ab&&ab.lemma||'?'}" with prefix "${px}"`;
+    } else if(r === 'prefix_2'){
+      const px = ab&&ab.prefixes&&ab.prefixes.join('+') || '?';
+      how = `dict "${ab&&ab.lemma||'?'}" with prefixes "${px}"`;
+    } else if(r === 'prefix_1_suffix'){
+      const px = ab&&ab.prefixes&&ab.prefixes[0]||'?';
+      how = `dict "${ab&&ab.lemma||'?'}" prefix:"${px}" suffix:"${ab&&ab.suffix||'?'}"`;
+    } else {
+      how = r + (ab&&ab.lemma ? ` (lemma: "${ab.lemma}")` : '');
+    }
+  }
+  return {
+    text:txt, valid:v?v.valid:false,
+    confidence:v?v.confidence:'?',
+    how, isMain,
+    reason:v?v.reason:'?',
+    lemma:v&&v.debug&&v.debug.acceptedBy?v.debug.acceptedBy.lemma:null,
+  };
+}
+
 function logMove(entry){
   MOVE_LOG.push(entry);
   const tag = entry.player==='bot' ? '[BOT]' : '[P1] ';
-  const allWords = entry.words.map(w=>
-    `${w.text}(${w.valid?'✓':'✗ ILLEGAL'}${w.isMain?' main':''})`
-  ).join(', ');
-  console.log(`%c${tag} move#${entry.move} | tiles: ${entry.tilesPlaced} | words: ${allWords} | score: ${entry.score}`,
-    entry.words.some(w=>!w.valid) ? 'color:red;font-weight:bold' : 'color:green');
-  if(entry.words.some(w=>!w.valid)){
-    console.warn('[MOVE LOGGER] Illegal word(s) committed!', entry);
+  const hasIllegal = entry.words.some(w=>!w.valid);
+  const wordSummary = entry.words.map(w=>{
+    const role = w.isMain ? '→' : '↳';
+    const status = w.valid ? '✓' : '✗';
+    return `${role}"${w.text}"${status}`;
+  }).join(' ');
+  console.log(
+    `%c${tag} #${entry.move} [${entry.tilesPlaced}] ${wordSummary} +${entry.score}pts @ ${entry.timestamp}`,
+    hasIllegal ? 'color:#ff4444;font-weight:bold' : 'color:#44cc44'
+  );
+  // Detail line per word
+  entry.words.forEach(w=>{
+    const role = w.isMain ? '  → main' : '  ↳ cross';
+    const status = w.valid
+      ? `%c✓ [${w.confidence}] ${w.how}`
+      : `%c✗ ILLEGAL — ${w.how}`;
+    const style = w.valid ? 'color:#aaa' : 'color:#ff4444;font-weight:bold';
+    console.log(`${role} "${w.text}"`, style, status.replace('%c',''));
+  });
+  if(hasIllegal){
+    console.warn('[MOVE LOGGER] ⚠ Illegal word(s) committed!', entry);
   }
 }
-/** Expose log for inspection: window.getMoveLog() in console */
+
+/** Call printMoveLog() in DevTools console to see all moves */
 window.getMoveLog = function(){ return MOVE_LOG; };
 window.printMoveLog = function(){
   MOVE_LOG.forEach(e=>{
-    const tag = e.player==='bot' ? '🤖 BOT' : '👤 P1';
-    const words = e.words.map(w=>`  ${w.isMain?'→':'↳'} "${w.text}" ${w.valid?'✓':'✗ ILLEGAL'} (confidence: ${w.confidence||'?'})`).join('\n');
-    console.log(`${tag} move #${e.move} @ ${e.timestamp}\n${words}\n  Score: +${e.score} | Tiles: [${e.tilesPlaced}]`);
+    const tag = e.player==='bot' ? '🤖 BOT' : '👤 P1 ';
+    const lines = e.words.map(w=>{
+      const role = w.isMain ? '  → main ' : '  ↳ cross';
+      const status = w.valid ? `✓ [${w.confidence}]` : '✗ ILLEGAL';
+      return `${role} "${w.text}" ${status} — ${w.how}`;
+    }).join('\n');
+    console.log(`${tag} move #${e.move} @ ${e.timestamp} | tiles: [${e.tilesPlaced}] | +${e.score}pts\n${lines}`);
   });
 };
 
@@ -3660,7 +3727,7 @@ function commitPlay(sc,ws,bonus,pi){
         const v=window.HebrewValidator&&window.HebrewValidator.ready
           ? window.HebrewValidator.validate(txt,{mode:'classic'})
           : {valid:isValid(txt),confidence:'?'};
-        return {text:txt,valid:v.valid,confidence:v.confidence||'?',isMain:i===0};
+        return _mkWordEntry(txt,v,i===0);
       });
       logMove({
         player:'human',move:moveCount+1,
@@ -3780,7 +3847,7 @@ function execBot(pp,word){
         const v=window.HebrewValidator&&window.HebrewValidator.ready
           ? window.HebrewValidator.validate(txt,{mode:'classic'})
           : {valid:isValid(txt),confidence:'?'};
-        return {text:txt,valid:v.valid,confidence:v.confidence||'?',isMain:i===0};
+        return _mkWordEntry(txt,v,i===0);
       });
       logMove({
         player:'bot',move:moveCount,
