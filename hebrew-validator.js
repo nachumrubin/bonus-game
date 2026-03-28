@@ -332,11 +332,11 @@ function _confidence(path) {
     case 'ktiv_haser':     return 'medium';
     case 'ktiv_male':      return 'medium';
     case 'suffix_plural':        return 'medium';
-    case 'suffix_feminine':      return 'medium';   // was 'suffix_fem' — never matched, caused feminine words to be rejected
+    case 'suffix_feminine':      return 'medium';   // was 'suffix_fem' — never matched
     case 'suffix_verb':          return 'medium';
-    case 'suffix_pronoun_or_fem':return 'low';      // י ending — ambiguous, needs stem validation
-    case 'suffix_pronoun_2sg':   return 'low';      // ך ending
-    case 'suffix_pronoun_3sg':   return 'low';      // ו ending
+    case 'suffix_pronoun_or_fem':return 'low';
+    case 'suffix_pronoun_2sg':   return 'low';
+    case 'suffix_pronoun_3sg':   return 'low';
     case 'prefix_1':       return 'medium';
     case 'prefix_1_suffix':return 'low';
     case 'prefix_2':       return 'low';
@@ -610,7 +610,7 @@ function HV_init(dict) {
   _HV.DICT = dict;
   _HV.cache.clear();
   _HV.ready = true;
-  window.HebrewValidator.ready = true;  // exposes ready flag for external callers
+  window.HebrewValidator.ready = true;  // exposes ready flag for external .ready checks
   console.log('[HV] Hebrew validator ready. DICT size:', dict.size);
 }
 
@@ -620,7 +620,7 @@ function HV_init(dict) {
 
 window.HebrewValidator = {
   // Initialisation
-  ready: false,   // set to true by HV_init(); use this (not .init) as the "ready" flag
+  ready: false,   // set to true by HV_init(); check this, not .init
   init: HV_init,
 
   // Layer 1
