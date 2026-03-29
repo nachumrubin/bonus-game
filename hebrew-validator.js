@@ -38,6 +38,15 @@ const _HV = {
 
 const MIN_WORD_LENGTH = 3;
 
+function normalizeFinalLetters(word) {
+  return String(word)
+    .replace(/ך/g, 'כ')
+    .replace(/ם/g, 'מ')
+    .replace(/ן/g, 'נ')
+    .replace(/ף/g, 'פ')
+    .replace(/ץ/g, 'צ');
+}
+
 // ─────────────────────────────────────────────────────────────
 // LOOKUP TABLES
 // (Add/remove entries as the game evolves)
@@ -86,7 +95,7 @@ const FORCE_ACCEPT = new Set([
   'רב','רד','רז','רך','רע',
   'שן','שר',
   'תא','תו','תל','תם',
-]);
+].map(normalizeFinalLetters));
 
 /**
  * Words that are always rejected — pronouns, preposition+pronoun combos,
@@ -114,7 +123,7 @@ const FORCE_REJECT = new Set([
   'עמה','עמהן','עמו','עמי','עמך','עמכם','עמכן','עמם','עמנו',
   'שלה','שלהם','שלהן','שלו','שלי','שלך','שלכם','שלכן','שלנו',
   'תוכה','תוכו','תוכי','תוכך','תוכם','תוכן','תוכנו',
-]);
+].map(normalizeFinalLetters));
 
 // ─────────────────────────────────────────────────────────────
 // LAYER 1 — SURFACE NORMALIZATION
@@ -129,12 +138,7 @@ const FORCE_REJECT = new Set([
  */
 function normalizeSurface(word) {
   const cleaned = word.trim().split('').filter(ch => ch >= 'א' && ch <= 'ת').join('');
-  const normalized = cleaned
-    .replace(/ך/g, 'כ')
-    .replace(/ם/g, 'מ')
-    .replace(/ן/g, 'נ')
-    .replace(/ף/g, 'פ')
-    .replace(/ץ/g, 'צ');
+  const normalized = normalizeFinalLetters(cleaned);
   return { cleaned, normalized };
 }
 
