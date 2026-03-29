@@ -1491,7 +1491,7 @@ function isValid(w){
   // Use new HebrewValidator when ready (better accuracy)
   let result, reason;
   if(window.HebrewValidator && window.HebrewValidator.ready && DICT.size > 0){
-    const v = window.HebrewValidator.validate(w, {mode:'classic'});
+    const v = window.HebrewValidator.validate(w);
     result = v.valid; reason = v.reason + (v.confidence ? ' ['+v.confidence+']' : '');
   } else {
     const a = analyze(w);
@@ -2152,14 +2152,6 @@ function scheduleBotMove(){
  */
 function isBotCrossWordValid(w){
   if(window.HebrewValidator && window.HebrewValidator.ready && DICT.size>0){
-    if(w.length<=3){
-      const v=window.HebrewValidator.validate(w,{
-        mode:'classic',
-        allowOrthographicVariants:false,
-        allowPrefixes:false,
-      });
-      return v.valid && v.confidence==='high';
-    }
     return window.HebrewValidator.isBotSafeWord(w);
   }
   return isValid(w);
@@ -3725,12 +3717,8 @@ function commitPlay(sc,ws,bonus,pi){
       const wordEntries = allWords.map((ww,i)=>{
         const txt=ww.map(t=>t.letter).join('');
         const v=window.HebrewValidator&&window.HebrewValidator.ready
-          ? window.HebrewValidator.validate(txt,{mode:'classic'})
+          ? window.HebrewValidator.validate(txt)
           : {valid:isValid(txt),confidence:'?'};
-        return _mkWordEntry(txt,v,i===0);
-      });
-      logMove({
-        player:'human',move:moveCount+1,
         tilesPlaced:_pp.map(t=>t.letter).join(''),
         words:wordEntries,score:fs,
         timestamp:new Date().toLocaleTimeString()
@@ -3845,7 +3833,7 @@ function execBot(pp,word){
       const wordEntries=allWords.map((ww,i)=>{
         const txt=ww.map(t=>t.letter).join('');
         const v=window.HebrewValidator&&window.HebrewValidator.ready
-          ? window.HebrewValidator.validate(txt,{mode:'classic'})
+          ? window.HebrewValidator.validate(txt)
           : {valid:isValid(txt),confidence:'?'};
         return _mkWordEntry(txt,v,i===0);
       });
