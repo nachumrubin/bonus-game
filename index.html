@@ -1344,8 +1344,8 @@ async function loadDict() {
     txt.split('\n').forEach(w=>{ if(w) DICT.add(w); });
     dictReady=true;
     console.log('Dictionary loaded:',DICT.size,'words');
-    // Initialise Hebrew Validator with the loaded dictionary
-    if(window.HebrewValidator) window.HebrewValidator.init(DICT);
+    // Initialise Hebrew Validator with the loaded dictionary (async — fetches word lists)
+    if(window.HebrewValidator) await window.HebrewValidator.init(DICT);
   } catch(e) {
     console.warn('Dict load failed:',e);
     'לא כן כי עם של אל על הם הן את זה זו רק כך יש אם בו לו מה לב יד אח שם גם אז עד כל אך לך לה בה ילד שמש ספר בית יום שלום שמחה ברכה אהבה ישראל'.split(' ').forEach(w=>DICT.add(w));
@@ -1359,8 +1359,9 @@ loadDict();
 
 // Common defective spellings (כתיב חסר) that should be accepted
 // even though only the plene (כתיב מלא) form is in the dictionary
-const DEFECTIVE_ACCEPT = new Set(["כסא","זכרון","שלטון","מסדרון","ספרון","פתרון","עגלון","חנון","ישרון","קטון"]);
-const EXACT_REJECTS  = new Set(["אותה","אותו","אותי","אותך","אותכם","אותכן","אותם","אותן","אותנו","אחריה","אחריהם","אחריהן","אחריו","אחריי","אחרייך","אחריך","אחריכם","אחריכן","אחרינו","איתה","איתו","איתי","איתך","איתכם","איתכן","איתם","איתן","איתנו","אלי","אליה","אליהם","אליהן","אליו","אלייך","אליך","אליכם","אליכן","אלינו","אצלה","אצלו","אצלי","אצלך","אצלכם","אצלכן","אצלם","אצלן","אצלנו","בלעדי","בלעדיה","בלעדיהם","בלעדיהן","בלעדיו","בלעדייך","בלעדיך","בלעדיכם","בלעדיכן","בלעדינו","בשבילה","בשבילהן","בשבילו","בשבילי","בשבילך","בשבילכם","בשבילכן","בשבילם","בשבילנו","כמוה","כמוהו","כמוך","כמוכם","כמוכן","כמונו","כמוני","כמותם","כמותן","לידה","לידו","לידי","לידך","לידכם","לידכן","לידם","לידן","לידנו","למענה","למענו","למעני","למענך","למענכם","למענכן","למענם","למענן","למעננו","לפניה","לפניהם","לפניהן","לפניו","לפניי","לפנייך","לפניך","לפניכם","לפניכן","לפנינו","מאחוריה","מאחוריהם","מאחוריהן","מאחוריו","מאחוריי","מאחורייך","מאחוריך","מאחוריכם","מאחוריכן","מאחורינו","מולה","מולו","מולי","מולך","מולכם","מולכן","מולם","מולן","מולנו","ממך","ממכם","ממכן","ממנה","ממנו","ממני","נגדה","נגדו","נגדי","נגדך","נגדכם","נגדכן","נגדם","נגדן","נגדנו","עלי","עליה","עליהם","עליהן","עליו","עלייך","עליך","עליכם","עליכן","עלינו","עמה","עמהן","עמו","עמי","עמך","עמכם","עמכן","עמם","עמנו","שלה","שלהם","שלהן","שלו","שלי","שלך","שלכם","שלכן","שלנו","תוכה","תוכו","תוכי","תוכך","תוכם","תוכן","תוכנו"]);
+// Populated from force_accept.json / force_reject.json by HV_init — do not edit here
+const DEFECTIVE_ACCEPT = new Set();
+const EXACT_REJECTS  = new Set();
 const CLASSIC_ALLOW  = new Set(["בה","בהם","בהן","בו","בי","בך","בכם","בכן","בנו","לה","להם","להן","לו","לי","לך","לכם","לכן","לנו"]);
 const COMMON_FALSE_POSSESSIVE = new Set(["מים","חיים","פנים","פני","שני","אחי","אחותי","אדוני","גוי","תוי"]);
 const PREFIXES       = new Set(["ו","ה","ב","כ","ל","ש","מ"]);
@@ -6131,75 +6132,16 @@ const MIN_WORD_LENGTH = 3;
 /**
  * Words that bypass minimum-length and dictionary checks and are always accepted.
  * Primarily used for valid 2-letter Hebrew words.
- * Grow this list over time as gaps are found during play.
+ * Populated from force_accept.json by HV_init — do not edit here.
  */
-const FORCE_ACCEPT = new Set([
-  // ── Common 2-letter function words / pronouns ──
-  'או','אז','אל','אם','אף',
-  'בו','בי',
-  'די',
-  'הן',
-  'זה','זו',
-  'חי',
-  'יש',
-  'כי','כל','כן',
-  'לא','לו','לי',
-  'מה','מי',
-  'נא',
-  'על',
-  'פה',
-  'צו',
-  'קם',
-  'שי',
-
-  // ── Common 2-letter nouns / other ──
-  'אב','אח',
-  'בן','בת',
-  'גב','גד',
-  'דג','דד','דם','דף','דק',
-  'הד','הר',
-  'חג','חם','חן','חץ',
-  'יד','ים',
-  'כף',
-  'לב','לד',
-  'מד','מת',
-  'נס',
-  'סל','סם',
-  'עז','עט','עם','עץ','עת',
-  'צד','צל','צר',
-  'קו','קל','קן','קץ','קר',
-  'רב','רד','רז','רך','רע',
-  'שן','שר',
-  'תא','תו','תל','תם',
-]);
+const FORCE_ACCEPT = new Set();
 
 /**
  * Words that are always rejected — pronouns, preposition+pronoun combos,
  * and anything hspell includes that makes no sense as a standalone game word.
- * Grow this list over time as the bot surfaces bad entries.
+ * Populated from force_reject.json by HV_init — do not edit here.
  */
-const FORCE_REJECT = new Set([
-  // Pronoun + preposition compounds
-  'אותה','אותו','אותי','אותך','אותכם','אותכן','אותם','אותן','אותנו',
-  'אחריה','אחריהם','אחריהן','אחריו','אחריי','אחרייך','אחריך','אחריכם','אחריכן','אחרינו',
-  'איתה','איתו','איתי','איתך','איתכם','איתכן','איתם','איתן','איתנו',
-  'אלי','אליה','אליהם','אליהן','אליו','אלייך','אליך','אליכם','אליכן','אלינו',
-  'אצלה','אצלו','אצלי','אצלך','אצלכם','אצלכן','אצלם','אצלן','אצלנו',
-  'בלעדי','בלעדיה','בלעדיהם','בלעדיהן','בלעדיו','בלעדייך','בלעדיך','בלעדיכם','בלעדיכן','בלעדינו',
-  'בשבילה','בשבילהן','בשבילו','בשבילי','בשבילך','בשבילכם','בשבילכן','בשבילם','בשבילנו',
-  'כמוה','כמוהו','כמוך','כמוכם','כמוכן','כמונו','כמוני','כמותם','כמותן',
-  'לידה','לידו','לידי','לידך','לידכם','לידכן','לידם','לידן','לידנו',
-  'למענה','למענו','למעני','למענך','למענכם','למענכן','למענם','למענן','למעננו',
-  'לפניה','לפניהם','לפניהן','לפניו','לפניי','לפנייך','לפניך','לפניכם','לפניכן','לפנינו',
-  'מאחוריה','מאחוריהם','מאחוריהן','מאחוריו','מאחוריי','מאחורייך','מאחוריך','מאחוריכם','מאחוריכן','מאחורינו',
-  'מולה','מולו','מולי','מולך','מולכם','מולכן','מולם','מולן','מולנו',
-  'ממך','ממכם','ממכן','ממנה','ממנו','ממני',
-  'נגדה','נגדו','נגדי','נגדך','נגדכם','נגדכן','נגדם','נגדן','נגדנו',
-  'עלי','עליה','עליהם','עליהן','עליו','עלייך','עליך','עליכם','עליכן','עלינו',
-  'עמה','עמהן','עמו','עמי','עמך','עמכם','עמכן','עמם','עמנו',
-  'שלה','שלהם','שלהן','שלו','שלי','שלך','שלכם','שלכן','שלנו',
-  'תוכה','תוכו','תוכי','תוכך','תוכם','תוכן','תוכנו',
-]);
+const FORCE_REJECT = new Set();
 
 // ─────────────────────────────────────────────────────────────
 // LAYER 1 — SURFACE NORMALIZATION
@@ -6422,15 +6364,50 @@ function getRejectedLog() {
 
 /**
  * Initialise the validator with the game's DICT.
- * Call this once after the dictionary has been loaded.
+ * Fetches force_accept.json and force_reject.json, populates FORCE_ACCEPT,
+ * FORCE_REJECT, DEFECTIVE_ACCEPT and EXACT_REJECTS, then marks ready.
+ * Throws on fetch failure — the game should not start without the lists.
  * @param {Set<string>} dict  The game's DICT Set
  */
-function HV_init(dict) {
+async function HV_init(dict) {
   _HV.DICT = dict;
   _HV.cache.clear();
+
+  // Fetch both lists in parallel; throw on any failure
+  let acceptList, rejectList;
+  try {
+    [acceptList, rejectList] = await Promise.all([
+      fetch('./force_accept.json').then(function(r) {
+        if (!r.ok) throw new Error('force_accept.json: ' + r.status);
+        return r.json();
+      }),
+      fetch('./force_reject.json').then(function(r) {
+        if (!r.ok) throw new Error('force_reject.json: ' + r.status);
+        return r.json();
+      }),
+    ]);
+  } catch(e) {
+    const msg = '[HV] Failed to load word lists: ' + e.message;
+    console.error(msg);
+    // Surface a visible error so the problem is never silently swallowed
+    if (typeof document !== 'undefined') {
+      const div = document.createElement('div');
+      div.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:12px 16px;background:#c0392b;color:#fff;font-size:15px;z-index:99999;text-align:center;';
+      div.textContent = 'שגיאה: לא ניתן לטעון את רשימות המילים. בדוק חיבור לאינטרנט ורענן.';
+      document.body.appendChild(div);
+    }
+    throw e;
+  }
+
+  // Populate all four sets from the same two source files
+  acceptList.forEach(function(w) { FORCE_ACCEPT.add(w); DEFECTIVE_ACCEPT.add(w); });
+  rejectList.forEach(function(w) { FORCE_REJECT.add(w); EXACT_REJECTS.add(w); });
+
   _HV.ready = true;
   window.HebrewValidator.ready = true;
-  console.log('[HV] Hebrew validator ready. DICT size:', dict.size);
+  console.log('[HV] Hebrew validator ready. DICT size:', dict.size,
+              '| accept list:', acceptList.length,
+              '| reject list:', rejectList.length);
 }
 
 // ─────────────────────────────────────────────────────────────

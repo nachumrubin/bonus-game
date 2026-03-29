@@ -4,6 +4,8 @@ var CACHE_NAME = 'bonus-20260329113900';
 var ASSETS = [
   './',
   './index.html',
+  './force_accept.json',
+  './force_reject.json',
 ];  // sw.js intentionally excluded — browser fetches it fresh
 
 self.addEventListener('install', function(e){
