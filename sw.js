@@ -1,6 +1,6 @@
 // בונוס — Service Worker
 // Cache name includes build timestamp — auto-invalidates on every deploy
-var CACHE_NAME = 'bonus-20260329130000';
+var CACHE_NAME = 'bonus-20260329145000';
 var ASSETS = [
   './',
   './index.html',
