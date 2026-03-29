@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בונוס">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בונוס">
-<meta name="version" content="20260329103500">
+<meta name="version" content="20260329113900">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -569,7 +569,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
     <div class="credit">גרסה מודרנית · יעקב שויקה / מטח 1993</div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260329103500</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260329113900</div>
   </div>
 </div>
 
@@ -970,6 +970,14 @@ body.tile-selected .bsq:not(.used){
           <div class="set-yn active-no" id="sett-showBothRacks-no"  onclick="settToggle('showBothRacks',false)">👤 רק נוכחי</div>
         </div>
       </div>
+      <!-- Panel 6: move summary -->
+      <div class="set-panel">
+        <div class="set-panel-title">סיכום מהלך אחרי כל מהלך</div>
+        <div class="set-yesno">
+          <div class="set-yn active-yes" id="sett-showMoveSummary-yes" onclick="settToggle('showMoveSummary',true)">✓ כן</div>
+          <div class="set-yn" id="sett-showMoveSummary-no"  onclick="settToggle('showMoveSummary',false)">✗ לא</div>
+        </div>
+      </div>
     </div>
     <div class="ovbtns"><button class="ovb p" onclick="ovClose('ov-settings')">אישור ✓</button></div>
   </div>
@@ -1154,6 +1162,19 @@ body.tile-selected .bsq:not(.used){
   </div>
 </div>
 
+<!-- MOVE SUMMARY -->
+<div id="ov-move-summary" class="ov hidden" style="align-items:flex-end" onclick="if(event.target===this)ovClose('ov-move-summary')">
+  <div class="ovc" style="border-radius:12px 12px 0 0;margin:0;width:100%;max-width:420px;max-height:70vh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,0)">
+    <div class="ovh" onclick="ovClose('ov-move-summary')" style="cursor:pointer"></div>
+    <div id="msum-icon" style="font-size:22px;text-align:center;margin:4px 0">📋</div>
+    <div id="msum-title" class="ovt" style="margin:0 0 6px"></div>
+    <div id="msum-body" style="font-size:12px;color:#eee;padding:0 4px"></div>
+    <div class="ovbtns" style="margin-top:8px">
+      <button class="ovb p" onclick="ovClose('ov-move-summary')">המשך ▶</button>
+    </div>
+  </div>
+</div>
+
 <!-- CHAMPIONS (standalone, from home screen) -->
 <div id="ov-champs" class="ov hidden" style="align-items:center" onclick="if(event.target===this)ovClose('ov-champs')">
   <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);max-width:380px;border-bottom:3px solid #6ab0d8;max-height:85vh;overflow-y:auto;">
@@ -1260,6 +1281,7 @@ function _mkWordEntry(txt, v, isMain){
     how, isMain,
     reason:v?v.reason:'?',
     lemma:v&&v.debug&&v.debug.acceptedBy?v.debug.acceptedBy.lemma:null,
+    pts:0,  // filled in by caller who has tile data
   };
 }
 
@@ -2233,7 +2255,7 @@ function botCommit(result){
 // ═══════════════════════════════════════════════════
 function ovClose(id){ document.getElementById(id).classList.add('hidden'); }
 function ovOpen(id){ document.getElementById(id).classList.remove('hidden'); }
-function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm'].forEach(ovClose); showSc('sh'); }
+function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm','ov-move-summary'].forEach(ovClose); showSc('sh'); }
 // showSc defined above in music section
 function showLegend(){ buildVtbl(); ovOpen('ov-leg'); }
 function openChampions(){
@@ -2902,6 +2924,7 @@ function finalizeReviewedMove(accepted){
     return;
   }
   pendingMoveSnapshot = null;
+  window._lastAcceptedReview = review; // used by move summary overlay
   const sc = review.total;
   const mainWord = review.mainWord;
   const bsqIdxs=firstMove?[]:getActivatedBonuses();
@@ -3413,33 +3436,48 @@ function buildCrossword(){
   };
 
   // Check all horizontal + vertical words on mini board
-  const checkMbWords=()=>{
-    const wordMap={}; // word -> score (avoid double-counting)
-    // horizontal
+  // Returns {legal:{word->pts}, illegal:{word->pts}}
+  const scanMbWords=()=>{
+    const legal={}, illegal={}, seen=new Set();
+    const HV2=window.HebrewValidator;
+    const check=(word,pts)=>{
+      if(word.length<2||seen.has(word)) return;
+      seen.add(word);
+      const valid=HV2&&HV2.ready ? HV2.validate(word).valid : isValid(word);
+      if(valid) legal[word]=pts; else illegal[word]=pts;
+    };
     for(let r=0;r<ROWS;r++){
       let word='',pts=0,len=0;
       for(let c=0;c<COLS;c++){
         if(mbData[r][c]){word+=mbData[r][c].l;pts+=mbData[r][c].v;len++;}
-        else{if(len>=2&&isValid(word)&&!(word in wordMap)){wordMap[word]=pts;}word='';pts=0;len=0;}
+        else{if(len>=2)check(word,pts);word='';pts=0;len=0;}
       }
-      if(len>=2&&isValid(word)&&!(word in wordMap)) wordMap[word]=pts;
+      if(len>=2)check(word,pts);
     }
-    // vertical
     for(let c=0;c<COLS;c++){
       let word='',pts=0,len=0;
       for(let r=0;r<ROWS;r++){
         if(mbData[r][c]){word+=mbData[r][c].l;pts+=mbData[r][c].v;len++;}
-        else{if(len>=2&&isValid(word)&&!(word in wordMap)){wordMap[word]=pts;}word='';pts=0;len=0;}
+        else{if(len>=2)check(word,pts);word='';pts=0;len=0;}
       }
-      if(len>=2&&isValid(word)&&!(word in wordMap)) wordMap[word]=pts;
+      if(len>=2)check(word,pts);
     }
-    mbWords=Object.keys(wordMap);
-    mbScore=Object.values(wordMap).reduce((a,b)=>a+b,0);
-    if(mbWords.length>0){
-      statusLine.textContent=`✓ ${mbWords.join(' | ')} — ${mbScore} נק'`;
-      statusLine.style.color='#8eff8e';
+    return {legal,illegal};
+  };
+  const checkMbWords=()=>{
+    const {legal,illegal}=scanMbWords();
+    mbWords=Object.keys(legal);
+    mbScore=Object.values(legal).reduce((a,b)=>a+b,0);
+    const illegalList=Object.keys(illegal);
+    const totalWords=mbWords.length+illegalList.length;
+    if(totalWords>0){
+      const parts=[];
+      mbWords.forEach(w=>parts.push('\u2713'+w));
+      illegalList.forEach(w=>parts.push('\u2717'+w));
+      statusLine.textContent=parts.join(' | ')+' — '+mbScore+' \u05e0\u05e7\'';
+      statusLine.style.color=illegalList.length>0?'#ffcc66':'#8eff8e';
     } else {
-      statusLine.textContent='הרכב מילה על הלוח';
+      statusLine.textContent='\u05d4\u05e8\u05db\u05d1 \u05de\u05d9\u05dc\u05d4 \u05e2\u05dc \u05d4\u05dc\u05d5\u05d7';
       statusLine.style.color='rgba(255,255,255,.7)';
     }
   };
@@ -3448,61 +3486,56 @@ function buildCrossword(){
   area.appendChild(wrap);
   renderPool(); renderMb();
 
-  // Finalize: show word summary via bonusOkWithReveal-style display
+  // Finalize: show full word breakdown (legal ✓ and illegal ✗), total score
+  // Rule: ANY illegal word → entire bonus = 0
   const finalize=()=>{
     clearT();
-    checkMbWords();
+    const {legal,illegal}=scanMbWords();
+    mbWords=Object.keys(legal);
+    const illegalList=Object.keys(illegal);
+    // If any illegal word exists the player gets nothing
+    const hasIllegal=illegalList.length>0;
+    mbScore=hasIllegal?0:Object.values(legal).reduce((a,b)=>a+b,0);
+    const totalWords=mbWords.length+illegalList.length;
     const extra=mbScore;
-    // Build summary HTML
     const summaryArea=document.getElementById('bchal');
-    let html='';
-    if(mbWords.length>0){
-      html+=`<div style="text-align:center;margin-bottom:8px;"><div style="font-size:26px">🎉</div><div style="font-size:14px;font-weight:900;color:#8eff8e;margin:4px 0">כל הכבוד! ${mbWords.length} מילים</div></div>`;
-      html+=`<div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px 10px;font-size:12px;color:#eee;line-height:2;">`;
-      // Recompute with scores for display
-      const wordMap2={};
-      for(let r=0;r<ROWS;r++){
-        let word='',pts=0,len=0;
-        for(let c=0;c<COLS;c++){
-          if(mbData[r][c]){word+=mbData[r][c].l;pts+=mbData[r][c].v;len++;}
-          else{if(len>=2&&isValid(word)&&!(word in wordMap2)){wordMap2[word]=pts;}word='';pts=0;len=0;}
-        }
-        if(len>=2&&isValid(word)&&!(word in wordMap2)) wordMap2[word]=pts;
-      }
-      for(let c=0;c<COLS;c++){
-        let word='',pts=0,len=0;
-        for(let r=0;r<ROWS;r++){
-          if(mbData[r][c]){word+=mbData[r][c].l;pts+=mbData[r][c].v;len++;}
-          else{if(len>=2&&isValid(word)&&!(word in wordMap2)){wordMap2[word]=pts;}word='';pts=0;len=0;}
-        }
-        if(len>=2&&isValid(word)&&!(word in wordMap2)) wordMap2[word]=pts;
-      }
-      Object.entries(wordMap2).forEach(([w,pts])=>{
-        html+=`<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.1);padding:1px 0"><span style="font-weight:900">${w}</span><span style="color:var(--by)">${pts}</span></div>`;
+    let h='';
+    if(totalWords>0){
+      const emoji=illegalList.length===0?'🎉':(mbWords.length>0?'⚠️':'😔');
+      const headline=illegalList.length===0
+        ? `כל הכבוד! ${mbWords.length} מילים חוקיות`
+        : `יש מילות ✗ — הבונוס מתאפס (0 נקודות)`;
+      const headColor=illegalList.length===0?'#8eff8e':'#ff8e8e';
+      h+=`<div style="text-align:center;margin-bottom:6px"><div style="font-size:24px">${emoji}</div><div style="font-size:13px;font-weight:900;color:${headColor};margin:3px 0">${headline}</div></div>`;
+      h+=`<div style="background:rgba(0,0,0,.22);border-radius:6px;padding:5px 10px;font-size:12px;color:#eee;line-height:1.7;">`;
+      mbWords.forEach(w=>{
+        h+=`<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);padding:1px 0">`;
+        h+=`<span><span style="color:#8eff8e;font-weight:700;margin-left:4px">✓</span><span style="font-weight:900">${w}</span></span>`;
+        h+=`<span style="color:var(--by)">${legal[w]}</span></div>`;
       });
-      html+=`<div style="display:flex;justify-content:space-between;padding-top:4px;font-weight:900;border-top:2px solid rgba(255,255,255,.2);margin-top:2px"><span>סה״כ</span><span style="color:#8eff8e">+${extra}</span></div>`;
-      html+=`</div>`;
+      illegalList.forEach(w=>{
+        h+=`<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);padding:1px 0;opacity:.8">`;
+        h+=`<span><span style="color:#ff6e6e;font-weight:700;margin-left:4px">✗</span><span style="font-weight:900;text-decoration:line-through;color:#ff8e8e">${w}</span></span>`;
+        h+=`<span style="color:#ff6e6e">0</span></div>`;
+      });
+      h+=`<div style="display:flex;justify-content:space-between;padding-top:4px;font-weight:900;border-top:2px solid rgba(255,255,255,.18);margin-top:2px">`;
+      h+=`<span>סה״כ בונוס</span><span style="color:${extra>0?'#8eff8e':'#ff8e8e'}">+${extra}</span></div>`;
+      h+=`</div>`;
     } else {
-      html=`<div style="text-align:center;padding:8px 0"><div style="font-size:26px">😔</div><div style="font-size:13px;color:#ff8e8e;margin-top:4px">ללא מילים חוקיות — ללא בונוס</div></div>`;
+      h=`<div style="text-align:center;padding:8px 0"><div style="font-size:26px">😔</div><div style="font-size:13px;color:#ff8e8e;margin-top:4px">ללא מילים — ללא בונוס</div></div>`;
     }
-    summaryArea.innerHTML=html;
+    summaryArea.innerHTML=h;
     document.getElementById('bok').textContent='המשך ▶';
-    document.getElementById('bok').onclick=()=>{
-      bonusOk(false); // ok=false so no auto extra — we pass extra manually
-      // Actually commit with extra directly:
-    };
-    // Override to commit with the actual score
+    const skipBtn=document.querySelector('#ov-bonus .ovb.s');
+    if(skipBtn) skipBtn.style.display='none';
     document.getElementById('bok').onclick=()=>{
       ovClose('ov-bonus');
-      const skipBtn=document.querySelector('#ov-bonus .ovb.s');
       if(skipBtn) skipBtn.style.display='';
       if(extra>0) setS(`🎉 בונוס שבץ נא! +${extra} נקודות (${mbWords.length} מילים)!`,'bon');
       else setS('ללא מילים חוקיות — ללא בונוס','err');
       if(bonusPend&&bonusPend.bsqIdxs) bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
       if(bonusPend){ commitPlay(bonusPend.sc+extra,bonusPend.ws,extra,bonusPend.player); bonusPend=null; }
     };
-    const skipBtn=document.querySelector('#ov-bonus .ovb.s');
-    if(skipBtn) skipBtn.style.display='none';
   };
 
   document.getElementById('bok').onclick=finalize;
@@ -3680,6 +3713,71 @@ function bonusSkip(){ clearT(); ovClose('ov-bonus'); if(bonusPend.bsqIdxs)bonusP
 // ═══════════════════════════════════════════════════
 // COMMIT
 // ═══════════════════════════════════════════════════
+// ── Move summary overlay (features 2 & 3) ──
+function showMoveSummary(opts){
+  // opts: { player, playerName, words:[{text,valid,pts}], totalScore, bonusExtra, multLabel, onDone }
+  const {player,playerName,words,totalScore,bonusExtra,multLabel,onDone}=opts;
+  const isBot=(player===1);
+  const hasIllegal=words.some(w=>!w.valid);
+  const validWords=words.filter(w=>w.valid);
+  const invalidWords=words.filter(w=>!w.valid);
+  const wordPts=words.reduce((s,w)=>s+(w.valid?(w.pts||0):0),0);
+
+  document.getElementById('msum-icon').textContent=isBot?'🤖':'📋';
+  document.getElementById('msum-title').textContent=
+    isBot ? `${playerName} שיחק — הנה מה שקרה` : 'המהלך שלך';
+
+  let h='<div style="background:rgba(0,0,0,.22);border-radius:6px;padding:5px 10px;line-height:1.85;font-size:13px;">';
+
+  // Legal words
+  validWords.forEach(w=>{
+    const label=w.isMain?'':'<span style="font-size:10px;color:#aaa;margin-left:2px">(צלב)</span>';
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.08);padding:2px 0">`;
+    h+=`<span><span style="color:#8eff8e;font-weight:700;margin-left:5px">✓</span><span style="font-weight:900">${w.text}</span>${label}</span>`;
+    h+=`<span style="color:var(--by);font-weight:700">${w.pts||0}</span></div>`;
+  });
+
+  // Illegal words
+  invalidWords.forEach(w=>{
+    const label=w.isMain?'':'<span style="font-size:10px;color:#aaa;margin-left:2px">(צלב)</span>';
+    h+=`<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.08);padding:2px 0;opacity:.85">`;
+    h+=`<span><span style="color:#ff6e6e;font-weight:700;margin-left:5px">✗</span><span style="font-weight:900;text-decoration:line-through;color:#ff9e9e">${w.text}</span>${label}</span>`;
+    h+=`<span style="color:#ff6e6e;font-weight:700">0</span></div>`;
+  });
+
+  // Score breakdown lines
+  const hasMult=multLabel&&multLabel.length>0;
+  const bingo=totalScore-(wordPts*(hasMult?(multLabel.startsWith('×4')?4:2):1))-(bonusExtra||0);
+  const showBingo=bingo===50;
+
+  if(hasMult||showBingo||(bonusExtra>0)){
+    h+=`<div style="height:1px;background:rgba(255,255,255,.15);margin:4px 0"></div>`;
+    if(hasMult){
+      h+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:#ccc;padding:1px 0"><span>סכום מילים</span><span>${wordPts}</span></div>`;
+      h+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:#ffe870;padding:1px 0"><span>מכפיל ${multLabel}</span><span>×</span></div>`;
+    }
+    if(showBingo){
+      h+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:#ffe870;padding:1px 0"><span>⭐ בינגו (8 אותיות)</span><span>+50</span></div>`;
+    }
+    if(bonusExtra>0){
+      h+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:#ffe870;padding:1px 0"><span>🎁 בונוס ריבוע</span><span>+${bonusExtra}</span></div>`;
+    }
+  }
+
+  h+=`<div style="display:flex;justify-content:space-between;padding-top:5px;font-weight:900;font-size:14px;border-top:2px solid rgba(255,255,255,.2);margin-top:3px">`;
+  h+=`<span>סה״כ</span><span style="color:#8eff8e">+${totalScore}</span></div>`;
+  h+='</div>';
+
+  if(hasIllegal){
+    h+=`<div style="margin-top:6px;padding:5px 8px;background:rgba(255,100,100,.15);border-radius:5px;font-size:11px;color:#ffaaaa;text-align:center">⚠️ מילה אחת בלתי חוקית = ביטול כל הנקודות למהלך זה</div>`;
+  }
+
+  document.getElementById('msum-body').innerHTML=h;
+  const btn=document.querySelector('#ov-move-summary .ovb.p');
+  btn.onclick=()=>{ ovClose('ov-move-summary'); if(onDone)onDone(); };
+  ovOpen('ov-move-summary');
+}
+
 function commitPlay(sc,ws,bonus,pi){
   // sc = word score only; bonus = extra points from bonus square (added separately, not multiplied)
   let wordSc = (isNaN(sc) || sc == null) ? 0 : sc;
@@ -3716,15 +3814,18 @@ function commitPlay(sc,ws,bonus,pi){
       const allWords = getAllWords(_pp);
       const wordEntries = allWords.map((ww,i)=>{
         const txt=ww.map(t=>t.letter).join('');
+        const pts=scoreWord(ww);
         const v=window.HebrewValidator&&window.HebrewValidator.ready
           ? window.HebrewValidator.validate(txt)
           : {valid:isValid(txt),confidence:'?'};
-        return _mkWordEntry(txt,v,i===0);
+        const entry=_mkWordEntry(txt,v,i===0);
+        entry.pts=pts;
+        return entry;
       });
       logMove({
         player:'human',move:moveCount+1,
         tilesPlaced:_pp.map(t=>t.letter).join(''),
-        words:wordEntries,score:fs,
+        words:wordEntries,score:fs,bonusExtra:bonusExtra,multLabel:_multLabel,
         timestamp:new Date().toLocaleTimeString()
       });
     }catch(e){console.warn('[MOVE LOGGER] commitPlay log error',e);}
@@ -3739,7 +3840,26 @@ function commitPlay(sc,ws,bonus,pi){
   if(racks[pi].length===0&&bag.length===0){endGame();return;}
   if(settings.moveLimitOn && moveCount>=settings.moveLimit){endGame();return;}
   const maxM=getMaxMoves(); if(maxM&&moveCount>=maxM){endGame();return;}
-  nextTurn();
+  // ── Show move summary before handing over ──
+  (function(){
+    try{
+      const rev=window._lastAcceptedReview;
+      if(rev&&rev.words&&rev.words.length>0&&gameSettings.showMoveSummary){
+        // rev.words has pixel-perfect {text, score, valid} from buildMoveReview
+        const wordRows=rev.words.map(w=>({text:w.text,valid:true,pts:w.score,isMain:w===rev.words[0]}));
+        if(rev.bingo) wordRows.push({text:'בינגו 🌟',valid:true,pts:50,isBingo:true});
+        showMoveSummary({
+          player:pi,playerName:pNames[pi],
+          words:wordRows,totalScore:fs,
+          bonusExtra:bonusExtra,multLabel:_multLabel,
+          onDone:()=>nextTurn(),
+        });
+        window._lastAcceptedReview=null;
+        return;
+      }
+    }catch(e){console.warn('moveSummary error',e);}
+    nextTurn();
+  })();
 }
 function nextTurn(){
   clearMoveTimer();
@@ -3836,15 +3956,18 @@ function execBot(pp,word){
       placed=[];
       const wordEntries=allWords.map((ww,i)=>{
         const txt=ww.map(t=>t.letter).join('');
+        const pts=scoreWord(ww);
         const v=window.HebrewValidator&&window.HebrewValidator.ready
           ? window.HebrewValidator.validate(txt)
           : {valid:isValid(txt),confidence:'?'};
-        return _mkWordEntry(txt,v,i===0);
+        const entry=_mkWordEntry(txt,v,i===0);
+        entry.pts=pts;
+        return entry;
       });
       logMove({
         player:'bot',move:moveCount,
         tilesPlaced:pp.map(t=>t.letter).join(''),
-        words:wordEntries,score:fs+bonus,
+        words:wordEntries,score:fs+bonus,bonusExtra:bonus,multLabel:'',
         timestamp:new Date().toLocaleTimeString()
       });
     }catch(e){console.warn('[MOVE LOGGER] execBot log error',e);}
@@ -3853,7 +3976,31 @@ function execBot(pp,word){
   setS(`${pNames[1]}: "${word}" — ${fs+bonus} נקודות. תורך!`,'ok');
   if(racks[1].length===0&&bag.length===0){setTimeout(endGame,600);return;}
   decrementLocks(); turn=0; botBusy=false; updateUI(); renderRack(); renderBoard();
-  startMoveTimer();
+  // ── Show bot move summary to human player ──
+  (function(){
+    try{
+      placed=pp;
+      const allW=getAllWords(pp);
+      placed=[];
+      const HV2=window.HebrewValidator;
+      const wordRows=allW.filter(w=>w.length>=2).map((ww,i)=>{
+        const txt=ww.map(t=>t.letter).join('');
+        const valid=HV2&&HV2.ready?HV2.validate(txt).valid:isValid(txt);
+        const pts=valid?scoreWord(ww):0;
+        return {text:txt,valid,pts,isMain:i===0};
+      });
+      if(wordRows.length>0&&gameSettings.showMoveSummary){
+        showMoveSummary({
+          player:1,playerName:pNames[1],
+          words:wordRows,totalScore:fs+bonus,
+          bonusExtra:bonus,multLabel:'',
+          onDone:()=>startMoveTimer(),
+        });
+        return;
+      }
+    }catch(e){console.warn('botSummary error',e);}
+    startMoveTimer();
+  })();
 }
 
 // ═══════════════════════════════════════════════════
@@ -4389,6 +4536,7 @@ const gameSettings = {
   music:     true,   // background music
   appealsMax: 0,     // appeals per player for the whole game
   showBothRacks: false, // show both players' racks at all times
+  showMoveSummary: true, // show move summary overlay after each move
 };
 
 function syncGameSettingsFromLegacy(){
@@ -4417,7 +4565,7 @@ function openSettings(){
 
 function settRefresh(){
   const s = gameSettings;
-  ['confirm','timelimit','movelimit','music','showBothRacks'].forEach(k=>{
+  ['confirm','timelimit','movelimit','music','showBothRacks','showMoveSummary'].forEach(k=>{
     const v = s[k];
     const yel = document.getElementById(`sett-${k}-yes`);
     const nel = document.getElementById(`sett-${k}-no`);
@@ -5633,7 +5781,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260329103500', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260329113900', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
