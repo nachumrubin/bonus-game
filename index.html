@@ -1182,7 +1182,6 @@ body.tile-selected .bsq:not(.used){
     <div class="ovt" style="margin-bottom:12px">🏆 טבלת אלופים</div>
     <div id="champions-wrap-home"></div>
     <div class="ovbtns" style="margin-top:14px">
-      <button class="ovb s" onclick="clearChampions()" style="flex:0 0 auto;padding:8px 14px;font-size:11px">🗑 נקה טבלה</button>
       <button class="ovb p" onclick="ovClose('ov-champs')">סגור</button>
     </div>
   </div>
@@ -2268,9 +2267,7 @@ function openChampions(){
   ovOpen('ov-champs');
 }
 function clearChampions(){
-  if(!confirm('למחוק את כל טבלת האלופים?')) return;
-  try{ localStorage.removeItem(STORAGE_KEYS.champions); }catch(e){}
-  renderChampions('champions-wrap-home');
+  alert('טבלת האלופים היא גלובלית ומבוססת ענן — אי אפשר למחוק אותה מהמכשיר.');
 }
 function openEndMenu(){ if(confirm('לסיים את המשחק?'))endGame(); }
 function rematch(){
@@ -4680,7 +4677,6 @@ function getMaxMoves(){ return gameSettings.movelimit ? gameSettings.maxMoves : 
 // ===== Settings persistence =====
 const STORAGE_KEYS = {
   settings: 'bonusGameSettingsV1',
-  champions: 'bonusChampionsV1',
   pausedGame: 'bonusPausedGameV1',
   onlineSession: 'bonusOnlineSessionV1'
 };
@@ -4701,36 +4697,57 @@ function loadSettings(){
 }
 
 // ===== Champions =====
-function getChampions(){
+const CHAMPIONS_LIMIT = 10;
+const CHAMPIONS_DB_PATH = 'globalChampions';
+
+async function ensureFirebaseReadyForChampions(){
+  if(initFirebase()) return true;
+  return await new Promise((resolve)=>{
+    loadFirebaseSDK(()=>{
+      resolve(initFirebase());
+    });
+  });
+}
+
+async function getChampions(){
+  const ready = await ensureFirebaseReadyForChampions();
+  if(!ready || !fbDb) return [];
   try{
-    const raw = localStorage.getItem(STORAGE_KEYS.champions);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
+    const snap = await fbRef(CHAMPIONS_DB_PATH).orderByChild('score').limitToLast(CHAMPIONS_LIMIT).once('value');
+    const raw = snap && snap.val ? snap.val() : null;
+    if(!raw || typeof raw !== 'object') return [];
+    return Object.values(raw)
+      .filter(r => r && typeof r.name === 'string' && Number.isFinite(Number(r.score)))
+      .map(r => ({
+        name: String(r.name || '').slice(0,30),
+        score: Number(r.score) || 0,
+        date: r.date || ''
+      }))
+      .sort((a,b)=> (b.score||0) - (a.score||0))
+      .slice(0, CHAMPIONS_LIMIT);
   }catch(e){ return []; }
 }
-function saveChampions(arr){
+async function addChampion(name, score){
+  if(!name || !Number.isFinite(score)) return;
+  const ready = await ensureFirebaseReadyForChampions();
+  if(!ready || !fbDb) return;
   try{
-    localStorage.setItem(STORAGE_KEYS.champions, JSON.stringify(arr.slice(0,10)));
+    const now = new Date();
+    await fbRef(CHAMPIONS_DB_PATH).push({
+      name: String(name).trim().slice(0,30),
+      score: Number(score) || 0,
+      date: now.toLocaleDateString('he-IL'),
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    });
   }catch(e){}
 }
-function addChampion(name, score){
-  if(!name || !Number.isFinite(score)) return;
-  const arr = getChampions();
-  const now = new Date();
-  arr.push({
-    name,
-    score,
-    date: now.toLocaleDateString('he-IL')
-  });
-  arr.sort((a,b)=> (b.score||0) - (a.score||0));
-  saveChampions(arr.slice(0,10));
-}
-function renderChampions(targetId='champions-wrap'){
+async function renderChampions(targetId='champions-wrap'){
   const host = document.getElementById(targetId);
   if(!host) return;
-  const arr = getChampions();
+  host.innerHTML = '<div class="champs-empty">טוען תוצאות...</div>';
+  const arr = await getChampions();
   if(!arr.length){
-    host.innerHTML = '<div class="champs-empty">עדיין אין תוצאות שמורות</div>';
+    host.innerHTML = '<div class="champs-empty">עדיין אין תוצאות גלובליות זמינות</div>';
     return;
   }
   host.innerHTML = '<table class="champs-table"><thead><tr><th>#</th><th>שם</th><th>ניקוד</th><th>תאריך</th></tr></thead><tbody>' +
@@ -4847,9 +4864,9 @@ const _origEndGame = endGame;
 endGame = function(){
   _origEndGame.apply(this, arguments);
   // Never save bot player to high-scores
-  addChampion(pNames[0], scores[0]);
-  if(gMode !== 'bot') addChampion(pNames[1], scores[1]);
-  renderChampions();
+  addChampion(pNames[0], scores[0]).then(()=>renderChampions()).catch(()=>renderChampions());
+  if(gMode !== 'bot') addChampion(pNames[1], scores[1]).then(()=>renderChampions()).catch(()=>renderChampions());
+  else renderChampions();
   // Clear saved game on end
   try { localStorage.removeItem(STORAGE_KEYS.pausedGame); } catch(e){}
   if(gMode === 'online' && roomCode) removeOnlineSession(roomCode);
