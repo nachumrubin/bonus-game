@@ -6251,7 +6251,8 @@ const FORCE_ACCEPT = new Set([
   'צו',
   'קם',
   'שי',
-  'אך','אש','אט','בא','גל','הל','חף','כד','כת','נר','שם','תג','תן','אותי',
+  'אך','אש','אט','בא','גל','הל','חף','כד','כת','נר','שם','תג','תן',
+  'חש','דל','לך','מל','מק','קש','רם','רק','רש','שק','לק',
 
   // ── 2-letter nouns / other ──
   'אב','אח',
@@ -6304,6 +6305,11 @@ const FORCE_REJECT = new Set([
   'שלה','שלהם','שלהן','שלו','שלי','שלך','שלכם','שלכן','שלנו',
   'תוכה','תוכו','תוכי','תוכך','תוכם','תוכן','תוכנו',
 ].map(normalizeFinalLetters));
+
+const FORCE_ACCEPT_REJECT_OVERLAP = [...FORCE_ACCEPT].filter(word => FORCE_REJECT.has(word));
+if (FORCE_ACCEPT_REJECT_OVERLAP.length && typeof console !== 'undefined') {
+  console.warn('[HV] Words present in both FORCE_ACCEPT and FORCE_REJECT:', FORCE_ACCEPT_REJECT_OVERLAP.join(', '));
+}
 
 // ─────────────────────────────────────────────────────────────
 // LAYER 1 — SURFACE NORMALIZATION

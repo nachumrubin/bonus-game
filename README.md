@@ -1,4 +1,4 @@
-# bonus-game
+# boost-game
 A Hebrew scrabble mobile game.
 
 ## Hebrew validator source of truth
@@ -18,7 +18,7 @@ node scripts/stamp-build.js
 ```
 
 What it updates automatically:
-- `sw.js` cache name: `bonus-<timestamp>`
+- `sw.js` cache name: `boost-<timestamp>`
 - `index.html` meta version
 - `index.html` visible build label
 - `index.html` `sw.js?v=<timestamp>` registration query param
