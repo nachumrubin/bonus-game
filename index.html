@@ -2994,6 +2994,7 @@ function playWord(){
       const lostMult = forfeitActiveFutureMultiplier(turn);
       if(lostMult) setS(`מילה לא חוקית — בונוס ${lostMult} אבד! 💸`,'err');
       nextTurn();
+      if(gMode === 'online') setTimeout(pushMoveToFirebase, 200);
     }, 1800);
     lastRejWord=review.invalid[0]?review.invalid[0].text:'';
     lastRejScore=review.total;
