@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>בונוס — שבץ נא</title>
+<title>בוסט — שבץ נא</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- PWA -->
 <link rel="manifest" href="#" id="pwa-manifest">
 <meta name="theme-color" content="#2d6080">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="בונוס">
+<meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="בונוס">
-<meta name="version" content="20260330164743">
+<meta name="application-name" content="בוסט">
+<meta name="version" content="20260330152714">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -554,9 +554,9 @@ body.tile-selected .bsq:not(.used){
 <div id="sh" class="screen">
   <div class="hc">
     <div class="hlogo">
-      <div class="hlogo-he">בוֹנוּס</div>
-      <div class="hlogo-sub">שבץ-נא ישראלי 1993 🎵</div>
-      <div class="tdeco"><div class="td">ב</div><div class="td">ו</div><div class="td">נ</div><div class="td">ו</div><div class="td">ס</div></div>
+      <div class="hlogo-he">בוסט</div>
+      <div class="hlogo-sub">שבץ-נא ישראלי 2026 🎵</div>
+      <div class="tdeco"><div class="td">ב</div><div class="td">ו</div><div class="td">ס</div><div class="td">ט</div></div>
     </div>
     <div class="hbtns">
       <button class="bd" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none;background:linear-gradient(180deg,#e8a020,#c07010);border-color:#a05000;color:#fff;box-shadow:0 3px 0 #703000">▶ המשך משחק שמור</button>
@@ -568,8 +568,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit">גרסה מודרנית · יעקב שויקה / מטח 1993</div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260330164743</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260330152714</div>
   </div>
 </div>
 
@@ -801,7 +800,7 @@ body.tile-selected .bsq:not(.used){
               <text id="bag-count-text" x="27" y="57" text-anchor="middle" font-family="'Courier New',monospace" font-size="10" font-weight="900" fill="#2a5878">98</text>
             </svg>
       </div>
-      <div class="tbtitle">בוֹנוּס</div>
+      <div class="tbtitle">בוסט</div>
     </div>
     <!-- status -->
     <div class="sbar" id="sbar">בחר אות מהמגש ולחץ על משבצת</div>
@@ -1135,7 +1134,7 @@ body.tile-selected .bsq:not(.used){
 <div id="ov-bonus" class="ov hidden">
   <div class="ovc"><div class="ovh"></div>
     <div class="ovic" id="bovic">🌟</div>
-    <div class="ovt" id="bovt">בונוס!</div>
+    <div class="ovt" id="bovt">בוסט!</div>
     <div class="ovd" id="bovd"></div>
     <div class="tw" id="btw" style="display:none"><div class="tbar2" id="btbar" style="width:100%"></div></div>
     <div id="bchal"></div>
@@ -1182,7 +1181,6 @@ body.tile-selected .bsq:not(.used){
     <div class="ovt" style="margin-bottom:12px">🏆 טבלת אלופים</div>
     <div id="champions-wrap-home"></div>
     <div class="ovbtns" style="margin-top:14px">
-      <button class="ovb s" onclick="clearChampions()" style="flex:0 0 auto;padding:8px 14px;font-size:11px">🗑 נקה טבלה</button>
       <button class="ovb p" onclick="ovClose('ov-champs')">סגור</button>
     </div>
   </div>
@@ -1822,7 +1820,7 @@ function buildUnifiedGrid() {
         el.id = `bsq-${idx}`;
         const ba=bonusAssignment[idx]||BONUS_TYPES[idx%BONUS_TYPES.length];
         el.innerHTML = `<div class="bsq-ic">${ba.ic}</div>`;
-        el.title = `בונוס מפתיע! שבץ אות כאן לגלות`;
+        el.title = `בוסט מפתיע! שבץ אות כאן לגלות`;
         el.addEventListener('click', () => {
           // If permanently occupied — do nothing
           if (bBoardData[`${b.br},${b.bc}`]) return;
@@ -1832,7 +1830,7 @@ function buildUnifiedGrid() {
             if (pi >= 0) {
               cellClick(b.br, b.bc); // will recall via placed[] check
             } else {
-              setS(`${ba.ic} — בונוס מפתיע! בחר אות מהמגש ולחץ שוב`, 'bon');
+              setS(`${ba.ic} — בוסט מפתיע! בחר אות מהמגש ולחץ שוב`, 'bon');
             }
             return;
           }
@@ -2091,7 +2089,7 @@ function expireCurrentMove(){
     document.body.classList.remove('tile-selected');
     // Forfeit any pending x4/x2 bonus multiplier
     const lostMult = forfeitActiveFutureMultiplier(turn);
-    if(lostMult) setS(`נגמר הזמן — בונוס ${lostMult} אבד! 💸`, 'err');
+    if(lostMult) setS(`נגמר הזמן — בוסט ${lostMult} אבד! 💸`, 'err');
     passCount++;
     if(passCount>=6){ endGame(); return; }
     // Increment moveCount so opponent's listenForMoves doesn't skip this as a duplicate
@@ -2268,9 +2266,7 @@ function openChampions(){
   ovOpen('ov-champs');
 }
 function clearChampions(){
-  if(!confirm('למחוק את כל טבלת האלופים?')) return;
-  try{ localStorage.removeItem(STORAGE_KEYS.champions); }catch(e){}
-  renderChampions('champions-wrap-home');
+  alert('טבלת האלופים היא גלובלית ומבוססת ענן — אי אפשר למחוק אותה מהמכשיר.');
 }
 function openEndMenu(){ if(confirm('לסיים את המשחק?'))endGame(); }
 function rematch(){
@@ -2450,7 +2446,7 @@ function cellClick(r,c){
 
   // No tile selected at all → offer lock or bonus info
   if(selTile===null){
-    if(isBonusPos(r,c)){ setS('בחר אות מהמגש ולחץ על ריבוע הבונוס לשבץ','bon'); return; }
+    if(isBonusPos(r,c)){ setS('בחר אות מהמגש ולחץ על ריבוע הבוסט לשבץ','bon'); return; }
     if(lockInventory[turn].length === 0){ setS('אין לך נעילות נותרות','err'); return; }
     pendingLockCell={r,c}; openLockOverlay(); return;
   }
@@ -2847,7 +2843,7 @@ function openMoveReview(review){
     const _multFactor = _isQuad ? 4 : 2;
     const _multLabel = _isQuad ? '×4 🔥' : '×2 ✨';
     const _finalScore = review.total * _multFactor;
-    html += `<div style="display:flex;justify-content:space-between;gap:6px;padding-top:4px;border-top:2px solid #8a8070;margin-top:2px;"><span style="color:#8a4000;font-weight:900;">${review.total}</span><span style="color:#111;font-weight:900;">סה״כ (לפני בונוס)</span></div>`;
+    html += `<div style="display:flex;justify-content:space-between;gap:6px;padding-top:4px;border-top:2px solid #8a8070;margin-top:2px;"><span style="color:#8a4000;font-weight:900;">${review.total}</span><span style="color:#111;font-weight:900;">סה״כ (לפני בוסט)</span></div>`;
     html += `<div style="display:flex;justify-content:space-between;gap:6px;padding-top:2px;"><span style="color:#c0392b;font-weight:900;">${_multLabel} = ${_finalScore}</span><span style="color:#111;font-weight:900;">ניקוד סופי</span></div>`;
   } else {
     html += `<div style="display:flex;justify-content:space-between;gap:6px;padding-top:4px;border-top:2px solid #8a8070;margin-top:2px;"><span style="color:#8a4000;font-weight:900;">${review.total}</span><span style="color:#111;font-weight:900;">סה״כ</span></div>`;
@@ -2968,7 +2964,7 @@ function playWord(){
   if(replacedThisTurn && placed.length===0){ setS('כדי להחליף אות קיימת חייבים להוסיף לפחות אות חדשה אחת בתור זה','err'); return; }
   if(!isCollinear()){ setS('האותיות חייבות להיות בכיוון אחד בלבד!','err'); return; }
   if(hasGaps(moveTiles)){ setS('אין להשאיר פערים בין האותיות!','err'); return; }
-  if(firstMove && moveTiles.some(p=>isBonusPos(p.r,p.c))){ setS('המילה הראשונה לא יכולה להניח אות על משבצת בונוס!','err'); return; }
+  if(firstMove && moveTiles.some(p=>isBonusPos(p.r,p.c))){ setS('המילה הראשונה לא יכולה להניח אות על משבצת בוסט!','err'); return; }
   if(!isConnected()){ setS('המילה חייבת להתחבר לאות קיימת!','err'); return; }
   const words=getAllWords(moveTiles);
   if(!words.length||words[0].length<2){ setS('המילה חייבת להיות לפחות 2 אותיות!','err'); return; }
@@ -2992,7 +2988,7 @@ function playWord(){
       clearIllegalHighlights();
       doRecall();
       const lostMult = forfeitActiveFutureMultiplier(turn);
-      if(lostMult) setS(`מילה לא חוקית — בונוס ${lostMult} אבד! 💸`,'err');
+      if(lostMult) setS(`מילה לא חוקית — בוסט ${lostMult} אבד! 💸`,'err');
       nextTurn();
       if(gMode === 'online') setTimeout(pushMoveToFirebase, 200);
     }, 1800);
@@ -3162,8 +3158,8 @@ function buildFallbackBonusChallenge(points){
     [...norm(fallbackWord)].sort(()=>Math.random()-.5),
     fallbackWord,
     icon,
-    `בונוס ${points} — אתגר חלופי`,
-    `משחק הבונוס לא נטען, לכן הוכן לך אתגר חלופי ל-${points} נקודות.`,
+    `בוסט ${points} — אתגר חלופי`,
+    `משחק הבוסט לא נטען, לכן הוכן לך אתגר חלופי ל-${points} נקודות.`,
     secs
   );
   return true;
@@ -3179,7 +3175,7 @@ function runBonusBuilder(builder, fallbackPoints){
     console.warn('Bonus builder produced no visible challenge; using fallback challenge.');
     if(!buildFallbackBonusChallenge(fallbackPoints)){
       document.getElementById('bovic').textContent='🎁';
-      document.getElementById('bovt').textContent=`בונוס ${fallbackPoints}`;
+      document.getElementById('bovt').textContent=`בוסט ${fallbackPoints}`;
       document.getElementById('bovd').textContent='אתגר חלופי לא היה זמין, לכן הנקודות הוענקו אוטומטית.';
       bonusPend.ct='auto';
       bonusPend.extra=fallbackPoints;
@@ -3227,7 +3223,7 @@ function triggerBonus(type,ws,sc){
     runBonusBuilder(buildCrossingWords, 40);
     return;
   } else if(type==='B4'){
-    document.getElementById('bovic').textContent='💰'; document.getElementById('bovt').textContent='הבונוס החסכוני';
+    document.getElementById('bovic').textContent='💰'; document.getElementById('bovt').textContent='הבוסט החסכוני';
     document.getElementById('bovd').innerHTML=`שיבצת "${ws}" ב-${sc} נקודות<br><small style="opacity:.5">"דין פרוטה כדין מאה" — +1 נקודה!</small>`;
     bonusPend.extra=1; bonusPend.ct='auto';
   } else if(type==='B3'){
@@ -3236,7 +3232,7 @@ function triggerBonus(type,ws,sc){
     if(!_w3){ commitPlay(0,ws,0,bonusPend.player); bonusPend=null; return; }
     var _ls3 = [...norm(_w3)].sort(()=>Math.random()-.5);
     bonusPend.ct='us40'; bonusPend.extra=40;
-    buildUnscramble(_ls3, _w3, '🔀', 'בונוס 40 — סדר מחדש',
+    buildUnscramble(_ls3, _w3, '🔀', 'בוסט 40 — סדר מחדש',
       `סדר את ${_ls3.length} האותיות למילה תוך 30 שניות (+40 נקודות!)`, 30);
   } else if(type==='B1'){
     // 100pt — 50% unscramble long word, 50% fill-in-the-middle
@@ -3252,7 +3248,7 @@ function triggerBonus(type,ws,sc){
       if(!_wl){ commitPlay(0,ws,0,bonusPend.player); bonusPend=null; return; }
       var _lsl = [...norm(_wl)].sort(()=>Math.random()-.5);
       bonusPend.ct='us100';
-      buildUnscramble(_lsl, _wl, '💎', 'בונוס 100 — סדר מחדש',
+      buildUnscramble(_lsl, _wl, '💎', 'בוסט 100 — סדר מחדש',
         `סדר את ${_lsl.length} האותיות למילה תוך 40 שניות!`, 40);
     }
   }
@@ -3308,7 +3304,7 @@ function buildUnscramble(letters, answer, icon, title, desc, secs){
 
 function buildFillMiddle(answer){
   document.getElementById('bovic').textContent='💎';
-  document.getElementById('bovt').textContent='בונוס 100 — מלא את החסר';
+  document.getElementById('bovt').textContent='בוסט 100 — מלא את החסר';
   const first=answer[0], last=answer[answer.length-1];
   const middle=answer.slice(1,-1);
   const n=middle.length;
@@ -3396,7 +3392,7 @@ function buildFillMiddle(answer){
 // ══ CROSSWORD BONUS (B8) — 60 sec, build words on 5×6 mini board ══
 function buildCrossword(){
   document.getElementById('bovic').textContent='🍌';
-  document.getElementById('bovt').textContent='בונוס שבץ נא אישי!';
+  document.getElementById('bovt').textContent='בוסט שבץ נא אישי!';
   document.getElementById('bovd').textContent='ב-60 שניות הרכב מילים מהאותיות שלך — כל אות שימושית פעם אחת בלבד!';
   const area=document.getElementById('bchal'); area.innerHTML='';
 
@@ -3573,7 +3569,7 @@ function buildCrossword(){
       const emoji=illegalList.length===0?'🎉':(mbWords.length>0?'⚠️':'😔');
       const headline=illegalList.length===0
         ? `כל הכבוד! ${mbWords.length} מילים חוקיות`
-        : `יש מילות ✗ — הבונוס מתאפס (0 נקודות)`;
+        : `יש מילות ✗ — הבוסט מתאפס (0 נקודות)`;
       const headColor=illegalList.length===0?'#8eff8e':'#ff8e8e';
       h+=`<div style="text-align:center;margin-bottom:6px"><div style="font-size:24px">${emoji}</div><div style="font-size:13px;font-weight:900;color:${headColor};margin:3px 0">${headline}</div></div>`;
       h+=`<div style="background:rgba(0,0,0,.22);border-radius:6px;padding:5px 10px;font-size:12px;color:#eee;line-height:1.7;">`;
@@ -3588,10 +3584,10 @@ function buildCrossword(){
         h+=`<span style="color:#ff6e6e">0</span></div>`;
       });
       h+=`<div style="display:flex;justify-content:space-between;padding-top:4px;font-weight:900;border-top:2px solid rgba(255,255,255,.18);margin-top:2px">`;
-      h+=`<span>סה״כ בונוס</span><span style="color:${extra>0?'#8eff8e':'#ff8e8e'}">+${extra}</span></div>`;
+      h+=`<span>סה״כ בוסט</span><span style="color:${extra>0?'#8eff8e':'#ff8e8e'}">+${extra}</span></div>`;
       h+=`</div>`;
     } else {
-      h=`<div style="text-align:center;padding:8px 0"><div style="font-size:26px">😔</div><div style="font-size:13px;color:#ff8e8e;margin-top:4px">ללא מילים — ללא בונוס</div></div>`;
+      h=`<div style="text-align:center;padding:8px 0"><div style="font-size:26px">😔</div><div style="font-size:13px;color:#ff8e8e;margin-top:4px">ללא מילים — ללא בוסט</div></div>`;
     }
     summaryArea.innerHTML=h;
     document.getElementById('bok').textContent='המשך ▶';
@@ -3600,8 +3596,8 @@ function buildCrossword(){
     document.getElementById('bok').onclick=()=>{
       ovClose('ov-bonus');
       if(skipBtn) skipBtn.style.display='';
-      if(extra>0) setS(`🎉 בונוס שבץ נא! +${extra} נקודות (${mbWords.length} מילים)!`,'bon');
-      else setS('ללא מילים חוקיות — ללא בונוס','err');
+      if(extra>0) setS(`🎉 בוסט שבץ נא! +${extra} נקודות (${mbWords.length} מילים)!`,'bon');
+      else setS('ללא מילים חוקיות — ללא בוסט','err');
       if(bonusPend&&bonusPend.bsqIdxs) bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
       if(bonusPend){ commitPlay(bonusPend.sc+extra,bonusPend.ws,extra,bonusPend.player); bonusPend=null; }
     };
@@ -3771,8 +3767,8 @@ function bonusOk(ok=true){
     bonusPend=null; return;
   }
   const extra=ok?bonusPend.extra:0;
-  if(ok&&extra>0)setS(`🎉 בונוס! +${extra} נקודות!`,'bon');
-  else if(!ok&&bonusPend.ct!=='auto')setS('❌ לא נכון — ללא בונוס','err');
+  if(ok&&extra>0)setS(`🎉 בוסט! +${extra} נקודות!`,'bon');
+  else if(!ok&&bonusPend.ct!=='auto')setS('❌ לא נכון — ללא בוסט','err');
   if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
   commitPlay(bonusPend.sc,bonusPend.ws,extra,pi); // pass word score and bonus separately
   bonusPend=null;
@@ -3829,7 +3825,7 @@ function showMoveSummary(opts){
       h+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:#ffe870;padding:1px 0"><span>⭐ בינגו (8 אותיות)</span><span>+50</span></div>`;
     }
     if(bonusExtra>0){
-      h+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:#ffe870;padding:1px 0"><span>🎁 בונוס ריבוע</span><span>+${bonusExtra}</span></div>`;
+      h+=`<div style="display:flex;justify-content:space-between;font-size:11px;color:#ffe870;padding:1px 0"><span>🎁 בוסט ריבוע</span><span>+${bonusExtra}</span></div>`;
     }
   }
 
@@ -4680,7 +4676,6 @@ function getMaxMoves(){ return gameSettings.movelimit ? gameSettings.maxMoves : 
 // ===== Settings persistence =====
 const STORAGE_KEYS = {
   settings: 'bonusGameSettingsV1',
-  champions: 'bonusChampionsV1',
   pausedGame: 'bonusPausedGameV1',
   onlineSession: 'bonusOnlineSessionV1'
 };
@@ -4701,36 +4696,57 @@ function loadSettings(){
 }
 
 // ===== Champions =====
-function getChampions(){
+const CHAMPIONS_LIMIT = 10;
+const CHAMPIONS_DB_PATH = 'globalChampions';
+
+async function ensureFirebaseReadyForChampions(){
+  if(initFirebase()) return true;
+  return await new Promise((resolve)=>{
+    loadFirebaseSDK(()=>{
+      resolve(initFirebase());
+    });
+  });
+}
+
+async function getChampions(){
+  const ready = await ensureFirebaseReadyForChampions();
+  if(!ready || !fbDb) return [];
   try{
-    const raw = localStorage.getItem(STORAGE_KEYS.champions);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
+    const snap = await fbRef(CHAMPIONS_DB_PATH).orderByChild('score').limitToLast(CHAMPIONS_LIMIT).once('value');
+    const raw = snap && snap.val ? snap.val() : null;
+    if(!raw || typeof raw !== 'object') return [];
+    return Object.values(raw)
+      .filter(r => r && typeof r.name === 'string' && Number.isFinite(Number(r.score)))
+      .map(r => ({
+        name: String(r.name || '').slice(0,30),
+        score: Number(r.score) || 0,
+        date: r.date || ''
+      }))
+      .sort((a,b)=> (b.score||0) - (a.score||0))
+      .slice(0, CHAMPIONS_LIMIT);
   }catch(e){ return []; }
 }
-function saveChampions(arr){
+async function addChampion(name, score){
+  if(!name || !Number.isFinite(score)) return;
+  const ready = await ensureFirebaseReadyForChampions();
+  if(!ready || !fbDb) return;
   try{
-    localStorage.setItem(STORAGE_KEYS.champions, JSON.stringify(arr.slice(0,10)));
+    const now = new Date();
+    await fbRef(CHAMPIONS_DB_PATH).push({
+      name: String(name).trim().slice(0,30),
+      score: Number(score) || 0,
+      date: now.toLocaleDateString('he-IL'),
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    });
   }catch(e){}
 }
-function addChampion(name, score){
-  if(!name || !Number.isFinite(score)) return;
-  const arr = getChampions();
-  const now = new Date();
-  arr.push({
-    name,
-    score,
-    date: now.toLocaleDateString('he-IL')
-  });
-  arr.sort((a,b)=> (b.score||0) - (a.score||0));
-  saveChampions(arr.slice(0,10));
-}
-function renderChampions(targetId='champions-wrap'){
+async function renderChampions(targetId='champions-wrap'){
   const host = document.getElementById(targetId);
   if(!host) return;
-  const arr = getChampions();
+  host.innerHTML = '<div class="champs-empty">טוען תוצאות...</div>';
+  const arr = await getChampions();
   if(!arr.length){
-    host.innerHTML = '<div class="champs-empty">עדיין אין תוצאות שמורות</div>';
+    host.innerHTML = '<div class="champs-empty">עדיין אין תוצאות גלובליות זמינות</div>';
     return;
   }
   host.innerHTML = '<table class="champs-table"><thead><tr><th>#</th><th>שם</th><th>ניקוד</th><th>תאריך</th></tr></thead><tbody>' +
@@ -4847,9 +4863,9 @@ const _origEndGame = endGame;
 endGame = function(){
   _origEndGame.apply(this, arguments);
   // Never save bot player to high-scores
-  addChampion(pNames[0], scores[0]);
-  if(gMode !== 'bot') addChampion(pNames[1], scores[1]);
-  renderChampions();
+  addChampion(pNames[0], scores[0]).then(()=>renderChampions()).catch(()=>renderChampions());
+  if(gMode !== 'bot') addChampion(pNames[1], scores[1]).then(()=>renderChampions()).catch(()=>renderChampions());
+  else renderChampions();
   // Clear saved game on end
   try { localStorage.removeItem(STORAGE_KEYS.pausedGame); } catch(e){}
   if(gMode === 'online' && roomCode) removeOnlineSession(roomCode);
@@ -5019,7 +5035,7 @@ async function crConfirm(){
 }
 
 function crShareWhatsApp(){
-  const msg = `!הי, בוא נשחק בונוס ביחד\nהקוד שלי: *${roomCode}*\nפתח את המשחק ולחץ "הצטרף לפי קוד"`;
+  const msg = `!הי, בוא נשחק בוסט ביחד\nהקוד שלי: *${roomCode}*\nפתח את המשחק ולחץ "הצטרף לפי קוד"`;
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
 
@@ -5574,7 +5590,7 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 function sendAsyncWhatsApp(){
   var oppName = pNames[1 - window._myPlayerIndex];
-  var msg = oppName + ', !תורך בבונוס! קוד המשחק: *' + roomCode + '*';
+  var msg = oppName + ', !תורך בבוסט! קוד המשחק: *' + roomCode + '*';
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
   document.getElementById('async-nudge').style.display = 'none';
 }
@@ -5802,9 +5818,9 @@ function backConfirmStay(){
 
   // ── Inline Web App Manifest (injected as blob URL) ──
   var manifest = {
-    name: 'בונוס — שבץ נא',
-    short_name: 'בונוס',
-    description: 'משחק שבץ נא ישראלי עם בונוסים',
+    name: 'בוסט — שבץ נא',
+    short_name: 'בוסט',
+    description: 'משחק שבץ נא ישראלי עם בוסטים',
     start_url: '.',
     display: 'standalone',
     orientation: 'portrait',
@@ -5891,7 +5907,7 @@ function backConfirmStay(){
     banner.innerHTML =
       '<span style="font-size:24px;flex-shrink:0">🎮</span>' +
       '<div style="flex:1;font-family:Heebo,sans-serif;">' +
-        '<div style="font-size:13px;font-weight:900;color:#e8c840">התקן את בונוס!</div>' +
+        '<div style="font-size:13px;font-weight:900;color:#e8c840">התקן את בוסט!</div>' +
         '<div style="font-size:11px;color:rgba(255,255,255,.7)">שחק גם ללא אינטרנט</div>' +
       '</div>' +
       '<button id="pwa-install-btn" style="background:#e8c840;border:none;border-radius:6px;' +
@@ -5941,7 +5957,7 @@ function backConfirmStay(){
       ].join('');
       hint.innerHTML =
         '<div style="font-size:13px;font-weight:900;color:#e8c840;margin-bottom:4px">' +
-          '📲 התקן את בונוס על המסך הראשי' +
+          '📲 התקן את בוסט על המסך הראשי' +
         '</div>' +
         '<div style="font-size:11px;color:rgba(255,255,255,.75);line-height:1.5">' +
           'לחץ על <strong style="color:#fff">⎋ שתף</strong> ואז <strong style="color:#fff">הוסף למסך הבית</strong>' +
@@ -5960,8 +5976,8 @@ function shareGame(){
   var url = window.location.href;
   if(navigator.share){
     navigator.share({
-      title: 'בונוס — שבץ נא',
-      text: 'שחק איתי בונוס — שבץ נא עם בונוסים! 🎮',
+      title: 'בוסט — שבץ נא',
+      text: 'שחק איתי בוסט — שבץ נא עם בוסטים! 🎮',
       url: url
     }).catch(function(){});
   } else {
