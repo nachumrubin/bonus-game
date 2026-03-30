@@ -3132,10 +3132,66 @@ function getDynamicCrossingPair(){
   return {h:'ישראל', v:'שלום', hpos:1, vpos:0};
 }
 
-function triggerBonus(type,ws,sc){
-  clearT(); const area=document.getElementById('bchal'); area.innerHTML='';
+function resetBonusOverlay(){
+  clearT();
+  const area=document.getElementById('bchal');
+  if(area) area.innerHTML='';
   document.getElementById('btw').style.display='none';
-  document.getElementById('bok').onclick=bonusOk;
+  const okBtn=document.getElementById('bok');
+  okBtn.textContent='אישור ✓';
+  okBtn.onclick=bonusOk;
+  const skipBtn=document.querySelector('#ov-bonus .ovb.s');
+  if(skipBtn) skipBtn.style.display='';
+  const panel=document.querySelector('#ov-bonus .ovc');
+  if(panel) panel.scrollTop=0;
+}
+
+function bonusChallengeHasContent(){
+  const area=document.getElementById('bchal');
+  return !!(area && (area.children.length>0 || area.textContent.trim()));
+}
+
+function buildFallbackBonusChallenge(points){
+  const fallbackWord =
+    points>=100 ? (getLongBonusWord() || getMediumBonusWord() || getShortBonusWord())
+                : (getMediumBonusWord() || getShortBonusWord() || getLongBonusWord());
+  if(!fallbackWord) return false;
+  const secs = points>=100 ? 40 : 30;
+  const icon = points>=100 ? '💎' : '🌀';
+  buildUnscramble(
+    [...norm(fallbackWord)].sort(()=>Math.random()-.5),
+    fallbackWord,
+    icon,
+    `בונוס ${points} — אתגר חלופי`,
+    `משחק הבונוס לא נטען, לכן הוכן לך אתגר חלופי ל-${points} נקודות.`,
+    secs
+  );
+  return true;
+}
+
+function runBonusBuilder(builder, fallbackPoints){
+  try{
+    builder();
+  }catch(e){
+    console.warn('Bonus builder failed', e);
+  }
+  if(!bonusChallengeHasContent()){
+    console.warn('Bonus builder produced no visible challenge; using fallback challenge.');
+    if(!buildFallbackBonusChallenge(fallbackPoints)){
+      document.getElementById('bovic').textContent='🎁';
+      document.getElementById('bovt').textContent=`בונוס ${fallbackPoints}`;
+      document.getElementById('bovd').textContent='אתגר חלופי לא היה זמין, לכן הנקודות הוענקו אוטומטית.';
+      bonusPend.ct='auto';
+      bonusPend.extra=fallbackPoints;
+    }
+  }
+  const panel=document.querySelector('#ov-bonus .ovc');
+  if(panel) panel.scrollTop=0;
+  ovOpen('ov-bonus');
+}
+
+function triggerBonus(type,ws,sc){
+  resetBonusOverlay();
   if(type==='B5'){
     // Extra turn
     document.getElementById('bovic').textContent='🎭';
@@ -3157,8 +3213,8 @@ function triggerBonus(type,ws,sc){
   } else if(type==='B8'){
     // 60-second crossword on mini board
     bonusPend.extra=0; bonusPend.ct='crossword';
-    buildCrossword();
-    return; // buildCrossword calls ovOpen itself
+    runBonusBuilder(buildCrossword, 20);
+    return;
   } else if(type==='B9'){
     // Free 25 points — no game
     document.getElementById('bovic').textContent='♠';
@@ -3168,7 +3224,7 @@ function triggerBonus(type,ws,sc){
   } else if(type==='B10'){
     // Two crossing 5-letter words — identify shared letter
     bonusPend.extra=40; bonusPend.ct='crossing';
-    buildCrossingWords();
+    runBonusBuilder(buildCrossingWords, 40);
     return;
   } else if(type==='B4'){
     document.getElementById('bovic').textContent='💰'; document.getElementById('bovt').textContent='הבונוס החסכוני';
@@ -3189,7 +3245,8 @@ function triggerBonus(type,ws,sc){
       var _wf = getFillableBonusWord();
       if(!_wf){ commitPlay(0,ws,0,bonusPend.player); bonusPend=null; return; }
       bonusPend.ct='fill100';
-      buildFillMiddle(_wf);
+      runBonusBuilder(function(){ buildFillMiddle(_wf); }, 100);
+      return;
     } else {
       var _wl = getLongBonusWord();
       if(!_wl){ commitPlay(0,ws,0,bonusPend.player); bonusPend=null; return; }
