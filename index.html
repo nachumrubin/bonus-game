@@ -2049,6 +2049,18 @@ function updateMoveTimerStatus(secLeft){
   const cls = secLeft <= 5 ? 'err' : '';
   setS(`${moveTimerBaseMessage()} ⏳ ${secLeft}`, cls);
 }
+function forfeitActiveFutureMultiplier(playerIdx){
+  if(typeof futBon === 'undefined' || !futBon[playerIdx]) return '';
+  if(futBon[playerIdx].quadNext > 0){
+    futBon[playerIdx].quadNext = 0;
+    return '×4';
+  }
+  if(futBon[playerIdx].doubleNext > 0){
+    futBon[playerIdx].doubleNext = 0;
+    return '×2';
+  }
+  return '';
+}
 function expireCurrentMove(){
   clearMoveTimer();
   if(gMode==='bot' && turn===1){
@@ -2078,15 +2090,8 @@ function expireCurrentMove(){
     selTile = null;
     document.body.classList.remove('tile-selected');
     // Forfeit any pending x4/x2 bonus multiplier
-    if(typeof futBon !== 'undefined' && futBon[turn]){
-      if(futBon[turn].quadNext > 0){
-        futBon[turn].quadNext = 0;
-        setS('נגמר הזמן — בונוס ×4 אבד! 💸', 'err');
-      } else if(futBon[turn].doubleNext > 0){
-        futBon[turn].doubleNext = 0;
-        setS('נגמר הזמן — בונוס ×2 אבד! 💸', 'err');
-      }
-    }
+    const lostMult = forfeitActiveFutureMultiplier(turn);
+    if(lostMult) setS(`נגמר הזמן — בונוס ${lostMult} אבד! 💸`, 'err');
     passCount++;
     if(passCount>=6){ endGame(); return; }
     // Increment moveCount so opponent's listenForMoves doesn't skip this as a duplicate
@@ -2983,7 +2988,13 @@ function playWord(){
     highlightIllegalWords(review.invalid);
     const badWords=review.invalid.map(w=>w.text).join(', ');
     setS(`מילה לא חוקית: ${badWords} — התור עובר`,'err');
-    setTimeout(()=>{ clearIllegalHighlights(); doRecall(); nextTurn(); }, 1800);
+    setTimeout(()=>{
+      clearIllegalHighlights();
+      doRecall();
+      const lostMult = forfeitActiveFutureMultiplier(turn);
+      if(lostMult) setS(`מילה לא חוקית — בונוס ${lostMult} אבד! 💸`,'err');
+      nextTurn();
+    }, 1800);
     lastRejWord=review.invalid[0]?review.invalid[0].text:'';
     lastRejScore=review.total;
     lastRejPlaced=[...placed];
