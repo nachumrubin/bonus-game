@@ -3793,6 +3793,11 @@ function commitPlay(sc,ws,bonus,pi){
   // sc = word score only; bonus = extra points from bonus square (added separately, not multiplied)
   let wordSc = (isNaN(sc) || sc == null) ? 0 : sc;
   let bonusExtra = (isNaN(bonus) || bonus == null) ? 0 : bonus;
+  // Status line should show the full main word (including existing board letters)
+  // and not only letters newly placed this turn.
+  const moveTilesForStatus = getMoveTiles();
+  const statusWords = getAllWords(moveTilesForStatus).filter(w=>w.length>=2);
+  const statusWordText = statusWords[0] ? statusWords[0].map(t=>t.letter).join('') : ws;
   // Apply multiplier to word score only
   let fs = wordSc;
   let _multLabel = '';
@@ -3846,7 +3851,7 @@ function commitPlay(sc,ws,bonus,pi){
   selTile=null; selPlaced=null; document.body.classList.remove('tile-selected');
   draw(racks[pi]);
   const _baseMsg = _multLabel ? `${wordSc} ${_multLabel} = ${fs - bonusExtra}` : `${fs}`;
-  setS(`"${ws}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
+  setS(`"${statusWordText}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
   updateUI(); renderBoard(); renderRack(); renderBonusStrips();
   if(racks[pi].length===0&&bag.length===0){endGame();return;}
   if(settings.moveLimitOn && moveCount>=settings.moveLimit){endGame();return;}
