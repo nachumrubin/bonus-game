@@ -1,6 +1,12 @@
 # bonus-game
 A Hebrew scrabble mobile game.
 
+## Hebrew validator source of truth
+
+The Hebrew validator is maintained **inline inside `index.html`** as part of the single-file game runtime.
+
+`hebrew-validator.js` was removed to avoid copy drift and confusion between duplicated validator implementations.
+
 ## Build timestamp automation
 
 You no longer need to manually edit timestamp values in `sw.js` and `index.html`.
