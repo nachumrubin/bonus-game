@@ -1360,7 +1360,7 @@ loadDict();
 // Common defective spellings (כתיב חסר) that should be accepted
 // even though only the plene (כתיב מלא) form is in the dictionary
 const DEFECTIVE_ACCEPT = new Set(["כסא","זכרון","שלטון","מסדרון","ספרון","פתרון","עגלון","חנון","ישרון","קטון"]);
-const EXACT_REJECTS  = new Set(["אותה","אותו","אותי","אותך","אותכם","אותכן","אותם","אותן","אותנו","אחריה","אחריהם","אחריהן","אחריו","אחריי","אחרייך","אחריך","אחריכם","אחריכן","אחרינו","איתה","איתו","איתי","איתך","איתכם","איתכן","איתם","איתן","איתנו","אלי","אליה","אליהם","אליהן","אליו","אלייך","אליך","אליכם","אליכן","אלינו","אצלה","אצלו","אצלי","אצלך","אצלכם","אצלכן","אצלם","אצלן","אצלנו","בלעדי","בלעדיה","בלעדיהם","בלעדיהן","בלעדיו","בלעדייך","בלעדיך","בלעדיכם","בלעדיכן","בלעדינו","בשבילה","בשבילהן","בשבילו","בשבילי","בשבילך","בשבילכם","בשבילכן","בשבילם","בשבילנו","כמוה","כמוהו","כמוך","כמוכם","כמוכן","כמונו","כמוני","כמותם","כמותן","לידה","לידו","לידי","לידך","לידכם","לידכן","לידם","לידן","לידנו","למענה","למענו","למעני","למענך","למענכם","למענכן","למענם","למענן","למעננו","לפניה","לפניהם","לפניהן","לפניו","לפניי","לפנייך","לפניך","לפניכם","לפניכן","לפנינו","מאחוריה","מאחוריהם","מאחוריהן","מאחוריו","מאחוריי","מאחורייך","מאחוריך","מאחוריכם","מאחוריכן","מאחורינו","מולה","מולו","מולי","מולך","מולכם","מולכן","מולם","מולן","מולנו","ממך","ממכם","ממכן","ממנה","ממנו","ממני","נגדה","נגדו","נגדי","נגדך","נגדכם","נגדכן","נגדם","נגדן","נגדנו","עלי","עליה","עליהם","עליהן","עליו","עלייך","עליך","עליכם","עליכן","עלינו","עמה","עמהן","עמו","עמי","עמך","עמכם","עמכן","עמם","עמנו","שלה","שלהם","שלהן","שלו","שלי","שלך","שלכם","שלכן","שלנו","תוכה","תוכו","תוכי","תוכך","תוכם","תוכן","תוכנו"]);
+const EXACT_REJECTS  = new Set(["אותה","אותו","אותך","אותכם","אותכן","אותם","אותן","אותנו","אחריה","אחריהם","אחריהן","אחריו","אחריי","אחרייך","אחריך","אחריכם","אחריכן","אחרינו","איתה","איתו","איתי","איתך","איתכם","איתכן","איתם","איתן","איתנו","אלי","אליה","אליהם","אליהן","אליו","אלייך","אליך","אליכם","אליכן","אלינו","אצלה","אצלו","אצלי","אצלך","אצלכם","אצלכן","אצלם","אצלן","אצלנו","בלעדי","בלעדיה","בלעדיהם","בלעדיהן","בלעדיו","בלעדייך","בלעדיך","בלעדיכם","בלעדיכן","בלעדינו","בשבילה","בשבילהן","בשבילו","בשבילי","בשבילך","בשבילכם","בשבילכן","בשבילם","בשבילנו","כמוה","כמוהו","כמוך","כמוכם","כמוכן","כמונו","כמוני","כמותם","כמותן","לידה","לידו","לידי","לידך","לידכם","לידכן","לידם","לידן","לידנו","למענה","למענו","למעני","למענך","למענכם","למענכן","למענם","למענן","למעננו","לפניה","לפניהם","לפניהן","לפניו","לפניי","לפנייך","לפניך","לפניכם","לפניכן","לפנינו","מאחוריה","מאחוריהם","מאחוריהן","מאחוריו","מאחוריי","מאחורייך","מאחוריך","מאחוריכם","מאחוריכן","מאחורינו","מולה","מולו","מולי","מולך","מולכם","מולכן","מולם","מולן","מולנו","ממך","ממכם","ממכן","ממנה","ממנו","ממני","נגדה","נגדו","נגדי","נגדך","נגדכם","נגדכן","נגדם","נגדן","נגדנו","עלי","עליה","עליהם","עליהן","עליו","עלייך","עליך","עליכם","עליכן","עלינו","עמה","עמהן","עמו","עמי","עמך","עמכם","עמכן","עמם","עמנו","שלה","שלהם","שלהן","שלו","שלי","שלך","שלכם","שלכן","שלנו","תוכה","תוכו","תוכי","תוכך","תוכם","תוכן","תוכנו"]);
 const CLASSIC_ALLOW  = new Set(["בה","בהם","בהן","בו","בי","בך","בכם","בכן","בנו","לה","להם","להן","לו","לי","לך","לכם","לכן","לנו"]);
 const COMMON_FALSE_POSSESSIVE = new Set(["מים","חיים","פנים","פני","שני","אחי","אחותי","אדוני","גוי","תוי"]);
 const PREFIXES       = new Set(["ו","ה","ב","כ","ל","ש","מ"]);
@@ -2049,6 +2049,18 @@ function updateMoveTimerStatus(secLeft){
   const cls = secLeft <= 5 ? 'err' : '';
   setS(`${moveTimerBaseMessage()} ⏳ ${secLeft}`, cls);
 }
+function forfeitActiveFutureMultiplier(playerIdx){
+  if(typeof futBon === 'undefined' || !futBon[playerIdx]) return '';
+  if(futBon[playerIdx].quadNext > 0){
+    futBon[playerIdx].quadNext = 0;
+    return '×4';
+  }
+  if(futBon[playerIdx].doubleNext > 0){
+    futBon[playerIdx].doubleNext = 0;
+    return '×2';
+  }
+  return '';
+}
 function expireCurrentMove(){
   clearMoveTimer();
   if(gMode==='bot' && turn===1){
@@ -2078,15 +2090,8 @@ function expireCurrentMove(){
     selTile = null;
     document.body.classList.remove('tile-selected');
     // Forfeit any pending x4/x2 bonus multiplier
-    if(typeof futBon !== 'undefined' && futBon[turn]){
-      if(futBon[turn].quadNext > 0){
-        futBon[turn].quadNext = 0;
-        setS('נגמר הזמן — בונוס ×4 אבד! 💸', 'err');
-      } else if(futBon[turn].doubleNext > 0){
-        futBon[turn].doubleNext = 0;
-        setS('נגמר הזמן — בונוס ×2 אבד! 💸', 'err');
-      }
-    }
+    const lostMult = forfeitActiveFutureMultiplier(turn);
+    if(lostMult) setS(`נגמר הזמן — בונוס ${lostMult} אבד! 💸`, 'err');
     passCount++;
     if(passCount>=6){ endGame(); return; }
     // Increment moveCount so opponent's listenForMoves doesn't skip this as a duplicate
@@ -2983,7 +2988,13 @@ function playWord(){
     highlightIllegalWords(review.invalid);
     const badWords=review.invalid.map(w=>w.text).join(', ');
     setS(`מילה לא חוקית: ${badWords} — התור עובר`,'err');
-    setTimeout(()=>{ clearIllegalHighlights(); doRecall(); nextTurn(); }, 1800);
+    setTimeout(()=>{
+      clearIllegalHighlights();
+      doRecall();
+      const lostMult = forfeitActiveFutureMultiplier(turn);
+      if(lostMult) setS(`מילה לא חוקית — בונוס ${lostMult} אבד! 💸`,'err');
+      nextTurn();
+    }, 1800);
     lastRejWord=review.invalid[0]?review.invalid[0].text:'';
     lastRejScore=review.total;
     lastRejPlaced=[...placed];
@@ -3782,6 +3793,11 @@ function commitPlay(sc,ws,bonus,pi){
   // sc = word score only; bonus = extra points from bonus square (added separately, not multiplied)
   let wordSc = (isNaN(sc) || sc == null) ? 0 : sc;
   let bonusExtra = (isNaN(bonus) || bonus == null) ? 0 : bonus;
+  // Status line should show the full main word (including existing board letters)
+  // and not only letters newly placed this turn.
+  const moveTilesForStatus = getMoveTiles();
+  const statusWords = getAllWords(moveTilesForStatus).filter(w=>w.length>=2);
+  const statusWordText = statusWords[0] ? statusWords[0].map(t=>t.letter).join('') : ws;
   // Apply multiplier to word score only
   let fs = wordSc;
   let _multLabel = '';
@@ -3835,7 +3851,7 @@ function commitPlay(sc,ws,bonus,pi){
   selTile=null; selPlaced=null; document.body.classList.remove('tile-selected');
   draw(racks[pi]);
   const _baseMsg = _multLabel ? `${wordSc} ${_multLabel} = ${fs - bonusExtra}` : `${fs}`;
-  setS(`"${ws}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
+  setS(`"${statusWordText}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
   updateUI(); renderBoard(); renderRack(); renderBonusStrips();
   if(racks[pi].length===0&&bag.length===0){endGame();return;}
   if(settings.moveLimitOn && moveCount>=settings.moveLimit){endGame();return;}
@@ -6161,6 +6177,7 @@ const FORCE_ACCEPT = new Set([
   'צו',
   'קם',
   'שי',
+  'אך','אש','אט','בא','גל','הל','חף','כד','כת','נר','שם','תג','תן','אותי',
 
   // ── 2-letter nouns / other ──
   'אב','אח',
@@ -6193,7 +6210,7 @@ const FORCE_ACCEPT = new Set([
  */
 const FORCE_REJECT = new Set([
   // Pronoun + preposition compounds
-  'אותה','אותו','אותי','אותך','אותכם','אותכן','אותם','אותן','אותנו',
+  'אותה','אותו','אותך','אותכם','אותכן','אותם','אותן','אותנו',
   'אחריה','אחריהם','אחריהן','אחריו','אחריי','אחרייך','אחריך','אחריכם','אחריכן','אחרינו',
   'איתה','איתו','איתי','איתך','איתכם','איתכן','איתם','איתן','איתנו',
   'אלי','אליה','אליהם','אליהן','אליו','אלייך','אליך','אליכם','אליכן','אלינו',
