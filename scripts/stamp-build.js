@@ -11,7 +11,7 @@ const filesToUpdate = [
     file: 'sw.js',
     updates: [
       {
-        find: /(var CACHE_NAME = 'bonus-)(\d{14})(')/,
+        find: /(var CACHE_NAME = 'boost-)(\d{14})(')/,
         replace: `$1${timestamp}$3`,
         description: 'service worker cache name',
       },
