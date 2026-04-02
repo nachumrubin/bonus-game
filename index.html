@@ -1539,18 +1539,18 @@ const BDEFS = [
 
 // All bonus types — shuffled and assigned to slots each game
 const BONUS_TYPES = [
-  {type:'B1',  pts:100, ic:'🍇'},
-  {type:'B1',  pts:100, ic:'🍇'},
-  {type:'B2',  pts:40,  ic:'🍌'},
-  {type:'B2',  pts:40,  ic:'🍌'},
-  {type:'B3',  pts:40,  ic:'🍎'},
-  {type:'B4',  pts:1,   ic:'⭐'},
-  {type:'B5',  pts:0,   ic:'🍒'},
-  {type:'B6',  pts:0,   ic:'💎'},
-  {type:'B7',  pts:0,   ic:'🍏'},
-  {type:'B8',  pts:0,   ic:'🍌'},
-  {type:'B9',  pts:25,  ic:'♠'},
-  {type:'B10', pts:40,  ic:'♣'},
+  {type:'B1',  pts:100, ic:'⚡'},
+  {type:'B1',  pts:100, ic:'⚡'},
+  {type:'B2',  pts:40,  ic:'⚡'},
+  {type:'B2',  pts:40,  ic:'⚡'},
+  {type:'B3',  pts:40,  ic:'⚡'},
+  {type:'B4',  pts:1,   ic:'⚡'},
+  {type:'B5',  pts:0,   ic:'⚡'},
+  {type:'B6',  pts:0,   ic:'⚡'},
+  {type:'B7',  pts:0,   ic:'⚡'},
+  {type:'B8',  pts:0,   ic:'⚡'},
+  {type:'B9',  pts:25,  ic:'⚡'},
+  {type:'B10', pts:40,  ic:'⚡'},
 ];
 
 // bonusAssignment[idx] = {type, pts, ic} — set at game start
@@ -2337,7 +2337,7 @@ function initGame(){
   // Shuffle and take up to 12 (one per bonus slot)
   _uniqueTypes.sort(()=>Math.random()-.5);
   // Pad to 12 slots with free-point bonuses if fewer than 12 unique types
-  while(_uniqueTypes.length < BDEFS.length){ _uniqueTypes.push({type:'B9',pts:25,ic:'♠'}); }
+  while(_uniqueTypes.length < BDEFS.length){ _uniqueTypes.push({type:'B9',pts:25,ic:'⚡'}); }
   bonusAssignment = _uniqueTypes.slice(0, BDEFS.length);
   buildUnifiedGrid(); renderBoard(); renderRack(); renderBonusStrips(); updateUI();
   setS(myTurnMsg());
