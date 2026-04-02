@@ -2104,8 +2104,6 @@ function expireCurrentMove(){
     // Increment moveCount so opponent's listenForMoves doesn't skip this as a duplicate
     if(gMode === 'online') moveCount++;
     nextTurn();
-    // In online mode, push the updated state so the opponent knows the turn switched
-    if(gMode === 'online') setTimeout(pushMoveToFirebase, 200);
   };
 
   if(pendingMoveSnapshot){
@@ -2999,7 +2997,6 @@ function playWord(){
       const lostMult = forfeitActiveFutureMultiplier(turn);
       if(lostMult) setS(`מילה לא חוקית — בוסט ${lostMult} אבד! 💸`,'err');
       nextTurn();
-      if(gMode === 'online') setTimeout(pushMoveToFirebase, 200);
     }, 1800);
     lastRejWord=review.invalid[0]?review.invalid[0].text:'';
     lastRejScore=review.total;
@@ -3956,6 +3953,7 @@ function nextTurn(){
     } else {
       startMoveTimer();
     }
+    if(gMode==='online') setTimeout(pushMoveToFirebase, 200);
     return;
   }
   if(turn===1)decrementLocks();
@@ -3979,6 +3977,7 @@ function nextTurn(){
     setS(myTurnMsg());
     startMoveTimer();
   }
+  if(gMode==='online') setTimeout(pushMoveToFirebase, 200);
 }
 
 
@@ -5527,7 +5526,6 @@ function pushMoveToFirebase(){
 var _origCommitPlay = commitPlay;
 commitPlay = function(sc, ws, bonus, pi){
   _origCommitPlay.apply(this, arguments);
-  if(gMode === 'online') setTimeout(pushMoveToFirebase, 200);
 };
 
 // ── BLOCK INPUT ON OPPONENT'S TURN ──

@@ -30,3 +30,20 @@ node scripts/stamp-build.js 20260329150000
 ```
 
 The script expects a 14-digit format: `YYYYMMDDHHmmss` (UTC).
+
+## E2E multiplayer regression tests
+
+A Playwright-based browser suite is available under `tests/online-turn-sync.spec.js`.
+
+Run:
+
+```bash
+npm install
+npm run test:e2e
+```
+
+What it currently validates:
+- Online state publish happens after `nextTurn()` resolves a normal turn handoff.
+- Online state publish also happens on the extra-turn early-return path.
+
+> Note: this suite is designed to run fully in this environment against the local `index.html` runtime (served with `python3 -m http.server`) and does not require live Firebase connectivity.
