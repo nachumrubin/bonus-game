@@ -5480,17 +5480,20 @@ function listenForMoves(){
     }
     _lastSeenMoveCount = s.moveCount;
     _lastSeenTurn = s.turn;
-    // Skip if it's still NOT my turn (opponent still thinking)
-    if(s.turn !== myIdx){
-      return;
-    }
-    // It's now my turn — opponent played or timed out
+    // Always consume fresh remote state to keep both boards in sync.
+    // Previously we only applied updates once turn===myIdx, which could
+    // leave player 2 with a stale board in long opponent turns and cause
+    // local turn-state desyncs (appearing as a stuck game).
     window._myLastPush = undefined;
     clearMoveTimer();
     loadGameState(s);
     updateUI(); renderBoard(); renderRack('turn'); renderBonusStrips();
-    setS(myTurnMsg());
-    if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
+    if(s.turn === myIdx){
+      setS(myTurnMsg());
+      if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
+    } else {
+      setS(waitingMsg());
+    }
     saveOnlineSession();
   });
   onlineListeners.push({ ref: stateRef, type:'value', fn: moveListener });
