@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260402213638">
+<meta name="version" content="20260403105100">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -577,7 +577,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260402213638</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260403105100</div>
   </div>
 </div>
 
@@ -5475,19 +5475,28 @@ function listenForMoves(){
     var s = snap.val();
     if(!s) return;
     var myIdx = window._myPlayerIndex;
-    // Skip our own push
-    if(window._myLastPush !== undefined && s.moveCount === window._myLastPush){
+    var incomingMoveCount = Number(s.moveCount || 0);
+    var incomingTurn = Number((s.turn !== undefined) ? s.turn : 0);
+
+    // Skip our own push echo.
+    if(window._myLastPush !== undefined && incomingMoveCount === Number(window._myLastPush)){
       window._myLastPush = undefined;
-      _lastSeenMoveCount = s.moveCount;
-      _lastSeenTurn = s.turn;
+      _lastSeenMoveCount = incomingMoveCount;
+      _lastSeenTurn = incomingTurn;
       return;
     }
-    // Skip if nothing changed since last update
-    if(s.moveCount === _lastSeenMoveCount && s.turn === _lastSeenTurn){
-      return;
+
+    // Ignore stale snapshots (Firebase value events can occasionally arrive out of order).
+    // Without this guard, an old state can overwrite a newer local state and break turn sync
+    // starting from the second move onward.
+    if(_lastSeenMoveCount !== undefined){
+      if(incomingMoveCount < _lastSeenMoveCount) return;
+      if(incomingMoveCount === _lastSeenMoveCount && incomingTurn === _lastSeenTurn) return;
     }
-    _lastSeenMoveCount = s.moveCount;
-    _lastSeenTurn = s.turn;
+
+    _lastSeenMoveCount = incomingMoveCount;
+    _lastSeenTurn = incomingTurn;
+
     // Always consume fresh remote state to keep both boards in sync.
     // Previously we only applied updates once turn===myIdx, which could
     // leave player 2 with a stale board in long opponent turns and cause
@@ -5496,7 +5505,7 @@ function listenForMoves(){
     clearMoveTimer();
     loadGameState(s);
     updateUI(); renderBoard(); renderRack('turn'); renderBonusStrips();
-    if(s.turn === myIdx){
+    if(incomingTurn === myIdx){
       setS(myTurnMsg());
       if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
     } else {
@@ -5881,7 +5890,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260402213638', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260403105100', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
