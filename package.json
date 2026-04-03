@@ -1,0 +1,13 @@
+{
+  "name": "bonus-game",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Test harness for bonus-game",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}
