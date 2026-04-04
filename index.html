@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260403105100">
+<meta name="version" content="20260404200653">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -246,13 +246,16 @@ body.tile-selected .bsq:not(.used){
 .bsq-ic{
   line-height:1;
   pointer-events:none;
-  -webkit-text-stroke:1px #111;
+  -webkit-text-stroke:0;
+  color:#ffd54a;
   text-shadow:
-    -1px -1px 0 #111,
-     1px -1px 0 #111,
-    -1px  1px 0 #111,
-     1px  1px 0 #111;
+    0 1px 0 #fff3b0,
+    0 2px 0 #f3bd26,
+    0 3px 0 #cf8d10,
+    0 5px 8px rgba(0,0,0,.35);
+  filter:drop-shadow(0 0 4px rgba(255,220,90,.55));
 }
+
 .bsq-pt{font-weight:900;color:#7a5500;line-height:1; pointer-events:none;}
 
 /* empty perimeter cells — same size, transparent background */
@@ -577,7 +580,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260403105100</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260404200653</div>
   </div>
 </div>
 
@@ -1201,15 +1204,15 @@ body.tile-selected .bsq:not(.used){
     <div class="ovh" onclick="ovClose('ov-leg')" style="cursor:pointer"></div>
     <div class="ovt" style="margin-bottom:9px">מקרא ואותיות</div>
     <div class="lg">
-      <div class="li"><div class="lsq" style="background:var(--by)">🍇</div><div class="ltxt"><strong>100 נק'</strong>סדר מחדש ארוך</div></div>
-      <div class="li"><div class="lsq" style="background:var(--by)">🍌</div><div class="ltxt"><strong>שבץ נא אישי</strong>60 שניות — צור מילים</div></div>
-      <div class="li"><div class="lsq" style="background:var(--by)">🍒</div><div class="ltxt"><strong>תור נוסף</strong>תור נוסף מיד!</div></div>
-      <div class="li"><div class="lsq" style="background:var(--by)">🍏</div><div class="ltxt"><strong>×2 שני תורות</strong>ניקוד כפול ×2</div></div>
-      <div class="li"><div class="lsq" style="background:var(--by)">💎</div><div class="ltxt"><strong>×4 תור הבא</strong>ניקוד ×4 פעמים</div></div>
-      <div class="li"><div class="lsq" style="background:var(--by)">🍎</div><div class="ltxt"><strong>40 נק' — סדר</strong>סדר 4 אותיות</div></div>
-      <div class="li"><div class="lsq" style="background:var(--by)">♠</div><div class="ltxt"><strong>25 נק' מתנה</strong>ללא אתגר</div></div>
-      <div class="li"><div class="lsq" style="background:var(--by)">♣</div><div class="ltxt"><strong>מילים חוצות</strong>מצא האות המשותפת</div></div>
-      <div class="li"><div class="lsq" style="background:var(--by)">⭐</div><div class="ltxt"><strong>דין פרוטה</strong>1 נקודה</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>100 נק'</strong>סדר מחדש ארוך</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>שבץ נא אישי</strong>60 שניות — צור מילים</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>תור נוסף</strong>תור נוסף מיד!</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>×2 שני תורות</strong>ניקוד כפול ×2</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>×4 תור הבא</strong>ניקוד ×4 פעמים</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>40 נק' — סדר</strong>סדר 4 אותיות</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>25 נק' מתנה</strong>ללא אתגר</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>מילים חוצות</strong>מצא האות המשותפת</div></div>
+      <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>דין פרוטה</strong>1 נקודה</div></div>
       <div class="li"><div class="lsq" style="background:#3a5a3a">🔒</div><div class="ltxt"><strong>נעילה [3,3,5]</strong>3 נעילות לשחקן</div></div>
     </div>
     <div class="pl" style="color:rgba(255,255,255,.4);font-size:8px;text-align:center;margin:5px 0 3px">ערך אותיות — אין אותיות סופיות נפרדות</div>
@@ -3196,19 +3199,19 @@ function triggerBonus(type,ws,sc){
   resetBonusOverlay();
   if(type==='B5'){
     // Extra turn
-    document.getElementById('bovic').textContent='🎭';
+    document.getElementById('bovic').textContent='⚡';
     document.getElementById('bovt').textContent='תור נוסף!';
     document.getElementById('bovd').innerHTML='שחק עכשיו תור נוסף!<br><small style="opacity:.6">לאחר הסבב הנוכחי תקבל תור נוסף</small>';
     bonusPend.extra=0; bonusPend.ct='extraturn';
   } else if(type==='B6'){
     // ×4 next turn
-    document.getElementById('bovic').textContent='💎';
+    document.getElementById('bovic').textContent='⚡';
     document.getElementById('bovt').textContent='×4 בתור הבא!';
     document.getElementById('bovd').innerHTML='בתור הבא שלך — כל הנקודות יוכפלו פי 4!<br><small style="opacity:.6">השתמש בתור הזה בחוכמה</small>';
     bonusPend.extra=0; bonusPend.ct='quad';
   } else if(type==='B7'){
     // ×2 next 2 turns
-    document.getElementById('bovic').textContent='🍏';
+    document.getElementById('bovic').textContent='⚡';
     document.getElementById('bovt').textContent='×2 בשני התורות הבאים!';
     document.getElementById('bovd').innerHTML='בשני המהלכים הבאים שלך — כל האותיות שלך יהיו כפליים!';
     bonusPend.extra=0; bonusPend.ct='double2';
@@ -3219,7 +3222,7 @@ function triggerBonus(type,ws,sc){
     return;
   } else if(type==='B9'){
     // Free 25 points — no game
-    document.getElementById('bovic').textContent='♠';
+    document.getElementById('bovic').textContent='⚡';
     document.getElementById('bovt').textContent='קבל במתנה 25 נקודות!';
     document.getElementById('bovd').textContent='';
     bonusPend.extra=25; bonusPend.ct='auto';
@@ -3229,7 +3232,7 @@ function triggerBonus(type,ws,sc){
     runBonusBuilder(buildCrossingWords, 40);
     return;
   } else if(type==='B4'){
-    document.getElementById('bovic').textContent='💰'; document.getElementById('bovt').textContent='הבוסט החסכוני';
+    document.getElementById('bovic').textContent='⚡'; document.getElementById('bovt').textContent='הבוסט החסכוני';
     document.getElementById('bovd').innerHTML=`שיבצת "${ws}" ב-${sc} נקודות<br><small style="opacity:.5">"דין פרוטה כדין מאה" — +1 נקודה!</small>`;
     bonusPend.extra=1; bonusPend.ct='auto';
   } else if(type==='B3'){
@@ -3309,7 +3312,7 @@ function buildUnscramble(letters, answer, icon, title, desc, secs){
 }
 
 function buildFillMiddle(answer){
-  document.getElementById('bovic').textContent='💎';
+  document.getElementById('bovic').textContent='⚡';
   document.getElementById('bovt').textContent='בוסט 100 — מלא את החסר';
   const first=answer[0], last=answer[answer.length-1];
   const middle=answer.slice(1,-1);
@@ -3637,7 +3640,7 @@ function buildCrossingWords(){
   // Find actual shared letter position
   const hpos=pair.hpos, vpos=pair.vpos, shared=h[hpos];
 
-  document.getElementById('bovic').textContent='♣';
+  document.getElementById('bovic').textContent='⚡';
   document.getElementById('bovt').textContent='שתי מילים חוצות!';
   document.getElementById('bovd').textContent=`מצא את האות המשותפת לשתי המילים תוך 20 שניות (+40 נקודות!)`;
 
@@ -3754,7 +3757,7 @@ function bonusOk(ok=true){
   // Handle future-bonus types (no points now)
   if(bonusPend.ct==='extraturn'){
     futBon[pi].extraTurn=true;
-    setS('🎭 תור נוסף ממתין לך!','bon');
+    setS('⚡ תור נוסף ממתין לך!','bon');
     if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
     commitPlay(bonusPend.sc,bonusPend.ws,0,pi); bonusPend=null; return;
   }
@@ -3762,14 +3765,14 @@ function bonusOk(ok=true){
     if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
     commitPlay(bonusPend.sc,bonusPend.ws,0,pi);
     futBon[pi].quadNext=(futBon[pi].quadNext||0)+1; // set AFTER commit so it applies to next turn
-    setS('💎 ×4 בתור הבא!','bon');
+    setS('⚡ ×4 בתור הבא!','bon');
     bonusPend=null; return;
   }
   if(bonusPend.ct==='double2'){
     if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
     commitPlay(bonusPend.sc,bonusPend.ws,0,pi);
     futBon[pi].doubleNext=(futBon[pi].doubleNext||0)+2; // set AFTER commit so it applies to next turns
-    setS('🍏 ×2 בשני התורות הבאים!','bon');
+    setS('⚡ ×2 בשני התורות הבאים!','bon');
     bonusPend=null; return;
   }
   const extra=ok?bonusPend.extra:0;
@@ -5890,7 +5893,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260403105100', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260404200653', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -6252,49 +6255,7 @@ function normalizeFinalLetters(word) {
  * Source of truth: force_accept.json — list is inlined here to avoid external fetch.
  */
 const FORCE_ACCEPT = new Set([
-  // ── 2-letter function words / pronouns ──
-  'או','אז','אל','אם','אף',
-  'בו','בי',
-  'וו','וי',
-  'די',
-  'הן',
-  'זה','זו',
-  'חי',
-  'יש',
-  'כי','כל','כן',
-  'לא','לו','לי',
-  'מה','מי',
-  'נא',
-  'על',
-  'פה',
-  'צו',
-  'קם',
-  'שי',
-  'אך','אש','אט','בא','גל','הל','חף','כד','כת','נר','שם','תג','תן',
-  'חש','דל','לך','מל','מק','קש','רם','רק','רש','שק','לק',
-
-  // ── 2-letter nouns / other ──
-  'אב','אח',
-  'בן','בת',
-  'גב','גד',
-  'דג','דד','דם','דף','דק',
-  'הד','הר',
-  'חג','חם','חן','חץ',
-  'יד','ים',
-  'כף',
-  'לב','לד',
-  'מד','מת',
-  'נס',
-  'סב','סל','סם',
-  'עז','עט','עם','עץ','עת',
-  'צד','צל','צר',
-  'קו','קל','קן','קץ','קר',
-  'רב','רד','רז','רך','רע',
-  'שן','שר',
-  'תא','תו','תל','תם',
-
-  // ── Longer words explicitly accepted (force_accept.json) ──
-  'זכרון','חנון','ישרון','כסא','מסדרון','ספרון','עגלון','פתרון','קטון','שלטון',
+  'אב','או','אז','אח','אט','אי','אכ','אל','אמ','אס','אפ','אצ','אש','את','בא','בד','בה','בו','בז','בי','בכ','בל','בנ','בס','בר','בת','גב','גג','גד','גז','גט','גל','גמ','גנ','גס','גע','גצ','גר','גש','גת','דב','דג','דד','דו','די','דל','דמ','דנ','דע','דפ','דק','דר','דש','דת','הב','הד','הכ','הל','המ','הנ','הס','הר','וו','וי','זב','זג','זה','זו','זז','זח','זכ','זנ','זע','זר','חב','חג','חד','חי','חכ','חל','חמ','חנ','חס','חפ','חצ','חש','חת','טל','טס','טפ','יד','ימ','יש','כד','כה','כח','כי','ככ','כל','כנ','כס','כפ','כר','כת','לא','לב','לה','לו','לח','לט','לי','לכ','לנ','לצ','לק','לש','מג','מד','מה','מח','מט','מי','מל','מנ','מס','מק','מר','מש','מת','נא','נד','נח','נמ','נס','נע','נצ','נר','נש','סב','סד','סכ','סל','סמ','סע','ספ','סר','עב','עד','עז','עט','על','עמ','עפ','עצ','ער','עש','עת','פג','פה','פז','פח','פי','פכ','פס','פר','פת','צא','צב','צג','צד','צו','צח','צי','צל','צמ','צפ','צצ','צר','קד','קו','קח','קט','קל','קמ','קנ','קצ','קר','קש','קת','רב','רז','רכ','רמ','רנ','רע','רפ','רצ','רק','רש','שב','שד','שה','שח','שט','שי','של','שמ','שנ','שפ','שק','שר','שש','תא','תג','תה','תו','תל','תמ','תנ','תס','תר','תש','תת','זכרון','חנון','ישרון','כסא','מסדרון','ספרון','עגלון','פתרון','קטון','שלטון','אותי'
 ].map(normalizeFinalLetters));
 
 /**
