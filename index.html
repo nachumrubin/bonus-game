@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260404211021">
+<meta name="version" content="20260404220239">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -550,6 +550,18 @@ body.tile-selected .bsq:not(.used){
 .online-pill.waiting{background:rgba(245,166,35,.15);color:var(--p2);border:1px solid rgba(245,166,35,.3);}
 .online-pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor;animation:onpulse 1.5s ease-in-out infinite;}
 @keyframes onpulse{0%,100%{opacity:.4}50%{opacity:1}}
+.turn-timer{
+  display:none;align-items:center;justify-content:center;gap:8px;
+  margin:2px 0 3px;padding:4px 8px;border-radius:8px;
+  background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.18);
+  font-weight:900;font-size:12px;color:rgba(255,255,255,.92);
+}
+.turn-timer .tt-label{opacity:.75;font-size:10px;letter-spacing:.3px;}
+.turn-timer .tt-value{
+  min-width:44px;text-align:center;font-family:'Courier New',monospace;
+  color:var(--by);text-shadow:0 0 8px rgba(232,200,64,.35);
+}
+.turn-timer.urgent .tt-value{color:#ff8e8e;text-shadow:0 0 10px rgba(231,76,60,.55);}
 .dc-timer{font-size:48px;font-weight:900;color:#e74c3c;text-align:center;font-family:'Courier New',monospace;text-shadow:0 0 12px rgba(231,76,60,.5);}
 .dc-bar{height:6px;background:rgba(255,255,255,.1);border-radius:3px;margin:8px 0;overflow:hidden;}
 .dc-bar-inner{height:100%;background:#e74c3c;border-radius:3px;transition:width 1s linear;}
@@ -580,7 +592,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260404211021</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260404220239</div>
   </div>
 </div>
 
@@ -817,6 +829,10 @@ body.tile-selected .bsq:not(.used){
     <!-- status -->
     <div class="sbar" id="sbar">בחר אות מהמגש ולחץ על משבצת</div>
     <div id="turn-banner" style="display:none;text-align:center;font-size:13px;font-weight:900;padding:3px 8px;flex-shrink:0;letter-spacing:.5px;"></div>
+    <div id="turn-timer" class="turn-timer">
+      <span class="tt-label">טיימר תור</span>
+      <span class="tt-value" id="turn-timer-value">--</span>
+    </div>
 
     <!-- MOBILE INFO STRIP — replaces side panels on small screens -->
     <div class="info-strip" id="info-strip">
@@ -1668,6 +1684,7 @@ let turn=0, firstMove=true, passCount=0, moveCount=0;
 let placed=[], selTile=null, selPlaced=null, dir='H'; // selPlaced = {r,c} of a picked-up placed tile
 let botBusy=false, bonusPend=null, timerInt=null;
 let moveTimerInt=null, botThinkTimeout=null;
+let onlineTimerRenderInt=null, onlineTurnDeadlineMs=0, localTurnDeadlineMs=0;
 let lastRejWord='', lastRejScore=0, lastRejPlaced=[];
 let replacedThisTurn=null, pendingReview=null;
 let lastMoveCells=[]; // coords of last committed move for highlighting
@@ -1928,6 +1945,7 @@ function renderBoard(){
 }
 
 function updateUI(){
+  refreshSharedTurnTimer();
   document.getElementById('sv1').textContent = scores[0];
   document.getElementById('sv2').textContent = scores[1];
   document.getElementById('sb1').classList.toggle('act', turn===0);
@@ -2049,15 +2067,52 @@ function updateUI(){
   }
 }
 function setS(msg,cls=''){ const e=document.getElementById('sbar'); e.textContent=msg; e.className='sbar '+cls; }
-function clearMoveTimer(){ if(moveTimerInt){ clearInterval(moveTimerInt); moveTimerInt=null; } }
+function clearMoveTimer(){
+  if(moveTimerInt){ clearInterval(moveTimerInt); moveTimerInt=null; }
+  setLocalTurnDeadline(0);
+}
 function clearBotThinkTimeout(){ if(botThinkTimeout){ clearTimeout(botThinkTimeout); botThinkTimeout=null; } }
 function getMoveTimeLimit(){ return gameSettings.timelimit ? gameSettings.botTime * 1000 : null; }
+function clearOnlineTimerRender(){ if(onlineTimerRenderInt){ clearInterval(onlineTimerRenderInt); onlineTimerRenderInt=null; } }
+function formatTimerSec(secLeft){
+  const safe = Math.max(0, secLeft|0);
+  const mm = Math.floor(safe/60);
+  const ss = safe%60;
+  return String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+}
+function refreshSharedTurnTimer(){
+  const wrap = document.getElementById('turn-timer');
+  const value = document.getElementById('turn-timer-value');
+  if(!wrap || !value) return;
+  const activeDeadlineMs = (gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs>0)
+    ? onlineTurnDeadlineMs
+    : localTurnDeadlineMs;
+  const show = !!(gameSettings.timelimit && activeDeadlineMs>0);
+  wrap.style.display = show ? 'flex' : 'none';
+  if(!show) return;
+  const secLeft = Math.max(0, Math.ceil((activeDeadlineMs - Date.now())/1000));
+  value.textContent = formatTimerSec(secLeft);
+  wrap.classList.toggle('urgent', secLeft <= 5);
+}
+function setOnlineTurnDeadline(deadlineMs){
+  onlineTurnDeadlineMs = Number(deadlineMs || 0);
+  clearOnlineTimerRender();
+  refreshSharedTurnTimer();
+  if(gMode==='online' && onlineMode==='live' && gameSettings.timelimit && onlineTurnDeadlineMs>0){
+    onlineTimerRenderInt = setInterval(refreshSharedTurnTimer, 250);
+  }
+}
+function setLocalTurnDeadline(deadlineMs){
+  localTurnDeadlineMs = Number(deadlineMs || 0);
+  refreshSharedTurnTimer();
+}
 function moveTimerBaseMessage(){
   return (gMode==='bot' && turn===1) ? `${pNames[1]} חושב...` : myTurnMsg();
 }
 function updateMoveTimerStatus(secLeft){
   const cls = secLeft <= 5 ? 'err' : '';
-  setS(`${moveTimerBaseMessage()} ⏳ ${secLeft}`, cls);
+  setS(moveTimerBaseMessage(), cls);
+  refreshSharedTurnTimer();
 }
 function forfeitActiveFutureMultiplier(playerIdx){
   if(typeof futBon === 'undefined' || !futBon[playerIdx]) return '';
@@ -2145,7 +2200,20 @@ function startMoveTimer(){
   clearMoveTimer();
   const limitMs = getMoveTimeLimit();
   if(!limitMs) return;
+  if(!(gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs>0)){
+    setLocalTurnDeadline(Date.now() + limitMs);
+  }
+  if(gMode==='online' && onlineMode==='live'){
+    if(!onlineTurnDeadlineMs || onlineTurnDeadlineMs <= Date.now()){
+      setOnlineTurnDeadline(Date.now() + limitMs);
+    } else {
+      refreshSharedTurnTimer();
+    }
+  }
   let secLeft = Math.max(1, Math.ceil(limitMs/1000));
+  if(gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs){
+    secLeft = Math.max(1, Math.ceil((onlineTurnDeadlineMs - Date.now())/1000));
+  }
   updateMoveTimerStatus(secLeft);
   moveTimerInt = setInterval(()=>{
     secLeft--;
@@ -2332,6 +2400,8 @@ function pickStartingTurn(){
 }
 
 function initGame(startingTurn){
+  setOnlineTurnDeadline(0);
+  setLocalTurnDeadline(0);
   initBag();
   bData = Array.from({length:BS}, () => Array(BS).fill(null));
   racks=[[],[]]; scores=[0,0]; futBon=[{},{}]; lockedCells={}; bonusSqUsed={}; bBoardData={};
@@ -3117,6 +3187,7 @@ function getFillableBonusWord(){ return _nextPoolWord(null,'fillable','_fillIdx'
 
 // Build a crossing-words pair dynamically from DICT
 function getDynamicCrossingPair(){
+  var blockedShared = new Set(['א','ה','ו','י']);
   // Find two words that share a letter and can form a valid cross
   // w1 is horizontal (3-6 letters), w2 is vertical (3-6 letters)
   // They must share at least one common letter
@@ -3130,7 +3201,9 @@ function getDynamicCrossingPair(){
       var v = norm(wc[j]);
       // Find a common letter between h and v
       for(var hi = 0; hi < h.length; hi++){
-        var vi = v.indexOf(h[hi]);
+        var shared = h[hi];
+        if(blockedShared.has(shared)) continue;
+        var vi = v.indexOf(shared);
         if(vi >= 0){
           return { h: wc[i], v: wc[j], hpos: hi, vpos: vi };
         }
@@ -3138,7 +3211,7 @@ function getDynamicCrossingPair(){
     }
   }
   // Fallback to a static pair
-  return {h:'ישראל', v:'שלום', hpos:1, vpos:0};
+  return {h:'תפוח', v:'חגים', hpos:3, vpos:0};
 }
 
 function resetBonusOverlay(){
@@ -3691,7 +3764,7 @@ function buildCrossingWords(){
   // Show word hints (first and last letters)
   const hint=document.createElement('div');
   hint.style.cssText='font-size:12px;color:rgba(255,255,255,.65);text-align:center;margin-bottom:8px;line-height:1.8;';
-  hint.innerHTML=`מאוזן: ${h[0]}${'_'.repeat(h.length-2)}${h[h.length-1]}<br>מאונך: ${v[0]}${'_'.repeat(v.length-2)}${v[v.length-1]}`;
+  hint.innerHTML=`מילה 1: ${h[0]}${'_'.repeat(h.length-2)}${h[h.length-1]}<br>מילה 2: ${v[0]}${'_'.repeat(v.length-2)}${v[v.length-1]}`;
   area.insertBefore(hint, miniGrid);
 
   // Input: single Hebrew letter
@@ -3955,6 +4028,11 @@ function nextTurn(){
     if(gMode==='bot'&&turn===1){
       scheduleBotMove();
     } else if(gMode==='online'){
+      if(onlineMode==='live' && gameSettings.timelimit){
+        setOnlineTurnDeadline(Date.now() + getMoveTimeLimit());
+      } else {
+        setOnlineTurnDeadline(0);
+      }
       const myTurn=(myRole==='host')?0:1;
       if(turn===myTurn){ startMoveTimer(); } else { setS(`ממתין ל-${pNames[1-myTurn]}...`); }
     } else {
@@ -3973,6 +4051,11 @@ function nextTurn(){
   if(gMode==='bot'&&turn===1){
     scheduleBotMove();
   } else if(gMode==='online'){
+    if(onlineMode==='live' && gameSettings.timelimit){
+      setOnlineTurnDeadline(Date.now() + getMoveTimeLimit());
+    } else {
+      setOnlineTurnDeadline(0);
+    }
     const myTurn=(myRole==='host')?0:1;
     if(turn===myTurn){
       setS(myTurnMsg());
@@ -5013,6 +5096,11 @@ async function crConfirm(){
   roomCode = code;
   myRole = 'host';
   onlineMode = crSettings.mode;
+  applyOnlineSettings({
+    timelimit: crSettings.mode === 'live' ? crSettings.timelimit : false,
+    botTime: crSettings.botTime,
+    appeals: crSettings.appeals,
+  });
 
   // Write room to Firebase
   const roomData = {
@@ -5181,6 +5269,11 @@ async function mmStartSearch(){
     roomCode = code;
     myRole = 'host';
     onlineMode = mmCurrentMode;
+    applyOnlineSettings({
+      timelimit: mmCurrentMode==='live' ? mmCurrentTL : false,
+      botTime: 20,
+      appeals: 0,
+    });
     const roomData = {
       host: name, guest: null, status:'waiting',
       mode: mmCurrentMode,
@@ -5235,6 +5328,11 @@ function startOnlineGame(){
   if(myRole === 'host'){
     const starter = pickStartingTurn();
     initGame(starter);
+    if(onlineMode === 'live' && gameSettings.timelimit){
+      setOnlineTurnDeadline(Date.now() + getMoveTimeLimit());
+    } else {
+      setOnlineTurnDeadline(0);
+    }
     // Write state then show game screen
     fbRef('rooms/' + roomCode + '/state').set(serializeGameState())
       .then(function(){
@@ -5319,6 +5417,7 @@ function serializeGameState(){
     futBon: futBon ? JSON.parse(JSON.stringify(futBon)) : {0:{},1:{}},
     appealsUsed: {0:(appealsUsed||[0,0])[0], 1:(appealsUsed||[0,0])[1]},
     exchUsed: !!exchUsed,
+    turnDeadlineMs: onlineTurnDeadlineMs || 0,
     ts: firebase.database.ServerValue.TIMESTAMP,
   };
 }
@@ -5410,6 +5509,7 @@ function loadGameState(s){
   ];
 
   exchUsed = !!s.exchUsed;
+  setOnlineTurnDeadline(s.turnDeadlineMs || 0);
   placed = []; selTile = null; selPlaced = null; replacedThisTurn = null;
 
   // buildUnifiedGrid resets bData, lockedCells, bonusSqUsed — save and restore them
@@ -5898,7 +5998,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260404211021', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260404220239', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
