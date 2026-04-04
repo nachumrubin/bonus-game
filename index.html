@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260404200653">
+<meta name="version" content="20260404211021">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -580,7 +580,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260404200653</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260404211021</div>
   </div>
 </div>
 
@@ -2327,11 +2327,15 @@ function myTurnMsg(){
   return 'תורך — בחר אות מהמגש';
 }
 
-function initGame(){
+function pickStartingTurn(){
+  return Math.random() < 0.5 ? 0 : 1;
+}
+
+function initGame(startingTurn){
   initBag();
   bData = Array.from({length:BS}, () => Array(BS).fill(null));
   racks=[[],[]]; scores=[0,0]; futBon=[{},{}]; lockedCells={}; bonusSqUsed={}; bBoardData={};
-  turn=0; firstMove=true; passCount=0; moveCount=0;
+  turn=(startingTurn===0 || startingTurn===1) ? startingTurn : pickStartingTurn(); firstMove=true; passCount=0; moveCount=0;
   placed=[]; selTile=null; selPlaced=null; dir='H'; botBusy=false; bonusPend=null; lastMoveCells=[];
   lastRejWord=''; lastRejScore=0; lastRejPlaced=[]; exchUsed=false;
   replacedThisTurn=null; pendingReview=null;
@@ -5060,7 +5064,7 @@ async function crCancelRoom(){
 
 // ── JOIN BY CODE ──
 function onlineJoinByCode(){
-  document.getElementById('jc-name').value = pNames[0] || 'שחקן 2';
+  document.getElementById('jc-name').value = 'שחקן 2';
   document.getElementById('jc-code').value = '';
   document.getElementById('jc-error').textContent = '';
   ovOpen('ov-join-code');
@@ -5107,7 +5111,7 @@ let mmCurrentMode = 'live';
 let mmCurrentTL = true;
 
 function onlineMatchmaking(){
-  document.getElementById('mm-name').value = pNames[0] || 'שחקן';
+  document.getElementById('mm-name').value = 'שחקן 2';
   document.getElementById('mm-status').style.display = 'none';
   document.getElementById('mm-search-btn').style.display = '';
   mmSetMode('live');
@@ -5128,7 +5132,7 @@ function mmSetTL(v){
 }
 
 async function mmStartSearch(){
-  const name = document.getElementById('mm-name').value.trim() || 'שחקן';
+  const name = document.getElementById('mm-name').value.trim() || 'שחקן 2';
   const strict = document.getElementById('mm-strict-chk').checked;
   pNames[0] = name;
 
@@ -5229,7 +5233,8 @@ function startOnlineGame(){
   document.getElementById('sn2').textContent = pNames[1];
 
   if(myRole === 'host'){
-    initGame();
+    const starter = pickStartingTurn();
+    initGame(starter);
     // Write state then show game screen
     fbRef('rooms/' + roomCode + '/state').set(serializeGameState())
       .then(function(){
@@ -5272,7 +5277,7 @@ function waitForGameStart(){
     if(gameSettings.music && !musicPlaying) startMusic();
     setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
     updateUI(); renderRack(); renderBoard();
-    setS(pNames[0] + ' מתחיל...');
+    setS(pNames[turn] + ' מתחיל...');
     saveOnlineSession();
     setupPresence();
     listenForMoves();
@@ -5893,7 +5898,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260404200653', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260404211021', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
