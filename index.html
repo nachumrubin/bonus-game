@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260404214038">
+<meta name="version" content="20260404220239">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -592,7 +592,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260404214038</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260404220239</div>
   </div>
 </div>
 
@@ -1684,7 +1684,7 @@ let turn=0, firstMove=true, passCount=0, moveCount=0;
 let placed=[], selTile=null, selPlaced=null, dir='H'; // selPlaced = {r,c} of a picked-up placed tile
 let botBusy=false, bonusPend=null, timerInt=null;
 let moveTimerInt=null, botThinkTimeout=null;
-let onlineTimerRenderInt=null, onlineTurnDeadlineMs=0;
+let onlineTimerRenderInt=null, onlineTurnDeadlineMs=0, localTurnDeadlineMs=0;
 let lastRejWord='', lastRejScore=0, lastRejPlaced=[];
 let replacedThisTurn=null, pendingReview=null;
 let lastMoveCells=[]; // coords of last committed move for highlighting
@@ -2067,7 +2067,10 @@ function updateUI(){
   }
 }
 function setS(msg,cls=''){ const e=document.getElementById('sbar'); e.textContent=msg; e.className='sbar '+cls; }
-function clearMoveTimer(){ if(moveTimerInt){ clearInterval(moveTimerInt); moveTimerInt=null; } }
+function clearMoveTimer(){
+  if(moveTimerInt){ clearInterval(moveTimerInt); moveTimerInt=null; }
+  setLocalTurnDeadline(0);
+}
 function clearBotThinkTimeout(){ if(botThinkTimeout){ clearTimeout(botThinkTimeout); botThinkTimeout=null; } }
 function getMoveTimeLimit(){ return gameSettings.timelimit ? gameSettings.botTime * 1000 : null; }
 function clearOnlineTimerRender(){ if(onlineTimerRenderInt){ clearInterval(onlineTimerRenderInt); onlineTimerRenderInt=null; } }
@@ -2081,10 +2084,13 @@ function refreshSharedTurnTimer(){
   const wrap = document.getElementById('turn-timer');
   const value = document.getElementById('turn-timer-value');
   if(!wrap || !value) return;
-  const show = (gMode==='online' && onlineMode==='live' && gameSettings.timelimit && onlineTurnDeadlineMs>0);
+  const activeDeadlineMs = (gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs>0)
+    ? onlineTurnDeadlineMs
+    : localTurnDeadlineMs;
+  const show = !!(gameSettings.timelimit && activeDeadlineMs>0);
   wrap.style.display = show ? 'flex' : 'none';
   if(!show) return;
-  const secLeft = Math.max(0, Math.ceil((onlineTurnDeadlineMs - Date.now())/1000));
+  const secLeft = Math.max(0, Math.ceil((activeDeadlineMs - Date.now())/1000));
   value.textContent = formatTimerSec(secLeft);
   wrap.classList.toggle('urgent', secLeft <= 5);
 }
@@ -2095,6 +2101,10 @@ function setOnlineTurnDeadline(deadlineMs){
   if(gMode==='online' && onlineMode==='live' && gameSettings.timelimit && onlineTurnDeadlineMs>0){
     onlineTimerRenderInt = setInterval(refreshSharedTurnTimer, 250);
   }
+}
+function setLocalTurnDeadline(deadlineMs){
+  localTurnDeadlineMs = Number(deadlineMs || 0);
+  refreshSharedTurnTimer();
 }
 function moveTimerBaseMessage(){
   return (gMode==='bot' && turn===1) ? `${pNames[1]} חושב...` : myTurnMsg();
@@ -2190,6 +2200,9 @@ function startMoveTimer(){
   clearMoveTimer();
   const limitMs = getMoveTimeLimit();
   if(!limitMs) return;
+  if(!(gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs>0)){
+    setLocalTurnDeadline(Date.now() + limitMs);
+  }
   if(gMode==='online' && onlineMode==='live'){
     if(!onlineTurnDeadlineMs || onlineTurnDeadlineMs <= Date.now()){
       setOnlineTurnDeadline(Date.now() + limitMs);
@@ -2388,6 +2401,7 @@ function pickStartingTurn(){
 
 function initGame(startingTurn){
   setOnlineTurnDeadline(0);
+  setLocalTurnDeadline(0);
   initBag();
   bData = Array.from({length:BS}, () => Array(BS).fill(null));
   racks=[[],[]]; scores=[0,0]; futBon=[{},{}]; lockedCells={}; bonusSqUsed={}; bBoardData={};
@@ -5082,6 +5096,11 @@ async function crConfirm(){
   roomCode = code;
   myRole = 'host';
   onlineMode = crSettings.mode;
+  applyOnlineSettings({
+    timelimit: crSettings.mode === 'live' ? crSettings.timelimit : false,
+    botTime: crSettings.botTime,
+    appeals: crSettings.appeals,
+  });
 
   // Write room to Firebase
   const roomData = {
@@ -5250,6 +5269,11 @@ async function mmStartSearch(){
     roomCode = code;
     myRole = 'host';
     onlineMode = mmCurrentMode;
+    applyOnlineSettings({
+      timelimit: mmCurrentMode==='live' ? mmCurrentTL : false,
+      botTime: 20,
+      appeals: 0,
+    });
     const roomData = {
       host: name, guest: null, status:'waiting',
       mode: mmCurrentMode,
@@ -5974,7 +5998,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260404214038', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260404220239', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
