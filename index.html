@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260405213000">
+<meta name="version" content="20260405204046">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -578,19 +578,28 @@ body.tile-selected .bsq:not(.used){
   <div class="hc">
     <div class="hlogo" aria-label="בוסט">
       <div class="logo-container">
-        <svg class="boost-logo" viewBox="0 0 420 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="לוגו בוסט">
+        <svg class="boost-logo" viewBox="0 0 520 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="לוגו בוסט" preserveAspectRatio="xMidYMid meet">
           <defs>
             <linearGradient id="logo-gold" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#f9df67"/>
-              <stop offset="45%" stop-color="#e7c438"/>
-              <stop offset="100%" stop-color="#bb8a11"/>
+              <stop offset="0%" stop-color="#f8dc62"/>
+              <stop offset="55%" stop-color="#e8c840"/>
+              <stop offset="100%" stop-color="#cba92f"/>
             </linearGradient>
+            <filter id="logo-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="6" stdDeviation="2" flood-color="#133042" flood-opacity="0.55"/>
+            </filter>
           </defs>
-          <text x="410" y="88" text-anchor="end" font-family="Heebo, Arial, sans-serif" font-size="106" font-weight="900" fill="url(#logo-gold)" stroke="#87630d" stroke-width="3" paint-order="stroke fill">
-            בוסט
-          </text>
-          <polygon points="255,23 236,59 252,59 230,97 269,57 253,57 272,23" fill="#315d7d"/>
-          <polygon points="254,28 241,54 252,54 238,81 266,53 255,53 268,28" fill="#ffe27a"/>
+          <g fill="url(#logo-gold)" filter="url(#logo-shadow)">
+            <path d="M25 24h78v34H69v57c0 12 7 19 19 19h14v31H80c-35 0-55-19-55-53V24z"/>
+            <path d="M130 24h76c29 0 48 17 48 45v96h-43V75c0-12-7-20-21-20h-17v110h-43V24z"/>
+            <path d="M344 24h43v141h-43V24z"/>
+            <path d="M404 24h77c28 0 49 18 49 44v97h-44V74c0-12-7-19-20-19h-19v110h-43V24z"/>
+            <path d="M282 24h35v141h-35V24z"/>
+          </g>
+          <g filter="url(#logo-shadow)">
+            <circle cx="300" cy="95" r="56" fill="url(#logo-gold)"/>
+            <path d="M301 49L274 95h20l-18 42 50-58h-22l21-30z" fill="#2d6080"/>
+          </g>
         </svg>
       </div>
     </div>
@@ -604,7 +613,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260405213000</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260405204046</div>
   </div>
 </div>
 
@@ -6034,7 +6043,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260405144123', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260405204046', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
