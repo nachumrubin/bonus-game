@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260405144123">
+<meta name="version" content="20260405150000">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -38,9 +38,12 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 /* ── HOME ── */
 #sh{background:var(--bg);background-image:radial-gradient(ellipse at 40% 35%,#4a9bc5,transparent 55%);}
 .hc{display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px;width:100%;max-width:300px;}
-.hlogo{background:var(--bg2);border:3px solid #6ab0d8;border-radius:12px;padding:18px 28px;text-align:center;}
-.hlogo-he{font-size:52px;font-weight:900;color:var(--by);letter-spacing:-2px;line-height:1;text-shadow:2px 2px 0 rgba(0,0,0,.4);}
-.hlogo-sub{font-size:10px;color:rgba(255,255,255,.55);margin-top:3px;letter-spacing:2px;}
+.hlogo{background:linear-gradient(180deg,#2f7196,#295e81);border:3px solid #6ab0d8;border-radius:12px;padding:18px 20px 14px;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.14);}
+.hlogo-he{display:flex;align-items:flex-end;justify-content:center;gap:6px;direction:ltr;line-height:1;}
+.hlogo-ch{font-size:78px;font-weight:900;color:#e8c840;letter-spacing:-1px;text-shadow:0 2px 0 #f8e37a,0 5px 0 #c79112,0 8px 10px rgba(0,0,0,.35);}
+.hlogo-bolt{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:8px;background:radial-gradient(circle at 30% 25%,#f6e38c,#e8c840 56%,#c08f15 100%);border:4px solid #d2a82a;box-shadow:0 2px 0 #f8e58e,0 5px 0 #bf8f12,0 8px 10px rgba(0,0,0,.32);}
+.hlogo-bolt svg{width:30px;height:30px;display:block;fill:#2d6080;filter:drop-shadow(0 1px 0 rgba(255,255,255,.22));}
+.hlogo-sub{font-size:10px;color:rgba(255,255,255,.55);margin-top:8px;letter-spacing:2px;}
 .tdeco{display:flex;gap:4px;justify-content:center;margin-top:8px;}
 .td{width:27px;height:29px;background:var(--tile);border:2px solid var(--tborder);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:var(--ttext);box-shadow:0 2px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.5);}
 .hbtns{display:flex;flex-direction:column;gap:7px;width:100%;}
@@ -578,7 +581,14 @@ body.tile-selected .bsq:not(.used){
 <div id="sh" class="screen">
   <div class="hc">
     <div class="hlogo">
-      <div class="hlogo-he">בוסט</div>
+      <div class="hlogo-he">
+        <span class="hlogo-ch">ב</span>
+        <span class="hlogo-bolt" aria-label="בוסט">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M13.8 1.8L5.5 13h5.9L9.6 22.2 18.5 10h-6.1z"/></svg>
+        </span>
+        <span class="hlogo-ch">ס</span>
+        <span class="hlogo-ch">ט</span>
+      </div>
       <div class="hlogo-sub">שבץ-נא ישראלי 2026 🎵</div>
       <div class="tdeco"><div class="td">ב</div><div class="td">ו</div><div class="td">ס</div><div class="td">ט</div></div>
     </div>
@@ -592,7 +602,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260405144123</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260405150000</div>
   </div>
 </div>
 
