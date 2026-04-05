@@ -118,3 +118,79 @@ test('crossword bonus finalize commits base score + bonus once', () => {
     'should not add bonus into base score before commit'
   );
 });
+
+
+test('runBotSearchSafely returns null result instead of throwing when search crashes', () => {
+  const errors = [];
+  const ctx = buildContextWith(['runBotSearchSafely'], {
+    doBotSearch: () => { throw new Error('boom'); },
+    console: { error: (...args) => errors.push(args.join(' ')) }
+  });
+
+  const out = ctx.runBotSearchSafely();
+  assert.equal(out.ok, false);
+  assert.equal(out.result, null);
+  assert.match(String(out.error), /boom/);
+  assert.equal(errors.length, 1);
+});
+
+
+test('initGame immediately schedules bot move when bot is drawn first', () => {
+  let scheduled = 0;
+  let startedTimer = 0;
+  const ctx = buildContextWith(['initGame'], {
+    BS: 10,
+    BDEFS: Array.from({ length: 12 }, (_, i) => ({ id: i })),
+    BONUS_TYPES: [{ type: 'B1', ic: '⚡' }, { type: 'B2', ic: '🎁' }],
+    Math,
+    gMode: 'bot',
+    // state vars initGame mutates
+    bData: null,
+    racks: null,
+    scores: null,
+    futBon: null,
+    lockedCells: null,
+    bonusSqUsed: null,
+    bBoardData: null,
+    turn: 0,
+    firstMove: false,
+    passCount: 0,
+    moveCount: 0,
+    placed: [],
+    selTile: null,
+    selPlaced: null,
+    dir: 'H',
+    botBusy: false,
+    bonusPend: null,
+    lastMoveCells: [],
+    lastRejWord: '',
+    lastRejScore: 0,
+    lastRejPlaced: [],
+    exchUsed: false,
+    replacedThisTurn: null,
+    pendingReview: null,
+    appealsUsed: [0, 0],
+    jokerTarget: null,
+    pendingLockCell: null,
+    lockInventory: [[], []],
+    bonusAssignment: [],
+    setOnlineTurnDeadline: () => {},
+    setLocalTurnDeadline: () => {},
+    initBag: () => {},
+    draw: () => {},
+    buildUnifiedGrid: () => {},
+    renderBoard: () => {},
+    renderRack: () => {},
+    renderBonusStrips: () => {},
+    updateUI: () => {},
+    setS: () => {},
+    myTurnMsg: () => 'תורך',
+    startMoveTimer: () => { startedTimer++; },
+    scheduleBotMove: () => { scheduled++; }
+  });
+
+  ctx.initGame(1);
+  assert.equal(ctx.turn, 1);
+  assert.equal(scheduled, 1);
+  assert.equal(startedTimer, 0);
+});
