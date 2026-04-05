@@ -8,8 +8,9 @@ test('home logo uses inline provided svg markup', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
   assert.match(html, /class="logo-container"/);
-  assert.match(html, /class="boost-logo" viewBox="0 0 320 120"/);
-  assert.match(html, /class="st0" d="M250 20 h60 v70 h-50 v15 h55 v15 h-70 v-100 z"/);
-  assert.match(html, /fill-rule="evenodd"/);
+  assert.match(html, /class="boost-logo" viewBox="0 0 420 120"/);
+  assert.match(html, /linearGradient id="logo-gold"/);
+  assert.match(html, /text-anchor="end"/);
+  assert.match(html, />\s*בוסט\s*<\/text>/);
   assert.doesNotMatch(html, /src="\.\/assets\/boost-logo\.svg"/);
 });
