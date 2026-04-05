@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260405144123">
+<meta name="version" content="20260405162000">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -38,11 +38,11 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 /* ── HOME ── */
 #sh{background:var(--bg);background-image:radial-gradient(ellipse at 40% 35%,#4a9bc5,transparent 55%);}
 .hc{display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px;width:100%;max-width:300px;}
-.hlogo{background:var(--bg2);border:3px solid #6ab0d8;border-radius:12px;padding:18px 28px;text-align:center;}
-.hlogo-he{font-size:52px;font-weight:900;color:var(--by);letter-spacing:-2px;line-height:1;text-shadow:2px 2px 0 rgba(0,0,0,.4);}
-.hlogo-sub{font-size:10px;color:rgba(255,255,255,.55);margin-top:3px;letter-spacing:2px;}
-.tdeco{display:flex;gap:4px;justify-content:center;margin-top:8px;}
-.td{width:27px;height:29px;background:var(--tile);border:2px solid var(--tborder);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:var(--ttext);box-shadow:0 2px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.5);}
+.hlogo{padding:0;text-align:center;}
+.hlogo-mark{width:260px;max-width:100%;height:auto;display:block;overflow:visible;}
+.hlogo-mark .glyph{font-family:'Heebo',sans-serif;font-weight:900;font-size:92px;fill:url(#logoGold);}
+.hlogo-mark .bolt-disc{fill:url(#logoGold);}
+.hlogo-mark .bolt-shape{fill:#2d6080;}
 .hbtns{display:flex;flex-direction:column;gap:7px;width:100%;}
 .bd{width:100%;padding:11px;border-radius:5px;background:var(--btn);border:2px solid var(--bborder);font-family:'Heebo',sans-serif;font-size:14px;font-weight:700;color:#111;cursor:pointer;box-shadow:0 3px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.6);transition:transform .08s,box-shadow .08s;}
 .bd:active{transform:translateY(2px);box-shadow:0 0 0 var(--tshadow);}
@@ -577,10 +577,25 @@ body.tile-selected .bsq:not(.used){
 <!-- HOME -->
 <div id="sh" class="screen">
   <div class="hc">
-    <div class="hlogo">
-      <div class="hlogo-he">בוסט</div>
-      <div class="hlogo-sub">שבץ-נא ישראלי 2026 🎵</div>
-      <div class="tdeco"><div class="td">ב</div><div class="td">ו</div><div class="td">ס</div><div class="td">ט</div></div>
+    <div class="hlogo" aria-label="בוסט">
+      <svg class="hlogo-mark" viewBox="0 0 360 132" role="img" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="logoGold" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#f3da5f"/>
+            <stop offset="100%" stop-color="#d3ad22"/>
+          </linearGradient>
+          <filter id="logoShadow" x="-20%" y="-20%" width="160%" height="180%">
+            <feDropShadow dx="0" dy="7" stdDeviation="4" flood-color="#14384d" flood-opacity="0.5"/>
+          </filter>
+        </defs>
+        <g filter="url(#logoShadow)">
+          <text class="glyph" x="28" y="96">ב</text>
+          <circle class="bolt-disc" cx="158" cy="72" r="46"/>
+          <path class="bolt-shape" d="M172 27L140 79h21l-16 43 45-62h-25z"/>
+          <text class="glyph" x="214" y="96">ס</text>
+          <text class="glyph" x="286" y="96">ט</text>
+        </g>
+      </svg>
     </div>
     <div class="hbtns">
       <button class="bd" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none;background:linear-gradient(180deg,#e8a020,#c07010);border-color:#a05000;color:#fff;box-shadow:0 3px 0 #703000">▶ המשך משחק שמור</button>
@@ -592,7 +607,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260405144123</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260405162000</div>
   </div>
 </div>
 
