@@ -2679,9 +2679,10 @@ function isBonusPos(r,c){
 }
 function isConnected(){
   if(firstMove) return true;
-  return placed.some(p=>
+  const moveTiles = getMoveTiles();
+  return moveTiles.some(p=>
     [[p.r-1,p.c],[p.r+1,p.c],[p.r,p.c-1],[p.r,p.c+1]]
-    .some(([ar,ac])=>getTile(ar,ac))
+    .some(([ar,ac])=>getCommittedTile(ar,ac))
   );
 }
 function hasGaps(pp){
@@ -3312,6 +3313,12 @@ function triggerBonus(type,ws,sc){
     document.getElementById('bovic').textContent='⚡'; document.getElementById('bovt').textContent='הבוסט החסכוני';
     document.getElementById('bovd').innerHTML=`שיבצת "${ws}" ב-${sc} נקודות<br><small style="opacity:.5">"דין פרוטה כדין מאה" — +1 נקודה!</small>`;
     bonusPend.extra=1; bonusPend.ct='auto';
+  } else if(type==='B2'){
+    // Free 20 points — no game
+    document.getElementById('bovic').textContent='⚡';
+    document.getElementById('bovt').textContent='קבל במתנה 20 נקודות!';
+    document.getElementById('bovd').textContent='';
+    bonusPend.extra=20; bonusPend.ct='auto';
   } else if(type==='B3'){
     // 40pt — unscramble a dynamically chosen word
     var _w3 = getMediumBonusWord();
@@ -3685,7 +3692,7 @@ function buildCrossword(){
       if(extra>0) setS(`🎉 בוסט שבץ נא! +${extra} נקודות (${mbWords.length} מילים)!`,'bon');
       else setS('ללא מילים חוקיות — ללא בוסט','err');
       if(bonusPend&&bonusPend.bsqIdxs) bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
-      if(bonusPend){ commitPlay(bonusPend.sc+extra,bonusPend.ws,extra,bonusPend.player); bonusPend=null; }
+      if(bonusPend){ commitPlay(bonusPend.sc,bonusPend.ws,extra,bonusPend.player); bonusPend=null; }
     };
   };
 
