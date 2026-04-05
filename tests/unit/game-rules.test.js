@@ -118,3 +118,18 @@ test('crossword bonus finalize commits base score + bonus once', () => {
     'should not add bonus into base score before commit'
   );
 });
+
+
+test('runBotSearchSafely returns null result instead of throwing when search crashes', () => {
+  const errors = [];
+  const ctx = buildContextWith(['runBotSearchSafely'], {
+    doBotSearch: () => { throw new Error('boom'); },
+    console: { error: (...args) => errors.push(args.join(' ')) }
+  });
+
+  const out = ctx.runBotSearchSafely();
+  assert.equal(out.ok, false);
+  assert.equal(out.result, null);
+  assert.match(String(out.error), /boom/);
+  assert.equal(errors.length, 1);
+});
