@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260406161220">
+<meta name="version" content="20260406173938">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -568,6 +568,48 @@ body.tile-selected .bsq:not(.used){
 .mm-prefs{display:flex;flex-direction:column;gap:6px;width:100%;background:var(--bg2);border:2px solid #6ab0d8;border-radius:8px;padding:10px;}
 .mm-pref-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.7);}
 .mm-strict{display:flex;align-items:center;gap:6px;font-size:10px;color:rgba(255,255,255,.5);padding-top:6px;border-top:1px solid rgba(255,255,255,.08);margin-top:2px;cursor:pointer;}
+
+/* ── COIN TOSS INTRO ── */
+#scoin{background:radial-gradient(ellipse at 40% 30%,#4f9fc9,#2a5878 72%);}
+.coin-wrap{
+  background:rgba(18,40,58,.75);
+  border:2px solid #6ab0d8;
+  border-radius:12px;
+  width:min(320px,92vw);
+  padding:20px 16px;
+  text-align:center;
+  box-shadow:0 12px 24px rgba(0,0,0,.35);
+}
+.coin-title{font-size:17px;font-weight:900;color:#fff;margin-bottom:4px;}
+.coin-sub{font-size:12px;color:rgba(255,255,255,.7);min-height:22px;}
+.coin-disc{
+  width:118px;height:118px;border-radius:50%;
+  margin:14px auto 12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:900;color:#3a2b00;
+  text-align:center;line-height:1.2;padding:8px;
+  border:4px solid #d19e12;
+  background:radial-gradient(circle at 30% 28%,#fff6b5,#f4c341 45%,#ce8f0f 100%);
+  box-shadow:0 8px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.65);
+  transform-style:preserve-3d;
+}
+.coin-disc.flipping{animation:coinFlip 1.6s ease-in-out forwards;}
+@keyframes coinFlip{
+  0%{transform:rotateY(0) translateY(0);}
+  20%{transform:rotateY(360deg) translateY(-4px);}
+  50%{transform:rotateY(860deg) translateY(-12px);}
+  70%{transform:rotateY(1220deg) translateY(-6px);}
+  100%{transform:rotateY(1440deg) translateY(0);}
+}
+.coin-msg{font-size:19px;font-weight:900;color:#ffd65e;min-height:28px;margin-bottom:12px;}
+.coin-enter{
+  width:100%;padding:10px 12px;
+  border-radius:6px;border:2px solid #2a6a2a;
+  background:linear-gradient(180deg,#5ab85a,#3a8a3a);
+  color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:800;
+  box-shadow:0 3px 0 #1a4a1a;cursor:pointer;
+}
+.coin-enter:disabled{opacity:.55;cursor:default;box-shadow:none;}
 </style>
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
@@ -592,7 +634,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406161220</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406173938</div>
   </div>
 </div>
 
@@ -768,6 +810,17 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" style="flex:1;font-size:12px" onclick="goHome()">← חזרה</button>
       <button class="bd g" style="flex:2;font-size:13px" onclick="startGame()">▶ שחק!</button>
     </div>
+  </div>
+</div>
+
+<!-- COIN TOSS / FIRST TURN -->
+<div id="scoin" class="screen hidden">
+  <div class="coin-wrap">
+    <div class="coin-title">הגרלת שחקן פותח</div>
+    <div class="coin-sub" id="coin-sub">מטילים מטבע...</div>
+    <div class="coin-disc" id="coin-disc">🪙</div>
+    <div class="coin-msg" id="coin-msg">בהצלחה!</div>
+    <button id="coin-enter" class="coin-enter" type="button" onclick="enterGameAfterCoinToss()" disabled>לחצו כדי להיכנס למשחק</button>
   </div>
 </div>
 
@@ -1702,6 +1755,7 @@ let lockedCells={};   // key `r,c` -> {owner:0|1, rounds:n}
 let pendingLockCell=null;
 let bonusSqUsed={};   // index -> bool
 let bBoardData={};    // "br,bc" -> {letter,val,isJoker} for committed bonus tiles
+let pendingStartingTurn=null;
 // Each player gets 3 locks: [3,3,5]. Once used, gone.
 let lockInventory=[[3,3,5],[3,3,5]];
 
@@ -2403,10 +2457,7 @@ function startGame(){
   pNames[0] = document.getElementById('ip1').value.trim()||'שחקן 1';
   pNames[1] = document.getElementById('ip2').value.trim()||(gMode==='bot'?'המחשב':'שחקן 2');
   ['sn1','sn2','en1','en2'].forEach((id,i)=>document.getElementById(id).textContent=pNames[i%2]);
-  initGame();
-  showSc('sg');
-  if(gameSettings.music && !musicPlaying) startMusic();
-  setTimeout(() => { computeSizes(); renderBoard(); renderBonusStrips(); }, 50);
+  showCoinTossIntro(pickStartingTurn());
 }
 
 function myTurnMsg(){
@@ -2417,6 +2468,50 @@ function myTurnMsg(){
 
 function pickStartingTurn(){
   return Math.random() < 0.5 ? 0 : 1;
+}
+
+function getCoinWinnerLabel(startingTurn){
+  return pNames[startingTurn] || `שחקן ${startingTurn+1}`;
+}
+
+function getFirstTurnAnnouncement(startingTurn){
+  return `${getCoinWinnerLabel(startingTurn)} מתחיל ראשון!`;
+}
+
+function showCoinTossIntro(startingTurn){
+  pendingStartingTurn = startingTurn;
+  showSc('scoin');
+  const coinDisc = document.getElementById('coin-disc');
+  const coinSub = document.getElementById('coin-sub');
+  const coinMsg = document.getElementById('coin-msg');
+  const enterBtn = document.getElementById('coin-enter');
+
+  coinDisc.textContent = '🪙';
+  coinDisc.classList.remove('flipping');
+  coinSub.textContent = 'מטילים מטבע...';
+  coinMsg.textContent = '';
+  enterBtn.disabled = true;
+
+  void coinDisc.offsetWidth;
+  coinDisc.classList.add('flipping');
+
+  setTimeout(function(){
+    coinDisc.classList.remove('flipping');
+    coinDisc.textContent = getCoinWinnerLabel(startingTurn);
+    coinSub.textContent = 'ההגרלה הסתיימה';
+    coinMsg.textContent = getFirstTurnAnnouncement(startingTurn);
+    enterBtn.disabled = false;
+  }, 1600);
+}
+
+function enterGameAfterCoinToss(){
+  if(pendingStartingTurn!==0 && pendingStartingTurn!==1) return;
+  const startingTurn = pendingStartingTurn;
+  pendingStartingTurn = null;
+  initGame(startingTurn);
+  showSc('sg');
+  if(gameSettings.music && !musicPlaying) startMusic();
+  setTimeout(() => { computeSizes(); renderBoard(); renderBonusStrips(); }, 50);
 }
 
 function initGame(startingTurn){
@@ -6042,7 +6137,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260406161220', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260406173938', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
