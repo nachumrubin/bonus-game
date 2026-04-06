@@ -194,3 +194,54 @@ test('initGame immediately schedules bot move when bot is drawn first', () => {
   assert.equal(scheduled, 1);
   assert.equal(startedTimer, 0);
 });
+
+test('renderRack shows side racks only in 1v1 mode', () => {
+  const byId = new Map();
+  const getEl = (id) => {
+    if (!byId.has(id)) {
+      byId.set(id, {
+        id,
+        innerHTML: '',
+        style: {},
+        children: [],
+        appendChild(node) { this.children.push(node); },
+      });
+    }
+    return byId.get(id);
+  };
+  const document = {
+    getElementById: getEl,
+    createElement: () => ({
+      className: '',
+      innerHTML: '',
+      style: {},
+      addEventListener: () => {},
+    })
+  };
+
+  const sideCalls = [];
+  const clearCalls = [];
+  const ctx = buildContextWith(['renderRack'], {
+    gMode: 'bot',
+    turn: 0,
+    selTile: null,
+    racks: [['א', 'ב'], ['ג', 'ד']],
+    HV: {},
+    document,
+    computeSizes: () => {},
+    _renderSideRack: (player, anim) => sideCalls.push({ player, anim }),
+    _clearSideRack: (player) => clearCalls.push(player),
+  });
+
+  ctx.renderRack('turn');
+  assert.equal(sideCalls.length, 0);
+  assert.deepEqual(clearCalls, [0, 1]);
+
+  sideCalls.length = 0;
+  clearCalls.length = 0;
+  ctx.gMode = 'vs';
+  ctx.renderRack('turn');
+  assert.equal(sideCalls.length, 2);
+  assert.deepEqual(sideCalls.map((s) => s.player), [0, 1]);
+  assert.equal(clearCalls.length, 0);
+});

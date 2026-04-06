@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260406144440">
+<meta name="version" content="20260406161220">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -592,7 +592,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406144440</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406161220</div>
   </div>
 </div>
 
@@ -4458,8 +4458,14 @@ function renderRack(animate){
     el.appendChild(t);
   }
 
-  _renderSideRack(0, animate === 'turn' ? (turn === 0 ? 'out' : 'in') : null);
-  _renderSideRack(1, animate === 'turn' ? (turn === 1 ? 'out' : 'in') : null);
+  const showBothRacks = (gMode === 'vs');
+  if(showBothRacks){
+    _renderSideRack(0, animate === 'turn' ? (turn === 0 ? 'out' : 'in') : null);
+    _renderSideRack(1, animate === 'turn' ? (turn === 1 ? 'out' : 'in') : null);
+  } else {
+    _clearSideRack(0);
+    _clearSideRack(1);
+  }
 
   const el2 = document.getElementById('brack2');
   const brack2Row = document.getElementById('brack2-row');
@@ -4467,6 +4473,13 @@ function renderRack(animate){
   if(brack2Row) brack2Row.style.display = 'none';
 
   computeSizes();
+}
+
+function _clearSideRack(player){
+  const tilesEl = document.getElementById('ss-tiles-p' + (player+1));
+  const labelEl = document.getElementById('ss-label-p' + (player+1));
+  if(tilesEl) tilesEl.innerHTML = '';
+  if(labelEl) labelEl.style.display = 'none';
 }
 
 function _renderSideRack(player, animate){
@@ -6029,7 +6042,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260406144440', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260406161220', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
