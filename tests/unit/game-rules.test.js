@@ -195,6 +195,20 @@ test('initGame immediately schedules bot move when bot is drawn first', () => {
   assert.equal(startedTimer, 0);
 });
 
+test('getCoinFaceLabel maps opening player to coin side text', () => {
+  const ctx = buildContextWith(['getCoinFaceLabel']);
+  assert.equal(ctx.getCoinFaceLabel(0), 'עץ');
+  assert.equal(ctx.getCoinFaceLabel(1), 'פלי');
+});
+
+test('getFirstTurnAnnouncement includes selected player name', () => {
+  const ctx = buildContextWith(['getFirstTurnAnnouncement'], {
+    pNames: ['רות', 'דן']
+  });
+  assert.equal(ctx.getFirstTurnAnnouncement(0), 'רות מתחיל ראשון!');
+  assert.equal(ctx.getFirstTurnAnnouncement(1), 'דן מתחיל ראשון!');
+});
+
 test('renderRack shows side racks only in 1v1 mode', () => {
   const byId = new Map();
   const getEl = (id) => {
