@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260406172912">
+<meta name="version" content="20260406173938">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -586,7 +586,8 @@ body.tile-selected .bsq:not(.used){
   width:118px;height:118px;border-radius:50%;
   margin:14px auto 12px;
   display:flex;align-items:center;justify-content:center;
-  font-size:24px;font-weight:900;color:#3a2b00;
+  font-size:18px;font-weight:900;color:#3a2b00;
+  text-align:center;line-height:1.2;padding:8px;
   border:4px solid #d19e12;
   background:radial-gradient(circle at 30% 28%,#fff6b5,#f4c341 45%,#ce8f0f 100%);
   box-shadow:0 8px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.65);
@@ -633,7 +634,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406172912</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406173938</div>
   </div>
 </div>
 
@@ -817,7 +818,7 @@ body.tile-selected .bsq:not(.used){
   <div class="coin-wrap">
     <div class="coin-title">הגרלת שחקן פותח</div>
     <div class="coin-sub" id="coin-sub">מטילים מטבע...</div>
-    <div class="coin-disc" id="coin-disc">🎲</div>
+    <div class="coin-disc" id="coin-disc">🪙</div>
     <div class="coin-msg" id="coin-msg">בהצלחה!</div>
     <button id="coin-enter" class="coin-enter" type="button" onclick="enterGameAfterCoinToss()" disabled>לחצו כדי להיכנס למשחק</button>
   </div>
@@ -2469,13 +2470,12 @@ function pickStartingTurn(){
   return Math.random() < 0.5 ? 0 : 1;
 }
 
-function getCoinFaceLabel(startingTurn){
-  return startingTurn===0 ? 'עץ' : 'פלי';
+function getCoinWinnerLabel(startingTurn){
+  return pNames[startingTurn] || `שחקן ${startingTurn+1}`;
 }
 
 function getFirstTurnAnnouncement(startingTurn){
-  const playerName = pNames[startingTurn] || `שחקן ${startingTurn+1}`;
-  return `${playerName} מתחיל ראשון!`;
+  return `${getCoinWinnerLabel(startingTurn)} מתחיל ראשון!`;
 }
 
 function showCoinTossIntro(startingTurn){
@@ -2486,7 +2486,7 @@ function showCoinTossIntro(startingTurn){
   const coinMsg = document.getElementById('coin-msg');
   const enterBtn = document.getElementById('coin-enter');
 
-  coinDisc.textContent = '🎲';
+  coinDisc.textContent = '🪙';
   coinDisc.classList.remove('flipping');
   coinSub.textContent = 'מטילים מטבע...';
   coinMsg.textContent = '';
@@ -2497,7 +2497,7 @@ function showCoinTossIntro(startingTurn){
 
   setTimeout(function(){
     coinDisc.classList.remove('flipping');
-    coinDisc.textContent = getCoinFaceLabel(startingTurn);
+    coinDisc.textContent = getCoinWinnerLabel(startingTurn);
     coinSub.textContent = 'ההגרלה הסתיימה';
     coinMsg.textContent = getFirstTurnAnnouncement(startingTurn);
     enterBtn.disabled = false;
@@ -6137,7 +6137,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260406172912', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260406173938', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
