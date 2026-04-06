@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260406185115">
+<meta name="version" content="20260406202835">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -379,11 +379,6 @@ body.tile-selected .bsq:not(.used){
 .shin:focus{border-color:var(--by);}
 .shres{text-align:center;font-size:14px;font-weight:700;min-height:22px;margin-bottom:8px;}
 .shres.ok{color:#8eff8e;}.shres.bad{color:#ff8e8e;}
-.hkb{display:flex;flex-direction:column;gap:3px;margin-bottom:10px;}
-.hkb-row{display:flex;gap:3px;justify-content:center;}
-.hk{width:clamp(26px,7vw,40px);height:clamp(26px,7vw,40px);background:var(--tile);border:2px solid var(--tborder);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:clamp(11px,2.8vw,17px);font-weight:900;color:#111;cursor:pointer;box-shadow:0 2px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.5);user-select:none;-webkit-user-select:none;transition:transform .07s,box-shadow .07s;}
-.hk:active{transform:translateY(1px);box-shadow:0 0 0 var(--tshadow);}
-.hk.wide{width:clamp(40px,10vw,56px);font-size:10px;background:#b8b4a4;}
 /* end */
 .wc{font-size:44px;text-align:center;margin-bottom:4px;}
 .wn{font-size:20px;font-weight:900;text-align:center;color:var(--by);margin-bottom:3px;}
@@ -632,7 +627,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406185115</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406202835</div>
   </div>
 </div>
 
@@ -831,7 +826,7 @@ body.tile-selected .bsq:not(.used){
       <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
       <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
       <button class="tb" onclick="doExchange()">החלפת<br>אות</button>
-      <button class="tb" onclick="openShailta()"><span class="tb-ic">⌨️</span><span class="tb-tx">שאילתא</span></button>
+      <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתא</span></button>
       
       <button class="tb" onclick="showLegend()"><span class="tb-ic">📋</span><span class="tb-tx">טבלת אותיות</span></button>
       <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
@@ -1098,7 +1093,6 @@ body.tile-selected .bsq:not(.used){
     <div class="ovd">האם המילה קיימת? <span style="color:#ff8e8e">הטיימר ממשיך לרוץ!</span></div>
     <div class="shin-wrap"><input class="shin" id="shin" type="text" placeholder="הקלד מילה..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
     <div class="shres" id="shres"></div>
-    <div class="hkb" id="hkb"></div>
     <div class="ovbtns">
       <button class="ovb p" onclick="checkShailta()">בדוק ✓</button>
       <button class="ovb s" onclick="ovClose('ov-shailta')">סגור</button>
@@ -1641,13 +1635,6 @@ const BONUS_TYPES = [
 
 // bonusAssignment[idx] = {type, pts, ic} — set at game start
 let bonusAssignment = [];
-
-// Hebrew keyboard rows for שאילתא
-const KB_ROWS = [
-  ['א','ב','ג','ד','ה','ו','ז'],
-  ['ח','ט','י','כ','ל','מ','נ'],
-  ['ס','ע','פ','צ','ק','ר','ש','ת'],
-];
 
 // Bot word lists — built lazily after dict loads
 let BOT_ALL = [], BOT_EASY = [], BOT_MED = [];
@@ -2747,22 +2734,18 @@ function doRecall(){
 }
 
 // ── שאילתא ──
-function buildKB(){
-  const c=document.getElementById('hkb'); if(c.children.length>0)return;
-  KB_ROWS.forEach((row,ri)=>{
-    const r=document.createElement('div'); r.className='hkb-row';
-    row.forEach(l=>{ const b=document.createElement('div'); b.className='hk'; b.textContent=l; b.addEventListener('click',()=>kbPress(l)); r.appendChild(b); });
-    if(ri===KB_ROWS.length-1){
-      const del=document.createElement('div'); del.className='hk wide'; del.textContent='⌫'; del.addEventListener('click',kbDel); r.appendChild(del);
-      const cl=document.createElement('div'); cl.className='hk wide'; cl.textContent='נקה'; cl.addEventListener('click',kbClear); r.appendChild(cl);
-    }
-    c.appendChild(r);
-  });
+function openShailta(){
+  const input = document.getElementById('shin');
+  const result = document.getElementById('shres');
+  input.value='';
+  result.textContent='';
+  result.className='shres';
+  ovOpen('ov-shailta');
+  setTimeout(()=>{
+    input.focus();
+    input.select();
+  },0);
 }
-function kbPress(l){ const i=document.getElementById('shin'); i.value=(i.value+l).slice(0,10); document.getElementById('shres').textContent=''; }
-function kbDel(){ const i=document.getElementById('shin'); i.value=i.value.slice(0,-1); document.getElementById('shres').textContent=''; }
-function kbClear(){ document.getElementById('shin').value=''; document.getElementById('shres').textContent=''; }
-function openShailta(){ buildKB(); kbClear(); document.getElementById('shres').textContent=''; ovOpen('ov-shailta'); }
 function checkShailta(){
   const inp=document.getElementById('shin');
   const w=inp.value.trim();
@@ -3572,7 +3555,7 @@ function buildFillMiddle(answer){
   });
 
   // Backspace — undo last filled slot
-  const bk=document.createElement('div'); bk.className='hk wide'; bk.textContent='⌫';
+  const bk=document.createElement('div'); bk.className='ut'; bk.textContent='⌫';
   bk.addEventListener('click',()=>{
     for(let i=n-1;i>=0;i--){
       if(typed[i]!==null){
@@ -5040,39 +5023,23 @@ function restorePendingMoveSnapshot(){
   updateUI();
 }
 
-// ===== Keyboard support for שאילתא =====
-function setupShailtaKeyboardSupport(){
+// ===== שאילתא input support =====
+function setupShailtaInputSupport(){
   const input = document.getElementById('shin');
-  if(!input || input.dataset.kbReady === '1') return;
-  input.dataset.kbReady = '1';
+  if(!input || input.dataset.shReady === '1') return;
+  input.dataset.shReady = '1';
   input.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter'){
       e.preventDefault();
       checkShailta();
-      return;
     }
   });
   input.addEventListener('input', ()=>{
-    document.getElementById('shres').textContent='';
-    document.getElementById('shres').className='shres';
+    const res = document.getElementById('shres');
+    res.textContent='';
+    res.className='shres';
   });
 }
-const _origOpenShailta = openShailta;
-openShailta = function(){
-  _origOpenShailta.apply(this, arguments);
-  setupShailtaKeyboardSupport();
-  const input = document.getElementById('shin');
-  if(input){
-    input.focus();
-    input.select();
-  }
-};
-const _origKbPress = kbPress;
-kbPress = function(ch){
-  _origKbPress(ch);
-  const input = document.getElementById('shin');
-  if(input) input.focus();
-};
 
 // ===== Hook settings persistence =====
 const _origSettToggle = settToggle;
@@ -5089,7 +5056,7 @@ settAdj = function(key,delta){
 // initialize persisted settings + keyboard support + champions on load
 loadSettings();
 document.addEventListener('DOMContentLoaded', ()=>{
-  setupShailtaKeyboardSupport();
+  setupShailtaInputSupport();
   renderChampions();
 });
 
@@ -6135,7 +6102,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260406185115', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260406202835', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
