@@ -52,21 +52,15 @@ test('generateFinalLetterVariants offers final-letter variant for ending letters
   assert.deepEqual(Array.from(hv.generateFinalLetterVariants('ספר')), ['ספר']);
 });
 
-test('validate prefers FORCE_REJECT over FORCE_ACCEPT', () => {
-  const hv = loadValidator();
-  hv.FORCE_ACCEPT.add('עלי');
+test('validate accepts only dictionary entries', () => {
+  const hv = loadValidator(['אבג']);
 
-  const out = hv.validate('עלי');
+  assert.equal(hv.validate('אבג').valid, true);
+  assert.equal(hv.validate('אבג').reason, 'b64_dictionary');
+
+  const out = hv.validate('אג');
   assert.equal(out.valid, false);
-  assert.equal(out.reason, 'force_reject');
-});
-
-test('validate accepts configured short words from FORCE_ACCEPT', () => {
-  const hv = loadValidator();
-
-  const out = hv.validate('אב');
-  assert.equal(out.valid, true);
-  assert.equal(out.reason, 'force_accept');
+  assert.equal(out.reason, 'not_in_b64_dictionary');
 });
 
 test('validate accepts dictionary hit through final-letter variant', () => {
@@ -74,14 +68,6 @@ test('validate accepts dictionary hit through final-letter variant', () => {
 
   const out = hv.validate('ספרנ');
   assert.equal(out.valid, true);
-  assert.equal(out.reason, 'exact');
+  assert.equal(out.reason, 'b64_dictionary');
   assert.equal(out.surface, 'ספרן');
-});
-
-test('validate rejects too-short words not in FORCE_ACCEPT', () => {
-  const hv = loadValidator(['אבג']);
-
-  const out = hv.validate('אג');
-  assert.equal(out.valid, false);
-  assert.equal(out.reason, 'too_short');
 });

@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260406083110">
+<meta name="version" content="20260406141932">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -592,7 +592,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406083110</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260406141932</div>
   </div>
 </div>
 
@@ -1512,27 +1512,8 @@ function dictHasPlene(word){
 function analyze(rawWord){
   const word=rawWord.trim().split("").filter(ch=>ch>="א"&&ch<="ת").join("");
   if(!word) return {valid:false,word,lemma:null,reason:"empty"};
-  if(EXACT_REJECTS.has(word)) return {valid:false,word,lemma:null,reason:"exact-blacklist"};
-  // Check dictionary FIRST — if the word is explicitly there, accept it regardless of suffix filters
-  if(dictHas(word)){
-    let lemma=word;
-    for(const cand of candidateLemmas(word)){ if(dictHas(cand)&&cand!==word){lemma=cand;break;} }
-    return {valid:true,word,lemma,reason:"exact-match"};
-  }
-  // Only apply possessive filter for words NOT in the dictionary directly
-  if(looksLikePossessive(word)) return {valid:false,word,lemma:null,reason:"possessive-suffix"};
-  // Only apply heuristic for words that don't look like verb conjugations
-  // Future tense verbs (start with י/ת/נ/א + consonant) should NOT be guessed via lemma
-  const _looksLikeVerb = word.length >= 4 && 'יתנא'.includes(word[0]) && !'אויה'.includes(word[1]);
-  const lemma = _looksLikeVerb ? null : guessLemmaFromMissing(word);
-  if(lemma) return {valid:true,word,lemma,reason:"heuristic-lemma"};
-  // כתיב מלא/חסר: accept if a plene or defective spelling variant is in the dictionary
-  if(DEFECTIVE_ACCEPT.has(word)) return {valid:true,word,lemma:word,reason:"defective-accept"};
-  const pleneMatch=dictHasPlene(word);
-  if(pleneMatch){
-    return {valid:true,word,lemma:pleneMatch,reason:"plene-variant"};
-  }
-  return {valid:false,word,lemma:null,reason:"not-found"};
+  if(dictHas(word)) return {valid:true,word,lemma:word,reason:"exact-match"};
+  return {valid:false,word,lemma:null,reason:"not-in-b64-dictionary"};
 }
 
 function isValid(w){
@@ -6022,7 +6003,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260406083110', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260406141932', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -6337,10 +6318,8 @@ window.addEventListener('beforeunload', function(){ if(gMode === 'online') saveO
  *
  * VALIDATION LOGIC:
  *   1. Normalize input (strip non-Hebrew, collapse final letters)
- *   2. Check FORCE_REJECT  → immediate reject
- *   3. Check FORCE_ACCEPT  → immediate accept (bypasses length check; used for 2-letter words)
- *   4. Reject words shorter than MIN_WORD_LENGTH (3)
- *   5. Exact dictionary lookup (with final-letter normalization only)
+ *   2. Exact dictionary lookup from the embedded B64 dictionary
+ *      (with final-letter normalization only)
  *
  * No prefix stripping, no suffix stripping, no ktiv/orthographic variants.
  *
@@ -6362,7 +6341,6 @@ const _HV = {
   DICT: null,              // reference to game's DICT Set
 };
 
-const MIN_WORD_LENGTH = 3;
 
 function normalizeFinalLetters(word) {
   return String(word)
@@ -6378,47 +6356,8 @@ function normalizeFinalLetters(word) {
 // (Add/remove entries as the game evolves)
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Words that bypass minimum-length and dictionary checks and are always accepted.
- * Primarily used for valid 2-letter Hebrew words and common short words.
- * Source of truth: force_accept.json — list is inlined here to avoid external fetch.
- */
-const FORCE_ACCEPT = new Set([
-  'אב','או','אז','אח','אט','אי','אכ','אל','אמ','אס','אפ','אצ','אש','את','בא','בד','בה','בו','בז','בי','בכ','בל','בנ','בס','בר','בת','גב','גג','גד','גז','גט','גל','גמ','גנ','גס','גע','גצ','גר','גש','גת','דב','דג','דד','דו','די','דל','דמ','דנ','דע','דפ','דק','דר','דש','דת','הב','הד','הכ','הל','המ','הנ','הס','הר','וו','וי','זב','זג','זה','זו','זז','זח','זכ','זנ','זע','זר','חב','חג','חד','חי','חכ','חל','חמ','חנ','חס','חפ','חצ','חש','חת','טל','טס','טפ','יד','ימ','יש','כד','כה','כח','כי','ככ','כל','כנ','כס','כפ','כר','כת','לא','לב','לה','לו','לח','לט','לי','לכ','לנ','לצ','לק','לש','מג','מד','מה','מח','מט','מי','מל','מנ','מס','מק','מר','מש','מת','נא','נד','נח','נמ','נס','נע','נצ','נר','נש','סב','סד','סכ','סל','סמ','סע','ספ','סר','עב','עד','עז','עט','על','עמ','עפ','עצ','ער','עש','עת','פג','פה','פז','פח','פי','פכ','פס','פר','פת','צא','צב','צג','צד','צו','צח','צי','צל','צמ','צפ','צצ','צר','קד','קו','קח','קט','קל','קמ','קנ','קצ','קר','קש','קת','רב','רז','רכ','רמ','רנ','רע','רפ','רצ','רק','רש','שב','שד','שה','שח','שט','שי','של','שמ','שנ','שפ','שק','שר','שש','תא','תג','תה','תו','תל','תמ','תנ','תס','תר','תש','תת','זכרון','חנון','ישרון','כסא','מסדרון','ספרון','עגלון','פתרון','קטון','שלטון','אותי'
-].map(normalizeFinalLetters));
-
-/**
- * Words that are always rejected — pronouns, preposition+pronoun combos,
- * and anything hspell includes that makes no sense as a standalone game word.
- * Grow this list over time as the bot surfaces bad entries.
- */
-const FORCE_REJECT = new Set([
-  // Pronoun + preposition compounds
-  'אותה','אותו','אותך','אותכם','אותכן','אותם','אותן','אותנו',
-  'אחריה','אחריהם','אחריהן','אחריו','אחריי','אחרייך','אחריך','אחריכם','אחריכן','אחרינו',
-  'איתה','איתו','איתי','איתך','איתכם','איתכן','איתם','איתן','איתנו',
-  'אלי','אליה','אליהם','אליהן','אליו','אלייך','אליך','אליכם','אליכן','אלינו',
-  'אצלה','אצלו','אצלי','אצלך','אצלכם','אצלכן','אצלם','אצלן','אצלנו',
-  'בלעדי','בלעדיה','בלעדיהם','בלעדיהן','בלעדיו','בלעדייך','בלעדיך','בלעדיכם','בלעדיכן','בלעדינו',
-  'בשבילה','בשבילהן','בשבילו','בשבילי','בשבילך','בשבילכם','בשבילכן','בשבילם','בשבילנו',
-  'כמוה','כמוהו','כמוך','כמוכם','כמוכן','כמונו','כמוני','כמותם','כמותן',
-  'לידה','לידו','לידי','לידך','לידכם','לידכן','לידם','לידן','לידנו',
-  'למענה','למענו','למעני','למענך','למענכם','למענכן','למענם','למענן','למעננו',
-  'לפניה','לפניהם','לפניהן','לפניו','לפניי','לפנייך','לפניך','לפניכם','לפניכן','לפנינו',
-  'מאחוריה','מאחוריהם','מאחוריהן','מאחוריו','מאחוריי','מאחורייך','מאחוריך','מאחוריכם','מאחוריכן','מאחורינו',
-  'מולה','מולו','מולי','מולך','מולכם','מולכן','מולם','מולן','מולנו',
-  'ממך','ממכם','ממכן','ממנה','ממנו','ממני',
-  'נגדה','נגדו','נגדי','נגדך','נגדכם','נגדכן','נגדם','נגדן','נגדנו',
-  'עלי','עליה','עליהם','עליהן','עליו','עלייך','עליך','עליכם','עליכן','עלינו',
-  'עמה','עמהן','עמו','עמי','עמך','עמכם','עמכן','עמם','עמנו',
-  'שלה','שלהם','שלהן','שלו','שלי','שלך','שלכם','שלכן','שלנו',
-  'תוכה','תוכו','תוכי','תוכך','תוכם','תוכן','תוכנו',
-].map(normalizeFinalLetters));
-
-const FORCE_ACCEPT_REJECT_OVERLAP = [...FORCE_ACCEPT].filter(word => FORCE_REJECT.has(word));
-if (FORCE_ACCEPT_REJECT_OVERLAP.length && typeof console !== 'undefined') {
-  console.warn('[HV] Words present in both FORCE_ACCEPT and FORCE_REJECT:', FORCE_ACCEPT_REJECT_OVERLAP.join(', '));
-}
+// Dictionary-only validation: all override lists were removed so only
+// words from the embedded B64 dictionary are accepted.
 
 // ─────────────────────────────────────────────────────────────
 // LAYER 1 — SURFACE NORMALIZATION
@@ -6483,10 +6422,7 @@ function _dictLookup(word) {
  * Full analysis of a Hebrew word. Returns rich debug info.
  * Validation order:
  *   1. Normalize
- *   2. FORCE_REJECT
- *   3. FORCE_ACCEPT  (bypasses length check)
- *   4. Minimum length (MIN_WORD_LENGTH = 3)
- *   5. Exact dictionary lookup
+ *   2. Exact B64 dictionary lookup
  *
  * @param {string} word
  * @returns {object}
@@ -6499,44 +6435,23 @@ function analyzeHebrewWord(word) {
     cleaned,
     normalized,
     accepted: false,
-    acceptedBy: null,       // { path, surface, confidence }
+    acceptedBy: null,
     rejectedReasons: [],
   };
 
-  // ── 1. Empty / non-Hebrew ──
   if (!normalized) {
     result.rejectedReasons.push('empty_or_non_hebrew');
     return result;
   }
 
-  // ── 2. FORCE_REJECT ──
-  if (FORCE_REJECT.has(normalized)) {
-    result.rejectedReasons.push('force_reject');
-    return result;
-  }
-
-  // ── 3. FORCE_ACCEPT (bypasses length check) ──
-  if (FORCE_ACCEPT.has(normalized)) {
-    result.accepted = true;
-    result.acceptedBy = { path: 'force_accept', surface: normalized, confidence: 'high' };
-    return result;
-  }
-
-  // ── 4. Minimum length ──
-  if (normalized.length < MIN_WORD_LENGTH) {
-    result.rejectedReasons.push('too_short');
-    return result;
-  }
-
-  // ── 5. Exact dictionary lookup ──
   const hit = _dictLookup(normalized);
   if (hit) {
     result.accepted = true;
-    result.acceptedBy = { path: 'exact', surface: hit, confidence: 'high' };
+    result.acceptedBy = { path: 'b64_dictionary', surface: hit, confidence: 'high' };
     return result;
   }
 
-  result.rejectedReasons.push('not_in_dictionary');
+  result.rejectedReasons.push('not_in_b64_dictionary');
   return result;
 }
 
@@ -6675,12 +6590,6 @@ window.HebrewValidator = {
   debugWord,
   getRejectedLog,
 
-  // Lookup tables (writable so game can add/remove entries at runtime)
-  FORCE_ACCEPT,
-  FORCE_REJECT,
-
-  // Constants
-  MIN_WORD_LENGTH,
 };
 
 
