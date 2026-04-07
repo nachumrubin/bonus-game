@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260407093911">
+<meta name="version" content="20260407132724">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260407093911</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260407132724</div>
   </div>
 </div>
 
@@ -6150,7 +6150,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260407093911', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260407132724', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -6464,11 +6464,12 @@ window.addEventListener('beforeunload', function(){ if(gMode === 'online') saveO
  *   Layer 5 — Logging / debugging
  *
  * VALIDATION LOGIC:
- *   1. Normalize input (strip non-Hebrew, collapse final letters)
+ *   1. Normalize input (strip non-Hebrew only)
  *   2. Exact dictionary lookup from the embedded B64 dictionary
- *      (with final-letter normalization only)
  *
  * No prefix stripping, no suffix stripping, no ktiv/orthographic variants.
+ * Only exact dictionary matches are accepted, plus terminal final-letter
+ * variants (כ/ך, מ/ם, נ/ן, פ/ף, צ/ץ) of the same surface.
  *
  * INTEGRATION:
  *   Load this file after the main game script that defines and loads DICT.
@@ -6489,15 +6490,6 @@ const _HV = {
 };
 
 
-function normalizeFinalLetters(word) {
-  return String(word)
-    .replace(/ך/g, 'כ')
-    .replace(/ם/g, 'מ')
-    .replace(/ן/g, 'נ')
-    .replace(/ף/g, 'פ')
-    .replace(/ץ/g, 'צ');
-}
-
 // ─────────────────────────────────────────────────────────────
 // LOOKUP TABLES
 // (Add/remove entries as the game evolves)
@@ -6511,92 +6503,47 @@ function normalizeFinalLetters(word) {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Strip non-Hebrew characters and normalize final letters to their
- * regular (non-final) equivalents for internal processing.
- * The board uses only regular letters — ך ם ן ף ץ never appear on tiles.
+ * Strip non-Hebrew characters only.
  * @param {string} word
  * @returns {{ cleaned: string, normalized: string }}
  */
 function normalizeSurface(word) {
   const cleaned = word.trim().split('').filter(ch => ch >= 'א' && ch <= 'ת').join('');
-  const normalized = normalizeFinalLetters(cleaned);
+  const normalized = cleaned;
   return { cleaned, normalized };
 }
 
 /**
- * Given a word using regular (non-final) letters, generate the variant
- * where the LAST letter is replaced with its final form if applicable.
- * e.g. "ספר" stays ["ספר"]; "ספרנ" => ["ספרנ", "ספרן"]
+ * Strict dictionary mode with terminal final-letter variants only.
  * @param {string} word
  * @returns {string[]}
  */
 function generateFinalLetterVariants(word) {
+  if (!word) return [];
   const results = [word];
-  if (!word) return results;
   const toFinal = { 'כ': 'ך', 'מ': 'ם', 'נ': 'ן', 'פ': 'ף', 'צ': 'ץ' };
+  const toRegular = { 'ך': 'כ', 'ם': 'מ', 'ן': 'נ', 'ף': 'פ', 'ץ': 'צ' };
   const last = word[word.length - 1];
-  if (toFinal[last]) {
-    results.push(word.slice(0, -1) + toFinal[last]);
-  }
-  return results;
+  if (toFinal[last]) results.push(word.slice(0, -1) + toFinal[last]);
+  else if (toRegular[last]) results.push(word.slice(0, -1) + toRegular[last]);
+  return [...new Set(results)];
 }
 
 // ─────────────────────────────────────────────────────────────
 // LAYER 2 — DICTIONARY LOOKUP
 // ─────────────────────────────────────────────────────────────
 
-function* generatePleneVariants(word) {
-  const seen = new Set();
-  const emit = (candidate) => {
-    if (!candidate || seen.has(candidate)) return;
-    seen.add(candidate);
-    return candidate;
-  };
-
-  const direct = emit(word);
-  if (direct) yield direct;
-
-  // Defective → plene inserts (e.g. "כסא" -> "כיסא")
-  for (let i = 1; i < word.length; i++) {
-    for (const ins of ['י', 'ו']) {
-      const withInsert = emit(word.slice(0, i) + ins + word.slice(i));
-      if (withInsert) yield withInsert;
-    }
-  }
-
-  // Plene → defective removals for interior י/ו
-  for (let i = 1; i < word.length - 1; i++) {
-    if (word[i] === 'י' || word[i] === 'ו') {
-      const withRemoval = emit(word.slice(0, i) + word.slice(i + 1));
-      if (withRemoval) yield withRemoval;
-    }
-  }
-}
-
 /**
- * Check if a word (using regular board letters) is in the dictionary.
- * Tries exact/final-letter matches first, then conservative plene/defective
- * orthographic variants (single interior י/ו insertion or removal).
- * @param {string} word  (normalized — no final letters)
+ * Check if a word is in the dictionary with exact matching and optional
+ * terminal final-letter variant matching.
+ * @param {string} word  (cleaned Hebrew surface)
  * @returns {{surface:string,confidence:'high'|'medium'}|null}
  */
 function _dictLookup(word) {
   if (!_HV.DICT) return null;
-
   for (const variant of generateFinalLetterVariants(word)) {
-    if (_HV.DICT.has(variant)) {
-      return { surface: variant, confidence: 'high' };
-    }
+    if (_HV.DICT.has(variant)) return { surface: variant, confidence: 'high' };
   }
-
-  for (const plene of generatePleneVariants(word)) {
-    for (const variant of generateFinalLetterVariants(plene)) {
-      if (_HV.DICT.has(variant)) {
-        return { surface: variant, confidence: 'medium' };
-      }
-    }
-  }
-
   return null;
 }
 
