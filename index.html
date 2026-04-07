@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260407075630">
+<meta name="version" content="20260407101500">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -353,6 +353,9 @@ body.tile-selected .bsq:not(.used){
 .ut{width:36px;height:40px;background:var(--tile);border:2px solid var(--tborder);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;color:#111;cursor:pointer;box-shadow:0 2px 0 var(--tshadow);}
 .ut.sl{background:rgba(255,255,255,.04);border:2px dashed rgba(255,255,255,.18);color:transparent;box-shadow:none;}
 .ut.sl.fi{background:#ffe870;border-color:#c0a800;border-style:solid;color:#111;}
+#exch-rack .bt2{width:54px;height:64px;}
+#exch-rack .bt2-l{font-size:28px;}
+#exch-rack .bt2-v{font-size:10px;}
 .tw{height:5px;background:rgba(255,255,255,.09);border-radius:2px;margin-bottom:9px;overflow:hidden;}
 .tbar2{height:100%;background:var(--by);border-radius:2px;transition:width 1s linear,background .5s;}
 .tbar2.urg{background:#e74c3c;}
@@ -373,7 +376,7 @@ body.tile-selected .bsq:not(.used){
 /* appeal */
 .abox{background:rgba(0,0,0,.2);border-radius:6px;padding:9px;margin-bottom:9px;font-size:12px;color:rgba(255,255,255,.65);line-height:1.6;}
 .aword{font-size:18px;font-weight:900;color:var(--by);text-align:center;margin:5px 0;}
-/* שאילתא */
+/* שאילתה */
 .shin-wrap{position:relative;margin-bottom:8px;}
 .shin{width:100%;padding:10px 12px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:18px;font-family:'Heebo',sans-serif;direction:rtl;outline:none;text-align:center;letter-spacing:3px;}
 .shin:focus{border-color:var(--by);}
@@ -627,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260407075630</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260407101500</div>
   </div>
 </div>
 
@@ -826,7 +829,7 @@ body.tile-selected .bsq:not(.used){
       <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
       <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
       <button class="tb" onclick="doExchange()">החלפת<br>אות</button>
-      <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתא</span></button>
+      <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
       
       <button class="tb" onclick="showLegend()"><span class="tb-ic">📋</span><span class="tb-tx">טבלת אותיות</span></button>
       <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
@@ -1086,10 +1089,10 @@ body.tile-selected .bsq:not(.used){
   </div>
 </div>
 
-<!-- שאילתא -->
+<!-- שאילתה -->
 <div id="ov-shailta" class="ov hidden" style="align-items:flex-end">
   <div class="ovc"><div class="ovh"></div>
-    <div class="ovt">שאילתא — מילון</div>
+    <div class="ovt">שאילתה — מילון</div>
     <div class="ovd">האם המילה קיימת? <span style="color:#ff8e8e">הטיימר ממשיך לרוץ!</span></div>
     <div class="shin-wrap"><input class="shin" id="shin" type="text" placeholder="הקלד מילה..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
     <div class="shres" id="shres"></div>
@@ -2765,7 +2768,7 @@ function doRecall(){
   renderBoard(); renderRack(); setS('המהלך הוחזר');
 }
 
-// ── שאילתא ──
+// ── שאילתה ──
 function openShailta(){
   const input = document.getElementById('shin');
   const result = document.getElementById('shres');
@@ -5055,7 +5058,7 @@ function restorePendingMoveSnapshot(){
   updateUI();
 }
 
-// ===== שאילתא input support =====
+// ===== שאילתה input support =====
 function setupShailtaInputSupport(){
   const input = document.getElementById('shin');
   if(!input || input.dataset.shReady === '1') return;
@@ -6138,7 +6141,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260407075630', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260407101500', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
