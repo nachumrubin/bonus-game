@@ -71,3 +71,23 @@ test('validate accepts dictionary hit through final-letter variant', () => {
   assert.equal(out.reason, 'b64_dictionary');
   assert.equal(out.surface, 'ספרן');
 });
+
+test('validate accepts defective spelling via conservative plene lookup', () => {
+  const hv = loadValidator(['כיסא']);
+
+  const out = hv.validate('כסא');
+  assert.equal(out.valid, true);
+  assert.equal(out.reason, 'b64_dictionary');
+  assert.equal(out.surface, 'כיסא');
+  assert.equal(out.confidence, 'medium');
+});
+
+test('validate accepts plene spelling via conservative defective lookup', () => {
+  const hv = loadValidator(['תכנית']);
+
+  const out = hv.validate('תוכנית');
+  assert.equal(out.valid, true);
+  assert.equal(out.reason, 'b64_dictionary');
+  assert.equal(out.surface, 'תכנית');
+  assert.equal(out.confidence, 'medium');
+});
