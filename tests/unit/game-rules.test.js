@@ -106,6 +106,25 @@ test('triggerBonus B2 grants +20 and auto resolution', () => {
   assert.match(getEl('bovt').textContent, /20/);
 });
 
+test('getBonusPools filters out bonus words rejected by validator', () => {
+  const ctx = buildContextWith(['isBonusPoolWordValid', 'getBonusPools'], {
+    _bonusPools: null,
+    _commonWords: ['שלום', 'עייפי'],
+    DICT: new Set(['שלום', 'עייפי', 'חברים']),
+    window: {
+      HebrewValidator: {
+        ready: true,
+        validate: (word) => ({ valid: word !== 'עייפי' })
+      }
+    },
+    Math
+  });
+
+  const pools = ctx.getBonusPools();
+  assert.ok(pools.short.includes('שלום'));
+  assert.ok(!pools.short.includes('עייפי'));
+});
+
 test('crossword bonus finalize commits base score + bonus once', () => {
   assert.match(
     source,
