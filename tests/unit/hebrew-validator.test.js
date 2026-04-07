@@ -38,17 +38,18 @@ function loadValidator(dictWords = []) {
   return context.window.HebrewValidator;
 }
 
-test('normalizeSurface strips non-Hebrew chars and normalizes final letters', () => {
+test('normalizeSurface strips non-Hebrew chars without changing letter forms', () => {
   const hv = loadValidator();
   const result = hv.normalizeSurface(' ץ!כ?ן3 ');
 
   assert.equal(result.cleaned, 'ץכן');
-  assert.equal(result.normalized, 'צכנ');
+  assert.equal(result.normalized, 'ץכן');
 });
 
-test('generateFinalLetterVariants offers final-letter variant for ending letters', () => {
+test('generateFinalLetterVariants includes terminal final-letter toggles only', () => {
   const hv = loadValidator();
   assert.deepEqual(Array.from(hv.generateFinalLetterVariants('ספרנ')), ['ספרנ', 'ספרן']);
+  assert.deepEqual(Array.from(hv.generateFinalLetterVariants('ספרן')), ['ספרן', 'ספרנ']);
   assert.deepEqual(Array.from(hv.generateFinalLetterVariants('ספר')), ['ספר']);
 });
 
@@ -63,7 +64,7 @@ test('validate accepts only dictionary entries', () => {
   assert.equal(out.reason, 'not_in_b64_dictionary');
 });
 
-test('validate accepts dictionary hit through final-letter variant', () => {
+test('validate accepts terminal final-letter variant match', () => {
   const hv = loadValidator(['ספרן']);
 
   const out = hv.validate('ספרנ');
@@ -72,22 +73,27 @@ test('validate accepts dictionary hit through final-letter variant', () => {
   assert.equal(out.surface, 'ספרן');
 });
 
-test('validate accepts defective spelling via conservative plene lookup', () => {
-  const hv = loadValidator(['כיסא']);
+test('validate rejects defective/plene mismatch unless exact dictionary hit exists', () => {
+  const hv = loadValidator(['תיאוריה']);
 
-  const out = hv.validate('כסא');
-  assert.equal(out.valid, true);
-  assert.equal(out.reason, 'b64_dictionary');
-  assert.equal(out.surface, 'כיסא');
-  assert.equal(out.confidence, 'medium');
+  const out = hv.validate('תאוריה');
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'not_in_b64_dictionary');
 });
 
-test('validate accepts plene spelling via conservative defective lookup', () => {
+test('validate rejects plene/defective mismatch in the other direction', () => {
   const hv = loadValidator(['תכנית']);
 
   const out = hv.validate('תוכנית');
-  assert.equal(out.valid, true);
-  assert.equal(out.reason, 'b64_dictionary');
-  assert.equal(out.surface, 'תכנית');
-  assert.equal(out.confidence, 'medium');
+  assert.equal(out.valid, false);
+  assert.equal(out.reason, 'not_in_b64_dictionary');
+});
+
+test('validate rejects transform-only words and accepts exact hits', () => {
+  const hv = loadValidator(['נוף', 'קל', 'נופף']);
+
+  assert.equal(hv.validate('נף').valid, false);
+  assert.equal(hv.validate('קיל').valid, false);
+  assert.equal(hv.validate('נפפ').valid, false);
+  assert.equal(hv.validate('נוף').valid, true);
 });
