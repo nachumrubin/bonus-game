@@ -261,3 +261,48 @@ test('renderRack shows side racks only in 1v1 mode', () => {
   assert.deepEqual(sideCalls.map((s) => s.player), [0, 1]);
   assert.equal(clearCalls.length, 0);
 });
+
+test('showOnlineCoinToss auto-continues and restores coin-enter button visibility', () => {
+  const timers = [];
+  const mkEl = () => ({
+    textContent: '',
+    style: {},
+    classList: {
+      add: () => {},
+      remove: () => {}
+    },
+    offsetWidth: 0
+  });
+  const byId = new Map([
+    ['coin-disc', mkEl()],
+    ['coin-sub', mkEl()],
+    ['coin-msg', mkEl()],
+    ['coin-enter', mkEl()]
+  ]);
+
+  let shownScreen = null;
+  let doneCalled = 0;
+  const ctx = buildContextWith(
+    ['getCoinWinnerLabel', 'getFirstTurnAnnouncement', 'showOnlineCoinToss'],
+    {
+      pNames: ['רות', 'דן'],
+      pendingStartingTurn: null,
+      showSc: (id) => { shownScreen = id; },
+      document: { getElementById: (id) => byId.get(id) },
+      setTimeout: (fn, _ms) => { timers.push(fn); return timers.length; }
+    }
+  );
+
+  ctx.showOnlineCoinToss(1, () => { doneCalled++; });
+  assert.equal(shownScreen, 'scoin');
+  assert.equal(byId.get('coin-enter').style.display, 'none');
+  assert.equal(ctx.pendingStartingTurn, 1);
+
+  while (timers.length) timers.shift()();
+
+  assert.equal(ctx.pendingStartingTurn, null);
+  assert.equal(byId.get('coin-disc').textContent, 'דן');
+  assert.match(byId.get('coin-msg').textContent, /דן מתחיל ראשון!/);
+  assert.equal(byId.get('coin-enter').style.display, '');
+  assert.equal(doneCalled, 1);
+});
