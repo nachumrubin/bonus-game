@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260407101500">
+<meta name="version" content="20260407085900">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260407101500</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260407085900</div>
   </div>
 </div>
 
@@ -6141,7 +6141,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260407101500', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260407085900', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -6536,19 +6536,58 @@ function generateFinalLetterVariants(word) {
 // LAYER 2 — DICTIONARY LOOKUP
 // ─────────────────────────────────────────────────────────────
 
+function* generatePleneVariants(word) {
+  const seen = new Set();
+  const emit = (candidate) => {
+    if (!candidate || seen.has(candidate)) return;
+    seen.add(candidate);
+    return candidate;
+  };
+
+  const direct = emit(word);
+  if (direct) yield direct;
+
+  // Defective → plene inserts (e.g. "כסא" -> "כיסא")
+  for (let i = 1; i < word.length; i++) {
+    for (const ins of ['י', 'ו']) {
+      const withInsert = emit(word.slice(0, i) + ins + word.slice(i));
+      if (withInsert) yield withInsert;
+    }
+  }
+
+  // Plene → defective removals for interior י/ו
+  for (let i = 1; i < word.length - 1; i++) {
+    if (word[i] === 'י' || word[i] === 'ו') {
+      const withRemoval = emit(word.slice(0, i) + word.slice(i + 1));
+      if (withRemoval) yield withRemoval;
+    }
+  }
+}
+
 /**
  * Check if a word (using regular board letters) is in the dictionary.
- * Tries the word as-is and with the last letter converted to its final form.
- * No orthographic variants, no prefix/suffix stripping.
+ * Tries exact/final-letter matches first, then conservative plene/defective
+ * orthographic variants (single interior י/ו insertion or removal).
  * @param {string} word  (normalized — no final letters)
- * @returns {string|null}  The matched surface form, or null
+ * @returns {{surface:string,confidence:'high'|'medium'}|null}
  */
 function _dictLookup(word) {
   if (!_HV.DICT) return null;
-  if (_HV.DICT.has(word)) return word;
-  for (const v of generateFinalLetterVariants(word)) {
-    if (v !== word && _HV.DICT.has(v)) return v;
+
+  for (const variant of generateFinalLetterVariants(word)) {
+    if (_HV.DICT.has(variant)) {
+      return { surface: variant, confidence: 'high' };
+    }
   }
+
+  for (const plene of generatePleneVariants(word)) {
+    for (const variant of generateFinalLetterVariants(plene)) {
+      if (_HV.DICT.has(variant)) {
+        return { surface: variant, confidence: 'medium' };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -6585,7 +6624,7 @@ function analyzeHebrewWord(word) {
   const hit = _dictLookup(normalized);
   if (hit) {
     result.accepted = true;
-    result.acceptedBy = { path: 'b64_dictionary', surface: hit, confidence: 'high' };
+    result.acceptedBy = { path: 'b64_dictionary', surface: hit.surface, confidence: hit.confidence };
     return result;
   }
 
