@@ -145,4 +145,102 @@ test.describe('online turn handoff sync', () => {
     expect(result.myLastPush).toBeUndefined();
   });
 
+  test('online end menu resigns immediately and updates room status', async ({ page }) => {
+    await page.goto('/index.html');
+
+    const result = await page.evaluate(() => {
+      const originalConfirm = window.confirm;
+      const originalFbRef = window.fbRef;
+      const originalCleanup = window.cleanupOnlineListeners;
+      const originalStopDcTimer = window.stopDcTimer;
+      const originalRemoveSession = window.removeOnlineSession;
+      const originalEndGame = window.endGame;
+      const originalSetS = window.setS;
+
+      let updatePayload = null;
+      let stopCalls = 0;
+      let cleanupCalls = 0;
+      let removeCalls = 0;
+      let endCalls = 0;
+      const statuses = [];
+
+      window.confirm = () => true;
+      window.fbRef = () => ({
+        update: (payload) => {
+          updatePayload = payload;
+          return Promise.resolve();
+        }
+      });
+      window.stopDcTimer = () => { stopCalls++; };
+      window.cleanupOnlineListeners = () => { cleanupCalls++; };
+      window.removeOnlineSession = () => { removeCalls++; };
+      window.endGame = () => { endCalls++; };
+      window.setS = (msg) => { statuses.push(msg); };
+
+      gMode = 'online';
+      roomCode = '123456';
+      myRole = 'host';
+
+      openEndMenu();
+
+      window.confirm = originalConfirm;
+      window.fbRef = originalFbRef;
+      window.cleanupOnlineListeners = originalCleanup;
+      window.stopDcTimer = originalStopDcTimer;
+      window.removeOnlineSession = originalRemoveSession;
+      window.endGame = originalEndGame;
+      window.setS = originalSetS;
+
+      return { updatePayload, stopCalls, cleanupCalls, removeCalls, endCalls, statuses };
+    });
+
+    expect(result.updatePayload.status).toBe('resigned');
+    expect(result.updatePayload.resignedBy).toBe('host');
+    expect(result.stopCalls).toBe(1);
+    expect(result.cleanupCalls).toBe(1);
+    expect(result.removeCalls).toBe(1);
+    expect(result.endCalls).toBe(1);
+    expect(result.statuses).toContain('פרשת מהמשחק.');
+  });
+
+  test('room resigned status notifies opponent immediately', async ({ page }) => {
+    await page.goto('/index.html');
+
+    const result = await page.evaluate(() => {
+      const originalFbRef = window.fbRef;
+      const originalAnnounce = window.announceOpponentResigned;
+      const originalRemove = window.removeOnlineSession;
+
+      let listener = null;
+      let announcedWith = null;
+      const removed = [];
+      const fakeRoomRef = {
+        on: (_type, fn) => { listener = fn; return fn; },
+        off: () => {}
+      };
+
+      window.fbRef = () => fakeRoomRef;
+      window.announceOpponentResigned = (role) => { announcedWith = role; };
+      window.removeOnlineSession = (code) => { removed.push(code); };
+
+      gMode = 'online';
+      roomCode = '654321';
+      myRole = 'guest';
+
+      listenForRoomStatus();
+      listener({
+        exists: () => true,
+        val: () => ({ status: 'resigned', resignedBy: 'host' }),
+      });
+
+      window.fbRef = originalFbRef;
+      window.announceOpponentResigned = originalAnnounce;
+      window.removeOnlineSession = originalRemove;
+
+      return { announcedWith, removedCount: removed.length };
+    });
+
+    expect(result.announcedWith).toBe('host');
+    expect(result.removedCount).toBe(0);
+  });
 });

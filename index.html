@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260408191000">
+<meta name="version" content="20260408192800">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408191000</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408192800</div>
   </div>
 </div>
 
@@ -2408,7 +2408,30 @@ function openChampions(){
 function clearChampions(){
   alert('טבלת האלופים היא גלובלית ומבוססת ענן — אי אפשר למחוק אותה מהמכשיר.');
 }
-function openEndMenu(){ if(confirm('לסיים את המשחק?'))endGame(); }
+function resignOnlineGame(){
+  if(gMode !== 'online' || !roomCode) return;
+  var updates = {
+    status: 'resigned',
+    resignedBy: myRole || null,
+    endedAt: firebase.database.ServerValue.TIMESTAMP,
+  };
+  fbRef('rooms/' + roomCode).update(updates).catch(function(e){
+    console.error('resignOnlineGame error:', e);
+  });
+  stopDcTimer();
+  cleanupOnlineListeners();
+  removeOnlineSession(roomCode);
+  setS('פרשת מהמשחק.', 'err');
+  endGame();
+}
+
+function openEndMenu(){
+  if(gMode === 'online'){
+    if(confirm('לפרוש מהמשחק? היריב יקבל הודעה מיידית.')) resignOnlineGame();
+    return;
+  }
+  if(confirm('לסיים את המשחק?')) endGame();
+}
 function rematch(){
   ovClose('ov-end');
   // Preserve player names across rematch
@@ -5502,6 +5525,7 @@ function startOnlineGame(){
           if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
           saveOnlineSession();
           setupPresence();
+          listenForRoomStatus();
           listenForMoves();
         })
         .catch(function(e){ console.error('startOnlineGame error:', e); });
@@ -5536,6 +5560,7 @@ function waitForGameStart(){
       setS(pNames[turn] + ' מתחיל...');
       saveOnlineSession();
       setupPresence();
+      listenForRoomStatus();
       listenForMoves();
     });
   }
@@ -5702,6 +5727,39 @@ function setupPresence(){
     }
   });
   onlineListeners.push({ ref: oppRef, type:'value', fn: presListener });
+}
+
+function announceOpponentResigned(resignedByRole){
+  if(gMode !== 'online') return;
+  stopDcTimer();
+  clearMoveTimer();
+  var resignedIdx = resignedByRole === 'host' ? 0 : 1;
+  var winnerIdx = 1 - resignedIdx;
+  document.getElementById('wc').textContent = '🏳️';
+  document.getElementById('wn').textContent = pNames[winnerIdx] + ' ניצח!';
+  document.getElementById('wws').textContent = 'היריב פרש מהמשחק';
+  setS('היריב פרש מהמשחק.', 'bon');
+  document.getElementById('es1').textContent = scores[0];
+  document.getElementById('es2').textContent = scores[1];
+  ovOpen('ov-end');
+  cleanupOnlineListeners();
+  removeOnlineSession(roomCode);
+}
+
+function listenForRoomStatus(){
+  var roomRef = fbRef('rooms/' + roomCode);
+  var statusListener = roomRef.on('value', function(snap){
+    if(!snap || !snap.exists() || gMode !== 'online') return;
+    var room = snap.val() || {};
+    if(room.status !== 'resigned') return;
+    var resignedBy = room.resignedBy || null;
+    if(resignedBy && resignedBy === myRole){
+      removeOnlineSession(roomCode);
+      return;
+    }
+    announceOpponentResigned(resignedBy);
+  });
+  onlineListeners.push({ ref: roomRef, type:'value', fn: statusListener });
 }
 
 // ── DISCONNECT TIMER ──
@@ -6161,7 +6219,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260408191000', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260408192800', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -6405,7 +6463,7 @@ async function rejoinOnlineGame(code){
     return;
   }
   var room = snap.val();
-  if(room.status === 'abandoned'){
+  if(room.status === 'abandoned' || room.status === 'resigned'){
     removeOnlineSession(code);
     alert('המשחק הסתיים');
     return;
@@ -6445,6 +6503,7 @@ async function rejoinOnlineGame(code){
 
   saveOnlineSession();
   setupPresence();
+  listenForRoomStatus();
   listenForMoves();
 }
 
