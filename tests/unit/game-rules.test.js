@@ -327,7 +327,7 @@ test('renderRack shows side racks only in 1v1 mode', () => {
   assert.equal(clearCalls.length, 0);
 });
 
-test('showOnlineCoinToss auto-continues and restores coin-enter button visibility', () => {
+test('showOnlineCoinToss requires explicit join click for online game entry', () => {
   const timers = [];
   const mkEl = () => ({
     textContent: '',
@@ -360,16 +360,58 @@ test('showOnlineCoinToss auto-continues and restores coin-enter button visibilit
 
   ctx.showOnlineCoinToss(1, () => { doneCalled++; });
   assert.equal(shownScreen, 'scoin');
-  assert.equal(byId.get('coin-enter').style.display, 'none');
+  assert.equal(byId.get('coin-enter').style.display, '');
+  assert.equal(byId.get('coin-enter').textContent, 'הצטרף');
+  assert.equal(byId.get('coin-enter').disabled, true);
   assert.equal(ctx.pendingStartingTurn, 1);
 
   while (timers.length) timers.shift()();
 
-  assert.equal(ctx.pendingStartingTurn, null);
+  assert.equal(ctx.pendingStartingTurn, 1);
   assert.equal(byId.get('coin-disc').textContent, 'דן');
   assert.match(byId.get('coin-msg').textContent, /דן מתחיל ראשון!/);
-  assert.equal(byId.get('coin-enter').style.display, '');
+  assert.equal(byId.get('coin-sub').textContent, 'לחצו "הצטרף" כדי להיכנס למשחק');
+  assert.equal(byId.get('coin-enter').disabled, false);
   assert.equal(doneCalled, 1);
+});
+
+test('beginOnlineGameAfterBothReady starts timer only when current player is local', () => {
+  let shownScreen = null;
+  let startedTimer = 0;
+  let setStatus = '';
+  const ctx = buildContextWith(
+    ['beginOnlineGameAfterBothReady'],
+    {
+      onlineCoinJoinStarted: false,
+      onlineCoinJoinReady: { host: true, guest: true },
+      pendingStartingTurn: 1,
+      gameSettings: { music: false, timelimit: true },
+      musicPlaying: false,
+      myRole: 'guest',
+      turn: 1,
+      pNames: ['רות', 'דן'],
+      onlineMode: 'live',
+      roomCode: '123456',
+      showSc: (id) => { shownScreen = id; },
+      computeSizes: () => {},
+      renderBoard: () => {},
+      renderBonusStrips: () => {},
+      updateUI: () => {},
+      renderRack: () => {},
+      myTurnMsg: () => 'תורך — בחר אות מהמגש',
+      setS: (msg) => { setStatus = msg; },
+      startMoveTimer: () => { startedTimer++; },
+      setTimeout: (fn, _ms) => { fn(); return 1; },
+      fbRef: () => ({ set: () => ({ catch: () => {} }) })
+    }
+  );
+
+  ctx.beginOnlineGameAfterBothReady();
+  assert.equal(shownScreen, 'sg');
+  assert.equal(startedTimer, 1);
+  assert.equal(setStatus, 'תורך — בחר אות מהמגש');
+  assert.equal(ctx.onlineCoinJoinStarted, true);
+  assert.equal(ctx.pendingStartingTurn, null);
 });
 
 test('startOnlineGame host publishes state before starting coin toss animation', () => {
