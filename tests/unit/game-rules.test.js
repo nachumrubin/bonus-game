@@ -243,6 +243,31 @@ test('isPresenceConsideredOnline treats stale object payloads as offline', () =>
   assert.equal(ctx.isPresenceConsideredOnline({ connected: false, lastSeen: 0 }, 100000), false);
 });
 
+test('shouldStartAbsentLossCountdown starts only after two missed turns while offline', () => {
+  const ctx = buildContextWith(['shouldStartAbsentLossCountdown']);
+  assert.equal(ctx.shouldStartAbsentLossCountdown(0, false), false);
+  assert.equal(ctx.shouldStartAbsentLossCountdown(1, false), false);
+  assert.equal(ctx.shouldStartAbsentLossCountdown(2, true), false);
+  assert.equal(ctx.shouldStartAbsentLossCountdown(2, false), true);
+  assert.equal(ctx.shouldStartAbsentLossCountdown(3, false), true);
+});
+
+test('computeExpiredOnlineTurnState advances turn and increments missed turn counter', () => {
+  const ctx = buildContextWith(['computeExpiredOnlineTurnState'], {
+    firebase: { database: { ServerValue: { TIMESTAMP: { '.sv': 'timestamp' } } } }
+  });
+  const next = ctx.computeExpiredOnlineTurnState(
+    { turn: 0, passCount: 2, moveCount: 7, missedTurns: { 0: 1, 1: 0 } },
+    1000,
+    20000
+  );
+  assert.equal(next.turn, 1);
+  assert.equal(next.passCount, 3);
+  assert.equal(next.moveCount, 8);
+  assert.equal(next.turnDeadlineMs, 21000);
+  assert.equal(JSON.stringify(next.missedTurns), JSON.stringify({ 0: 2, 1: 0 }));
+});
+
 test('getFirstTurnAnnouncement includes selected player name', () => {
   const ctx = buildContextWith(['getCoinWinnerLabel', 'getFirstTurnAnnouncement'], {
     pNames: ['רות', 'דן']
