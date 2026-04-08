@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260408200249">
+<meta name="version" content="20260408203932">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408200249</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408203932</div>
   </div>
 </div>
 
@@ -1733,6 +1733,9 @@ let placed=[], selTile=null, selPlaced=null, dir='H'; // selPlaced = {r,c} of a 
 let botBusy=false, bonusPend=null, timerInt=null;
 let moveTimerInt=null, botThinkTimeout=null;
 let onlineTimerRenderInt=null, onlineTurnDeadlineMs=0, localTurnDeadlineMs=0;
+let onlineTimeoutWatchdogInt=null;
+let onlineMissedTurns=[0,0];
+let onlinePresenceByPlayer=[true,true];
 let lastRejWord='', lastRejScore=0, lastRejPlaced=[];
 let replacedThisTurn=null, pendingReview=null;
 let lastMoveCells=[]; // coords of last committed move for highlighting
@@ -2207,6 +2210,10 @@ function expireCurrentMove(){
     const lostMult = forfeitActiveFutureMultiplier(turn);
     if(lostMult) setS(`נגמר הזמן — בוסט ${lostMult} אבד! 💸`, 'err');
     passCount++;
+    if(gMode === 'online'){
+      onlineMissedTurns[turn] = Number((onlineMissedTurns||[])[turn] || 0) + 1;
+      onlineMissedTurns[1-turn] = 0;
+    }
     if(passCount>=6){ endGame(); return; }
     // Increment moveCount so opponent's listenForMoves doesn't skip this as a duplicate
     if(gMode === 'online') moveCount++;
@@ -2567,6 +2574,8 @@ function enterGameAfterCoinToss(){
 function initGame(startingTurn){
   setOnlineTurnDeadline(0);
   setLocalTurnDeadline(0);
+  onlineMissedTurns=[0,0];
+  onlinePresenceByPlayer=[true,true];
   initBag();
   bData = Array.from({length:BS}, () => Array(BS).fill(null));
   racks=[[],[]]; scores=[0,0]; futBon=[{},{}]; lockedCells={}; bonusSqUsed={}; bBoardData={};
@@ -4168,6 +4177,9 @@ function commitPlay(sc,ws,bonus,pi){
     }catch(e){console.warn('[MOVE LOGGER] commitPlay log error',e);}
   })();
   firstMove=false; passCount=0; moveCount++;
+  if(gMode === 'online'){
+    onlineMissedTurns[pi] = 0;
+  }
   placed=[]; replacedThisTurn=null; exchUsed=false; lastRejWord=''; lastRejPlaced=[];
   selTile=null; selPlaced=null; document.body.classList.remove('tile-selected');
   draw(racks[pi]);
@@ -4216,6 +4228,7 @@ function nextTurn(){
       }
       const myTurn=(myRole==='host')?0:1;
       if(turn===myTurn){ startMoveTimer(); } else { setS(`ממתין ל-${pNames[1-myTurn]}...`); }
+      updateAbsentLossCountdownForCurrentTurn();
     } else {
       startMoveTimer();
     }
@@ -4244,6 +4257,7 @@ function nextTurn(){
     } else {
       setS(`ממתין ל-${pNames[1-myTurn]}...`);
     }
+    updateAbsentLossCountdownForCurrentTurn();
   } else {
     setS(myTurnMsg());
     startMoveTimer();
@@ -5614,6 +5628,7 @@ function serializeGameState(){
     lockInventory: lockObj,
     futBon: futBon ? JSON.parse(JSON.stringify(futBon)) : {0:{},1:{}},
     appealsUsed: {0:(appealsUsed||[0,0])[0], 1:(appealsUsed||[0,0])[1]},
+    missedTurns: {0:(onlineMissedTurns||[0,0])[0], 1:(onlineMissedTurns||[0,0])[1]},
     exchUsed: !!exchUsed,
     turnDeadlineMs: onlineTurnDeadlineMs || 0,
     ts: firebase.database.ServerValue.TIMESTAMP,
@@ -5705,6 +5720,11 @@ function loadGameState(s){
     auRaw[0] !== undefined ? auRaw[0] : (auRaw['0'] !== undefined ? auRaw['0'] : 0),
     auRaw[1] !== undefined ? auRaw[1] : (auRaw['1'] !== undefined ? auRaw['1'] : 0)
   ];
+  var mtRaw = s.missedTurns || {};
+  onlineMissedTurns = [
+    mtRaw[0] !== undefined ? mtRaw[0] : (mtRaw['0'] !== undefined ? mtRaw['0'] : 0),
+    mtRaw[1] !== undefined ? mtRaw[1] : (mtRaw['1'] !== undefined ? mtRaw['1'] : 0)
+  ];
 
   exchUsed = !!s.exchUsed;
   setOnlineTurnDeadline(s.turnDeadlineMs || 0);
@@ -5739,7 +5759,83 @@ function pushPresenceHeartbeat(isBackground){
   myConnRef.update(buildPresencePayload(isBackground)).catch(function(){});
 }
 
+function shouldStartAbsentLossCountdown(missedTurnsForTurn, activePlayerOnline){
+  return Number(missedTurnsForTurn || 0) >= 2 && !activePlayerOnline;
+}
+
+function updateAbsentLossCountdownForCurrentTurn(){
+  if(gMode !== 'online' || onlineMode !== 'live') return;
+  var activeTurn = Number(turn||0);
+  var activeOnline = !!onlinePresenceByPlayer[activeTurn];
+  var missed = Number((onlineMissedTurns||[])[activeTurn] || 0);
+  if(shouldStartAbsentLossCountdown(missed, activeOnline)){
+    startDcTimer();
+  } else {
+    stopDcTimer();
+  }
+}
+
+function computeExpiredOnlineTurnState(state, nowMs, limitMs){
+  if(!state || typeof state !== 'object') return null;
+  var now = Number(nowMs || Date.now());
+  var currentTurn = Number((state.turn !== undefined) ? state.turn : 0);
+  if(currentTurn !== 0 && currentTurn !== 1) currentTurn = 0;
+  var nextTurn = 1 - currentTurn;
+  var missedRaw = state.missedTurns || {};
+  var missed = [
+    Number(missedRaw[0] !== undefined ? missedRaw[0] : (missedRaw['0'] || 0)),
+    Number(missedRaw[1] !== undefined ? missedRaw[1] : (missedRaw['1'] || 0))
+  ];
+  missed[currentTurn] = (Number(missed[currentTurn] || 0) + 1);
+  missed[nextTurn] = 0;
+  var nextDeadline = Number(limitMs || 0) > 0 ? (now + Number(limitMs || 0)) : 0;
+  var passCountNow = Number(state.passCount || 0) + 1;
+  return Object.assign({}, state, {
+    turn: nextTurn,
+    passCount: passCountNow,
+    moveCount: Number(state.moveCount || 0) + 1,
+    turnDeadlineMs: nextDeadline,
+    missedTurns: {0: missed[0], 1: missed[1]},
+    ts: (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue && firebase.database.ServerValue.TIMESTAMP)
+      ? firebase.database.ServerValue.TIMESTAMP
+      : now
+  });
+}
+
+function claimExpiredOnlineTurn(){
+  if(gMode !== 'online' || onlineMode !== 'live' || !roomCode || !gameSettings.timelimit) return;
+  var myIdx = Number(window._myPlayerIndex);
+  var limitMs = getMoveTimeLimit();
+  var stateRef = fbRef('rooms/' + roomCode + '/state');
+  stateRef.transaction(function(curr){
+    if(!curr) return curr;
+    var currentTurn = Number((curr.turn !== undefined) ? curr.turn : 0);
+    if(currentTurn === myIdx) return curr;
+    var deadline = Number(curr.turnDeadlineMs || 0);
+    if(!deadline || deadline > Date.now()) return curr;
+    return computeExpiredOnlineTurnState(curr, Date.now(), limitMs);
+  });
+}
+
+function ensureOnlineTimeoutWatchdog(){
+  if(onlineTimeoutWatchdogInt){ clearInterval(onlineTimeoutWatchdogInt); onlineTimeoutWatchdogInt=null; }
+  if(gMode !== 'online' || onlineMode !== 'live' || !gameSettings.timelimit) return;
+  onlineTimeoutWatchdogInt = setInterval(function(){
+    if(gMode !== 'online' || onlineMode !== 'live' || !gameSettings.timelimit) return;
+    var myIdx = Number(window._myPlayerIndex);
+    if(turn === myIdx) return;
+    if(!onlineTurnDeadlineMs) return;
+    if(Date.now() >= Number(onlineTurnDeadlineMs)){
+      claimExpiredOnlineTurn();
+    }
+  }, 350);
+}
+
 function setupPresence(){
+  var myIdx = (myRole === 'host') ? 0 : 1;
+  var oppIdx = 1 - myIdx;
+  onlinePresenceByPlayer[myIdx] = true;
+  onlinePresenceByPlayer[oppIdx] = true;
   var presRef = fbRef('rooms/' + roomCode + '/presence/' + myRole);
   myConnRef = presRef;
   presRef.set(buildPresencePayload(document.visibilityState === 'hidden'));
@@ -5770,19 +5866,20 @@ function setupPresence(){
   var presListener = oppRef.on('value', function(snap){
     if(gMode !== 'online') return;
     var online = isPresenceConsideredOnline(snap && snap.val && snap.val(), Date.now());
-    if(!online){
-      if(onlineMode === 'live') startDcTimer();
-    } else {
+    onlinePresenceByPlayer[oppIdx] = !!online;
+    if(online){
       stopDcTimer();
-      if(turn === window._myPlayerIndex){
-        setS(myTurnMsg());
-      } else {
-        setS('ממתין ל-' + pNames[1 - window._myPlayerIndex] + '...');
-      }
-      updateUI();
     }
+    updateAbsentLossCountdownForCurrentTurn();
+    if(turn === window._myPlayerIndex){
+      setS(myTurnMsg());
+    } else {
+      setS('ממתין ל-' + pNames[1 - window._myPlayerIndex] + '...');
+    }
+    updateUI();
   });
   onlineListeners.push({ ref: oppRef, type:'value', fn: presListener });
+  ensureOnlineTimeoutWatchdog();
 }
 
 function announceOpponentResigned(resignedByRole){
@@ -5886,12 +5983,14 @@ function listenForMoves(){
     clearMoveTimer();
     loadGameState(s);
     updateUI(); renderBoard(); renderRack('turn'); renderBonusStrips();
+    updateAbsentLossCountdownForCurrentTurn();
     if(incomingTurn === myIdx){
       setS(myTurnMsg());
       if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
     } else {
       setS(waitingMsg());
     }
+    ensureOnlineTimeoutWatchdog();
     saveOnlineSession();
   });
   onlineListeners.push({ ref: stateRef, type:'value', fn: moveListener });
@@ -5939,8 +6038,10 @@ function cleanupOnlineListeners(){
   onlineListeners.forEach(function(l){ try{ l.ref.off(l.type, l.fn); }catch(e){} });
   onlineListeners = [];
   if(myPresenceHeartbeatInt){ clearInterval(myPresenceHeartbeatInt); myPresenceHeartbeatInt = null; }
+  if(onlineTimeoutWatchdogInt){ clearInterval(onlineTimeoutWatchdogInt); onlineTimeoutWatchdogInt = null; }
   if(myConnRef){ try{ myConnRef.onDisconnect().cancel(); myConnRef.remove(); }catch(e){} myConnRef = null; }
   stopDcTimer();
+  onlinePresenceByPlayer = [true, true];
   window._gameStarted = false;
   window._myLastPush = undefined;
 }
@@ -6276,7 +6377,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260408200249', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260408203932', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
