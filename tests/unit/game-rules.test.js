@@ -222,6 +222,27 @@ test('getCoinWinnerLabel maps opening player to the player name', () => {
   assert.equal(ctx.getCoinWinnerLabel(1), 'דן');
 });
 
+test('isPresenceConsideredOnline supports legacy and grace-period presence payloads', () => {
+  const ctx = buildContextWith(['isPresenceConsideredOnline'], {
+    PRESENCE_GRACE_MS: 35000
+  });
+
+  assert.equal(ctx.isPresenceConsideredOnline(true, 1000), true);
+  assert.equal(ctx.isPresenceConsideredOnline({ connected: true, lastSeen: 1000 }, 2000), true);
+  assert.equal(ctx.isPresenceConsideredOnline({ connected: false, lastSeen: 90000 }, 120000), true);
+  assert.equal(ctx.isPresenceConsideredOnline({ connected: false, lastSeen: 1000 }, 50000), false);
+  assert.equal(ctx.isPresenceConsideredOnline(null, 50000), false);
+});
+
+test('isPresenceConsideredOnline treats stale object payloads as offline', () => {
+  const ctx = buildContextWith(['isPresenceConsideredOnline'], {
+    PRESENCE_GRACE_MS: 35000
+  });
+
+  assert.equal(ctx.isPresenceConsideredOnline({ background: true }, 100000), false);
+  assert.equal(ctx.isPresenceConsideredOnline({ connected: false, lastSeen: 0 }, 100000), false);
+});
+
 test('getFirstTurnAnnouncement includes selected player name', () => {
   const ctx = buildContextWith(['getCoinWinnerLabel', 'getFirstTurnAnnouncement'], {
     pNames: ['רות', 'דן']

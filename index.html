@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260408210000">
+<meta name="version" content="20260408200249">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408210000</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408200249</div>
   </div>
 </div>
 
@@ -5174,9 +5174,11 @@ let roomRef = null;         // Firebase ref to the room
 let onlineListeners = [];   // cleanup list
 let dcTimerInt = null;      // disconnect countdown interval
 let myConnRef = null;       // my presence ref
+let myPresenceHeartbeatInt = null; // periodic online heartbeat
 let crSettings = { mode:'live', timelimit:true, botTime:20, appeals:0 };
 let mmSettings = { mode:'live', timelimit:true };
 let mmSearchRef = null;     // matchmaking search ref
+const PRESENCE_GRACE_MS = 35000; // keep player "online" briefly during app switches
 
 // ── Init Firebase (lazy, on first online use) ──
 function initFirebase(){
@@ -5195,6 +5197,17 @@ function initFirebase(){
 }
 
 function fbRef(path){ return fbDb.ref(path); }
+
+function buildPresencePayload(isBackground){
+  var ts = (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue && firebase.database.ServerValue.TIMESTAMP)
+    ? firebase.database.ServerValue.TIMESTAMP
+    : Date.now();
+  return {
+    connected: true,
+    background: !!isBackground,
+    lastSeen: ts
+  };
+}
 
 // ── Room code generator ──
 function genRoomCode(){
@@ -5710,21 +5723,63 @@ function loadGameState(s){
 }
 
 // ── PRESENCE ──
+function isPresenceConsideredOnline(presenceData, nowMs){
+  if(!presenceData) return false;
+  if(presenceData === true) return true; // legacy schema
+  if(typeof presenceData !== 'object') return !!presenceData;
+  if(presenceData.connected === true) return true;
+  var lastSeen = Number(presenceData.lastSeen || 0);
+  if(!lastSeen) return false;
+  var now = Number(nowMs || Date.now());
+  return (now - lastSeen) <= PRESENCE_GRACE_MS;
+}
+
+function pushPresenceHeartbeat(isBackground){
+  if(gMode !== 'online' || !roomCode || !myRole || !myConnRef) return;
+  myConnRef.update(buildPresencePayload(isBackground)).catch(function(){});
+}
+
 function setupPresence(){
   var presRef = fbRef('rooms/' + roomCode + '/presence/' + myRole);
   myConnRef = presRef;
-  presRef.set(true);
-  presRef.onDisconnect().remove();
+  presRef.set(buildPresencePayload(document.visibilityState === 'hidden'));
+  presRef.onDisconnect().update({
+    connected: false,
+    background: false,
+    lastSeen: (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue && firebase.database.ServerValue.TIMESTAMP)
+      ? firebase.database.ServerValue.TIMESTAMP
+      : Date.now()
+  });
+
+  if(myPresenceHeartbeatInt){ clearInterval(myPresenceHeartbeatInt); myPresenceHeartbeatInt = null; }
+  myPresenceHeartbeatInt = setInterval(function(){
+    pushPresenceHeartbeat(document.visibilityState === 'hidden');
+  }, 10000);
+
+  var connInfoRef = fbRef('.info/connected');
+  var connInfoListener = connInfoRef.on('value', function(snap){
+    if(gMode !== 'online') return;
+    if(snap && snap.val && snap.val()){
+      pushPresenceHeartbeat(document.visibilityState === 'hidden');
+    }
+  });
+  onlineListeners.push({ ref: connInfoRef, type:'value', fn: connInfoListener });
 
   var oppRole = myRole === 'host' ? 'guest' : 'host';
   var oppRef = fbRef('rooms/' + roomCode + '/presence/' + oppRole);
   var presListener = oppRef.on('value', function(snap){
     if(gMode !== 'online') return;
-    var online = snap && snap.val && snap.val();
+    var online = isPresenceConsideredOnline(snap && snap.val && snap.val(), Date.now());
     if(!online){
       if(onlineMode === 'live') startDcTimer();
     } else {
       stopDcTimer();
+      if(turn === window._myPlayerIndex){
+        setS(myTurnMsg());
+      } else {
+        setS('ממתין ל-' + pNames[1 - window._myPlayerIndex] + '...');
+      }
+      updateUI();
     }
   });
   onlineListeners.push({ ref: oppRef, type:'value', fn: presListener });
@@ -5883,6 +5938,7 @@ cellClick = function(r, c){
 function cleanupOnlineListeners(){
   onlineListeners.forEach(function(l){ try{ l.ref.off(l.type, l.fn); }catch(e){} });
   onlineListeners = [];
+  if(myPresenceHeartbeatInt){ clearInterval(myPresenceHeartbeatInt); myPresenceHeartbeatInt = null; }
   if(myConnRef){ try{ myConnRef.onDisconnect().cancel(); myConnRef.remove(); }catch(e){} myConnRef = null; }
   stopDcTimer();
   window._gameStarted = false;
@@ -6220,7 +6276,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260408210000', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260408200249', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -6513,10 +6569,25 @@ document.addEventListener('DOMContentLoaded', checkForOnlineSession);
 
 // Save session on hide/close
 document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState === 'hidden' && gMode === 'online') saveOnlineSession();
+  if(gMode !== 'online') return;
+  if(document.visibilityState === 'hidden') saveOnlineSession();
+  pushPresenceHeartbeat(document.visibilityState === 'hidden');
 });
-window.addEventListener('pagehide', function(){ if(gMode === 'online') saveOnlineSession(); });
-window.addEventListener('beforeunload', function(){ if(gMode === 'online') saveOnlineSession(); });
+window.addEventListener('pagehide', function(){
+  if(gMode !== 'online') return;
+  saveOnlineSession();
+  if(myConnRef){
+    myConnRef.update({
+      connected: false,
+      background: false,
+      lastSeen: Date.now()
+    }).catch(function(){});
+  }
+});
+window.addEventListener('beforeunload', function(){
+  if(gMode !== 'online') return;
+  saveOnlineSession();
+});
 
 
 // ═══════════════════════════════════════════════════
