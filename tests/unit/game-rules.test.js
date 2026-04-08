@@ -214,6 +214,66 @@ test('initGame immediately schedules bot move when bot is drawn first', () => {
   assert.equal(startedTimer, 0);
 });
 
+test('initGame in online mode before both players joined does not start timer', () => {
+  let startedTimer = 0;
+  let statusMsg = '';
+  const ctx = buildContextWith(['initGame'], {
+    BS: 10,
+    BDEFS: Array.from({ length: 12 }, (_, i) => ({ id: i })),
+    BONUS_TYPES: [{ type: 'B1', ic: '⚡' }, { type: 'B2', ic: '🎁' }],
+    Math,
+    gMode: 'online',
+    onlineCoinJoinStarted: false,
+    bData: null,
+    racks: null,
+    scores: null,
+    futBon: null,
+    lockedCells: null,
+    bonusSqUsed: null,
+    bBoardData: null,
+    turn: 0,
+    firstMove: false,
+    passCount: 0,
+    moveCount: 0,
+    placed: [],
+    selTile: null,
+    selPlaced: null,
+    dir: 'H',
+    botBusy: false,
+    bonusPend: null,
+    lastMoveCells: [],
+    lastRejWord: '',
+    lastRejScore: 0,
+    lastRejPlaced: [],
+    exchUsed: false,
+    replacedThisTurn: null,
+    pendingReview: null,
+    appealsUsed: [0, 0],
+    jokerTarget: null,
+    pendingLockCell: null,
+    lockInventory: [[], []],
+    bonusAssignment: [],
+    setOnlineTurnDeadline: () => {},
+    setLocalTurnDeadline: () => {},
+    initBag: () => {},
+    draw: () => {},
+    buildUnifiedGrid: () => {},
+    renderBoard: () => {},
+    renderRack: () => {},
+    renderBonusStrips: () => {},
+    updateUI: () => {},
+    clearMoveTimer: () => {},
+    setS: (msg) => { statusMsg = msg; },
+    myTurnMsg: () => 'תורך',
+    startMoveTimer: () => { startedTimer++; },
+    scheduleBotMove: () => {}
+  });
+
+  ctx.initGame(0);
+  assert.equal(startedTimer, 0);
+  assert.equal(statusMsg, 'ממתין להצטרפות שחקנים...');
+});
+
 test('getCoinWinnerLabel maps opening player to the player name', () => {
   const ctx = buildContextWith(['getCoinWinnerLabel'], {
     pNames: ['רות', 'דן']
@@ -398,6 +458,10 @@ test('beginOnlineGameAfterBothReady starts timer only when current player is loc
       renderBonusStrips: () => {},
       updateUI: () => {},
       renderRack: () => {},
+      saveOnlineSession: () => {},
+      setupPresence: () => {},
+      listenForRoomStatus: () => {},
+      listenForMoves: () => {},
       myTurnMsg: () => 'תורך — בחר אות מהמגש',
       setS: (msg) => { setStatus = msg; },
       startMoveTimer: () => { startedTimer++; },
