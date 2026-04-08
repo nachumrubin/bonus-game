@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "globalChampions": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["score"]
+    }
+  }
+}

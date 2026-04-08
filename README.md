@@ -31,6 +31,20 @@ node scripts/stamp-build.js 20260329150000
 
 The script expects a 14-digit format: `YYYYMMDDHHmmss` (UTC).
 
+## Firebase Realtime Database index for champions
+
+The global champions leaderboard queries `globalChampions` ordered by `score`.
+
+To avoid Firebase's `Using an unspecified index` warning and improve performance, publish `firebase.database.rules.json` in your Firebase project:
+
+```bash
+firebase deploy --only database
+```
+
+This repo's rules include:
+- `globalChampions` path
+- `.indexOn: ["score"]` for efficient `orderByChild("score")` queries
+
 ## E2E multiplayer regression tests
 
 A Playwright-based browser suite is available under `tests/online-turn-sync.spec.js`.
