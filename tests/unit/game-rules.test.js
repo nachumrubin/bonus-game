@@ -326,6 +326,13 @@ test('showOnlineCoinToss auto-continues and restores coin-enter button visibilit
   assert.equal(doneCalled, 1);
 });
 
+test('startOnlineGame host publishes state before starting coin toss animation', () => {
+  assert.match(
+    source,
+    /fbRef\('rooms\/' \+ roomCode \+ '\/state'\)\.set\(serializeGameState\(\)\)[\s\S]*showOnlineCoinToss\(starter/,
+    'expected online host flow to publish room state before running coin toss animation'
+  );
+});
 
 test('waitingMsg shows opponent name in online mode and fallback elsewhere', () => {
   const onlineCtx = buildContextWith(['waitingMsg'], {
