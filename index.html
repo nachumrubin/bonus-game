@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260408203932">
+<meta name="version" content="20260408212018">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408203932</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408212018</div>
   </div>
 </div>
 
@@ -1747,6 +1747,8 @@ let pendingLockCell=null;
 let bonusSqUsed={};   // index -> bool
 let bBoardData={};    // "br,bc" -> {letter,val,isJoker} for committed bonus tiles
 let pendingStartingTurn=null;
+let onlineCoinJoinReady={host:false,guest:false};
+let onlineCoinJoinStarted=false;
 // Each player gets 3 locks: [3,3,5]. Once used, gone.
 let lockInventory=[[3,3,5],[3,3,5]];
 
@@ -2537,7 +2539,9 @@ function showOnlineCoinToss(startingTurn, onDone){
   const coinMsg = document.getElementById('coin-msg');
   const enterBtn = document.getElementById('coin-enter');
 
-  enterBtn.style.display = 'none';
+  enterBtn.style.display = '';
+  enterBtn.disabled = true;
+  enterBtn.textContent = 'הצטרף';
   coinDisc.textContent = '🪙';
   coinDisc.classList.remove('flipping');
   coinSub.textContent = 'מטילים מטבע...';
@@ -2551,15 +2555,19 @@ function showOnlineCoinToss(startingTurn, onDone){
     coinDisc.textContent = getCoinWinnerLabel(startingTurn);
     coinSub.textContent = 'ההגרלה הסתיימה';
     coinMsg.textContent = getFirstTurnAnnouncement(startingTurn);
-    pendingStartingTurn = null;
     setTimeout(function(){
-      enterBtn.style.display = '';
+      enterBtn.disabled = false;
+      coinSub.textContent = 'לחצו "הצטרף" כדי להיכנס למשחק';
       if(typeof onDone === 'function') onDone();
     }, 650);
   }, 1600);
 }
 
 function enterGameAfterCoinToss(){
+  if(gMode === 'online'){
+    markOnlinePlayerReady();
+    return;
+  }
   if(pendingStartingTurn!==0 && pendingStartingTurn!==1) return;
   const startingTurn = pendingStartingTurn;
   pendingStartingTurn = null;
@@ -2569,6 +2577,61 @@ function enterGameAfterCoinToss(){
   showSc('sg');
   if(gameSettings.music && !musicPlaying) startMusic();
   setTimeout(() => { computeSizes(); renderBoard(); renderBonusStrips(); }, 50);
+}
+
+function resetOnlineCoinJoinState(){
+  onlineCoinJoinReady={host:false,guest:false};
+  onlineCoinJoinStarted=false;
+  pendingStartingTurn = null;
+}
+
+function markOnlinePlayerReady(){
+  if(gMode!=='online' || !roomCode || !myRole) return;
+  var otherName = (myRole==='host') ? pNames[1] : pNames[0];
+  var coinSub = document.getElementById('coin-sub');
+  var coinMsg = document.getElementById('coin-msg');
+  var enterBtn = document.getElementById('coin-enter');
+  if(coinSub) coinSub.textContent = 'מחכים לשחקן השני...';
+  if(coinMsg) coinMsg.textContent = 'ממתין ש' + otherName + ' יצטרף';
+  if(enterBtn){
+    enterBtn.disabled = true;
+    enterBtn.textContent = 'הצטרפת';
+  }
+  fbRef('rooms/' + roomCode + '/ready/' + myRole).set(true).catch(function(e){
+    console.error('markOnlinePlayerReady failed:', e);
+  });
+}
+
+function beginOnlineGameAfterBothReady(){
+  if(onlineCoinJoinStarted) return;
+  if(!(onlineCoinJoinReady.host && onlineCoinJoinReady.guest)) return;
+  onlineCoinJoinStarted=true;
+  pendingStartingTurn = null;
+  showSc('sg');
+  if(gameSettings.music && !musicPlaying) startMusic();
+  setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
+  updateUI(); renderRack(); renderBoard();
+  saveOnlineSession();
+  setupPresence();
+  listenForRoomStatus();
+  listenForMoves();
+  const myTurn=(myRole==='host')?0:1;
+  if(turn===myTurn){
+    setS(myTurnMsg());
+    if(onlineMode==='live' && gameSettings.timelimit) startMoveTimer();
+  } else {
+    setS('ממתין ל-' + pNames[1-myTurn] + '...');
+  }
+  if(myRole === 'host'){
+    if(onlineMode === 'live' && gameSettings.timelimit){
+      setOnlineTurnDeadline(Date.now() + getMoveTimeLimit());
+    } else {
+      setOnlineTurnDeadline(0);
+    }
+    fbRef('rooms/' + roomCode + '/state/turnDeadlineMs').set(onlineTurnDeadlineMs || 0).catch(function(e){
+      console.error('sync initial turn deadline failed:', e);
+    });
+  }
 }
 
 function initGame(startingTurn){
@@ -2600,6 +2663,11 @@ function initGame(startingTurn){
   buildUnifiedGrid(); renderBoard(); renderRack(); renderBonusStrips(); updateUI();
   if(gMode==='bot' && turn===1){
     scheduleBotMove();
+    return;
+  }
+  if(gMode==='online' && !onlineCoinJoinStarted){
+    clearMoveTimer();
+    setS('ממתין להצטרפות שחקנים...');
     return;
   }
   setS(myTurnMsg());
@@ -5311,6 +5379,7 @@ async function crConfirm(){
   const roomData = {
     host: name,
     guest: null,
+    ready: { host:false, guest:false },
     status: 'waiting',
     mode: crSettings.mode,
     settings: {
@@ -5481,6 +5550,7 @@ async function mmStartSearch(){
     });
     const roomData = {
       host: name, guest: null, status:'waiting',
+      ready:{host:false, guest:false},
       mode: mmCurrentMode,
       settings:{ timelimit: mmCurrentMode==='live' ? mmCurrentTL : false, botTime:20, appeals:0 },
       createdAt: firebase.database.ServerValue.TIMESTAMP,
@@ -5531,30 +5601,22 @@ function startOnlineGame(){
   document.getElementById('sn2').textContent = pNames[1];
 
   if(myRole === 'host'){
+    resetOnlineCoinJoinState();
     const starter = pickStartingTurn();
     initGame(starter);
-    if(onlineMode === 'live' && gameSettings.timelimit){
-      setOnlineTurnDeadline(Date.now() + getMoveTimeLimit());
-    } else {
-      setOnlineTurnDeadline(0);
-    }
+    setOnlineTurnDeadline(0);
 
     // Write state first so both players can start the coin toss at (almost) the same time.
     fbRef('rooms/' + roomCode + '/state').set(serializeGameState())
+      .then(function(){
+        return fbRef('rooms/' + roomCode + '/ready').set({host:false, guest:false});
+      })
       .then(function(){
         return fbRef('rooms/' + roomCode + '/status').set('playing');
       })
       .then(function(){
         showOnlineCoinToss(starter, function(){
-          showSc('sg');
-          if(gameSettings.music && !musicPlaying) startMusic();
-          setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
-          setS(myTurnMsg());
-          if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
-          saveOnlineSession();
-          setupPresence();
-          listenForRoomStatus();
-          listenForMoves();
+          setupOnlineReadySync();
         });
       })
       .catch(function(e){ console.error('startOnlineGame error:', e); });
@@ -5563,6 +5625,7 @@ function startOnlineGame(){
 
 // ── WAIT FOR GAME START (guest only) ──
 function waitForGameStart(){
+  resetOnlineCoinJoinState();
   window._gameStarted = false;
   window._myLastPush = undefined;
   window._myPlayerIndex = 1; // guest is always player 1
@@ -5581,20 +5644,59 @@ function waitForGameStart(){
     document.getElementById('sn1').textContent = pNames[0];
     document.getElementById('sn2').textContent = pNames[1];
     showOnlineCoinToss(turn, function(){
-      showSc('sg');
-      if(gameSettings.music && !musicPlaying) startMusic();
-      setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
-      updateUI(); renderRack(); renderBoard();
-      setS(pNames[turn] + ' מתחיל...');
-      saveOnlineSession();
-      setupPresence();
-      listenForRoomStatus();
-      listenForMoves();
+      setupOnlineReadySync();
     });
   }
 
   stateRef.on('value', onInitialState);
   onlineListeners.push({ ref: stateRef, type:'value', fn: onInitialState });
+}
+
+function setupOnlineReadySync(){
+  if(!roomCode) return;
+  var readyRef = fbRef('rooms/' + roomCode + '/ready');
+  var otherName = (myRole==='host') ? pNames[1] : pNames[0];
+  var coinSub = document.getElementById('coin-sub');
+  var coinMsg = document.getElementById('coin-msg');
+  var enterBtn = document.getElementById('coin-enter');
+  const onReady = function(snap){
+    var val = snap && snap.exists() ? snap.val() : {};
+    onlineCoinJoinReady.host = !!(val && val.host);
+    onlineCoinJoinReady.guest = !!(val && val.guest);
+    if(onlineCoinJoinStarted) return;
+    var meReady = !!onlineCoinJoinReady[myRole];
+    var otherReady = !!onlineCoinJoinReady[myRole === 'host' ? 'guest' : 'host'];
+    if(meReady && !otherReady){
+      if(coinSub) coinSub.textContent = 'מחכים לשחקן השני...';
+      if(coinMsg) coinMsg.textContent = 'ממתין ש' + otherName + ' יצטרף';
+      if(enterBtn){
+        enterBtn.disabled = true;
+        enterBtn.textContent = 'הצטרפת';
+      }
+      return;
+    }
+    if(!meReady && otherReady){
+      if(coinSub) coinSub.textContent = 'השחקן השני מוכן';
+      if(coinMsg) coinMsg.textContent = 'ממתין ש' + otherName + ' יצטרף';
+      if(enterBtn){
+        enterBtn.disabled = false;
+        enterBtn.textContent = 'הצטרף';
+      }
+      return;
+    }
+    if(!meReady){
+      if(coinSub) coinSub.textContent = 'לחצו "הצטרף" כדי להיכנס למשחק';
+      if(coinMsg) coinMsg.textContent = getFirstTurnAnnouncement(turn);
+      if(enterBtn){
+        enterBtn.disabled = false;
+        enterBtn.textContent = 'הצטרף';
+      }
+      return;
+    }
+    beginOnlineGameAfterBothReady();
+  };
+  readyRef.on('value', onReady);
+  onlineListeners.push({ ref: readyRef, type:'value', fn: onReady });
 }
 
 // ── SERIALIZE GAME STATE ──
@@ -6377,7 +6479,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260408203932', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260408212018', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
