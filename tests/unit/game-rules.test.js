@@ -325,3 +325,20 @@ test('showOnlineCoinToss auto-continues and restores coin-enter button visibilit
   assert.equal(byId.get('coin-enter').style.display, '');
   assert.equal(doneCalled, 1);
 });
+
+
+test('waitingMsg shows opponent name in online mode and fallback elsewhere', () => {
+  const onlineCtx = buildContextWith(['waitingMsg'], {
+    gMode: 'online',
+    pNames: ['רות', 'דן'],
+    window: { _myPlayerIndex: 0 }
+  });
+  assert.equal(onlineCtx.waitingMsg(), 'ממתין ל-דן...');
+
+  const localCtx = buildContextWith(['waitingMsg'], {
+    gMode: 'vs',
+    pNames: ['רות', 'דן'],
+    window: {}
+  });
+  assert.equal(localCtx.waitingMsg(), 'המתן לתורך');
+});
