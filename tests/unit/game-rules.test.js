@@ -328,6 +328,16 @@ test('computeExpiredOnlineTurnState advances turn and increments missed turn cou
   assert.equal(JSON.stringify(next.missedTurns), JSON.stringify({ 0: 2, 1: 0 }));
 });
 
+test('shouldClaimExpiredOnlineTurn waits through grace period to avoid deadline races', () => {
+  const ctx = buildContextWith(['shouldClaimExpiredOnlineTurn']);
+  const state = { turn: 0, turnDeadlineMs: 10_000 };
+
+  assert.equal(ctx.shouldClaimExpiredOnlineTurn(state, 1, 10_999, 1_000), false);
+  assert.equal(ctx.shouldClaimExpiredOnlineTurn(state, 1, 11_000, 1_000), true);
+  assert.equal(ctx.shouldClaimExpiredOnlineTurn(state, 0, 20_000, 1_000), false);
+  assert.equal(ctx.shouldClaimExpiredOnlineTurn({ turn: 0, turnDeadlineMs: 0 }, 1, 20_000, 1_000), false);
+});
+
 test('getFirstTurnAnnouncement includes selected player name', () => {
   const ctx = buildContextWith(['getCoinWinnerLabel', 'getFirstTurnAnnouncement'], {
     pNames: ['רות', 'דן']
