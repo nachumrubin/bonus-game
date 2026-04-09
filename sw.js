@@ -1,6 +1,6 @@
 // בוסט — Service Worker
 // Cache name includes build timestamp — auto-invalidates on every deploy
-var CACHE_NAME = 'boost-20260409164500';
+var CACHE_NAME = 'boost-20260408212018';
 var ASSETS = [
   './',
   './index.html',
@@ -27,46 +27,21 @@ self.addEventListener('activate', function(e){
   self.clients.claim();
 });
 
-function isHttpRequest(request){
-  var requestUrl = new URL(request.url);
-  return requestUrl.protocol === 'http:' || requestUrl.protocol === 'https:';
-}
-
-function cacheResponseIfEligible(request, response){
-  if(!response || response.status !== 200 || response.type !== 'basic') return response;
-  if(!isHttpRequest(request)) return response;
-  var clone = response.clone();
-  caches.open(CACHE_NAME).then(function(cache){
-    cache.put(request, clone);
-  });
-  return response;
-}
-
 self.addEventListener('fetch', function(e){
   if(e.request.method !== 'GET') return;
-  if(!isHttpRequest(e.request)) return;
-
-  var isNavigation = e.request.mode === 'navigate';
-
-  if(isNavigation){
-    e.respondWith(
-      fetch(e.request)
-        .then(function(resp){ return cacheResponseIfEligible(e.request, resp); })
-        .catch(function(){
-          return caches.match(e.request).then(function(cached){
-            return cached || caches.match('./index.html');
-          });
-        })
-    );
-    return;
-  }
-
   e.respondWith(
     caches.match(e.request).then(function(cached){
       if(cached) return cached;
-      return fetch(e.request)
-        .then(function(resp){ return cacheResponseIfEligible(e.request, resp); })
-        .catch(function(){ return caches.match('./index.html'); });
+      return fetch(e.request).then(function(resp){
+        if(!resp || resp.status !== 200 || resp.type !== 'basic') return resp;
+        var clone = resp.clone();
+        caches.open(CACHE_NAME).then(function(cache){
+          cache.put(e.request, clone);
+        });
+        return resp;
+      }).catch(function(){
+        return caches.match('./index.html');
+      });
     })
   );
 });
