@@ -6,7 +6,8 @@
   "scripts": {
     "test:unit": "node --test tests/unit/*.test.js",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "dict:add": "node scripts/add-dictionary-words.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2"
