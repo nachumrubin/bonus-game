@@ -6,14 +6,14 @@
 <title>בוסט — שבץ נא</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- PWA -->
-<link rel="manifest" href="./manifest.webmanifest?v=20260409161500" id="pwa-manifest">
+<link rel="manifest" href="./manifest.webmanifest?v=20260409164500" id="pwa-manifest">
 <meta name="theme-color" content="#2d6080">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260409161500">
+<meta name="version" content="20260409164500">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -6451,7 +6451,7 @@ function backConfirmStay(){
   // Caches the page for offline use
   var SW_CODE = [
     '"use strict";',
-    'var CACHE = "bonus-20260409161500";',
+    'var CACHE = "bonus-20260409164500";',
     'var ASSETS = ["/"];',
     'self.addEventListener("install", function(e){',
     '  e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(ASSETS); }));',
@@ -6484,16 +6484,49 @@ function backConfirmStay(){
     '});',
   ].join('\n');
 
+  function setupServiceWorkerLifecycle(reg){
+    console.log('SW registered:', reg.scope);
+
+    function promptWaitingWorker(){
+      if(reg.waiting){
+        reg.waiting.postMessage({type: 'SKIP_WAITING'});
+      }
+    }
+
+    reg.addEventListener('updatefound', function(){
+      var newWorker = reg.installing;
+      if(!newWorker) return;
+      newWorker.addEventListener('statechange', function(){
+        if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+          promptWaitingWorker();
+        }
+      });
+    });
+
+    if(reg.waiting){
+      promptWaitingWorker();
+    }
+
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function(){
+      if(refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+
+    reg.update();
+  }
+
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260409161500', {updateViaCache: 'none'}).then(function(reg){
-      console.log('SW registered:', reg.scope);
+    navigator.serviceWorker.register('./sw.js?v=20260409164500', {updateViaCache: 'none'}).then(function(reg){
+      setupServiceWorkerLifecycle(reg);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
       var swBlob = new Blob([SW_CODE], {type: 'application/javascript'});
       var swUrl = URL.createObjectURL(swBlob);
       navigator.serviceWorker.register(swUrl).then(function(reg){
-        console.log('SW (blob) registered');
+        setupServiceWorkerLifecycle(reg);
       }).catch(function(e){
         console.log('SW unavailable:', e.message);
       });
