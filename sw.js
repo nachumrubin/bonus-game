@@ -1,6 +1,6 @@
 // בוסט — Service Worker
 // Cache name includes build timestamp — auto-invalidates on every deploy
-var CACHE_NAME = 'boost-20260408212018';
+var CACHE_NAME = 'boost-20260409154000';
 var ASSETS = [
   './',
   './index.html',
@@ -35,9 +35,12 @@ self.addEventListener('fetch', function(e){
       return fetch(e.request).then(function(resp){
         if(!resp || resp.status !== 200 || resp.type !== 'basic') return resp;
         var clone = resp.clone();
-        caches.open(CACHE_NAME).then(function(cache){
-          cache.put(e.request, clone);
-        });
+        var requestUrl = new URL(e.request.url);
+        if(requestUrl.protocol === 'http:' || requestUrl.protocol === 'https:'){
+          caches.open(CACHE_NAME).then(function(cache){
+            cache.put(e.request, clone);
+          });
+        }
         return resp;
       }).catch(function(){
         return caches.match('./index.html');

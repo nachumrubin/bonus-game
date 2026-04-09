@@ -1,0 +1,14 @@
+{
+  "name": "בוסט — שבץ נא",
+  "short_name": "בוסט",
+  "description": "משחק שבץ נא ישראלי עם בוסטים",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2d6080",
+  "theme_color": "#2d6080",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": []
+}

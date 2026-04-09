@@ -6,14 +6,14 @@
 <title>בוסט — שבץ נא</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- PWA -->
-<link rel="manifest" href="#" id="pwa-manifest">
+<link rel="manifest" href="./manifest.webmanifest?v=20260409154000" id="pwa-manifest">
 <meta name="theme-color" content="#2d6080">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260408212018">
+<meta name="version" content="20260409154000">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -6451,7 +6451,7 @@ function backConfirmStay(){
   // Caches the page for offline use
   var SW_CODE = [
     '"use strict";',
-    'var CACHE = "bonus-1774369800";',
+    'var CACHE = "bonus-20260409154000";',
     'var ASSETS = ["/"];',
     'self.addEventListener("install", function(e){',
     '  e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(ASSETS); }));',
@@ -6479,7 +6479,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260408212018', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260409154000', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -6495,6 +6495,18 @@ function backConfirmStay(){
 
   // ── Install Prompt (Android Chrome) ──
   var deferredPrompt = null;
+
+// Ignore known noisy Chrome-extension async message-channel rejection.
+// This is emitted by some extensions and is not caused by the app itself.
+window.addEventListener('unhandledrejection', function(e){
+  var reason = e && e.reason;
+  var msg = (reason && reason.message) ? String(reason.message) : String(reason || '');
+  if(msg.indexOf('A listener indicated an asynchronous response by returning true') !== -1 &&
+     msg.indexOf('message channel closed before a response was received') !== -1){
+    e.preventDefault();
+  }
+});
+
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     deferredPrompt = e;
