@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260408212018">
+<meta name="version" content="20260409101500">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260408212018</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260409101500</div>
   </div>
 </div>
 
@@ -1736,6 +1736,7 @@ let onlineTimerRenderInt=null, onlineTurnDeadlineMs=0, localTurnDeadlineMs=0;
 let onlineTimeoutWatchdogInt=null;
 let onlineMissedTurns=[0,0];
 let onlinePresenceByPlayer=[true,true];
+let fbServerTimeOffsetMs=0;
 let lastRejWord='', lastRejScore=0, lastRejPlaced=[];
 let replacedThisTurn=null, pendingReview=null;
 let lastMoveCells=[]; // coords of last committed move for highlighting
@@ -2134,17 +2135,29 @@ function formatTimerSec(secLeft){
   const ss = safe%60;
   return String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
 }
+function getSyncedNowMs(){
+  return Date.now() + Number(fbServerTimeOffsetMs || 0);
+}
+function computeTurnSecondsLeft(deadlineMs, nowMs){
+  const safeDeadline = Number(deadlineMs || 0);
+  if(!safeDeadline) return 0;
+  const now = Number(nowMs || getSyncedNowMs());
+  return Math.max(0, Math.ceil((safeDeadline - now) / 1000));
+}
+function getActiveTurnDeadlineMs(){
+  return (gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs>0)
+    ? onlineTurnDeadlineMs
+    : localTurnDeadlineMs;
+}
 function refreshSharedTurnTimer(){
   const wrap = document.getElementById('turn-timer');
   const value = document.getElementById('turn-timer-value');
   if(!wrap || !value) return;
-  const activeDeadlineMs = (gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs>0)
-    ? onlineTurnDeadlineMs
-    : localTurnDeadlineMs;
+  const activeDeadlineMs = getActiveTurnDeadlineMs();
   const show = !!(gameSettings.timelimit && activeDeadlineMs>0);
   wrap.style.display = show ? 'flex' : 'none';
   if(!show) return;
-  const secLeft = Math.max(0, Math.ceil((activeDeadlineMs - Date.now())/1000));
+  const secLeft = computeTurnSecondsLeft(activeDeadlineMs);
   value.textContent = formatTimerSec(secLeft);
   wrap.classList.toggle('urgent', secLeft <= 5);
 }
@@ -2259,29 +2272,26 @@ function startMoveTimer(){
   const limitMs = getMoveTimeLimit();
   if(!limitMs) return;
   if(!(gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs>0)){
-    setLocalTurnDeadline(Date.now() + limitMs);
+    setLocalTurnDeadline(getSyncedNowMs() + limitMs);
   }
   if(gMode==='online' && onlineMode==='live'){
-    if(!onlineTurnDeadlineMs || onlineTurnDeadlineMs <= Date.now()){
-      setOnlineTurnDeadline(Date.now() + limitMs);
+    if(!onlineTurnDeadlineMs || onlineTurnDeadlineMs <= getSyncedNowMs()){
+      setOnlineTurnDeadline(getSyncedNowMs() + limitMs);
     } else {
       refreshSharedTurnTimer();
     }
   }
-  let secLeft = Math.max(1, Math.ceil(limitMs/1000));
-  if(gMode==='online' && onlineMode==='live' && onlineTurnDeadlineMs){
-    secLeft = Math.max(1, Math.ceil((onlineTurnDeadlineMs - Date.now())/1000));
-  }
-  updateMoveTimerStatus(secLeft);
+  updateMoveTimerStatus(Math.max(1, computeTurnSecondsLeft(getActiveTurnDeadlineMs())));
   moveTimerInt = setInterval(()=>{
-    secLeft--;
-    if(secLeft<=0){
+    const deadline = getActiveTurnDeadlineMs();
+    const secLeft = computeTurnSecondsLeft(deadline);
+    if(!deadline || secLeft<=0){
       clearMoveTimer();
       expireCurrentMove();
       return;
     }
     updateMoveTimerStatus(secLeft);
-  },1000);
+  },250);
 }
 function runBotSearchSafely(){
   try{
@@ -2624,7 +2634,7 @@ function beginOnlineGameAfterBothReady(){
   }
   if(myRole === 'host'){
     if(onlineMode === 'live' && gameSettings.timelimit){
-      setOnlineTurnDeadline(Date.now() + getMoveTimeLimit());
+      setOnlineTurnDeadline(getSyncedNowMs() + getMoveTimeLimit());
     } else {
       setOnlineTurnDeadline(0);
     }
@@ -4290,7 +4300,7 @@ function nextTurn(){
       scheduleBotMove();
     } else if(gMode==='online'){
       if(onlineMode==='live' && gameSettings.timelimit){
-        setOnlineTurnDeadline(Date.now() + getMoveTimeLimit());
+        setOnlineTurnDeadline(getSyncedNowMs() + getMoveTimeLimit());
       } else {
         setOnlineTurnDeadline(0);
       }
@@ -4300,7 +4310,7 @@ function nextTurn(){
     } else {
       startMoveTimer();
     }
-    if(gMode==='online') setTimeout(pushMoveToFirebase, 200);
+    if(gMode==='online') pushMoveToFirebase();
     return;
   }
   if(turn===1)decrementLocks();
@@ -4314,7 +4324,7 @@ function nextTurn(){
     scheduleBotMove();
   } else if(gMode==='online'){
     if(onlineMode==='live' && gameSettings.timelimit){
-      setOnlineTurnDeadline(Date.now() + getMoveTimeLimit());
+      setOnlineTurnDeadline(getSyncedNowMs() + getMoveTimeLimit());
     } else {
       setOnlineTurnDeadline(0);
     }
@@ -4330,7 +4340,7 @@ function nextTurn(){
     setS(myTurnMsg());
     startMoveTimer();
   }
-  if(gMode==='online') setTimeout(pushMoveToFirebase, 200);
+  if(gMode==='online') pushMoveToFirebase();
 }
 
 
@@ -5274,6 +5284,12 @@ function initFirebase(){
       fbApp = firebase.initializeApp(FIREBASE_CONFIG);
     }
     fbDb = firebase.database();
+    try{
+      fbDb.ref('.info/serverTimeOffset').on('value', function(snap){
+        var offset = Number(snap && snap.val ? snap.val() : 0);
+        fbServerTimeOffsetMs = Number.isFinite(offset) ? offset : 0;
+      });
+    } catch(_err){}
     return true;
   }catch(e){ console.error('Firebase init error:',e); return false; }
 }
@@ -5908,14 +5924,15 @@ function claimExpiredOnlineTurn(){
   if(gMode !== 'online' || onlineMode !== 'live' || !roomCode || !gameSettings.timelimit) return;
   var myIdx = Number(window._myPlayerIndex);
   var limitMs = getMoveTimeLimit();
+  var nowMs = getSyncedNowMs();
   var stateRef = fbRef('rooms/' + roomCode + '/state');
   stateRef.transaction(function(curr){
     if(!curr) return curr;
     var currentTurn = Number((curr.turn !== undefined) ? curr.turn : 0);
     if(currentTurn === myIdx) return curr;
     var deadline = Number(curr.turnDeadlineMs || 0);
-    if(!deadline || deadline > Date.now()) return curr;
-    return computeExpiredOnlineTurnState(curr, Date.now(), limitMs);
+    if(!deadline || deadline > nowMs) return curr;
+    return computeExpiredOnlineTurnState(curr, nowMs, limitMs);
   });
 }
 
@@ -5927,7 +5944,7 @@ function ensureOnlineTimeoutWatchdog(){
     var myIdx = Number(window._myPlayerIndex);
     if(turn === myIdx) return;
     if(!onlineTurnDeadlineMs) return;
-    if(Date.now() >= Number(onlineTurnDeadlineMs)){
+    if(getSyncedNowMs() >= Number(onlineTurnDeadlineMs)){
       claimExpiredOnlineTurn();
     }
   }, 350);
@@ -6479,7 +6496,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260408212018', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260409101500', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
