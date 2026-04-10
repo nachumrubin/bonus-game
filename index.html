@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260410095831">
+<meta name="version" content="20260410101346">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260410095831</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260410101346</div>
   </div>
 </div>
 
@@ -1057,17 +1057,31 @@ body.tile-selected .bsq:not(.used){
       <!-- Panel 7: dictionary suggestions/admin -->
       <div class="set-panel" style="min-width:240px;">
         <div class="set-panel-title">ניהול מילון</div>
-        <input id="dict-admin-email" type="email" placeholder="אימייל מנהל" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:4px 0;">
-        <input id="dict-admin-password" type="password" placeholder="סיסמה" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:4px 0;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:6px;">
-          <button id="dict-admin-login-btn" class="ovb p" style="padding:7px 10px;" onclick="dictionaryAdminSignIn()">התחברות מנהל</button>
-          <button id="dict-admin-logout-btn" class="ovb s hidden" style="padding:7px 10px;" onclick="dictionaryAdminSignOut()">התנתקות</button>
+        <div style="display:flex;gap:6px;justify-content:center;margin:4px 0 8px;">
+          <button id="dict-tab-suggest-btn" class="ovb p" style="padding:7px 10px;" onclick="switchDictionaryTab('suggest')">הצעת מילה</button>
+          <button id="dict-tab-admin-btn" class="ovb s" style="padding:7px 10px;" onclick="switchDictionaryTab('admin')">מנהל</button>
         </div>
-        <input id="dict-word-input" type="text" maxlength="32" placeholder="הכנס מילה" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:6px 0;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
-          <button class="ovb s" style="padding:7px 10px;" onclick="suggestDictionaryWord()">הצע מילה</button>
-          <button id="dict-admin-approve-btn" class="ovb p hidden" style="padding:7px 10px;" onclick="approveDictionaryWord()">אשר (מנהל)</button>
-          <button id="dict-admin-reject-btn" class="ovb s hidden" style="padding:7px 10px;" onclick="rejectDictionaryWord()">דחה (מנהל)</button>
+        <div id="dict-tab-suggest-panel">
+          <input id="dict-word-input" type="text" maxlength="32" placeholder="הכנס מילה" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:6px 0;">
+          <div style="display:flex;justify-content:center;">
+            <button class="ovb s" style="padding:7px 10px;" onclick="suggestDictionaryWord()">הצע מילה</button>
+          </div>
+        </div>
+        <div id="dict-tab-admin-panel" class="hidden">
+          <input id="dict-admin-email" type="email" placeholder="אימייל מנהל" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:4px 0;">
+          <input id="dict-admin-password" type="password" placeholder="סיסמה" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:4px 0;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:6px;">
+            <button id="dict-admin-login-btn" class="ovb p" style="padding:7px 10px;" onclick="dictionaryAdminSignIn()">התחברות מנהל</button>
+            <button id="dict-admin-logout-btn" class="ovb s hidden" style="padding:7px 10px;" onclick="dictionaryAdminSignOut()">התנתקות</button>
+          </div>
+          <div id="dict-admin-window" class="hidden" style="border:1px solid #4f6f82;border-radius:10px;padding:8px;background:#143041;margin-top:6px;">
+            <div style="font-size:12px;color:#d7ebf8;margin-bottom:6px;">הצעות ממתינות:</div>
+            <div id="dict-admin-suggestions" style="max-height:120px;overflow:auto;display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="display:flex;gap:6px;justify-content:center;margin-top:8px;">
+              <button id="dict-admin-approve-btn" class="ovb p" style="padding:7px 10px;" onclick="approveDictionaryWord()">אשר</button>
+              <button id="dict-admin-reject-btn" class="ovb s" style="padding:7px 10px;" onclick="rejectDictionaryWord()">דחה</button>
+            </div>
+          </div>
         </div>
         <div id="dict-word-status" style="margin-top:8px;font-size:12px;min-height:18px;color:#9fd4f5;"></div>
       </div>
@@ -5079,6 +5093,7 @@ function openSettings(){
   syncGameSettingsFromLegacy();
   settRefresh();
   ovOpen('ov-settings');
+  switchDictionaryTab('suggest');
   ensureDictionaryAuth();
 }
 
@@ -5327,6 +5342,9 @@ let fbApp = null, fbDb = null;
 let fbAuth = null;
 let fbCurrentUser = null;
 let fbIsDictionaryAdmin = false;
+let dictAdminSuggestions = [];
+let dictAdminSelectedSuggestionId = null;
+let dictActiveTab = 'suggest';
 let onlineMode = null;      // 'live' | 'async'
 let myRole = null;          // 'host' | 'guest'
 let roomCode = null;        // 6-char room code
@@ -5456,11 +5474,83 @@ async function refreshDictionaryAdminStatus(){
   const rejectBtn = document.getElementById('dict-admin-reject-btn');
   const loginBtn = document.getElementById('dict-admin-login-btn');
   const logoutBtn = document.getElementById('dict-admin-logout-btn');
+  const adminWindow = document.getElementById('dict-admin-window');
   if(approveBtn) approveBtn.classList.toggle('hidden', !fbIsDictionaryAdmin);
   if(rejectBtn) rejectBtn.classList.toggle('hidden', !fbIsDictionaryAdmin);
   if(loginBtn) loginBtn.classList.toggle('hidden', fbIsDictionaryAdmin);
   if(logoutBtn) logoutBtn.classList.toggle('hidden', !fbIsDictionaryAdmin);
+  if(adminWindow) adminWindow.classList.toggle('hidden', !fbIsDictionaryAdmin);
+  if(fbIsDictionaryAdmin) refreshPendingDictionarySuggestions();
   return fbIsDictionaryAdmin;
+}
+
+function switchDictionaryTab(tab){
+  dictActiveTab = (tab === 'admin') ? 'admin' : 'suggest';
+  const suggestPanel = document.getElementById('dict-tab-suggest-panel');
+  const adminPanel = document.getElementById('dict-tab-admin-panel');
+  const suggestBtn = document.getElementById('dict-tab-suggest-btn');
+  const adminBtn = document.getElementById('dict-tab-admin-btn');
+  if(suggestPanel) suggestPanel.classList.toggle('hidden', dictActiveTab !== 'suggest');
+  if(adminPanel) adminPanel.classList.toggle('hidden', dictActiveTab !== 'admin');
+  if(suggestBtn) suggestBtn.className = dictActiveTab === 'suggest' ? 'ovb p' : 'ovb s';
+  if(adminBtn) adminBtn.className = dictActiveTab === 'admin' ? 'ovb p' : 'ovb s';
+}
+
+function renderPendingDictionarySuggestions(){
+  const list = document.getElementById('dict-admin-suggestions');
+  if(!list) return;
+  if(dictAdminSuggestions.length === 0){
+    list.innerHTML = '<div style="font-size:12px;color:#9ec4d8;">אין הצעות ממתינות</div>';
+    return;
+  }
+  list.innerHTML = '';
+  dictAdminSuggestions.forEach((item)=>{
+    const row = document.createElement('button');
+    row.className = 'ovb s';
+    row.style.padding = '6px 8px';
+    row.style.textAlign = 'right';
+    row.style.width = '100%';
+    if(dictAdminSelectedSuggestionId === item.id){
+      row.className = 'ovb p';
+    }
+    row.textContent = item.word;
+    row.onclick = function(){
+      dictAdminSelectedSuggestionId = item.id;
+      renderPendingDictionarySuggestions();
+    };
+    list.appendChild(row);
+  });
+}
+
+async function refreshPendingDictionarySuggestions(){
+  if(!fbDb || !fbIsDictionaryAdmin) return;
+  try{
+    const [suggestionsSnap, rejectedSnap] = await Promise.all([
+      fbRef('dictionarySuggestions').get(),
+      fbRef('dictionaryRejected').get()
+    ]);
+    const suggestions = suggestionsSnap && suggestionsSnap.val ? suggestionsSnap.val() : {};
+    const rejected = rejectedSnap && rejectedSnap.val ? rejectedSnap.val() : {};
+    const rejectedWords = new Set(
+      Object.values(rejected)
+        .map((v)=> String(v && v.word || '').trim())
+        .filter(Boolean)
+    );
+    dictAdminSuggestions = Object.keys(suggestions).map((id)=>{
+      const entry = suggestions[id] || {};
+      return { id, word: String(entry.word || '').trim(), status: entry.status || 'pending' };
+    }).filter((entry)=>
+      entry.word &&
+      entry.status === 'pending' &&
+      !rejectedWords.has(entry.word)
+    );
+    if(!dictAdminSuggestions.some((s)=>s.id === dictAdminSelectedSuggestionId)){
+      dictAdminSelectedSuggestionId = dictAdminSuggestions[0] ? dictAdminSuggestions[0].id : null;
+    }
+    renderPendingDictionarySuggestions();
+  }catch(e){
+    setDictionaryWordStatus('טעינת הצעות נכשלה', true);
+  }
 }
 
 async function dictionaryAdminSignIn(){
@@ -5491,6 +5581,9 @@ async function dictionaryAdminSignOut(){
     await fbAuth.signOut();
     fbCurrentUser = null;
     fbIsDictionaryAdmin = false;
+    dictAdminSuggestions = [];
+    dictAdminSelectedSuggestionId = null;
+    renderPendingDictionarySuggestions();
     await refreshDictionaryAdminStatus();
     setDictionaryWordStatus('המנהל נותק', false);
   }catch(e){
@@ -5532,9 +5625,10 @@ async function suggestDictionaryWord(){
 }
 
 async function approveDictionaryWord(){
+  const selected = dictAdminSuggestions.find((s)=>s.id === dictAdminSelectedSuggestionId) || null;
   const input = document.getElementById('dict-word-input');
-  const word = normalizeDictionaryWord(input && input.value);
-  if(!word){ setDictionaryWordStatus('נא להזין מילה לאישור', true); return; }
+  const word = normalizeDictionaryWord((selected && selected.word) || (input && input.value));
+  if(!word){ setDictionaryWordStatus('נא לבחור הצעה לאישור', true); return; }
   const user = await ensureDictionaryAuth();
   if(!user){ setDictionaryWordStatus('נדרשת התחברות', true); return; }
   await refreshDictionaryAdminStatus();
@@ -5545,18 +5639,24 @@ async function approveDictionaryWord(){
       approvedByUid: user.uid,
       approvedAt: firebase.database.ServerValue.TIMESTAMP
     });
+    if(selected){
+      await fbRef(`dictionarySuggestions/${selected.id}/status`).set('approved');
+      await fbRef(`dictionarySuggestions/${selected.id}/reviewedAt`).set(firebase.database.ServerValue.TIMESTAMP);
+    }
     DICT.add(word);
     if(window.HebrewValidator) window.HebrewValidator.init(DICT);
     setDictionaryWordStatus('המילה אושרה ונוספה למילון ✅', false);
+    refreshPendingDictionarySuggestions();
   }catch(e){
     setDictionaryWordStatus('אישור המילה נכשל', true);
   }
 }
 
 async function rejectDictionaryWord(){
+  const selected = dictAdminSuggestions.find((s)=>s.id === dictAdminSelectedSuggestionId) || null;
   const input = document.getElementById('dict-word-input');
-  const word = normalizeDictionaryWord(input && input.value);
-  if(!word){ setDictionaryWordStatus('נא להזין מילה לדחייה', true); return; }
+  const word = normalizeDictionaryWord((selected && selected.word) || (input && input.value));
+  if(!word){ setDictionaryWordStatus('נא לבחור הצעה לדחייה', true); return; }
   const user = await ensureDictionaryAuth();
   if(!user){ setDictionaryWordStatus('נדרשת התחברות', true); return; }
   await refreshDictionaryAdminStatus();
@@ -5568,7 +5668,12 @@ async function rejectDictionaryWord(){
       rejectedByUid: user.uid,
       rejectedAt: firebase.database.ServerValue.TIMESTAMP
     });
+    if(selected){
+      await fbRef(`dictionarySuggestions/${selected.id}/status`).set('rejected');
+      await fbRef(`dictionarySuggestions/${selected.id}/reviewedAt`).set(firebase.database.ServerValue.TIMESTAMP);
+    }
     setDictionaryWordStatus('המילה נדחתה', false);
+    refreshPendingDictionarySuggestions();
   }catch(e){
     setDictionaryWordStatus('דחיית המילה נכשלה', true);
   }
@@ -6745,7 +6850,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260410095831', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260410101346', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)

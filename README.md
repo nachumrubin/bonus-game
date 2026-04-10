@@ -64,6 +64,12 @@ Dictionary approve/reject actions are protected by Firebase Auth custom claims:
 
 Regular users can still suggest words (authenticated), but only admin-claimed accounts can approve/reject.
 
+In-app settings now separate dictionary actions into:
+- Suggestion tab (user suggestions only)
+- Admin tab (email/password admin login + pending suggestions moderation)
+
+The admin moderation view filters out suggestions whose words already exist in `dictionaryRejected`.
+
 ## E2E multiplayer regression tests
 
 A Playwright-based browser suite is available under `tests/online-turn-sync.spec.js`.
