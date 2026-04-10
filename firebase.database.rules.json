@@ -1,5 +1,23 @@
 {
   "rules": {
+    "dictionarySuggestions": {
+      ".read": "auth != null",
+      "$suggestionId": {
+        ".write": "auth != null"
+      }
+    },
+    "dictionaryApproved": {
+      ".read": true,
+      "$word": {
+        ".write": "auth != null && auth.token.admin === true"
+      }
+    },
+    "dictionaryRejected": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && auth.token.admin === true"
+      }
+    },
     "globalChampions": {
       ".read": true,
       ".write": true,

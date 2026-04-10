@@ -5,6 +5,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync('index.html', 'utf8');
 const dictMatch = source.match(/const B64 = "([A-Za-z0-9+/=]+)";/);
+const dictBaseUrlMatch = source.match(/const DICT_BASE_URL = '([^']+)';/);
 
 function extractLoaderSnippet() {
   const startMarker = 'function addWordsFromText(txt){';
@@ -55,4 +56,9 @@ test('embedded startup dictionary decodes and yields a large word set', async ()
   const txt = await context.decodeDictionaryTextFromB64(dictMatch[1]);
   const words = txt.split(/\r?\n/).map(w => w.trim()).filter(Boolean);
   assert.ok(words.length >= 40000, `Expected >= 40000 words, got ${words.length}`);
+});
+
+test('dictionary loader defines external static dictionary URL', () => {
+  assert.ok(dictBaseUrlMatch && dictBaseUrlMatch[1], 'expected DICT_BASE_URL declaration');
+  assert.equal(dictBaseUrlMatch[1], './data/dictionary.base.txt');
 });
