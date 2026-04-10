@@ -64,11 +64,13 @@ Dictionary approve/reject actions are protected by Firebase Auth custom claims:
 
 Regular users can still suggest words (authenticated), but only admin-claimed accounts can approve/reject.
 
-In-app settings now separate dictionary actions into:
-- Suggestion tab (user suggestions only)
-- Admin tab (email/password admin login + pending suggestions moderation)
+In-app settings now expose:
+- A main dictionary section for suggestions (`שלח הצעה`) that supports one word or comma-separated word lists.
+- An `הגדרות מתקדמות` button for admin login (email/password).
+- An advanced admin moderation window with checkbox-based multi-select suggestions and `קבל` / `דחה` actions.
 
-The admin moderation view filters out suggestions whose words already exist in `dictionaryRejected`.
+Admin moderation requires an explicit confirmation step before applying irreversible decisions.
+The moderation list filters out suggestions whose words already exist in `dictionaryRejected`.
 
 ## E2E multiplayer regression tests
 
