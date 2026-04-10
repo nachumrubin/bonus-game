@@ -139,6 +139,48 @@ test('crossword bonus finalize commits base score + bonus once', () => {
 });
 
 
+
+test('playWord clears move timer before forfeiting invalid move without appeal', () => {
+  let clearTimerCalls = 0;
+  let nextTurnCalls = 0;
+  const statuses = [];
+  const ctx = buildContextWith(['playWord'], {
+    botBusy: false,
+    gMode: 'online',
+    turn: 0,
+    placed: [{ r: 4, c: 4, letter: 'א', val: 1 }],
+    replacedThisTurn: null,
+    firstMove: false,
+    gameSettings: { appealsMax: 0 },
+    appealsUsed: [0, 0],
+    reviewInvalid: [{ text: 'שגויה' }],
+    clearMoveTimer: () => { clearTimerCalls++; },
+    getMoveTiles: () => [{ r: 4, c: 4, letter: 'א', val: 1 }],
+    isCollinear: () => true,
+    hasGaps: () => false,
+    isBonusPos: () => false,
+    isConnected: () => true,
+    getAllWords: () => [[{ letter: 'א' }, { letter: 'ב' }]],
+    buildMoveReview: () => ({ invalid: [{ text: 'שגויה' }], total: 0 }),
+    highlightIllegalWords: () => {},
+    clearIllegalHighlights: () => {},
+    doRecall: () => {},
+    forfeitActiveFutureMultiplier: () => '',
+    nextTurn: () => { nextTurnCalls++; },
+    setS: (msg) => statuses.push(msg),
+    setTimeout: (fn) => { fn(); return 1; },
+    lastRejWord: '',
+    lastRejScore: 0,
+    lastRejPlaced: []
+  });
+
+  ctx.playWord();
+  assert.equal(clearTimerCalls, 1);
+  assert.equal(nextTurnCalls, 1);
+  assert.match(statuses[0], /מילה לא חוקית/);
+});
+
+
 test('runBotSearchSafely returns null result instead of throwing when search crashes', () => {
   const errors = [];
   const ctx = buildContextWith(['runBotSearchSafely'], {
