@@ -6,7 +6,8 @@
 <title>בוסט — שבץ נא</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- PWA -->
-<link rel="manifest" href="#" id="pwa-manifest">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%232d6080'/><text x='16' y='24' text-anchor='middle' font-size='22' font-family='serif' fill='%23e8c840'>ב</text></svg>">
+<link rel="manifest" id="pwa-manifest">
 <meta name="theme-color" content="#2d6080">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -5568,7 +5569,9 @@ function renderPendingDictionarySuggestions(){
 }
 
 async function refreshPendingDictionarySuggestions(){
-  if(!fbDb || !fbIsDictionaryAdmin) return;
+  if(!fbIsDictionaryAdmin) return;
+  if(!fbDb){ await new Promise(res => loadFirebaseSDK(res)); initFirebase(); }
+  if(!fbDb) return;
   try{
     const [suggestionsSnap, rejectedSnap] = await Promise.all([
       fbRef('dictionarySuggestions').get(),
@@ -5665,6 +5668,8 @@ async function suggestDictionaryWord(){
   const input = document.getElementById('dict-word-input');
   const words = parseSuggestedWords(input && input.value);
   if(words.length === 0){ setDictionaryWordStatus('נא להזין מילה להצעה', true); return; }
+  setDictionaryWordStatus('שולח...', false);
+  await new Promise(res => loadFirebaseSDK(res));
   if(!initFirebase() || !fbDb){ setDictionaryWordStatus('שגיאת חיבור, נסה שוב', true); return; }
   try{
     for(const word of words){
@@ -5721,7 +5726,8 @@ async function confirmDictionaryDecision(){
 
 async function performDictionaryDecision(action, ids){
   if(!fbIsDictionaryAdmin){ setDictionaryWordStatus('אין הרשאת מנהל', true); return; }
-  if(!initFirebase() || !fbDb){ setDictionaryWordStatus('Firebase לא זמין', true); return; }
+  if(!fbDb){ await new Promise(res => loadFirebaseSDK(res)); initFirebase(); }
+  if(!fbDb){ setDictionaryWordStatus('Firebase לא זמין', true); return; }
   try{
     let changed = 0;
     for(const id of ids){
