@@ -1058,7 +1058,7 @@ body.tile-selected .bsq:not(.used){
     <!-- Dictionary Management — full width below panels -->
     <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
       <div class="set-panel-title" style="margin-bottom:10px;">📖 ניהול מילון</div>
-      <input id="dict-word-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;">
+      <input id="dict-word-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
       <button onclick="suggestDictionaryWord()" style="width:100%;margin-top:8px;padding:11px;border-radius:8px;border:none;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.75);font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.09)'">📨 שלח הצעה</button>
       <button onclick="openDictionaryAdvancedSettings()" style="width:100%;margin-top:6px;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#5a8ad0,#3a5aaa);border:2px solid #2a3a8a;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #1a2a6a;">🔐 הגדרות מתקדמות</button>
       <div id="dict-word-status" style="margin-top:8px;font-size:12px;min-height:18px;color:#9fd4f5;text-align:center;"></div>
@@ -5655,6 +5655,7 @@ function setDictionaryWordStatus(msg,isErr){
 
 function parseSuggestedWords(raw){
   return String(raw || '')
+    .replace(/[^א-ת,\n]/g, '')
     .split(/[,\n]+/g)
     .map((w)=> normalizeDictionaryWord(w))
     .filter(Boolean);
@@ -5664,8 +5665,7 @@ async function suggestDictionaryWord(){
   const input = document.getElementById('dict-word-input');
   const words = parseSuggestedWords(input && input.value);
   if(words.length === 0){ setDictionaryWordStatus('נא להזין מילה להצעה', true); return; }
-  const user = await ensureDictionaryAuth();
-  if(!user){ setDictionaryWordStatus('התחברות נכשלה, נסה שוב', true); return; }
+  if(!initFirebase() || !fbDb){ setDictionaryWordStatus('שגיאת חיבור, נסה שוב', true); return; }
   try{
     for(const word of words){
       const ref = fbRef('dictionarySuggestions').push();
@@ -5673,11 +5673,10 @@ async function suggestDictionaryWord(){
         word,
         normalizedWord: word,
         status: 'pending',
-        suggestedByUid: user.uid,
         createdAt: firebase.database.ServerValue.TIMESTAMP
       });
     }
-    setDictionaryWordStatus(`נשלחו ${words.length} מילים לבדיקה ✅`, false);
+    setDictionaryWordStatus(words.length === 1 ? `"${words[0]}" נשלחה לבדיקה ✅` : `נשלחו ${words.length} מילים לבדיקה ✅`, false);
     if(input) input.value = '';
   }catch(e){
     setDictionaryWordStatus('שליחת ההצעה נכשלה', true);
