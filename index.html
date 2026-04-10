@@ -6,7 +6,7 @@
 <title>בוסט — שבץ נא</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- PWA -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%232d6080'/><text x='16' y='24' text-anchor='middle' font-size='22' font-family='serif' fill='%23e8c840'>ב</text></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzJkNjA4MCIvPjx0ZXh0IHg9IjE2IiB5PSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMiIgZm9udC1mYW1pbHk9InNlcmlmIiBmaWxsPSIjZThjODQwIj7XkTwvdGV4dD48L3N2Zz4=">
 <link rel="manifest" id="pwa-manifest">
 <meta name="theme-color" content="#2d6080">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5124,7 +5124,6 @@ function openSettings(){
   settRefresh();
   ovOpen('ov-settings');
   closeDictionaryAdvancedSettings();
-  ensureDictionaryAuth();
 }
 
 function settRefresh(){
@@ -5468,24 +5467,7 @@ function loadFirebaseSDK(cb){
   document.head.appendChild(s1);
 }
 
-async function ensureDictionaryAuth(){
-  if(!initFirebase()) return null;
-  if(!fbAuth || !fbAuth.signInAnonymously) return null;
-  if(fbCurrentUser) return fbCurrentUser;
-  try{
-    if(fbAuth.currentUser){
-      fbCurrentUser = fbAuth.currentUser;
-    } else {
-      const cred = await fbAuth.signInAnonymously();
-      fbCurrentUser = cred && cred.user ? cred.user : fbAuth.currentUser;
-    }
-    await refreshDictionaryAdminStatus();
-    return fbCurrentUser;
-  }catch(e){
-    console.warn('Dictionary auth failed:', e);
-    return null;
-  }
-}
+async function ensureDictionaryAuth(){ return null; }
 
 async function refreshDictionaryAdminStatus(){
   if(!fbAuth) return false;
@@ -6904,20 +6886,24 @@ function backConfirmStay(){
   // Caches the page for offline use
   var SW_CODE = [
     '"use strict";',
-    'var CACHE = "bonus-1774369800";',
-    'var ASSETS = ["/"];',
+    'var CACHE = "bonus-1775820200";',
     'self.addEventListener("install", function(e){',
-    '  e.waitUntil(caches.open(CACHE).then(function(c){ return c.addAll(ASSETS); }));',
     '  self.skipWaiting();',
     '});',
     'self.addEventListener("activate", function(e){',
     '  e.waitUntil(caches.keys().then(function(keys){',
-    '    return Promise.all(keys.filter(function(k){ return k!==CACHE; }).map(function(k){ return caches.delete(k); }));',
+    '    return Promise.all(keys.map(function(k){ return caches.delete(k); }));',
     '  }));',
     '  self.clients.claim();',
     '});',
     'self.addEventListener("fetch", function(e){',
     '  if(e.request.method !== "GET") return;',
+    '  var url = e.request.url;',
+    '  var isHTML = url.endsWith("/") || url.includes("index.html") || !url.includes(".");',
+    '  if(isHTML){',
+    '    e.respondWith(fetch(e.request).catch(function(){ return caches.match(e.request); }));',
+    '    return;',
+    '  }',
     '  e.respondWith(caches.match(e.request).then(function(cached){',
     '    if(cached) return cached;',
     '    return fetch(e.request).then(function(resp){',
