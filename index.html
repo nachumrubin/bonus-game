@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260410074258">
+<meta name="version" content="20260410095831">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -630,7 +630,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260410074258</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260410095831</div>
   </div>
 </div>
 
@@ -1057,6 +1057,12 @@ body.tile-selected .bsq:not(.used){
       <!-- Panel 7: dictionary suggestions/admin -->
       <div class="set-panel" style="min-width:240px;">
         <div class="set-panel-title">ניהול מילון</div>
+        <input id="dict-admin-email" type="email" placeholder="אימייל מנהל" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:4px 0;">
+        <input id="dict-admin-password" type="password" placeholder="סיסמה" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:4px 0;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:6px;">
+          <button id="dict-admin-login-btn" class="ovb p" style="padding:7px 10px;" onclick="dictionaryAdminSignIn()">התחברות מנהל</button>
+          <button id="dict-admin-logout-btn" class="ovb s hidden" style="padding:7px 10px;" onclick="dictionaryAdminSignOut()">התנתקות</button>
+        </div>
         <input id="dict-word-input" type="text" maxlength="32" placeholder="הכנס מילה" style="width:100%;padding:8px;border-radius:10px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;margin:6px 0;">
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
           <button class="ovb s" style="padding:7px 10px;" onclick="suggestDictionaryWord()">הצע מילה</button>
@@ -5349,6 +5355,12 @@ function initFirebase(){
     try{
       if(firebase.auth){
         fbAuth = firebase.auth();
+        if(fbAuth && fbAuth.onAuthStateChanged){
+          fbAuth.onAuthStateChanged(function(user){
+            fbCurrentUser = user || null;
+            refreshDictionaryAdminStatus();
+          });
+        }
       }
     } catch(_authErr){}
     try{
@@ -5428,18 +5440,62 @@ async function ensureDictionaryAuth(){
 }
 
 async function refreshDictionaryAdminStatus(){
-  if(!fbDb || !fbCurrentUser) return false;
+  if(!fbAuth) return false;
+  fbCurrentUser = fbAuth.currentUser || fbCurrentUser;
+  if(!fbCurrentUser){
+    fbIsDictionaryAdmin = false;
+    return false;
+  }
   try{
-    const snap = await fbRef(`dictionaryAdmins/${fbCurrentUser.uid}`).get();
-    fbIsDictionaryAdmin = !!(snap && snap.val && snap.val());
+    const token = await fbCurrentUser.getIdTokenResult(true);
+    fbIsDictionaryAdmin = !!(token && token.claims && token.claims.admin === true);
   }catch(e){
     fbIsDictionaryAdmin = false;
   }
   const approveBtn = document.getElementById('dict-admin-approve-btn');
   const rejectBtn = document.getElementById('dict-admin-reject-btn');
+  const loginBtn = document.getElementById('dict-admin-login-btn');
+  const logoutBtn = document.getElementById('dict-admin-logout-btn');
   if(approveBtn) approveBtn.classList.toggle('hidden', !fbIsDictionaryAdmin);
   if(rejectBtn) rejectBtn.classList.toggle('hidden', !fbIsDictionaryAdmin);
+  if(loginBtn) loginBtn.classList.toggle('hidden', fbIsDictionaryAdmin);
+  if(logoutBtn) logoutBtn.classList.toggle('hidden', !fbIsDictionaryAdmin);
   return fbIsDictionaryAdmin;
+}
+
+async function dictionaryAdminSignIn(){
+  if(!initFirebase() || !fbAuth){ setDictionaryWordStatus('Firebase Auth לא זמין', true); return; }
+  const emailEl = document.getElementById('dict-admin-email');
+  const passEl = document.getElementById('dict-admin-password');
+  const email = String(emailEl && emailEl.value || '').trim();
+  const password = String(passEl && passEl.value || '');
+  if(!email || !password){ setDictionaryWordStatus('נא להזין אימייל וסיסמה', true); return; }
+  try{
+    const cred = await fbAuth.signInWithEmailAndPassword(email, password);
+    fbCurrentUser = cred && cred.user ? cred.user : fbAuth.currentUser;
+    await refreshDictionaryAdminStatus();
+    if(!fbIsDictionaryAdmin){
+      setDictionaryWordStatus('המשתמש מחובר אך ללא הרשאת admin claim', true);
+      return;
+    }
+    setDictionaryWordStatus('מנהל מחובר ✅', false);
+    if(passEl) passEl.value = '';
+  }catch(e){
+    setDictionaryWordStatus('התחברות מנהל נכשלה', true);
+  }
+}
+
+async function dictionaryAdminSignOut(){
+  if(!fbAuth){ return; }
+  try{
+    await fbAuth.signOut();
+    fbCurrentUser = null;
+    fbIsDictionaryAdmin = false;
+    await refreshDictionaryAdminStatus();
+    setDictionaryWordStatus('המנהל נותק', false);
+  }catch(e){
+    setDictionaryWordStatus('התנתקות נכשלה', true);
+  }
 }
 
 function normalizeDictionaryWord(raw){
@@ -6689,7 +6745,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260410074258', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260410095831', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)

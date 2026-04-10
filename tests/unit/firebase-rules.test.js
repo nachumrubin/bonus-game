@@ -24,9 +24,6 @@ test('firebase rules include dictionary moderation protections', () => {
   const rulesDoc = JSON.parse(raw);
   const rules = rulesDoc.rules || {};
 
-  assert.ok(rules.dictionaryAdmins, 'dictionaryAdmins path should exist');
-  assert.equal(rules.dictionaryAdmins.$uid['.write'], false, 'dictionaryAdmins should not be client writable');
-
   assert.ok(rules.dictionarySuggestions, 'dictionarySuggestions path should exist');
   assert.equal(
     rules.dictionarySuggestions.$suggestionId['.write'],
@@ -35,16 +32,16 @@ test('firebase rules include dictionary moderation protections', () => {
   );
 
   assert.ok(rules.dictionaryApproved, 'dictionaryApproved path should exist');
-  assert.match(
+  assert.equal(
     rules.dictionaryApproved.$word['.write'],
-    /dictionaryAdmins/,
-    'approved dictionary writes should be admin-protected'
+    'auth != null && auth.token.admin === true',
+    'approved dictionary writes should require admin custom claim'
   );
 
   assert.ok(rules.dictionaryRejected, 'dictionaryRejected path should exist');
-  assert.match(
+  assert.equal(
     rules.dictionaryRejected.$id['.write'],
-    /dictionaryAdmins/,
-    'rejected dictionary writes should be admin-protected'
+    'auth != null && auth.token.admin === true',
+    'rejected dictionary writes should require admin custom claim'
   );
 });

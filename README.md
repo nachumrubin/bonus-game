@@ -55,6 +55,15 @@ This repo's rules include:
 - `globalChampions` path
 - `.indexOn: ["score"]` for efficient `orderByChild("score")` queries
 
+## Dictionary admin authentication
+
+Dictionary approve/reject actions are protected by Firebase Auth custom claims:
+
+- Realtime DB rules require: `auth.token.admin === true`
+- Admins should sign in with email/password accounts that have the `admin` custom claim
+
+Regular users can still suggest words (authenticated), but only admin-claimed accounts can approve/reject.
+
 ## E2E multiplayer regression tests
 
 A Playwright-based browser suite is available under `tests/online-turn-sync.spec.js`.
