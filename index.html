@@ -1550,8 +1550,11 @@ async function loadDict() {
     console.log('Dictionary loaded:',DICT.size,'words');
     // Initialise Hebrew Validator with the loaded dictionary
     if(window.HebrewValidator) window.HebrewValidator.init(DICT);
-    if(initFirebase()) syncApprovedDictionaryWordsOnce();
-  } catch(e) {
+	if(typeof firebase !== 'undefined' && initFirebase()) {
+		syncApprovedDictionaryWordsOnce();
+	} else {
+		loadFirebaseSDK(() => { if(initFirebase()) syncApprovedDictionaryWordsOnce(); });
+	}  } catch(e) {
     console.warn('Dict load failed:',e);
     'לא כן כי עם של אל על הם הן את זה זו רק כך יש אם בו לו מה לב יד אח שם גם אז עד כל אך לך לה בה ילד שמש ספר בית יום שלום שמחה ברכה אהבה ישראל'.split(' ').forEach(w=>DICT.add(w));
     dictReady=true;
