@@ -5452,8 +5452,13 @@ function showOnlineLobby(){
   checkForOnlineSession();
 }
 
+let _fbSdkLoading = false;
+let _fbSdkCallbacks = [];
 function loadFirebaseSDK(cb){
   if(typeof firebase !== 'undefined'){ cb(); return; }
+  _fbSdkCallbacks.push(cb);
+  if(_fbSdkLoading) return; // already in flight, just queued the callback
+  _fbSdkLoading = true;
   const s1 = document.createElement('script');
   s1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
   s1.onload = ()=>{
@@ -5462,7 +5467,12 @@ function loadFirebaseSDK(cb){
     s2.onload = ()=>{
       const s3 = document.createElement('script');
       s3.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js';
-      s3.onload = ()=>{ setTimeout(cb, 100); }; // small delay to ensure SDK ready
+      s3.onload = ()=>{
+        setTimeout(()=>{
+          const cbs = _fbSdkCallbacks.splice(0);
+          cbs.forEach(f=>f());
+        }, 100);
+      };
       document.head.appendChild(s3);
     };
     document.head.appendChild(s2);
