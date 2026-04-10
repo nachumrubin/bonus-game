@@ -1,11 +1,21 @@
 # boost-game
 A Hebrew scrabble mobile game.
 
+## Dictionary loading
+
+The game loads its base dictionary from `data/dictionary.base.txt` at startup.
+
+For resilience, `index.html` still contains an embedded base64 fallback payload that is used only if the static file cannot be fetched.
+
+Export/update the static dictionary file from the embedded payload with:
+
+```bash
+npm run dict:export
+```
+
 ## Hebrew validator source of truth
 
-The Hebrew validator is maintained **inline inside `index.html`** as part of the single-file game runtime.
-
-`hebrew-validator.js` was removed to avoid copy drift and confusion between duplicated validator implementations.
+The Hebrew validator remains maintained inline inside `index.html` as part of the single-file runtime.
 
 ## Build timestamp automation
 

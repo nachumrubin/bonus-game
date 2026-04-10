@@ -1,5 +1,29 @@
 {
   "rules": {
+    "dictionaryAdmins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+    "dictionarySuggestions": {
+      ".read": "auth != null",
+      "$suggestionId": {
+        ".write": "auth != null"
+      }
+    },
+    "dictionaryApproved": {
+      ".read": true,
+      "$word": {
+        ".write": "auth != null && root.child('dictionaryAdmins').child(auth.uid).val() === true"
+      }
+    },
+    "dictionaryRejected": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && root.child('dictionaryAdmins').child(auth.uid).val() === true"
+      }
+    },
     "globalChampions": {
       ".read": true,
       ".write": true,

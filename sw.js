@@ -1,9 +1,10 @@
 // בוסט — Service Worker
 // Cache name includes build timestamp — auto-invalidates on every deploy
-var CACHE_NAME = 'boost-20260410061828';
+var CACHE_NAME = 'boost-20260410074258';
 var ASSETS = [
   './',
   './index.html',
+  './data/dictionary.base.txt',
 ];  // sw.js intentionally excluded — browser fetches it fresh
 
 self.addEventListener('install', function(e){
