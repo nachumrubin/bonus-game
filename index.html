@@ -1073,8 +1073,7 @@ body.tile-selected .bsq:not(.used){
     <div class="ovh" onclick="closeDictionaryAdvancedSettings()" style="cursor:pointer"></div>
     <div class="ovt" style="margin-bottom:6px">🔐 כניסת מנהל</div>
     <div class="ovd" style="margin-bottom:14px;">הגדרות מתקדמות — גישה לניהול המילון</div>
-    <input id="dict-admin-email" type="email" placeholder="אימייל מנהל" autocomplete="email" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;margin-bottom:8px;box-sizing:border-box;">
-    <input id="dict-admin-password" type="password" placeholder="סיסמה" autocomplete="current-password" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;margin-bottom:12px;box-sizing:border-box;">
+    <input id="dict-admin-password" type="password" placeholder="סיסמה" autocomplete="current-password" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;margin-bottom:12px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')dictionaryAdminSignIn()">
     <div id="dict-login-status" style="min-height:18px;font-size:12px;color:#ff9c9c;text-align:center;margin-bottom:8px;"></div>
     <div style="display:flex;gap:8px;">
       <button id="dict-admin-login-btn" class="ovb p" style="flex:1;padding:11px;" onclick="dictionaryAdminSignIn()">התחבר</button>
@@ -5507,18 +5506,17 @@ async function refreshDictionaryAdminStatus(){
 }
 
 function openDictionaryAdvancedSettings(){
-  // If already admin, go straight to admin window
   if(fbIsDictionaryAdmin){
-    ovClose('ov-dict-login');
+    // Already logged in this session — go straight to admin window
     refreshPendingDictionarySuggestions();
-    const logoutBtn = document.getElementById('dict-admin-logout-btn');
-    if(logoutBtn) logoutBtn.classList.remove('hidden');
     document.getElementById('ov-dict-admin').classList.remove('hidden');
     return;
   }
-  // Show login overlay
-  const loginStatus = document.getElementById('dict-login-status');
-  if(loginStatus) loginStatus.textContent = '';
+  // Show password login overlay
+  const statusEl = document.getElementById('dict-login-status');
+  if(statusEl) statusEl.textContent = '';
+  const passEl = document.getElementById('dict-admin-password');
+  if(passEl) passEl.value = '';
   document.getElementById('ov-dict-login').classList.remove('hidden');
 }
 
@@ -5601,60 +5599,47 @@ async function refreshPendingDictionarySuggestions(){
 }
 
 async function dictionaryAdminSignIn(){
-  if(!initFirebase() || !fbAuth){
-    const s = document.getElementById('dict-login-status');
-    if(s){ s.textContent='Firebase Auth לא זמין'; s.style.color='#ff9c9c'; }
-    return;
-  }
-  const emailEl = document.getElementById('dict-admin-email');
+  const ADMIN_HASH = '67bee854bb6636e19557e79d9a160dbd60f794210c65f9d7647dd8d0e608c2ae';
   const passEl = document.getElementById('dict-admin-password');
-  const email = String(emailEl && emailEl.value || '').trim();
   const password = String(passEl && passEl.value || '');
-  if(!email || !password){
-    const s = document.getElementById('dict-login-status');
-    if(s){ s.textContent='נא להזין אימייל וסיסמה'; s.style.color='#ff9c9c'; }
+  const statusEl = document.getElementById('dict-login-status');
+  if(!password){
+    if(statusEl){ statusEl.textContent='נא להזין סיסמה'; statusEl.style.color='#ff9c9c'; }
     return;
   }
   try{
-    const cred = await fbAuth.signInWithEmailAndPassword(email, password);
-    fbCurrentUser = cred && cred.user ? cred.user : fbAuth.currentUser;
-    await refreshDictionaryAdminStatus();
-    if(!fbIsDictionaryAdmin){
-      const s = document.getElementById('dict-login-status');
-      if(s){ s.textContent='המשתמש מחובר אך ללא הרשאת admin'; s.style.color='#ff9c9c'; }
+    const msgBuffer = new TextEncoder().encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+    if(hashHex !== ADMIN_HASH){
+      if(statusEl){ statusEl.textContent='סיסמה שגויה'; statusEl.style.color='#ff9c9c'; }
       return;
     }
+    // Correct password
     if(passEl) passEl.value = '';
-    // Close login, open admin window
+    if(statusEl) statusEl.textContent = '';
+    fbIsDictionaryAdmin = true;
     document.getElementById('ov-dict-login').classList.add('hidden');
     const logoutBtn = document.getElementById('dict-admin-logout-btn');
     if(logoutBtn) logoutBtn.classList.remove('hidden');
+    await refreshPendingDictionarySuggestions();
     document.getElementById('ov-dict-admin').classList.remove('hidden');
-    setDictionaryWordStatus('מנהל מחובר ✅', false);
   }catch(e){
-    const s = document.getElementById('dict-login-status');
-    if(s){ s.textContent='התחברות נכשלה — בדוק אימייל וסיסמה'; s.style.color='#ff9c9c'; }
+    if(statusEl){ statusEl.textContent='שגיאה בהתחברות'; statusEl.style.color='#ff9c9c'; }
   }
 }
 
 async function dictionaryAdminSignOut(){
-  if(!fbAuth){ return; }
-  try{
-    await fbAuth.signOut();
-    fbCurrentUser = null;
-    fbIsDictionaryAdmin = false;
-    dictAdminSuggestions = [];
-    dictAdminSelectedSuggestionIds = new Set();
-    renderPendingDictionarySuggestions();
-    await refreshDictionaryAdminStatus();
-    setDictionaryWordStatus('המנהל נותק', false);
-    document.getElementById('ov-dict-admin').classList.add('hidden');
-    document.getElementById('ov-dict-confirm').classList.add('hidden');
-    const logoutBtn = document.getElementById('dict-admin-logout-btn');
-    if(logoutBtn) logoutBtn.classList.add('hidden');
-  }catch(e){
-    setDictionaryWordStatus('התנתקות נכשלה', true);
-  }
+  fbIsDictionaryAdmin = false;
+  dictAdminSuggestions = [];
+  dictAdminSelectedSuggestionIds = new Set();
+  renderPendingDictionarySuggestions();
+  setDictionaryWordStatus('המנהל נותק', false);
+  document.getElementById('ov-dict-admin').classList.add('hidden');
+  document.getElementById('ov-dict-confirm').classList.add('hidden');
+  const logoutBtn = document.getElementById('dict-admin-logout-btn');
+  if(logoutBtn) logoutBtn.classList.add('hidden');
 }
 
 function normalizeDictionaryWord(raw){
@@ -5736,10 +5721,8 @@ async function confirmDictionaryDecision(){
 }
 
 async function performDictionaryDecision(action, ids){
-  const user = await ensureDictionaryAuth();
-  if(!user){ setDictionaryWordStatus('נדרשת התחברות', true); return; }
-  await refreshDictionaryAdminStatus();
   if(!fbIsDictionaryAdmin){ setDictionaryWordStatus('אין הרשאת מנהל', true); return; }
+  if(!initFirebase() || !fbDb){ setDictionaryWordStatus('Firebase לא זמין', true); return; }
   try{
     let changed = 0;
     for(const id of ids){
@@ -5748,7 +5731,6 @@ async function performDictionaryDecision(action, ids){
       if(action === 'approve'){
         await fbRef(`${DICT_APPROVED_DB_PATH}/${selected.word}`).set({
           word: selected.word,
-          approvedByUid: user.uid,
           approvedAt: firebase.database.ServerValue.TIMESTAMP
         });
         DICT.add(selected.word);
@@ -5756,7 +5738,6 @@ async function performDictionaryDecision(action, ids){
         const ref = fbRef('dictionaryRejected').push();
         await ref.set({
           word: selected.word,
-          rejectedByUid: user.uid,
           rejectedAt: firebase.database.ServerValue.TIMESTAMP
         });
       }
