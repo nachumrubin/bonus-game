@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260411183225">
+<meta name="version" content="20260410124129">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -635,7 +635,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260411183225</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260410124129</div>
   </div>
 </div>
 
@@ -840,45 +840,13 @@ body.tile-selected .bsq:not(.used){
       <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
       <button class="tb music-btn" id="music-toggle" onclick="toggleMusic()"><span class="tb-ic">🎵</span><span class="tb-tx">מוזיקה</span></button>
       
-      <!-- Bag tile in top bar -->
+      <!-- Bag display in top bar -->
       <div id="bag-char" style="line-height:1;text-align:center;cursor:default;flex-shrink:0;" title="שקית האותיות">
-        <svg id="bag-svg" viewBox="0 0 54 62" width="40" height="46" xmlns="http://www.w3.org/2000/svg">
-              <!-- Tile body -->
-              <rect x="1" y="1" width="52" height="60" rx="5" ry="5" fill="#e8e0c8" stroke="#9a9080" stroke-width="1.5"/>
-              <rect x="3" y="3" width="48" height="56" rx="4" ry="4" fill="#e8e0c8" stroke="#c8c0a8" stroke-width="0.5"/>
-              <!-- Top label: קופה -->
-              <text x="27" y="12" text-anchor="middle" font-family="Heebo,sans-serif" font-size="7" font-weight="900" fill="#2a5878">קוּפָּה</text>
-              <!-- Joker face area - framed box -->
-              <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="#3a7ca5" stroke="#2a5878" stroke-width="1"/>
-              <!-- Bars (vertical) -->
-              <line x1="16" y1="14" x2="16" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-              <line x1="27" y1="14" x2="27" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-              <line x1="38" y1="14" x2="38" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-              <!-- Horizontal bars -->
-              <line x1="7" y1="22" x2="47" y2="22" stroke="#1a3a58" stroke-width="1.2"/>
-              <line x1="7" y1="38" x2="47" y2="38" stroke="#1a3a58" stroke-width="1.2"/>
-              <!-- Joker face: jester hat -->
-              <path d="M20,23 Q27,17 34,23" fill="#e8c840" stroke="#c0a000" stroke-width="0.8"/>
-              <circle cx="20" cy="23" r="2.5" fill="#e82020"/>
-              <circle cx="34" cy="23" r="2.5" fill="#e82020"/>
-              <!-- Joker face: head -->
-              <ellipse cx="27" cy="31" rx="8" ry="7" fill="#f0c080" stroke="#c09050" stroke-width="0.8"/>
-              <!-- Eyes -->
-              <ellipse cx="23.5" cy="29.5" rx="1.8" ry="2" fill="#111"/>
-              <ellipse cx="30.5" cy="29.5" rx="1.8" ry="2" fill="#111"/>
-              <!-- Eye shine -->
-              <circle cx="24.2" cy="28.8" r="0.6" fill="#fff"/>
-              <circle cx="31.2" cy="28.8" r="0.6" fill="#fff"/>
-              <!-- Smile -->
-              <path d="M22,34 Q27,37.5 32,34" fill="none" stroke="#8a4000" stroke-width="1.2" stroke-linecap="round"/>
-              <!-- Cheeks -->
-              <ellipse cx="21" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.3)"/>
-              <ellipse cx="33" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.3)"/>
-              <!-- Bottom count -->
-              <text id="bag-count-text" x="27" y="57" text-anchor="middle" font-family="'Courier New',monospace" font-size="10" font-weight="900" fill="#2a5878">98</text>
-            </svg>
+        <div id="bag-display" style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.2);border-radius:10px;padding:3px 10px;min-width:52px;">
+          <span style="font-family:'Heebo',sans-serif;font-size:9px;font-weight:900;color:rgba(255,255,255,.55);letter-spacing:.5px;">קופה</span>
+          <span id="bag-count-text" style="font-family:'Heebo',sans-serif;font-size:26px;font-weight:900;color:#e8c840;line-height:1.15;">98</span>
+        </div>
       </div>
-      <div class="tbtitle">בוסט</div>
     </div>
     <!-- status -->
     <div class="sbar" id="sbar">בחר אות מהמגש ולחץ על משבצת</div>
@@ -1757,8 +1725,8 @@ let BOT_ALL = [], BOT_EASY = [], BOT_MED = [];
 function ensureBotWords(){
   if(BOT_ALL.length===0 && DICT.size>0){
     BOT_ALL  = [...DICT].filter(w=>w.length>=2&&w.length<=7);
-    BOT_EASY = BOT_ALL.filter(w=>w.length<=3); // easy: short words only
-    BOT_MED  = BOT_ALL.filter(w=>w.length<=5); // medium: medium words
+    BOT_EASY = BOT_ALL.filter(w=>w.length<=4); // easy: very short words only (2-4 letters)
+    BOT_MED  = BOT_ALL.filter(w=>w.length<=5); // medium: short-to-medium words
     // Shuffle each list so bot doesn't always pick same words
     BOT_EASY.sort(()=>Math.random()-.5);
     BOT_MED.sort(()=>Math.random()-.5);
@@ -2150,88 +2118,31 @@ function updateUI(){
       lid.innerHTML = inv.map(n=>`<span style="background:rgba(232,200,64,.18);border:1px solid rgba(232,200,64,.4);border-radius:3px;padding:1px 4px">🔒${n}</span>`).join('');
     }
   }
-  // Update bag SVG tile
-  const bagSvg = document.getElementById('bag-svg');
-  if(bagSvg && typeof bag !== 'undefined'){
-    if(bag.length === 0){
-      // Empty: joker closes the window — bars slide together, face looks relieved
-      bagSvg.innerHTML = `
-        <rect x="1" y="1" width="52" height="60" rx="5" ry="5" fill="#e8e0c8" stroke="#9a9080" stroke-width="1.5"/>
-        <rect x="3" y="3" width="48" height="56" rx="4" ry="4" fill="#e8e0c8" stroke="#c8c0a8" stroke-width="0.5"/>
-        <text x="27" y="12" text-anchor="middle" font-family="Heebo,sans-serif" font-size="7" font-weight="900" fill="#2a5878">קוּפָּה</text>
-        <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="#1a3a20" stroke="#0a2010" stroke-width="1"/>
-        <!-- Closed bars — solid wall -->
-        <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="none" stroke="#0a2010" stroke-width="1"/>
-        <line x1="12" y1="14" x2="12" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="19" y1="14" x2="19" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="26" y1="14" x2="26" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="33" y1="14" x2="33" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="40" y1="14" x2="40" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="7" y1="20" x2="47" y2="20" stroke="#0a2010" stroke-width="2"/>
-        <line x1="7" y1="40" x2="47" y2="40" stroke="#0a2010" stroke-width="2"/>
-        <!-- Joker peeks through bars — tiny face -->
-        <ellipse cx="27" cy="31" rx="6" ry="5.5" fill="#f0c080" stroke="#c09050" stroke-width="0.8"/>
-        <ellipse cx="24" cy="30" rx="1.3" ry="1.5" fill="#111"/>
-        <ellipse cx="30" cy="30" rx="1.3" ry="1.5" fill="#111"/>
-        <path d="M23.5,34 Q27,36.5 30.5,34" fill="none" stroke="#8a4000" stroke-width="1" stroke-linecap="round"/>
-        <text x="27" y="57" text-anchor="middle" font-family="Heebo,sans-serif" font-size="8" font-weight="900" fill="#c0392b">ריקה!</text>
-      `;
-      document.getElementById('bag-char').title = 'השקית ריקה!';
-    } else if(bag.length < 10){
-      // Low: joker looks worried
-      bagSvg.innerHTML = `
-        <rect x="1" y="1" width="52" height="60" rx="5" ry="5" fill="#e8e0c8" stroke="#9a9080" stroke-width="1.5"/>
-        <rect x="3" y="3" width="48" height="56" rx="4" ry="4" fill="#e8e0c8" stroke="#c8c0a8" stroke-width="0.5"/>
-        <text x="27" y="12" text-anchor="middle" font-family="Heebo,sans-serif" font-size="7" font-weight="900" fill="#2a5878">קוּפָּה</text>
-        <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="#5a3a20" stroke="#3a2010" stroke-width="1"/>
-        <line x1="16" y1="14" x2="16" y2="46" stroke="#2a1808" stroke-width="1.8"/>
-        <line x1="27" y1="14" x2="27" y2="46" stroke="#2a1808" stroke-width="1.8"/>
-        <line x1="38" y1="14" x2="38" y2="46" stroke="#2a1808" stroke-width="1.8"/>
-        <line x1="7" y1="22" x2="47" y2="22" stroke="#2a1808" stroke-width="1.2"/>
-        <line x1="7" y1="38" x2="47" y2="38" stroke="#2a1808" stroke-width="1.2"/>
-        <path d="M20,23 Q27,17 34,23" fill="#e8c840" stroke="#c0a000" stroke-width="0.8"/>
-        <circle cx="20" cy="23" r="2.5" fill="#e87020"/>
-        <circle cx="34" cy="23" r="2.5" fill="#e87020"/>
-        <ellipse cx="27" cy="31" rx="8" ry="7" fill="#f0c080" stroke="#c09050" stroke-width="0.8"/>
-        <ellipse cx="23.5" cy="29" rx="1.8" ry="2" fill="#111"/>
-        <ellipse cx="30.5" cy="29" rx="1.8" ry="2" fill="#111"/>
-        <!-- Worried brows -->
-        <path d="M21.5,27 Q23.5,25.5 25.5,27" fill="none" stroke="#5a3000" stroke-width="1" stroke-linecap="round"/>
-        <path d="M28.5,27 Q30.5,25.5 32.5,27" fill="none" stroke="#5a3000" stroke-width="1" stroke-linecap="round"/>
-        <!-- Worried mouth -->
-        <path d="M22,35 Q27,32 32,35" fill="none" stroke="#8a4000" stroke-width="1.2" stroke-linecap="round"/>
-        <ellipse cx="21" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.35)"/>
-        <ellipse cx="33" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.35)"/>
-        <text id="bag-count-text" x="27" y="57" text-anchor="middle" font-family="'Courier New',monospace" font-size="10" font-weight="900" fill="#c0392b">${bag.length}</text>
-      `;
-      document.getElementById('bag-char').title = `נותרו ${bag.length} אותיות`;
-    } else {
-      // Normal: cheerful joker
-      bagSvg.innerHTML = `
-        <rect x="1" y="1" width="52" height="60" rx="5" ry="5" fill="#e8e0c8" stroke="#9a9080" stroke-width="1.5"/>
-        <rect x="3" y="3" width="48" height="56" rx="4" ry="4" fill="#e8e0c8" stroke="#c8c0a8" stroke-width="0.5"/>
-        <text x="27" y="12" text-anchor="middle" font-family="Heebo,sans-serif" font-size="7" font-weight="900" fill="#2a5878">קוּפָּה</text>
-        <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="#3a7ca5" stroke="#2a5878" stroke-width="1"/>
-        <line x1="16" y1="14" x2="16" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-        <line x1="27" y1="14" x2="27" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-        <line x1="38" y1="14" x2="38" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-        <line x1="7" y1="22" x2="47" y2="22" stroke="#1a3a58" stroke-width="1.2"/>
-        <line x1="7" y1="38" x2="47" y2="38" stroke="#1a3a58" stroke-width="1.2"/>
-        <path d="M20,23 Q27,17 34,23" fill="#e8c840" stroke="#c0a000" stroke-width="0.8"/>
-        <circle cx="20" cy="23" r="2.5" fill="#e82020"/>
-        <circle cx="34" cy="23" r="2.5" fill="#e82020"/>
-        <ellipse cx="27" cy="31" rx="8" ry="7" fill="#f0c080" stroke="#c09050" stroke-width="0.8"/>
-        <ellipse cx="23.5" cy="29.5" rx="1.8" ry="2" fill="#111"/>
-        <ellipse cx="30.5" cy="29.5" rx="1.8" ry="2" fill="#111"/>
-        <circle cx="24.2" cy="28.8" r="0.6" fill="#fff"/>
-        <circle cx="31.2" cy="28.8" r="0.6" fill="#fff"/>
-        <path d="M22,34 Q27,37.5 32,34" fill="none" stroke="#8a4000" stroke-width="1.2" stroke-linecap="round"/>
-        <ellipse cx="21" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.3)"/>
-        <ellipse cx="33" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.3)"/>
-        <text id="bag-count-text" x="27" y="57" text-anchor="middle" font-family="'Courier New',monospace" font-size="10" font-weight="900" fill="#2a5878">${bag.length}</text>
-      `;
-      document.getElementById('bag-char').title = `שקית: ${bag.length} אותיות`;
-    }
+  updateBagDisplay();
+}
+function updateBagDisplay(){
+  const cnt = document.getElementById('bag-count-text');
+  const disp = document.getElementById('bag-display');
+  const charEl = document.getElementById('bag-char');
+  if(!cnt || typeof bag === 'undefined') return;
+  if(bag.length === 0){
+    cnt.textContent = 'ריק';
+    cnt.style.color = '#e74c3c';
+    cnt.style.fontSize = '14px';
+    if(disp) disp.style.borderColor = 'rgba(231,76,60,.5)';
+    if(charEl) charEl.title = 'השקית ריקה!';
+  } else if(bag.length < 10){
+    cnt.textContent = String(bag.length);
+    cnt.style.color = '#e67e22';
+    cnt.style.fontSize = '26px';
+    if(disp) disp.style.borderColor = 'rgba(230,126,34,.5)';
+    if(charEl) charEl.title = `נותרו ${bag.length} אותיות`;
+  } else {
+    cnt.textContent = String(bag.length);
+    cnt.style.color = '#e8c840';
+    cnt.style.fontSize = '26px';
+    if(disp) disp.style.borderColor = 'rgba(255,255,255,.2)';
+    if(charEl) charEl.title = `שקית: ${bag.length} אותיות`;
   }
 }
 function setS(msg,cls=''){ const e=document.getElementById('sbar'); e.textContent=msg; e.className='sbar '+cls; }
@@ -2475,12 +2386,15 @@ function doBotSearch(){
     const lk=lockedCells[`${r},${c}`]; if(lk&&lk.owner!==1&&lk.rounds>0)continue;
     if(!bData[r][c]&&[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].some(([ar,ac])=>getTile(ar,ac)))anch.push({r,c});
   }
-  BDEFS.forEach((b,idx)=>{
-    if(bonusSqUsed[idx]||bBoardData[`${b.br},${b.bc}`]) return;
-    const neighbors=[[b.br-1,b.bc],[b.br+1,b.bc],[b.br,b.bc-1],[b.br,b.bc+1]];
-    if(neighbors.some(([ar,ac])=>getTile(ar,ac))) anch.push({r:b.br,c:b.bc});
-  });
-  let best=null;
+  // Easy bot doesn't seek bonus squares (too strategic); medium/hard actively target them
+  if(diff>=1){
+    BDEFS.forEach((b,idx)=>{
+      if(bonusSqUsed[idx]||bBoardData[`${b.br},${b.bc}`]) return;
+      const neighbors=[[b.br-1,b.bc],[b.br+1,b.bc],[b.br,b.bc-1],[b.br,b.bc+1]];
+      if(neighbors.some(([ar,ac])=>getTile(ar,ac))) anch.push({r:b.br,c:b.bc});
+    });
+  }
+  const found=[];
   const tries=Math.min(cands.length, diff===2?120:diff===1?60:20);
   for(let i=0;i<tries;i++){
     const w=cands[i];
@@ -2497,13 +2411,27 @@ function doBotSearch(){
           if(p){
             placed=p;const ws=getAllWords(p);placed=[];
             if(ws.some(ww=>!isBotCrossWordValid(ww.map(t=>t.letter).join(''))))continue;
-            const sc2=calcTotal(p);if(!best||sc2>best.sc)best={pp:p,word:w,sc:sc2};
+            const sc2=calcTotal(p);
+            found.push({pp:p,word:w,sc:sc2});
           }
         }
       }
     }
   }
-  return best;
+  if(found.length===0) return null;
+  // Hard: always take the highest-scoring move
+  if(diff===2){
+    return found.reduce((a,b)=>b.sc>a.sc?b:a);
+  }
+  // Medium: pick randomly from the top 3 scoring moves — decent but not perfect
+  if(diff===1){
+    found.sort((a,b)=>b.sc-a.sc);
+    return found[Math.floor(Math.random()*Math.min(3,found.length))];
+  }
+  // Easy: pick randomly from the lowest-scoring half — plays valid moves but weak ones
+  found.sort((a,b)=>a.sc-b.sc);
+  const easyPool=found.slice(0,Math.max(1,Math.ceil(found.length/2)));
+  return easyPool[Math.floor(Math.random()*easyPool.length)];
 }
 
 function botCommit(result){
@@ -5007,89 +4935,7 @@ function updateUI(){
       lid.innerHTML = inv.map(n=>`<span style="background:rgba(232,200,64,.18);border:1px solid rgba(232,200,64,.4);border-radius:3px;padding:1px 4px">🔒${n}</span>`).join('');
     }
   }
-  // Update bag SVG tile
-  const bagSvg = document.getElementById('bag-svg');
-  if(bagSvg && typeof bag !== 'undefined'){
-    if(bag.length === 0){
-      // Empty: joker closes the window — bars slide together, face looks relieved
-      bagSvg.innerHTML = `
-        <rect x="1" y="1" width="52" height="60" rx="5" ry="5" fill="#e8e0c8" stroke="#9a9080" stroke-width="1.5"/>
-        <rect x="3" y="3" width="48" height="56" rx="4" ry="4" fill="#e8e0c8" stroke="#c8c0a8" stroke-width="0.5"/>
-        <text x="27" y="12" text-anchor="middle" font-family="Heebo,sans-serif" font-size="7" font-weight="900" fill="#2a5878">קוּפָּה</text>
-        <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="#1a3a20" stroke="#0a2010" stroke-width="1"/>
-        <!-- Closed bars — solid wall -->
-        <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="none" stroke="#0a2010" stroke-width="1"/>
-        <line x1="12" y1="14" x2="12" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="19" y1="14" x2="19" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="26" y1="14" x2="26" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="33" y1="14" x2="33" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="40" y1="14" x2="40" y2="46" stroke="#2a6a3a" stroke-width="3"/>
-        <line x1="7" y1="20" x2="47" y2="20" stroke="#0a2010" stroke-width="2"/>
-        <line x1="7" y1="40" x2="47" y2="40" stroke="#0a2010" stroke-width="2"/>
-        <!-- Joker peeks through bars — tiny face -->
-        <ellipse cx="27" cy="31" rx="6" ry="5.5" fill="#f0c080" stroke="#c09050" stroke-width="0.8"/>
-        <ellipse cx="24" cy="30" rx="1.3" ry="1.5" fill="#111"/>
-        <ellipse cx="30" cy="30" rx="1.3" ry="1.5" fill="#111"/>
-        <path d="M23.5,34 Q27,36.5 30.5,34" fill="none" stroke="#8a4000" stroke-width="1" stroke-linecap="round"/>
-        <text x="27" y="57" text-anchor="middle" font-family="Heebo,sans-serif" font-size="8" font-weight="900" fill="#c0392b">ריקה!</text>
-      `;
-      document.getElementById('bag-char').title = 'השקית ריקה!';
-    } else if(bag.length < 10){
-      // Low: joker looks worried
-      bagSvg.innerHTML = `
-        <rect x="1" y="1" width="52" height="60" rx="5" ry="5" fill="#e8e0c8" stroke="#9a9080" stroke-width="1.5"/>
-        <rect x="3" y="3" width="48" height="56" rx="4" ry="4" fill="#e8e0c8" stroke="#c8c0a8" stroke-width="0.5"/>
-        <text x="27" y="12" text-anchor="middle" font-family="Heebo,sans-serif" font-size="7" font-weight="900" fill="#2a5878">קוּפָּה</text>
-        <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="#5a3a20" stroke="#3a2010" stroke-width="1"/>
-        <line x1="16" y1="14" x2="16" y2="46" stroke="#2a1808" stroke-width="1.8"/>
-        <line x1="27" y1="14" x2="27" y2="46" stroke="#2a1808" stroke-width="1.8"/>
-        <line x1="38" y1="14" x2="38" y2="46" stroke="#2a1808" stroke-width="1.8"/>
-        <line x1="7" y1="22" x2="47" y2="22" stroke="#2a1808" stroke-width="1.2"/>
-        <line x1="7" y1="38" x2="47" y2="38" stroke="#2a1808" stroke-width="1.2"/>
-        <path d="M20,23 Q27,17 34,23" fill="#e8c840" stroke="#c0a000" stroke-width="0.8"/>
-        <circle cx="20" cy="23" r="2.5" fill="#e87020"/>
-        <circle cx="34" cy="23" r="2.5" fill="#e87020"/>
-        <ellipse cx="27" cy="31" rx="8" ry="7" fill="#f0c080" stroke="#c09050" stroke-width="0.8"/>
-        <ellipse cx="23.5" cy="29" rx="1.8" ry="2" fill="#111"/>
-        <ellipse cx="30.5" cy="29" rx="1.8" ry="2" fill="#111"/>
-        <!-- Worried brows -->
-        <path d="M21.5,27 Q23.5,25.5 25.5,27" fill="none" stroke="#5a3000" stroke-width="1" stroke-linecap="round"/>
-        <path d="M28.5,27 Q30.5,25.5 32.5,27" fill="none" stroke="#5a3000" stroke-width="1" stroke-linecap="round"/>
-        <!-- Worried mouth -->
-        <path d="M22,35 Q27,32 32,35" fill="none" stroke="#8a4000" stroke-width="1.2" stroke-linecap="round"/>
-        <ellipse cx="21" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.35)"/>
-        <ellipse cx="33" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.35)"/>
-        <text id="bag-count-text" x="27" y="57" text-anchor="middle" font-family="'Courier New',monospace" font-size="10" font-weight="900" fill="#c0392b">${bag.length}</text>
-      `;
-      document.getElementById('bag-char').title = `נותרו ${bag.length} אותיות`;
-    } else {
-      // Normal: cheerful joker
-      bagSvg.innerHTML = `
-        <rect x="1" y="1" width="52" height="60" rx="5" ry="5" fill="#e8e0c8" stroke="#9a9080" stroke-width="1.5"/>
-        <rect x="3" y="3" width="48" height="56" rx="4" ry="4" fill="#e8e0c8" stroke="#c8c0a8" stroke-width="0.5"/>
-        <text x="27" y="12" text-anchor="middle" font-family="Heebo,sans-serif" font-size="7" font-weight="900" fill="#2a5878">קוּפָּה</text>
-        <rect x="7" y="14" width="40" height="32" rx="3" ry="3" fill="#3a7ca5" stroke="#2a5878" stroke-width="1"/>
-        <line x1="16" y1="14" x2="16" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-        <line x1="27" y1="14" x2="27" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-        <line x1="38" y1="14" x2="38" y2="46" stroke="#1a3a58" stroke-width="1.8"/>
-        <line x1="7" y1="22" x2="47" y2="22" stroke="#1a3a58" stroke-width="1.2"/>
-        <line x1="7" y1="38" x2="47" y2="38" stroke="#1a3a58" stroke-width="1.2"/>
-        <path d="M20,23 Q27,17 34,23" fill="#e8c840" stroke="#c0a000" stroke-width="0.8"/>
-        <circle cx="20" cy="23" r="2.5" fill="#e82020"/>
-        <circle cx="34" cy="23" r="2.5" fill="#e82020"/>
-        <ellipse cx="27" cy="31" rx="8" ry="7" fill="#f0c080" stroke="#c09050" stroke-width="0.8"/>
-        <ellipse cx="23.5" cy="29.5" rx="1.8" ry="2" fill="#111"/>
-        <ellipse cx="30.5" cy="29.5" rx="1.8" ry="2" fill="#111"/>
-        <circle cx="24.2" cy="28.8" r="0.6" fill="#fff"/>
-        <circle cx="31.2" cy="28.8" r="0.6" fill="#fff"/>
-        <path d="M22,34 Q27,37.5 32,34" fill="none" stroke="#8a4000" stroke-width="1.2" stroke-linecap="round"/>
-        <ellipse cx="21" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.3)"/>
-        <ellipse cx="33" cy="33" rx="2" ry="1.2" fill="rgba(220,80,80,.3)"/>
-        <text id="bag-count-text" x="27" y="57" text-anchor="middle" font-family="'Courier New',monospace" font-size="10" font-weight="900" fill="#2a5878">${bag.length}</text>
-      `;
-      document.getElementById('bag-char').title = `שקית: ${bag.length} אותיות`;
-    }
-  }
+  updateBagDisplay();
 }
 function setS(msg,cls=''){ const e=document.getElementById('sbar'); e.textContent=msg; e.className='sbar '+cls; }
 
@@ -5381,6 +5227,7 @@ let fbIsDictionaryAdmin = false;
 let dictAdminSuggestions = [];
 let dictAdminSelectedSuggestionIds = new Set();
 let dictPendingDecision = null;
+let dictRecentlyProcessedWords = new Set();
 let onlineMode = null;      // 'live' | 'async'
 let myRole = null;          // 'host' | 'guest'
 let roomCode = null;        // 6-char room code
@@ -5531,6 +5378,7 @@ function closeAdminWindow(){
   document.getElementById('ov-dict-admin').classList.add('hidden');
   document.getElementById('ov-dict-confirm').classList.add('hidden');
   dictPendingDecision = null;
+  dictRecentlyProcessedWords = new Set();
 }
 
 function renderPendingDictionarySuggestions(){
@@ -5572,14 +5420,21 @@ async function refreshPendingDictionarySuggestions(){
   if(!fbDb){ await new Promise(res => loadFirebaseSDK(res)); initFirebase(); }
   if(!fbDb) return;
   try{
-    const [suggestionsSnap, rejectedSnap] = await Promise.all([
+    const [suggestionsSnap, rejectedSnap, approvedSnap] = await Promise.all([
       fbRef('dictionarySuggestions').once('value'),
-      fbRef('dictionaryRejected').once('value')
+      fbRef('dictionaryRejected').once('value'),
+      fbRef(DICT_APPROVED_DB_PATH).once('value')
     ]);
     const suggestions = (suggestionsSnap && suggestionsSnap.val && suggestionsSnap.val()) || {};
     const rejected = (rejectedSnap && rejectedSnap.val && rejectedSnap.val()) || {};
+    const approved = (approvedSnap && approvedSnap.val && approvedSnap.val()) || {};
     const rejectedWords = new Set(
       Object.values(rejected)
+        .map((v)=> String(v && v.word || '').trim())
+        .filter(Boolean)
+    );
+    const approvedWords = new Set(
+      Object.values(approved)
         .map((v)=> String(v && v.word || '').trim())
         .filter(Boolean)
     );
@@ -5588,7 +5443,7 @@ async function refreshPendingDictionarySuggestions(){
       const entry = suggestions[id] || {};
       return { id, word: String(entry.word || '').trim(), status: entry.status || 'pending' };
     }).filter((entry)=>{
-      if(!entry.word || entry.status !== 'pending' || rejectedWords.has(entry.word)) return false;
+      if(!entry.word || entry.status !== 'pending' || rejectedWords.has(entry.word) || approvedWords.has(entry.word) || dictRecentlyProcessedWords.has(entry.word)) return false;
       if(seenWords.has(entry.word)) return false;
       seenWords.add(entry.word);
       return true;
@@ -5639,6 +5494,7 @@ async function dictionaryAdminSignOut(){
   fbIsDictionaryAdmin = false;
   dictAdminSuggestions = [];
   dictAdminSelectedSuggestionIds = new Set();
+  dictRecentlyProcessedWords = new Set();
   renderPendingDictionarySuggestions();
   setDictionaryWordStatus('המנהל נותק', false);
   document.getElementById('ov-dict-admin').classList.add('hidden');
@@ -5763,12 +5619,22 @@ async function performDictionaryDecision(action, ids){
       }
       await fbRef(`dictionarySuggestions/${selected.id}/status`).set(action === 'approve' ? 'approved' : 'rejected');
       await fbRef(`dictionarySuggestions/${selected.id}/reviewedAt`).set(firebase.database.ServerValue.TIMESTAMP);
+      // Also update any duplicate pending entries for the same word
+      for(const dup of dictAdminSuggestions){
+        if(dup.id !== selected.id && dup.word === selected.word){
+          await fbRef(`dictionarySuggestions/${dup.id}/status`).set(action === 'approve' ? 'approved' : 'rejected');
+          await fbRef(`dictionarySuggestions/${dup.id}/reviewedAt`).set(firebase.database.ServerValue.TIMESTAMP);
+        }
+      }
       changed++;
     }
     if(window.HebrewValidator) window.HebrewValidator.init(DICT);
-    // Immediately remove processed entries so the list updates without waiting for Firebase re-fetch
+    // Immediately remove processed entries (and any duplicates by word) so the list updates without waiting for Firebase re-fetch
     const processedSet = new Set(ids);
-    dictAdminSuggestions = dictAdminSuggestions.filter((s) => !processedSet.has(s.id));
+    const processedWords = new Set(dictAdminSuggestions.filter((s) => processedSet.has(s.id)).map((s) => s.word));
+    // Guard against the async refresh racing Firebase propagation and re-adding these words
+    processedWords.forEach((w) => dictRecentlyProcessedWords.add(w));
+    dictAdminSuggestions = dictAdminSuggestions.filter((s) => !processedSet.has(s.id) && !processedWords.has(s.word));
     dictAdminSelectedSuggestionIds = new Set();
     renderPendingDictionarySuggestions();
     setDictionaryWordStatus(action === 'approve'
@@ -6955,7 +6821,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260411183225', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260410124129', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
