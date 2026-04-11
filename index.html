@@ -407,7 +407,11 @@ body.tile-selected .bsq:not(.used){
 #ov-settings .ovc{border-radius:12px;margin:10px;width:calc(100% - 20px);border-bottom:3px solid #6ab0d8;}
 .settings-panels{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;}
 .set-panel{background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 12px;flex:1;min-width:140px;display:flex;flex-direction:column;gap:8px;align-items:center;}
-.set-panel-title{font-size:12px;font-weight:700;color:var(--by);text-align:center;}
+.set-panel-title{font-size:12px;font-weight:700;color:var(--by);text-align:center;position:relative;display:flex;align-items:center;justify-content:center;gap:5px;}
+.sett-info{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(106,176,216,.25);border:1px solid rgba(106,176,216,.5);color:#8ecfef;font-size:9px;font-weight:900;font-style:normal;cursor:default;position:relative;flex-shrink:0;line-height:1;user-select:none;}
+.sett-info:hover .sett-tip{opacity:1;pointer-events:auto;}
+.sett-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#0f1d26;border:1px solid #6ab0d8;border-radius:7px;padding:8px 11px;font-size:11px;font-weight:400;color:#eaf4fb;white-space:normal;width:190px;line-height:1.5;text-align:right;direction:rtl;opacity:0;pointer-events:none;transition:opacity .18s;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.6);}
+.sett-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#6ab0d8;}
 .set-yesno{display:flex;gap:6px;}
 .set-yn{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:5px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);cursor:pointer;font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;color:rgba(255,255,255,.7);transition:all .1s;}
 .set-yn.active-yes{background:#2a6a2a;border-color:#4a8a4a;color:#8eff8e;}
@@ -998,7 +1002,7 @@ body.tile-selected .bsq:not(.used){
     <div class="settings-panels">
       <!-- Panel 1: appeals per game -->
       <div class="set-panel">
-        <div class="set-panel-title">מספר ערעורים למשחק</div>
+        <div class="set-panel-title">מספר ערעורים למשחק <span class="sett-info">i<span class="sett-tip">כמה פעמים כל שחקן רשאי לערער על תקינות מילתו</span></span></div>
         <div class="set-counter">
           <div class="set-btn" onclick="settAdj('appealsMax',-1)">−</div>
           <div class="set-num" id="sett-appealsmax">0</div>
@@ -1007,7 +1011,7 @@ body.tile-selected .bsq:not(.used){
       </div>
       <!-- Panel 2: computer time limit -->
       <div class="set-panel">
-        <div class="set-panel-title">זמן מוגבל למהלך?</div>
+        <div class="set-panel-title">זמן מוגבל למהלך? <span class="sett-info">i<span class="sett-tip">אם מופעל, כל שחקן חייב לסיים את מהלכו בתוך מספר השניות שנקבע</span></span></div>
         <div class="set-yesno">
           <div class="set-yn active-yes" id="sett-timelimit-yes" onclick="settToggle('timelimit',true)">✓ כן</div>
           <div class="set-yn" id="sett-timelimit-no"  onclick="settToggle('timelimit',false)">✗ לא</div>
@@ -1020,7 +1024,7 @@ body.tile-selected .bsq:not(.used){
       </div>
       <!-- Panel 3: move count limit -->
       <div class="set-panel">
-        <div class="set-panel-title">הגבלת מספר המהלכים?</div>
+        <div class="set-panel-title">הגבלת מספר המהלכים? <span class="sett-info">i<span class="sett-tip">אם מופעל, המשחק יסתיים אוטומטית לאחר מספר המהלכים שנקבע</span></span></div>
         <div class="set-yesno">
           <div class="set-yn" id="sett-movelimit-yes" onclick="settToggle('movelimit',true)">✓ כן</div>
           <div class="set-yn active-no" id="sett-movelimit-no"  onclick="settToggle('movelimit',false)">✗ לא</div>
@@ -1033,7 +1037,7 @@ body.tile-selected .bsq:not(.used){
       </div>
       <!-- Panel 4: music -->
       <div class="set-panel">
-        <div class="set-panel-title">מוזיקה</div>
+        <div class="set-panel-title">מוזיקה <span class="sett-info">i<span class="sett-tip">הפעלת מוסיקת רקע במהלך המשחק</span></span></div>
         <div class="set-yesno">
           <div class="set-yn active-yes" id="sett-music-yes" onclick="settToggle('music',true)">🎵 כן</div>
           <div class="set-yn" id="sett-music-no"  onclick="settToggle('music',false)">🔇 לא</div>
@@ -1041,7 +1045,7 @@ body.tile-selected .bsq:not(.used){
       </div>
       <!-- Panel 5: show both racks -->
       <div class="set-panel">
-        <div class="set-panel-title">הצג מגש שני השחקנים</div>
+        <div class="set-panel-title">הצג מגש שני השחקנים <span class="sett-info">i<span class="sett-tip">תמיד: שני המגשים גלויים. רק נוכחי: רואים רק את אותיות השחקן שתורו כעת</span></span></div>
         <div class="set-yesno">
           <div class="set-yn" id="sett-showBothRacks-yes" onclick="settToggle('showBothRacks',true)">👁 תמיד</div>
           <div class="set-yn active-no" id="sett-showBothRacks-no"  onclick="settToggle('showBothRacks',false)">👤 רק נוכחי</div>
@@ -1049,7 +1053,7 @@ body.tile-selected .bsq:not(.used){
       </div>
       <!-- Panel 6: move summary -->
       <div class="set-panel">
-        <div class="set-panel-title">סיכום מהלך אחרי כל מהלך</div>
+        <div class="set-panel-title">סיכום מהלך אחרי כל מהלך <span class="sett-info">i<span class="sett-tip">הצגת פופ-אפ עם ניקוד ופרטי המהלך מיד לאחר ביצועו</span></span></div>
         <div class="set-yesno">
           <div class="set-yn active-yes" id="sett-showMoveSummary-yes" onclick="settToggle('showMoveSummary',true)">✓ כן</div>
           <div class="set-yn" id="sett-showMoveSummary-no"  onclick="settToggle('showMoveSummary',false)">✗ לא</div>
@@ -1058,7 +1062,7 @@ body.tile-selected .bsq:not(.used){
     </div>
     <!-- Dictionary Management — full width below panels -->
     <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
-      <div class="set-panel-title" style="margin-bottom:10px;">📖 ניהול מילון</div>
+      <div class="set-panel-title" style="margin-bottom:10px;">📖 ניהול מילון <span class="sett-info">i<span class="sett-tip">הצע מילה חדשה להוספה למילון המשחק. ההצעה תועבר לאישור מנהל לפני שתתווסף</span></span></div>
       <input id="dict-word-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
       <button onclick="suggestDictionaryWord()" style="width:100%;margin-top:8px;padding:11px;border-radius:8px;border:none;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.75);font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.09)'">📨 שלח הצעה</button>
       <button onclick="openDictionaryAdvancedSettings()" style="width:100%;margin-top:6px;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#5a8ad0,#3a5aaa);border:2px solid #2a3a8a;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #1a2a6a;">🔐 הגדרות מתקדמות</button>
@@ -5569,29 +5573,32 @@ async function refreshPendingDictionarySuggestions(){
   if(!fbDb) return;
   try{
     const [suggestionsSnap, rejectedSnap] = await Promise.all([
-      fbRef('dictionarySuggestions').get(),
-      fbRef('dictionaryRejected').get()
+      fbRef('dictionarySuggestions').once('value'),
+      fbRef('dictionaryRejected').once('value')
     ]);
-    const suggestions = suggestionsSnap && suggestionsSnap.val ? suggestionsSnap.val() : {};
-    const rejected = rejectedSnap && rejectedSnap.val ? rejectedSnap.val() : {};
+    const suggestions = (suggestionsSnap && suggestionsSnap.val && suggestionsSnap.val()) || {};
+    const rejected = (rejectedSnap && rejectedSnap.val && rejectedSnap.val()) || {};
     const rejectedWords = new Set(
       Object.values(rejected)
         .map((v)=> String(v && v.word || '').trim())
         .filter(Boolean)
     );
+    const seenWords = new Set();
     dictAdminSuggestions = Object.keys(suggestions).map((id)=>{
       const entry = suggestions[id] || {};
       return { id, word: String(entry.word || '').trim(), status: entry.status || 'pending' };
-    }).filter((entry)=>
-      entry.word &&
-      entry.status === 'pending' &&
-      !rejectedWords.has(entry.word)
-    );
+    }).filter((entry)=>{
+      if(!entry.word || entry.status !== 'pending' || rejectedWords.has(entry.word)) return false;
+      if(seenWords.has(entry.word)) return false;
+      seenWords.add(entry.word);
+      return true;
+    });
     dictAdminSelectedSuggestionIds = new Set(
       [...dictAdminSelectedSuggestionIds].filter((id)=> dictAdminSuggestions.some((s)=>s.id === id))
     );
     renderPendingDictionarySuggestions();
   }catch(e){
+    console.error('refreshPendingDictionarySuggestions failed:', e);
     setDictionaryWordStatus('טעינת הצעות נכשלה', true);
   }
 }
@@ -5667,7 +5674,17 @@ async function suggestDictionaryWord(){
   await new Promise(res => loadFirebaseSDK(res));
   if(!initFirebase() || !fbDb){ setDictionaryWordStatus('שגיאת חיבור, נסה שוב', true); return; }
   try{
-    for(const word of words){
+    const rejSnap = await fbRef('dictionaryRejected').once('value');
+    const rejObj = (rejSnap && rejSnap.val && rejSnap.val()) || {};
+    const rejectedWords = new Set(
+      Object.values(rejObj).map((v)=> String(v && v.word || '').trim()).filter(Boolean)
+    );
+    const toSubmit = words.filter((w)=> !rejectedWords.has(w));
+    if(toSubmit.length === 0){
+      setDictionaryWordStatus(words.length === 1 ? `"${words[0]}" נדחתה בעבר` : 'כל המילים נדחו בעבר', true);
+      return;
+    }
+    for(const word of toSubmit){
       const ref = fbRef('dictionarySuggestions').push();
       await ref.set({
         word,
@@ -5676,7 +5693,10 @@ async function suggestDictionaryWord(){
         createdAt: firebase.database.ServerValue.TIMESTAMP
       });
     }
-    setDictionaryWordStatus(words.length === 1 ? `"${words[0]}" נשלחה לבדיקה ✅` : `נשלחו ${words.length} מילים לבדיקה ✅`, false);
+    const skipped = words.length - toSubmit.length;
+    let msg = toSubmit.length === 1 ? `"${toSubmit[0]}" נשלחה לבדיקה ✅` : `נשלחו ${toSubmit.length} מילים לבדיקה ✅`;
+    if(skipped > 0) msg += ` (${skipped} נדחו בעבר)`;
+    setDictionaryWordStatus(msg, false);
     if(input) input.value = '';
   }catch(e){
     setDictionaryWordStatus('שליחת ההצעה נכשלה', true);
@@ -5746,7 +5766,11 @@ async function performDictionaryDecision(action, ids){
       changed++;
     }
     if(window.HebrewValidator) window.HebrewValidator.init(DICT);
+    // Immediately remove processed entries so the list updates without waiting for Firebase re-fetch
+    const processedSet = new Set(ids);
+    dictAdminSuggestions = dictAdminSuggestions.filter((s) => !processedSet.has(s.id));
     dictAdminSelectedSuggestionIds = new Set();
+    renderPendingDictionarySuggestions();
     setDictionaryWordStatus(action === 'approve'
       ? `אושרו ${changed} מילים ✅`
       : `נדחו ${changed} מילים`, false);
