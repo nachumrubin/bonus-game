@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260412222451">
+<meta name="version" content="20260412223706">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -637,7 +637,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260412222451</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260412223706</div>
   </div>
 </div>
 
@@ -6488,6 +6488,10 @@ function listenForMoves(){
     window._myLastPush = undefined;
     clearMoveTimer();
     window._opponentLive = [];
+    // Safety: if the boost overlay is open in watch mode, close it now that
+    // the full committed state has arrived (handles race where clearLiveBonus
+    // fires after listenForMoves).
+    (function(){ const be=document.getElementById('ov-bonus'); if(be&&be._watchMode){be._watchMode=false;ovClose('ov-bonus');} })();
     loadGameState(s);
     updateUI(); renderBoard(); renderRack('turn'); renderBonusStrips();
 
@@ -6559,14 +6563,17 @@ function listenForLiveBonus(){
   if(gMode !== 'online' || !roomCode) return;
   const ref = fbRef('rooms/' + roomCode + '/liveBonus');
   const fn = ref.on('value', function(snap){
-    // Only show on the waiting player's screen
-    if(turn === window._myPlayerIndex) return;
-    if(!snap || !snap.exists() || !snap.val() || !snap.val().active){
-      // Hide the overlay if it was shown in watch mode
+    const isInactive = !snap || !snap.exists() || !snap.val() || !snap.val().active;
+    // Always process the close/clear case — the turn may have already switched
+    // to this player by the time clearLiveBonus() fires, so guarding on turn here
+    // would silently skip the close and leave the overlay stuck open.
+    if(isInactive){
       const bonusEl = document.getElementById('ov-bonus');
       if(bonusEl && bonusEl._watchMode){ bonusEl._watchMode = false; ovClose('ov-bonus'); }
       return;
     }
+    // Only SHOW the bonus overlay when it's the opponent's turn (i.e. we are waiting)
+    if(turn === window._myPlayerIndex) return;
     const d = snap.val();
     document.getElementById('bovic').textContent = d.icon || '🌟';
     document.getElementById('bovt').textContent = d.title || 'בוסט!';
@@ -6973,7 +6980,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260412222451', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260412223706', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
