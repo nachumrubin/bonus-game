@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260412223706">
+<meta name="version" content="20260412231517">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -637,7 +637,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260412223706</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260412231517</div>
   </div>
 </div>
 
@@ -3069,7 +3069,13 @@ function getWT(pp){
   return tiles;
 }
 function getAllWords(pp){
-  const words=[]; const main=getWT(pp); if(main.length>=2)words.push(main);
+  // Helper: canonical key for a word by its cell coordinates — used to deduplicate
+  // words that are found both as the main word and as a cross-word for a single placed tile.
+  function wordKey(w){ return w.map(t=>t.r+','+t.c).join('|'); }
+  const seenKeys=new Set();
+  function addWord(w){ if(w.length<2)return; const k=wordKey(w); if(seenKeys.has(k))return; seenKeys.add(k); words.push(w); }
+
+  const words=[]; const main=getWT(pp); addWord(main);
   const isH=new Set(pp.map(p=>p.r)).size===1;
   for(const{r,c}of pp){
     if(isH){
@@ -3083,7 +3089,7 @@ function getAllWords(pp){
           if(ob)cr.push({r:rr,c,val:ob.val,letter:ob.letter,ex:true});
           else if(rr===r)cr.push({r,c,val:pp.find(p=>p.r===r&&p.c===c).val,letter:pp.find(p=>p.r===r&&p.c===c).letter,ex:false});
         }
-        if(cr.length>=2)words.push(cr);
+        addWord(cr);
       }
     } else {
       let mn=c,mx=c;
@@ -3096,7 +3102,7 @@ function getAllWords(pp){
           if(ob)cr.push({r,c:cc,val:ob.val,letter:ob.letter,ex:true});
           else if(cc===c)cr.push({r,c,val:pp.find(p=>p.r===r&&p.c===c).val,letter:pp.find(p=>p.r===r&&p.c===c).letter,ex:false});
         }
-        if(cr.length>=2)words.push(cr);
+        addWord(cr);
       }
     }
   }
@@ -6122,6 +6128,7 @@ function serializeGameState(){
     lockInventory: lockObj,
     futBon: futBon ? JSON.parse(JSON.stringify(futBon)) : {0:{},1:{}},
     appealsUsed: {0:(appealsUsed||[0,0])[0], 1:(appealsUsed||[0,0])[1]},
+    appealsMax: gameSettings.appealsMax || 0,
     missedTurns: {0:(onlineMissedTurns||[0,0])[0], 1:(onlineMissedTurns||[0,0])[1]},
     exchUsed: !!exchUsed,
     turnDeadlineMs: onlineTurnDeadlineMs || 0,
@@ -6208,12 +6215,13 @@ function loadGameState(s){
   // futBon may come back as object too
   if(!Array.isArray(futBon)) futBon = [futBon[0]||{}, futBon[1]||{}];
 
-  // appealsUsed
+  // appealsUsed + appealsMax (keep both players in sync)
   var auRaw = s.appealsUsed || {};
   appealsUsed = [
     auRaw[0] !== undefined ? auRaw[0] : (auRaw['0'] !== undefined ? auRaw['0'] : 0),
     auRaw[1] !== undefined ? auRaw[1] : (auRaw['1'] !== undefined ? auRaw['1'] : 0)
   ];
+  if(s.appealsMax !== undefined) gameSettings.appealsMax = s.appealsMax;
   var mtRaw = s.missedTurns || {};
   onlineMissedTurns = [
     mtRaw[0] !== undefined ? mtRaw[0] : (mtRaw['0'] !== undefined ? mtRaw['0'] : 0),
@@ -6980,7 +6988,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260412223706', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260412231517', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
