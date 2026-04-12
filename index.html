@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260411214350">
+<meta name="version" content="20260410124129">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -635,7 +635,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260411214350</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260410124129</div>
   </div>
 </div>
 
@@ -1807,7 +1807,7 @@ function showSc(id){
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
-let gMode='bot', diff=1, pNames=['שחקן 1','שחקן 2'];
+let gMode='bot', diff=0, pNames=['שחקן 1','שחקן 2'];
 let bData=[], bag=[], racks=[[],[]], scores=[0,0], futBon=[{},{}];
 let turn=0, firstMove=true, passCount=0, moveCount=0;
 let placed=[], selTile=null, selPlaced=null, dir='H'; // selPlaced = {r,c} of a picked-up placed tile
@@ -4318,6 +4318,19 @@ function commitPlay(sc,ws,bonus,pi){
         // rev.words has pixel-perfect {text, score, valid} from buildMoveReview
         const wordRows=rev.words.map(w=>({text:w.text,valid:true,pts:w.score,isMain:w===rev.words[0]}));
         if(rev.bingo) wordRows.push({text:'בינגו 🌟',valid:true,pts:50,isBingo:true});
+        // In online mode: call nextTurn() immediately so Firebase is updated without waiting
+        // for the player to dismiss the dialog. The summary is purely cosmetic for the local player.
+        if(gMode === 'online'){
+          nextTurn();
+          window._lastAcceptedReview=null;
+          showMoveSummary({
+            player:pi,playerName:pNames[pi],
+            words:wordRows,totalScore:fs,
+            bonusExtra:bonusExtra,multLabel:_multLabel,
+            onDone:null, // turn already advanced
+          });
+          return;
+        }
         showMoveSummary({
           player:pi,playerName:pNames[pi],
           words:wordRows,totalScore:fs,
@@ -4493,6 +4506,8 @@ function execBot(pp,word){
 function endGame(){
   clearMoveTimer();
   clearBotThinkTimeout();
+  // Push final state to Firebase so the opponent sees the end-of-game board and scores
+  if(gMode === 'online') pushMoveToFirebase();
   const p1=scores[0],p2=scores[1];
   document.getElementById('es1').textContent=p1; document.getElementById('es2').textContent=p2;
   if(p1>p2){document.getElementById('wc').textContent='🏆';document.getElementById('wn').textContent=pNames[0]+' ניצח!';document.getElementById('wws').textContent=`הפרש: ${p1-p2} נקודות`;}
@@ -6423,6 +6438,17 @@ function listenForMoves(){
     clearMoveTimer();
     loadGameState(s);
     updateUI(); renderBoard(); renderRack('turn'); renderBonusStrips();
+
+    // Detect end-of-game conditions from the incoming state so the receiving
+    // player's screen also ends the game (endGame only runs locally on the
+    // side that triggered it, so the opponent would otherwise get stuck).
+    var _maxM = getMaxMoves();
+    var _rackEmpty = (racks[0].length===0 && bag.length===0) || (racks[1].length===0 && bag.length===0);
+    var _moveLimitHit = (typeof settings!=='undefined' && settings.moveLimitOn && moveCount>=settings.moveLimit);
+    var _maxMHit = (_maxM && moveCount>=_maxM);
+    var _passLimitHit = (passCount >= 6);
+    if(_rackEmpty || _moveLimitHit || _maxMHit || _passLimitHit){ endGame(); return; }
+
     updateAbsentLossCountdownForCurrentTurn();
     if(incomingTurn === myIdx){
       setS(myTurnMsg());
@@ -6821,7 +6847,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260411214350', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260410124129', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
