@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260412032547">
+<meta name="version" content="20260412215000">
 <!-- PWA icons (inline SVG → data URI, no external files needed) -->
 <link rel="apple-touch-icon" id="pwa-icon-link">
 <!-- Firebase SDK (loaded lazily on first online use) -->
@@ -217,6 +217,8 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 .cell:active:not(.lk):not(.ht):not(.locked-cell){background:#7bbfe0;}
 .cell.ht{cursor:default;}
 .cell.np{outline:2px solid #e8d040;outline-offset:-2px;}
+.btile.ghost{opacity:0.5;background:rgba(100,160,255,.2)!important;border-color:rgba(120,180,255,.55)!important;}
+.cell.op-live{outline:2px dashed #6ab0d8;outline-offset:-2px;}
 .cell.last-move{outline:2px solid rgba(100,220,100,.8);outline-offset:-2px;background:#4a9a6a!important;}
 .bsq.last-move{outline:2px solid rgba(100,220,100,.8);outline-offset:-2px;}
 .cell.lk{cursor:default;}
@@ -340,10 +342,10 @@ body.tile-selected .bsq:not(.used){
 .bplay:active{transform:translateY(1px);box-shadow:none;}
 
 /* ── OVERLAYS ── */
-.ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:flex;align-items:flex-end;justify-content:center;transition:opacity .2s;}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity .2s;}
 .ov.hidden{opacity:0;pointer-events:none;}
-.ovc{background:var(--bg2);border:3px solid #6ab0d8;border-bottom:none;border-radius:14px 14px 0 0;padding:15px 14px 22px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;}
-.ovh{width:30px;height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin:0 auto 12px;}
+.ovc{background:var(--bg2);border:3px solid #6ab0d8;border-radius:14px;padding:15px 14px 18px;width:90%;max-width:460px;max-height:90vh;overflow-y:auto;}
+.ovh{display:none;}
 .ovic{font-size:36px;text-align:center;margin-bottom:5px;}
 .ovt{font-size:17px;font-weight:900;color:var(--by);text-align:center;margin-bottom:4px;}
 .ovd{font-size:12px;color:rgba(255,255,255,.58);text-align:center;margin-bottom:12px;line-height:1.6;}
@@ -392,7 +394,7 @@ body.tile-selected .bsq:not(.used){
 .fsc-n{font-size:9px;color:rgba(255,255,255,.45);margin-bottom:1px;}
 .fsc-v{font-size:22px;font-weight:900;}
 /* legend */
-#ov-leg .ovc{border-radius:12px;margin:10px;width:calc(100% - 20px);border-bottom:3px solid #6ab0d8;}
+#ov-leg .ovc{border-radius:14px;}
 .lg{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px;}
 .li{display:flex;align-items:center;gap:5px;padding:5px 7px;background:rgba(0,0,0,.18);border-radius:3px;}
 .lsq{width:24px;height:24px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
@@ -404,7 +406,7 @@ body.tile-selected .bsq:not(.used){
 .vr-d{font-size:9px;color:rgba(255,255,255,.6);}.vr-d span{color:var(--by);font-weight:700;}
 
 /* ── SETTINGS OVERLAY ── */
-#ov-settings .ovc{border-radius:12px;margin:10px;width:calc(100% - 20px);border-bottom:3px solid #6ab0d8;}
+#ov-settings .ovc{border-radius:14px;}
 .settings-panels{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;}
 .set-panel{background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 12px;flex:1;min-width:140px;display:flex;flex-direction:column;gap:8px;align-items:center;}
 .set-panel-title{font-size:12px;font-weight:700;color:var(--by);text-align:center;position:relative;display:flex;align-items:center;justify-content:center;gap:5px;}
@@ -635,7 +637,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260412032547</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)">v2.1 · build 20260412215000</div>
   </div>
 </div>
 
@@ -708,9 +710,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- ONLINE: WAITING ROOM -->
-<div id="ov-waiting-room" class="ov hidden" style="align-items:center">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);border-bottom:3px solid #6ab0d8;text-align:center;">
-    <div class="ovh"></div>
+<div id="ov-waiting-room" class="ov hidden">
+  <div class="ovc" style="text-align:center;">
     <div style="font-size:32px">⏳</div>
     <div class="ovt">ממתין לשחקן שני...</div>
     <div style="margin:6px 0 4px;font-size:11px;color:rgba(255,255,255,.5)">שתף את הקוד:</div>
@@ -780,9 +781,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- ONLINE: DISCONNECT -->
-<div id="ov-disconnect" class="ov hidden" style="align-items:center;background:rgba(0,0,0,.85);">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);border:3px solid #e74c3c;border-bottom:3px solid #e74c3c;background:#2a1010;text-align:center;">
-    <div class="ovh"></div>
+<div id="ov-disconnect" class="ov hidden" style="background:rgba(0,0,0,.85);">
+  <div class="ovc" style="border:3px solid #e74c3c;background:#2a1010;text-align:center;">
     <div style="font-size:32px">📡</div>
     <div class="ovt" style="color:#ff8e8e;">היריב התנתק!</div>
     <div class="ovd" id="dc-msg">ממתין לחזרה...</div>
@@ -842,9 +842,9 @@ body.tile-selected .bsq:not(.used){
       
       <!-- Bag display in top bar -->
       <div id="bag-char" style="line-height:1;text-align:center;cursor:default;flex-shrink:0;" title="שקית האותיות">
-        <div id="bag-display" style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.2);border-radius:10px;padding:3px 10px;min-width:52px;">
-          <span style="font-family:'Heebo',sans-serif;font-size:9px;font-weight:900;color:rgba(255,255,255,.55);letter-spacing:.5px;">קופה</span>
-          <span id="bag-count-text" style="font-family:'Heebo',sans-serif;font-size:26px;font-weight:900;color:#e8c840;line-height:1.15;">98</span>
+        <div id="bag-display" style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.2);border-radius:3px;width:58px;height:46px;box-sizing:border-box;overflow:hidden;">
+          <span style="font-family:'Heebo',sans-serif;font-size:9px;font-weight:900;color:rgba(255,255,255,.55);letter-spacing:.5px;line-height:1;">קופה</span>
+          <span id="bag-count-text" style="font-family:'Heebo',sans-serif;font-size:22px;font-weight:900;color:#e8c840;line-height:1.1;">98</span>
         </div>
       </div>
     </div>
@@ -933,9 +933,8 @@ body.tile-selected .bsq:not(.used){
 
 
 <!-- PAUSE OVERLAY -->
-<div id="ov-pause" class="ov hidden" style="align-items:center;background:rgba(0,0,0,.85);">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);border-bottom:3px solid #6ab0d8;text-align:center;">
-    <div class="ovh"></div>
+<div id="ov-pause" class="ov hidden" style="background:rgba(0,0,0,.85);">
+  <div class="ovc" style="text-align:center;">
     <div style="font-size:36px;margin-bottom:6px;">⏸️</div>
     <div class="ovt">המשחק מושהה</div>
     <div class="ovd" id="pause-player-name"></div>
@@ -948,9 +947,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- BACK BUTTON CONFIRM OVERLAY -->
-<div id="ov-back-confirm" class="ov hidden" style="align-items:center;background:rgba(0,0,0,.82);">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);border-bottom:3px solid #6ab0d8;text-align:center;">
-    <div class="ovh"></div>
+<div id="ov-back-confirm" class="ov hidden" style="background:rgba(0,0,0,.82);">
+  <div class="ovc" style="text-align:center;">
     <div style="font-size:32px;margin-bottom:6px;">🚪</div>
     <div class="ovt">לצאת מהמשחק?</div>
     <div class="ovd">ההתקדמות לא תישמר אלא אם תבחר להשהות</div>
@@ -963,9 +961,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- SETTINGS -->
-<div id="ov-settings" class="ov hidden" style="align-items:center" onclick="if(event.target===this)ovClose('ov-settings')">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);border-bottom:3px solid #6ab0d8;">
-    <div class="ovh" onclick="ovClose('ov-settings')" style="cursor:pointer"></div>
+<div id="ov-settings" class="ov hidden" onclick="if(event.target===this)ovClose('ov-settings')">
+  <div class="ovc">
     <div class="ovt" style="margin-bottom:10px">⚙️ הגדרות</div>
     <div class="settings-panels">
       <!-- Panel 1: appeals per game -->
@@ -1041,9 +1038,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- ADMIN LOGIN OVERLAY -->
-<div id="ov-dict-login" class="ov hidden" style="align-items:center;z-index:200;" onclick="if(event.target===this)closeDictionaryAdvancedSettings()">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);max-width:340px;border-bottom:3px solid #6ab0d8;">
-    <div class="ovh" onclick="closeDictionaryAdvancedSettings()" style="cursor:pointer"></div>
+<div id="ov-dict-login" class="ov hidden" style="z-index:200;" onclick="if(event.target===this)closeDictionaryAdvancedSettings()">
+  <div class="ovc" style="max-width:340px;">
     <div class="ovt" style="margin-bottom:6px">🔐 כניסת מנהל</div>
     <div class="ovd" style="margin-bottom:14px;">הגדרות מתקדמות — גישה לניהול המילון</div>
     <input id="dict-admin-password" type="password" placeholder="סיסמה" autocomplete="current-password" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;margin-bottom:12px;box-sizing:border-box;" onkeydown="if(event.key==='Enter')dictionaryAdminSignIn()">
@@ -1056,9 +1052,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- ADMIN ADVANCED SETTINGS OVERLAY -->
-<div id="ov-dict-admin" class="ov hidden" style="align-items:center;z-index:200;">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);max-width:400px;border-bottom:3px solid #6ab0d8;">
-    <div class="ovh"></div>
+<div id="ov-dict-admin" class="ov hidden" style="z-index:200;">
+  <div class="ovc" style="max-width:400px;">
     <div class="ovt" style="margin-bottom:4px">📋 הגדרות מתקדמות</div>
     <div class="ovd" style="margin-bottom:14px;">הצעות ממתינות לאישור</div>
     <!-- suggestions list -->
@@ -1078,9 +1073,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- ADMIN CONFIRM DECISION OVERLAY -->
-<div id="ov-dict-confirm" class="ov hidden" style="align-items:center;z-index:300;" onclick="if(event.target===this)cancelDictionaryDecision()">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);max-width:340px;border-bottom:3px solid #8b6b31;background:#2d2010;">
-    <div class="ovh"></div>
+<div id="ov-dict-confirm" class="ov hidden" style="z-index:300;" onclick="if(event.target===this)cancelDictionaryDecision()">
+  <div class="ovc" style="max-width:340px;border-bottom:3px solid #8b6b31;background:#2d2010;">
     <div class="ovic">⚠️</div>
     <div class="ovt" style="color:#f5c842;margin-bottom:8px;">אישור פעולה</div>
     <div id="dict-admin-confirm-text" style="font-size:13px;color:#ffe6b3;text-align:center;line-height:1.6;margin-bottom:16px;padding:10px;background:rgba(0,0,0,.25);border-radius:8px;">האם לאשר פעולה?</div>
@@ -1123,7 +1117,7 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- שאילתה -->
-<div id="ov-shailta" class="ov hidden" style="align-items:flex-end">
+<div id="ov-shailta" class="ov hidden">
   <div class="ovc"><div class="ovh"></div>
     <div class="ovt">שאילתה — מילון</div>
     <div class="ovd">האם המילה קיימת? <span style="color:#ff8e8e">הטיימר ממשיך לרוץ!</span></div>
@@ -1153,7 +1147,7 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- MOVE REVIEW -->
-<div id="ov-review" class="ov hidden" style="align-items:center">
+<div id="ov-review" class="ov hidden">
   <div id="review-popup" style="
     background:#d4d0b8;
     border:3px solid #2a5878;
@@ -1271,9 +1265,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- MOVE SUMMARY -->
-<div id="ov-move-summary" class="ov hidden" style="align-items:flex-end" onclick="if(event.target===this)ovClose('ov-move-summary')">
-  <div class="ovc" style="border-radius:12px 12px 0 0;margin:0;width:100%;max-width:420px;max-height:70vh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,0)">
-    <div class="ovh" onclick="ovClose('ov-move-summary')" style="cursor:pointer"></div>
+<div id="ov-move-summary" class="ov hidden" onclick="if(event.target===this)ovClose('ov-move-summary')">
+  <div class="ovc" style="max-width:420px;max-height:75vh;overflow-y:auto;">
     <div id="msum-icon" style="font-size:22px;text-align:center;margin:4px 0">📋</div>
     <div id="msum-title" class="ovt" style="margin:0 0 6px"></div>
     <div id="msum-body" style="font-size:12px;color:#eee;padding:0 4px"></div>
@@ -1284,9 +1277,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- CHAMPIONS (standalone, from home screen) -->
-<div id="ov-champs" class="ov hidden" style="align-items:center" onclick="if(event.target===this)ovClose('ov-champs')">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);max-width:380px;border-bottom:3px solid #6ab0d8;max-height:85vh;overflow-y:auto;">
-    <div class="ovh" onclick="ovClose('ov-champs')" style="cursor:pointer"></div>
+<div id="ov-champs" class="ov hidden" onclick="if(event.target===this)ovClose('ov-champs')">
+  <div class="ovc" style="max-width:380px;max-height:85vh;overflow-y:auto;">
     <div class="ovt" style="margin-bottom:12px">🏆 טבלת אלופים</div>
     <div id="champions-wrap-home"></div>
     <div class="ovbtns" style="margin-top:14px">
@@ -1296,9 +1288,8 @@ body.tile-selected .bsq:not(.used){
 </div>
 
 <!-- LEGEND -->
-<div id="ov-leg" class="ov hidden" style="align-items:center" onclick="if(event.target===this)ovClose('ov-leg')">
-  <div class="ovc" style="border-radius:12px;margin:10px;width:calc(100% - 20px);border-bottom:3px solid #6ab0d8;">
-    <div class="ovh" onclick="ovClose('ov-leg')" style="cursor:pointer"></div>
+<div id="ov-leg" class="ov hidden" onclick="if(event.target===this)ovClose('ov-leg')">
+  <div class="ovc">
     <div class="ovt" style="margin-bottom:9px">מקרא ואותיות</div>
     <div class="lg">
       <div class="li"><div class="lsq" style="background:var(--by)">⚡</div><div class="ltxt"><strong>100 נק'</strong>סדר מחדש ארוך</div></div>
@@ -2029,7 +2020,7 @@ function renderBoard(){
     const pp   = rep || placed.find(p => p.r===r && p.c===c);
     const tile = rep ? null : bData[r][c];
     const lk   = lockedCells[`${r},${c}`];
-    cell.classList.remove('np','lk','ht','locked-cell','last-move');
+    cell.classList.remove('np','lk','ht','locked-cell','last-move','op-live');
     cell.style.background = '';
     if (tile) {
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
@@ -2041,6 +2032,11 @@ function renderBoard(){
       const isPicked = selPlaced && selPlaced.r===r && selPlaced.c===c;
       cell.innerHTML=`<div class="${pp.isJoker?'btile nw jk':'btile nw'}${isPicked?' picked':''}"><div class="bt-l" style="font-size:${fs}px">${pp.letter}</div><div class="bt-v" style="font-size:${vs}px">${pp.val||''}</div></div>`;
       cell.classList.add('ht','np');
+    } else if (window._opponentLive && window._opponentLive.some(p=>p.r===r&&p.c===c)) {
+      const op = window._opponentLive.find(p=>p.r===r&&p.c===c);
+      const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
+      cell.innerHTML=`<div class="${op.isJoker?'btile ghost jk':'btile ghost'}"><div class="bt-l" style="font-size:${fs}px">${op.letter}</div><div class="bt-v" style="font-size:${vs}px">${op.val||''}</div></div>`;
+      cell.classList.add('ht','op-live');
     } else if (lk && lk.rounds>0) {
       const isOwner=lk.owner===turn;
       cell.style.background=isOwner?'#2a5a2a':'#5a2a2a';
@@ -2066,6 +2062,11 @@ function renderBoard(){
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
       const isBonusPicked = selPlaced && selPlaced.r===b.br && selPlaced.c===b.bc;
       el.innerHTML=`<div class="${pp.isJoker?'btile nw jk':'btile nw'}${isBonusPicked?' picked':''}" style="width:100%;height:100%"><div class="bt-l" style="font-size:${fs}px">${pp.letter}</div><div class="bt-v" style="font-size:${vs}px">${pp.val||''}</div></div>`;
+      el.classList.remove('used');
+    } else if (window._opponentLive && window._opponentLive.some(p=>p.r===b.br&&p.c===b.bc)) {
+      const op = window._opponentLive.find(p=>p.r===b.br&&p.c===b.bc);
+      const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
+      el.innerHTML=`<div class="${op.isJoker?'btile ghost jk':'btile ghost'}" style="width:100%;height:100%"><div class="bt-l" style="font-size:${fs}px">${op.letter}</div><div class="bt-v" style="font-size:${vs}px">${op.val||''}</div></div>`;
       el.classList.remove('used');
     } else if (bBoardData[key]) {
       // Tile permanently placed here
@@ -2128,19 +2129,19 @@ function updateBagDisplay(){
   if(bag.length === 0){
     cnt.textContent = 'ריק';
     cnt.style.color = '#e74c3c';
-    cnt.style.fontSize = '14px';
+    cnt.style.fontSize = '13px';
     if(disp) disp.style.borderColor = 'rgba(231,76,60,.5)';
     if(charEl) charEl.title = 'השקית ריקה!';
   } else if(bag.length < 10){
     cnt.textContent = String(bag.length);
     cnt.style.color = '#e67e22';
-    cnt.style.fontSize = '26px';
+    cnt.style.fontSize = '22px';
     if(disp) disp.style.borderColor = 'rgba(230,126,34,.5)';
     if(charEl) charEl.title = `נותרו ${bag.length} אותיות`;
   } else {
     cnt.textContent = String(bag.length);
     cnt.style.color = '#e8c840';
-    cnt.style.fontSize = '26px';
+    cnt.style.fontSize = '22px';
     if(disp) disp.style.borderColor = 'rgba(255,255,255,.2)';
     if(charEl) charEl.title = `שקית: ${bag.length} אותיות`;
   }
@@ -2409,6 +2410,8 @@ function doBotSearch(){
           const sc=d==='H'?c-offset:c;
           const p=mkP(w,sr,sc,d);
           if(p){
+            // Easy bot never lands on bonus squares (avoids triggering boosts)
+            if(diff===0 && p.some(t=>isBonusPos(t.r,t.c))) continue;
             placed=p;const ws=getAllWords(p);placed=[];
             if(ws.some(ww=>!isBotCrossWordValid(ww.map(t=>t.letter).join(''))))continue;
             const sc2=calcTotal(p);
@@ -2666,6 +2669,8 @@ function beginOnlineGameAfterBothReady(){
   setupPresence();
   listenForRoomStatus();
   listenForMoves();
+  listenForLive();
+  listenForLiveBonus();
   const myTurn=(myRole==='host')?0:1;
   if(turn===myTurn){
     setS(myTurnMsg());
@@ -2766,7 +2771,7 @@ function cellClick(r,c){
       racks[turn].push(placed[spPi].isJoker?'?':placed[spPi].letter);
       placed.splice(spPi,1);
       selPlaced=null; document.body.classList.remove('tile-selected');
-      renderBoard(); renderRack(); setS('אות הוחזרה למגש'); return;
+      pushLiveToFirebase(); renderBoard(); renderRack(); setS('אות הוחזרה למגש'); return;
     }
     // Another placed tile clicked → swap them on the board
     if(isPlaced){
@@ -2777,7 +2782,7 @@ function cellClick(r,c){
       placed[spPi] = {...spTile, r:tpTile.r, c:tpTile.c};
       placed[tpPi] = {...tpTile, r:spTile.r, c:spTile.c};
       selPlaced=null; document.body.classList.remove('tile-selected');
-      renderBoard(); setS('אותיות הוחלפו'); return;
+      pushLiveToFirebase(); renderBoard(); setS('אותיות הוחלפו'); return;
     }
     // Empty cell clicked → move the tile there
     if(!permTile && !isPlaced){
@@ -2786,7 +2791,7 @@ function cellClick(r,c){
       if(isBonusPos(r,c) || (!isBonusPos(r,c) && r>=0 && r<BS && c>=0 && c<BS)){
         placed[spPi] = {...placed[spPi], r, c};
         selPlaced=null; document.body.classList.remove('tile-selected');
-        renderBoard(); setS('אות הוזזה'); return;
+        pushLiveToFirebase(); renderBoard(); setS('אות הוזזה'); return;
       }
     }
     // Clicked on a permanent tile or something invalid → cancel
@@ -2807,7 +2812,7 @@ function cellClick(r,c){
   if(isPlaced && selTile!==null){
     racks[turn].push(placed[pi].isJoker?'?':placed[pi].letter);
     placed.splice(pi,1);
-    renderBoard(); renderRack(); setS('אות הוחזרה — עכשיו לחץ על המשבצת לשיבוץ'); return;
+    pushLiveToFirebase(); renderBoard(); renderRack(); setS('אות הוחזרה — עכשיו לחץ על המשבצת לשיבוץ'); return;
   }
 
   // Undo replacement by clicking on it with no rack tile
@@ -2845,7 +2850,7 @@ function cellClick(r,c){
   placed.push({r,c,letter,val:HV[letter]||0,isJoker:false});
   racks[turn].splice(selTile,1); selTile=null;
   document.body.classList.remove('tile-selected');
-  renderBoard(); renderRack(); setS(`שיבצת "${letter}"`);
+  pushLiveToFirebase(); renderBoard(); renderRack(); setS(`שיבצת "${letter}"`);
 }
 
 // ── LOCK ──
@@ -2899,7 +2904,7 @@ function openJokerPicker(){
   });
   ovOpen('ov-joker');
 }
-function confirmJoker(l){ ovClose('ov-joker'); const{rackIdx,r,c,replace}=jokerTarget; racks[turn].splice(rackIdx,1); if(replace){ applyReplacementAt(r,c,l,0,true,'?'); setS(`ג'וקר החליף ל-"${l}"`,'bon'); } else { placed.push({r,c,letter:l,val:0,isJoker:true}); setS(`ג'וקר → "${l}"`); } selTile=null; jokerTarget=null; renderBoard(); renderRack(); }
+function confirmJoker(l){ ovClose('ov-joker'); const{rackIdx,r,c,replace}=jokerTarget; racks[turn].splice(rackIdx,1); if(replace){ applyReplacementAt(r,c,l,0,true,'?'); setS(`ג'וקר החליף ל-"${l}"`,'bon'); } else { placed.push({r,c,letter:l,val:0,isJoker:true}); setS(`ג'וקר → "${l}"`); } selTile=null; jokerTarget=null; pushLiveToFirebase(); renderBoard(); renderRack(); }
 function cancelJoker(){ ovClose('ov-joker'); jokerTarget=null; }
 
 // ── EXCHANGE ──
@@ -2923,7 +2928,7 @@ function doRecall(){
   undoReplacement();
   selTile=null; selPlaced=null;
   document.body.classList.remove('tile-selected');
-  renderBoard(); renderRack(); setS('המהלך הוחזר');
+  pushLiveToFirebase(); renderBoard(); renderRack(); setS('המהלך הוחזר');
 }
 
 // ── שאילתה ──
@@ -3028,7 +3033,18 @@ function applyReplacementAt(r,c,letter,val,isJoker,usedRackLetter){
 function getWT(pp){
   if(!pp.length)return[];
   const rows=[...new Set(pp.map(p=>p.r))],cols=[...new Set(pp.map(p=>p.c))],tiles=[];
-  if(rows.length===1){
+  // For a single placed tile we can't determine direction from pp alone.
+  // Check whether existing adjacent tiles extend it horizontally or vertically
+  // and pick whichever axis has neighbours (prefer H if both).
+  let treatAsH = rows.length===1;
+  if(pp.length===1){
+    const r=rows[0],c=cols[0];
+    const hasH=!!(getTile(r,c-1)||getTile(r,c+1));
+    const hasV=!!(getTile(r-1,c)||getTile(r+1,c));
+    if(!hasH && hasV) treatAsH=false;
+    else treatAsH=true; // horizontal or isolated → treat as H (cross-word scan handles V)
+  }
+  if(treatAsH){
     const r=rows[0];
     // find extent including bonus positions (r can be -1 or 10)
     let mn=Math.min(...pp.map(p=>p.c)),mx=Math.max(...pp.map(p=>p.c));
@@ -3574,7 +3590,7 @@ function runBonusBuilder(builder, fallbackPoints){
   }
   const panel=document.querySelector('#ov-bonus .ovc');
   if(panel) panel.scrollTop=0;
-  ovOpen('ov-bonus');
+  openBonusAndBroadcast();
 }
 
 function triggerBonus(type,ws,sc){
@@ -3649,7 +3665,7 @@ function triggerBonus(type,ws,sc){
         `סדר את ${_lsl.length} האותיות למילה תוך 40 שניות!`, 40);
     }
   }
-  ovOpen('ov-bonus');
+  openBonusAndBroadcast();
 }
 
 function buildUnscramble(letters, answer, icon, title, desc, secs){
@@ -3793,17 +3809,19 @@ function buildCrossword(){
   document.getElementById('bovd').textContent='ב-60 שניות הרכב מילים מהאותיות שלך — כל אות שימושית פעם אחת בלבד!';
   const area=document.getElementById('bchal'); area.innerHTML='';
 
-  const ROWS=4, COLS=6;
+  const ROWS=5, COLS=7;
 
-  // Draw real tiles from the bag — each tile usable only once
+  // Draw real tiles from the bag — each tile usable only once, jokers excluded
   const drawnLetters=[];
   const tempBag=[...bag];
   sh(tempBag);
-  const drawCount=Math.min(16, tempBag.length);
-  for(let i=0;i<drawCount;i++) drawnLetters.push(tempBag[i]);
-  // If bag has fewer than 16, pad with common letters
+  // Skip jokers ('?') — they have no letter value and would confuse the crossword board
+  for(let i=0;i<tempBag.length && drawnLetters.length<20;i++){
+    if(tempBag[i]!=='?') drawnLetters.push(tempBag[i]);
+  }
+  // If bag has fewer than 20 real tiles, pad with common letters
   const COMMON=['א','ב','ל','מ','נ','ר','ש','ת'];
-  while(drawnLetters.length<16) drawnLetters.push(COMMON[drawnLetters.length%COMMON.length]);
+  while(drawnLetters.length<20) drawnLetters.push(COMMON[drawnLetters.length%COMMON.length]);
 
   // letterPool is the set of tiles available (each appears exactly once)
   const letterPool=[...drawnLetters]; // indices correspond to unique tile instances
@@ -3822,7 +3840,7 @@ function buildCrossword(){
 
   // Mini grid
   const grid=document.createElement('div');
-  grid.style.cssText=`display:grid;grid-template-columns:repeat(${COLS},1fr);gap:2px;background:#2a5878;border:2px solid #2a5878;border-radius:4px;margin-bottom:4px;width:100%;max-width:${COLS*34}px;`;
+  grid.style.cssText=`display:grid;grid-template-columns:repeat(${COLS},1fr);gap:2px;background:#2a5878;border:2px solid #2a5878;border-radius:4px;margin-bottom:4px;width:100%;max-width:${COLS*32}px;`;
 
   const getCellEl=(r,c)=>document.getElementById(`mb-${r}-${c}`);
   const renderMb=()=>{
@@ -3846,7 +3864,7 @@ function buildCrossword(){
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
     const cell=document.createElement('div');
     cell.id=`mb-${r}-${c}`;
-    cell.style.cssText=`height:30px;background:#5ba3cc;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border-radius:1px;`;
+    cell.style.cssText=`height:28px;background:#5ba3cc;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border-radius:1px;`;
     cell.addEventListener('click',()=>{
       if(mbData[r][c]){
         // return tile to pool
@@ -4137,6 +4155,7 @@ function bonusOkWithReveal(ok, attempt, answer){
 
 function bonusOk(ok=true){
   clearT(); ovClose('ov-bonus');
+  clearLiveBonus();
   // Restore skip button for next time
   const skipBtn = document.querySelector('#ov-bonus .ovb.s');
   if(skipBtn) skipBtn.style.display = '';
@@ -4170,7 +4189,7 @@ function bonusOk(ok=true){
   commitPlay(bonusPend.sc,bonusPend.ws,extra,pi); // pass word score and bonus separately
   bonusPend=null;
 }
-function bonusSkip(){ clearT(); ovClose('ov-bonus'); if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true); commitPlay(bonusPend.sc,bonusPend.ws,0,bonusPend.player); bonusPend=null; }
+function bonusSkip(){ clearT(); ovClose('ov-bonus'); clearLiveBonus(); if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true); commitPlay(bonusPend.sc,bonusPend.ws,0,bonusPend.player); bonusPend=null; }
 
 // ═══════════════════════════════════════════════════
 // COMMIT
@@ -4675,7 +4694,7 @@ function renderBoard(){
     const pp   = rep || placed.find(p => p.r===r && p.c===c);
     const tile = rep ? null : bData[r][c];
     const lk   = lockedCells[`${r},${c}`];
-    cell.classList.remove('np','lk','ht','locked-cell','illegal-tile','rollback-pop','last-move');
+    cell.classList.remove('np','lk','ht','locked-cell','illegal-tile','rollback-pop','last-move','op-live');
     cell.style.background = '';
     if (tile) {
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
@@ -4687,6 +4706,11 @@ function renderBoard(){
       const isPicked = selPlaced && selPlaced.r===r && selPlaced.c===c;
       cell.innerHTML=`<div class="${pp.isJoker?'btile nw jk':'btile nw'}${isPicked?' picked':''}"><div class="bt-l" style="font-size:${fs}px">${pp.letter}</div><div class="bt-v" style="font-size:${vs}px">${pp.val||''}</div></div>`;
       cell.classList.add('ht','np');
+    } else if (window._opponentLive && window._opponentLive.some(p=>p.r===r&&p.c===c)) {
+      const op = window._opponentLive.find(p=>p.r===r&&p.c===c);
+      const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
+      cell.innerHTML=`<div class="${op.isJoker?'btile ghost jk':'btile ghost'}"><div class="bt-l" style="font-size:${fs}px">${op.letter}</div><div class="bt-v" style="font-size:${vs}px">${op.val||''}</div></div>`;
+      cell.classList.add('ht','op-live');
     } else if (lk && lk.rounds>0) {
       const isOwner=lk.owner===turn;
       cell.style.background=isOwner?'#2a5a2a':'#5a2a2a';
@@ -4710,6 +4734,11 @@ function renderBoard(){
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
       const isBonusPicked = selPlaced && selPlaced.r===b.br && selPlaced.c===b.bc;
       el.innerHTML=`<div class="${pp.isJoker?'btile nw jk':'btile nw'}${isBonusPicked?' picked':''}" style="width:100%;height:100%"><div class="bt-l" style="font-size:${fs}px">${pp.letter}</div><div class="bt-v" style="font-size:${vs}px">${pp.val||''}</div></div>`;
+      el.classList.remove('used');
+    } else if (window._opponentLive && window._opponentLive.some(p=>p.r===b.br&&p.c===b.bc)) {
+      const op = window._opponentLive.find(p=>p.r===b.br&&p.c===b.bc);
+      const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
+      el.innerHTML=`<div class="${op.isJoker?'btile ghost jk':'btile ghost'}" style="width:100%;height:100%"><div class="bt-l" style="font-size:${fs}px">${op.letter}</div><div class="bt-v" style="font-size:${vs}px">${op.val||''}</div></div>`;
       el.classList.remove('used');
     } else if (bBoardData[key]) {
       const t = bBoardData[key];
@@ -6436,6 +6465,7 @@ function listenForMoves(){
     // local turn-state desyncs (appearing as a stuck game).
     window._myLastPush = undefined;
     clearMoveTimer();
+    window._opponentLive = [];
     loadGameState(s);
     updateUI(); renderBoard(); renderRack('turn'); renderBonusStrips();
 
@@ -6462,6 +6492,78 @@ function listenForMoves(){
   onlineListeners.push({ ref: stateRef, type:'value', fn: moveListener });
 }
 
+// ── LIVE TILE STREAMING ──
+window._opponentLive = [];
+
+function pushLiveToFirebase(){
+  if(gMode !== 'online' || !roomCode) return;
+  if(turn !== window._myPlayerIndex) return;
+  const data = placed.map(p => ({r:p.r, c:p.c, letter:p.letter, val:p.val, isJoker:!!p.isJoker}));
+  fbRef('rooms/' + roomCode + '/live').set(data).catch(()=>{});
+}
+
+function openBonusAndBroadcast(){
+  ovOpen('ov-bonus');
+  if(gMode === 'online' && roomCode){
+    fbRef('rooms/' + roomCode + '/liveBonus').set({
+      active: true,
+      icon: document.getElementById('bovic').textContent,
+      title: document.getElementById('bovt').textContent,
+      desc: document.getElementById('bovd').innerHTML,
+    }).catch(()=>{});
+  }
+}
+
+function clearLiveBonus(){
+  if(gMode === 'online' && roomCode)
+    fbRef('rooms/' + roomCode + '/liveBonus').set(null).catch(()=>{});
+}
+
+function listenForLive(){
+  if(gMode !== 'online' || !roomCode) return;
+  const liveRef = fbRef('rooms/' + roomCode + '/live');
+  const fn = liveRef.on('value', function(snap){
+    // Only show ghost tiles when it's the opponent's turn
+    if(turn === window._myPlayerIndex){ window._opponentLive = []; return; }
+    if(!snap || !snap.exists()){ window._opponentLive = []; renderBoard(); return; }
+    const data = snap.val();
+    window._opponentLive = Array.isArray(data) ? data : [];
+    renderBoard();
+  });
+  onlineListeners.push({ref: liveRef, type:'value', fn});
+}
+
+function listenForLiveBonus(){
+  if(gMode !== 'online' || !roomCode) return;
+  const ref = fbRef('rooms/' + roomCode + '/liveBonus');
+  const fn = ref.on('value', function(snap){
+    // Only show on the waiting player's screen
+    if(turn === window._myPlayerIndex) return;
+    if(!snap || !snap.exists() || !snap.val() || !snap.val().active){
+      // Hide the overlay if it was shown in watch mode
+      const bonusEl = document.getElementById('ov-bonus');
+      if(bonusEl && bonusEl._watchMode){ bonusEl._watchMode = false; ovClose('ov-bonus'); }
+      return;
+    }
+    const d = snap.val();
+    document.getElementById('bovic').textContent = d.icon || '🌟';
+    document.getElementById('bovt').textContent = d.title || 'בוסט!';
+    document.getElementById('bovd').innerHTML = d.desc || '';
+    document.getElementById('btw').style.display = 'none';
+    document.getElementById('bchal').innerHTML =
+      '<div style="text-align:center;padding:16px 0 8px;font-size:13px;color:rgba(255,255,255,.5)">⏳ ממתין לתוצאה...</div>';
+    // Hide interactive buttons — watcher only observes
+    const okBtn = document.getElementById('bok');
+    const skipBtn = document.querySelector('#ov-bonus .ovb.s');
+    if(okBtn) okBtn.style.display = 'none';
+    if(skipBtn) skipBtn.style.display = 'none';
+    const bonusEl = document.getElementById('ov-bonus');
+    if(bonusEl) bonusEl._watchMode = true;
+    ovOpen('ov-bonus');
+  });
+  onlineListeners.push({ref, type:'value', fn});
+}
+
 // ── PUSH MOVE TO FIREBASE ──
 function pushMoveToFirebase(){
   if(gMode !== 'online' || !roomCode) return;
@@ -6470,6 +6572,8 @@ function pushMoveToFirebase(){
   fbRef('rooms/' + roomCode + '/state').set(state).catch(function(e){
     console.error('pushMoveToFirebase error:', e);
   });
+  // Clear live tile preview — move is now committed
+  fbRef('rooms/' + roomCode + '/live').set([]).catch(()=>{});
   saveOnlineSession(); // keep session fresh after every move
   if(onlineMode === 'async'){
     var nudge = document.getElementById('async-nudge');
@@ -6847,7 +6951,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260412032547', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260412215000', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -7133,6 +7237,8 @@ async function rejoinOnlineGame(code){
   setupPresence();
   listenForRoomStatus();
   listenForMoves();
+  listenForLive();
+  listenForLiveBonus();
 }
 
 // Check on home load
