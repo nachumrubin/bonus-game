@@ -61,7 +61,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="bonus-scrabble.web.app" />
+                    android:host="boost-8ef11.web.app" />
             </intent-filter>
         </activity>
 

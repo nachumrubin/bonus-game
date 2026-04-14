@@ -2,10 +2,10 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdk 34
-    namespace 'app.bonusscrabble.twa'
+    namespace 'app.boost8ef11.twa'
 
     defaultConfig {
-        applicationId 'app.bonusscrabble.twa'
+        applicationId 'app.boost8ef11.twa'
         minSdk 24
         targetSdk 34
         versionCode 1
