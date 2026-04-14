@@ -1,0 +1,7 @@
+# Signing secrets — never commit these
+keystore.properties
+android/android.keystore
+*.jks
+
+# Firebase local config
+.firebaserc

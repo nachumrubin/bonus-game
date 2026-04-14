@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// Read signing credentials from keystore.properties (not committed to git)
+def keystorePropertiesFile = rootProject.file('../keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     compileSdk 34
     namespace 'app.boost8ef11.twa'
@@ -12,12 +19,20 @@ android {
         versionName '1.0'
     }
 
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties['storeFile'] ?: '../android/android.keystore')
+            storePassword keystoreProperties['storePassword'] ?: ''
+            keyAlias keystoreProperties['keyAlias'] ?: 'android'
+            keyPassword keystoreProperties['keyPassword'] ?: ''
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Signing config — add keystore details before building:
-            // signingConfig signingConfigs.release
+            signingConfig signingConfigs.release
         }
         debug {
             applicationIdSuffix '.debug'
