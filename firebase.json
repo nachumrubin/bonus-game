@@ -1,0 +1,31 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".git/**",
+      ".gitignore",
+      ".firebaseignore",
+      "node_modules/**",
+      "android/**",
+      "scripts/**",
+      "tests/**",
+      "twa-manifest.json",
+      "package.json",
+      "package-lock.json",
+      "playwright.config.js",
+      "firebase.database.rules.json",
+      "*.keystore",
+      "*.jks",
+      "keystore.properties"
+    ],
+    "headers": [
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [
+          { "key": "Content-Type", "value": "application/json" }
+        ]
+      }
+    ]
+  }
+}

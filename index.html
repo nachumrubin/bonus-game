@@ -6,17 +6,16 @@
 <title>בוסט — שבץ נא</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- PWA -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNiIgZmlsbD0iIzJkNjA4MCIvPjx0ZXh0IHg9IjE2IiB5PSIyNCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMiIgZm9udC1mYW1pbHk9InNlcmlmIiBmaWxsPSIjZThjODQwIj7XkTwvdGV4dD48L3N2Zz4=">
-<link rel="manifest" id="pwa-manifest">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2d6080">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260414114658">
-<!-- PWA icons (inline SVG → data URI, no external files needed) -->
-<link rel="apple-touch-icon" id="pwa-icon-link">
+<meta name="version" content="20260414174839">
+<link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
 <style>
@@ -693,7 +692,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260414114658</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260414174839</div>
   </div>
 </div>
 
@@ -5956,13 +5955,14 @@ endGame = function(){
 
 // ── Firebase config ──
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAM8aKfG6wsb3giFzJ__7odKhEUEEX-gS4",
-  authDomain: "bonus-scrabble.firebaseapp.com",
-  databaseURL: "https://bonus-scrabble-default-rtdb.firebaseio.com",
-  projectId: "bonus-scrabble",
-  storageBucket: "bonus-scrabble.firebasestorage.app",
-  messagingSenderId: "14997237949",
-  appId: "1:14997237949:web:fdc8b788869af019ca47d4"
+  apiKey: "AIzaSyCE-Im2HzYhJVlRd07uIHqcsCGTQQhYgDo",
+  authDomain: "boost-8ef11.firebaseapp.com",
+  databaseURL: "https://boost-8ef11-default-rtdb.firebaseio.com",
+  projectId: "boost-8ef11",
+  storageBucket: "boost-8ef11.firebasestorage.app",
+  messagingSenderId: "816797852120",
+  appId: "1:816797852120:web:bfb9ab25fe8e6d9860d2ad",
+  measurementId: "G-EXGCLJ4MDQ"
 };
 
 // ── Online state ──
@@ -7603,50 +7603,6 @@ function backConfirmStay(){
 // ═══════════════════════════════════════════════════
 (function(){
 
-  // ── Inline SVG icon (tile with ב) → generates all icon sizes ──
-  var SVG_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">' +
-    '<rect width="512" height="512" rx="80" fill="#2d6080"/>' +
-    '<rect x="40" y="40" width="432" height="432" rx="60" fill="#3a7ca5"/>' +
-    '<rect x="80" y="80" width="352" height="352" rx="44" fill="#e8e0c8" stroke="#9a9080" stroke-width="8"/>' +
-    '<text x="256" y="320" text-anchor="middle" font-family="Heebo,Arial,sans-serif" ' +
-      'font-size="240" font-weight="900" fill="#2d6080">ב</text>' +
-    '<text x="460" y="460" text-anchor="middle" font-family="Heebo,Arial,sans-serif" ' +
-      'font-size="60" font-weight="900" fill="#8a7060">1</text>' +
-    '</svg>';
-
-  var svgDataUri = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(SVG_ICON)));
-
-  // Set apple-touch-icon
-  var iconLink = document.getElementById('pwa-icon-link');
-  if(iconLink) iconLink.href = svgDataUri;
-
-  // ── Inline Web App Manifest (injected as blob URL) ──
-  var manifestStartUrl = (window.location.origin && window.location.origin !== 'null')
-    ? (window.location.origin + window.location.pathname)
-    : window.location.href.split('#')[0];
-
-  var manifest = {
-    name: 'בוסט — שבץ נא',
-    short_name: 'בוסט',
-    description: 'משחק שבץ נא ישראלי עם בוסטים',
-    start_url: manifestStartUrl,
-    display: 'standalone',
-    orientation: 'portrait',
-    background_color: '#2d6080',
-    theme_color: '#2d6080',
-    lang: 'he',
-    dir: 'rtl',
-    icons: [
-      { src: svgDataUri, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-      { src: svgDataUri, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
-    ]
-  };
-
-  var manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
-  var manifestUrl = URL.createObjectURL(manifestBlob);
-  var manifestLink = document.getElementById('pwa-manifest');
-  if(manifestLink) manifestLink.href = manifestUrl;
-
   // ── Service Worker (inline as blob) ──
   // Caches the page for offline use
   var SW_CODE = [
@@ -7683,7 +7639,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260414114658', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260414174839', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
