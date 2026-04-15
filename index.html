@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260415120528">
+<meta name="version" content="20260415122930">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -293,8 +293,9 @@ body.tile-selected .bsq:not(.used){
   box-shadow:0 2px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.55);
   position:relative; user-select:none;
 }
-.wt.jok{ border-color:#d080b0; }
+.wt.jok{ background:#fff0fa; border-color:#d080b0; }
 .wt-l{ font-weight:900; color:var(--ttext); line-height:1; font-size:15px; }
+.jok-sym{ color:#c050a0; font-size:1.1em; }
 .wt-v{ color:#666; position:absolute; bottom:1px; left:3px; font-weight:700; font-size:7px; }
 .wt-empty{ height:30px; width:58px; flex-shrink:0; opacity:0; }
 /* Cascade-in: tile drops in from above */
@@ -337,7 +338,7 @@ body.tile-selected .bsq:not(.used){
 }
 .bt2.sel{background:#ffe870;border-color:#c0a800;transform:translateY(-6px);box-shadow:0 8px 0 var(--tshadow),0 8px 12px rgba(0,0,0,.25);}
 .bt2.emp{background:rgba(255,255,255,.04);border:2px dashed rgba(255,255,255,.12);box-shadow:none;cursor:default;}
-.bt2.jok{border-color:#d080b0;}
+.bt2.jok{background:#fff0fa;border-color:#d080b0;}
 .bt2-l{font-weight:900;color:var(--ttext);line-height:1;}
 .bt2-v{color:#666;position:absolute;bottom:2px;left:3px;font-weight:700;}
 .bplay{
@@ -692,7 +693,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260415120528</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260415122930</div>
   </div>
 </div>
 
@@ -3151,7 +3152,7 @@ function doExchange(){
   const rack=racks[turn], el=document.getElementById('exch-rack'); el.innerHTML='';
   rack.forEach((letter,i)=>{
     const t=document.createElement('div'); t.className='bt2'+(letter==='?'?' jok':'');
-    t.innerHTML=`<span class="bt2-l">${letter==='?'?'🃏':letter}</span><span class="bt2-v">${letter==='?'?'':HV[letter]||0}</span>`;
+    t.innerHTML=`<span class="bt2-l">${letter==='?'?'<span class="jok-sym">?</span>':letter}</span><span class="bt2-v">${letter==='?'?'':HV[letter]||0}</span>`;
     t.onclick=()=>{ ovClose('ov-exch'); bag.unshift(letter); sh(bag); racks[turn].splice(i,1); draw(racks[turn]); exchUsed=true; if(selTile===i)selTile=null; renderRack(); updateUI(); setS(`האות הוחלפה`,'ok'); };
     el.appendChild(t);
   });
@@ -5097,14 +5098,14 @@ function showTileSwapPicker(pi, onDone){
     const isJok=letter==='?';
     const t=document.createElement('div');
     t.style.cssText='width:44px;height:52px;background:var(--tile);border:2px solid var(--tborder);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;cursor:pointer;transition:transform .1s,border-color .1s;box-shadow:0 2px 0 var(--tshadow);';
-    t.innerHTML=`<span style="font-size:21px">${isJok?'🃏':letter}</span><span style="font-size:9px;color:#555">${isJok?'':HV[letter]||0}</span>`;
+    t.innerHTML=`<span style="font-size:21px">${isJok?'<span class="jok-sym">?</span>':letter}</span><span style="font-size:9px;color:#555">${isJok?'':HV[letter]||0}</span>`;
     t.addEventListener('mouseenter',()=>{t.style.borderColor='#ffe870';t.style.transform='scale(1.1)';});
     t.addEventListener('mouseleave',()=>{t.style.borderColor='var(--tborder)';t.style.transform='';});
     t.addEventListener('click',()=>{
       const oppIdx=Math.floor(Math.random()*racks[1-pi].length);
       const given=racks[pi][idx], received=racks[1-pi][oppIdx];
       racks[pi][idx]=received; racks[1-pi][oppIdx]=given;
-      setS(`🔄 ${pNames[pi]} החליף "${given==='?'?'🃏':given}" עם "${received==='?'?'🃏':received}" של ${pNames[1-pi]}!`,'bon');
+      setS(`🔄 ${pNames[pi]} החליף "${given==='?'?'?':given}" עם "${received==='?'?'?':received}" של ${pNames[1-pi]}!`,'bon');
       modal.remove(); if(onDone)onDone();
     });
     row.appendChild(t);
@@ -5477,7 +5478,7 @@ function renderRack(animate){
       const isJok = rack[i]==='?';
       const canClick = (turn === rackPlayerIdx);
       t.className = 'bt2'+(canClick && i===selTile?' sel':'')+(isJok?' jok':'');
-      t.innerHTML = `<span class="bt2-l">${isJok?'🃏':rack[i]}</span><span class="bt2-v">${isJok?'':HV[rack[i]]||0}</span>`;
+      t.innerHTML = `<span class="bt2-l">${isJok?'<span class="jok-sym">?</span>':rack[i]}</span><span class="bt2-v">${isJok?'':HV[rack[i]]||0}</span>`;
       if(canClick){
         t.addEventListener('click', () => selT(i));
       } else {
@@ -5564,7 +5565,7 @@ function _buildSideStripDOM(container, tiles, withAnim){
       if(tile.hidden){
         t.innerHTML = `<span class="wt-l" style="font-size:10px;opacity:.4">?</span>`;
       } else {
-        t.innerHTML = `<span class="wt-l">${tile.isJok ? '🃏' : tile.letter}</span>${tile.isJok ? '' : `<span class="wt-v">${tile.val}</span>`}`;
+        t.innerHTML = `<span class="wt-l">${tile.isJok ? '<span class="jok-sym">?</span>' : tile.letter}</span>${tile.isJok ? '' : `<span class="wt-v">${tile.val}</span>`}`;
       }
     } else {
       t.className = 'wt-empty';
@@ -7639,7 +7640,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260415120528', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260415122930', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
