@@ -2,6 +2,6 @@
   <rect width="512" height="512" rx="80" fill="#2d6080"/>
   <rect x="40" y="40" width="432" height="432" rx="60" fill="#3a7ca5"/>
   <rect x="80" y="80" width="352" height="352" rx="44" fill="#e8e0c8" stroke="#9a9080" stroke-width="8"/>
-  <text x="256" y="320" text-anchor="middle" font-family="Heebo,Arial,sans-serif" font-size="240" font-weight="900" fill="#2d6080">ב</text>
-  <text x="460" y="460" text-anchor="middle" font-family="Heebo,Arial,sans-serif" font-size="60" font-weight="900" fill="#8a7060">1</text>
+  <text x="256" y="350" text-anchor="middle" font-family="Heebo,Arial,sans-serif" font-size="290" font-weight="900" fill="#2d6080">ב</text>
+  <text x="448" y="448" text-anchor="middle" font-family="Heebo,Arial,sans-serif" font-size="60" font-weight="900" fill="#8a7060">1</text>
 </svg>
