@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260415122930">
+<meta name="version" content="20260415123902">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -295,7 +295,7 @@ body.tile-selected .bsq:not(.used){
 }
 .wt.jok{ background:#fff0fa; border-color:#d080b0; }
 .wt-l{ font-weight:900; color:var(--ttext); line-height:1; font-size:15px; }
-.jok-sym{ color:#c050a0; font-size:1.1em; }
+.jok-sym{ display:inline-flex; align-items:center; }
 .wt-v{ color:#666; position:absolute; bottom:1px; left:3px; font-weight:700; font-size:7px; }
 .wt-empty{ height:30px; width:58px; flex-shrink:0; opacity:0; }
 /* Cascade-in: tile drops in from above */
@@ -693,7 +693,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260415122930</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260415123902</div>
   </div>
 </div>
 
@@ -1506,6 +1506,7 @@ const HD = {
   'כ':3,'ל':6,'מ':5,'נ':6,'ס':2,'ע':3,'פ':3,'צ':2,'ק':3,'ר':6,'ש':4,'ת':4,'?':2
 };
 const ALL_LETTERS = Object.keys(HV).filter(l => l !== '?');
+const JOK_ICON=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 22" width="1em" height="1em" style="vertical-align:middle"><path d="M2 16 L5 3 L12 16Z" fill="#c050a0"/><path d="M22 16 L19 3 L12 16Z" fill="#a030a0"/><circle cx="5" cy="3" r="2.5" fill="#f0b800"/><circle cx="19" cy="3" r="2.5" fill="#f0b800"/><rect x="1" y="15" width="22" height="6.5" rx="3" fill="#b040a0"/></svg>`;
 
 // Word dictionary — loaded from embedded gzip+base64
 let DICT = new Set();
@@ -3152,7 +3153,7 @@ function doExchange(){
   const rack=racks[turn], el=document.getElementById('exch-rack'); el.innerHTML='';
   rack.forEach((letter,i)=>{
     const t=document.createElement('div'); t.className='bt2'+(letter==='?'?' jok':'');
-    t.innerHTML=`<span class="bt2-l">${letter==='?'?'<span class="jok-sym">?</span>':letter}</span><span class="bt2-v">${letter==='?'?'':HV[letter]||0}</span>`;
+    t.innerHTML=`<span class="bt2-l">${letter==='?'?JOK_ICON:letter}</span><span class="bt2-v">${letter==='?'?'':HV[letter]||0}</span>`;
     t.onclick=()=>{ ovClose('ov-exch'); bag.unshift(letter); sh(bag); racks[turn].splice(i,1); draw(racks[turn]); exchUsed=true; if(selTile===i)selTile=null; renderRack(); updateUI(); setS(`האות הוחלפה`,'ok'); };
     el.appendChild(t);
   });
@@ -5098,7 +5099,7 @@ function showTileSwapPicker(pi, onDone){
     const isJok=letter==='?';
     const t=document.createElement('div');
     t.style.cssText='width:44px;height:52px;background:var(--tile);border:2px solid var(--tborder);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;cursor:pointer;transition:transform .1s,border-color .1s;box-shadow:0 2px 0 var(--tshadow);';
-    t.innerHTML=`<span style="font-size:21px">${isJok?'<span class="jok-sym">?</span>':letter}</span><span style="font-size:9px;color:#555">${isJok?'':HV[letter]||0}</span>`;
+    t.innerHTML=`<span style="font-size:21px">${isJok?JOK_ICON:letter}</span><span style="font-size:9px;color:#555">${isJok?'':HV[letter]||0}</span>`;
     t.addEventListener('mouseenter',()=>{t.style.borderColor='#ffe870';t.style.transform='scale(1.1)';});
     t.addEventListener('mouseleave',()=>{t.style.borderColor='var(--tborder)';t.style.transform='';});
     t.addEventListener('click',()=>{
@@ -5478,7 +5479,7 @@ function renderRack(animate){
       const isJok = rack[i]==='?';
       const canClick = (turn === rackPlayerIdx);
       t.className = 'bt2'+(canClick && i===selTile?' sel':'')+(isJok?' jok':'');
-      t.innerHTML = `<span class="bt2-l">${isJok?'<span class="jok-sym">?</span>':rack[i]}</span><span class="bt2-v">${isJok?'':HV[rack[i]]||0}</span>`;
+      t.innerHTML = `<span class="bt2-l">${isJok?JOK_ICON:rack[i]}</span><span class="bt2-v">${isJok?'':HV[rack[i]]||0}</span>`;
       if(canClick){
         t.addEventListener('click', () => selT(i));
       } else {
@@ -5565,7 +5566,7 @@ function _buildSideStripDOM(container, tiles, withAnim){
       if(tile.hidden){
         t.innerHTML = `<span class="wt-l" style="font-size:10px;opacity:.4">?</span>`;
       } else {
-        t.innerHTML = `<span class="wt-l">${tile.isJok ? '<span class="jok-sym">?</span>' : tile.letter}</span>${tile.isJok ? '' : `<span class="wt-v">${tile.val}</span>`}`;
+        t.innerHTML = `<span class="wt-l">${tile.isJok ? JOK_ICON : tile.letter}</span>${tile.isJok ? '' : `<span class="wt-v">${tile.val}</span>`}`;
       }
     } else {
       t.className = 'wt-empty';
@@ -7640,7 +7641,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260415122930', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260415123902', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
