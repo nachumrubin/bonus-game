@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260416073218">
+<meta name="version" content="20260416073556">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -368,7 +368,7 @@ body.tile-selected .bsq:not(.used){
    (7 tiles + 2 buttons) become direct flex children of .bot with equal flex:1 */
 #brack{display:contents;}
 .bt2{
-  flex:1; min-width:0; max-width:var(--row-h); height:var(--row-h);
+  flex:1; min-width:0; aspect-ratio:1;
   background:var(--tile); border:2px solid var(--tborder); border-radius:3px;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   cursor:pointer; position:relative; user-select:none; -webkit-user-select:none;
@@ -381,7 +381,7 @@ body.tile-selected .bsq:not(.used){
 .bt2-l{font-weight:900;color:var(--ttext);line-height:1;}
 .bt2-v{color:#666;position:absolute;bottom:2px;left:3px;font-weight:700;}
 .bplay{
-  flex:1; min-width:0; max-width:calc(var(--row-h)*1.4); height:var(--row-h);
+  flex:1; min-width:0; max-width:calc(var(--row-h)*1.4); align-self:stretch;
   background:var(--btn);border:2px solid var(--bborder);border-radius:4px;
   padding:4px 3px;font-family:'Heebo',sans-serif;font-size:10px;font-weight:900;
   cursor:pointer;box-shadow:0 2px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.55);
@@ -732,7 +732,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416073218</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416073556</div>
   </div>
 </div>
 
@@ -7679,7 +7679,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260416073218', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260416073556', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
