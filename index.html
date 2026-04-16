@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260416071658">
+<meta name="version" content="20260416072049">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -319,10 +319,20 @@ body.tile-selected .bsq:not(.used){
 /* ── SHARED ROW HEIGHT ── */
 :root{ --row-h:46px; }
 @media(max-width:500px){ :root{ --row-h:34px; } }
-/* ── TABLET: lift 680px cap so the board fills the screen ── */
+/* ── TABLET 7": lift 680px board cap, scale home + overlays ── */
 @media(min-width:600px){
   .gr{ max-width:min(100%,1200px); }
   :root{ --row-h:54px; }
+  .hc{ max-width:460px; }
+  .hlogo img{ max-width:300px !important; }
+  .hlogo-he{ font-size:68px; }
+  .hlogo-sub{ font-size:13px; }
+  .td{ width:36px; height:40px; font-size:19px; }
+  .bd{ font-size:17px; padding:14px; }
+  .hbtns{ gap:10px; }
+  .ovc{ max-width:600px; }
+  .ovt{ font-size:20px; }
+  .ovd{ font-size:14px; }
 }
 /* ── TABLET 10": scale side panels, score boxes, word-tracker tiles ── */
 @media(min-width:900px){
@@ -336,7 +346,13 @@ body.tile-selected .bsq:not(.used){
   .wt-l{ font-size:20px; }
   .wt-v{ font-size:9px; bottom:2px; }
   .wt-empty{ height:38px; width:74px; }
-  .jok-img.wt-l, .wt-l .jok-img{ width:28px; height:28px; }
+  .wt-l .jok-img{ width:28px; height:28px; }
+  .hc{ max-width:560px; }
+  .hlogo img{ max-width:360px !important; }
+  .hlogo-he{ font-size:82px; }
+  .bd{ font-size:20px; padding:16px; }
+  .td{ width:42px; height:46px; font-size:22px; }
+  .ovc{ max-width:740px; }
 }
 
 /* bottom rack */
@@ -716,7 +732,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416071658</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416072049</div>
   </div>
 </div>
 
@@ -7663,7 +7679,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260416071658', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260416072049', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
