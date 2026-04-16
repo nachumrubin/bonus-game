@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260416073556">
+<meta name="version" content="20260416075548">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -38,7 +38,7 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 /* ── HOME ── */
 #sh{background:var(--bg);background-image:radial-gradient(ellipse at 40% 35%,#4a9bc5,transparent 55%);}
 .hc{display:flex;flex-direction:column;align-items:center;gap:20px;padding:20px;width:100%;max-width:300px;}
-.hlogo{background:var(--bg2);border:3px solid #6ab0d8;border-radius:12px;padding:18px 28px;text-align:center;}
+.hlogo{background:var(--bg2);border:3px solid #6ab0d8;border-radius:12px;padding:18px 28px;text-align:center;width:100%;box-sizing:border-box;}
 .hlogo-he{font-size:52px;font-weight:900;color:var(--by);letter-spacing:-2px;line-height:1;text-shadow:2px 2px 0 rgba(0,0,0,.4);}
 .hlogo-sub{font-size:10px;color:rgba(255,255,255,.55);margin-top:3px;letter-spacing:2px;}
 .tdeco{display:flex;gap:4px;justify-content:center;margin-top:8px;}
@@ -70,7 +70,7 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 
 /* ── SETUP ── */
 #ss{background:var(--bg);gap:14px;padding:18px;}
-.sbox{background:var(--bg2);border:2px solid #6ab0d8;border-radius:10px;padding:18px 15px;width:100%;max-width:290px;display:flex;flex-direction:column;gap:11px;}
+.sbox{background:var(--bg2);border:2px solid #6ab0d8;border-radius:10px;padding:18px 15px;width:90%;max-width:290px;display:flex;flex-direction:column;gap:11px;}
 .stitle{font-size:17px;font-weight:900;color:var(--by);text-align:center;}
 .sf label{font-size:10px;color:rgba(255,255,255,.5);display:block;margin-bottom:3px;}
 .sf input{width:100%;padding:8px 10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:4px;color:#fff;font-size:14px;font-family:'Heebo',sans-serif;direction:rtl;outline:none;}
@@ -246,6 +246,7 @@ body.tile-selected .bsq:not(.used){
 }
 .bsq.used{background:#b0aa88;border-color:#888060;opacity:.6;cursor:default;}
 .bsq-ic{
+  font-size:calc(var(--csz) * 0.65);
   line-height:1;
   pointer-events:none;
   -webkit-text-stroke:0;
@@ -333,6 +334,14 @@ body.tile-selected .bsq:not(.used){
   .ovc{ max-width:600px; }
   .ovt{ font-size:20px; }
   .ovd{ font-size:14px; }
+  .sbox{ max-width:400px; }
+  .stitle{ font-size:21px; }
+  .sf input{ font-size:17px; padding:10px 12px; }
+  .sf label{ font-size:12px; }
+  .tb .tb-ic{ font-size:22px; }
+  .tb .tb-tx{ font-size:11px; }
+  .tbtitle{ font-size:18px; }
+  .sbar{ font-size:13px; min-height:26px; }
 }
 /* ── TABLET 10": scale side panels, score boxes, word-tracker tiles ── */
 @media(min-width:900px){
@@ -353,6 +362,14 @@ body.tile-selected .bsq:not(.used){
   .bd{ font-size:20px; padding:16px; }
   .td{ width:42px; height:46px; font-size:22px; }
   .ovc{ max-width:740px; }
+  .sbox{ max-width:480px; }
+  .stitle{ font-size:26px; }
+  .sf input{ font-size:20px; padding:12px 14px; }
+  .sf label{ font-size:14px; }
+  .tb .tb-ic{ font-size:28px; }
+  .tb .tb-tx{ font-size:13px; }
+  .tbtitle{ font-size:22px; }
+  .sbar{ font-size:15px; min-height:30px; }
 }
 
 /* bottom rack */
@@ -732,7 +749,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416073556</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416075548</div>
   </div>
 </div>
 
@@ -1360,7 +1377,7 @@ body.tile-selected .bsq:not(.used){
 
 <!-- MOVE SUMMARY -->
 <div id="ov-move-summary" class="ov hidden" onclick="if(event.target===this)ovClose('ov-move-summary')">
-  <div class="ovc" style="max-width:420px;max-height:75vh;overflow-y:auto;">
+  <div class="ovc" style="max-height:75vh;overflow-y:auto;">
     <div id="msum-icon" style="font-size:22px;text-align:center;margin:4px 0">📋</div>
     <div id="msum-title" class="ovt" style="margin:0 0 6px"></div>
     <div id="msum-body" style="font-size:12px;color:#eee;padding:0 4px"></div>
@@ -2088,10 +2105,8 @@ function computeSizes() {
 
   const tileFont = Math.max(8,  CELL_SIZE * 0.54);
   const valFont  = Math.max(4,  CELL_SIZE * 0.22);
-  const bsqIc    = Math.max(8,  CELL_SIZE * 0.50);
   document.querySelectorAll('.bt-l').forEach(el => el.style.fontSize = tileFont+'px');
   document.querySelectorAll('.bt-v').forEach(el => el.style.fontSize = valFont+'px');
-  document.querySelectorAll('.bsq-ic').forEach(el => el.style.fontSize = bsqIc+'px');
 
   // Row font sizing — widths/heights are handled by CSS flex:1 + --row-h variable.
   // We only need to scale the tile letter/value fonts to the rendered tile width.
@@ -7679,7 +7694,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260416073556', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260416075548', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
