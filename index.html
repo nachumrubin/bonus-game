@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260416075548">
+<meta name="version" content="20260416080903">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -324,6 +324,7 @@ body.tile-selected .bsq:not(.used){
 @media(min-width:600px){
   .gr{ max-width:min(100%,1200px); }
   :root{ --row-h:54px; }
+  /* Home */
   .hc{ max-width:460px; }
   .hlogo img{ max-width:300px !important; }
   .hlogo-he{ font-size:68px; }
@@ -331,20 +332,44 @@ body.tile-selected .bsq:not(.used){
   .td{ width:36px; height:40px; font-size:19px; }
   .bd{ font-size:17px; padding:14px; }
   .hbtns{ gap:10px; }
-  .ovc{ max-width:600px; }
-  .ovt{ font-size:20px; }
-  .ovd{ font-size:14px; }
+  /* Setup screen */
   .sbox{ max-width:400px; }
   .stitle{ font-size:21px; }
   .sf input{ font-size:17px; padding:10px 12px; }
   .sf label{ font-size:12px; }
+  .db{ font-size:13px; padding:8px 10px; }
+  /* Overlays */
+  .ovc{ max-width:600px; }
+  .ovt{ font-size:22px; }
+  .ovd{ font-size:15px; }
+  .ovic{ font-size:44px; }
+  .ovb{ font-size:15px; padding:13px; }
+  .ovbtns{ gap:8px; margin-top:4px; }
+  .ri{ font-size:16px; padding:10px 12px; }
+  .code-input{ font-size:28px; padding:12px 16px; }
+  .code-display{ font-size:38px; padding:12px 16px; }
+  /* Online lobby */
+  .online-wrap{ max-width:480px; gap:18px; padding:26px; }
+  .online-title{ font-size:28px; }
+  .online-subtitle{ font-size:13px; }
+  .omode-btn{ padding:16px; font-size:16px; }
+  .omode-ic{ font-size:28px; }
+  .omode-label{ font-size:15px; }
+  .omode-desc{ font-size:12px; }
+  /* Top bar */
   .tb .tb-ic{ font-size:22px; }
   .tb .tb-tx{ font-size:11px; }
   .tbtitle{ font-size:18px; }
   .sbar{ font-size:13px; min-height:26px; }
+  /* Champions table */
+  .champs-table{ font-size:14px; }
+  .champs-table th,.champs-table td{ padding:8px 10px; }
+  /* Utility tiles (exchange/lock overlays) */
+  .ut{ width:44px; height:48px; font-size:23px; }
 }
 /* ── TABLET 10": scale side panels, score boxes, word-tracker tiles ── */
 @media(min-width:900px){
+  /* Side panels */
   .left-panel,.right-panel{ width:90px; gap:5px; }
   .pl{ font-size:11px; }
   .lcd{ font-size:19px; }
@@ -356,20 +381,46 @@ body.tile-selected .bsq:not(.used){
   .wt-v{ font-size:9px; bottom:2px; }
   .wt-empty{ height:38px; width:74px; }
   .wt-l .jok-img{ width:28px; height:28px; }
+  /* Home */
   .hc{ max-width:560px; }
   .hlogo img{ max-width:360px !important; }
   .hlogo-he{ font-size:82px; }
   .bd{ font-size:20px; padding:16px; }
   .td{ width:42px; height:46px; font-size:22px; }
+  /* Setup screen */
+  .sbox{ max-width:540px; }
+  .stitle{ font-size:30px; }
+  .sf input{ font-size:22px; padding:14px 16px; }
+  .sf label{ font-size:15px; }
+  .db{ font-size:15px; padding:10px 14px; }
+  /* Overlays */
   .ovc{ max-width:740px; }
-  .sbox{ max-width:480px; }
-  .stitle{ font-size:26px; }
-  .sf input{ font-size:20px; padding:12px 14px; }
-  .sf label{ font-size:14px; }
+  .ovt{ font-size:26px; }
+  .ovd{ font-size:17px; }
+  .ovic{ font-size:56px; }
+  .ovb{ font-size:17px; padding:16px; }
+  .ovbtns{ gap:10px; margin-top:6px; }
+  .ri{ font-size:18px; padding:12px 14px; }
+  .code-input{ font-size:34px; padding:14px 18px; }
+  .code-display{ font-size:46px; padding:14px 18px; }
+  /* Online lobby */
+  .online-wrap{ max-width:620px; gap:20px; padding:32px; }
+  .online-title{ font-size:36px; }
+  .online-subtitle{ font-size:15px; }
+  .omode-btn{ padding:18px; font-size:18px; }
+  .omode-ic{ font-size:36px; }
+  .omode-label{ font-size:17px; }
+  .omode-desc{ font-size:14px; }
+  /* Top bar */
   .tb .tb-ic{ font-size:28px; }
   .tb .tb-tx{ font-size:13px; }
   .tbtitle{ font-size:22px; }
   .sbar{ font-size:15px; min-height:30px; }
+  /* Champions table */
+  .champs-table{ font-size:16px; }
+  .champs-table th,.champs-table td{ padding:10px 12px; }
+  /* Utility tiles */
+  .ut{ width:52px; height:56px; font-size:27px; }
 }
 
 /* bottom rack */
@@ -749,7 +800,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416075548</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416080903</div>
   </div>
 </div>
 
@@ -7694,7 +7745,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260416075548', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260416080903', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
