@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260416075146">
+<meta name="version" content="20260416075548">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -246,6 +246,7 @@ body.tile-selected .bsq:not(.used){
 }
 .bsq.used{background:#b0aa88;border-color:#888060;opacity:.6;cursor:default;}
 .bsq-ic{
+  font-size:calc(var(--csz) * 0.65);
   line-height:1;
   pointer-events:none;
   -webkit-text-stroke:0;
@@ -748,7 +749,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416075146</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260416075548</div>
   </div>
 </div>
 
@@ -1376,7 +1377,7 @@ body.tile-selected .bsq:not(.used){
 
 <!-- MOVE SUMMARY -->
 <div id="ov-move-summary" class="ov hidden" onclick="if(event.target===this)ovClose('ov-move-summary')">
-  <div class="ovc" style="max-width:420px;max-height:75vh;overflow-y:auto;">
+  <div class="ovc" style="max-height:75vh;overflow-y:auto;">
     <div id="msum-icon" style="font-size:22px;text-align:center;margin:4px 0">📋</div>
     <div id="msum-title" class="ovt" style="margin:0 0 6px"></div>
     <div id="msum-body" style="font-size:12px;color:#eee;padding:0 4px"></div>
@@ -2104,10 +2105,8 @@ function computeSizes() {
 
   const tileFont = Math.max(8,  CELL_SIZE * 0.54);
   const valFont  = Math.max(4,  CELL_SIZE * 0.22);
-  const bsqIc    = Math.max(8,  CELL_SIZE * 0.65);
   document.querySelectorAll('.bt-l').forEach(el => el.style.fontSize = tileFont+'px');
   document.querySelectorAll('.bt-v').forEach(el => el.style.fontSize = valFont+'px');
-  document.querySelectorAll('.bsq-ic').forEach(el => el.style.fontSize = bsqIc+'px');
 
   // Row font sizing — widths/heights are handled by CSS flex:1 + --row-h variable.
   // We only need to scale the tile letter/value fonts to the rendered tile width.
@@ -7695,7 +7694,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260416075146', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260416075548', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
