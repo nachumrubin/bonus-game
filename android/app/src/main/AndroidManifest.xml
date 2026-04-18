@@ -6,7 +6,8 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/appName"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Translucent.NoTitleBar">
+        android:theme="@android:style/Theme.Translucent.NoTitleBar"
+        android:windowOptOutEdgeToEdgeEnforcement="true">
 
         <meta-data
             android:name="asset_statements"

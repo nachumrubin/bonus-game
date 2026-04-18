@@ -15,7 +15,7 @@ android {
         applicationId 'app.boost8ef11.twa'
         minSdk 24
         targetSdk 35
-        versionCode 2
+        versionCode 3
         versionName '1.1'
     }
 
@@ -46,5 +46,5 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.4'
 }
