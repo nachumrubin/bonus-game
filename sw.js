@@ -1,6 +1,6 @@
 // בוסט — Service Worker
 // Cache name includes build timestamp — auto-invalidates on every deploy
-var CACHE_NAME = 'boost-20260418203528';
+var CACHE_NAME = 'boost-20260419205654';
 var ASSETS = [
   './',
   './index.html',
