@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260418203528">
+<meta name="version" content="20260419205654">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -778,6 +778,17 @@ body.tile-selected .bsq:not(.used){
   box-shadow:0 3px 0 #1a4a1a;cursor:pointer;
 }
 .coin-enter:disabled{opacity:.55;cursor:default;box-shadow:none;}
+/* ── Tutorial ── */
+#tut-dim{position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.5);pointer-events:none;}
+#tut-dim.hidden{display:none;}
+.tut-lit{position:relative!important;z-index:8100!important;border-radius:6px;}
+@keyframes tutGlow{0%,100%{box-shadow:0 0 0 3px rgba(255,215,0,.85),0 0 14px 5px rgba(255,215,0,.5);}50%{box-shadow:0 0 0 4px rgba(255,215,0,1),0 0 24px 9px rgba(255,215,0,.85);}}
+.tut-lit{animation:tutGlow 1.1s ease-in-out infinite;}
+#tut-tip{position:fixed;z-index:8200;background:#fff;color:#1a1a1a;border-radius:14px;padding:16px 18px;max-width:270px;font-size:14px;line-height:1.5;box-shadow:0 4px 24px rgba(0,0,0,.4);direction:rtl;}
+#tut-tip.hidden{display:none;}
+#tut-tip-lbl{font-size:11px;color:#888;margin-bottom:4px;}
+#tut-tip-next{background:#2d6080;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:14px;cursor:pointer;font-family:inherit;}
+#tut-tip-skip{background:transparent;color:#999;border:1px solid #ddd;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit;}
 </style>
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
@@ -795,12 +806,12 @@ body.tile-selected .bsq:not(.used){
       <button class="bd g" onclick="startSetup('vs')">👥 שני שחקנים</button>
       <button class="bd b" onclick="startSetup('bot')">🤖 נגד המחשב</button>
       <button class="bd" id="btn-online-lobby" style="background:linear-gradient(180deg,#5ab8a0,#3a8a78);border-color:#2a6a58;color:#fff;box-shadow:0 3px 0 #1a4a40;position:relative;" onclick="showOnlineLobby()">🌐 משחק אונליין<span id="online-badge" style="display:none;position:absolute;top:-6px;left:-6px;background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 6px rgba(231,76,60,.6);animation:onpulse 1.5s ease-in-out infinite;"></span></button>
-      <button class="bd" onclick="showLegend()">📋 מקרא ואותיות</button>
+      <button class="bd" onclick="startTutorial()">🎓 הדרכה</button>
       <button class="bd" onclick="openChampions()">🏆 טבלת אלופים</button>
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260418203528</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260419205654</div>
   </div>
 </div>
 
@@ -2756,6 +2767,161 @@ function ovOpen(id){ document.getElementById(id).classList.remove('hidden'); }
 function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm','ov-move-summary','ov-dict-login','ov-dict-admin','ov-dict-confirm'].forEach(ovClose); showSc('sh'); }
 // showSc defined above in music section
 function showLegend(){ buildVtbl(); legBack(); document.getElementById('lb-boosts-wrap').classList.add('hidden'); document.getElementById('lb-boost-desc').classList.add('hidden'); ovOpen('ov-leg'); }
+
+// ═══════════════════════════════════════════════════
+// GUIDED TUTORIAL
+// ═══════════════════════════════════════════════════
+let isTutorial=false, tutMovesComplete=0, tutBotMoves=0, tutStepsShown={};
+let tutPendingCont=null; // continuation to call after הבנתי
+const TUT_WORD='שלום';
+const TUT_LETTERS=[...'שלום']; // ['ש','ל','ו','מ']
+const TUT_CELLS=[{r:5,c:5},{r:5,c:6},{r:5,c:7},{r:5,c:8}]; // horizontal from center
+
+function startTutorial(){
+  gMode='bot'; diff=0;
+  pNames[0]='שחקן'; pNames[1]='בוט';
+  gameSettings.timelimit=true; gameSettings.botTime=40;
+  gameSettings.appealsMax=1; gameSettings.showMoveSummary=true;
+  isTutorial=true; tutMovesComplete=0; tutBotMoves=0; tutStepsShown={}; tutPendingCont=null;
+  ['sn1','sn2','en1','en2'].forEach((id,i)=>{document.getElementById(id).textContent=pNames[i%2];});
+  showCoinTossIntro(0); // always player first in tutorial
+}
+
+function _tutDim(on){ document.getElementById('tut-dim').classList.toggle('hidden',!on); }
+function _tutClear(){ document.querySelectorAll('.tut-lit').forEach(el=>el.classList.remove('tut-lit')); }
+
+function _tutShowTip(label,txt,anchorEl){
+  document.getElementById('tut-tip-lbl').textContent=label||'';
+  document.getElementById('tut-tip-txt').textContent=txt;
+  document.getElementById('tut-tip-skip').style.display=isTutorial?'':'none';
+  const tip=document.getElementById('tut-tip');
+  if(anchorEl){
+    tip.style.cssText='';
+    const r=anchorEl.getBoundingClientRect();
+    const tw=274,th=140;
+    let tx=r.left, ty=r.bottom+12;
+    if(ty+th>window.innerHeight-10) ty=r.top-th-12;
+    if(tx+tw>window.innerWidth-10) tx=window.innerWidth-tw-10;
+    tip.style.top=Math.max(8,ty)+'px'; tip.style.left=Math.max(8,tx)+'px';
+  } else {
+    tip.style.cssText='top:50%;left:50%;transform:translate(-50%,-50%)';
+  }
+  tip.classList.remove('hidden');
+}
+
+function tutDismiss(){
+  _tutClear();
+  document.getElementById('tut-tip').classList.add('hidden');
+  _tutDim(false);
+  const fn=tutPendingCont; tutPendingCont=null;
+  if(fn) fn();
+}
+function tutSkip(){
+  isTutorial=false; tutPendingCont=null; tutDismiss();
+}
+
+function tutInitRack(){
+  if(!isTutorial) return;
+  for(let i=0;i<4;i++){ if(racks[0][i]) bag.push(racks[0][i]); }
+  for(const l of TUT_LETTERS){ const bi=bag.indexOf(l); if(bi>=0) bag.splice(bi,1); }
+  racks[0]=[...TUT_LETTERS,...racks[0].slice(4)];
+  renderRack();
+}
+
+function tutStep0(){
+  if(!isTutorial || tutStepsShown['step0']) return;
+  tutStepsShown['step0']=true;
+  _tutDim(true);
+  const rt=document.querySelectorAll('#brack .bt2:not(.emp)');
+  for(let i=0;i<4&&i<rt.length;i++) rt[i].classList.add('tut-lit');
+  TUT_CELLS.forEach(({r,c})=>{ const el=document.getElementById(`c${r}_${c}`); if(el) el.classList.add('tut-lit'); });
+  _tutShowTip('שלב 1/7',`הנח את האותיות המודגשות על הריבועים המסומנים כדי ליצור את המילה "${TUT_WORD}"`,document.getElementById('brack'));
+}
+
+function tutOnTilePlaced(){
+  if(!isTutorial || tutStepsShown['step1']) return;
+  tutStepsShown['step1']=true;
+  _tutClear(); _tutDim(true);
+  const btn=document.getElementById('btn-play');
+  if(btn){ btn.classList.add('tut-lit'); _tutShowTip('שלב 2/7','מצוין! לאחר סידור המילה, לחץ שבץ לאישור המהלך וקבלת הניקוד.',btn); }
+}
+
+function tutOnSummaryOpen(isPlayerMove){
+  if(!isTutorial) return;
+  if(isPlayerMove && !tutStepsShown['step2']){
+    tutStepsShown['step2']=true;
+    _tutClear(); _tutDim(true);
+    const ov=document.getElementById('ov-move-summary');
+    _tutShowTip('שלב 3/7','חלון הסיכום: מילים ששיחקת, ניקוד לכל מילה, ובונוסים שקיבלת. לחץ המשך להמשיך.',ov);
+  }
+}
+
+function tutOnSummaryClose(isPlayerMove, continueAction){
+  if(!isTutorial){ if(continueAction) continueAction(); return; }
+  tutDismiss(); // clear any open tut overlay (fires tutPendingCont if set)
+
+  if(isPlayerMove){
+    tutMovesComplete++;
+    if(tutMovesComplete===1 && !tutStepsShown['step3']){
+      tutStepsShown['step3']=true;
+      const lp=document.querySelector('.left-panel');
+      if(lp){ _tutDim(true); lp.classList.add('tut-lit'); _tutShowTip('שלב 4/7','ניקוד שלך עודכן כאן — המנצח הוא בעל הניקוד הגבוה ביותר בסוף המשחק.',lp); }
+      tutPendingCont=continueAction; // nextTurn() will fire after הבנתי
+    } else if(tutMovesComplete===2 && !tutStepsShown['step6']){
+      tutStepsShown['step6']=true;
+      const btn=document.getElementById('btn-recall');
+      if(btn){ _tutDim(true); btn.classList.add('tut-lit'); _tutShowTip('שלב 6/7','לחץ בטל להחזרת האותיות שהנחת למגש ולתכנן מחדש.',btn); }
+      tutPendingCont=continueAction;
+    } else {
+      if(continueAction) continueAction();
+    }
+  } else {
+    tutBotMoves++;
+    if(tutBotMoves===1 && !tutStepsShown['step4']){
+      tutStepsShown['step4']=true;
+      const rp=document.querySelector('.right-panel');
+      if(rp){ _tutDim(true); rp.classList.add('tut-lit'); _tutShowTip('שלב 5/7','הבוט שיחק! ניקוד הבוט מוצג כאן. יש לך ערעור אחד אם חושב שמילתו לא חוקית.',rp); }
+      // After הבנתי: run continueAction (startMoveTimer) then show timer step
+      tutPendingCont=function(){
+        if(continueAction) continueAction();
+        if(!tutStepsShown['step5']){
+          tutStepsShown['step5']=true;
+          setTimeout(()=>{
+            if(!isTutorial) return;
+            const tm=document.getElementById('turn-timer');
+            if(tm){ _tutDim(true); tm.classList.add('tut-lit'); _tutShowTip('שלב 5b/7','יש לך 40 שניות לכל מהלך. כשהשעון מגיע לאפס — תאבד את תורך!',tm); }
+          },400);
+        }
+      };
+    } else if(tutBotMoves===2 && !tutStepsShown['step7']){
+      tutStepsShown['step7']=true;
+      const rp=document.querySelector('.right-panel');
+      if(rp){ _tutDim(true); rp.classList.add('tut-lit'); _tutShowTip('הבוט שיחק שנית!','',rp); }
+      tutPendingCont=function(){
+        if(continueAction) continueAction();
+        if(!tutStepsShown['tbar']){
+          tutStepsShown['tbar']=true;
+          setTimeout(()=>{
+            if(!isTutorial) return;
+            const tb=document.querySelector('.tbar');
+            if(tb){ _tutDim(true); tb.classList.add('tut-lit'); _tutShowTip('שלב 7/7','בסרגל: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על פסילה (אחד בלבד!) · 🏁 לסיים.',tb); }
+          },400);
+        }
+      };
+    } else if(tutBotMoves>=3 && !tutStepsShown['end']){
+      tutStepsShown['end']=true;
+      if(continueAction) continueAction();
+      setTimeout(()=>{
+        isTutorial=false;
+        document.getElementById('tut-tip-skip').style.display='none';
+        _tutShowTip('','הדרכה הסתיימה! 🎉 כעת אתה מכיר את כל אלמנטי המשחק. בהצלחה!',null);
+      },400);
+    } else {
+      if(continueAction) continueAction();
+    }
+  }
+}
+
 const LEG_INFO={
   nav:   {title:'כפתורי הניווט',text:'בית • הפסקה • הגדרות • החלפת אות • שאילתה • טבלת אותיות • סיום • מוזיקה — כל הפעולות הזמינות בזמן המשחק.'},
   bag:   {title:'קופה',text:'כמות האותיות בשקית כרגע. כשהשקית ריקה ממשיכים לשחק עד שלאחד השחקנים נגמרות האותיות.'},
@@ -3059,6 +3225,7 @@ function initGame(startingTurn){
   while(_uniqueTypes.length < BDEFS.length){ _uniqueTypes.push({type:'B9',pts:25,ic:'⚡'}); }
   bonusAssignment = _uniqueTypes.slice(0, BDEFS.length);
   buildUnifiedGrid(); renderBoard(); renderRack(); renderBonusStrips(); updateUI();
+  if(isTutorial){ tutInitRack(); if(turn===0) setTimeout(tutStep0,300); }
   if(gMode==='bot' && turn===1){
     scheduleBotMove();
     return;
@@ -3193,6 +3360,7 @@ function cellClick(r,c){
   racks[turn].splice(selTile,1); selTile=null;
   document.body.classList.remove('tile-selected');
   pushLiveToFirebase(); renderBoard(); renderRack(); setS(`שיבצת "${letter}"`);
+  if(isTutorial) setTimeout(tutOnTilePlaced,150);
 }
 
 // ── LOCK ──
@@ -4944,6 +5112,10 @@ function bonusSkip(){ clearT(); ovClose('ov-bonus'); clearLiveBonus(); if(bonusP
 // ── Move summary overlay (features 2 & 3) ──
 function showMoveSummary(opts){
   // opts: { player, playerName, words:[{text,valid,pts}], totalScore, bonusExtra, multLabel, onDone }
+  if(isTutorial) tutOnSummaryOpen(opts.player===0);
+  const _origOnDone=opts.onDone;
+  const _tutIsPlayer=(opts.player===0);
+  if(isTutorial) opts.onDone=function(){ tutOnSummaryClose(_tutIsPlayer,_origOnDone); };
   const {player,playerName,words,totalScore,bonusExtra,multLabel,onDone}=opts;
   const isBot=(player===1);
   const hasIllegal=words.some(w=>!w.valid);
@@ -7741,7 +7913,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260418203528', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260419205654', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -8337,5 +8509,16 @@ window.HebrewValidator = {
 
 
 </script>
+
+<!-- Tutorial overlay elements -->
+<div id="tut-dim" class="hidden"></div>
+<div id="tut-tip" class="hidden" dir="rtl">
+  <div id="tut-tip-lbl"></div>
+  <div id="tut-tip-txt"></div>
+  <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+    <button id="tut-tip-skip" onclick="tutSkip()">דלג ✕</button>
+    <button id="tut-tip-next" onclick="tutDismiss()">הבנתי ✓</button>
+  </div>
+</div>
 </body>
 </html>
