@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260420024012">
+<meta name="version" content="20260420032247">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -811,7 +811,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420024012</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420032247</div>
   </div>
 </div>
 
@@ -2772,9 +2772,9 @@ function showLegend(){ buildVtbl(); legBack(); document.getElementById('lb-boost
 // GUIDED TUTORIAL
 // ═══════════════════════════════════════════════════
 let isTutorial=false, tutMovesComplete=0, tutBotMoves=0, tutStepsShown={};
-let tutPendingCont=null, tutTimerWasPaused=false;
+let tutPendingCont=null, tutTimerWasPaused=false, tutStoredGameAction=null;
 const TUT_WORD='שלום';
-const TUT_LETTERS=['ש','ל','ו','מ']; // explicit regular mem (not final ם)
+const TUT_LETTERS=['ש','ל','ו','מ'];
 const TUT_CELLS=[{r:5,c:5},{r:5,c:6},{r:5,c:7},{r:5,c:8}];
 
 function startTutorial(){
@@ -2783,7 +2783,7 @@ function startTutorial(){
   gameSettings.timelimit=true; gameSettings.botTime=40;
   gameSettings.appealsMax=1; gameSettings.showMoveSummary=true;
   isTutorial=true; tutMovesComplete=0; tutBotMoves=0;
-  tutStepsShown={}; tutPendingCont=null; tutTimerWasPaused=false;
+  tutStepsShown={}; tutPendingCont=null; tutTimerWasPaused=false; tutStoredGameAction=null;
   ['sn1','sn2','en1','en2'].forEach((id,i)=>{document.getElementById(id).textContent=pNames[i%2];});
   showCoinTossIntro(0);
 }
@@ -2791,8 +2791,10 @@ function startTutorial(){
 function _tutDim(on){ document.getElementById('tut-dim').classList.toggle('hidden',!on); }
 function _tutClear(){ document.querySelectorAll('.tut-lit').forEach(el=>el.classList.remove('tut-lit')); }
 
-function _tutShowTip(label,txt,anchorEl){
-  if(gMode==='bot' && turn===0 && gameSettings.timelimit){ clearMoveTimer(); tutTimerWasPaused=true; }
+// opts.pause=false → skip timer pause (use for steps where timer should keep running)
+function _tutShowTip(label,txt,anchorEl,opts){
+  const doPause=!(opts&&opts.pause===false);
+  if(doPause && gMode==='bot' && turn===0 && gameSettings.timelimit){ clearMoveTimer(); tutTimerWasPaused=true; }
   document.getElementById('tut-tip-lbl').textContent=label||'';
   document.getElementById('tut-tip-txt').textContent=txt;
   document.getElementById('tut-tip-skip').style.display=isTutorial?'':'none';
@@ -2821,7 +2823,7 @@ function tutDismiss(){
   const fn=tutPendingCont; tutPendingCont=null;
   if(fn) fn();
 }
-function tutSkip(){ isTutorial=false; tutPendingCont=null; tutDismiss(); }
+function tutSkip(){ isTutorial=false; tutPendingCont=null; tutStoredGameAction=null; tutDismiss(); }
 
 function tutInitRack(){
   if(!isTutorial) return;
@@ -2835,24 +2837,21 @@ function tutInitRack(){
 function tutRunPreChain(){
   if(!isTutorial) return;
   const PRE=[
-    { id:'pre0', label:'מבוא 1/6',
+    { id:'pre0', label:'מבוא 1/5',
       selFn:()=>document.getElementById('bag-char'),
       txt:'קופה: כמות האותיות שנותרו בשקית. כשהשקית מתרוקנת המשחק מסתיים ברגע שלאחד השחקנים נגמרות האותיות.' },
-    { id:'pre1', label:'מבוא 2/6',
+    { id:'pre1', label:'מבוא 2/5',
       selFn:()=>document.getElementById('lcd'),
       txt:'מהלכים: ספירת מספר המהלכים שבוצעו. ניתן להגדיר מספר מהלכים מקסימלי בהגדרות המשחק.' },
-    { id:'pre2', label:'מבוא 3/6',
+    { id:'pre2', label:'מבוא 3/5',
       selFn:()=>document.querySelector('#brack .bt2.jok'),
       txt:'ג\'וקר 🃏: יכול לייצג כל אות שתרצה. שים לב — הג\'וקר עצמו לא מקבל נקודות עבור האות שהוא מייצג.' },
-    { id:'pre3', label:'מבוא 4/6',
+    { id:'pre3', label:'מבוא 4/5',
       selFn:()=>document.querySelector('[onclick="openShailta()"]'),
       txt:'שאילתה 📖: בדוק אם מילה חוקית לפני שמשחקים אותה. שים לב — השעון ממשיך לרוץ בזמן הבדיקה!' },
-    { id:'pre4', label:'מבוא 5/6',
-      selFn:()=>document.querySelector('.bsq:not(.used)'),
-      txt:'ריבועי בוסט ⚡: הנחת אות על ריבוע בוסט מפעילה אתגר מיוחד — ניתן לזכות בנקודות בונוס משמעותיות! שים לב: המילה הראשונה אינה יכולה לנגוע בריבועי בוסט.' },
-    { id:'pre5', label:'מבוא 6/6',
-      selFn:()=>document.getElementById('lock-inv-display'),
-      txt:'נעילות 🔒: לחץ על משבצת ריקה (ללא אות נבחרת) כדי לנעול אותה — היריב לא יוכל לשחק עליה. לכל שחקן מספר נעילות מוגבל.' },
+    { id:'pre4', label:'מבוא 5/5',
+      selFn:()=>null,
+      txt:'ערעור: אם מילה שלך נפסלת כלא חוקית, לחץ "ערעור" כדי לאלץ את קבלתה — יש לך ערעור אחד בלבד לכל משחק!' },
   ];
   function runPre(i){
     if(!isTutorial || i>=PRE.length){ tutStep0(); return; }
@@ -2871,14 +2870,15 @@ function tutStep0(){
   const rt=document.querySelectorAll('#brack .bt2:not(.emp)');
   for(let i=0;i<4&&i<rt.length;i++) rt[i].classList.add('tut-lit');
   TUT_CELLS.forEach(({r,c})=>{ const el=document.getElementById(`c${r}_${c}`); if(el) el.classList.add('tut-lit'); });
-  _tutShowTip('שלב 1/7',`הנח את האותיות המודגשות על הריבועים המסומנים ליצירת המילה "${TUT_WORD}"`,document.getElementById('brack'));
+  _tutShowTip('שלב 1',`הנח את האותיות המודגשות על הריבועים המסומנים ליצירת המילה "${TUT_WORD}"`,document.getElementById('brack'));
 }
 
 function tutOnTilePlaced(){
   if(!isTutorial || tutStepsShown['step1']) return;
   tutStepsShown['step1']=true; _tutClear(); _tutDim(true);
   const btn=document.getElementById('btn-play');
-  if(btn){ btn.classList.add('tut-lit'); _tutShowTip('שלב 2/7','מצוין! לאחר סידור המילה, לחץ שבץ לאישור המהלך וקבלת הניקוד.',btn); }
+  // {pause:false} so timer keeps running — player should click שבץ naturally
+  if(btn){ btn.classList.add('tut-lit'); _tutShowTip('שלב 2','מצוין! לאחר סידור המילה, לחץ שבץ לאישור המהלך וקבלת הניקוד.',btn,{pause:false}); }
 }
 
 function tutOnSummaryOpen(isPlayerMove){
@@ -2886,24 +2886,26 @@ function tutOnSummaryOpen(isPlayerMove){
   if(isPlayerMove && !tutStepsShown['step2']){
     tutStepsShown['step2']=true; _tutClear(); _tutDim(true);
     const ov=document.getElementById('ov-move-summary');
-    _tutShowTip('שלב 3/7','חלון הסיכום: מילים ששיחקת, ניקוד לכל מילה, ובונוסים שקיבלת. לחץ המשך להמשיך.',ov);
+    _tutShowTip('שלב 3','חלון הסיכום: מילים ששיחקת, ניקוד לכל מילה, ובונוסים שקיבלת. לחץ המשך להמשיך.',ov);
   }
 }
 
 function tutOnSummaryClose(isPlayerMove, continueAction){
   if(!isTutorial){ if(continueAction) continueAction(); return; }
+  tutTimerWasPaused=false; // prevent premature timer restart inside tutDismiss
   tutDismiss();
   if(isPlayerMove){
     tutMovesComplete++;
     if(tutMovesComplete===1 && !tutStepsShown['step3']){
       tutStepsShown['step3']=true;
       const el=document.getElementById('sb1');
-      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 4/7','הניקוד שלך עודכן כאן — המנצח הוא בעל הניקוד הגבוה ביותר בסוף המשחק.',el); }
-      tutPendingCont=continueAction;
+      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 4','הניקוד שלך עודכן כאן — המנצח הוא בעל הניקוד הגבוה ביותר בסוף המשחק.',el); }
+      // After הבנתי on player score → show interactive lock step
+      tutPendingCont=function(){ _tutShowLockInstruction(continueAction); };
     } else if(tutMovesComplete===2 && !tutStepsShown['step6']){
       tutStepsShown['step6']=true;
       const btn=document.getElementById('btn-recall');
-      if(btn){ _tutDim(true); btn.classList.add('tut-lit'); _tutShowTip('שלב 6/7','לחץ בטל להחזרת האותיות שהנחת למגש ולתכנן מחדש.',btn); }
+      if(btn){ _tutDim(true); btn.classList.add('tut-lit'); _tutShowTip('שלב 6','לחץ בטל להחזרת האותיות שהנחת למגש ולתכנן מחדש.',btn); }
       tutPendingCont=continueAction;
     } else { if(continueAction) continueAction(); }
   } else {
@@ -2911,33 +2913,36 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
     if(tutBotMoves===1 && !tutStepsShown['step4']){
       tutStepsShown['step4']=true;
       const el=document.getElementById('sb2');
-      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 5/7','הבוט שיחק! ניקוד הבוט מוצג כאן. יש לך ערעור אחד אם חושב שמילתו לא חוקית.',el); }
+      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 5','הבוט שיחק! ניקוד הבוט מוצג כאן. אם מילה שלך נפסלת, לחץ "ערעור" כדי לאלץ קבלתה.',el); }
       tutPendingCont=function(){
-        if(continueAction) continueAction();
+        if(continueAction) continueAction(); // startMoveTimer → player's 2nd turn begins
         if(!tutStepsShown['step5']){
           tutStepsShown['step5']=true;
           setTimeout(()=>{
             if(!isTutorial) return;
             const tm=document.getElementById('turn-timer');
-            if(tm){ _tutDim(true); tm.classList.add('tut-lit'); _tutShowTip('שלב 5b/7','יש לך 40 שניות לכל מהלך. כשהשעון מגיע לאפס — תאבד את תורך!',tm); }
+            if(tm){
+              _tutDim(true); tm.classList.add('tut-lit');
+              _tutShowTip('שלב 5b','יש לך 40 שניות לכל מהלך. כשהשעון מגיע לאפס — תאבד את תורך!',tm,{pause:false});
+              // After timer tip dismissed → show boost instruction
+              tutPendingCont=function(){
+                if(!tutStepsShown['boost-step']) _tutShowBoostInstruction();
+              };
+            }
           },400);
         }
       };
-    } else if(tutBotMoves===2 && !tutStepsShown['step7']){
-      tutStepsShown['step7']=true;
-      const el=document.getElementById('sb2');
-      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 7/7','בסרגל: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על פסילה (אחד בלבד!) · 🏁 לסיים.',el); }
-      tutPendingCont=function(){
-        if(continueAction) continueAction();
-        if(!tutStepsShown['tbar']){
-          tutStepsShown['tbar']=true;
-          setTimeout(()=>{
-            if(!isTutorial) return;
-            const tb=document.querySelector('.tbar');
-            if(tb){ _tutDim(true); tb.classList.add('tut-lit'); _tutShowTip('שלב 7/7','בסרגל: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על פסילה (אחד בלבד!) · 🏁 לסיים.',tb); }
-          },400);
+    } else if(tutBotMoves===2 && !tutStepsShown['tbar']){
+      tutStepsShown['tbar']=true;
+      if(continueAction) continueAction(); // start player's 3rd turn immediately
+      setTimeout(()=>{
+        if(!isTutorial) return;
+        const tb=document.querySelector('.tbar');
+        if(tb){
+          _tutDim(true); tb.classList.add('tut-lit');
+          _tutShowTip('סרגל הכלים','בסרגל: החלפת אות · 📖 שאילתה לבדיקת מילה · 📋 טבלת אותיות · 🏁 לסיום המשחק.',tb,{pause:false});
         }
-      };
+      },400);
     } else if(tutBotMoves>=3 && !tutStepsShown['end']){
       tutStepsShown['end']=true;
       if(continueAction) continueAction();
@@ -2948,6 +2953,46 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
       },400);
     } else { if(continueAction) continueAction(); }
   }
+}
+
+// ── Lock interactive step ──
+function _tutShowLockInstruction(cont){
+  if(tutStepsShown['lock-step']) return;
+  tutStepsShown['lock-step']=true;
+  tutStoredGameAction=cont; // saved for tutOnLockPlaced
+  _tutClear(); _tutDim(true);
+  const lockEl=document.getElementById('lock-inv-display');
+  if(lockEl) lockEl.classList.add('tut-lit');
+  _tutShowTip('נעילות 🔒',
+    'הצב מנעול! לחץ על משבצת ריקה בלוח (ללא בחירת אות תחילה) כדי לנעול אותה — הבוט לא יוכל לשחק שם.',
+    lockEl,{pause:false});
+  tutPendingCont=function(){
+    tutStoredGameAction=null; // dismissed without placing — clear so no double-call
+    if(cont) cont();
+  };
+}
+
+function tutOnLockPlaced(){
+  if(!isTutorial || tutStepsShown['lock-placed'] || !tutStoredGameAction) return;
+  tutStepsShown['lock-placed']=true;
+  const ga=tutStoredGameAction; tutStoredGameAction=null;
+  tutPendingCont=null;
+  _tutClear(); _tutDim(true);
+  _tutShowTip('מצוין! 🔒',
+    'הנעילה הוצבה! כעת הבוט לא יוכל לשחק על אותה משבצת. בתור הבא נסה לשחק מילה שנוגעת בריבוע ⚡ לזכות בנקודות בונוס.',
+    null);
+  tutPendingCont=ga; // when הבנתי clicked → call nextTurn
+}
+
+// ── Boost interactive step ──
+function _tutShowBoostInstruction(){
+  tutStepsShown['boost-step']=true;
+  _tutClear(); _tutDim(true);
+  document.querySelectorAll('.bsq:not(.used)').forEach(el=>el.classList.add('tut-lit'));
+  const first=document.querySelector('.bsq:not(.used)');
+  _tutShowTip('ריבועי בוסט ⚡',
+    'שחק מילה שנוגעת באחד מהריבועים הצהובים ⚡ — תפעיל אתגר ותוכל לזכות בנקודות נוספות!',
+    first,{pause:false});
 }
 
 const LEG_INFO={
@@ -3421,6 +3466,7 @@ function confirmLock(rounds, invIdx){
   pendingLockCell = null;
   renderBoard();
   setS(`🔒 משבצת נעולה ל-${rounds} תורות (נותרו ${lockInventory[turn].length} נעילות)`,'bon');
+  if(isTutorial) tutOnLockPlaced();
 }
 
 function closeLock(){ ovClose('ov-lock'); pendingLockCell=null; }
@@ -7979,7 +8025,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260420024012', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260420032247', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
