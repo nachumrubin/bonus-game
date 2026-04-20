@@ -5590,7 +5590,7 @@ window.addEventListener('resize', () => {
 });
 
 // ═══════════════════════════════════════════════════
-// MUSIC — Bach's Badinerie in BWV 1067 (Web Audio API)
+// MUSIC — Satie's Gymnopédie No. 1 (Web Audio API)
 // Recreated as a note sequence using OscillatorNode
 // ═══════════════════════════════════════════════════
 let audioCtx = null;
@@ -5598,10 +5598,9 @@ let musicPlaying = false;
 let musicTimeout = null;
 let musicNodes = [];
 
-// Badinerie main theme note sequence [frequency_hz, duration_beats]
-// Based on Bach's Badinerie from Suite No.2 in B minor BWV 1067
-// Tempo: ~160 BPM, transposed to play in a comfortable range
-const BEAT = 60 / 168; // seconds per beat at 168 BPM
+// Gymnopédie No. 1 — Satie, G major, 3/4, 60 BPM slow waltz
+// [frequency_hz, duration_beats] — 22 bars × 3 beats = 66 s loop
+const BEAT = 60 / 60; // seconds per beat at 60 BPM
 
 const B = { // note frequencies
   C4:261.6,D4:293.7,E4:329.6,F4:349.2,'F#4':370.0,G4:392.0,'G#4':415.3,A4:440,
@@ -5611,33 +5610,33 @@ const B = { // note frequencies
   'F#6':1480,'G#3':207.7,'A#3':233.1,'C#3':138.6
 };
 
-// Badinerie main melody (Bach BWV 1067)
+// Gymnopédie No. 1 — melody voice, G major, 3/4 waltz
 const MELODY_FIXED = [
-  [B.B4,0.25],[B.A4,0.25],[B.G4,0.25],[B['F#4'],0.25],
-  [B.E4,0.25],[B.D4,0.25],[B.E4,0.25],[B.B4,0.25],
-  [B.A4,0.5],[B.B4,0.25],[B.A4,0.25],
-  [B.G4,0.5],[B.A4,0.25],[B.G4,0.25],
-  [B['F#4'],0.25],[B.E4,0.25],[B.D4,0.25],[B.E4,0.25],
-  [B.G4,0.25],[B.B4,0.25],[B.A4,0.25],[B.G4,0.25],
-  [B['F#4'],1.0],[B['F#4'],0.25],[B.G4,0.25],
-  [B.A4,0.25],[B.G4,0.25],[B['F#4'],0.25],[B.E4,0.25],
-  [B.D4,0.25],[B.E4,0.25],[B['F#4'],0.25],[B.D4,0.25],
-  [B.G4,0.25],[B['F#4'],0.25],[B.E4,0.25],[B.D4,0.25],
-  [B.E4,0.25],[B.D4,0.25],[B.C4,0.25],[B.B3,0.25],
-  [B.C4,0.25],[B.D4,0.25],[B.E4,0.25],[B.C4,0.25],
-  [B.D4,0.5],[B.E4,0.25],[B.D4,0.25],
-  [B.E4,0.5],[B.E5,0.25],[B.D5,0.25],
-  [B.C5,0.25],[B.B4,0.25],[B.A4,0.25],[B.B4,0.25],
-  [B.C5,0.25],[B.D5,0.25],[B.E5,0.25],[B.C5,0.25],
-  [B.B4,0.25],[B.A4,0.25],[B.G4,0.25],[B.A4,0.25],
-  [B.B4,0.25],[B.C5,0.25],[B.D5,0.25],[B.B4,0.25],
-  [B.E5,0.25],[B.D5,0.25],[B.C5,0.25],[B.B4,0.25],
-  [B.A4,0.25],[B.B4,0.25],[B.C5,0.25],[B.A4,0.25],
-  [B.D5,1.0],[B.D5,0.25],[B.E5,0.25],
-  [B['F#5'],0.25],[B.E5,0.25],[B.D5,0.25],[B.C5,0.25],
-  [B.B4,0.25],[B.A4,0.25],[B.B4,0.25],[B['F#5'],0.25],
-  [B.E5,0.25],[B.D5,0.25],[B.C5,0.25],[B.B4,0.25],
-  [B.A4,1.0],[B.A4,0.25],[B.B4,0.25],
+  // Phrase 1 (bars 1-8, 24 s)
+  [B.E5, 3],
+  [B.D5, 3],
+  [B.B4, 2], [B.A4, 1],
+  [B.G4, 3],
+  [B.E5, 3],
+  [B.D5, 3],
+  [B.B4, 1], [B.C5, 1], [B.D5, 1],
+  [B.E5, 3],
+  // Phrase 2 (bars 9-16, 24 s)
+  [B.D5, 3],
+  [B.C5, 3],
+  [B.B4, 2], [B.A4, 1],
+  [B.G4, 3],
+  [B.D5, 3],
+  [B.C5, 3],
+  [B.B4, 1], [B.A4, 1], [B.G4, 1],
+  [B.A4, 3],
+  // Bridge (bars 17-22, 18 s)
+  [B.G5, 3],
+  [B['F#5'], 3],
+  [B.E5, 2], [B.D5, 1],
+  [B.E5, 3],
+  [B.D5, 2], [B.B4, 1],
+  [B.G4, 3],
 ];
 
 function getAudioCtx(){
@@ -5645,14 +5644,14 @@ function getAudioCtx(){
   return audioCtx;
 }
 
-function playNote(ctx, freq, startTime, dur, gain=0.18){
+function playNote(ctx, freq, startTime, dur, gain=0.10){
   const osc = ctx.createOscillator();
   const env = ctx.createGain();
-  osc.type = 'triangle';
+  osc.type = 'sine';
   osc.frequency.setValueAtTime(freq, startTime);
   env.gain.setValueAtTime(0, startTime);
-  env.gain.linearRampToValueAtTime(gain, startTime + 0.01);
-  env.gain.setValueAtTime(gain, startTime + dur - 0.04);
+  env.gain.linearRampToValueAtTime(gain, startTime + 0.03);
+  env.gain.setValueAtTime(gain, startTime + dur - 0.08);
   env.gain.linearRampToValueAtTime(0, startTime + dur);
   osc.connect(env);
   env.connect(ctx.destination);
@@ -5669,7 +5668,7 @@ function scheduleMelody(){
   let totalDur = 0;
   MELODY_FIXED.forEach(([freq, beats])=>{
     const dur = beats * BEAT;
-    playNote(ctx, freq, t, dur * 0.92);
+    playNote(ctx, freq, t, dur * 0.98);
     t += dur;
     totalDur += dur;
   });
