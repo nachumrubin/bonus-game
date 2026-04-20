@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260420202541">
+<meta name="version" content="20260420204112">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420202541</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420204112</div>
   </div>
 </div>
 
@@ -5590,7 +5590,7 @@ window.addEventListener('resize', () => {
 });
 
 // ═══════════════════════════════════════════════════
-// MUSIC — Satie's Gymnopédie No. 1 (Web Audio API)
+// MUSIC — Bach/Petzold Minuet in G BWV Anh. 114 (Web Audio API)
 // Recreated as a note sequence using OscillatorNode
 // ═══════════════════════════════════════════════════
 let audioCtx = null;
@@ -5598,9 +5598,9 @@ let musicPlaying = false;
 let musicTimeout = null;
 let musicNodes = [];
 
-// Gymnopédie No. 1 — Satie, G major, 3/4, 60 BPM slow waltz
-// [frequency_hz, duration_beats] — 22 bars × 3 beats = 66 s loop
-const BEAT = 60 / 60; // seconds per beat at 60 BPM
+// Minuet in G — G major, 3/4, 100 BPM
+// [frequency_hz, duration_beats] — 16 bars × 3 beats = ~29 s loop
+const BEAT = 60 / 100; // seconds per beat at 100 BPM
 
 const B = { // note frequencies
   C4:261.6,D4:293.7,E4:329.6,F4:349.2,'F#4':370.0,G4:392.0,'G#4':415.3,A4:440,
@@ -5610,33 +5610,26 @@ const B = { // note frequencies
   'F#6':1480,'G#3':207.7,'A#3':233.1,'C#3':138.6
 };
 
-// Gymnopédie No. 1 — melody voice, G major, 3/4 waltz
+// Minuet in G — melody voice, G major, 3/4
 const MELODY_FIXED = [
-  // Phrase 1 (bars 1-8, 24 s)
-  [B.E5, 3],
-  [B.D5, 3],
-  [B.B4, 2], [B.A4, 1],
-  [B.G4, 3],
-  [B.E5, 3],
-  [B.D5, 3],
-  [B.B4, 1], [B.C5, 1], [B.D5, 1],
-  [B.E5, 3],
-  // Phrase 2 (bars 9-16, 24 s)
-  [B.D5, 3],
-  [B.C5, 3],
-  [B.B4, 2], [B.A4, 1],
-  [B.G4, 3],
-  [B.D5, 3],
-  [B.C5, 3],
-  [B.B4, 1], [B.A4, 1], [B.G4, 1],
-  [B.A4, 3],
-  // Bridge (bars 17-22, 18 s)
-  [B.G5, 3],
-  [B['F#5'], 3],
-  [B.E5, 2], [B.D5, 1],
-  [B.E5, 3],
-  [B.D5, 2], [B.B4, 1],
-  [B.G4, 3],
+  // Section A (bars 1-8)
+  [B.D5,1],[B.G4,1],[B.A4,1],    // bar 1
+  [B.B4,2],[B.C5,1],             // bar 2
+  [B.D5,1],[B.C5,1],[B.B4,1],   // bar 3
+  [B.A4,3],                      // bar 4
+  [B.A4,1],[B.B4,1],[B.C5,1],   // bar 5
+  [B.D5,3],                      // bar 6
+  [B.B4,1],[B.A4,1],[B.G4,1],   // bar 7
+  [B.G4,3],                      // bar 8
+  // Section B (bars 9-16)
+  [B.E5,1],[B.C5,1],[B.D5,1],   // bar 9
+  [B.E5,3],                      // bar 10
+  [B.D5,1],[B.B4,1],[B.C5,1],   // bar 11
+  [B.D5,3],                      // bar 12
+  [B.C5,1],[B.A4,1],[B.B4,1],   // bar 13
+  [B.C5,1],[B.B4,1],[B.A4,1],   // bar 14
+  [B.B4,2],[B.G4,1],            // bar 15
+  [B.G4,3],                      // bar 16
 ];
 
 function getAudioCtx(){
@@ -5644,14 +5637,14 @@ function getAudioCtx(){
   return audioCtx;
 }
 
-function playNote(ctx, freq, startTime, dur, gain=0.10){
+function playNote(ctx, freq, startTime, dur, gain=0.12){
   const osc = ctx.createOscillator();
   const env = ctx.createGain();
-  osc.type = 'sine';
+  osc.type = 'triangle';
   osc.frequency.setValueAtTime(freq, startTime);
   env.gain.setValueAtTime(0, startTime);
-  env.gain.linearRampToValueAtTime(gain, startTime + 0.03);
-  env.gain.setValueAtTime(gain, startTime + dur - 0.08);
+  env.gain.linearRampToValueAtTime(gain, startTime + 0.01);
+  env.gain.setValueAtTime(gain, startTime + dur - 0.04);
   env.gain.linearRampToValueAtTime(0, startTime + dur);
   osc.connect(env);
   env.connect(ctx.destination);
@@ -5668,7 +5661,7 @@ function scheduleMelody(){
   let totalDur = 0;
   MELODY_FIXED.forEach(([freq, beats])=>{
     const dur = beats * BEAT;
-    playNote(ctx, freq, t, dur * 0.98);
+    playNote(ctx, freq, t, dur * 0.88);
     t += dur;
     totalDur += dur;
   });
@@ -8021,7 +8014,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260420202541', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260420204112', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
