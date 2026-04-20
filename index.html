@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260420032247">
+<meta name="version" content="20260420201243">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -811,7 +811,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420032247</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420201243</div>
   </div>
 </div>
 
@@ -5593,54 +5593,45 @@ window.addEventListener('resize', () => {
 });
 
 // ═══════════════════════════════════════════════════
-// MUSIC — Bach's Badinerie in BWV 1067 (Web Audio API)
-// Recreated as a note sequence using OscillatorNode
+// MUSIC — Gymnopédie No. 1 by Erik Satie (Web Audio API)
+// Sine wave, 60 BPM, D major 3/4 waltz — calm and contemplative
 // ═══════════════════════════════════════════════════
 let audioCtx = null;
 let musicPlaying = false;
 let musicTimeout = null;
 let musicNodes = [];
 
-// Badinerie main theme note sequence [frequency_hz, duration_beats]
-// Based on Bach's Badinerie from Suite No.2 in B minor BWV 1067
-// Tempo: ~160 BPM, transposed to play in a comfortable range
-const BEAT = 60 / 168; // seconds per beat at 168 BPM
+const BEAT = 60 / 60; // 1 second per beat at 60 BPM
 
-const B = { // note frequencies
-  C4:261.6,D4:293.7,E4:329.6,F4:349.2,'F#4':370.0,G4:392.0,'G#4':415.3,A4:440,
-  Bb4:466.2,B4:493.9,C5:523.3,D5:587.3,E5:659.3,F5:698.5,'F#5':740.0,G5:784.0,
-  'G#5':830.6,A5:880,'Bb5':932.3,B5:987.8,C6:1046.5,D6:1174.7,E6:1318.5,
-  D3:146.8,E3:164.8,'F#3':185.0,G3:196.0,A3:220,B3:246.9,'C#4':277.2,'C#5':554.4,
-  'F#6':1480,'G#3':207.7,'A#3':233.1,'C#3':138.6
+const N = {
+  F3:174.6,'F#3':185.0,G3:196.0,A3:220.0,B3:246.9,
+  C4:261.6,'C#4':277.2,D4:293.7,E4:329.6,'F#4':370.0,
+  G4:392.0,A4:440.0,B4:493.9,
+  C5:523.3,'C#5':554.4,D5:587.3,'F#5':740.0
 };
 
-// Badinerie main melody (Bach BWV 1067)
+// Gymnopédie No. 1 melody — D major, 3/4, each entry is [freq_hz, beats]
 const MELODY_FIXED = [
-  [B.B4,0.25],[B.A4,0.25],[B.G4,0.25],[B['F#4'],0.25],
-  [B.E4,0.25],[B.D4,0.25],[B.E4,0.25],[B.B4,0.25],
-  [B.A4,0.5],[B.B4,0.25],[B.A4,0.25],
-  [B.G4,0.5],[B.A4,0.25],[B.G4,0.25],
-  [B['F#4'],0.25],[B.E4,0.25],[B.D4,0.25],[B.E4,0.25],
-  [B.G4,0.25],[B.B4,0.25],[B.A4,0.25],[B.G4,0.25],
-  [B['F#4'],1.0],[B['F#4'],0.25],[B.G4,0.25],
-  [B.A4,0.25],[B.G4,0.25],[B['F#4'],0.25],[B.E4,0.25],
-  [B.D4,0.25],[B.E4,0.25],[B['F#4'],0.25],[B.D4,0.25],
-  [B.G4,0.25],[B['F#4'],0.25],[B.E4,0.25],[B.D4,0.25],
-  [B.E4,0.25],[B.D4,0.25],[B.C4,0.25],[B.B3,0.25],
-  [B.C4,0.25],[B.D4,0.25],[B.E4,0.25],[B.C4,0.25],
-  [B.D4,0.5],[B.E4,0.25],[B.D4,0.25],
-  [B.E4,0.5],[B.E5,0.25],[B.D5,0.25],
-  [B.C5,0.25],[B.B4,0.25],[B.A4,0.25],[B.B4,0.25],
-  [B.C5,0.25],[B.D5,0.25],[B.E5,0.25],[B.C5,0.25],
-  [B.B4,0.25],[B.A4,0.25],[B.G4,0.25],[B.A4,0.25],
-  [B.B4,0.25],[B.C5,0.25],[B.D5,0.25],[B.B4,0.25],
-  [B.E5,0.25],[B.D5,0.25],[B.C5,0.25],[B.B4,0.25],
-  [B.A4,0.25],[B.B4,0.25],[B.C5,0.25],[B.A4,0.25],
-  [B.D5,1.0],[B.D5,0.25],[B.E5,0.25],
-  [B['F#5'],0.25],[B.E5,0.25],[B.D5,0.25],[B.C5,0.25],
-  [B.B4,0.25],[B.A4,0.25],[B.B4,0.25],[B['F#5'],0.25],
-  [B.E5,0.25],[B.D5,0.25],[B.C5,0.25],[B.B4,0.25],
-  [B.A4,1.0],[B.A4,0.25],[B.B4,0.25],
+  [N.D5,3],
+  [N['C#5'],2],[N.B4,1],
+  [N.A4,3],
+  [N.G4,2],[N['F#4'],1],
+  [N.D4,3],
+  [N.E4,1],[N['F#4'],1],[N.G4,1],
+  [N.A4,3],
+  [N.E4,2],[N.D4,1],
+  [N.B3,3],
+  [N['C#4'],2],[N.D4,1],
+  [N.E4,3],
+  [N['F#4'],2],[N.E4,1],
+  [N.D4,3],
+  [N['C#4'],2],[N.B3,1],
+  [N.A3,3],
+  [N.B3,1],[N['C#4'],1],[N.D4,1],
+  [N.E4,3],
+  [N.B3,2],[N.A3,1],
+  [N['F#3'],3],
+  [N.A3,2],[N.B3,1],
 ];
 
 function getAudioCtx(){
@@ -5648,14 +5639,14 @@ function getAudioCtx(){
   return audioCtx;
 }
 
-function playNote(ctx, freq, startTime, dur, gain=0.18){
+function playNote(ctx, freq, startTime, dur, gain=0.10){
   const osc = ctx.createOscillator();
   const env = ctx.createGain();
-  osc.type = 'triangle';
+  osc.type = 'sine';
   osc.frequency.setValueAtTime(freq, startTime);
   env.gain.setValueAtTime(0, startTime);
-  env.gain.linearRampToValueAtTime(gain, startTime + 0.01);
-  env.gain.setValueAtTime(gain, startTime + dur - 0.04);
+  env.gain.linearRampToValueAtTime(gain, startTime + 0.06);
+  env.gain.setValueAtTime(gain, startTime + dur - 0.12);
   env.gain.linearRampToValueAtTime(0, startTime + dur);
   osc.connect(env);
   env.connect(ctx.destination);
@@ -5672,7 +5663,7 @@ function scheduleMelody(){
   let totalDur = 0;
   MELODY_FIXED.forEach(([freq, beats])=>{
     const dur = beats * BEAT;
-    playNote(ctx, freq, t, dur * 0.92);
+    playNote(ctx, freq, t, dur * 0.97);
     t += dur;
     totalDur += dur;
   });
@@ -8025,7 +8016,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260420032247', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260420201243', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
