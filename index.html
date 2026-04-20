@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260420152741">
+<meta name="version" content="20260420161340">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -791,6 +791,16 @@ body.tile-selected .bsq:not(.used){
 #tut-tip-lbl{font-size:11px;color:#888;margin-bottom:4px;}
 #tut-tip-next{background:#2d6080;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:14px;cursor:pointer;font-family:inherit;}
 #tut-tip-skip{background:transparent;color:#999;border:1px solid #ddd;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit;}
+#tut-intro{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;}
+#tut-intro.hidden{display:none;}
+#tut-intro-box{background:#fff;border-radius:18px;padding:28px 24px;max-width:320px;width:88%;direction:rtl;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+#tut-intro-title{font-size:22px;font-weight:700;color:#2d4a2d;margin-bottom:14px;text-align:center;}
+#tut-intro-body{font-size:14px;line-height:1.65;color:#333;}
+#tut-intro-body p{margin:0 0 10px;}
+#tut-intro-body p:last-child{margin-bottom:0;}
+#tut-intro-btns{display:flex;gap:10px;margin-top:20px;}
+#tut-intro-back{flex:1;background:transparent;color:#888;border:1px solid #ddd;border-radius:10px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit;}
+#tut-intro-go{flex:2;background:#2d6080;color:#fff;border:none;border-radius:10px;padding:10px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
 </style>
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
@@ -808,12 +818,12 @@ body.tile-selected .bsq:not(.used){
       <button class="bd g" onclick="startSetup('vs')">👥 שני שחקנים</button>
       <button class="bd b" onclick="startSetup('bot')">🤖 נגד המחשב</button>
       <button class="bd" id="btn-online-lobby" style="background:linear-gradient(180deg,#5ab8a0,#3a8a78);border-color:#2a6a58;color:#fff;box-shadow:0 3px 0 #1a4a40;position:relative;" onclick="showOnlineLobby()">🌐 משחק אונליין<span id="online-badge" style="display:none;position:absolute;top:-6px;left:-6px;background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 6px rgba(231,76,60,.6);animation:onpulse 1.5s ease-in-out infinite;"></span></button>
-      <button class="bd" onclick="startTutorial()">🎓 הדרכה</button>
+      <button class="bd" onclick="showTutorialIntro()">🎓 הדרכה</button>
       <button class="bd" onclick="openChampions()">🏆 טבלת אלופים</button>
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420152741</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420161340</div>
   </div>
 </div>
 
@@ -2778,6 +2788,13 @@ let tutPendingCont=null, tutTimerWasPaused=false;
 const TUT_WORD='שלום';
 const TUT_LETTERS=['ש','ל','ו','מ']; // explicit regular mem (not final ם)
 const TUT_CELLS=[{r:5,c:5},{r:5,c:6},{r:5,c:7},{r:5,c:8}];
+
+function showTutorialIntro(){
+  document.getElementById('tut-intro').classList.remove('hidden');
+}
+function hideTutorialIntro(){
+  document.getElementById('tut-intro').classList.add('hidden');
+}
 
 function startTutorial(){
   gMode='bot'; diff=0;
@@ -8005,7 +8022,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260420152741', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260420161340', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -8601,6 +8618,23 @@ window.HebrewValidator = {
 
 
 </script>
+
+<!-- Tutorial intro modal -->
+<div id="tut-intro" class="hidden" dir="rtl">
+  <div id="tut-intro-box">
+    <div id="tut-intro-title">🎓 הדרכה</div>
+    <div id="tut-intro-body">
+      <p>ברוך הבא להדרכה! כאן תלמד את כל מה שצריך כדי לשחק.</p>
+      <p>תשחק מהלך קצר נגד הבוט ותכיר בדרך את הכלים: הנחת אותיות, אישור מהלך, ביטול, החלפת אות, ערעור ועוד.</p>
+      <p>ההדרכה אורכת כ-3 דקות ואפשר לסיים אותה בכל שלב.</p>
+      <p><strong>האם להתחיל?</strong></p>
+    </div>
+    <div id="tut-intro-btns">
+      <button id="tut-intro-back" onclick="hideTutorialIntro()">חזרה לתפריט</button>
+      <button id="tut-intro-go" onclick="hideTutorialIntro();startTutorial()">▶ התחל הדרכה</button>
+    </div>
+  </div>
+</div>
 
 <!-- Tutorial overlay elements -->
 <div id="tut-dim" class="hidden"></div>
