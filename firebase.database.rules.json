@@ -1,5 +1,9 @@
 {
   "rules": {
+    "rooms": {
+      ".read": true,
+      ".write": true
+    },
     "dictionarySuggestions": {
       ".read": true,
       ".write": true
