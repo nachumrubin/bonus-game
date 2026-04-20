@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260419213430">
+<meta name="version" content="20260420024012">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -811,7 +811,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260419213430</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420024012</div>
   </div>
 </div>
 
@@ -6784,7 +6784,15 @@ async function crConfirm(){
     },
     createdAt: firebase.database.ServerValue.TIMESTAMP,
   };
-  await fbRef('rooms/' + code).set(roomData);
+  try {
+    await fbRef('rooms/' + code).set(roomData);
+  } catch(writeErr) {
+    console.error('crConfirm write failed:', writeErr);
+    roomCode = null; myRole = null;
+    setS('שגיאת חיבור — בדוק אינטרנט ונסה שוב', 'err');
+    ovOpen('ov-create-room');
+    return;
+  }
 
   // Show waiting room
   document.getElementById('wr-code').textContent = code;
@@ -6835,7 +6843,18 @@ async function jcConfirm(){
 
   if(code.length !== 6){ errEl.textContent = 'הקוד חייב להכיל 6 ספרות'; return; }
 
-  const snap = await fbRef('rooms/' + code).once('value');
+  // Ensure anonymous auth
+  try{
+    if(fbAuth && !fbAuth.currentUser) await fbAuth.signInAnonymously();
+  } catch(_){}
+
+  let snap;
+  try {
+    snap = await fbRef('rooms/' + code).once('value');
+  } catch(e) {
+    errEl.textContent = 'שגיאת חיבור — בדוק אינטרנט ונסה שוב';
+    return;
+  }
   if(!snap.exists()){ errEl.textContent = 'קוד לא נמצא — בדוק שוב'; return; }
   const room = snap.val();
   if(room.status !== 'waiting'){ errEl.textContent = 'המשחק כבר התחיל'; return; }
@@ -6856,7 +6875,14 @@ async function jcConfirm(){
   window._gameStarted = false;
 
   // Write guest name — host listener will fire and start the game on host side
-  await fbRef('rooms/' + code + '/guest').set(name);
+  try {
+    await fbRef('rooms/' + code + '/guest').set(name);
+  } catch(e) {
+    console.error('jcConfirm write failed:', e);
+    roomCode = null; myRole = null;
+    errEl.textContent = 'שגיאת חיבור — בדוק אינטרנט ונסה שוב';
+    return;
+  }
   ovClose('ov-join-code');
 
   // Guest waits for host to write the initial game state
@@ -6897,8 +6923,18 @@ async function mmStartSearch(){
   document.getElementById('mm-status').style.display = 'flex';
   document.getElementById('mm-status-text').textContent = 'מחפש יריב...';
 
+  // Ensure anonymous auth
+  try{ if(fbAuth && !fbAuth.currentUser) await fbAuth.signInAnonymously(); } catch(_){}
+
   // Search for an open room that matches preferences
-  const allRooms = await fbRef('rooms').once('value');
+  let allRooms;
+  try { allRooms = await fbRef('rooms').once('value'); }
+  catch(e){
+    document.getElementById('mm-search-btn').style.display = '';
+    document.getElementById('mm-status').style.display = 'none';
+    setS('שגיאת חיבור — בדוק אינטרנט ונסה שוב', 'err');
+    return;
+  }
   let matchedCode = null;
 
   if(allRooms.exists()){
@@ -6927,7 +6963,8 @@ async function mmStartSearch(){
     applyOnlineSettings(room.settings);
     window._myLastPush = undefined;
     window._gameStarted = false;
-    await fbRef('rooms/' + matchedCode + '/guest').set(name);
+    try { await fbRef('rooms/' + matchedCode + '/guest').set(name); }
+    catch(e){ roomCode=null; myRole=null; document.getElementById('mm-status-text').textContent='שגיאת חיבור'; return; }
     ovClose('ov-matchmaking');
     waitForGameStart();
   } else {
@@ -6950,7 +6987,8 @@ async function mmStartSearch(){
       settings:{ timelimit: mmCurrentMode==='live' ? mmCurrentTL : false, botTime:20, appeals:0 },
       createdAt: firebase.database.ServerValue.TIMESTAMP,
     };
-    await fbRef('rooms/' + code).set(roomData);
+    try { await fbRef('rooms/' + code).set(roomData); }
+    catch(e){ roomCode=null; myRole=null; document.getElementById('mm-status-text').textContent='שגיאת חיבור'; return; }
     roomRef = fbRef('rooms/' + code);
     const guestListener = roomRef.child('guest').on('value', snap => {
       if(snap.val()){
@@ -7941,7 +7979,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260419213430', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260420024012', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
