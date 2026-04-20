@@ -1,0 +1,22 @@
+name: Deploy Firebase Database Rules
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'firebase.database.rules.json'
+      - 'firebase.json'
+      - '.firebaserc'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install firebase-tools
+        run: npm install -g firebase-tools
+
+      - name: Deploy database rules
+        run: firebase deploy --only database --project boost-8ef11 --token "${{ secrets.FIREBASE_TOKEN }}"
