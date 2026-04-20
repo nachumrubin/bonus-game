@@ -1,24 +1,24 @@
 {
   "rules": {
     "rooms": {
-      ".read": true,
-      ".write": true
-    },
+  	".read": true,
+  	".write": true
+		},
     "dictionarySuggestions": {
       ".read": true,
-      ".write": true
+      ".write": "auth != null"
     },
     "dictionaryApproved": {
       ".read": true,
-      ".write": true
+      ".write": "auth != null && auth.token.admin === true"
     },
     "dictionaryRejected": {
       ".read": true,
-      ".write": true
+      ".write": "auth != null && auth.token.admin === true"
     },
     "globalChampions": {
       ".read": true,
-      ".write": true,
+      ".write": "auth != null",
       ".indexOn": ["score"]
     }
   }
