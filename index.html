@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260420130530">
+<meta name="version" content="20260420131430">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -813,7 +813,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420130530</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420131430</div>
   </div>
 </div>
 
@@ -2689,7 +2689,7 @@ function doBotSearch(){
   }
   const anch=[];
   for(let r=0;r<BS;r++) for(let c=0;c<BS;c++){
-    const lk=lockedCells[`${r},${c}`]; if(lk&&lk.owner!==1&&lk.rounds>0)continue;
+    const lk=lockedCells[`${r},${c}`]; if(lk&&lk.rounds>0)continue;
     if(!bData[r][c]&&[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].some(([ar,ac])=>getTile(ar,ac)))anch.push({r,c});
   }
   // Easy bot doesn't seek bonus squares (too strategic); medium/hard actively target them
@@ -3350,7 +3350,7 @@ function cellClick(r,c){
     // Empty cell clicked → move the tile there
     if(!permTile && !isPlaced){
       const lk = lockedCells[`${r},${c}`];
-      if(lk && lk.rounds>0 && lk.owner!==turn){ setS('משבצת זו נעולה על ידי היריב!','err'); return; }
+      if(lk && lk.rounds>0){ setS('משבצת זו נעולה!','err'); return; }
       if(isBonusPos(r,c) || (!isBonusPos(r,c) && r>=0 && r<BS && c>=0 && c<BS)){
         placed[spPi] = {...placed[spPi], r, c};
         selPlaced=null; document.body.classList.remove('tile-selected');
@@ -3389,9 +3389,9 @@ function cellClick(r,c){
     setS('כדי להחליף אות קיימת — בחר אות מהמגש ואז לחץ כאן','bon'); return;
   }
 
-  // Check opponent lock
+  // Check lock (blocks everyone — owner and opponent alike)
   const lk = lockedCells[`${r},${c}`];
-  if(lk && lk.rounds>0 && lk.owner!==turn){ setS('משבצת זו נעולה על ידי היריב!','err'); return; }
+  if(lk && lk.rounds>0){ setS('משבצת זו נעולה!','err'); return; }
 
   // No tile selected at all → offer lock or bonus info
   if(selTile===null){
@@ -8005,7 +8005,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260420130530', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260420131430', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
