@@ -784,6 +784,8 @@ body.tile-selected .bsq:not(.used){
 .tut-lit{position:relative!important;z-index:8100!important;border-radius:6px;}
 @keyframes tutGlow{0%,100%{box-shadow:0 0 0 3px rgba(255,215,0,.85),0 0 14px 5px rgba(255,215,0,.5);}50%{box-shadow:0 0 0 4px rgba(255,215,0,1),0 0 24px 9px rgba(255,215,0,.85);}}
 .tut-lit{animation:tutGlow 1.1s ease-in-out infinite;}
+/* Spotlight: body-level clone that appears above the dim overlay */
+.tut-spotlight{position:fixed;z-index:8050;border-radius:6px;pointer-events:none;background:rgba(255,215,0,0.08);box-sizing:border-box;animation:tutGlow 1.1s ease-in-out infinite;}
 #tut-tip{position:fixed;z-index:8200;background:#fff;color:#1a1a1a;border-radius:14px;padding:16px 18px;max-width:270px;font-size:14px;line-height:1.5;box-shadow:0 4px 24px rgba(0,0,0,.4);direction:rtl;}
 #tut-tip.hidden{display:none;}
 #tut-tip-lbl{font-size:11px;color:#888;margin-bottom:4px;}
@@ -2789,23 +2791,43 @@ function startTutorial(){
 }
 
 function _tutDim(on){ document.getElementById('tut-dim').classList.toggle('hidden',!on); }
-function _tutClear(){ document.querySelectorAll('.tut-lit').forEach(el=>el.classList.remove('tut-lit')); }
+function _tutClear(){
+  document.querySelectorAll('.tut-lit').forEach(el=>el.classList.remove('tut-lit'));
+  document.querySelectorAll('.tut-spotlight').forEach(s=>s.remove());
+}
+function _tutUpdateSpotlights(){
+  document.querySelectorAll('.tut-spotlight').forEach(s=>s.remove());
+  document.querySelectorAll('.tut-lit').forEach(el=>{
+    const r=el.getBoundingClientRect();
+    if(!r.width&&!r.height) return;
+    const sp=document.createElement('div');
+    sp.className='tut-spotlight';
+    sp.style.top=(r.top-4)+'px'; sp.style.left=(r.left-4)+'px';
+    sp.style.width=(r.width+8)+'px'; sp.style.height=(r.height+8)+'px';
+    document.body.appendChild(sp);
+  });
+}
 
 function _tutShowTip(label,txt,anchorEl){
   if(gMode==='bot' && turn===0 && gameSettings.timelimit){ clearMoveTimer(); tutTimerWasPaused=true; }
   document.getElementById('tut-tip-lbl').textContent=label||'';
   document.getElementById('tut-tip-txt').textContent=txt;
   document.getElementById('tut-tip-skip').style.display=isTutorial?'':'none';
+  _tutUpdateSpotlights();
   const tip=document.getElementById('tut-tip');
   if(anchorEl){
-    tip.style.cssText='';
+    // Measure actual rendered size before positioning
+    tip.style.cssText='visibility:hidden;';
+    tip.classList.remove('hidden');
+    const tr=tip.getBoundingClientRect();
+    const tw=tr.width||274, th=tr.height||160;
     const r=anchorEl.getBoundingClientRect();
-    const tw=274,th=160;
     let tx=r.left, ty=r.bottom+12;
     if(ty+th>window.innerHeight-10) ty=r.top-th-12;
     if(ty<8) ty=8;
     if(tx+tw>window.innerWidth-10) tx=window.innerWidth-tw-10;
     if(tx<8) tx=8;
+    tip.style.cssText='';
     tip.style.top=ty+'px'; tip.style.left=tx+'px';
   } else {
     tip.style.cssText='top:50%;left:50%;transform:translate(-50%,-50%)';
@@ -2839,7 +2861,7 @@ function tutRunPreChain(){
       selFn:()=>document.getElementById('bag-char'),
       txt:'קופה: כמות האותיות שנותרו בשקית. כשהשקית מתרוקנת המשחק מסתיים ברגע שלאחד השחקנים נגמרות האותיות.' },
     { id:'pre1', label:'מבוא 2/6',
-      selFn:()=>document.getElementById('lcd'),
+      selFn:()=>{const e=document.getElementById('lcd');const r=e?e.getBoundingClientRect():null;return(r&&r.width>0)?e:document.getElementById('is-lcd');},
       txt:'מהלכים: ספירת מספר המהלכים שבוצעו. ניתן להגדיר מספר מהלכים מקסימלי בהגדרות המשחק.' },
     { id:'pre2', label:'מבוא 3/6',
       selFn:()=>document.querySelector('#brack .bt2.jok'),
@@ -2851,7 +2873,7 @@ function tutRunPreChain(){
       selFn:()=>document.querySelector('.bsq:not(.used)'),
       txt:'ריבועי בוסט ⚡: הנחת אות על ריבוע בוסט מפעילה אתגר מיוחד — ניתן לזכות בנקודות בונוס משמעותיות! שים לב: המילה הראשונה אינה יכולה לנגוע בריבועי בוסט.' },
     { id:'pre5', label:'מבוא 6/6',
-      selFn:()=>document.getElementById('lock-inv-display'),
+      selFn:()=>{const e=document.getElementById('lock-inv-display');const r=e?e.getBoundingClientRect():null;if(r&&r.width>0)return e;const il=document.getElementById('is-locks');return il?il.closest('.is-cell')||il:null;},
       txt:'נעילות 🔒: לחץ על משבצת ריקה (ללא אות נבחרת) כדי לנעול אותה — היריב לא יוכל לשחק עליה. לכל שחקן מספר נעילות מוגבל.' },
   ];
   function runPre(i){
@@ -2897,7 +2919,8 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
     tutMovesComplete++;
     if(tutMovesComplete===1 && !tutStepsShown['step3']){
       tutStepsShown['step3']=true;
-      const el=document.getElementById('sb1');
+      let el=document.getElementById('sb1');
+      const r3=el?el.getBoundingClientRect():null; if(!r3||!r3.width) el=document.getElementById('is-sb1');
       if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 4/7','הניקוד שלך עודכן כאן — המנצח הוא בעל הניקוד הגבוה ביותר בסוף המשחק.',el); }
       tutPendingCont=continueAction;
     } else if(tutMovesComplete===2 && !tutStepsShown['step6']){
@@ -2910,8 +2933,9 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
     tutBotMoves++;
     if(tutBotMoves===1 && !tutStepsShown['step4']){
       tutStepsShown['step4']=true;
-      const el=document.getElementById('sb2');
-      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 5/7','הבוט שיחק! ניקוד הבוט מוצג כאן. יש לך ערעור אחד אם חושב שמילתו לא חוקית.',el); }
+      let el=document.getElementById('sb2');
+      const r4=el?el.getBoundingClientRect():null; if(!r4||!r4.width) el=document.getElementById('is-sb2');
+      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 5/7','הבוט שיחק! ניקוד הבוט מוצג כאן. אם המהלך שלך נפסל — תוכל לערער עליו. מספר הערעורים ניתן להגדרה בהגדרות.',el); }
       tutPendingCont=function(){
         if(continueAction) continueAction();
         if(!tutStepsShown['step5']){
@@ -2919,14 +2943,15 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
           setTimeout(()=>{
             if(!isTutorial) return;
             const tm=document.getElementById('turn-timer');
-            if(tm){ _tutDim(true); tm.classList.add('tut-lit'); _tutShowTip('שלב 5b/7','יש לך 40 שניות לכל מהלך. כשהשעון מגיע לאפס — תאבד את תורך!',tm); }
+            if(tm){ _tutDim(true); tm.classList.add('tut-lit'); _tutShowTip('שלב 5b/7','הטיימר מגביל כל מהלך למספר שניות (ניתן להגדרה בהגדרות). כשמגיע לאפס — תאבד את תורך!',tm); }
           },400);
         }
       };
     } else if(tutBotMoves===2 && !tutStepsShown['step7']){
       tutStepsShown['step7']=true;
-      const el=document.getElementById('sb2');
-      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 7/7','בסרגל: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על פסילה (אחד בלבד!) · 🏁 לסיים.',el); }
+      let el=document.getElementById('sb2');
+      const r7=el?el.getBoundingClientRect():null; if(!r7||!r7.width) el=document.getElementById('is-sb2');
+      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 7/7','בסרגל: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על מהלך שנפסל (מספר ניתן להגדרה) · 🏁 לסיים.',el); }
       tutPendingCont=function(){
         if(continueAction) continueAction();
         if(!tutStepsShown['tbar']){
@@ -2934,7 +2959,7 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
           setTimeout(()=>{
             if(!isTutorial) return;
             const tb=document.querySelector('.tbar');
-            if(tb){ _tutDim(true); tb.classList.add('tut-lit'); _tutShowTip('שלב 7/7','בסרגל: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על פסילה (אחד בלבד!) · 🏁 לסיים.',tb); }
+            if(tb){ _tutDim(true); tb.classList.add('tut-lit'); _tutShowTip('שלב 7/7','בסרגל: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על מהלך שנפסל (מספר ניתן להגדרה) · 🏁 לסיים.',tb); }
           },400);
         }
       };
