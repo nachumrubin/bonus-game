@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260421115801">
+<meta name="version" content="20260421132712">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260421115801</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260421132712</div>
   </div>
 </div>
 
@@ -2876,14 +2876,16 @@ function _tutShowTip(label,txt,anchorEl){
 }
 
 function tutDismiss(){
-  _tutClear();
+  // Remove floating spotlight clones (only needed while dim is active) but keep
+  // tut-lit glow on elements so the player still sees where to interact
+  document.querySelectorAll('.tut-spotlight').forEach(s=>s.remove());
   document.getElementById('tut-tip').classList.add('hidden');
   _tutDim(false);
   if(tutTimerWasPaused){ tutTimerWasPaused=false; if(gMode==='bot'&&turn===0&&gameSettings.timelimit) startMoveTimer(); }
   const fn=tutPendingCont; tutPendingCont=null;
   if(fn) fn();
 }
-function tutSkip(){ isTutorial=false; tutPendingCont=null; tutDismiss(); }
+function tutSkip(){ isTutorial=false; tutPendingCont=null; _tutClear(); tutDismiss(); }
 
 function tutInitRack(){
   if(!isTutorial) return;
@@ -2896,9 +2898,12 @@ function tutInitRack(){
 
 function tutInitPhase2Rack(){
   if(!isTutorial) return;
-  // Inject ח at slot 0, ג at slot 1 — keep remaining rack tiles
   for(const l of ['ח','ג']){ const bi=bag.indexOf(l); if(bi>=0) bag.splice(bi,1); }
-  racks[0][0]='ח'; racks[0][1]='ג';
+  // Inject into non-joker slots so '?' is preserved for later phases
+  let injected=0;
+  for(let i=0;i<racks[0].length&&injected<2;i++){
+    if(racks[0][i]!=='?'){ bag.unshift(racks[0][i]); racks[0][i]=['ח','ג'][injected++]; }
+  }
   renderRack();
 }
 
@@ -3026,6 +3031,17 @@ function tutPhase4_exchange(){
 // ── Phase 5: ג'וקר ──
 function tutPhase5_joker(){
   if(!isTutorial || tutStepsShown['phase5']) return;
+  // Guarantee the joker is in the rack (it may have been displaced by rack injections or exchange)
+  if(!racks[0].includes('?')){
+    const bi=bag.indexOf('?'); if(bi>=0) bag.splice(bi,1);
+    // Replace the last non-joker tile so rack size stays the same
+    let replaced=false;
+    for(let i=racks[0].length-1;i>=0;i--){
+      if(racks[0][i]!=='?'){ bag.unshift(racks[0][i]); racks[0][i]='?'; replaced=true; break; }
+    }
+    if(!replaced) racks[0].push('?');
+    renderRack();
+  }
   tutStepsShown['phase5']=true; _tutClear(); _tutDim(true);
   const jokEl=document.querySelector('#brack .bt2.jok');
   if(jokEl) jokEl.classList.add('tut-lit');
@@ -3596,6 +3612,14 @@ function cellClick(r,c){
     racks[turn].splice(selTile,1); selTile=null;
     document.body.classList.remove('tile-selected');
     renderBoard(); renderRack(); setS(`הוחלפה האות ב-"${letter}"`,'bon'); return;
+  }
+  // Tutorial placement guards — keep tile selected so player can retry
+  if(isTutorial && !tutStepsShown['step1']){
+    if(!TUT_CELLS.some(tc=>tc.r===r&&tc.c===c)){ setS('הנח את האות על הריבוע המסומן ✨','err'); return; }
+  }
+  if(isTutorial && tutStepsShown['phase2'] && !tutStepsShown['step1b']){
+    const ok=(r===4&&c===5)||(r===6&&c===5);
+    if(!ok){ setS('הנח את האות על הריבוע המסומן ✨','err'); return; }
   }
   placed.push({r,c,letter,val:HV[letter]||0,isJoker:false});
   racks[turn].splice(selTile,1); selTile=null;
@@ -8206,7 +8230,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260421115801', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260421132712', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
