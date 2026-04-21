@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260420204112">
+<meta name="version" content="20260421115801">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260420204112</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260421115801</div>
   </div>
 </div>
 
@@ -1429,6 +1429,18 @@ body.tile-selected .bsq:not(.used){
     <div id="bchal"></div>
     <div class="ovbtns">
       <button class="ovb p" id="bok" onclick="bonusOk()">אישור ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- BONUS INTRO — shown before every interactive boost mini-game -->
+<div id="ov-bonus-intro" class="ov hidden">
+  <div class="ovc">
+    <div class="ovic" id="bintro-ic">⚡</div>
+    <div class="ovt" id="bintro-title">משחקון בוסט!</div>
+    <div class="ovd" id="bintro-desc"></div>
+    <div class="ovbtns">
+      <button class="ovb p" onclick="startBonusGame()">בוא נשחק ▶</button>
     </div>
   </div>
 </div>
@@ -2643,6 +2655,13 @@ function runBotSearchSafely(){
 }
 
 function scheduleBotMove(){
+  if(isTutorial && !tutBotScripted){
+    tutBotScripted=true; botBusy=true;
+    setS(`${pNames[1]} חושב...`);
+    // Scripted first bot move: 'ב' at r=6,c=6 (makes column word לב through ל at r=5,c=6)
+    setTimeout(function(){ execBot([{r:6,c:6,letter:'ב',val:HV['ב']||2,isJoker:false}],'לב'); },2000);
+    return;
+  }
   botBusy=true;
   setS(`${pNames[1]} חושב...`);
   const limitMs = getMoveTimeLimit();
@@ -2776,7 +2795,7 @@ function botCommit(result){
 // ═══════════════════════════════════════════════════
 function ovClose(id){ document.getElementById(id).classList.add('hidden'); }
 function ovOpen(id){ document.getElementById(id).classList.remove('hidden'); }
-function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm','ov-move-summary','ov-dict-login','ov-dict-admin','ov-dict-confirm'].forEach(ovClose); showSc('sh'); }
+function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-bonus-intro','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm','ov-move-summary','ov-dict-login','ov-dict-admin','ov-dict-confirm'].forEach(ovClose); showSc('sh'); }
 // showSc defined above in music section
 function showLegend(){ buildVtbl(); legBack(); document.getElementById('lb-boosts-wrap').classList.add('hidden'); document.getElementById('lb-boost-desc').classList.add('hidden'); ovOpen('ov-leg'); }
 
@@ -2785,6 +2804,8 @@ function showLegend(){ buildVtbl(); legBack(); document.getElementById('lb-boost
 // ═══════════════════════════════════════════════════
 let isTutorial=false, tutMovesComplete=0, tutBotMoves=0, tutStepsShown={};
 let tutPendingCont=null, tutTimerWasPaused=false;
+let tutBotScripted=false;
+let tutShailtaDone=false, tutExchangeDone=false, tutJokerDone=false, tutBoostDone=false, tutReplaceDone=false;
 const TUT_WORD='שלום';
 const TUT_LETTERS=['ש','ל','ו','מ']; // explicit regular mem (not final ם)
 const TUT_CELLS=[{r:5,c:5},{r:5,c:6},{r:5,c:7},{r:5,c:8}];
@@ -2803,6 +2824,8 @@ function startTutorial(){
   gameSettings.appealsMax=1; gameSettings.showMoveSummary=true;
   isTutorial=true; tutMovesComplete=0; tutBotMoves=0;
   tutStepsShown={}; tutPendingCont=null; tutTimerWasPaused=false;
+  tutBotScripted=false;
+  tutShailtaDone=false; tutExchangeDone=false; tutJokerDone=false; tutBoostDone=false; tutReplaceDone=false;
   ['sn1','sn2','en1','en2'].forEach((id,i)=>{document.getElementById(id).textContent=pNames[i%2];});
   showCoinTossIntro(0);
 }
@@ -2871,6 +2894,14 @@ function tutInitRack(){
   renderRack();
 }
 
+function tutInitPhase2Rack(){
+  if(!isTutorial) return;
+  // Inject ח at slot 0, ג at slot 1 — keep remaining rack tiles
+  for(const l of ['ח','ג']){ const bi=bag.indexOf(l); if(bi>=0) bag.splice(bi,1); }
+  racks[0][0]='ח'; racks[0][1]='ג';
+  renderRack();
+}
+
 function tutRunPreChain(){
   if(!isTutorial) return;
   const PRE=[
@@ -2910,24 +2941,26 @@ function tutStep0(){
   const rt=document.querySelectorAll('#brack .bt2:not(.emp)');
   for(let i=0;i<4&&i<rt.length;i++) rt[i].classList.add('tut-lit');
   TUT_CELLS.forEach(({r,c})=>{ const el=document.getElementById(`c${r}_${c}`); if(el) el.classList.add('tut-lit'); });
-  _tutShowTip('שלב 1/7',`הנח את האותיות המודגשות על הריבועים המסומנים ליצירת המילה "${TUT_WORD}"`,document.getElementById('brack'));
+  _tutShowTip('שלב 1',`הנח את האותיות המודגשות על הריבועים המסומנים ליצירת המילה "${TUT_WORD}"`,document.getElementById('brack'));
 }
 
 function tutOnTilePlaced(){
   if(!isTutorial) return;
-  // Step 1: show שבץ only after the player has placed all 4 tutorial letters
+  // Move 1: show שבץ after all 4 tutorial letters placed
   if(!tutStepsShown['step1']){
     if(placed.length < TUT_LETTERS.length) return;
     tutStepsShown['step1']=true; _tutClear(); _tutDim(true);
     const btn=document.getElementById('btn-play');
-    if(btn){ btn.classList.add('tut-lit'); _tutShowTip('שלב 2/7','מצוין! לאחר סידור המילה, לחץ שבץ לאישור המהלך וקבלת הניקוד.',btn); }
+    if(btn){ btn.classList.add('tut-lit'); _tutShowTip('שלב 2','מצוין! לאחר סידור המילה, לחץ שבץ לאישור המהלך וקבלת הניקוד.',btn); }
     return;
   }
-  // Step 6: show recall tip when player places first tile of their 2nd word
-  if(tutMovesComplete >= 1 && !tutStepsShown['step6']){
-    tutStepsShown['step6']=true; _tutClear(); _tutDim(true);
-    const btn=document.getElementById('btn-recall');
-    if(btn){ btn.classList.add('tut-lit'); _tutShowTip('שלב 6/7','לחץ בטל להחזרת האותיות שהנחת למגש ולתכנן מחדש.',btn); }
+  // Move 2 (phase2 multi-word): show שבץ after ח+ג placed
+  if(tutStepsShown['phase2'] && !tutStepsShown['step1b']){
+    if(placed.length < 2) return;
+    tutStepsShown['step1b']=true; _tutClear(); _tutDim(true);
+    const btn=document.getElementById('btn-play');
+    if(btn){ btn.classList.add('tut-lit'); _tutShowTip('שלב: שבץ','מצוין! שיבצת את שתי האותיות. לחץ שבץ — שים לב שנוצרות מספר מילים ואחת עשויה להיות לא חוקית!',btn); }
+    return;
   }
 }
 
@@ -2936,8 +2969,141 @@ function tutOnSummaryOpen(isPlayerMove){
   if(isPlayerMove && !tutStepsShown['step2']){
     tutStepsShown['step2']=true; _tutClear(); _tutDim(true);
     const ov=document.getElementById('ov-move-summary');
-    _tutShowTip('שלב 3/7','חלון הסיכום: מילים ששיחקת, ניקוד לכל מילה, ובונוסים שקיבלת. לחץ המשך להמשיך.',ov);
+    _tutShowTip('שלב 3','חלון הסיכום: מילים ששיחקת, ניקוד לכל מילה, ובונוסים שקיבלת. לחץ המשך להמשיך.',ov);
   }
+}
+
+function tutOnAppealShown(){
+  if(!isTutorial || tutStepsShown['appeal']) return;
+  tutStepsShown['appeal']=true; _tutDim(true);
+  const btn=document.getElementById('review-appeal-btn');
+  const ov=document.getElementById('ov-review');
+  if(btn) btn.classList.add('tut-lit');
+  _tutShowTip('שלב: ערעור ⚖️',
+    'מילה לא חוקית! ניתן לערער רק כאשר: (1) נוצרה מילה אחת לא חוקית בלבד, ו-(2) נותרו לך ערעורים. לחץ ערעור כדי לאשר את המהלך בכפייה.',
+    btn||ov);
+}
+
+// ── Phase 2: Multi-word move guided with appeal ──
+function tutPhase2_multiword(){
+  if(!isTutorial || tutStepsShown['phase2']) return;
+  tutStepsShown['phase2']=true;
+  tutInitPhase2Rack();
+  _tutClear(); _tutDim(true);
+  const rt=document.querySelectorAll('#brack .bt2:not(.emp)');
+  if(rt[0]) rt[0].classList.add('tut-lit');
+  if(rt[1]) rt[1].classList.add('tut-lit');
+  const c1=document.getElementById('c4_5'), c2=document.getElementById('c6_5');
+  if(c1) c1.classList.add('tut-lit');
+  if(c2) c2.classList.add('tut-lit');
+  _tutShowTip('שלב: מספר מילים',
+    'עכשיו נראה יצירת מספר מילים במהלך אחד! הנח ח על הריבוע מעל השי"ן, וג על הריבוע מתחת — כך תיצור עמודה דרך האות ש.',
+    c1||document.getElementById('brack'));
+}
+
+// ── Phase 3: שאילתה ──
+function tutPhase3_shailta(){
+  if(!isTutorial || tutStepsShown['phase3']) return;
+  tutStepsShown['phase3']=true; _tutClear(); _tutDim(true);
+  const btn=document.querySelector('[onclick="openShailta()"]');
+  if(btn) btn.classList.add('tut-lit');
+  _tutShowTip('שלב: שאילתה 📖',
+    'לפני שמשחקים — אפשר לבדוק אם מילה חוקית! לחץ 📖 שאילתה, הקלד מילה, ולחץ בדוק.',
+    btn||null);
+}
+
+// ── Phase 4: החלפת אות ──
+function tutPhase4_exchange(){
+  if(!isTutorial || tutStepsShown['phase4']) return;
+  tutStepsShown['phase4']=true; _tutClear(); _tutDim(true);
+  const btn=document.querySelector('[onclick="doExchange()"]');
+  if(btn) btn.classList.add('tut-lit');
+  _tutShowTip('שלב: החלפת אות ♻',
+    'ניתן להחליף אות אחת מהמגש בכל תור (בתנאי שהשקית לא ריקה). לחץ ♻ החלפת אות ובחר אות להחלפה.',
+    btn||null);
+}
+
+// ── Phase 5: ג'וקר ──
+function tutPhase5_joker(){
+  if(!isTutorial || tutStepsShown['phase5']) return;
+  tutStepsShown['phase5']=true; _tutClear(); _tutDim(true);
+  const jokEl=document.querySelector('#brack .bt2.jok');
+  if(jokEl) jokEl.classList.add('tut-lit');
+  _tutShowTip('שלב: ג\'וקר 🃏',
+    'הג\'וקר (?) יכול לייצג כל אות! גרור אותו לריבוע על הלוח ובחר איזו אות הוא יהיה. לאחר מכן הנח עוד אותיות ולחץ שבץ.',
+    jokEl||null);
+}
+
+// ── Phase 6: בוסט + משחקון ──
+function tutPhase6_boost(){
+  if(!isTutorial || tutStepsShown['phase6']) return;
+  tutStepsShown['phase6']=true; _tutClear(); _tutDim(true);
+  const bsqEl=document.querySelector('.bsq:not(.used)');
+  if(bsqEl) bsqEl.classList.add('tut-lit');
+  _tutShowTip('שלב: בוסט ⚡',
+    'ריבועי הבוסט ⚡ בשולי הלוח מעניקים נקודות בונוס ומשחקון מיוחד. כשמניחים אות על ריבוע בוסט — מופעל אתגר. לחץ המשך לנסות אחד עכשיו!',
+    bsqEl||null);
+  tutPendingCont=function(){
+    // Trigger a demo boost game (unscramble)
+    bonusPend={player:0,ws:'הדרכה',sc:0,bsqIdxs:[],extra:0,ct:'auto'};
+    resetBonusOverlay();
+    const _w3=typeof getMediumBonusWord==='function'?getMediumBonusWord():null;
+    if(!_w3){ tutBoostDone=true; tutPhase7_replacement(); return; }
+    const _ls3=[...(_w3)].sort(()=>Math.random()-.5);
+    bonusPend.ct='us40'; bonusPend.extra=40;
+    tutBoostDone=true;
+    buildUnscramble(_ls3,_w3,'🔀','בוסט הדרכה — סדר מחדש',
+      `בוא נתנסה! סדר את ${_ls3.length} האותיות למילה תוך 30 שניות (+40 נקודות הדרכה)`,30);
+    openBonusAndBroadcast();
+  };
+}
+
+// ── Phase 7: החלפת אות על הלוח ──
+function tutPhase7_replacement(){
+  if(!isTutorial || tutStepsShown['phase7']) return;
+  tutStepsShown['phase7']=true; _tutClear(); _tutDim(true);
+  // Highlight the committed ש tile on the board (r=5,c=5)
+  const tileEl=document.getElementById('c5_5');
+  if(tileEl) tileEl.classList.add('tut-lit');
+  _tutShowTip('שלב: החלפת אות קיימת',
+    'ניתן להחליף אות אחת שכבר על הלוח! בחר אות מהמגש, אחר כך לחץ על ריבוע קיים בלוח — האות תוחלף. חייבים להוסיף גם לפחות אות חדשה באותו תור.',
+    tileEl||null);
+}
+
+// ── Phase 8: סרגל כלים ──
+function tutPhase8_toolbar(){
+  if(!isTutorial || tutStepsShown['phase8']) return;
+  tutStepsShown['phase8']=true; _tutClear(); _tutDim(true);
+  const tb=document.querySelector('.tbar');
+  if(tb) tb.classList.add('tut-lit');
+  _tutShowTip('שלב: סרגל כלים',
+    'בסרגל הכלים: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על מהלך שנפסל · 🏁 לסיים את המשחק.',
+    tb||null);
+  tutPendingCont=tutPhase9_timer;
+}
+
+// ── Phase 9: טיימר ──
+function tutPhase9_timer(){
+  if(!isTutorial || tutStepsShown['phase9']) return;
+  tutStepsShown['phase9']=true; _tutClear(); _tutDim(true);
+  const tm=document.getElementById('turn-timer');
+  if(tm) tm.classList.add('tut-lit');
+  _tutShowTip('שלב: טיימר ⏱',
+    'הטיימר מגביל כל מהלך למספר שניות (ניתן להגדרה). כשמגיע לאפס — התור עובר אוטומטית!',
+    tm||null);
+  tutPendingCont=tutEnd;
+}
+
+// ── End ──
+function tutEnd(){
+  if(!isTutorial) return;
+  isTutorial=false;
+  _tutClear(); _tutDim(false);
+  document.getElementById('tut-tip').classList.add('hidden');
+  const skipBtn=document.getElementById('tut-tip-skip'); if(skipBtn) skipBtn.style.display='none';
+  setTimeout(()=>{
+    _tutShowTip('','הדרכה הסתיימה! 🎉 כעת אתה מכיר את כל אלמנטי המשחק — יצירת מילים, ערעור, שאילתה, החלפה, ג\'וקר, בוסט, והחלפת אות קיימת. בהצלחה!',null);
+  },200);
 }
 
 function tutOnSummaryClose(isPlayerMove, continueAction){
@@ -2945,51 +3111,55 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
   tutDismiss();
   if(isPlayerMove){
     tutMovesComplete++;
+    // After שלום (move 1): show player score tip
     if(tutMovesComplete===1 && !tutStepsShown['step3']){
       tutStepsShown['step3']=true;
       let el=document.getElementById('sb1');
       const r3=el?el.getBoundingClientRect():null; if(!r3||!r3.width) el=document.getElementById('is-sb1');
-      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 4/7','הניקוד שלך עודכן כאן — המנצח הוא בעל הניקוד הגבוה ביותר בסוף המשחק.',el); }
+      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 4','הניקוד שלך עודכן כאן — המנצח הוא בעל הניקוד הגבוה ביותר בסוף המשחק.',el); }
       tutPendingCont=continueAction;
-    } else { if(continueAction) continueAction(); }
+      return;
+    }
+    // After multi-word move (phase2 done): start shailta phase
+    if(tutStepsShown['phase2'] && !tutStepsShown['phase3']){
+      if(continueAction) continueAction();
+      setTimeout(tutPhase3_shailta, 400);
+      return;
+    }
+    // After shailta+exchange+joker turn (phase5 done): boost phase
+    if(tutStepsShown['phase5'] && !tutStepsShown['phase6']){
+      if(continueAction) continueAction();
+      setTimeout(tutPhase6_boost, 400);
+      return;
+    }
+    // After boost sim (phase6 done, boost summary closes): mark done
+    if(tutStepsShown['phase6'] && !tutBoostDone){
+      tutBoostDone=true;
+      if(continueAction) continueAction();
+      return;
+    }
+    // After replacement move (phase7 done): toolbar tip
+    if(tutStepsShown['phase7'] && !tutStepsShown['phase8']){
+      if(continueAction) continueAction();
+      setTimeout(tutPhase8_toolbar, 400);
+      return;
+    }
+    if(continueAction) continueAction();
   } else {
     tutBotMoves++;
-    if(tutBotMoves===1 && !tutStepsShown['step4']){
-      tutStepsShown['step4']=true;
-      let el=document.getElementById('sb2');
-      const r4=el?el.getBoundingClientRect():null; if(!r4||!r4.width) el=document.getElementById('is-sb2');
-      if(el){ _tutDim(true); el.classList.add('tut-lit'); _tutShowTip('שלב 5/7','הבוט שיחק! ניקוד הבוט מוצג כאן. אם המהלך שלך נפסל — תוכל לערער עליו. מספר הערעורים ניתן להגדרה בהגדרות.',el); }
-      tutPendingCont=function(){
-        if(continueAction) continueAction();
-        if(!tutStepsShown['step5']){
-          tutStepsShown['step5']=true;
-          setTimeout(()=>{
-            if(!isTutorial) return;
-            const tm=document.getElementById('turn-timer');
-            if(tm){ _tutDim(true); tm.classList.add('tut-lit'); _tutShowTip('שלב 5b/7','הטיימר מגביל כל מהלך למספר שניות (ניתן להגדרה בהגדרות). כשמגיע לאפס — תאבד את תורך!',null); }
-          },400);
-        }
-      };
-    } else if(tutBotMoves===2 && !tutStepsShown['step7']){
-      tutStepsShown['step7']=true;
+    // After bot move 1: trigger multi-word guidance
+    if(tutBotMoves===1 && !tutStepsShown['phase2']){
       if(continueAction) continueAction();
-      if(!tutStepsShown['tbar']){
-        tutStepsShown['tbar']=true;
-        setTimeout(()=>{
-          if(!isTutorial) return;
-          const tb=document.querySelector('.tbar');
-          if(tb){ _tutDim(true); tb.classList.add('tut-lit'); _tutShowTip('שלב 7/7','בסרגל: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על מהלך שנפסל (מספר ניתן להגדרה) · 🏁 לסיים.',tb); }
-        },400);
-      }
-    } else if(tutBotMoves>=3 && !tutStepsShown['end']){
-      tutStepsShown['end']=true;
+      setTimeout(tutPhase2_multiword, 400);
+      return;
+    }
+    // After next bot move post-boost: replacement tip
+    if(tutBoostDone && !tutStepsShown['phase7']){
       if(continueAction) continueAction();
-      setTimeout(()=>{
-        isTutorial=false;
-        document.getElementById('tut-tip-skip').style.display='none';
-        _tutShowTip('','הדרכה הסתיימה! 🎉 כעת אתה מכיר את כל אלמנטי המשחק. בהצלחה!',null);
-      },400);
-    } else { if(continueAction) continueAction(); }
+      setTimeout(tutPhase7_replacement, 400);
+      return;
+    }
+    if(continueAction) continueAction();
   }
 }
 
@@ -3485,7 +3655,7 @@ function openJokerPicker(){
   });
   ovOpen('ov-joker');
 }
-function confirmJoker(l){ ovClose('ov-joker'); const{rackIdx,r,c,replace}=jokerTarget; racks[turn].splice(rackIdx,1); if(replace){ applyReplacementAt(r,c,l,0,true,'?'); setS(`ג'וקר החליף ל-"${l}"`,'bon'); } else { placed.push({r,c,letter:l,val:0,isJoker:true}); setS(`ג'וקר → "${l}"`); } selTile=null; jokerTarget=null; pushLiveToFirebase(); renderBoard(); renderRack(); }
+function confirmJoker(l){ ovClose('ov-joker'); const{rackIdx,r,c,replace}=jokerTarget; racks[turn].splice(rackIdx,1); if(replace){ applyReplacementAt(r,c,l,0,true,'?'); setS(`ג'וקר החליף ל-"${l}"`,'bon'); } else { placed.push({r,c,letter:l,val:0,isJoker:true}); setS(`ג'וקר → "${l}"`); } selTile=null; jokerTarget=null; pushLiveToFirebase(); renderBoard(); renderRack(); if(isTutorial && !tutJokerDone){ tutJokerDone=true; tutDismiss(); } }
 function cancelJoker(){ ovClose('ov-joker'); jokerTarget=null; }
 
 // ── EXCHANGE ──
@@ -3497,7 +3667,7 @@ function doExchange(){
   rack.forEach((letter,i)=>{
     const t=document.createElement('div'); t.className='bt2'+(letter==='?'?' jok':'');
     t.innerHTML=`<span class="bt2-l">${letter==='?'?JOK_ICON:letter}</span><span class="bt2-v">${letter==='?'?'':HV[letter]||0}</span>`;
-    t.onclick=()=>{ ovClose('ov-exch'); bag.unshift(letter); sh(bag); racks[turn].splice(i,1); draw(racks[turn]); exchUsed=true; if(selTile===i)selTile=null; renderRack(); updateUI(); setS(`האות הוחלפה`,'ok'); };
+    t.onclick=()=>{ ovClose('ov-exch'); bag.unshift(letter); sh(bag); racks[turn].splice(i,1); draw(racks[turn]); exchUsed=true; if(selTile===i)selTile=null; renderRack(); updateUI(); setS(`האות הוחלפה`,'ok'); if(isTutorial && !tutExchangeDone){ tutExchangeDone=true; setTimeout(tutPhase5_joker,400); } };
     el.appendChild(t);
   });
   ovOpen('ov-exch'); computeSizes();
@@ -3532,6 +3702,7 @@ function checkShailta(){
   if(!w){ el.textContent='הקלד מילה'; el.className='shres'; return; }
   if(isValid(w)){ el.textContent=`"${w}" — מילה חוקית ✓`; el.className='shres ok'; }
   else{ el.textContent=`"${w}" — לא נמצאה במילון ✗`; el.className='shres bad'; }
+  if(isTutorial && !tutShailtaDone && w){ tutShailtaDone=true; setTimeout(tutPhase4_exchange,400); }
   // Clear input so player can immediately check another word
   inp.value='';
   inp.focus();
@@ -3609,6 +3780,7 @@ function applyReplacementAt(r,c,letter,val,isJoker,usedRackLetter){
   if(!oldTile) return;
   racks[turn].push(oldTile.isJoker ? '?' : oldTile.letter);
   replacedThisTurn = { r, c, oldTile, newTile:{r,c,letter,val,isJoker:!!isJoker}, usedRackLetter };
+  if(isTutorial && !tutReplaceDone){ tutReplaceDone=true; tutDismiss(); }
 }
 
 function getWT(pp){
@@ -3893,6 +4065,7 @@ function openMoveReview(review){
     if(handL){handL.setAttribute('cx','10');handL.setAttribute('cy','58');}
     if(handR){handR.setAttribute('cx','44');handR.setAttribute('cy','58');}
   }
+  if(isTutorial && review.invalid.length===1) setTimeout(tutOnAppealShown,300);
   ovOpen('ov-review');
 }
 function finalizeReviewedMove(accepted){
@@ -7606,7 +7779,26 @@ function pushLiveToFirebase(){
   fbRef('rooms/' + roomCode + '/live').set(data).catch(()=>{});
 }
 
+const INTERACTIVE_BONUS_TYPES = new Set(['honeycomb','us40','fill100','us100','crossword','crossing','wordsearch']);
+
 function openBonusAndBroadcast(){
+  const ct = bonusPend && bonusPend.ct;
+  if(ct && INTERACTIVE_BONUS_TYPES.has(ct)){
+    document.getElementById('bintro-ic').textContent = document.getElementById('bovic').textContent;
+    document.getElementById('bintro-title').textContent = document.getElementById('bovt').textContent;
+    document.getElementById('bintro-desc').textContent = document.getElementById('bovd').textContent;
+    ovOpen('ov-bonus-intro');
+    return;
+  }
+  _openBonusOverlay();
+}
+
+function startBonusGame(){
+  ovClose('ov-bonus-intro');
+  _openBonusOverlay();
+}
+
+function _openBonusOverlay(){
   ovOpen('ov-bonus');
   if(gMode === 'online' && roomCode){
     fbRef('rooms/' + roomCode + '/liveBonus').set({
@@ -8014,7 +8206,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260420204112', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260421115801', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
