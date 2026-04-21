@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260421212623">
+<meta name="version" content="20260421213653">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260421212623</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260421213653</div>
   </div>
 </div>
 
@@ -2654,12 +2654,30 @@ function runBotSearchSafely(){
   }
 }
 
+// Scripted tutorial bot moves — deterministic, no AI surprises
+const TUT_BOT_MOVES=[
+  // move 1 (after שלום): ב at r=6,c=6 → column לב
+  [{r:6,c:6,letter:'ב',val:2,isJoker:false},'לב'],
+  // move 2 (after ח+ג appeal): א at r=4,c=4 → row אח
+  [{r:4,c:4,letter:'א',val:1,isJoker:false},'אח'],
+  // move 3 (after joker לבד): ת at r=4,c=8 → column תמ
+  [{r:4,c:8,letter:'ת',val:1,isJoker:false},'תמ'],
+  // move 4 (after boost שלומית): ו at r=8,c=6 → column לבדו
+  [{r:8,c:6,letter:'ו',val:1,isJoker:false},'לבדו'],
+];
+
 function scheduleBotMove(){
-  if(isTutorial && !tutBotScripted){
-    tutBotScripted=true; botBusy=true;
-    setS(`${pNames[1]} חושב...`);
-    // Scripted first bot move: 'ב' at r=6,c=6 (makes column word לב through ל at r=5,c=6)
-    setTimeout(function(){ execBot([{r:6,c:6,letter:'ב',val:HV['ב']||2,isJoker:false}],'לב'); },2000);
+  if(isTutorial && tutBotMoves < TUT_BOT_MOVES.length){
+    botBusy=true; setS(`${pNames[1]} חושב...`);
+    const [pp,word]=TUT_BOT_MOVES[tutBotMoves];
+    const tiles=Array.isArray(pp)?pp:[pp];
+    // Ensure each required letter is in bot rack (inject if missing)
+    tiles.forEach(({letter})=>{
+      if(!racks[1].includes(letter)){
+        const bi=bag.indexOf(letter); if(bi>=0) bag.splice(bi,1); racks[1].push(letter);
+      }
+    });
+    setTimeout(()=>execBot(tiles,word),2000);
     return;
   }
   botBusy=true;
@@ -2804,8 +2822,8 @@ function showLegend(){ buildVtbl(); legBack(); document.getElementById('lb-boost
 // ═══════════════════════════════════════════════════
 let isTutorial=false, tutMovesComplete=0, tutBotMoves=0, tutStepsShown={};
 let tutPendingCont=null, tutTimerWasPaused=false;
-let tutBotScripted=false;
 let tutShailtaDone=false, tutExchangeDone=false, tutJokerDone=false, tutBoostDone=false, tutReplaceDone=false;
+let _tutFinalContinue=null;
 const TUT_WORD='שלום';
 const TUT_LETTERS=['ש','ל','ו','מ']; // explicit regular mem (not final ם)
 const TUT_CELLS=[{r:5,c:5},{r:5,c:6},{r:5,c:7},{r:5,c:8}];
@@ -2824,8 +2842,8 @@ function startTutorial(){
   gameSettings.appealsMax=1; gameSettings.showMoveSummary=true;
   isTutorial=true; tutMovesComplete=0; tutBotMoves=0;
   tutStepsShown={}; tutPendingCont=null; tutTimerWasPaused=false;
-  tutBotScripted=false;
   tutShailtaDone=false; tutExchangeDone=false; tutJokerDone=false; tutBoostDone=false; tutReplaceDone=false;
+  _tutFinalContinue=null;
   ['sn1','sn2','en1','en2'].forEach((id,i)=>{document.getElementById(id).textContent=pNames[i%2];});
   showCoinTossIntro(0);
 }
@@ -3139,11 +3157,13 @@ function tutPhase9_timer(){
 function tutEnd(){
   if(!isTutorial) return;
   isTutorial=false;
+  const resume=_tutFinalContinue; _tutFinalContinue=null;
   _tutClear(); _tutDim(false);
   document.getElementById('tut-tip').classList.add('hidden');
   const skipBtn=document.getElementById('tut-tip-skip'); if(skipBtn) skipBtn.style.display='none';
   setTimeout(()=>{
     _tutShowTip('','הדרכה הסתיימה! 🎉 כעת אתה מכיר את כל אלמנטי המשחק — יצירת מילים, ערעור, שאילתה, החלפה, ג\'וקר, בוסט, והחלפת אות קיימת. בהצלחה!',null);
+    tutPendingCont=resume;
   },200);
 }
 
@@ -3175,7 +3195,7 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
     }
     // After replacement move (phase7 done): toolbar tip
     if(tutStepsShown['phase7'] && !tutStepsShown['phase8']){
-      if(continueAction) continueAction();
+      _tutFinalContinue = continueAction;
       setTimeout(tutPhase8_toolbar, 400);
       return;
     }
@@ -8280,7 +8300,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260421212623', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260421213653', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
