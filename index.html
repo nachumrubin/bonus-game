@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260421132712">
+<meta name="version" content="20260421212623">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260421132712</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260421212623</div>
   </div>
 </div>
 
@@ -3042,48 +3042,73 @@ function tutPhase5_joker(){
     if(!replaced) racks[0].push('?');
     renderRack();
   }
+  appealsUsed[0]=0; // restore appeal in case phase 2 used it
   tutStepsShown['phase5']=true; _tutClear(); _tutDim(true);
   const jokEl=document.querySelector('#brack .bt2.jok');
+  const targetEl=document.getElementById('c7_6');
   if(jokEl) jokEl.classList.add('tut-lit');
+  if(targetEl) targetEl.classList.add('tut-lit');
   _tutShowTip('שלב: ג\'וקר 🃏',
-    'הג\'וקר (?) יכול לייצג כל אות! גרור אותו לריבוע על הלוח ובחר איזו אות הוא יהיה. לאחר מכן הנח עוד אותיות ולחץ שבץ.',
+    'הג\'וקר (?) מייצג כל אות שתרצה! בחר אותו מהמגש, הנח אותו על הריבוע המסומן (מתחת ב), ואז בחר ד כדי ליצור המילה לבד. לחץ שבץ.',
     jokEl||null);
 }
 
 // ── Phase 6: בוסט + משחקון ──
 function tutPhase6_boost(){
   if(!isTutorial || tutStepsShown['phase6']) return;
+  // Extend שלום rightward: plant committed 'י' at r=5,c=9 (שלומי on board)
+  if(!bData[5][9]) bData[5][9]={letter:'י',val:HV['י']||1,isJoker:false};
+  // Ensure 'ת' is in player rack
+  if(!racks[0].includes('ת')){
+    const bi=bag.indexOf('ת'); if(bi>=0) bag.splice(bi,1);
+    for(let i=racks[0].length-1;i>=0;i--){
+      if(racks[0][i]!=='?'&&racks[0][i]!=='ת'){ bag.unshift(racks[0][i]); racks[0][i]='ת'; break; }
+    }
+  }
+  appealsUsed[0]=0; // restore appeal so player can proceed even if word is unexpected
   tutStepsShown['phase6']=true; _tutClear(); _tutDim(true);
-  const bsqEl=document.querySelector('.bsq:not(.used)');
+  renderBoard(); renderRack();
+  // Light up the right-side boost square (bsq index 10 = br:5, bc:10)
+  const bsqEl=document.getElementById('bsq-10');
   if(bsqEl) bsqEl.classList.add('tut-lit');
+  // Light up ת in rack
+  document.querySelectorAll('#brack .bt2').forEach(el=>{
+    if(el.querySelector('.bt2-l')&&el.querySelector('.bt2-l').textContent==='ת') el.classList.add('tut-lit');
+  });
   _tutShowTip('שלב: בוסט ⚡',
-    'ריבועי הבוסט ⚡ בשולי הלוח מעניקים נקודות בונוס ומשחקון מיוחד. כשמניחים אות על ריבוע בוסט — מופעל אתגר. לחץ המשך לנסות אחד עכשיו!',
+    'ריבוע הבוסט ⚡ מימין מוכן! בחר ת מהמגש והנח אותה על הריבוע ⚡ המסומן — כך תשלים את המילה שלומית ותפעיל משחקון בוסט!',
     bsqEl||null);
-  tutPendingCont=function(){
-    // Trigger a demo boost game (unscramble)
-    bonusPend={player:0,ws:'הדרכה',sc:0,bsqIdxs:[],extra:0,ct:'auto'};
-    resetBonusOverlay();
-    const _w3=typeof getMediumBonusWord==='function'?getMediumBonusWord():null;
-    if(!_w3){ tutBoostDone=true; tutPhase7_replacement(); return; }
-    const _ls3=[...(_w3)].sort(()=>Math.random()-.5);
-    bonusPend.ct='us40'; bonusPend.extra=40;
-    tutBoostDone=true;
-    buildUnscramble(_ls3,_w3,'🔀','בוסט הדרכה — סדר מחדש',
-      `בוא נתנסה! סדר את ${_ls3.length} האותיות למילה תוך 30 שניות (+40 נקודות הדרכה)`,30);
-    openBonusAndBroadcast();
-  };
+  // No tutPendingCont — player places tile manually, triggerBonus fires naturally
 }
 
 // ── Phase 7: החלפת אות על הלוח ──
 function tutPhase7_replacement(){
   if(!isTutorial || tutStepsShown['phase7']) return;
+  // Inject 'ד' and 'מ' into rack (replace two non-critical tiles)
+  for(const need of ['ד','מ']){
+    if(!racks[0].includes(need)){
+      const bi=bag.indexOf(need); if(bi>=0) bag.splice(bi,1);
+      for(let i=racks[0].length-1;i>=0;i--){
+        if(racks[0][i]!=='?'&&racks[0][i]!=='ד'&&racks[0][i]!=='מ'){ bag.unshift(racks[0][i]); racks[0][i]=need; break; }
+      }
+    }
+  }
+  appealsUsed[0]=0; // restore appeal as safety net
   tutStepsShown['phase7']=true; _tutClear(); _tutDim(true);
-  // Highlight the committed ש tile on the board (r=5,c=5)
-  const tileEl=document.getElementById('c5_5');
-  if(tileEl) tileEl.classList.add('tut-lit');
+  renderRack();
+  // Highlight: ג at r=6,c=5 (replacement target), empty cell r=3,c=5 (new tile)
+  const gjEl=document.getElementById('c6_5'); // ג
+  const newEl=document.getElementById('c3_5'); // empty cell for מ
+  if(gjEl) gjEl.classList.add('tut-lit');
+  if(newEl) newEl.classList.add('tut-lit');
+  // Highlight ד in rack
+  document.querySelectorAll('#brack .bt2').forEach(el=>{
+    const lbl=el.querySelector('.bt2-l');
+    if(lbl&&(lbl.textContent==='ד'||lbl.textContent==='מ')) el.classList.add('tut-lit');
+  });
   _tutShowTip('שלב: החלפת אות קיימת',
-    'ניתן להחליף אות אחת שכבר על הלוח! בחר אות מהמגש, אחר כך לחץ על ריבוע קיים בלוח — האות תוחלף. חייבים להוסיף גם לפחות אות חדשה באותו תור.',
-    tileEl||null);
+    'בחר ד מהמגש ← לחץ על ג (מסומן כחול) כדי להחליף אותה ← הנח מ על הריבוע הריק המסומן מעל ח ← לחץ שבץ. יווצרו המילים דב ומחשד!',
+    gjEl||null);
 }
 
 // ── Phase 8: סרגל כלים ──
@@ -3142,16 +3167,10 @@ function tutOnSummaryClose(isPlayerMove, continueAction){
       setTimeout(tutPhase3_shailta, 400);
       return;
     }
-    // After shailta+exchange+joker turn (phase5 done): boost phase
+    // After joker turn (phase5 done): show boost phase
     if(tutStepsShown['phase5'] && !tutStepsShown['phase6']){
       if(continueAction) continueAction();
       setTimeout(tutPhase6_boost, 400);
-      return;
-    }
-    // After boost sim (phase6 done, boost summary closes): mark done
-    if(tutStepsShown['phase6'] && !tutBoostDone){
-      tutBoostDone=true;
-      if(continueAction) continueAction();
       return;
     }
     // After replacement move (phase7 done): toolbar tip
@@ -3605,8 +3624,19 @@ function cellClick(r,c){
 
   // Place rack tile
   const letter = racks[turn][selTile];
-  if(letter==='?'){ jokerTarget={rackIdx:selTile,r,c,replace:!!permTile}; openJokerPicker(); return; }
+  if(letter==='?'){
+    // Phase 5: guide joker only to r=7,c=6
+    if(isTutorial && tutStepsShown['phase5'] && !tutJokerDone){
+      if(r!==7||c!==6){ setS('הנח את הג\'וקר על הריבוע המסומן ✨','err'); return; }
+    }
+    jokerTarget={rackIdx:selTile,r,c,replace:!!permTile}; openJokerPicker(); return;
+  }
   if(permTile){
+    // Phase 7: enforce replacement of ג at r=6,c=5 with ד
+    if(isTutorial && tutStepsShown['phase7'] && !tutReplaceDone && !replacedThisTurn){
+      if(r!==6||c!==5){ setS('לחץ על הג המסומן להחלפה ✨','err'); return; }
+      if(letter!=='ד'){ setS('בחר ד מהמגש תחילה ✨','err'); return; }
+    }
     if(replacedThisTurn){ setS('אפשר לבצע החלפה אחת בלבד בכל מהלך','err'); return; }
     applyReplacementAt(r,c,letter,HV[letter]||0,false,letter);
     racks[turn].splice(selTile,1); selTile=null;
@@ -3620,6 +3650,17 @@ function cellClick(r,c){
   if(isTutorial && tutStepsShown['phase2'] && !tutStepsShown['step1b']){
     const ok=(r===4&&c===5)||(r===6&&c===5);
     if(!ok){ setS('הנח את האות על הריבוע המסומן ✨','err'); return; }
+  }
+  // Reserve r=5,c=9 (phase 6 boost setup) and r=3,c=5 (phase 7 new tile) until those phases
+  if(isTutorial && !tutStepsShown['phase6'] && r===5 && c===9){ setS('ריבוע זה שמור להמשך ההדרכה ✨','bon'); return; }
+  if(isTutorial && !tutStepsShown['phase7'] && r===3 && c===5){ setS('ריבוע זה שמור להמשך ההדרכה ✨','bon'); return; }
+  // Phase 6: player must place on the boost square at r=5,c=10 only
+  if(isTutorial && tutStepsShown['phase6'] && !tutBoostDone){
+    if(!(r===5 && isBonusPos(r,c))){ setS('הנח את האות על ריבוע הבוסט ⚡ המסומן ✨','err'); return; }
+  }
+  // Phase 7: the additional new tile must go at r=3,c=5
+  if(isTutorial && tutStepsShown['phase7'] && !tutReplaceDone){
+    if(r!==3||c!==5){ setS('הנח את מ על הריבוע המסומן מעל ח ✨','err'); return; }
   }
   placed.push({r,c,letter,val:HV[letter]||0,isJoker:false});
   racks[turn].splice(selTile,1); selTile=null;
@@ -4379,6 +4420,7 @@ function runBonusBuilder(builder, fallbackPoints){
 }
 
 function triggerBonus(type,ws,sc){
+  if(isTutorial && !tutBoostDone) tutBoostDone=true;
   // ── Cancel-boost power: if opponent has this stored, they veto this bonus ──
   const _pi=bonusPend.player, _opp=1-_pi;
   if(futBon[_opp] && futBon[_opp].cancelBoost > 0){
@@ -5996,7 +6038,15 @@ function renderBoard(){
 function addCellDragHandlers(cellEl, r, c){ /* no-op */ }
 
 
+function tutSanitizeRack(){
+  const fin={'ם':'מ','ן':'נ','ף':'פ','ך':'כ','ץ':'צ'};
+  let changed=false;
+  racks[0].forEach((l,i)=>{ if(fin[l]){ bag.push(l); racks[0][i]=fin[l]; changed=true; } });
+  return changed;
+}
+
 function renderRack(animate){
+  if(isTutorial && tutSanitizeRack()){ /* re-enter after sanitizing */ renderRack(animate); return; }
   let rackPlayerIdx;
   if(gMode === 'bot') rackPlayerIdx = 0;
   else if(gMode === 'online') rackPlayerIdx = (window._myPlayerIndex !== undefined) ? window._myPlayerIndex : turn;
@@ -8230,7 +8280,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260421132712', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260421212623', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
