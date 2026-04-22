@@ -7605,6 +7605,10 @@ function loadGameState(s){
 
   exchUsed = !!s.exchUsed;
   setOnlineTurnDeadline(s.turnDeadlineMs || 0);
+  // Preserve placed/replacedThisTurn if a move is mid-review so commitPlay still
+  // has the tiles to commit.  (listenForMoves guards this first, but be defensive.)
+  var _keepPlaced = (pendingReview || pendingMoveSnapshot) ? placed.slice() : null;
+  var _keepReplaced = (pendingReview || pendingMoveSnapshot) ? replacedThisTurn : null;
   placed = []; selTile = null; selPlaced = null; replacedThisTurn = null;
 
   // buildUnifiedGrid resets bData, lockedCells, bonusSqUsed — save and restore them
@@ -7617,6 +7621,8 @@ function loadGameState(s){
   lockedCells = savedLockedCells;
   bonusSqUsed = savedBonusSqUsed;
   bBoardData = savedBBoardData;
+  if(_keepPlaced) placed = _keepPlaced;
+  if(_keepReplaced) replacedThisTurn = _keepReplaced;
 }
 
 // ── PRESENCE ──
@@ -7863,6 +7869,13 @@ function listenForMoves(){
 
     _lastSeenMoveCount = incomingMoveCount;
     _lastSeenTurn = incomingTurn;
+
+    // If the player has a move in review, skip loading remote state — loadGameState()
+    // clears `placed`, which would destroy the pending move tiles before commitPlay runs.
+    // The board will re-sync on the next Firebase event after the review closes.
+    if(pendingReview || pendingMoveSnapshot){
+      return;
+    }
 
     // Always consume fresh remote state to keep both boards in sync.
     // Previously we only applied updates once turn===myIdx, which could
