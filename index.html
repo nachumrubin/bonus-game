@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260422041029">
+<meta name="version" content="20260422045532">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422041029</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422045532</div>
   </div>
 </div>
 
@@ -1313,6 +1313,23 @@ body.tile-selected .bsq:not(.used){
       <button class="ovb p" onclick="checkShailta()">בדוק ✓</button>
       <button class="ovb s" onclick="ovClose('ov-shailta')">סגור</button>
     </div>
+  </div>
+</div>
+
+<!-- TUTORIAL PROMPT (shown to new users on first game mode entry) -->
+<div id="ov-tut-prompt" class="ov hidden">
+  <div class="ovc">
+    <div class="ovic">🎓</div>
+    <div class="ovt">ברוך הבא!</div>
+    <div class="ovd" style="text-align:center;line-height:1.8">זו הפעם הראשונה שלך במשחק.<br>האם תרצה לעבור את ההדרכה לפני שמתחילים?</div>
+    <div class="ovbtns">
+      <button class="ovb p" onclick="tutPromptYes()">כן ✓</button>
+      <button class="ovb s" onclick="tutPromptNo()">לא ×</button>
+    </div>
+    <label style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.55);cursor:pointer;justify-content:center;">
+      <input type="checkbox" id="tut-prompt-noshowcb" style="width:16px;height:16px;cursor:pointer;">
+      <span>אל תציג שוב</span>
+    </label>
   </div>
 </div>
 
@@ -2836,6 +2853,7 @@ function hideTutorialIntro(){
 }
 
 function startTutorial(){
+  localStorage.setItem('bonusGameTutSeen','1'); // suppress new-user prompt once tutorial is started
   gMode='bot'; diff=0;
   pNames[0]='שחקן'; pNames[1]='בוט';
   gameSettings.timelimit=true; gameSettings.botTime=40;
@@ -3318,13 +3336,40 @@ function buildVtbl(){
   const d=el.appendChild(document.createElement('div')); d.className='vr'; d.innerHTML=`<div class="vr-l">🃏</div><div class="vr-d"><span>0</span>×${HD['?']||0}</div>`;
 }
 
+// ── Tutorial prompt for new users ──
+let _tutPromptContinueFn = null;
+
+function maybeShowTutorialPrompt(continueFn){
+  if(localStorage.getItem('bonusGameTutSeen')==='1'){ continueFn(); return; }
+  _tutPromptContinueFn = continueFn;
+  const cb = document.getElementById('tut-prompt-noshowcb');
+  if(cb) cb.checked = false;
+  ovOpen('ov-tut-prompt');
+}
+function tutPromptYes(){
+  const cb = document.getElementById('tut-prompt-noshowcb');
+  if(cb && cb.checked) localStorage.setItem('bonusGameTutSeen','1');
+  _tutPromptContinueFn = null;
+  ovClose('ov-tut-prompt');
+  startTutorial();
+}
+function tutPromptNo(){
+  const cb = document.getElementById('tut-prompt-noshowcb');
+  if(cb && cb.checked) localStorage.setItem('bonusGameTutSeen','1');
+  const fn = _tutPromptContinueFn; _tutPromptContinueFn = null;
+  ovClose('ov-tut-prompt');
+  if(fn) fn();
+}
+
 function startSetup(mode){
-  gMode=mode;
-  document.getElementById('stitle').textContent = mode==='vs'?'שני שחקנים':'נגד המחשב';
-  document.getElementById('p2f').style.display = mode==='vs'?'block':'none';
-  document.getElementById('dff').style.display = mode==='bot'?'block':'none';
-  document.getElementById('ip2').value = mode==='bot'?'המחשב':'שחקן 2';
-  showSc('ss');
+  maybeShowTutorialPrompt(function(){
+    gMode=mode;
+    document.getElementById('stitle').textContent = mode==='vs'?'שני שחקנים':'נגד המחשב';
+    document.getElementById('p2f').style.display = mode==='vs'?'block':'none';
+    document.getElementById('dff').style.display = mode==='bot'?'block':'none';
+    document.getElementById('ip2').value = mode==='bot'?'המחשב':'שחקן 2';
+    showSc('ss');
+  });
 }
 function setDiff(d,btn){ diff=d; document.querySelectorAll('.db').forEach(b=>b.classList.remove('a')); btn.classList.add('a'); }
 
@@ -6648,12 +6693,14 @@ function genRoomCode(){
 
 // ── Navigation ──
 function showOnlineLobby(){
-  if(!initFirebase()){
-    loadFirebaseSDK(()=>{ initFirebase(); showOnlineLobby(); });
-    return;
-  }
-  showSc('so');
-  checkForOnlineSession();
+  maybeShowTutorialPrompt(function(){
+    if(!initFirebase()){
+      loadFirebaseSDK(()=>{ initFirebase(); showSc('so'); checkForOnlineSession(); });
+      return;
+    }
+    showSc('so');
+    checkForOnlineSession();
+  });
 }
 
 let _fbSdkLoading = false;
@@ -6882,6 +6929,7 @@ async function suggestDictionaryWord(){
   setDictionaryWordStatus('שולח...', false);
   await new Promise(res => loadFirebaseSDK(res));
   if(!initFirebase() || !fbDb){ setDictionaryWordStatus('שגיאת חיבור, נסה שוב', true); return; }
+  try{ if(fbAuth && !fbAuth.currentUser) await fbAuth.signInAnonymously(); } catch(_){}
   try{
     const rejSnap = await fbRef('dictionaryRejected').once('value');
     const rejObj = (rejSnap && rejSnap.val && rejSnap.val()) || {};
@@ -8297,7 +8345,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260422041029', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260422045532', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
