@@ -70,3 +70,42 @@ test('initFirebase subscribes to .info/serverTimeOffset', () => {
     'expected Firebase server time offset listener for synced timers'
   );
 });
+
+test('shouldDeferRemoteStateApply protects local uncommitted boost move', () => {
+  const ctx = buildContextWith(['shouldDeferRemoteStateApply'], {
+    turn: 0,
+    moveCount: 12,
+    placed: [{ r: 4, c: 3, letter: 'ת', val: 1 }],
+    replacedThisTurn: null,
+    bonusPend: { ct: 'crossword' }
+  });
+
+  assert.equal(ctx.shouldDeferRemoteStateApply(12, 0, 0), true, 'same move snapshot should be ignored during local bonus flow');
+  assert.equal(ctx.shouldDeferRemoteStateApply(13, 1, 0), false, 'newer committed state should still be applied');
+});
+
+test('pauseOnlineTurnDeadlineForBonus clears shared deadline for active online player', async () => {
+  const writes = [];
+  const ctx = buildContextWith(['pauseOnlineTurnDeadlineForBonus'], {
+    gMode: 'online',
+    onlineMode: 'live',
+    gameSettings: { timelimit: true },
+    roomCode: '123456',
+    turn: 0,
+    window: { _myPlayerIndex: 0 },
+    setOnlineTurnDeadline: (v) => writes.push(['local', v]),
+    fbRef: (path) => ({
+      set: (val) => {
+        writes.push([path, val]);
+        return Promise.resolve();
+      }
+    })
+  });
+
+  ctx.pauseOnlineTurnDeadlineForBonus();
+  await Promise.resolve();
+  assert.deepEqual(writes, [
+    ['local', 0],
+    ['rooms/123456/state/turnDeadlineMs', 0]
+  ]);
+});
