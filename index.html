@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260422192017">
+<meta name="version" content="20260422200500">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422192017</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422200500</div>
   </div>
 </div>
 
@@ -4255,6 +4255,7 @@ function playWord(){
     // All words valid — show summary popup, commit on confirm
     clearMoveTimer(); // timer no longer needed once move is validated
     createPendingMoveSnapshot();
+    pushPendingBoardToFirebase();
     openMoveReview(review);
   } else if(review.invalid.length===1 && gameSettings.appealsMax>0 && appealsUsed[turn]<gameSettings.appealsMax){
     // One invalid word and appeals available — go through review for appeal option
@@ -4486,6 +4487,7 @@ function runBonusBuilder(builder, fallbackPoints){
 
 function triggerBonus(type,ws,sc){
   if(isTutorial && !tutBoostDone) tutBoostDone=true;
+  freezeOnlineTurnTimerForBoost(type);
   // ── Cancel-boost power: if opponent has this stored, they veto this bonus ──
   const _pi=bonusPend.player, _opp=1-_pi;
   if(futBon[_opp] && futBon[_opp].cancelBoost > 0){
@@ -7956,6 +7958,55 @@ function clearLiveBonus(){
     fbRef('rooms/' + roomCode + '/liveBonus').set(null).catch(()=>{});
 }
 
+function serializeStateWithPendingBoard(){
+  var state = serializeGameState();
+  if(!state) return state;
+  var board = Array.isArray(state.bData) ? state.bData.map(function(row){
+    return Array.isArray(row) ? row.slice() : row;
+  }) : state.bData;
+  var bonusBoard = Object.assign({}, state.bBoardData || {});
+  (placed || []).forEach(function(t){
+    if(!t) return;
+    var tile = {letter:t.letter,val:t.val,isJoker:!!t.isJoker};
+    if(isBonusPos(t.r,t.c)) bonusBoard[String(t.r)+','+String(t.c)] = tile;
+    else if(Array.isArray(board[t.r])) board[t.r][t.c] = tile;
+  });
+  if(replacedThisTurn && replacedThisTurn.newTile){
+    var rr = replacedThisTurn.r, cc = replacedThisTurn.c;
+    var rt = replacedThisTurn.newTile;
+    var rTile = {letter:rt.letter,val:rt.val,isJoker:!!rt.isJoker};
+    if(isBonusPos(rr,cc)) bonusBoard[String(rr)+','+String(cc)] = rTile;
+    else if(Array.isArray(board[rr])) board[rr][cc] = rTile;
+  }
+  state.bData = board;
+  state.bBoardData = bonusBoard;
+  return state;
+}
+
+function pushStateToFirebase(state){
+  if(gMode !== 'online' || !roomCode || !state) return;
+  window._myLastPush = state.moveCount;
+  fbRef('rooms/' + roomCode + '/state').set(state).catch(function(e){
+    console.error('pushMoveToFirebase error:', e);
+  });
+}
+
+function pushPendingBoardToFirebase(){
+  if(gMode !== 'online' || !roomCode) return;
+  pushStateToFirebase(serializeStateWithPendingBoard());
+  // Once a move is accepted locally, clear live ghost tiles so opponents
+  // see only committed board letters (not translucent previews) while
+  // the local player is in summary/boost flows.
+  fbRef('rooms/' + roomCode + '/live').set([]).catch(()=>{});
+}
+
+function freezeOnlineTurnTimerForBoost(bonusType){
+  if(gMode !== 'online' || onlineMode !== 'live' || !gameSettings.timelimit || !roomCode) return;
+  if(!(bonusType && INTERACTIVE_BONUS_TYPES.has(bonusType))) return;
+  setOnlineTurnDeadline(0);
+  pushStateToFirebase(serializeStateWithPendingBoard());
+}
+
 function listenForLive(){
   if(gMode !== 'online' || !roomCode) return;
   const liveRef = fbRef('rooms/' + roomCode + '/live');
@@ -8008,10 +8059,7 @@ function listenForLiveBonus(){
 function pushMoveToFirebase(){
   if(gMode !== 'online' || !roomCode) return;
   var state = serializeGameState();
-  window._myLastPush = state.moveCount;
-  fbRef('rooms/' + roomCode + '/state').set(state).catch(function(e){
-    console.error('pushMoveToFirebase error:', e);
-  });
+  pushStateToFirebase(state);
   // Clear live tile preview — move is now committed
   fbRef('rooms/' + roomCode + '/live').set([]).catch(()=>{});
   saveOnlineSession(); // keep session fresh after every move
@@ -8347,7 +8395,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260422192017', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260422200500', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
