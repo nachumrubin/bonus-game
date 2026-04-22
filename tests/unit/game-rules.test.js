@@ -180,6 +180,42 @@ test('playWord clears move timer before forfeiting invalid move without appeal',
   assert.match(statuses[0], /מילה לא חוקית/);
 });
 
+test('playWord clears move timer before opening appeal review flow', () => {
+  let clearTimerCalls = 0;
+  let reviewOpened = 0;
+  const ctx = buildContextWith(['playWord'], {
+    botBusy: false,
+    gMode: 'bot',
+    turn: 0,
+    placed: [{ r: 4, c: 4, letter: 'א', val: 1 }],
+    replacedThisTurn: null,
+    firstMove: false,
+    gameSettings: { appealsMax: 1 },
+    appealsUsed: [0, 0],
+    clearMoveTimer: () => { clearTimerCalls++; },
+    getMoveTiles: () => [{ r: 4, c: 4, letter: 'א', val: 1 }],
+    isCollinear: () => true,
+    hasGaps: () => false,
+    isBonusPos: () => false,
+    isConnected: () => true,
+    getAllWords: () => [[{ letter: 'א' }, { letter: 'ב' }]],
+    buildMoveReview: () => ({ invalid: [{ text: 'שגויה' }], total: 0 }),
+    createPendingMoveSnapshot: () => {},
+    openMoveReview: () => { reviewOpened++; },
+    setS: () => {},
+    setTimeout: () => 1,
+    highlightIllegalWords: () => {},
+    clearIllegalHighlights: () => {},
+    doRecall: () => {},
+    forfeitActiveFutureMultiplier: () => '',
+    nextTurn: () => {}
+  });
+
+  ctx.playWord();
+  assert.equal(clearTimerCalls, 1);
+  assert.equal(reviewOpened, 1);
+});
+
 
 test('runBotSearchSafely returns null result instead of throwing when search crashes', () => {
   const errors = [];
