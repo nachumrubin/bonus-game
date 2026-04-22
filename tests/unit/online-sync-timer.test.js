@@ -70,3 +70,16 @@ test('initFirebase subscribes to .info/serverTimeOffset', () => {
     'expected Firebase server time offset listener for synced timers'
   );
 });
+
+test('shouldDeferRemoteStateApply protects local uncommitted boost move', () => {
+  const ctx = buildContextWith(['shouldDeferRemoteStateApply'], {
+    turn: 0,
+    moveCount: 12,
+    placed: [{ r: 4, c: 3, letter: 'ת', val: 1 }],
+    replacedThisTurn: null,
+    bonusPend: { ct: 'crossword' }
+  });
+
+  assert.equal(ctx.shouldDeferRemoteStateApply(12, 0, 0), true, 'same move snapshot should be ignored during local bonus flow');
+  assert.equal(ctx.shouldDeferRemoteStateApply(13, 1, 0), false, 'newer committed state should still be applied');
+});
