@@ -3700,8 +3700,8 @@ function cellClick(r,c){
       if(letter!=='ד'){ setS('בחר ד מהמגש תחילה ✨','err'); return; }
     }
     if(replacedThisTurn){ setS('אפשר לבצע החלפה אחת בלבד בכל מהלך','err'); return; }
-    applyReplacementAt(r,c,letter,HV[letter]||0,false,letter);
-    racks[turn].splice(selTile,1); selTile=null;
+    applyReplacementAt(r,c,letter,HV[letter]||0,false,letter,selTile);
+    selTile=null;
     document.body.classList.remove('tile-selected');
     renderBoard(); renderRack(); setS(`הוחלפה האות ב-"${letter}"`,'bon'); return;
   }
@@ -3724,8 +3724,8 @@ function cellClick(r,c){
   if(isTutorial && tutStepsShown['phase7'] && !tutReplaceDone){
     if(r!==3||c!==5){ setS('הנח את נ על הריבוע המסומן מעל ח ✨','err'); return; }
   }
-  placed.push({r,c,letter,val:HV[letter]||0,isJoker:false});
-  racks[turn].splice(selTile,1); selTile=null;
+  placed.push({r,c,letter,val:HV[letter]||0,isJoker:false,rackSlot:selTile});
+  racks[turn][selTile]=null; selTile=null;
   document.body.classList.remove('tile-selected');
   pushLiveToFirebase(); renderBoard(); renderRack(); setS(`שיבצת "${letter}"`);
   if(isTutorial) setTimeout(tutOnTilePlaced,150);
@@ -3782,7 +3782,7 @@ function openJokerPicker(){
   });
   ovOpen('ov-joker');
 }
-function confirmJoker(l){ ovClose('ov-joker'); const{rackIdx,r,c,replace}=jokerTarget; racks[turn].splice(rackIdx,1); if(replace){ applyReplacementAt(r,c,l,0,true,'?'); setS(`ג'וקר החליף ל-"${l}"`,'bon'); } else { placed.push({r,c,letter:l,val:0,isJoker:true}); setS(`ג'וקר → "${l}"`); } selTile=null; jokerTarget=null; pushLiveToFirebase(); renderBoard(); renderRack(); if(isTutorial && !tutJokerDone){ tutJokerDone=true; tutDismiss(); } }
+function confirmJoker(l){ ovClose('ov-joker'); const{rackIdx,r,c,replace}=jokerTarget; racks[turn][rackIdx]=null; if(replace){ applyReplacementAt(r,c,l,0,true,'?',rackIdx); setS(`ג'וקר החליף ל-"${l}"`,'bon'); } else { placed.push({r,c,letter:l,val:0,isJoker:true,rackSlot:rackIdx}); setS(`ג'וקר → "${l}"`); } selTile=null; jokerTarget=null; pushLiveToFirebase(); renderBoard(); renderRack(); if(isTutorial && !tutJokerDone){ tutJokerDone=true; tutDismiss(); } }
 function cancelJoker(){ ovClose('ov-joker'); jokerTarget=null; }
 
 // ── EXCHANGE ──
@@ -3792,16 +3792,20 @@ function doExchange(){
   if(bag.length===0){ setS('השקית ריקה','err'); return; }
   const rack=racks[turn], el=document.getElementById('exch-rack'); el.innerHTML='';
   rack.forEach((letter,i)=>{
+    if(letter===null) return; // skip placed-tile slots
     const t=document.createElement('div'); t.className='bt2'+(letter==='?'?' jok':'');
     t.innerHTML=`<span class="bt2-l">${letter==='?'?JOK_ICON:letter}</span><span class="bt2-v">${letter==='?'?'':HV[letter]||0}</span>`;
-    t.onclick=()=>{ ovClose('ov-exch'); bag.unshift(letter); sh(bag); racks[turn].splice(i,1); draw(racks[turn]); exchUsed=true; if(selTile===i)selTile=null; renderRack(); updateUI(); setS(`האות הוחלפה`,'ok'); if(isTutorial && !tutExchangeDone){ tutExchangeDone=true; setTimeout(tutPhase5_joker,400); } };
+    t.onclick=()=>{ ovClose('ov-exch'); bag.unshift(letter); sh(bag); racks[turn].splice(i,1); racks[turn]=racks[turn].filter(x=>x!==null); draw(racks[turn]); exchUsed=true; selTile=null; renderRack(); updateUI(); setS(`האות הוחלפה`,'ok'); if(isTutorial && !tutExchangeDone){ tutExchangeDone=true; setTimeout(tutPhase5_joker,400); } };
     el.appendChild(t);
   });
   ovOpen('ov-exch'); computeSizes();
 }
 
 function doRecall(){
-  placed.forEach(p=>racks[turn].push(p.isJoker?'?':p.letter));
+  placed.forEach(p=>{
+    if(p.rackSlot !== undefined) racks[turn][p.rackSlot] = p.isJoker?'?':p.letter;
+    else racks[turn].push(p.isJoker?'?':p.letter);
+  });
   placed=[];
   undoReplacement();
   selTile=null; selPlaced=null;
@@ -3898,15 +3902,25 @@ function removeOneFromRack(letter){
 }
 function undoReplacement(){
   if(!replacedThisTurn) return;
-  removeOneFromRack(replacedThisTurn.oldTile.isJoker ? '?' : replacedThisTurn.oldTile.letter);
-  racks[turn].push(replacedThisTurn.usedRackLetter);
+  const oldLetter = replacedThisTurn.oldTile.isJoker ? '?' : replacedThisTurn.oldTile.letter;
+  if(replacedThisTurn.rackSlot !== undefined && racks[turn][replacedThisTurn.rackSlot] === oldLetter){
+    racks[turn][replacedThisTurn.rackSlot] = replacedThisTurn.usedRackLetter;
+  } else {
+    removeOneFromRack(oldLetter);
+    racks[turn].push(replacedThisTurn.usedRackLetter);
+  }
   replacedThisTurn = null;
 }
-function applyReplacementAt(r,c,letter,val,isJoker,usedRackLetter){
+function applyReplacementAt(r,c,letter,val,isJoker,usedRackLetter,rackSlot){
   const oldTile = getCommittedTile(r,c);
   if(!oldTile) return;
-  racks[turn].push(oldTile.isJoker ? '?' : oldTile.letter);
-  replacedThisTurn = { r, c, oldTile, newTile:{r,c,letter,val,isJoker:!!isJoker}, usedRackLetter };
+  const returnedLetter = oldTile.isJoker ? '?' : oldTile.letter;
+  if(rackSlot !== undefined){
+    racks[turn][rackSlot] = returnedLetter; // swap in-place: used tile → returned board tile
+  } else {
+    racks[turn].push(returnedLetter);
+  }
+  replacedThisTurn = { r, c, oldTile, newTile:{r,c,letter,val,isJoker:!!isJoker}, usedRackLetter, rackSlot };
   if(isTutorial && !tutReplaceDone){ tutReplaceDone=true; tutDismiss(); }
 }
 
@@ -4094,6 +4108,13 @@ function rollbackPendingMove(){
 function closeReview(){ pendingReview=null; pendingMoveSnapshot=null; clearIllegalHighlights(); ovClose('ov-review'); }
 function openMoveReview(review){
   pendingReview = review;
+  // Online mode: skip the review overlay for valid moves — commit immediately.
+  // This prevents a redundant click-through and ensures Firebase is updated
+  // without waiting for the player to dismiss the overlay (fixes timer sync issue).
+  if(gMode === 'online' && review.invalid.length === 0){
+    finalizeReviewedMove(true);
+    return;
+  }
   const body = document.getElementById('review-body');
   const title = document.getElementById('review-title');
   const sub = document.getElementById('review-sub');
@@ -5181,8 +5202,13 @@ function buildCrossword(){
   const renderPool=()=>{
     poolContainer.innerHTML='';
     letterPool.forEach((l,i)=>{
-      if(l===null) return; // used
       const t=document.createElement('div');
+      if(l===null){
+        // Keep slot as invisible placeholder so remaining tiles don't shift
+        t.style.cssText='width:28px;height:32px;opacity:0;pointer-events:none;flex-shrink:0;';
+        poolContainer.appendChild(t);
+        return;
+      }
       const isSel=(i===mbSelPoolIdx);
       t.style.cssText=`width:28px;height:32px;background:${isSel?'#ffe870':'#e8e0c8'};border:2px solid ${isSel?'#c0a800':'#9a9080'};border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#111;cursor:pointer;box-shadow:0 ${isSel?'0px':'2px'} 0 #666050;transform:${isSel?'translateY(-4px)':'none'};transition:all .1s;position:relative;`;
       t.innerHTML=`<span style="line-height:1">${l}</span><span style="font-size:7px;color:#666;position:absolute;bottom:2px;left:3px">${HV[l]||0}</span>`;
@@ -5613,6 +5639,7 @@ function commitPlay(sc,ws,bonus,pi){
   }
   placed=[]; replacedThisTurn=null; exchUsed=false; lastRejWord=''; lastRejPlaced=[];
   selTile=null; selPlaced=null; document.body.classList.remove('tile-selected');
+  racks[pi] = racks[pi].filter(t => t !== null);
   draw(racks[pi]);
   const _baseMsg = _multLabel ? `${wordSc} ${_multLabel} = ${fs - bonusExtra}` : `${fs}`;
   setS(`"${statusWordText}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
@@ -6119,7 +6146,7 @@ function renderRack(animate){
   el.innerHTML = '';
   for(let i=0; i<8; i++){
     const t = document.createElement('div');
-    if(i < rack.length){
+    if(i < rack.length && rack[i] !== null){
       const isJok = rack[i]==='?';
       const canClick = (turn === rackPlayerIdx);
       t.className = 'bt2'+(canClick && i===selTile?' sel':'')+(isJok?' jok':'');
@@ -6189,7 +6216,7 @@ function _renderSideRack(player, animate){
     const isBotPlayer = (gMode === 'bot' && player === 1);
     const tiles = [];
     for(let i = 0; i < 8; i++){
-      if(i < rack.length){
+      if(i < rack.length && rack[i] !== null){
         const isJok = rack[i] === '?';
         tiles.push({ letter: rack[i], isJok, val: isJok ? '' : (HV[rack[i]] || 0), hidden: isBotPlayer });
       } else {
@@ -6497,18 +6524,25 @@ function createPendingMoveSnapshot(){
   // snapshot is created after the player has already placed/replaced tiles.
   // rebuild the original current player's tray from the current rack + move state.
   const rackBeforeMove = [...racks[turn]];
-  // reverse replacement first: remove returned old tile, restore used rack tile
+  // reverse replacement first: restore used rack tile at its original slot
   if(replacedThisTurn){
-    const oldLetter = replacedThisTurn.oldTile && replacedThisTurn.oldTile.isJoker ? '?' : (replacedThisTurn.oldTile ? replacedThisTurn.oldTile.letter : null);
-    if(oldLetter){
-      const idx = rackBeforeMove.indexOf(oldLetter);
-      if(idx >= 0) rackBeforeMove.splice(idx,1);
+    if(replacedThisTurn.rackSlot !== undefined){
+      rackBeforeMove[replacedThisTurn.rackSlot] = replacedThisTurn.usedRackLetter;
+    } else {
+      const oldLetter = replacedThisTurn.oldTile && replacedThisTurn.oldTile.isJoker ? '?' : (replacedThisTurn.oldTile ? replacedThisTurn.oldTile.letter : null);
+      if(oldLetter){
+        const idx = rackBeforeMove.indexOf(oldLetter);
+        if(idx >= 0) rackBeforeMove.splice(idx,1);
+      }
+      rackBeforeMove.push(replacedThisTurn.usedRackLetter);
     }
-    rackBeforeMove.push(replacedThisTurn.usedRackLetter);
   }
-  // reverse newly placed tiles: return letters to rack
-  placed.forEach(p => rackBeforeMove.push(p.isJoker ? '?' : p.letter));
-  originalRacks[turn] = rackBeforeMove;
+  // reverse newly placed tiles: return letters to their original rack slots, then compact
+  placed.forEach(p => {
+    if(p.rackSlot !== undefined) rackBeforeMove[p.rackSlot] = p.isJoker ? '?' : p.letter;
+    else rackBeforeMove.push(p.isJoker ? '?' : p.letter);
+  });
+  originalRacks[turn] = rackBeforeMove.filter(t => t !== null);
 
   pendingMoveSnapshot = {
     racks: originalRacks,
@@ -6518,7 +6552,8 @@ function createPendingMoveSnapshot(){
       c: replacedThisTurn.c,
       oldTile: replacedThisTurn.oldTile ? {...replacedThisTurn.oldTile} : null,
       newTile: replacedThisTurn.newTile ? {...replacedThisTurn.newTile} : null,
-      usedRackLetter: replacedThisTurn.usedRackLetter
+      usedRackLetter: replacedThisTurn.usedRackLetter,
+      rackSlot: replacedThisTurn.rackSlot
     } : null,
     selTile: null
   };
