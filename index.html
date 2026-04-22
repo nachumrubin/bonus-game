@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260422073852">
+<meta name="version" content="20260422180411">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422073852</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422180411</div>
   </div>
 </div>
 
@@ -7079,14 +7079,8 @@ async function crConfirm(){
   pNames[0] = name;
   ovClose('ov-create-room');
 
-  // Ensure anonymous auth before touching Firebase
-  try{
-    if(fbAuth && !fbAuth.currentUser){
-      await fbAuth.signInAnonymously();
-    }
-  } catch(authErr){
-    console.warn('Auth before crConfirm failed:', authErr.code);
-  }
+  // Rooms use open RTDB rules, so creating a room must not depend on auth providers
+  // (anonymous auth can be disabled in some deployments and previously blocked flow).
 
   // Generate unique room code (retry if collision)
   let code, snap;
@@ -7183,10 +7177,7 @@ async function jcConfirm(){
 
   if(code.length !== 6){ errEl.textContent = 'הקוד חייב להכיל 6 ספרות'; return; }
 
-  // Ensure anonymous auth
-  try{
-    if(fbAuth && !fbAuth.currentUser) await fbAuth.signInAnonymously();
-  } catch(_){}
+  // Joining rooms must remain auth-agnostic (RTDB rules already allow direct access).
 
   let snap;
   try {
@@ -7263,8 +7254,7 @@ async function mmStartSearch(){
   document.getElementById('mm-status').style.display = 'flex';
   document.getElementById('mm-status-text').textContent = 'מחפש יריב...';
 
-  // Ensure anonymous auth
-  try{ if(fbAuth && !fbAuth.currentUser) await fbAuth.signInAnonymously(); } catch(_){}
+  // Matchmaking must not block on Firebase Auth provider availability.
 
   // Search for an open room that matches preferences
   let allRooms;
@@ -8338,7 +8328,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260422073852', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260422180411', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
