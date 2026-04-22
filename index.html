@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260421213653">
+<meta name="version" content="20260422041029">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -823,7 +823,7 @@ body.tile-selected .bsq:not(.used){
       <button class="bd" onclick="openSettings()">⚙️ הגדרות</button>
       <button class="bd" id="btn-share-game" onclick="shareGame()" style="background:linear-gradient(180deg,#3ab87a,#2a8a5a);border-color:#1a6a3a;color:#fff;box-shadow:0 3px 0 #0a4a2a;display:none">📤 שתף את המשחק</button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260421213653</div>
+    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422041029</div>
   </div>
 </div>
 
@@ -2932,7 +2932,7 @@ function tutRunPreChain(){
       selFn:()=>document.getElementById('bag-char'),
       txt:'קופה: כמות האותיות שנותרו בשקית. כשהשקית מתרוקנת המשחק מסתיים ברגע שלאחד השחקנים נגמרות האותיות.' },
     { id:'pre1', label:'מבוא 2/6',
-      selFn:()=>{const e=document.getElementById('lcd');const r=e?e.getBoundingClientRect():null;return(r&&r.width>0)?e:document.getElementById('is-lcd');},
+      selFn:()=>{const e=document.getElementById('lcd');const r=e?e.getBoundingClientRect():null;if(r&&r.width>0)return e.closest('.pb')||e;const im=document.getElementById('is-lcd');return im?(im.closest('.is-cell')||im):null;},
       txt:'מהלכים: ספירת מספר המהלכים שבוצעו. ניתן להגדיר מספר מהלכים מקסימלי בהגדרות המשחק.' },
     { id:'pre2', label:'מבוא 3/6',
       selFn:()=>document.querySelector('#brack .bt2.jok'),
@@ -3013,9 +3013,11 @@ function tutPhase2_multiword(){
   tutStepsShown['phase2']=true;
   tutInitPhase2Rack();
   _tutClear(); _tutDim(true);
-  const rt=document.querySelectorAll('#brack .bt2:not(.emp)');
-  if(rt[0]) rt[0].classList.add('tut-lit');
-  if(rt[1]) rt[1].classList.add('tut-lit');
+  // Highlight ח and ג specifically by letter, not by index (joker may be in slot 1)
+  document.querySelectorAll('#brack .bt2').forEach(el=>{
+    const lbl=el.querySelector('.bt2-l');
+    if(lbl&&(lbl.textContent==='ח'||lbl.textContent==='ג')) el.classList.add('tut-lit');
+  });
   const c1=document.getElementById('c4_5'), c2=document.getElementById('c6_5');
   if(c1) c1.classList.add('tut-lit');
   if(c2) c2.classList.add('tut-lit');
@@ -3102,12 +3104,12 @@ function tutPhase6_boost(){
 // ── Phase 7: החלפת אות על הלוח ──
 function tutPhase7_replacement(){
   if(!isTutorial || tutStepsShown['phase7']) return;
-  // Inject 'ד' and 'מ' into rack (replace two non-critical tiles)
-  for(const need of ['ד','מ']){
+  // Inject 'ד' and 'נ' into rack (replace two non-critical tiles)
+  for(const need of ['ד','נ']){
     if(!racks[0].includes(need)){
       const bi=bag.indexOf(need); if(bi>=0) bag.splice(bi,1);
       for(let i=racks[0].length-1;i>=0;i--){
-        if(racks[0][i]!=='?'&&racks[0][i]!=='ד'&&racks[0][i]!=='מ'){ bag.unshift(racks[0][i]); racks[0][i]=need; break; }
+        if(racks[0][i]!=='?'&&racks[0][i]!=='ד'&&racks[0][i]!=='נ'){ bag.unshift(racks[0][i]); racks[0][i]=need; break; }
       }
     }
   }
@@ -3116,35 +3118,30 @@ function tutPhase7_replacement(){
   renderRack();
   // Highlight: ג at r=6,c=5 (replacement target), empty cell r=3,c=5 (new tile)
   const gjEl=document.getElementById('c6_5'); // ג
-  const newEl=document.getElementById('c3_5'); // empty cell for מ
+  const newEl=document.getElementById('c3_5'); // empty cell for נ
   if(gjEl) gjEl.classList.add('tut-lit');
   if(newEl) newEl.classList.add('tut-lit');
-  // Highlight ד in rack
+  // Highlight ד and נ in rack
   document.querySelectorAll('#brack .bt2').forEach(el=>{
     const lbl=el.querySelector('.bt2-l');
-    if(lbl&&(lbl.textContent==='ד'||lbl.textContent==='מ')) el.classList.add('tut-lit');
+    if(lbl&&(lbl.textContent==='ד'||lbl.textContent==='נ')) el.classList.add('tut-lit');
   });
   _tutShowTip('שלב: החלפת אות קיימת',
-    'בחר ד מהמגש ← לחץ על ג (מסומן כחול) כדי להחליף אותה ← הנח מ על הריבוע הריק המסומן מעל ח ← לחץ שבץ. יווצרו המילים דב ומחשד!',
+    'בחר ד מהמגש ← לחץ על ג (מסומן כחול) כדי להחליף אותה ← הנח נ על הריבוע הריק המסומן מעל ח ← לחץ שבץ. יווצרו המילים דב ונחשד!',
     gjEl||null);
 }
 
 // ── Phase 8: סרגל כלים ──
 function tutPhase8_toolbar(){
-  if(!isTutorial || tutStepsShown['phase8']) return;
-  tutStepsShown['phase8']=true; _tutClear(); _tutDim(true);
-  const tb=document.querySelector('.tbar');
-  if(tb) tb.classList.add('tut-lit');
-  _tutShowTip('שלב: סרגל כלים',
-    'בסרגל הכלים: ♻ להחליף אות · 📖 לחפש מילה · ⚡ ערעור על מהלך שנפסל · 🏁 לסיים את המשחק.',
-    tb||null);
-  tutPendingCont=tutPhase9_timer;
+  // Toolbar was introduced in pre-chain — skip directly to timer tip
+  tutStepsShown['phase8']=true;
+  tutPhase9_timer();
 }
 
 // ── Phase 9: טיימר ──
 function tutPhase9_timer(){
   if(!isTutorial || tutStepsShown['phase9']) return;
-  tutStepsShown['phase9']=true; _tutClear(); _tutDim(true);
+  tutStepsShown['phase9']=true; _tutClear(); _tutDim(false);
   const tm=document.getElementById('turn-timer');
   if(tm) tm.classList.add('tut-lit');
   _tutShowTip('שלב: טיימר ⏱',
@@ -3680,7 +3677,7 @@ function cellClick(r,c){
   }
   // Phase 7: the additional new tile must go at r=3,c=5
   if(isTutorial && tutStepsShown['phase7'] && !tutReplaceDone){
-    if(r!==3||c!==5){ setS('הנח את מ על הריבוע המסומן מעל ח ✨','err'); return; }
+    if(r!==3||c!==5){ setS('הנח את נ על הריבוע המסומן מעל ח ✨','err'); return; }
   }
   placed.push({r,c,letter,val:HV[letter]||0,isJoker:false});
   racks[turn].splice(selTile,1); selTile=null;
@@ -8300,7 +8297,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260421213653', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260422041029', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
