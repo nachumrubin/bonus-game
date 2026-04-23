@@ -50,6 +50,10 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 .bd:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.3);}
 .bd.g{background:linear-gradient(160deg,#F9F54B,#d4d000);border-color:#b0a800;color:#1a1a00;box-shadow:0 5px 0 #807200;}
 .bd.b{background:linear-gradient(160deg,#8BF5FA,#3ab8be);border-color:#209ca0;color:#063038;box-shadow:0 5px 0 #155a5e;}
+/* Image-only menu buttons — height mirrors text-button natural height at each breakpoint */
+.bd-img{padding:0;overflow:hidden;display:block;height:52px;}
+@media(min-width:600px){.bd-img{height:60px;}}
+@media(min-width:900px){.bd-img{height:66px;}}
 
 .illegal-tile{
   background:linear-gradient(180deg,#ffbcbc,#ff8f8f)!important;
@@ -819,13 +823,13 @@ body.tile-selected .bsq:not(.used){
     </div>
     <div class="hbtns">
       <button class="bd" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none;background:linear-gradient(160deg,#f5a020,#c07010);border-color:#a05000;color:#fff;box-shadow:0 5px 0 #703000">▶ המשך משחק שמור</button>
-      <button class="bd g" onclick="startSetup('vs')" style="padding:0;overflow:hidden;display:block;"><img src="1v1.png" alt="1 נגד 1" style="width:100%;display:block;"></button>
-      <button class="bd b" onclick="startSetup('bot')" style="padding:0;overflow:hidden;display:block;"><img src="1vBot.png" alt="נגד המחשב" style="width:100%;display:block;"></button>
-      <button class="bd" id="btn-online-lobby" onclick="showOnlineLobby()" style="padding:0;overflow:hidden;display:block;position:relative;background:transparent;border-color:rgba(139,245,250,.45);box-shadow:0 5px 0 #155a5e;"><img src="online.png" alt="משחק אונליין" style="width:100%;display:block;"><span id="online-badge" style="display:none;position:absolute;top:-6px;left:-6px;background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 6px rgba(231,76,60,.6);animation:onpulse 1.5s ease-in-out infinite;"></span></button>
-      <button class="bd" onclick="showTutorialIntro()" style="padding:0;overflow:hidden;display:block;"><img src="tutor.png" alt="הדרכה" style="width:100%;display:block;"></button>
-      <button class="bd" onclick="openChampions()" style="padding:0;overflow:hidden;display:block;"><img src="champions.png" alt="טבלת אלופים" style="width:100%;display:block;"></button>
-      <button class="bd" onclick="openSettings()" style="padding:0;overflow:hidden;display:block;"><img src="settings.png" alt="הגדרות" style="width:100%;display:block;"></button>
-      <button class="bd" id="btn-share-game" onclick="shareGame()" style="padding:0;overflow:hidden;display:none;"><img src="share.png" alt="שתף את המשחק" style="width:100%;display:block;"></button>
+      <button class="bd g bd-img" onclick="startSetup('vs')"><img src="1v1.png" alt="1 נגד 1" style="width:100%;height:100%;object-fit:fill;display:block;"></button>
+      <button class="bd b bd-img" onclick="startSetup('bot')"><img src="1vBot.png" alt="נגד המחשב" style="width:100%;height:100%;object-fit:fill;display:block;"></button>
+      <button class="bd bd-img" id="btn-online-lobby" onclick="showOnlineLobby()" style="position:relative;background:transparent;border-color:rgba(139,245,250,.45);box-shadow:0 5px 0 #155a5e;"><img src="online.png" alt="משחק אונליין" style="width:100%;height:100%;object-fit:fill;display:block;"><span id="online-badge" style="display:none;position:absolute;top:-6px;left:-6px;background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 6px rgba(231,76,60,.6);animation:onpulse 1.5s ease-in-out infinite;"></span></button>
+      <button class="bd bd-img" onclick="showTutorialIntro()"><img src="tutor.png" alt="הדרכה" style="width:100%;height:100%;object-fit:fill;display:block;"></button>
+      <button class="bd bd-img" onclick="openChampions()"><img src="champions.png" alt="טבלת אלופים" style="width:100%;height:100%;object-fit:fill;display:block;"></button>
+      <button class="bd bd-img" onclick="openSettings()"><img src="settings.png" alt="הגדרות" style="width:100%;height:100%;object-fit:fill;display:block;"></button>
+      <button class="bd bd-img" id="btn-share-game" onclick="shareGame()" style="display:none;"><img src="share.png" alt="שתף את המשחק" style="width:100%;height:100%;object-fit:fill;display:block;"></button>
     </div>
     <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422073852</div>
   </div>
