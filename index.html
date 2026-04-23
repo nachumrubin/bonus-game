@@ -3615,7 +3615,9 @@ function cellClick(r,c){
 
     // Same tile clicked again → return it to tray
     if(r===sp.r && c===sp.c){
-      racks[turn].push(placed[spPi].isJoker?'?':placed[spPi].letter);
+      const _p = placed[spPi];
+      if(_p.rackSlot !== undefined) racks[turn][_p.rackSlot] = _p.isJoker?'?':_p.letter;
+      else racks[turn].push(_p.isJoker?'?':_p.letter);
       placed.splice(spPi,1);
       selPlaced=null; document.body.classList.remove('tile-selected');
       pushLiveToFirebase(); renderBoard(); renderRack(); setS('אות הוחזרה למגש'); return;
@@ -3657,7 +3659,9 @@ function cellClick(r,c){
 
   // Tap a placed tile WITH a rack tile selected → recall placed tile, keep rack selection
   if(isPlaced && selTile!==null){
-    racks[turn].push(placed[pi].isJoker?'?':placed[pi].letter);
+    const _p = placed[pi];
+    if(_p.rackSlot !== undefined) racks[turn][_p.rackSlot] = _p.isJoker?'?':_p.letter;
+    else racks[turn].push(_p.isJoker?'?':_p.letter);
     placed.splice(pi,1);
     pushLiveToFirebase(); renderBoard(); renderRack(); setS('אות הוחזרה — עכשיו לחץ על המשבצת לשיבוץ'); return;
   }
