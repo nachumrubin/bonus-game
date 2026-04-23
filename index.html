@@ -3612,6 +3612,7 @@ function cellClick(r,c){
   if(selPlaced !== null){
     const sp = selPlaced;
     const spPi = placed.findIndex(p=>p.r===sp.r&&p.c===sp.c);
+    if(spPi < 0){ selPlaced=null; document.body.classList.remove('tile-selected'); renderBoard(); return; } // guard: tile no longer in placed
 
     // Same tile clicked again → return it to tray
     if(r===sp.r && c===sp.c){
@@ -3657,13 +3658,15 @@ function cellClick(r,c){
     renderBoard(); setS('אות נבחרה — לחץ על משבצת אחרת להזזה, או לחץ שוב להחזרה למגש'); return;
   }
 
-  // Tap a placed tile WITH a rack tile selected → recall placed tile, keep rack selection
+  // Tap a placed tile WITH a rack tile selected → recall placed tile, clear rack selection
+  // (clearing selTile prevents a fast double-click from immediately re-placing the rack tile)
   if(isPlaced && selTile!==null){
     const _p = placed[pi];
     if(_p.rackSlot !== undefined) racks[turn][_p.rackSlot] = _p.isJoker?'?':_p.letter;
     else racks[turn].push(_p.isJoker?'?':_p.letter);
     placed.splice(pi,1);
-    pushLiveToFirebase(); renderBoard(); renderRack(); setS('אות הוחזרה — עכשיו לחץ על המשבצת לשיבוץ'); return;
+    selTile=null; document.body.classList.remove('tile-selected');
+    pushLiveToFirebase(); renderBoard(); renderRack(); setS('אות הוחזרה למגש'); return;
   }
 
   // Undo replacement by clicking on it with no rack tile
