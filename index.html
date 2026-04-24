@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260422120000">
+<meta name="version" content="20260424170000">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -38,19 +38,19 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 /* ── HOME ── */
 #sh{background:linear-gradient(180deg,#3a9898 0%,#2a7a7e 45%,var(--bg2) 100%);}
 .hc{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 14px 8px;width:100%;max-width:340px;}
-.hlogo{background:rgba(32,94,97,.75);border:3px solid rgba(139,245,250,.45);border-radius:22px;padding:0;text-align:center;width:100%;box-sizing:border-box;box-shadow:0 8px 28px rgba(0,0,0,.3),inset 0 1px 0 rgba(139,245,250,.18);overflow:hidden;}
+.hlogo{background:transparent;border:0;border-radius:0;padding:0;text-align:center;width:100%;box-sizing:border-box;box-shadow:none;overflow:visible;}
 .hbtns{display:flex;flex-direction:column;gap:8px;width:100%;}
 .bd{width:100%;padding:13px 18px;border-radius:16px;background:rgba(32,94,97,.88);border:2.5px solid rgba(139,245,250,.3);font-family:'Heebo',sans-serif;font-size:16px;font-weight:700;color:#e0ffff;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .08s,box-shadow .08s;display:flex;align-items:center;gap:10px;}
 .bd:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.3);}
 /* ═══════════════════════════════════════════════
    HOME MENU BUTTONS — game-like 3D buttons
 ═══════════════════════════════════════════════ */
-.menu-btn{width:100%;height:64px;border-radius:20px;display:flex;align-items:center;padding:0 16px 0 8px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:22px;font-weight:900;letter-spacing:-.2px;position:relative;overflow:hidden;border-style:solid;border-width:2.5px;transition:transform .1s ease,filter .1s ease,box-shadow .1s ease;}
+.menu-btn{width:100%;height:94px;border-radius:20px;display:flex;align-items:center;padding:0 18px 0 8px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:22px;font-weight:900;letter-spacing:-.2px;position:relative;overflow:hidden;border-style:solid;border-width:2.5px;transition:transform .1s ease,filter .1s ease,box-shadow .1s ease;}
 .menu-btn::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,0) 100%);pointer-events:none;}
 .menu-btn:hover{transform:scale(1.03);filter:brightness(1.08);}
 .menu-btn:active{transform:translateY(4px);filter:brightness(.95);}
-.menu-btn-text{flex:1;text-align:right;line-height:1;position:relative;z-index:1;}
-.menu-btn-icon{height:54px;width:auto;max-width:70px;object-fit:contain;flex-shrink:0;margin-right:10px;position:relative;z-index:1;}
+.menu-btn-text{flex:1;text-align:right;line-height:1.05;position:relative;z-index:1;color:inherit;text-shadow:0 1px 2px rgba(0,0,0,.15);}
+.menu-btn-icon{height:80px;width:120px;object-fit:cover;object-position:left center;flex-shrink:0;margin-right:10px;position:relative;z-index:1;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));}
 .menu-btn-yellow{background:linear-gradient(180deg,#FFF16A 0%,#F9F54B 50%,#E0D800 100%);border-color:#C0A800;color:#3a2000;box-shadow:0 6px 0 #887000,0 9px 20px rgba(0,0,0,.28);}
 .menu-btn-yellow:active{box-shadow:0 1px 0 #887000;}
 .menu-btn-cyan{background:linear-gradient(180deg,#D8FFFE 0%,#8BF5FA 45%,#50DCE8 100%);border-color:#22A8B4;color:#0a2a30;box-shadow:0 6px 0 #108088,0 9px 20px rgba(0,0,0,.28);}
@@ -59,8 +59,8 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 .menu-btn-teal:active{box-shadow:0 1px 0 #0c5055;}
 .menu-btn-dark{background:linear-gradient(180deg,#3C8C90 0%,#2C6E72 50%,#1C5458 100%);border-color:#165258;color:#fff;box-shadow:0 6px 0 #0a3538,0 9px 20px rgba(0,0,0,.28);text-shadow:0 1px 2px rgba(0,0,0,.3);}
 .menu-btn-dark:active{box-shadow:0 1px 0 #0a3538;}
-@media(min-width:600px){.menu-btn{height:72px;font-size:24px;border-radius:22px;}.menu-btn-icon{height:62px;max-width:78px;}}
-@media(min-width:900px){.menu-btn{height:80px;font-size:28px;border-radius:24px;}.menu-btn-icon{height:70px;max-width:86px;}}
+@media(min-width:600px){.menu-btn{height:104px;font-size:24px;border-radius:22px;}.menu-btn-icon{height:88px;width:132px;}}
+@media(min-width:900px){.menu-btn{height:110px;font-size:28px;border-radius:24px;}.menu-btn-icon{height:94px;width:142px;}}
 
 .illegal-tile{
   background:linear-gradient(180deg,#ffbcbc,#ff8f8f)!important;
@@ -819,7 +819,7 @@ body.tile-selected .bsq:not(.used){
 <div id="sh" class="screen">
   <div class="hc">
     <div class="hlogo">
-      <img src="logo.png" alt="בוסט" style="width:100%;display:block;">
+      <img src="boost_logo_final.png" alt="בוסט" style="width:100%;display:block;">
     </div>
     <div class="hbtns">
       <button class="menu-btn menu-btn-dark" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none;">
@@ -855,7 +855,7 @@ body.tile-selected .bsq:not(.used){
         <img src="share.png" class="menu-btn-icon" alt="">
       </button>
     </div>
-    <div class="credit" style="margin-top:4px;color:rgba(255,255,255,.3);text-align:center;font-size:9px;"><a href="privacy-policy.html" style="color:rgba(255,255,255,.4);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422073852</div>
+    <div class="credit" style="margin-top:4px;color:rgba(255,255,255,.3);text-align:center;font-size:9px;"><a href="privacy-policy.html" style="color:rgba(255,255,255,.4);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260424170000</div>
   </div>
 </div>
 
@@ -8425,7 +8425,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260422073852', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260424170000', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)

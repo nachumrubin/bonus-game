@@ -13,3 +13,12 @@ test('home logo uses local image asset markup', () => {
   // Ensure the old inline SVG shell is not expected anymore.
   assert.doesNotMatch(html, /class="boost-logo" viewBox="0 0 2048 952"/);
 });
+
+test('home logo shell is frameless and home icons are displayed in large cropped format', () => {
+  const root = path.join(__dirname, '..', '..');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  assert.match(html, /\.hlogo\{background:transparent;border:0;[^}]*box-shadow:none;/);
+  assert.match(html, /\.menu-btn\{width:100%;height:94px;[^}]*font-size:22px;/);
+  assert.match(html, /\.menu-btn-icon\{height:80px;width:120px;object-fit:cover;object-position:left center;/);
+});
