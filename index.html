@@ -36,24 +36,31 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 .screen.hidden{opacity:0;pointer-events:none;}
 
 /* ── HOME ── */
-#sh{background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 100%);background-image:radial-gradient(ellipse at 30% 20%,rgba(139,245,250,.28),transparent 60%);}
-.hc{display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px;width:100%;max-width:320px;}
-.hlogo{background:rgba(32,94,97,.75);border:3px solid rgba(139,245,250,.45);border-radius:22px;padding:14px 20px;text-align:center;width:100%;box-sizing:border-box;box-shadow:0 8px 28px rgba(0,0,0,.3),inset 0 1px 0 rgba(139,245,250,.18);}
-.hlogo-inner{display:flex;align-items:center;gap:14px;justify-content:center;}
-.mascot-svg{flex-shrink:0;filter:drop-shadow(0 4px 12px rgba(0,0,0,.35)) drop-shadow(0 0 18px rgba(249,245,75,.2));}
-.hlogo-he{font-size:52px;font-weight:900;color:var(--by);letter-spacing:-2px;line-height:1;text-shadow:3px 3px 0 rgba(0,0,0,.45),0 0 24px rgba(249,245,75,.25);}
-.hlogo-sub{font-size:10px;color:rgba(255,255,255,.55);margin-top:3px;letter-spacing:2px;}
-.tdeco{display:flex;gap:4px;justify-content:center;margin-top:8px;}
-.td{width:28px;height:30px;background:var(--tile);border:2px solid var(--tborder);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:var(--ttext);box-shadow:0 3px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.5);}
+#sh{background:linear-gradient(180deg,#3a9898 0%,#2a7a7e 45%,var(--bg2) 100%);}
+.hc{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 14px 8px;width:100%;max-width:340px;}
+.hlogo{background:rgba(32,94,97,.75);border:3px solid rgba(139,245,250,.45);border-radius:22px;padding:0;text-align:center;width:100%;box-sizing:border-box;box-shadow:0 8px 28px rgba(0,0,0,.3),inset 0 1px 0 rgba(139,245,250,.18);overflow:hidden;}
 .hbtns{display:flex;flex-direction:column;gap:8px;width:100%;}
 .bd{width:100%;padding:13px 18px;border-radius:16px;background:rgba(32,94,97,.88);border:2.5px solid rgba(139,245,250,.3);font-family:'Heebo',sans-serif;font-size:16px;font-weight:700;color:#e0ffff;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.1);transition:transform .08s,box-shadow .08s;display:flex;align-items:center;gap:10px;}
 .bd:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.3);}
-.bd.g{background:linear-gradient(160deg,#F9F54B,#d4d000);border-color:#b0a800;color:#1a1a00;box-shadow:0 5px 0 #807200;}
-.bd.b{background:linear-gradient(160deg,#8BF5FA,#3ab8be);border-color:#209ca0;color:#063038;box-shadow:0 5px 0 #155a5e;}
-/* Image-only menu buttons — height mirrors text-button natural height at each breakpoint */
-.bd-img{padding:0;overflow:hidden;display:block;height:52px;}
-@media(min-width:600px){.bd-img{height:60px;}}
-@media(min-width:900px){.bd-img{height:66px;}}
+/* ═══════════════════════════════════════════════
+   HOME MENU BUTTONS — game-like 3D buttons
+═══════════════════════════════════════════════ */
+.menu-btn{width:100%;height:64px;border-radius:20px;display:flex;align-items:center;padding:0 16px 0 8px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:22px;font-weight:900;letter-spacing:-.2px;position:relative;overflow:hidden;border-style:solid;border-width:2.5px;transition:transform .1s ease,filter .1s ease,box-shadow .1s ease;}
+.menu-btn::after{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,0) 100%);pointer-events:none;}
+.menu-btn:hover{transform:scale(1.03);filter:brightness(1.08);}
+.menu-btn:active{transform:translateY(4px);filter:brightness(.95);}
+.menu-btn-text{flex:1;text-align:right;line-height:1;position:relative;z-index:1;}
+.menu-btn-icon{height:54px;width:auto;max-width:70px;object-fit:contain;flex-shrink:0;margin-right:10px;position:relative;z-index:1;}
+.menu-btn-yellow{background:linear-gradient(180deg,#FFF16A 0%,#F9F54B 50%,#E0D800 100%);border-color:#C0A800;color:#3a2000;box-shadow:0 6px 0 #887000,0 9px 20px rgba(0,0,0,.28);}
+.menu-btn-yellow:active{box-shadow:0 1px 0 #887000;}
+.menu-btn-cyan{background:linear-gradient(180deg,#D8FFFE 0%,#8BF5FA 45%,#50DCE8 100%);border-color:#22A8B4;color:#0a2a30;box-shadow:0 6px 0 #108088,0 9px 20px rgba(0,0,0,.28);}
+.menu-btn-cyan:active{box-shadow:0 1px 0 #108088;}
+.menu-btn-teal{background:linear-gradient(180deg,#5EC6CA 0%,#3F979B 50%,#2A7478 100%);border-color:#1C7880;color:#fff;box-shadow:0 6px 0 #0c5055,0 9px 20px rgba(0,0,0,.28);text-shadow:0 1px 2px rgba(0,0,0,.3);}
+.menu-btn-teal:active{box-shadow:0 1px 0 #0c5055;}
+.menu-btn-dark{background:linear-gradient(180deg,#3C8C90 0%,#2C6E72 50%,#1C5458 100%);border-color:#165258;color:#fff;box-shadow:0 6px 0 #0a3538,0 9px 20px rgba(0,0,0,.28);text-shadow:0 1px 2px rgba(0,0,0,.3);}
+.menu-btn-dark:active{box-shadow:0 1px 0 #0a3538;}
+@media(min-width:600px){.menu-btn{height:72px;font-size:24px;border-radius:22px;}.menu-btn-icon{height:62px;max-width:78px;}}
+@media(min-width:900px){.menu-btn{height:80px;font-size:28px;border-radius:24px;}.menu-btn-icon{height:70px;max-width:86px;}}
 
 .illegal-tile{
   background:linear-gradient(180deg,#ffbcbc,#ff8f8f)!important;
@@ -333,10 +340,6 @@ body.tile-selected .bsq:not(.used){
   :root{ --row-h:54px; }
   /* Home */
   .hc{ max-width:460px; }
-  .mascot-svg{ width:88px !important; height:106px !important; }
-  .hlogo-he{ font-size:68px; }
-  .hlogo-sub{ font-size:13px; }
-  .td{ width:36px; height:40px; font-size:19px; }
   .bd{ font-size:18px; padding:15px 20px; }
   .hbtns{ gap:10px; }
   /* Setup screen */
@@ -390,10 +393,7 @@ body.tile-selected .bsq:not(.used){
   .wt-l .jok-img{ width:28px; height:28px; }
   /* Home */
   .hc{ max-width:560px; }
-  .mascot-svg{ width:100px !important; height:120px !important; }
-  .hlogo-he{ font-size:82px; }
   .bd{ font-size:20px; padding:16px 22px; }
-  .td{ width:42px; height:46px; font-size:22px; }
   /* Setup screen */
   .sbox{ max-width:540px; }
   .stitle{ font-size:30px; }
@@ -818,20 +818,44 @@ body.tile-selected .bsq:not(.used){
 <!-- HOME -->
 <div id="sh" class="screen">
   <div class="hc">
-    <div class="hlogo" style="padding:0;overflow:hidden;">
+    <div class="hlogo">
       <img src="logo.png" alt="בוסט" style="width:100%;display:block;">
     </div>
     <div class="hbtns">
-      <button class="bd" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none;background:linear-gradient(160deg,#f5a020,#c07010);border-color:#a05000;color:#fff;box-shadow:0 5px 0 #703000">▶ המשך משחק שמור</button>
-      <button class="bd g bd-img" onclick="startSetup('vs')"><img src="1v1.png" alt="1 נגד 1" style="width:100%;height:100%;object-fit:contain;display:block;"></button>
-      <button class="bd b bd-img" onclick="startSetup('bot')"><img src="1vBot.png" alt="נגד המחשב" style="width:100%;height:100%;object-fit:contain;display:block;"></button>
-      <button class="bd bd-img" id="btn-online-lobby" onclick="showOnlineLobby()" style="position:relative;background:transparent;border-color:rgba(139,245,250,.45);box-shadow:0 5px 0 #155a5e;"><img src="online.png" alt="משחק אונליין" style="width:100%;height:100%;object-fit:contain;display:block;"><span id="online-badge" style="display:none;position:absolute;top:-6px;left:-6px;background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 6px rgba(231,76,60,.6);animation:onpulse 1.5s ease-in-out infinite;"></span></button>
-      <button class="bd bd-img" onclick="showTutorialIntro()"><img src="tutor.png" alt="הדרכה" style="width:100%;height:100%;object-fit:contain;display:block;"></button>
-      <button class="bd bd-img" onclick="openChampions()"><img src="champions.png" alt="טבלת אלופים" style="width:100%;height:100%;object-fit:contain;display:block;"></button>
-      <button class="bd bd-img" onclick="openSettings()"><img src="settings.png" alt="הגדרות" style="width:100%;height:100%;object-fit:contain;display:block;"></button>
-      <button class="bd bd-img" id="btn-share-game" onclick="shareGame()" style="display:none;"><img src="share.png" alt="שתף את המשחק" style="width:100%;height:100%;object-fit:contain;display:block;"></button>
+      <button class="menu-btn menu-btn-dark" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none;">
+        <span class="menu-btn-text">המשך משחק שמור ▶</span>
+      </button>
+      <button class="menu-btn menu-btn-yellow" onclick="startSetup('vs')">
+        <span class="menu-btn-text">1 נגד 1</span>
+        <img src="1v1.png" class="menu-btn-icon" alt="">
+      </button>
+      <button class="menu-btn menu-btn-cyan" onclick="startSetup('bot')">
+        <span class="menu-btn-text">נגד המחשב</span>
+        <img src="1vBot.png" class="menu-btn-icon" alt="">
+      </button>
+      <button class="menu-btn menu-btn-teal" id="btn-online-lobby" onclick="showOnlineLobby()" style="position:relative;">
+        <span class="menu-btn-text">משחק אונליין</span>
+        <img src="online.png" class="menu-btn-icon" alt="">
+        <span id="online-badge" style="display:none;position:absolute;top:-6px;left:-6px;background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:900;line-height:18px;text-align:center;box-shadow:0 0 6px rgba(231,76,60,.6);animation:onpulse 1.5s ease-in-out infinite;z-index:10;"></span>
+      </button>
+      <button class="menu-btn menu-btn-teal" onclick="showTutorialIntro()">
+        <span class="menu-btn-text">הדרכה</span>
+        <img src="tutor.png" class="menu-btn-icon" alt="">
+      </button>
+      <button class="menu-btn menu-btn-teal" onclick="openChampions()">
+        <span class="menu-btn-text">טבלת אלופים</span>
+        <img src="champions.png" class="menu-btn-icon" alt="">
+      </button>
+      <button class="menu-btn menu-btn-dark" onclick="openSettings()">
+        <span class="menu-btn-text">הגדרות</span>
+        <img src="settings.png" class="menu-btn-icon" alt="">
+      </button>
+      <button class="menu-btn menu-btn-dark" id="btn-share-game" onclick="shareGame()" style="display:none;">
+        <span class="menu-btn-text">שתף את המשחק</span>
+        <img src="share.png" class="menu-btn-icon" alt="">
+      </button>
     </div>
-    <div class="credit" style="margin-top:2px;color:rgba(255,255,255,.25)"><a href="privacy-policy.html" style="color:rgba(255,255,255,.35);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422073852</div>
+    <div class="credit" style="margin-top:4px;color:rgba(255,255,255,.3);text-align:center;font-size:9px;"><a href="privacy-policy.html" style="color:rgba(255,255,255,.4);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260422073852</div>
   </div>
 </div>
 
