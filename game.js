@@ -873,14 +873,22 @@ function refreshSharedTurnTimer(){
   if(!show){
     if(p1Timer) p1Timer.textContent = '--:--';
     if(p2Timer) p2Timer.textContent = '--:--';
+    if(p1Timer) p1Timer.classList.remove('low-time');
+    if(p2Timer) p2Timer.classList.remove('low-time');
     return;
   }
   const secLeft = computeTurnSecondsLeft(activeDeadlineMs);
   const activeValue = formatTimerSec(secLeft);
   value.textContent = activeValue;
   wrap.classList.toggle('urgent', secLeft <= 5);
-  if(p1Timer) p1Timer.textContent = (turn===0) ? activeValue : startTurnValue;
-  if(p2Timer) p2Timer.textContent = (turn===1) ? activeValue : startTurnValue;
+  if(p1Timer){
+    p1Timer.textContent = (turn===0) ? activeValue : startTurnValue;
+    p1Timer.classList.toggle('low-time', turn===0 && secLeft <= 5);
+  }
+  if(p2Timer){
+    p2Timer.textContent = (turn===1) ? activeValue : startTurnValue;
+    p2Timer.classList.toggle('low-time', turn===1 && secLeft <= 5);
+  }
 }
 function setOnlineTurnDeadline(deadlineMs){
   onlineTurnDeadlineMs = Number(deadlineMs || 0);
@@ -7344,5 +7352,4 @@ window.HebrewValidator = {
   getRejectedLog,
 
 };
-
 
