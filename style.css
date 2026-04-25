@@ -25,6 +25,7 @@
   --space-3:clamp(12px,1.2vw,18px);
   --shadow-soft:0 8px 20px rgba(0,0,0,0.25);
   --shadow-hard:0 5px 0 rgba(0,0,0,0.25);
+  --board-size:min(58vh, 620px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);}
@@ -99,14 +100,20 @@ body{font-family:"Rubik","Heebo","Assistant",Arial,sans-serif;direction:rtl;colo
 ═══════════════════════════════════════════════ */
 #sg,
 .game-screen{
+  height:100vh;
   background:
     radial-gradient(circle at 20% 24%, rgba(255,255,255,.2), transparent 38%),
     radial-gradient(circle at 82% 62%, rgba(255,255,255,.14), transparent 44%),
     linear-gradient(145deg,var(--cyan-light) 0%,var(--cyan-mid) 56%,var(--cyan-dark) 100%);
-  align-items:stretch; justify-content:flex-start; overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  overflow:hidden;
 }
 .gr{
   display:flex; flex-direction:column;
+  flex:1;
   width:100%; height:100%;
   min-height:0;
   max-width:min(1520px,100vw); margin:0 auto;
@@ -115,7 +122,8 @@ body{font-family:"Rubik","Heebo","Assistant",Arial,sans-serif;direction:rtl;colo
 }
 
 /* top bar */
-.tbar{
+.tbar,
+.top-hud{
   display:flex; align-items:stretch; gap:0;
   padding:6px; flex-shrink:0;
   background:linear-gradient(180deg,rgba(194,255,255,.44),rgba(111,214,222,.3));
@@ -177,7 +185,8 @@ body{font-family:"Rubik","Heebo","Assistant",Arial,sans-serif;direction:rtl;colo
 .tbtitle{font-size:14px;font-weight:900;color:var(--by);margin-right:auto;padding:0 5px;letter-spacing:1px;}
 
 /* status */
-.sbar{
+.sbar,
+.status-row{
   padding:4px 12px; font-size:12px; color:rgba(255,255,255,.94);
   background:rgba(5,52,71,.58); text-align:center; flex-shrink:0;
   line-height:1.35; min-height:0; border-radius:999px; align-self:center;
@@ -192,9 +201,12 @@ body{font-family:"Rubik","Heebo","Assistant",Arial,sans-serif;direction:rtl;colo
 .game-main{
   flex:1; min-height:0; min-width:0;
   display:grid;
-  grid-template-columns:minmax(176px, .88fr) minmax(0, 2.2fr) minmax(176px, .88fr);
-  align-items:stretch; gap:var(--space-2);
-  padding:var(--space-1) var(--space-1) 16px; overflow:hidden;
+  grid-template-columns:170px minmax(520px, 1fr) 170px;
+  align-items:center;
+  column-gap:48px;
+  row-gap:0;
+  padding:var(--space-1) var(--space-1) 10px;
+  overflow:hidden;
 }
 
 /* left score panel */
@@ -226,6 +238,10 @@ body{font-family:"Rubik","Heebo","Assistant",Arial,sans-serif;direction:rtl;colo
   flex:1; min-width:0; min-height:0;
   display:flex; align-items:center; justify-content:center;
   overflow:visible;
+}
+.board-area{
+  max-height:100%;
+  transform-origin:center;
 }
 .board-center-inner {
   position: relative;
@@ -520,6 +536,8 @@ body.tile-selected .bsq:not(.used){
   display:flex; flex-direction:row; align-items:stretch; gap:3px;
   padding:var(--space-2); flex-shrink:0; justify-content:space-between;
   position:relative;
+  bottom:auto;
+  height:116px;
   background:linear-gradient(180deg,rgba(136,244,250,.42),rgba(32,130,152,.64));
   border:2px solid var(--panel-border);
   border-radius:var(--radius-lg);

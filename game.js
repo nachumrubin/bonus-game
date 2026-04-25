@@ -523,20 +523,14 @@ let BSQ_SIZE  = 22; // px, computed
 
 function computeSizes() {
   const ga = document.querySelector('.game-area');
-  const lp = document.querySelector('.left-panel');
-  const rp = document.querySelector('.right-panel');
-  if (!ga || !lp) return;
+  const boardArea = document.querySelector('.board-area') || document.querySelector('.board-center');
+  if (!ga || !boardArea) return;
 
   const gaH = ga.clientHeight;
   const gaW = ga.clientWidth;
-  const lpW = lp.offsetWidth;
-  const rpW = rp ? rp.offsetWidth : 0;
+  if (gaW < 50 || gaH < 50) return;
 
-  const availW = gaW - lpW - rpW - 4*3;
-  const availH = gaH - 8;
-  if (availW < 50 || availH < 50) return;
-
-  const S = Math.min(availW, availH);
+  const S = Math.min(gaH, gaW, 620);
   CELL_SIZE = Math.max(14, Math.floor((S - 22) / 12));
   BSQ_SIZE  = CELL_SIZE;
 
@@ -551,7 +545,12 @@ function computeSizes() {
   const bci = document.getElementById('board-center-inner');
   const bg  = document.getElementById('board-bg');
   const bdr = document.getElementById('board-border');
-  if (bci) { bci.style.width = gridPx+'px'; bci.style.height = gridPx+'px'; }
+  if (bci) {
+    const boardMax = Math.min(boardArea.clientHeight || gridPx, boardArea.clientWidth || gridPx, 620);
+    const finalSize = Math.min(gridPx, boardMax);
+    bci.style.width = finalSize + 'px';
+    bci.style.height = finalSize + 'px';
+  }
   if (bg)  bg.style.cssText  = `position:absolute;left:${playOff}px;top:${playOff}px;width:${playPx}px;height:${playPx}px;background:var(--grid);z-index:0;pointer-events:none;`;
   if (bdr) bdr.style.cssText = `position:absolute;left:${playOff-2}px;top:${playOff-2}px;width:${playPx+4}px;height:${playPx+4}px;border:3px solid #2a5878;border-radius:3px;box-shadow:0 4px 12px rgba(0,0,0,.35);pointer-events:none;z-index:3;`;
 
@@ -560,9 +559,6 @@ function computeSizes() {
   document.querySelectorAll('.bt-l').forEach(el => el.style.fontSize = tileFont+'px');
   document.querySelectorAll('.bt-v').forEach(el => el.style.fontSize = valFont+'px');
 
-  // Row font sizing — widths/heights are handled by CSS flex:1 + --row-h variable.
-  // We only need to scale the tile letter/value fonts to the rendered tile width.
-  // Use requestAnimationFrame to read offsetWidth after the browser has laid out flex:1.
   requestAnimationFrame(function(){
     const sampleTile = document.querySelector('#brack .bt2');
     const tileW = sampleTile ? Math.max(20, sampleTile.offsetWidth) : 36;
@@ -572,7 +568,7 @@ function computeSizes() {
     document.querySelectorAll('.bplay').forEach(el => el.style.fontSize=Math.max(8,tileW*.2)+'px');
   });
 
-  // Waiting rack tiles — fit to panel width
+  const lp = document.querySelector('.left-panel');
   const panelW = lp ? lp.clientWidth - 6 : 60;
   const wtW = Math.max(44, Math.min(64, panelW));
   document.querySelectorAll('.ss-tiles .wt').forEach(el => {
@@ -584,6 +580,28 @@ function computeSizes() {
   document.querySelectorAll('.ss-tiles .wt-l').forEach(el => {
     el.style.fontSize = Math.max(11, wtW * 0.42) + 'px';
   });
+}
+
+function syncPlayerPanelMode(){
+  const currentMode = (typeof window !== 'undefined' && typeof window.currentMode !== 'undefined') ? window.currentMode : null;
+  const gameMode = (typeof window !== 'undefined' && typeof window.gameMode !== 'undefined') ? window.gameMode : null;
+  const isVsComputer = currentMode === 'computer' || gameMode === 'bot' || gMode === 'bot';
+
+  const p1Avatar = document.getElementById('player1-avatar');
+  const p2Avatar = document.getElementById('player2-avatar');
+  const p1Name = document.getElementById('sn1');
+  const p2Name = document.getElementById('sn2');
+
+  if (p1Avatar) {
+    p1Avatar.src = 'jocker.PNG';
+    p1Avatar.alt = 'שחקן 1';
+  }
+  if (p2Avatar) {
+    p2Avatar.src = isVsComputer ? '1vBot.png' : 'jocker.PNG';
+    p2Avatar.alt = isVsComputer ? 'המחשב' : 'שחקן 2';
+  }
+  if (p1Name) p1Name.textContent = 'שחקן 1';
+  if (p2Name) p2Name.textContent = isVsComputer ? 'המחשב' : 'שחקן 2';
 }
 
 // ═══════════════════════════════════════════════════
@@ -1735,6 +1753,7 @@ function startSetup(mode){
     document.getElementById('p2f').style.display = mode==='vs'?'block':'none';
     document.getElementById('dff').style.display = mode==='bot'?'block':'none';
     document.getElementById('ip2').value = mode==='bot'?'המחשב':'שחקן 2';
+    syncPlayerPanelMode();
     showSc('ss');
   });
 }
@@ -1744,6 +1763,7 @@ function startGame(){
   pNames[0] = document.getElementById('ip1').value.trim()||'שחקן 1';
   pNames[1] = document.getElementById('ip2').value.trim()||(gMode==='bot'?'המחשב':'שחקן 2');
   ['sn1','sn2','en1','en2'].forEach((id,i)=>document.getElementById(id).textContent=pNames[i%2]);
+  syncPlayerPanelMode();
   showCoinTossIntro(pickStartingTurn());
 }
 
@@ -4691,6 +4711,7 @@ function updateUI(){
   const isv2 = document.getElementById('is-sv2'); if(isv2) isv2.textContent = scores[1];
   const isn1 = document.getElementById('is-sn1'); if(isn1) isn1.textContent = pNames[0];
   const isn2 = document.getElementById('is-sn2'); if(isn2) isn2.textContent = pNames[1];
+  syncPlayerPanelMode();
   const issb1 = document.getElementById('is-sb1'); if(issb1) issb1.classList.toggle('act-cell', turn===0);
   const issb2 = document.getElementById('is-sb2'); if(issb2) issb2.classList.toggle('act-cell', turn===1);
   // Locks in info strip
