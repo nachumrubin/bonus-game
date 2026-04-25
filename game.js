@@ -526,11 +526,11 @@ function computeSizes() {
   const boardArea = document.querySelector('.board-area') || document.querySelector('.board-center');
   if (!ga || !boardArea) return;
 
-  const gaH = ga.clientHeight;
-  const gaW = ga.clientWidth;
-  if (gaW < 50 || gaH < 50) return;
+  const boardAreaH = boardArea.clientHeight;
+  const boardAreaW = boardArea.clientWidth;
+  if (boardAreaW < 50 || boardAreaH < 50) return;
 
-  const S = Math.min(gaH, gaW, 620);
+  const S = Math.min(boardAreaH - 8, boardAreaW - 8, 620);
   CELL_SIZE = Math.max(14, Math.floor((S - 22) / 12));
   BSQ_SIZE  = CELL_SIZE;
 
@@ -546,7 +546,7 @@ function computeSizes() {
   const bg  = document.getElementById('board-bg');
   const bdr = document.getElementById('board-border');
   if (bci) {
-    const boardMax = Math.min(boardArea.clientHeight || gridPx, boardArea.clientWidth || gridPx, 620);
+    const boardMax = Math.min((boardArea.clientHeight || gridPx) - 8, (boardArea.clientWidth || gridPx) - 8, 620);
     const finalSize = Math.min(gridPx, boardMax);
     bci.style.width = finalSize + 'px';
     bci.style.height = finalSize + 'px';
