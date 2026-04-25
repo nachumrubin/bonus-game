@@ -16,9 +16,9 @@ test('home logo uses local image asset markup', () => {
 
 test('home logo shell is frameless and home icons are displayed in large cropped format', () => {
   const root = path.join(__dirname, '..', '..');
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
 
-  assert.match(html, /\.hlogo\{background:transparent;border:0;[^}]*box-shadow:none;/);
-  assert.match(html, /\.menu-btn\{width:100%;height:94px;[^}]*font-size:22px;/);
-  assert.match(html, /\.menu-btn-icon\{height:80px;width:120px;object-fit:cover;object-position:left center;/);
+  assert.match(css, /\.hlogo\{background:transparent;border:0;[^}]*box-shadow:none;/);
+  assert.match(css, /\.menu-btn\{width:100%;height:94px;[^}]*font-size:22px;/);
+  assert.match(css, /\.menu-btn-icon\{height:80px;width:120px;object-fit:cover;object-position:left center;/);
 });

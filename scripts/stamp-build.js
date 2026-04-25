@@ -30,6 +30,11 @@ const filesToUpdate = [
         replace: `$1${timestamp}$3`,
         description: 'build label',
       },
+    ],
+  },
+  {
+    file: 'game.js',
+    updates: [
       {
         find: /(navigator\.serviceWorker\.register\('\.\/sw\.js\?v=)(\d{14})('\, \{updateViaCache: 'none'\}\))/,
         replace: `$1${timestamp}$3`,

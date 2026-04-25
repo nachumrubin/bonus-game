@@ -6,12 +6,13 @@ const path = require('node:path');
 test('שאילתה overlay relies on text input without virtual keyboard markup', () => {
   const root = path.join(__dirname, '..', '..');
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const js = fs.readFileSync(path.join(root, 'game.js'), 'utf8');
 
   assert.match(html, /<div class="ovt">שאילתה — מילון<\/div>/);
   assert.match(html, /id="shin" type="text"/);
   assert.doesNotMatch(html, /id="hkb"/);
-  assert.doesNotMatch(html, /function buildKB\(/);
-  assert.doesNotMatch(html, /function kbPress\(/);
+  assert.doesNotMatch(js, /function buildKB\(/);
+  assert.doesNotMatch(js, /function kbPress\(/);
 });
 
 test('שאילתה toolbar button no longer uses keyboard icon', () => {
@@ -26,8 +27,8 @@ test('שאילתה toolbar button no longer uses keyboard icon', () => {
 
 test('החלפת אות overlay uses larger tile dimensions', () => {
   const root = path.join(__dirname, '..', '..');
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
 
-  assert.match(html, /#exch-rack \.bt2\{width:54px;height:64px;\}/);
-  assert.match(html, /#exch-rack \.bt2-l\{font-size:28px;\}/);
+  assert.match(css, /#exch-rack \.bt2\{width:54px;height:64px;\}/);
+  assert.match(css, /#exch-rack \.bt2-l\{font-size:28px;\}/);
 });
