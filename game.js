@@ -863,14 +863,24 @@ function getActiveTurnDeadlineMs(){
 function refreshSharedTurnTimer(){
   const wrap = document.getElementById('turn-timer');
   const value = document.getElementById('turn-timer-value');
+  const p1Timer = document.getElementById('p1-timer-value');
+  const p2Timer = document.getElementById('p2-timer-value');
   if(!wrap || !value) return;
   const activeDeadlineMs = getActiveTurnDeadlineMs();
   const show = !!(gameSettings.timelimit && activeDeadlineMs>0);
   wrap.style.display = show ? 'flex' : 'none';
-  if(!show) return;
+  const startTurnValue = formatTimerSec(gameSettings.botTime || 0);
+  if(!show){
+    if(p1Timer) p1Timer.textContent = '--:--';
+    if(p2Timer) p2Timer.textContent = '--:--';
+    return;
+  }
   const secLeft = computeTurnSecondsLeft(activeDeadlineMs);
-  value.textContent = formatTimerSec(secLeft);
+  const activeValue = formatTimerSec(secLeft);
+  value.textContent = activeValue;
   wrap.classList.toggle('urgent', secLeft <= 5);
+  if(p1Timer) p1Timer.textContent = (turn===0) ? activeValue : startTurnValue;
+  if(p2Timer) p2Timer.textContent = (turn===1) ? activeValue : startTurnValue;
 }
 function setOnlineTurnDeadline(deadlineMs){
   onlineTurnDeadlineMs = Number(deadlineMs || 0);
@@ -7334,6 +7344,5 @@ window.HebrewValidator = {
   getRejectedLog,
 
 };
-
 
 
