@@ -27,7 +27,7 @@ test('css defines redesigned board shell and rack action styles', () => {
   assert.match(css, /--cyan-light:\s*#8BF5FA;/);
   assert.match(css, /--panel-bg:\s*rgba\(255,255,255,0\.12\);/);
   assert.match(css, /--tile-bg-top:\s*#fff3cf;/);
-  assert.match(css, /\.game-area(?:,\s*\.game-main)?\s*\{[^}]*grid-template-columns:[^;]*minmax\(176px, \.88fr\)[^;]*2\.2fr/s);
+  assert.match(css, /\.game-area(?:,\s*\.game-main)?\s*\{[^}]*grid-template-columns:\s*170px minmax\(520px, 1fr\) 170px;/s);
   assert.match(css, /\.board-center-inner\s*\{[^}]*border-radius:28px;/s);
   assert.match(css, /\.bag-display\s*\{[^}]*border-radius:var\(--radius-md\);/s);
   assert.match(css, /\.player-card\s*\{[^}]*border-radius:28px;/s);
@@ -45,4 +45,19 @@ test('timer refresh toggles low-time pulse class on active player timer only', (
   assert.match(js, /p2Timer\.classList\.toggle\('low-time', turn===1 && secLeft <= 5\)/);
   assert.match(js, /if\(p1Timer\) p1Timer\.classList\.remove\('low-time'\);/);
   assert.match(js, /if\(p2Timer\) p2Timer\.classList\.remove\('low-time'\);/);
+});
+
+
+test('player panel mode uses player avatars for 1v1 and bot avatar only in computer mode', () => {
+  const js = fs.readFileSync(path.join(root, 'game.js'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+  assert.match(js, /function syncPlayerPanelMode\(\)/);
+  assert.match(js, /const isVsComputer = currentMode === 'computer' \|\| gameMode === 'bot' \|\| gMode === 'bot';/);
+  assert.match(js, /p1Avatar\.src = 'jocker\.PNG';/);
+  assert.match(js, /p2Avatar\.src = isVsComputer \? '1vBot\.png' : 'jocker\.PNG';/);
+  assert.match(js, /p2Name\) p2Name\.textContent = isVsComputer \? 'המחשב' : 'שחקן 2';/);
+
+  assert.match(html, /id="player1-avatar"/);
+  assert.match(html, /id="player2-avatar"/);
 });

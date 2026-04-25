@@ -19,8 +19,26 @@ test('game screen layout keeps rack in normal flow below board', () => {
   const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 
-  assert.match(css, /#sg,\s*\.game-screen\s*\{[^}]*overflow:\s*hidden;/s);
-  assert.match(css, /\.game-area,\s*\.game-main\s*\{[^}]*flex:\s*1;[^}]*padding:[^}]*16px[^}]*overflow:\s*hidden;/s);
-  assert.match(css, /\.bot,\s*\.rack-bar\s*\{[^}]*flex-shrink:\s*0;[^}]*position:\s*relative;|\.bot,\s*\.rack-bar\s*\{[^}]*position:\s*relative;[^}]*flex-shrink:\s*0;/s);
+  assert.match(css, /#sg,\s*\.game-screen\s*\{[^}]*height:\s*100vh;[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/s);
+  assert.match(css, /\.game-area,\s*\.game-main\s*\{[^}]*flex:\s*1;[^}]*grid-template-columns:\s*170px minmax\(520px, 1fr\) 170px;[^}]*grid-template-areas:\"left board right\";[^}]*column-gap:\s*48px;[^}]*overflow:\s*hidden;/s);
+  assert.match(css, /\.bot,\s*\.rack-bar\s*\{[^}]*flex-shrink:\s*0;[^}]*position:\s*relative;[^}]*height:\s*116px;/s);
   assert.match(html, /class="bot rack-bar"/);
+});
+
+
+test('board area keeps scaling boundary and rack stays in normal flow', () => {
+  const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
+
+  assert.match(css, /--board-size:\s*min\(58vh, 620px\);/);
+  assert.match(css, /\.board-area\s*\{[^}]*max-height:\s*100%;[^}]*transform-origin:\s*center;/s);
+  assert.match(css, /\.rack-bar\s*\{[^}]*height:\s*116px;/s);
+});
+
+
+test('computeSizes uses board-area bounds to avoid rack overlap clipping', () => {
+  const js = fs.readFileSync(path.join(root, 'game.js'), 'utf8');
+
+  assert.match(js, /const boardAreaH = boardArea\.clientHeight;/);
+  assert.match(js, /const boardAreaW = boardArea\.clientWidth;/);
+  assert.match(js, /const S = Math\.min\(boardAreaH - 8, boardAreaW - 8, 620\);/);
 });
