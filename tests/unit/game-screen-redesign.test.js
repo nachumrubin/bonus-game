@@ -27,7 +27,7 @@ test('css defines redesigned board shell and rack action styles', () => {
   assert.match(css, /--cyan-light:\s*#8BF5FA;/);
   assert.match(css, /--panel-bg:\s*rgba\(255,255,255,0\.12\);/);
   assert.match(css, /--tile-bg-top:\s*#fff3cf;/);
-  assert.match(css, /\.game-area\s*\{[^}]*grid-template-columns:[^;]*minmax\(176px, \.88fr\)[^;]*2\.2fr/s);
+  assert.match(css, /\.game-area(?:,\s*\.game-main)?\s*\{[^}]*grid-template-columns:[^;]*minmax\(176px, \.88fr\)[^;]*2\.2fr/s);
   assert.match(css, /\.board-center-inner\s*\{[^}]*border-radius:28px;/s);
   assert.match(css, /\.bag-display\s*\{[^}]*border-radius:var\(--radius-md\);/s);
   assert.match(css, /\.player-card\s*\{[^}]*border-radius:28px;/s);
