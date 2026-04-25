@@ -17,6 +17,8 @@ test('game screen keeps required ids and adds redesigned player/timer shells', (
   assert.match(html, /id="p2-timer-value"/);
   assert.match(html, /class="bag-badge"/);
   assert.match(html, /id="btn-shuffle"/);
+  assert.match(html, /class="tb-icon-img"/);
+  assert.match(html, /id="turn-timer" class="turn-timer hud-hidden"/);
 });
 
 test('css defines redesigned board shell and rack action styles', () => {
@@ -24,6 +26,9 @@ test('css defines redesigned board shell and rack action styles', () => {
 
   assert.match(css, /\.board-center-inner\s*\{[^}]*border-radius:28px;/s);
   assert.match(css, /\.bag-display\s*\{[^}]*border-radius:18px;/s);
-  assert.match(css, /\.player-card\s*\{[^}]*border-radius:24px;/s);
+  assert.match(css, /\.player-card\s*\{[^}]*border-radius:28px;/s);
   assert.match(css, /\.bplay-submit\{[^}]*rgba\(249,245,75,.75\)/s);
+  assert.match(css, /\.bt2\{[^}]*#fff3d0[^}]*#e7d5ad/s);
+  assert.match(css, /\.board-center-inner::before\s*\{[^}]*radial-gradient/s);
+  assert.match(css, /\.sbar:empty\{display:none;\}/);
 });

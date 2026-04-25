@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>בוסט — שבץ נא</title>
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Heebo:wght@300;400;500;700;900&family=Rubik:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <!-- PWA -->
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="manifest" href="manifest.json">
@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260425214000">
+<meta name="version" content="20260425225500">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -65,7 +65,7 @@
         <img src="share.png" class="menu-btn-icon" alt="">
       </button>
     </div>
-    <div class="credit" style="margin-top:4px;color:rgba(255,255,255,.3);text-align:center;font-size:9px;"><a href="privacy-policy.html" style="color:rgba(255,255,255,.4);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260425214000</div>
+    <div class="credit" style="margin-top:4px;color:rgba(255,255,255,.3);text-align:center;font-size:9px;"><a href="privacy-policy.html" style="color:rgba(255,255,255,.4);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260425225500</div>
   </div>
 </div>
 
@@ -264,19 +264,19 @@
           <span id="bag-count-text" class="bag-count">98</span>
         </div>
       </div>
-      <button class="tb music-btn" id="music-toggle" onclick="toggleMusic()"><span class="tb-ic">🎵</span><span class="tb-tx">סאונד</span></button>
-      <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
-      <button class="tb" onclick="showLegend()"><span class="tb-ic">📋</span><span class="tb-tx">טבלת אותיות</span></button>
-      <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
-      <button class="tb" onclick="doExchange()"><span class="tb-ic">🔁</span><span class="tb-tx">החלפת אות</span></button>
-      <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
-      <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
-      <button class="tb" onclick="goHome()"><span class="tb-ic">🏠</span><span class="tb-tx">בית</span></button>
+      <button class="tb music-btn" id="music-toggle" onclick="toggleMusic()"><img class="tb-icon-img" src="online.png" alt=""><span class="tb-tx">סאונד</span></button>
+      <button class="tb" onclick="openEndMenu()"><img class="tb-icon-img" src="champions.png" alt=""><span class="tb-tx">סיום</span></button>
+      <button class="tb" onclick="showLegend()"><img class="tb-icon-img" src="tutor.png" alt=""><span class="tb-tx">טבלת אותיות</span></button>
+      <button class="tb" onclick="openShailta()"><img class="tb-icon-img" src="share.png" alt=""><span class="tb-tx">שאילתה</span></button>
+      <button class="tb" onclick="doExchange()"><img class="tb-icon-img" src="1v1.png" alt=""><span class="tb-tx">החלפת אות</span></button>
+      <button class="tb" onclick="openSettings()"><img class="tb-icon-img" src="settings.png" alt=""><span class="tb-tx">הגדרות</span></button>
+      <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><img class="tb-icon-img" src="tutor.png" alt=""><span class="tb-tx">הפסקה</span></button>
+      <button class="tb" onclick="goHome()"><img class="tb-icon-img" src="logo.png" alt=""><span class="tb-tx">בית</span></button>
     </div>
     <!-- status -->
     <div class="sbar" id="sbar">בחר אות מהמגש ולחץ על משבצת</div>
-    <div id="turn-banner" style="display:none;text-align:center;font-size:13px;font-weight:900;padding:3px 8px;flex-shrink:0;letter-spacing:.5px;"></div>
-    <div id="turn-timer" class="turn-timer">
+    <div id="turn-banner" class="hud-hidden" style="display:none;text-align:center;font-size:13px;font-weight:900;padding:3px 8px;flex-shrink:0;letter-spacing:.5px;"></div>
+    <div id="turn-timer" class="turn-timer hud-hidden">
       <span class="tt-label">טיימר תור</span>
       <span class="tt-value" id="turn-timer-value">--</span>
     </div>
