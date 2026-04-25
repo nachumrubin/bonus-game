@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-const source = fs.readFileSync('index.html', 'utf8');
+const source = fs.readFileSync('game.js', 'utf8');
 
 function extractValidatorModule() {
   const startMarker = "const _HV = {";
@@ -12,7 +12,7 @@ function extractValidatorModule() {
   const end = source.indexOf(endMarker);
 
   if (start === -1 || end === -1 || end <= start) {
-    throw new Error('Could not locate Hebrew validator module boundaries in index.html');
+    throw new Error('Could not locate Hebrew validator module boundaries in game.js');
   }
 
   const tail = source.indexOf('};', end);

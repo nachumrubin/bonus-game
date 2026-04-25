@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-const source = fs.readFileSync('index.html', 'utf8');
+const source = fs.readFileSync('game.js', 'utf8');
 const dictMatch = source.match(/const B64 = "([A-Za-z0-9+/=]+)";/);
 const dictBaseUrlMatch = source.match(/const DICT_BASE_URL = '([^']+)';/);
 
@@ -14,7 +14,7 @@ function extractLoaderSnippet() {
   const end = source.indexOf(endMarker);
 
   if (start === -1 || end === -1 || end <= start) {
-    throw new Error('Could not locate dictionary loader helper boundaries in index.html');
+    throw new Error('Could not locate dictionary loader helper boundaries in game.js');
   }
 
   return 'let DICT = new Set();\n' + source.slice(start, end) + '\nglobalThis.__getDICT = () => DICT;';

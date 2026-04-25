@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
-const source = fs.readFileSync('index.html', 'utf8');
+const source = fs.readFileSync('game.js', 'utf8');
 
 function extractFunction(name) {
   const startToken = `function ${name}(`;
