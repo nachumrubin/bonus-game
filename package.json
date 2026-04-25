@@ -6,6 +6,7 @@
   "scripts": {
     "test:unit": "node --test tests/unit/*.test.js",
     "test:e2e": "playwright test",
+    "test:e2e:artifacts": "playwright test --trace on --video on --screenshot on",
     "test:e2e:headed": "playwright test --headed",
     "dict:add": "node scripts/add-dictionary-words.js",
     "dict:export": "node scripts/export-dictionary-file.js"

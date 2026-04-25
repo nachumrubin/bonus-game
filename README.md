@@ -41,6 +41,27 @@ node scripts/stamp-build.js 20260329150000
 
 The script expects a 14-digit format: `YYYYMMDDHHmmss` (UTC).
 
+## E2E artifacts (screenshots, traces, video)
+
+Run the default E2E suite:
+
+```bash
+npm run test:e2e
+```
+
+Run with artifact-friendly settings (always captures screenshot/trace/video):
+
+```bash
+npm run test:e2e:artifacts
+```
+
+Where artifacts are written:
+- Playwright outputs run artifacts under `test-results/` (screenshots, traces, videos per test run).
+
+How to attach in PR/chat:
+- In a PR: upload files from `test-results/` in the PR comment or as workflow artifacts.
+- In chat: drag-and-drop the specific screenshot/video/trace file(s) from `test-results/`.
+
 ## Firebase Realtime Database index for champions
 
 The global champions leaderboard queries `globalChampions` ordered by `score`.
