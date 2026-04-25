@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260425203000">
+<meta name="version" content="20260425214000">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -65,7 +65,7 @@
         <img src="share.png" class="menu-btn-icon" alt="">
       </button>
     </div>
-    <div class="credit" style="margin-top:4px;color:rgba(255,255,255,.3);text-align:center;font-size:9px;"><a href="privacy-policy.html" style="color:rgba(255,255,255,.4);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260425203000</div>
+    <div class="credit" style="margin-top:4px;color:rgba(255,255,255,.3);text-align:center;font-size:9px;"><a href="privacy-policy.html" style="color:rgba(255,255,255,.4);text-decoration:none" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260425214000</div>
   </div>
 </div>
 
@@ -258,23 +258,20 @@
   <div class="gr">
     <!-- top bar -->
     <div class="tbar">
-      <button class="tb" onclick="goHome()"><span class="tb-ic">🏠</span><span class="tb-tx">בית</span></button>
-      <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
-      <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
-      <button class="tb" onclick="doExchange()">החלפת<br>אות</button>
-      <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
-      
-      <button class="tb" onclick="showLegend()"><span class="tb-ic">📋</span><span class="tb-tx">טבלת אותיות</span></button>
-      <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
-      <button class="tb music-btn" id="music-toggle" onclick="toggleMusic()"><span class="tb-ic">🎵</span><span class="tb-tx">מוזיקה</span></button>
-      
-      <!-- Bag display in top bar -->
-      <div id="bag-char" style="line-height:1;text-align:center;cursor:default;flex:1;min-width:0;" title="שקית האותיות">
-        <div id="bag-display" style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.2);border-radius:3px;width:100%;height:100%;box-sizing:border-box;overflow:hidden;">
-          <span style="font-family:'Heebo',sans-serif;font-size:9px;font-weight:900;color:rgba(255,255,255,.55);letter-spacing:.5px;line-height:1;">קופה</span>
-          <span id="bag-count-text" style="font-family:'Heebo',sans-serif;font-size:22px;font-weight:900;color:#e8c840;line-height:1.1;">98</span>
+      <div id="bag-char" class="bag-badge" title="שקית האותיות">
+        <div id="bag-display" class="bag-display">
+          <span class="bag-label">קופה</span>
+          <span id="bag-count-text" class="bag-count">98</span>
         </div>
       </div>
+      <button class="tb music-btn" id="music-toggle" onclick="toggleMusic()"><span class="tb-ic">🎵</span><span class="tb-tx">סאונד</span></button>
+      <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
+      <button class="tb" onclick="showLegend()"><span class="tb-ic">📋</span><span class="tb-tx">טבלת אותיות</span></button>
+      <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
+      <button class="tb" onclick="doExchange()"><span class="tb-ic">🔁</span><span class="tb-tx">החלפת אות</span></button>
+      <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
+      <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
+      <button class="tb" onclick="goHome()"><span class="tb-ic">🏠</span><span class="tb-tx">בית</span></button>
     </div>
     <!-- status -->
     <div class="sbar" id="sbar">בחר אות מהמגש ולחץ על משבצת</div>
@@ -312,9 +309,13 @@
     <div class="game-area">
       <!-- left panel: scores + P1 waiting tiles -->
       <div class="left-panel">
-        <div class="pb"><div class="lcd" id="lcd">00</div><div class="pl">מהלכים</div></div>
-        <div class="scbox act" id="sb1"><div class="scname" id="sn1">שחקן 1</div><div class="scval" style="color:var(--p1)" id="sv1">0</div></div>
-        <div class="scbox" id="sb2"><div class="scname" id="sn2">שחקן 2</div><div class="scval" style="color:var(--p2)" id="sv2">0</div></div>
+        <div class="player-card scbox act" id="sb1">
+          <div class="scname" id="sn1">שחקן 1</div>
+          <div class="player-avatar"><img src="jocker.PNG" alt="שחקן 1"></div>
+          <div class="score-box"><div class="scval" style="color:#F9F54B" id="sv1">0</div><div class="score-label">נקודות</div></div>
+          <div class="timer-box"><div class="pl">נותר זמן</div><div class="player-timer" id="p1-timer-value">--:--</div></div>
+        </div>
+        <div class="lcd-wrap"><div class="lcd" id="lcd">00</div><div class="pl">מהלכים</div></div>
         <!-- P1 waiting tiles appear here when it's P2's turn -->
         <div id="ss-label-p1" style="font-size:8px;font-weight:900;color:var(--p1);text-align:center;padding:2px 0 1px;opacity:.85;display:none;"></div>
         <div class="ss-tiles" id="ss-tiles-p1"></div>
@@ -329,15 +330,17 @@
       </div>
       <!-- right panel: controls + P2 waiting tiles -->
       <div class="right-panel">
-        <!-- direction buttons hidden -->
-        <div class="pb" style="display:none"><div class="pl">כיוון</div><div class="dpair"><button class="dm a" id="bh" onclick="setDir('H')">→ אופקי</button><button class="dm" id="bv" onclick="setDir('V')">↕ אנכי</button></div></div>
-        <div class="pb">
-          <div class="pl">נעילות</div>
-          <div id="lock-inv-display" style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;font-size:10px;color:var(--by);font-weight:700;min-height:16px;"></div>
+        <div class="player-card scbox" id="sb2">
+          <div class="scname" id="sn2">המחשב</div>
+          <div class="player-avatar"><img src="1vBot.png" alt="המחשב"></div>
+          <div class="score-box"><div class="scval" style="color:#ff7cc7" id="sv2">0</div><div class="score-label">נקודות</div></div>
+          <div class="timer-box"><div class="pl">נותר זמן</div><div class="player-timer" id="p2-timer-value">--:--</div></div>
         </div>
-        <div class="pb" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">
+        <div class="pb turn-panel" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">
           <div class="pl">תור</div>
           <div id="turn-name" style="font-size:9px;color:rgba(255,255,255,.8);text-align:center;font-weight:700;word-break:break-all;"></div>
+          <div class="pl">נעילות</div>
+          <div id="lock-inv-display" style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;font-size:10px;color:var(--by);font-weight:700;min-height:16px;"></div>
         </div>
         <!-- P2 waiting tiles appear here when it's P1's turn -->
         <div id="ss-label-p2" style="font-size:8px;font-weight:900;color:var(--p2);text-align:center;padding:2px 0 1px;opacity:.85;display:none;"></div>
@@ -347,9 +350,12 @@
 
     <!-- bottom rack: active player's tiles -->
     <div class="bot">
+      <div class="rack-actions left-actions">
+        <button class="bplay bplay-alt" id="btn-shuffle" type="button" aria-label="ערבב">ערבב<br>🔀</button>
+        <button class="bplay bplay-alt" id="btn-recall" onclick="doRecall()">בטל<br>↩</button>
+      </div>
       <div class="brack" id="brack"></div>
-      <button class="bplay" id="btn-recall" onclick="doRecall()" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2);">בטל<br>↩</button>
-      <button class="bplay" id="btn-play" onclick="playWord()">שבץ<br>✓</button>
+      <button class="bplay bplay-submit" id="btn-play" onclick="playWord()">שלח<br>✓</button>
     </div>
     <!-- hidden brack2 kept for compatibility -->
     <div id="brack2-row" style="display:none">
