@@ -27,27 +27,25 @@ function getCompactLandscapeBlock(css) {
   return css.slice(start, end + 1);
 }
 
-test('compact landscape enforces strict vertical flow with in-flow rack', () => {
+test('compact landscape uses required grid rows and in-flow rack', () => {
   const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
   const block = getCompactLandscapeBlock(css);
 
-  assert.match(block, /\.game-screen,[\s\S]*#sg\s*\{[\s\S]*height:\s*100vh;[\s\S]*display:\s*flex;[\s\S]*flex-direction:\s*column;[\s\S]*overflow:\s*hidden;/s);
-  assert.match(block, /\.top-hud\s*\{[\s\S]*height:\s*50px;[\s\S]*flex:\s*0 0 50px;/s);
-  assert.match(block, /\.status-row,[\s\S]*\.sbar\s*\{[\s\S]*height:\s*22px;[\s\S]*flex:\s*0 0 22px;/s);
-  assert.match(block, /\.rack-bar,[\s\S]*\.bot\s*\{[\s\S]*position:\s*relative\s*!important;[\s\S]*bottom:\s*auto\s*!important;[\s\S]*inset:\s*auto\s*!important;[\s\S]*height:\s*72px;[\s\S]*flex:\s*0 0 72px;[\s\S]*margin-top:\s*6px;/s);
-  assert.doesNotMatch(block, /\.rack-bar[\s\S]*position:\s*(fixed|absolute)/s);
+  assert.match(block, /\.game-screen\s*\{[\s\S]*height:\s*100dvh;[\s\S]*display:\s*grid;[\s\S]*grid-template-rows:\s*52px 24px 1fr 74px;[\s\S]*overflow:\s*hidden;/s);
+  assert.match(block, /\.top-hud\s*\{[\s\S]*grid-row:\s*1;[\s\S]*height:\s*52px;/s);
+  assert.match(block, /\.status-row\s*\{[\s\S]*grid-row:\s*2;[\s\S]*height:\s*24px;/s);
 
-  assert.match(block, /\.game-main,[\s\S]*\.game-area\s*\{[\s\S]*flex:\s*1;[\s\S]*min-height:\s*0;[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*96px 1fr 96px;[\s\S]*column-gap:\s*10px;[\s\S]*overflow:\s*hidden;/s);
+  assert.match(block, /\.game-main\s*\{[\s\S]*grid-row:\s*3;[\s\S]*min-height:\s*0;[\s\S]*display:\s*grid;[\s\S]*grid-template-columns:\s*100px minmax\(0, 1fr\) 100px;[\s\S]*gap:\s*10px;[\s\S]*overflow:\s*hidden;/s);
+  assert.match(block, /\.rack-bar\s*\{[\s\S]*grid-row:\s*4;[\s\S]*height:\s*74px;[\s\S]*position:\s*static\s*!important;[\s\S]*margin:\s*0 10px 4px;/s);
+  assert.doesNotMatch(block, /\.rack-bar\s*\{[\s\S]*position:\s*(fixed|absolute)/s);
 });
 
-test('compact landscape constrains board and panels without transform hacks', () => {
+test('compact landscape constrains board and side panels with required dimensions', () => {
   const css = fs.readFileSync(path.join(root, 'style.css'), 'utf8');
   const block = getCompactLandscapeBlock(css);
 
-  assert.match(block, /\.board-area,[\s\S]*\.board-center\s*\{[\s\S]*width:\s*auto;[\s\S]*height:\s*100%;[\s\S]*max-height:\s*100%;[\s\S]*aspect-ratio:\s*1 \/ 1;[\s\S]*display:\s*flex;[\s\S]*justify-content:\s*center;[\s\S]*align-items:\s*center;[\s\S]*transform:\s*none\s*!important;[\s\S]*overflow:\s*hidden;/s);
-  assert.match(block, /\.board-grid,[\s\S]*#game-grid\s*\{[\s\S]*width:\s*auto;[\s\S]*height:\s*100%;[\s\S]*aspect-ratio:\s*1 \/ 1;[\s\S]*max-width:\s*100%;[\s\S]*max-height:\s*100%;[\s\S]*overflow:\s*hidden;/s);
-  assert.doesNotMatch(block, /\.board-area[\s\S]*transform:\s*scale\(/s);
-
-  assert.match(block, /\.player-panel,[\s\S]*\.player-card\s*\{[\s\S]*width:\s*96px;[\s\S]*padding:\s*5px;[\s\S]*border-radius:\s*14px;[\s\S]*overflow:\s*hidden;/s);
-  assert.match(block, /\.player-avatar,[\s\S]*\.player-panel \.avatar,[\s\S]*\.player-card \.avatar\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*44px;[\s\S]*object-fit:\s*contain;/s);
+  assert.match(block, /\.board-area\s*\{[\s\S]*width:\s*min\(100%, calc\(100dvh - 52px - 24px - 74px - 18px\)\);[\s\S]*height:\s*min\(100%, calc\(100dvh - 52px - 24px - 74px - 18px\)\);[\s\S]*aspect-ratio:\s*1 \/ 1;[\s\S]*transform:\s*none\s*!important;[\s\S]*position:\s*relative;/s);
+  assert.match(block, /\.board-grid\s*\{[\s\S]*width:\s*100%;[\s\S]*height:\s*100%;[\s\S]*aspect-ratio:\s*1 \/ 1;/s);
+  assert.match(block, /\.player-panel\s*\{[\s\S]*width:\s*100px;[\s\S]*max-height:\s*100%;[\s\S]*padding:\s*4px;[\s\S]*overflow:\s*hidden;/s);
+  assert.match(block, /\.player-avatar,[\s\S]*\.player-panel \.avatar\s*\{[\s\S]*width:\s*42px;[\s\S]*height:\s*42px;/s);
 });
