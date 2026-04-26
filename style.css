@@ -222,6 +222,7 @@ body{font-family:"Rubik","Heebo","Assistant",Arial,sans-serif;direction:rtl;colo
   column-gap:var(--side-gap);
   row-gap:0;
   padding:var(--space-1) var(--space-1) 10px;
+  padding-bottom:10px;
   overflow:hidden;
 }
 
@@ -267,14 +268,18 @@ body{font-family:"Rubik","Heebo","Assistant",Arial,sans-serif;direction:rtl;colo
 .board-area{
   width:var(--board-size);
   height:var(--board-size);
+  max-height:calc(100% - 12px);
   position:relative;
   display:flex;
   justify-content:center;
   align-items:center;
 }
 .board-grid{
-  width:100%;
+  width:auto;
   height:100%;
+  aspect-ratio:1 / 1;
+  max-width:100%;
+  max-height:100%;
 }
 .board-center-inner {
   position: relative;
@@ -576,6 +581,7 @@ body.tile-selected .bsq:not(.used){
   border-radius:var(--radius-lg);
   box-shadow:var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,.3);
   backdrop-filter: blur(2px);
+  margin-top:6px;
 }
 #rack-buttons-row{ display:none; }
 /* Generic flex rack (used by exchange overlay etc.) */
@@ -962,9 +968,9 @@ body.tile-selected .bsq:not(.used){
     position: relative !important;
     bottom: auto !important;
     inset: auto !important;
-    height: 80px;
-    flex: 0 0 80px;
-    margin: 0;
+    height: 72px;
+    flex: 0 0 72px;
+    margin-top: 6px;
     z-index: auto;
   }
 
@@ -973,19 +979,22 @@ body.tile-selected .bsq:not(.used){
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: 110px 1fr 110px;
-    gap: 10px;
+    grid-template-columns: 96px 1fr 96px;
+    column-gap: 10px;
+    row-gap: 0;
     align-items: center;
     justify-items: center;
     overflow: hidden;
-    padding: 0 8px;
+    padding: 0 8px 10px;
     margin: 0;
   }
 
   .board-area,
   .board-center {
-    width: 100%;
+    width: auto;
     height: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
     min-width: 0;
     min-height: 0;
     display: flex;
@@ -998,7 +1007,7 @@ body.tile-selected .bsq:not(.used){
 
   .board-grid,
   #game-grid {
-    width: 100%;
+    width: auto;
     height: 100%;
     aspect-ratio: 1 / 1;
     max-width: 100%;
@@ -1008,10 +1017,10 @@ body.tile-selected .bsq:not(.used){
 
   .player-panel,
   .player-card {
-    width: 100%;
+    width: 96px;
     max-height: 100%;
-    padding: 4px;
-    border-radius: 12px;
+    padding: 5px;
+    border-radius: 14px;
     box-sizing: border-box;
     overflow: hidden;
   }
@@ -1019,37 +1028,49 @@ body.tile-selected .bsq:not(.used){
   .player-avatar,
   .player-panel .avatar,
   .player-card .avatar {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
+    margin: 2px auto 5px;
+    object-fit: contain;
   }
 
   .score-card,
   .timer-card,
   .score-box,
   .timer-box {
-    padding: 2px;
-    margin-top: 2px;
+    width: 100%;
+    padding: 4px 2px;
+    margin-top: 4px;
+    border-radius: 10px;
+    box-sizing: border-box;
   }
 
   .score-value,
   .score-box .scval {
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1;
   }
 
   .timer-value,
   .player-timer {
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1;
+    white-space: nowrap;
   }
 
-  .player-name,
+  .player-name {
+    font-size: 10px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
   .score-label,
   .timer-label,
   .timer-box .pl,
   .scname {
-    font-size: 8px;
-    line-height: 1.1;
+    font-size: 9px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .bonus-tile,
@@ -1061,14 +1082,14 @@ body.tile-selected .bsq:not(.used){
   .rack-tile,
   .tile,
   .bt2 {
-    width: 46px;
-    height: 58px;
+    width: 44px;
+    height: 54px;
   }
 
   .submit,
   .rack-action,
   .bplay {
-    height: 58px;
+    height: 54px;
     min-width: 72px;
   }
 }
