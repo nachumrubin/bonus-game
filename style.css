@@ -935,6 +935,165 @@ body.tile-selected .bsq:not(.used){
 .is-locks{ font-size:9px; color:var(--by); font-weight:700; white-space:nowrap; }
 
 
+@media (max-height: 520px) and (orientation: landscape) {
+  :root {
+    --top-hud-h: 54px;
+    --status-h: 24px;
+    --rack-h: 86px;
+    --safe-gap: 8px;
+
+    --side-panel-w: 92px;
+    --side-gap: 8px;
+
+    --board-size: min(
+      calc(100vh - var(--top-hud-h) - var(--status-h) - var(--rack-h) - var(--safe-gap)),
+      calc(100vw - (2 * var(--side-panel-w)) - (2 * var(--side-gap)) - 24px),
+      430px
+    );
+  }
+
+  .gr {
+    gap: 0;
+    padding: 6px 8px;
+  }
+
+  .top-hud {
+    height: var(--top-hud-h);
+    margin: 4px 8px;
+    padding: 4px;
+  }
+
+  .top-menu button {
+    height: 44px;
+    padding: 2px 4px;
+  }
+
+  .top-menu img,
+  .top-menu .icon,
+  .tb-icon-img {
+    width: 18px;
+    height: 18px;
+  }
+
+  .top-menu .label,
+  .tb .tb-tx {
+    font-size: 9px;
+  }
+
+  .status-row,
+  .sbar {
+    height: var(--status-h);
+    margin: 2px 0;
+    padding: 1px 8px;
+    font-size: 12px;
+  }
+
+  .game-main,
+  .game-area {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--side-panel-w) var(--board-size) var(--side-panel-w);
+    column-gap: var(--side-gap);
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+  }
+
+  .board-area,
+  .board-center {
+    width: var(--board-size);
+    height: var(--board-size);
+  }
+
+  .player-panel,
+  .player-card {
+    width: var(--side-panel-w);
+    min-width: var(--side-panel-w);
+    padding: 5px;
+    border-radius: 14px;
+    gap: 5px;
+  }
+
+  .player-panel .avatar,
+  .player-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .score-card,
+  .timer-card,
+  .score-box,
+  .timer-box,
+  .lcd-wrap {
+    padding: 3px;
+    margin-top: 4px;
+    border-radius: 10px;
+  }
+
+  .score-value,
+  .score-box .scval {
+    font-size: 20px;
+  }
+
+  .timer-value,
+  .player-timer {
+    font-size: 18px;
+  }
+
+  .score-label,
+  .timer-label,
+  .player-name,
+  .timer-box .pl,
+  .scname {
+    font-size: 10px;
+  }
+
+  .rack-bar,
+  .bot {
+    height: var(--rack-h);
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .rack-tile,
+  .tile,
+  .bt2 {
+    width: 48px;
+    height: 60px;
+    border-radius: 8px;
+    flex: 0 0 48px;
+    aspect-ratio: auto;
+  }
+
+  .rack-tile .letter,
+  .tile-letter,
+  .bt2-l {
+    font-size: 28px;
+  }
+
+  .rack-tile .points,
+  .tile-score,
+  .bt2-v {
+    font-size: 10px;
+  }
+
+  .submit,
+  .rack-action,
+  .bplay {
+    height: 64px;
+    min-width: 72px;
+    font-size: 14px;
+  }
+
+  .bonus-tile,
+  .bsq {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 /* ═══════════════════════════════════
    ONLINE MULTIPLAYER STYLES
 ═══════════════════════════════════ */
