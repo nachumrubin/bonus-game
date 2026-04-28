@@ -1,0 +1,12 @@
+R_DEF: Internal format may change without notice
+local
+bool enableNotification
+color backgroundColor
+color colorPrimary
+color colorPrimaryDark
+drawable splash
+mipmap ic_launcher
+string appName
+string assetStatements
+string launchUrl
+string launcherName

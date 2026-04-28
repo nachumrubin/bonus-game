@@ -1,0 +1,36 @@
+{
+    "logs": [
+        {
+            "outputFile": "app.boost8ef11.twa.app-mergeDebugResources-5:/values-th/values-th.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\Admin\\.gradle\\caches\\transforms-3\\fe5c0d66bf6a7e83477779eb69918888\\transformed\\core-1.1.0\\res\\values-th\\values-th.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "100",
+                        "endOffsets": "151"
+                    },
+                    "to": {
+                        "startLines": "6",
+                        "startColumns": "4",
+                        "startOffsets": "466",
+                        "endColumns": "100",
+                        "endOffsets": "562"
+                    }
+                },
+                {
+                    "source": "C:\\Users\\Admin\\.gradle\\caches\\transforms-3\\90c44464e26c18595440d4031731e654\\transformed\\browser-1.4.0\\res\\values-th\\values-th.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,158,257,368",
+                        "endColumns": "102,98,110,97",
+                        "endOffsets": "153,252,363,461"
+                    }
+                }
+            ]
+        }
+    ]
+}

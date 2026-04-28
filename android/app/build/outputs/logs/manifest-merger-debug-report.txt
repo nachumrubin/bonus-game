@@ -1,0 +1,157 @@
+-- Merging decision tree log ---
+manifest
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:2:1-71:12
+INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:2:1-71:12
+INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:2:1-71:12
+INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:2:1-71:12
+MERGED from [com.google.androidbrowserhelper:androidbrowserhelper:2.5.0] C:\Users\Admin\.gradle\caches\transforms-3\43ef5c8f9c3c78fb62edbbd12e61083e\transformed\jetified-androidbrowserhelper-2.5.0\AndroidManifest.xml:17:1-36:12
+MERGED from [androidx.browser:browser:1.4.0] C:\Users\Admin\.gradle\caches\transforms-3\90c44464e26c18595440d4031731e654\transformed\browser-1.4.0\AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.core:core:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\fe5c0d66bf6a7e83477779eb69918888\transformed\core-1.1.0\AndroidManifest.xml:17:1-26:12
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\83d4bfcc0533960f2405d864b430ed40\transformed\versionedparcelable-1.1.0\AndroidManifest.xml:17:1-27:12
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Admin\.gradle\caches\transforms-3\6b9bb6a8c71662ca631e197a9e065197\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.0.0] C:\Users\Admin\.gradle\caches\transforms-3\4bd284e9fd0c7125cff77acb3a3e93d8\transformed\lifecycle-runtime-2.0.0\AndroidManifest.xml:17:1-22:12
+	package
+		INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml
+	android:versionName
+		INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml
+	android:versionCode
+		INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml
+	xmlns:android
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:2:11-69
+application
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:4:5-69:19
+INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:4:5-69:19
+MERGED from [androidx.core:core:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\fe5c0d66bf6a7e83477779eb69918888\transformed\core-1.1.0\AndroidManifest.xml:24:5-89
+MERGED from [androidx.core:core:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\fe5c0d66bf6a7e83477779eb69918888\transformed\core-1.1.0\AndroidManifest.xml:24:5-89
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\83d4bfcc0533960f2405d864b430ed40\transformed\versionedparcelable-1.1.0\AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\83d4bfcc0533960f2405d864b430ed40\transformed\versionedparcelable-1.1.0\AndroidManifest.xml:24:5-25:19
+	android:extractNativeLibs
+		INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml
+	android:appComponentFactory
+		ADDED from [androidx.core:core:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\fe5c0d66bf6a7e83477779eb69918888\transformed\core-1.1.0\AndroidManifest.xml:24:18-86
+	android:supportsRtl
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:8:9-35
+	android:label
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:7:9-40
+	android:windowOptOutEdgeToEdgeEnforcement
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:10:9-57
+	android:icon
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:6:9-43
+	android:allowBackup
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:5:9-35
+	android:theme
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:9:9-68
+meta-data#asset_statements
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:12:9-14:58
+	android:resource
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:14:13-55
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:13:13-44
+activity#com.google.androidbrowserhelper.trusted.LauncherActivity
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:17:9-56:20
+	android:label
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:20:13-49
+	android:exported
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:19:13-36
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:18:13-84
+meta-data#android.support.customtabs.trusted.DEFAULT_URL
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:23:13-25:53
+	android:value
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:25:17-50
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:24:17-78
+meta-data#android.support.customtabs.trusted.STATUS_BAR_COLOR
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:28:13-30:58
+	android:resource
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:30:17-55
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:29:17-83
+meta-data#android.support.customtabs.trusted.STATUS_BAR_COLOR_DARK
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:31:13-33:58
+	android:resource
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:33:17-55
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:32:17-88
+meta-data#android.support.customtabs.trusted.NAVIGATION_BAR_COLOR
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:34:13-36:58
+	android:resource
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:36:17-55
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:35:17-87
+meta-data#android.support.customtabs.trusted.SCREEN_ORIENTATION
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:39:13-41:44
+	android:value
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:41:17-41
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:40:17-85
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:43:13-46:29
+action#android.intent.action.MAIN
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:44:17-69
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:44:25-66
+category#android.intent.category.LAUNCHER
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:45:17-77
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:45:27-74
+intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:boost-8ef11.web.app+data:scheme:https
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:48:13-55:29
+	android:autoVerify
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:48:28-53
+action#android.intent.action.VIEW
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:49:17-69
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:49:25-66
+category#android.intent.category.DEFAULT
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:50:17-76
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:50:27-73
+category#android.intent.category.BROWSABLE
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:51:17-78
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:51:27-75
+data
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:52:17-54:58
+	android:host
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:54:21-55
+	android:scheme
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:53:21-43
+service#com.google.androidbrowserhelper.trusted.DelegationService
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:59:9-67:19
+	android:enabled
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:61:13-55
+	android:exported
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:62:13-36
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:60:13-85
+intent-filter#action:name:android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE+category:name:android.intent.category.DEFAULT
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:63:13-66:29
+action#android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE
+ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:64:17-106
+	android:name
+		ADDED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:64:25-103
+uses-sdk
+INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml
+INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml
+MERGED from [com.google.androidbrowserhelper:androidbrowserhelper:2.5.0] C:\Users\Admin\.gradle\caches\transforms-3\43ef5c8f9c3c78fb62edbbd12e61083e\transformed\jetified-androidbrowserhelper-2.5.0\AndroidManifest.xml:22:5-24:41
+MERGED from [com.google.androidbrowserhelper:androidbrowserhelper:2.5.0] C:\Users\Admin\.gradle\caches\transforms-3\43ef5c8f9c3c78fb62edbbd12e61083e\transformed\jetified-androidbrowserhelper-2.5.0\AndroidManifest.xml:22:5-24:41
+MERGED from [androidx.browser:browser:1.4.0] C:\Users\Admin\.gradle\caches\transforms-3\90c44464e26c18595440d4031731e654\transformed\browser-1.4.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.browser:browser:1.4.0] C:\Users\Admin\.gradle\caches\transforms-3\90c44464e26c18595440d4031731e654\transformed\browser-1.4.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.core:core:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\fe5c0d66bf6a7e83477779eb69918888\transformed\core-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.core:core:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\fe5c0d66bf6a7e83477779eb69918888\transformed\core-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\83d4bfcc0533960f2405d864b430ed40\transformed\versionedparcelable-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\83d4bfcc0533960f2405d864b430ed40\transformed\versionedparcelable-1.1.0\AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Admin\.gradle\caches\transforms-3\6b9bb6a8c71662ca631e197a9e065197\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Admin\.gradle\caches\transforms-3\6b9bb6a8c71662ca631e197a9e065197\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.0.0] C:\Users\Admin\.gradle\caches\transforms-3\4bd284e9fd0c7125cff77acb3a3e93d8\transformed\lifecycle-runtime-2.0.0\AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.0.0] C:\Users\Admin\.gradle\caches\transforms-3\4bd284e9fd0c7125cff77acb3a3e93d8\transformed\lifecycle-runtime-2.0.0\AndroidManifest.xml:20:5-44
+	android:targetSdkVersion
+		INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml
+queries
+ADDED from [com.google.androidbrowserhelper:androidbrowserhelper:2.5.0] C:\Users\Admin\.gradle\caches\transforms-3\43ef5c8f9c3c78fb62edbbd12e61083e\transformed\jetified-androidbrowserhelper-2.5.0\AndroidManifest.xml:26:5-34:15
+intent#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+data:scheme:https
+ADDED from [com.google.androidbrowserhelper:androidbrowserhelper:2.5.0] C:\Users\Admin\.gradle\caches\transforms-3\43ef5c8f9c3c78fb62edbbd12e61083e\transformed\jetified-androidbrowserhelper-2.5.0\AndroidManifest.xml:27:9-33:18

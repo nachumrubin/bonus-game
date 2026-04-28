@@ -1,0 +1,50 @@
+apply plugin: 'com.android.application'
+
+// Read signing credentials from keystore.properties (not committed to git)
+def keystorePropertiesFile = rootProject.file('../keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    compileSdk 35
+    namespace 'app.boost8ef11.twa'
+
+    defaultConfig {
+        applicationId 'app.boost8ef11.twa'
+        minSdk 24
+        targetSdk 35
+        versionCode 4
+        versionName '1.1'
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties['storeFile'] ?: '../android/android.keystore')
+            storePassword keystoreProperties['storePassword'] ?: ''
+            keyAlias keystoreProperties['keyAlias'] ?: 'android'
+            keyPassword keystoreProperties['keyPassword'] ?: ''
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+        debug {
+            applicationIdSuffix '.debug'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

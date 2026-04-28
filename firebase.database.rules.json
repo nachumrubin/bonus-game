@@ -1,0 +1,37 @@
+{
+  "rules": {
+    "rooms": {
+  	".read": true,
+  	".write": true
+		},
+    "dictionarySuggestions": {
+      ".read": true,
+      ".write": true
+    },
+    "dictionaryApproved": {
+      ".read": true,
+      ".write": true
+    },
+    "dictionaryRejected": {
+      ".read": true,
+      ".write": true
+    },
+    "globalChampions": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["score"]
+    },
+    "usernames": {
+      ".read": true,
+      "$username": {
+        ".write": "!data.exists() || data.val() === auth.uid"
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    }
+  }
+}

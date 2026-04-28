@@ -1,0 +1,26 @@
+[
+    {
+        "merged": "app.boost8ef11.twa.app-merged_res-7:/drawable_splash.xml.flat",
+        "source": "app.boost8ef11.twa.app-main-9:/drawable/splash.xml"
+    },
+    {
+        "merged": "app.boost8ef11.twa.app-merged_res-7:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "app.boost8ef11.twa.app-main-9:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "app.boost8ef11.twa.app-merged_res-7:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "app.boost8ef11.twa.app-main-9:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "app.boost8ef11.twa.app-merged_res-7:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "app.boost8ef11.twa.app-main-9:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "app.boost8ef11.twa.app-merged_res-7:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "app.boost8ef11.twa.app-main-9:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "app.boost8ef11.twa.app-merged_res-7:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "app.boost8ef11.twa.app-main-9:/mipmap-xxxhdpi/ic_launcher.png"
+    }
+]

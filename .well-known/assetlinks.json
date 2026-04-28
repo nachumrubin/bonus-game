@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.boost8ef11.twa",
+    "sha256_cert_fingerprints": [
+      "71:97:85:A4:AB:CB:CB:93:AE:E9:3E:7E:F0:C8:48:A5:9F:EC:E0:B3:45:BE:11:59:B5:7D:6F:E3:9A:36:5B:9B"
+    ]
+  }
+}]

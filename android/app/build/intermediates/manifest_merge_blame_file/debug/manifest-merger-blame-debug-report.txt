@@ -1,0 +1,155 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="app.boost8ef11.twa.debug"
+4    android:versionCode="4"
+5    android:versionName="1.1" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="35" />
+10
+11    <queries>
+11-->[com.google.androidbrowserhelper:androidbrowserhelper:2.5.0] C:\Users\Admin\.gradle\caches\transforms-3\43ef5c8f9c3c78fb62edbbd12e61083e\transformed\jetified-androidbrowserhelper-2.5.0\AndroidManifest.xml:26:5-34:15
+12        <intent>
+12-->[com.google.androidbrowserhelper:androidbrowserhelper:2.5.0] C:\Users\Admin\.gradle\caches\transforms-3\43ef5c8f9c3c78fb62edbbd12e61083e\transformed\jetified-androidbrowserhelper-2.5.0\AndroidManifest.xml:27:9-33:18
+13            <action android:name="android.intent.action.VIEW" />
+13-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:49:17-69
+13-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:49:25-66
+14
+15            <category android:name="android.intent.category.BROWSABLE" />
+15-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:51:17-78
+15-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:51:27-75
+16
+17            <data android:scheme="https" />
+17-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:52:17-54:58
+17-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:53:21-43
+18        </intent>
+19    </queries>
+20
+21    <application
+21-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:4:5-69:19
+22        android:allowBackup="true"
+22-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:5:9-35
+23        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+23-->[androidx.core:core:1.1.0] C:\Users\Admin\.gradle\caches\transforms-3\fe5c0d66bf6a7e83477779eb69918888\transformed\core-1.1.0\AndroidManifest.xml:24:18-86
+24        android:debuggable="true"
+25        android:extractNativeLibs="false"
+26        android:icon="@mipmap/ic_launcher"
+26-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:6:9-43
+27        android:label="@string/appName"
+27-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:7:9-40
+28        android:supportsRtl="true"
+28-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:8:9-35
+29        android:theme="@android:style/Theme.Translucent.NoTitleBar"
+29-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:9:9-68
+30        android:windowOptOutEdgeToEdgeEnforcement="true" >
+30-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:10:9-57
+31        <meta-data
+31-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:12:9-14:58
+32            android:name="asset_statements"
+32-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:13:13-44
+33            android:resource="@string/assetStatements" />
+33-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:14:13-55
+34
+35        <!-- TWA Activity -->
+36        <activity
+36-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:17:9-56:20
+37            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+37-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:18:13-84
+38            android:exported="true"
+38-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:19:13-36
+39            android:label="@string/launcherName" >
+39-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:20:13-49
+40
+41            <!-- The URL to launch -->
+42            <meta-data
+42-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:23:13-25:53
+43                android:name="android.support.customtabs.trusted.DEFAULT_URL"
+43-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:24:17-78
+44                android:value="@string/launchUrl" />
+44-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:25:17-50
+45
+46            <!-- Status bar color -->
+47            <meta-data
+47-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:28:13-30:58
+48                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+48-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:29:17-83
+49                android:resource="@color/colorPrimary" />
+49-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:30:17-55
+50            <meta-data
+50-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:31:13-33:58
+51                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR_DARK"
+51-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:32:17-88
+52                android:resource="@color/colorPrimary" />
+52-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:33:17-55
+53            <meta-data
+53-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:34:13-36:58
+54                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR"
+54-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:35:17-87
+55                android:resource="@color/colorPrimary" />
+55-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:36:17-55
+56
+57            <!-- Orientation -->
+58            <meta-data
+58-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:39:13-41:44
+59                android:name="android.support.customtabs.trusted.SCREEN_ORIENTATION"
+59-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:40:17-85
+60                android:value="portrait" />
+60-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:41:17-41
+61
+62            <intent-filter>
+62-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:43:13-46:29
+63                <action android:name="android.intent.action.MAIN" />
+63-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:44:17-69
+63-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:44:25-66
+64
+65                <category android:name="android.intent.category.LAUNCHER" />
+65-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:45:17-77
+65-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:45:27-74
+66            </intent-filter>
+67            <intent-filter android:autoVerify="true" >
+67-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:48:13-55:29
+67-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:48:28-53
+68                <action android:name="android.intent.action.VIEW" />
+68-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:49:17-69
+68-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:49:25-66
+69
+70                <category android:name="android.intent.category.DEFAULT" />
+70-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:50:17-76
+70-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:50:27-73
+71                <category android:name="android.intent.category.BROWSABLE" />
+71-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:51:17-78
+71-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:51:27-75
+72
+73                <data
+73-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:52:17-54:58
+74                    android:host="boost-8ef11.web.app"
+74-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:54:21-55
+75                    android:scheme="https" />
+75-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:53:21-43
+76            </intent-filter>
+77        </activity>
+78
+79        <!-- TWA Service for Digital Asset Links verification -->
+80        <service
+80-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:59:9-67:19
+81            android:name="com.google.androidbrowserhelper.trusted.DelegationService"
+81-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:60:13-85
+82            android:enabled="@bool/enableNotification"
+82-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:61:13-55
+83            android:exported="true" >
+83-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:62:13-36
+84            <intent-filter>
+84-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:63:13-66:29
+85                <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+85-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:64:17-106
+85-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:64:25-103
+86
+87                <category android:name="android.intent.category.DEFAULT" />
+87-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:50:17-76
+87-->C:\Users\Admin\Documents\GitHub\bonus-game\android\app\src\main\AndroidManifest.xml:50:27-73
+88            </intent-filter>
+89        </service>
+90    </application>
+91
+92</manifest>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="appName">בוסט — שבץ נא</string>
+    <string name="launcherName">בוסט</string>
+    <string name="launchUrl">https://boost-8ef11.web.app/</string>
+
+    <!-- Digital Asset Links — links this app to the website.
+         Replace the sha256_cert_fingerprints value with your keystore's SHA-256 fingerprint.
+         Get it by running: keytool -list -v -keystore android.keystore -alias android -->
+    <string name="assetStatements">
+        [{
+            \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+            \"target\": {
+                \"namespace\": \"web\",
+                \"site\": \"https://boost-8ef11.web.app\"
+            }
+        }]
+    </string>
+
+</resources>

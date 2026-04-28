@@ -1,0 +1,16 @@
+{
+  "name": "bonus-game",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Test harness for bonus-game",
+  "scripts": {
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "dict:add": "node scripts/add-dictionary-words.js",
+    "dict:export": "node scripts/export-dictionary-file.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.2"
+  }
+}
