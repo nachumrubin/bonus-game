@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260428203921">
+<meta name="version" content="20260429201213">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -595,9 +595,10 @@ body.tile-selected .bsq:not(.used){
 .set-panel{background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 12px;flex:1;min-width:140px;display:flex;flex-direction:column;gap:8px;align-items:center;}
 .set-panel-title{font-size:12px;font-weight:700;color:var(--by);text-align:center;position:relative;display:flex;align-items:center;justify-content:center;gap:5px;}
 .sett-info{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(106,176,216,.25);border:1px solid rgba(106,176,216,.5);color:#8ecfef;font-size:9px;font-weight:900;font-style:normal;cursor:default;position:relative;flex-shrink:0;line-height:1;user-select:none;}
-.sett-info:hover .sett-tip{opacity:1;pointer-events:auto;}
-.sett-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#0f1d26;border:1px solid #6ab0d8;border-radius:7px;padding:8px 11px;font-size:11px;font-weight:400;color:#eaf4fb;white-space:normal;width:190px;line-height:1.5;text-align:right;direction:rtl;opacity:0;pointer-events:none;transition:opacity .18s;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.6);}
+@media (hover:hover){.sett-info:hover .sett-tip{opacity:1;pointer-events:auto;}}
+.sett-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#0f1d26;border:1px solid #6ab0d8;border-radius:7px;padding:8px 11px;font-size:11px;font-weight:400;color:#eaf4fb;white-space:normal;width:min(190px,80vw);line-height:1.5;text-align:right;direction:rtl;opacity:0;pointer-events:none;transition:opacity .18s;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.6);}
 .sett-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#6ab0d8;}
+.sett-tip.tip-visible{position:fixed !important;opacity:1;pointer-events:auto;}
 .set-yesno{display:flex;gap:6px;}
 .set-yn{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:5px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);cursor:pointer;font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;color:rgba(255,255,255,.7);transition:all .1s;}
 .set-yn.active-yes{background:#2a6a2a;border-color:#4a8a4a;color:#8eff8e;}
@@ -1190,6 +1191,130 @@ body.tile-selected .bsq:not(.used){
     margin: 0 !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   ANIMATION SYSTEM — smooth, mobile-first, performance-safe
+══════════════════════════════════════════════════════════════ */
+
+/* Respect user reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── 1. Screen transition ── */
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.screen-enter { animation: screenIn 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* ── 2. Menu entrance ── */
+@keyframes menuLogoIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.menu-logo-enter { animation: menuLogoIn 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+
+@keyframes menuBtnIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hbtns.menu-enter .bd              { animation: menuBtnIn 0.4s cubic-bezier(0.22,1,0.36,1) both; pointer-events: none; }
+.hbtns.menu-enter .bd:nth-child(1) { animation-delay: 0.08s; }
+.hbtns.menu-enter .bd:nth-child(2) { animation-delay: 0.14s; }
+.hbtns.menu-enter .bd:nth-child(3) { animation-delay: 0.20s; }
+.hbtns.menu-enter .bd:nth-child(4) { animation-delay: 0.26s; }
+.hbtns.menu-enter .bd:nth-child(5) { animation-delay: 0.32s; }
+.hbtns.menu-enter .bd:nth-child(6) { animation-delay: 0.38s; }
+.hbtns.menu-enter .bd:nth-child(7) { animation-delay: 0.44s; }
+.hbtns.menu-enter .bd:nth-child(8) { animation-delay: 0.50s; }
+.hbtns.menu-enter .bd:nth-child(9) { animation-delay: 0.56s; }
+
+/* ── 3. Tile placement pop ── */
+@keyframes tilePlaceIn {
+  0%   { opacity: 0.5; transform: scale(1.22); }
+  65%  { opacity: 1;   transform: scale(0.94); }
+  100% { opacity: 1;   transform: scale(1); }
+}
+.tile-place-in { animation: tilePlaceIn 0.22s cubic-bezier(0.22,1,0.36,1) both; will-change: transform; }
+
+/* ── 4. Valid word gold flash ── */
+@keyframes validFlash {
+  0%   { filter: brightness(1.7) drop-shadow(0 0 7px rgba(255,220,0,.95)); }
+  100% { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
+}
+.is-valid { animation: validFlash 0.5s ease-out both; }
+
+/* ── 5. Invalid word shake ── */
+@keyframes shakeWord {
+  0%,100% { transform: translateX(0); }
+  15%     { transform: translateX(-6px); }
+  30%     { transform: translateX(6px); }
+  45%     { transform: translateX(-5px); }
+  60%     { transform: translateX(5px); }
+  75%     { transform: translateX(-3px); }
+  90%     { transform: translateX(3px); }
+}
+.is-invalid { animation: shakeWord 0.28s ease-out both; }
+
+/* ── 6. Bonus square activation flash ── */
+@keyframes bonusActivate {
+  0%   { filter: brightness(2.8) saturate(2);   transform: scale(1.2); }
+  45%  { filter: brightness(1.5) saturate(1.4); transform: scale(1.07); }
+  100% { filter: brightness(1)   saturate(1);   transform: scale(1); }
+}
+.bonus-activate { animation: bonusActivate 0.42s cubic-bezier(0.22,1,0.36,1) both; will-change: transform, filter; }
+
+/* ── 7. Active player card glow pulse (filter avoids !important conflict on box-shadow) ── */
+@keyframes playerGlowPulse {
+  0%,100% { filter: drop-shadow(0 0 4px rgba(232,200,64,.28)); }
+  50%      { filter: drop-shadow(0 0 14px rgba(232,200,64,.78)); }
+}
+.scbox.act     { animation: playerGlowPulse 2s ease-in-out infinite; }
+.is-pcard.act-cell { animation: playerGlowPulse 2s ease-in-out infinite; }
+
+/* ── 8. Tile bag counter bounce ── */
+@keyframes bagBounce {
+  0%   { transform: scale(1); }
+  28%  { transform: scale(1.28); }
+  55%  { transform: scale(0.88); }
+  78%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.bag-bounce { animation: bagBounce 0.38s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* ── 9. Score value pop ── */
+@keyframes scorePop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.3); color: var(--by); }
+  100% { transform: scale(1); }
+}
+.score-pop { animation: scorePop 0.42s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* ── 10. Overlay card entrance ── */
+@keyframes overlayCardIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+.ov:not(.hidden) > .ovc {
+  animation: overlayCardIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* ── Screen-transitioning: blocks ALL pointer events on screen + descendants
+      during animation. pointer-events:none on the screen element alone does
+      NOT block children with default auto — this class fixes that. ── */
+.screen-transitioning, .screen-transitioning * { pointer-events: none; }
+
+/* ── 11. Universal button active feedback (all button types) ── */
+.tb:active    { transform: scale(0.96) !important; }
+.bplay:active { transform: scale(0.96) !important; }
+.ovb:active   { transform: scale(0.96) !important; }
+.set-btn:active { transform: scale(0.96) !important; }
+.db:active    { transform: scale(0.96) !important; }
+.jt:active    { transform: scale(0.92) !important; }
 </style>
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
@@ -1240,7 +1365,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260428203921</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260429201213</div>
   </div>
 </div>
 
@@ -1433,13 +1558,11 @@ body.tile-selected .bsq:not(.used){
   <div class="gr">
     <!-- top bar -->
     <div class="tbar">
-      <button class="tb" onclick="goHome()"><span class="tb-ic">🏠</span><span class="tb-tx">בית</span></button>
       <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
       <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
       <button class="tb" onclick="doExchange()">החלפת<br>אות</button>
       <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
       
-      <button class="tb" onclick="showLegend()"><span class="tb-ic">📋</span><span class="tb-tx">טבלת אותיות</span></button>
       <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
       <button class="tb music-btn" id="music-toggle" onclick="toggleMusic()"><span class="tb-ic">🎵</span><span class="tb-tx">מוזיקה</span></button>
       
@@ -1449,11 +1572,6 @@ body.tile-selected .bsq:not(.used){
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;">
             <span style="font-family:'Heebo',sans-serif;font-size:8px;font-weight:900;color:rgba(255,255,255,.5);letter-spacing:.5px;line-height:1;">קופה</span>
             <span id="bag-count-text" style="font-family:'Heebo',sans-serif;font-size:19px;font-weight:900;color:#e8c840;line-height:1.1;">98</span>
-          </div>
-          <div style="width:1px;background:rgba(255,255,255,.15);align-self:stretch;margin:4px 0;"></div>
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;">
-            <span style="font-family:'Heebo',sans-serif;font-size:8px;font-weight:900;color:rgba(255,255,255,.5);letter-spacing:.5px;line-height:1;">מהלכים</span>
-            <span id="is-lcd" style="font-family:'Courier New',monospace;font-size:19px;font-weight:900;color:var(--lcd);line-height:1.1;text-shadow:0 0 6px rgba(200,255,0,.4);">00</span>
           </div>
         </div>
       </div>
@@ -2545,12 +2663,41 @@ let settings = {
   appealsMax: 0,
 };
 
+var _menuEnterTimer = null;
 function showSc(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
+  // Hide all screens and clear their screen-enter animation so animation fill
+  // (opacity:1 from fill-mode:both) doesn't override .hidden's opacity:0.
+  document.querySelectorAll('.screen').forEach(s=>{
+    s.classList.add('hidden');
+    s.classList.remove('screen-enter');
+  });
+  const el = document.getElementById(id);
+  el.classList.remove('hidden');
+  // Screen transition animation
+  el.classList.remove('screen-enter');
+  void el.offsetWidth; // force reflow so animation restarts
+  el.classList.add('screen-enter');
+  // Block ALL pointer events (screen element + every descendant) during animation.
+  // pointer-events:none on the screen element alone does NOT block child buttons
+  // (children with default auto are still targetable). screen-transitioning fixes that.
+  el.classList.add('screen-transitioning');
+  setTimeout(function(){ el.classList.remove('screen-transitioning'); }, 380);
   const musicEnabled = (typeof gameSettings !== 'undefined') ? gameSettings.music : settings.musicOn;
   if(id === 'sh'){
     if(musicEnabled && typeof startMusic === 'function') startMusic();
+    // Menu entrance animation — logo drops in, buttons stagger up
+    const logo = el.querySelector('.hlogo');
+    const btns = el.querySelector('.hbtns');
+    if(logo){ logo.classList.remove('menu-logo-enter'); void logo.offsetWidth; logo.classList.add('menu-logo-enter'); }
+    if(btns){
+      // Clear any stale timer from a previous showSc('sh') call so it can't
+      // remove menu-enter early and expose buttons before animation completes.
+      if(_menuEnterTimer){ clearTimeout(_menuEnterTimer); _menuEnterTimer = null; }
+      btns.classList.remove('menu-enter'); void btns.offsetWidth; btns.classList.add('menu-enter');
+      // Remove menu-enter after all stagger animations finish (last: 0.56s delay + 0.4s = 0.96s).
+      // CSS sets pointer-events:none on .hbtns.menu-enter .bd, so this restores interactivity.
+      _menuEnterTimer = setTimeout(function(){ btns.classList.remove('menu-enter'); _menuEnterTimer = null; }, 1200);
+    }
   } else {
     if(typeof stopMusic === 'function') stopMusic();
   }
@@ -2884,6 +3031,11 @@ function updateBagDisplay(){
   const disp = document.getElementById('bag-display');
   const charEl = document.getElementById('bag-char');
   if(!cnt || typeof bag === 'undefined') return;
+  // Bounce animation when bag count changes
+  if(typeof _prevBagCount !== 'undefined' && _prevBagCount >= 0 && bag.length !== _prevBagCount && charEl){
+    charEl.classList.remove('bag-bounce'); void charEl.offsetWidth; charEl.classList.add('bag-bounce');
+  }
+  _prevBagCount = bag.length;
   if(bag.length === 0){
     cnt.textContent = 'ריק';
     cnt.style.color = '#e74c3c';
@@ -4482,13 +4634,23 @@ function coordToCellEl(r,c){
   return document.getElementById(`c${r}_${c}`);
 }
 function clearIllegalHighlights(){
-  document.querySelectorAll('.illegal-tile').forEach(el=>el.classList.remove('illegal-tile'));
+  document.querySelectorAll('.illegal-tile').forEach(el=>{
+    el.classList.remove('illegal-tile');
+    const t = el.querySelector('.is-invalid');
+    if(t) t.classList.remove('is-invalid');
+  });
+  document.querySelectorAll('.is-invalid').forEach(el=>el.classList.remove('is-invalid'));
 }
 function highlightIllegalWords(words){
   clearIllegalHighlights();
   words.forEach(w=>(w.tiles||[]).forEach(({r,c})=>{
     const el = coordToCellEl(r,c);
-    if(el) el.classList.add('illegal-tile');
+    if(el){
+      el.classList.add('illegal-tile');
+      // Shake the tile element (child) — doesn't conflict with illegalPulse on parent cell
+      const tile = el.querySelector('.btile');
+      if(tile){ tile.classList.remove('is-invalid'); void tile.offsetWidth; tile.classList.add('is-invalid'); }
+    }
   }));
 }
 function animateRollback(moveTiles, done){
@@ -4959,6 +5121,13 @@ function triggerBonus(type,ws,sc){
     setS(`🛡️ ${pNames[_opp]} ביטל את הבוסט!`,'bon');
     if(bonusPend.bsqIdxs) bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
     commitPlay(bonusPend.sc,bonusPend.ws,0,_pi); bonusPend=null; return;
+  }
+  // Flash bonus squares to signal activation
+  if(bonusPend && bonusPend.bsqIdxs){
+    bonusPend.bsqIdxs.forEach(function(idx){
+      const _bel = document.getElementById('bsq-'+idx);
+      if(_bel){ _bel.classList.remove('bonus-activate'); void _bel.offsetWidth; _bel.classList.add('bonus-activate'); }
+    });
   }
   resetBonusOverlay();
   if(type==='B12'){
@@ -6094,6 +6263,8 @@ function commitPlay(sc,ws,bonus,pi){
   const _baseMsg = _multLabel ? `${wordSc} ${_multLabel} = ${fs - bonusExtra}` : `${fs}`;
   setS(`"${statusWordText}" — ${_baseMsg} נקודות${bonus?` (+${bonus} 🎁)`:''}${fs>=50?' ★':''}✓`,'ok');
   updateUI(); renderBoard(); renderRack(); renderBonusStrips();
+  // Valid-word gold flash on committed tiles
+  if(lastMoveCells.length){ const _lmSnap=lastMoveCells.slice(); requestAnimationFrame(()=>{ _lmSnap.forEach(({r,c})=>{ const _el=coordToCellEl(r,c); const _t=_el&&_el.querySelector('.btile'); if(_t){ _t.classList.remove('is-valid'); void _t.offsetWidth; _t.classList.add('is-valid'); } }); }); }
   if(racks[pi].length===0&&bag.length===0){endGame();return;}
   if(settings.moveLimitOn && moveCount>=settings.moveLimit){endGame();return;}
   const maxM=getMaxMoves(); if(maxM&&moveCount>=maxM){endGame();return;}
@@ -6511,6 +6682,7 @@ function renderBoard(){
     const pp   = rep || placed.find(p => p.r===r && p.c===c);
     const tile = rep ? null : bData[r][c];
     const lk   = lockedCells[`${r},${c}`];
+    const _hadTile = cell.classList.contains('ht');
     cell.classList.remove('np','lk','ht','locked-cell','illegal-tile','rollback-pop','last-move','op-live');
     cell.style.background = '';
     if (tile) {
@@ -6523,6 +6695,7 @@ function renderBoard(){
       const isPicked = selPlaced && selPlaced.r===r && selPlaced.c===c;
       cell.innerHTML=`<div class="${pp.isJoker?'btile nw jk':'btile nw'}${isPicked?' picked':''}"><div class="bt-l" style="font-size:${fs}px">${pp.letter}</div><div class="bt-v" style="font-size:${vs}px">${pp.val||''}</div></div>`;
       cell.classList.add('ht','np');
+      if(!_hadTile){ const _pt=cell.querySelector('.btile'); if(_pt) _pt.classList.add('tile-place-in'); }
     } else if (window._opponentLive && window._opponentLive.some(p=>p.r===r&&p.c===c)) {
       const op = window._opponentLive.find(p=>p.r===r&&p.c===c);
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
@@ -6546,12 +6719,14 @@ function renderBoard(){
     const pp   = rep || placed.find(p => p.r===b.br && p.c===b.bc);
     const key  = `${b.br},${b.bc}`;
     const committed = bonusSqUsed[idx];
+    const _bsqHadTile = !!el.querySelector('.btile');
     el.classList.remove('illegal-tile','rollback-pop');
     if (pp) {
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
       const isBonusPicked = selPlaced && selPlaced.r===b.br && selPlaced.c===b.bc;
       el.innerHTML=`<div class="${pp.isJoker?'btile nw jk':'btile nw'}${isBonusPicked?' picked':''}" style="width:100%;height:100%"><div class="bt-l" style="font-size:${fs}px">${pp.letter}</div><div class="bt-v" style="font-size:${vs}px">${pp.val||''}</div></div>`;
       el.classList.remove('used');
+      if(!_bsqHadTile){ const _bt=el.querySelector('.btile'); if(_bt) _bt.classList.add('tile-place-in'); }
     } else if (window._opponentLive && window._opponentLive.some(p=>p.r===b.br&&p.c===b.bc)) {
       const op = window._opponentLive.find(p=>p.r===b.br&&p.c===b.bc);
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
@@ -6698,8 +6873,10 @@ function _buildSideStripDOM(container, tiles, withAnim){
 }
 
 function updateUI(){
-  document.getElementById('sv1').textContent = scores[0];
-  document.getElementById('sv2').textContent = scores[1];
+  // Animate desktop score changes
+  const _sv1=document.getElementById('sv1'), _sv2=document.getElementById('sv2');
+  if(_sv1){ if(typeof _prevScores!=='undefined' && _prevScores[0]>=0 && _prevScores[0]!==scores[0]){ animateScore(_sv1,_prevScores[0],scores[0],480); _sv1.classList.remove('score-pop'); void _sv1.offsetWidth; _sv1.classList.add('score-pop'); } else if(_sv1) _sv1.textContent=scores[0]; if(typeof _prevScores!=='undefined') _prevScores[0]=scores[0]; }
+  if(_sv2){ if(typeof _prevScores!=='undefined' && _prevScores[1]>=0 && _prevScores[1]!==scores[1]){ animateScore(_sv2,_prevScores[1],scores[1],480); _sv2.classList.remove('score-pop'); void _sv2.offsetWidth; _sv2.classList.add('score-pop'); } else if(_sv2) _sv2.textContent=scores[1]; if(typeof _prevScores!=='undefined') _prevScores[1]=scores[1]; }
   document.getElementById('sb1').classList.toggle('act', turn===0);
   document.getElementById('sb2').classList.toggle('act', turn===1);
   document.getElementById('lcd').textContent = String(moveCount).padStart(2,'0');
@@ -6764,8 +6941,8 @@ function updateUI(){
   // Mobile info strip sync
   const isl = document.getElementById('is-lcd');
   if(isl) isl.textContent = String(moveCount).padStart(2,'0');
-  const isv1 = document.getElementById('is-sv1'); if(isv1) isv1.textContent = scores[0];
-  const isv2 = document.getElementById('is-sv2'); if(isv2) isv2.textContent = scores[1];
+  const isv1 = document.getElementById('is-sv1'); if(isv1){ if(typeof _prevScores!=='undefined' && _prevScores[0]>=0) animateScore(isv1,_prevScores[0],scores[0],480); else isv1.textContent=scores[0]; }
+  const isv2 = document.getElementById('is-sv2'); if(isv2){ if(typeof _prevScores!=='undefined' && _prevScores[1]>=0) animateScore(isv2,_prevScores[1],scores[1],480); else isv2.textContent=scores[1]; }
   const isn1 = document.getElementById('is-sn1'); if(isn1) isn1.textContent = pNames[0];
   const isn2 = document.getElementById('is-sn2'); if(isn2) isn2.textContent = pNames[1];
   const issb1 = document.getElementById('is-sb1'); if(issb1) issb1.classList.toggle('act-cell', turn===0);
@@ -6849,6 +7026,42 @@ function openSettings(){
   ovOpen('ov-settings');
   closeDictionaryAdvancedSettings();
 }
+
+(function initSettTips(){
+  let _closeTimer=null;
+  function closeAll(){
+    document.querySelectorAll('.sett-tip.tip-visible').forEach(t=>{
+      t.classList.remove('tip-visible');
+      t.style.left=''; t.style.top=''; t.style.bottom=''; t.style.transform='';
+    });
+  }
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.sett-info')) closeAll();
+  },{capture:true});
+  document.addEventListener('click',e=>{
+    const info=e.target.closest('.sett-info');
+    if(!info) return;
+    if(window.matchMedia('(hover:hover)').matches) return;
+    e.stopPropagation();
+    const tip=info.querySelector('.sett-tip');
+    if(!tip) return;
+    const already=tip.classList.contains('tip-visible');
+    closeAll();
+    if(already) return;
+    const rect=info.getBoundingClientRect();
+    const tipW=Math.min(190,window.innerWidth*0.8);
+    let left=rect.left+rect.width/2-tipW/2;
+    left=Math.max(8,Math.min(left,window.innerWidth-tipW-8));
+    const top=Math.max(8,rect.top-8);
+    tip.style.left=left+'px';
+    tip.style.top=top+'px';
+    tip.style.bottom='auto';
+    tip.style.transform='translateY(-100%)';
+    tip.classList.add('tip-visible');
+    clearTimeout(_closeTimer);
+    _closeTimer=setTimeout(closeAll,4000);
+  });
+})();
 
 function settRefresh(){
   const s = gameSettings;
@@ -8859,7 +9072,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260428203921', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260429201213', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -10028,6 +10241,29 @@ async function saveDisplayName(){
   if(display) display.textContent = newName;
   cancelNameEdit();
   updateHomeProfileButton();
+}
+
+// ═══════════════════════════════════════════════════
+// ANIMATION HELPERS
+// ═══════════════════════════════════════════════════
+
+// Tracking variables for delta-based animations
+var _prevBagCount = -1;
+var _prevScores   = [-1, -1];
+
+// Smooth number increment using requestAnimationFrame
+function animateScore(el, from, to, duration){
+  var diff = to - from;
+  if(!diff || !el || duration <= 0){ if(el) el.textContent = to; return; }
+  var start = performance.now();
+  function step(now){
+    var t    = Math.min(1, (now - start) / duration);
+    var ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    el.textContent = Math.round(from + diff * ease);
+    if(t < 1) requestAnimationFrame(step);
+    else el.textContent = to;
+  }
+  requestAnimationFrame(step);
 }
 
 </script>
