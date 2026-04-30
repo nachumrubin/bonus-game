@@ -2246,14 +2246,6 @@ body.tile-selected .bsq:not(.used){
           <div class="set-yn active-no" id="sett-showBothRacks-no"  onclick="settToggle('showBothRacks',false)">👤 רק נוכחי</div>
         </div>
       </div>
-      <!-- Panel 6: move summary -->
-      <div class="set-panel">
-        <div class="set-panel-title">סיכום מהלך אחרי כל מהלך <span class="sett-info">i<span class="sett-tip">הצגת פופ-אפ עם ניקוד ופרטי המהלך מיד לאחר ביצועו</span></span></div>
-        <div class="set-yesno">
-          <div class="set-yn active-yes" id="sett-showMoveSummary-yes" onclick="settToggle('showMoveSummary',true)">✓ כן</div>
-          <div class="set-yn" id="sett-showMoveSummary-no"  onclick="settToggle('showMoveSummary',false)">✗ לא</div>
-        </div>
-      </div>
     </div>
     <!-- Dictionary Management — full width below panels -->
     <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
@@ -6634,8 +6626,8 @@ function bonusSkip(){ clearT(); ovClose('ov-bonus'); clearLiveBonus(); if(bonusP
 
 // ── Animated scoring flow: word glow → float points → fly to panel ──
 function runScoringAnimation(opts){
-  // opts: { words:[{tiles:[{r,c}], pts}], totalMoveScore, playerId,
-  //         scoreBeforeMove, scoreAfterMove, onComplete }
+  // opts: { words:[{tiles:[{r,c}], pts}], bingo, multLabel, bonusExtra,
+  //         totalMoveScore, playerId, scoreBeforeMove, scoreAfterMove, onComplete }
   var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
   if(reducedMotion || !opts.words || !opts.words.length){ if(opts.onComplete) opts.onComplete(); return; }
 
@@ -6683,20 +6675,49 @@ function runScoringAnimation(opts){
     });
   }
 
+  function _floatLabel(x, y, text, ms, color){
+    var lbl = document.createElement('div');
+    lbl.className = 'scoring-float-label';
+    lbl.textContent = text;
+    lbl.style.left = x + 'px';
+    lbl.style.top  = y + 'px';
+    lbl.style.setProperty('--float-dur', ms + 'ms');
+    if(color) lbl.style.color = color;
+    document.body.appendChild(lbl);
+    setTimeout(function(){ if(lbl.parentNode) lbl.remove(); }, ms + 120);
+  }
+
   function _floatPts(tiles, pts, ms){
     if(!tiles || !tiles.length) return;
     var mid = tiles[Math.floor(tiles.length / 2)];
     var el = coordToCellEl(mid.r, mid.c);
     if(!el) return;
     var rect = el.getBoundingClientRect();
-    var lbl = document.createElement('div');
-    lbl.className = 'scoring-float-label';
-    lbl.textContent = '+' + pts;
-    lbl.style.left = (rect.left + rect.width / 2) + 'px';
-    lbl.style.top  = rect.top + 'px';
-    lbl.style.setProperty('--float-dur', ms + 'ms');
-    document.body.appendChild(lbl);
-    setTimeout(function(){ if(lbl.parentNode) lbl.remove(); }, ms + 120);
+    _floatLabel(rect.left + rect.width / 2, rect.top, '+' + pts, ms, null);
+  }
+
+  // Show bonus extras (bingo, multiplier, boost) as floating labels at board centre
+  function _showExtras(done){
+    var extras = [];
+    if(opts.bingo) extras.push({text:'+50 ⭐ בינגו', color:'#ffe870'});
+    if(opts.multLabel) extras.push({text: opts.multLabel, color: opts.multLabel.startsWith('×4')?'#ff7070':'#c070ff'});
+    if(opts.bonusExtra > 0) extras.push({text:'+'+opts.bonusExtra+' 🎁', color:'#ffe870'});
+    if(!extras.length){ done(); return; }
+
+    var boardEl = document.getElementById('game-grid');
+    var br = boardEl ? boardEl.getBoundingClientRect() : {left:window.innerWidth/2,top:window.innerHeight/2,width:0,height:0};
+    var cx = br.left + br.width / 2, cy = br.top + br.height / 2;
+    var spacing = 140; // ms between each extra label
+    var floatDur = 340;
+
+    extras.forEach(function(ex, i){
+      setTimeout(function(){
+        if(_done) return;
+        _floatLabel(cx, cy, ex.text, floatDur, ex.color);
+      }, i * spacing);
+    });
+
+    setTimeout(done, (extras.length - 1) * spacing + floatDur);
   }
 
   function _flyToPanel(){
@@ -6749,7 +6770,10 @@ function runScoringAnimation(opts){
   var _wIdx = 0;
   function _nextWord(){
     if(_done) return;
-    if(_wIdx >= opts.words.length){ _flyToPanel(); return; }
+    if(_wIdx >= opts.words.length){
+      _showExtras(function(){ if(!_done) _flyToPanel(); });
+      return;
+    }
     var w = opts.words[_wIdx++];
     _glowWord(w.tiles, glowMs);
     setTimeout(function(){
@@ -6927,6 +6951,9 @@ function commitPlay(sc,ws,bonus,pi){
 
         const _doAnim = (onDone) => runScoringAnimation({
           words: _animWords,
+          bingo: rev.bingo || 0,
+          multLabel: _multLabel || '',
+          bonusExtra: bonusExtra || 0,
           totalMoveScore: fs,
           playerId: pi,
           scoreBeforeMove: _scoreBeforeMove,
@@ -6944,7 +6971,7 @@ function commitPlay(sc,ws,bonus,pi){
       }
 
       // Tutorial mode: keep the static summary (tutOnSummaryOpen/Close hooks need it)
-      if(hasWords && isTutorial && gameSettings.showMoveSummary){
+      if(hasWords && isTutorial){
         const wordRows = rev.words.map(w => ({text:w.text,valid:true,pts:w.score,isMain:w===rev.words[0]}));
         if(rev.bingo) wordRows.push({text:'בינגו 🌟',valid:true,pts:50,isBingo:true});
         if(gMode === 'online'){
@@ -7108,7 +7135,8 @@ function mkP(word,sr,sc2,d){
   return pp;
 }
 function execBot(pp,word){
-  const sc=calcTotal(pp); let fs=sc; if(futBon[1].doubleNext>0){fs*=2;futBon[1].doubleNext--;}
+  const _scoreBeforeBot = scores[1]; // capture pre-move score for animation
+  const sc=calcTotal(pp); let fs=sc; let _botMultLabel=''; if(futBon[1].doubleNext>0){fs*=2;futBon[1].doubleNext--;_botMultLabel='×2 ✨';}
   pp.forEach(({r,c,letter,val,isJoker})=>{
     if(isBonusPos(r,c)) bBoardData[`${r},${c}`]={letter,val,isJoker:!!isJoker};
     else bData[r][c]={letter,val,isJoker:!!isJoker};
@@ -7146,29 +7174,39 @@ function execBot(pp,word){
   setS(`${pNames[1]}: "${word}" — ${fs+bonus} נקודות. תורך!`,'ok');
   if(racks[1].length===0&&bag.length===0){setTimeout(endGame,600);return;}
   decrementLocks(); turn=0; botBusy=false; updateUI(); renderRack(); renderBoard();
-  // ── Show bot move summary to human player ──
+  // ── Animated scoring flow for bot move ──
   (function(){
     try{
-      placed=pp;
-      const allW=getAllWords(pp);
-      placed=[];
-      const HV2=window.HebrewValidator;
-      const wordRows=allW.filter(w=>w.length>=2).map((ww,i)=>{
-        const txt=ww.map(t=>t.letter).join('');
-        const valid=HV2&&HV2.ready?HV2.validate(txt).valid:isValid(txt);
-        const pts=valid?scoreWord(ww):0;
-        return {text:txt,valid,pts,isMain:i===0};
+      // Cancel score animation started by updateUI; scoring animation owns the display
+      const _svD2 = document.getElementById('sv2'), _svM2 = document.getElementById('is-sv2');
+      [_svD2, _svM2].filter(Boolean).forEach(function(el){
+        if(el._cancelScoreAnim) el._cancelScoreAnim();
+        el.textContent = _scoreBeforeBot;
       });
-      if(wordRows.length>0&&gameSettings.showMoveSummary){
-        showMoveSummary({
-          player:1,playerName:pNames[1],
-          words:wordRows,totalScore:fs+bonus,
-          bonusExtra:bonus,multLabel:'',
-          onDone:()=>startMoveTimer(),
+      _prevScores[1] = _scoreBeforeBot;
+
+      placed = pp;
+      const allW = getAllWords(pp);
+      placed = [];
+      const _botBingo = pp.length === 8 ? 50 : 0;
+      const _botAnimWords = allW.filter(function(w){ return w.length >= 2; }).map(function(ww){
+        return { tiles: ww.map(function(t){ return {r:t.r,c:t.c}; }), pts: scoreWord(ww) };
+      });
+      if(_botAnimWords.length > 0){
+        runScoringAnimation({
+          words: _botAnimWords,
+          bingo: _botBingo,
+          multLabel: _botMultLabel,
+          bonusExtra: bonus,
+          totalMoveScore: fs + bonus,
+          playerId: 1,
+          scoreBeforeMove: _scoreBeforeBot,
+          scoreAfterMove: scores[1],
+          onComplete: function(){ startMoveTimer(); }
         });
         return;
       }
-    }catch(e){console.warn('botSummary error',e);}
+    }catch(e){ console.warn('botAnim error',e); }
     startMoveTimer();
   })();
 }
@@ -7724,7 +7762,7 @@ function openSettings(){
 
 function settRefresh(){
   const s = gameSettings;
-  ['confirm','timelimit','movelimit','music','showBothRacks','showMoveSummary'].forEach(k=>{
+  ['confirm','timelimit','movelimit','music','showBothRacks'].forEach(k=>{
     const v = s[k];
     const yel = document.getElementById(`sett-${k}-yes`);
     const nel = document.getElementById(`sett-${k}-no`);
