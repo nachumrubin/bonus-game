@@ -5215,10 +5215,10 @@ function rollbackPendingMove(){
 function closeReview(){ pendingReview=null; pendingMoveSnapshot=null; clearIllegalHighlights(); ovClose('ov-review'); }
 function openMoveReview(review){
   pendingReview = review;
-  // Online mode: skip the review overlay for valid moves — commit immediately.
-  // This prevents a redundant click-through and ensures Firebase is updated
-  // without waiting for the player to dismiss the overlay (fixes timer sync issue).
-  if(gMode === 'online' && review.invalid.length === 0){
+  // Skip the review overlay for valid moves — commit immediately.
+  // The animated scoring flow provides the visual feedback.
+  // Only show the overlay for invalid moves (appeal / cancel options).
+  if(review.invalid.length === 0){
     finalizeReviewedMove(true);
     return;
   }
