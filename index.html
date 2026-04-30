@@ -1294,6 +1294,41 @@ body.tile-selected .bsq:not(.used){
 }
 .score-pop { animation: scorePop 0.42s cubic-bezier(0.22,1,0.36,1) both; }
 
+/* ── Scoring animation: word glow (electric blue + gold) ── */
+@keyframes scoringWordGlow {
+  0%   { filter: brightness(2.3) drop-shadow(0 0 10px rgba(68,170,255,.95)) drop-shadow(0 0 5px rgba(255,232,112,.85)); }
+  55%  { filter: brightness(1.6) drop-shadow(0 0 6px rgba(68,170,255,.6)); }
+  100% { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
+}
+.scoring-word-glow { animation: scoringWordGlow var(--glow-dur,280ms) ease-out both; will-change: filter; }
+
+/* ── Scoring animation: floating +points text ── */
+@keyframes scoringPointsFloat {
+  0%   { opacity: 0;   transform: translateX(-50%) translateY(0)    scale(0.6); }
+  18%  { opacity: 1;   transform: translateX(-50%) translateY(-10px) scale(1.15); }
+  72%  { opacity: 1;   transform: translateX(-50%) translateY(-22px) scale(1); }
+  100% { opacity: 0;   transform: translateX(-50%) translateY(-38px) scale(0.8); }
+}
+.scoring-float-label {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  color: #ffe870;
+  font-size: 20px;
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(255,200,0,.9), 0 1px 3px rgba(0,0,0,.9);
+  animation: scoringPointsFloat var(--float-dur,500ms) ease-out both;
+  will-change: transform, opacity;
+}
+
+/* ── Scoring animation: score panel pulse on point arrival ── */
+@keyframes scorePanelArrive {
+  0%   { filter: drop-shadow(0 0 0px transparent); }
+  35%  { filter: drop-shadow(0 0 20px rgba(68,170,255,.9)) drop-shadow(0 0 10px rgba(255,232,112,.75)); }
+  100% { filter: drop-shadow(0 0 0px transparent); }
+}
+.score-panel-arrive { animation: scorePanelArrive 0.5s cubic-bezier(0.22,1,0.36,1) both; }
+
 /* ── 10. Overlay card entrance ── */
 @keyframes overlayCardIn {
   from { opacity: 0; transform: scale(0.96); }
@@ -6596,6 +6631,136 @@ function bonusSkip(){ clearT(); ovClose('ov-bonus'); clearLiveBonus(); if(bonusP
 // ═══════════════════════════════════════════════════
 // COMMIT
 // ═══════════════════════════════════════════════════
+
+// ── Animated scoring flow: word glow → float points → fly to panel ──
+function runScoringAnimation(opts){
+  // opts: { words:[{tiles:[{r,c}], pts}], totalMoveScore, playerId,
+  //         scoreBeforeMove, scoreAfterMove, onComplete }
+  var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if(reducedMotion || !opts.words || !opts.words.length){ if(opts.onComplete) opts.onComplete(); return; }
+
+  var n = opts.words.length;
+  var totalMs = n >= 3 ? 1800 : n === 2 ? 1200 : 800;
+  var perWord  = Math.floor(totalMs / n);
+  var glowMs   = Math.floor(perWord * 0.42);
+  var floatMs  = perWord - glowMs;
+
+  var _done = false;
+
+  function _cleanup(){
+    document.querySelectorAll('.scoring-float-label,.scoring-fly-el').forEach(function(e){ e.remove(); });
+    document.querySelectorAll('.scoring-word-glow').forEach(function(e){
+      e.style.removeProperty('--glow-dur'); e.classList.remove('scoring-word-glow');
+    });
+  }
+
+  function _finish(immediate){
+    if(_done) return; _done = true;
+    document.removeEventListener('click', _onSkip, true);
+    document.removeEventListener('touchstart', _onSkip, true);
+    _cleanup();
+    if(immediate){
+      var pi = opts.playerId;
+      [document.getElementById(pi===0?'sv1':'sv2'), document.getElementById(pi===0?'is-sv1':'is-sv2')]
+        .filter(Boolean).forEach(function(el){ if(el._cancelScoreAnim) el._cancelScoreAnim(); el.textContent = opts.scoreAfterMove; });
+      _prevScores[pi] = opts.scoreAfterMove;
+    }
+    if(opts.onComplete) opts.onComplete();
+  }
+
+  function _onSkip(e){ e.stopPropagation(); _finish(true); }
+  document.addEventListener('click', _onSkip, true);
+  document.addEventListener('touchstart', _onSkip, true);
+
+  function _glowWord(tiles, ms){
+    (tiles||[]).forEach(function(tc){
+      var el = coordToCellEl(tc.r, tc.c);
+      var tile = el && el.querySelector('.btile');
+      if(!tile) return;
+      tile.style.setProperty('--glow-dur', ms+'ms');
+      tile.classList.remove('scoring-word-glow'); void tile.offsetWidth;
+      tile.classList.add('scoring-word-glow');
+    });
+  }
+
+  function _floatPts(tiles, pts, ms){
+    if(!tiles || !tiles.length) return;
+    var mid = tiles[Math.floor(tiles.length / 2)];
+    var el = coordToCellEl(mid.r, mid.c);
+    if(!el) return;
+    var rect = el.getBoundingClientRect();
+    var lbl = document.createElement('div');
+    lbl.className = 'scoring-float-label';
+    lbl.textContent = '+' + pts;
+    lbl.style.left = (rect.left + rect.width / 2) + 'px';
+    lbl.style.top  = rect.top + 'px';
+    lbl.style.setProperty('--float-dur', ms + 'ms');
+    document.body.appendChild(lbl);
+    setTimeout(function(){ if(lbl.parentNode) lbl.remove(); }, ms + 120);
+  }
+
+  function _flyToPanel(){
+    var pi = opts.playerId;
+    var boardEl = document.getElementById('game-grid');
+    var br = boardEl ? boardEl.getBoundingClientRect() : {left:window.innerWidth/2,top:window.innerHeight/2,width:0,height:0};
+    var sx = br.left + br.width / 2, sy = br.top + br.height / 2;
+
+    var panelEl = document.getElementById(pi===0?'sb1':'sb2');
+    if(!panelEl || !panelEl.getBoundingClientRect().width)
+      panelEl = document.getElementById(pi===0?'is-sb1':'is-sb2');
+    var pr = panelEl ? panelEl.getBoundingClientRect() : {left:0,top:0,width:50,height:30};
+    var tx = pr.left + pr.width / 2, ty = pr.top + pr.height / 2;
+
+    var fly = document.createElement('div');
+    fly.className = 'scoring-fly-el';
+    fly.textContent = '+' + opts.totalMoveScore;
+    fly.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;font-size:22px;font-weight:900;color:#ffe870;'
+      + 'text-shadow:0 0 12px rgba(255,200,0,.9),0 0 6px rgba(68,170,255,.8);'
+      + 'will-change:left,top,opacity,font-size;'
+      + 'transition:left .34s cubic-bezier(.22,1,.36,1),top .34s cubic-bezier(.22,1,.36,1),font-size .34s,opacity .3s;'
+      + 'left:' + sx + 'px;top:' + sy + 'px;transform:translate(-50%,-50%);';
+    document.body.appendChild(fly);
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      fly.style.left = tx + 'px'; fly.style.top = ty + 'px';
+      fly.style.fontSize = '13px'; fly.style.opacity = '0';
+    }); });
+
+    setTimeout(function(){
+      if(fly.parentNode) fly.remove();
+      if(_done) return;
+      // Pulse both desktop and mobile score panels
+      [document.getElementById(pi===0?'sb1':'sb2'), document.getElementById(pi===0?'is-sb1':'is-sb2')]
+        .filter(Boolean).forEach(function(p){
+          p.classList.remove('score-panel-arrive'); void p.offsetWidth; p.classList.add('score-panel-arrive');
+        });
+      // Animate score count-up from pre-move to final
+      var svD = document.getElementById(pi===0?'sv1':'sv2');
+      var svM = document.getElementById(pi===0?'is-sv1':'is-sv2');
+      [svD, svM].filter(Boolean).forEach(function(el){
+        el.textContent = opts.scoreBeforeMove;
+        animateScore(el, opts.scoreBeforeMove, opts.scoreAfterMove, 420);
+      });
+      if(svD){ svD.classList.remove('score-pop'); void svD.offsetWidth; svD.classList.add('score-pop'); }
+      _prevScores[pi] = opts.scoreAfterMove;
+      setTimeout(function(){ _finish(false); }, 460);
+    }, 360);
+  }
+
+  var _wIdx = 0;
+  function _nextWord(){
+    if(_done) return;
+    if(_wIdx >= opts.words.length){ _flyToPanel(); return; }
+    var w = opts.words[_wIdx++];
+    _glowWord(w.tiles, glowMs);
+    setTimeout(function(){
+      if(_done) return;
+      _floatPts(w.tiles, w.pts, floatMs);
+      setTimeout(_nextWord, floatMs);
+    }, glowMs);
+  }
+  _nextWord();
+}
+
 // ── Move summary overlay (features 2 & 3) ──
 function showMoveSummary(opts){
   // opts: { player, playerName, words:[{text,valid,pts}], totalScore, bonusExtra, multLabel, onDone }
@@ -6696,6 +6861,7 @@ function commitPlay(sc,ws,bonus,pi){
     if(isBonusPos(r,c)) bBoardData[`${r},${c}`]={letter:newTile.letter,val:newTile.val,isJoker:!!newTile.isJoker};
     else bData[r][c]={letter:newTile.letter,val:newTile.val,isJoker:!!newTile.isJoker};
   }
+  const _scoreBeforeMove = scores[pi]; // capture pre-move score for animation
   scores[pi] += fs;
   if(isNaN(scores[pi])){ console.error('NaN score detected! sc=',sc,'fs=',fs,'pi=',pi,'bonus=',bonus,'ws=',ws); scores[pi]=0; }
   const _humanIdxCP = (gMode === 'online' && typeof window._myPlayerIndex !== 'undefined') ? window._myPlayerIndex : 0;
@@ -6740,37 +6906,58 @@ function commitPlay(sc,ws,bonus,pi){
   if(racks[pi].length===0&&bag.length===0){endGame();return;}
   if(settings.moveLimitOn && moveCount>=settings.moveLimit){endGame();return;}
   const maxM=getMaxMoves(); if(maxM&&moveCount>=maxM){endGame();return;}
-  // ── Show move summary before handing over ──
+  // ── Animated scoring flow (replaces static move summary) ──
   (function(){
     try{
-      const rev=window._lastAcceptedReview;
-      if(rev&&rev.words&&rev.words.length>0&&gameSettings.showMoveSummary){
-        // rev.words has pixel-perfect {text, score, valid} from buildMoveReview
-        const wordRows=rev.words.map(w=>({text:w.text,valid:true,pts:w.score,isMain:w===rev.words[0]}));
-        if(rev.bingo) wordRows.push({text:'בינגו 🌟',valid:true,pts:50,isBingo:true});
-        // In online mode: call nextTurn() immediately so Firebase is updated without waiting
-        // for the player to dismiss the dialog. The summary is purely cosmetic for the local player.
+      const rev = window._lastAcceptedReview;
+      const hasWords = rev && rev.words && rev.words.length > 0;
+
+      if(hasWords && !isTutorial){
+        // Cancel the score count-up that updateUI() just started; scoring animation owns the display
+        const _svD = document.getElementById(pi===0?'sv1':'sv2');
+        const _svM = document.getElementById(pi===0?'is-sv1':'is-sv2');
+        [_svD, _svM].filter(Boolean).forEach(el => {
+          if(el._cancelScoreAnim) el._cancelScoreAnim();
+          el.textContent = _scoreBeforeMove;
+        });
+        _prevScores[pi] = _scoreBeforeMove;
+
+        const _animWords = rev.words.map(w => ({tiles: w.tiles||[], pts: w.score||0}));
+        window._lastAcceptedReview = null;
+
+        const _doAnim = (onDone) => runScoringAnimation({
+          words: _animWords,
+          totalMoveScore: fs,
+          playerId: pi,
+          scoreBeforeMove: _scoreBeforeMove,
+          scoreAfterMove: scores[pi],
+          onComplete: () => { if(onDone) onDone(); }
+        });
+
         if(gMode === 'online'){
-          nextTurn();
-          window._lastAcceptedReview=null;
-          showMoveSummary({
-            player:pi,playerName:pNames[pi],
-            words:wordRows,totalScore:fs,
-            bonusExtra:bonusExtra,multLabel:_multLabel,
-            onDone:null, // turn already advanced
-          });
+          nextTurn(); // Firebase update first; animation is local-only
+          _doAnim(null);
           return;
         }
-        showMoveSummary({
-          player:pi,playerName:pNames[pi],
-          words:wordRows,totalScore:fs,
-          bonusExtra:bonusExtra,multLabel:_multLabel,
-          onDone:()=>nextTurn(),
-        });
-        window._lastAcceptedReview=null;
+        _doAnim(() => nextTurn());
         return;
       }
-    }catch(e){console.warn('moveSummary error',e);}
+
+      // Tutorial mode: keep the static summary (tutOnSummaryOpen/Close hooks need it)
+      if(hasWords && isTutorial && gameSettings.showMoveSummary){
+        const wordRows = rev.words.map(w => ({text:w.text,valid:true,pts:w.score,isMain:w===rev.words[0]}));
+        if(rev.bingo) wordRows.push({text:'בינגו 🌟',valid:true,pts:50,isBingo:true});
+        if(gMode === 'online'){
+          nextTurn();
+          window._lastAcceptedReview = null;
+          showMoveSummary({player:pi,playerName:pNames[pi],words:wordRows,totalScore:fs,bonusExtra:bonusExtra,multLabel:_multLabel,onDone:null});
+          return;
+        }
+        showMoveSummary({player:pi,playerName:pNames[pi],words:wordRows,totalScore:fs,bonusExtra:bonusExtra,multLabel:_multLabel,onDone:()=>nextTurn()});
+        window._lastAcceptedReview = null;
+        return;
+      }
+    }catch(e){ console.warn('scoringAnim error',e); }
     nextTurn();
   })();
 }
@@ -11059,12 +11246,16 @@ function animateScore(el, from, to, duration){
   var diff = to - from;
   if(!diff || !el || duration <= 0){ if(el) el.textContent = to; return; }
   var start = performance.now();
+  var cancelled = false;
+  if(el._cancelScoreAnim) el._cancelScoreAnim();
+  el._cancelScoreAnim = function(){ cancelled = true; el._cancelScoreAnim = null; };
   function step(now){
+    if(cancelled) return;
     var t    = Math.min(1, (now - start) / duration);
     var ease = 1 - Math.pow(1 - t, 3); // ease-out cubic
     el.textContent = Math.round(from + diff * ease);
     if(t < 1) requestAnimationFrame(step);
-    else el.textContent = to;
+    else { el.textContent = to; el._cancelScoreAnim = null; }
   }
   requestAnimationFrame(step);
 }
