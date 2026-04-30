@@ -1315,6 +1315,478 @@ body.tile-selected .bsq:not(.used){
 .set-btn:active { transform: scale(0.96) !important; }
 .db:active    { transform: scale(0.96) !important; }
 .jt:active    { transform: scale(0.92) !important; }
+
+/* ══════════════════════════════════════════════════════════════
+   STATS SCREEN — full mobile-first redesign
+══════════════════════════════════════════════════════════════ */
+
+/* Outer scroll container */
+#sstats {
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  overflow: hidden;
+}
+.stats-wrap {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Top bar ── */
+.stats-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 8px;
+  flex-shrink: 0;
+}
+.stats-topbar-title {
+  flex: 1;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--by, #f5c518);
+  letter-spacing: .5px;
+}
+
+/* ── Hero summary card ── */
+.stats-hero {
+  margin: 0 14px 10px;
+  background: linear-gradient(135deg, rgba(0,194,255,.13) 0%, rgba(32,61,176,.22) 100%);
+  border: 1px solid rgba(0,194,255,.22);
+  border-radius: 20px;
+  padding: 16px 16px 14px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.stats-hero-av {
+  font-size: 48px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(0,194,255,.4));
+}
+.stats-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+.stats-hero-name {
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.stats-hero-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--by, #f5c518);
+  margin-bottom: 8px;
+}
+.stats-hero-kpis {
+  display: flex;
+  gap: 10px;
+}
+.stats-kpi {
+  text-align: center;
+  flex: 1;
+}
+.stats-kpi-val {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+}
+.stats-kpi-lbl {
+  font-size: 9px;
+  color: rgba(255,255,255,.5);
+  margin-top: 2px;
+  font-weight: 600;
+}
+.stats-hero-insight {
+  font-size: 10px;
+  color: rgba(0,194,255,.85);
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+/* ── Tier badge ── */
+.stats-tier {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-bottom: 6px;
+}
+.stats-tier.bronze { background: rgba(176,100,40,.3); color: #cd7f32; border: 1px solid rgba(205,127,50,.4); }
+.stats-tier.silver { background: rgba(150,150,170,.2); color: #c0c0c0; border: 1px solid rgba(192,192,192,.4); }
+.stats-tier.gold   { background: rgba(200,160,30,.25); color: #f5c518; border: 1px solid rgba(245,197,24,.4); }
+.stats-tier.diamond{ background: rgba(0,194,255,.18); color: #00c2ff; border: 1px solid rgba(0,194,255,.4); }
+
+/* ── Time filter ── */
+.stats-timefilter {
+  display: flex;
+  margin: 0 14px 10px;
+  background: rgba(0,0,0,.3);
+  border-radius: 10px;
+  padding: 3px;
+  flex-shrink: 0;
+  gap: 2px;
+}
+.stats-tfseg {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.5);
+  font-family: Heebo, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .18s, color .18s;
+}
+.stats-tfseg.active {
+  background: linear-gradient(135deg, #0078c8, #004fa0);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,120,200,.35);
+}
+
+/* ── Tab bar ── */
+.stats-tabbar {
+  display: flex;
+  overflow-x: auto;
+  padding: 0 14px 0;
+  gap: 4px;
+  flex-shrink: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.stats-tabbar::-webkit-scrollbar { display: none; }
+.stats-tab {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255,255,255,.45);
+  font-family: Heebo, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 12px 9px;
+  cursor: pointer;
+  transition: color .18s, border-color .18s;
+  white-space: nowrap;
+}
+.stats-tab.active {
+  color: var(--by, #f5c518);
+  border-bottom-color: var(--by, #f5c518);
+  text-shadow: 0 0 10px rgba(245,197,24,.45);
+}
+
+/* ── Tab content area ── */
+.stats-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 14px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.1) transparent;
+}
+.stats-panel { display: none; }
+.stats-panel.active { display: block; }
+
+/* ── Stat card grid ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.stats-grid.cols1 { grid-template-columns: 1fr; }
+.stats-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.stat-card {
+  background: linear-gradient(145deg, rgba(6,19,61,.92), rgba(2,10,38,.95));
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  padding: 14px 12px 12px;
+  text-align: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.06);
+  animation: statCardIn .4s cubic-bezier(.22,1,.36,1) both;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,194,255,.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+.stat-card-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.stat-card-val {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-card-lbl {
+  font-size: 10px;
+  color: rgba(255,255,255,.5);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.stat-card-trend {
+  font-size: 10px;
+  font-weight: 700;
+}
+.trend-up   { color: #5dfc8c; }
+.trend-down { color: #ff6b6b; }
+.trend-neu  { color: rgba(255,255,255,.35); }
+
+/* Full-width accent card */
+.stat-card.accent {
+  background: linear-gradient(135deg, rgba(0,120,200,.2), rgba(0,60,120,.3));
+  border-color: rgba(0,194,255,.22);
+}
+.stat-card.yellow {
+  background: linear-gradient(135deg, rgba(200,160,0,.18), rgba(100,80,0,.25));
+  border-color: rgba(245,197,24,.25);
+}
+.stat-card.purple {
+  background: linear-gradient(135deg, rgba(120,40,200,.2), rgba(60,20,120,.3));
+  border-color: rgba(180,100,255,.25);
+}
+
+/* ── Section label ── */
+.stats-sec-lbl {
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(255,255,255,.4);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin: 14px 0 8px;
+}
+
+/* ── Win-rate trend mini-chart ── */
+.stats-trend-chart {
+  background: linear-gradient(145deg, rgba(6,19,61,.92), rgba(2,10,38,.95));
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.stats-trend-chart-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255,255,255,.7);
+  margin-bottom: 10px;
+}
+.stats-sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 50px;
+  direction: ltr;
+}
+.stats-spark-bar {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, #00c2ff, #0055c8);
+  min-height: 4px;
+  transition: height .4s ease;
+}
+
+/* ── Progress tier bar ── */
+.stats-tier-bar-wrap {
+  background: rgba(0,0,0,.3);
+  border-radius: 8px;
+  height: 10px;
+  overflow: hidden;
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+.stats-tier-bar-fill {
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f5c518, #ffaa00);
+  transition: width .6s ease;
+}
+
+/* ── Boost tab specifics ── */
+.boost-fav-card {
+  background: linear-gradient(135deg, rgba(0,194,255,.12), rgba(32,61,176,.22));
+  border: 1px solid rgba(0,194,255,.25);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.boost-fav-icon {
+  font-size: 40px;
+  filter: drop-shadow(0 0 10px rgba(0,194,255,.55));
+}
+.boost-fav-info { flex: 1; }
+.boost-fav-name {
+  font-size: 16px;
+  font-weight: 900;
+  color: #00c2ff;
+  margin-bottom: 4px;
+}
+.boost-fav-pct {
+  font-size: 12px;
+  color: rgba(255,255,255,.55);
+  margin-bottom: 6px;
+}
+.boost-fav-desc { font-size: 11px; color: rgba(255,255,255,.4); }
+
+.boost-combo-card {
+  background: linear-gradient(145deg, rgba(6,19,61,.92), rgba(2,10,38,.95));
+  border: 1px solid rgba(245,197,24,.2);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.boost-combo-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--by, #f5c518);
+  margin-bottom: 10px;
+  letter-spacing: .5px;
+}
+.boost-combo-chain {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.boost-combo-item {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0,194,255,.15);
+  border: 1px solid rgba(0,194,255,.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.boost-combo-arrow { color: var(--by, #f5c518); font-size: 14px; }
+
+/* Boost icon pulse */
+@keyframes boostPulse {
+  0%,100% { filter: drop-shadow(0 0 4px rgba(0,194,255,.4)); }
+  50%      { filter: drop-shadow(0 0 14px rgba(0,194,255,.9)); }
+}
+.boost-pulse { animation: boostPulse 2.2s ease-in-out infinite; }
+
+/* ── Rivals tab ── */
+.rival-card {
+  background: linear-gradient(145deg, rgba(6,19,61,.92), rgba(2,10,38,.95));
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rival-av { font-size: 36px; line-height: 1; }
+.rival-info { flex: 1; }
+.rival-name { font-size: 15px; font-weight: 900; color: #fff; margin-bottom: 2px; }
+.rival-sub  { font-size: 11px; color: rgba(255,255,255,.5); }
+.rival-record { font-size: 13px; font-weight: 800; }
+.rival-record .w { color: #5dfc8c; }
+.rival-record .l { color: #ff6b6b; }
+
+/* Empty state */
+.stats-empty {
+  text-align: center;
+  padding: 32px 20px;
+  color: rgba(255,255,255,.4);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.stats-empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+/* ── Fun tab ── */
+.fun-card {
+  background: linear-gradient(145deg, rgba(6,19,61,.92), rgba(2,10,38,.95));
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fun-card-icon { font-size: 28px; flex-shrink: 0; }
+.fun-card-info { flex: 1; }
+.fun-card-lbl  { font-size: 10px; color: rgba(255,255,255,.45); font-weight: 600; margin-bottom: 2px; }
+.fun-card-val  { font-size: 18px; font-weight: 900; color: #fff; }
+
+.stats-share-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(245,197,24,.18), rgba(180,140,0,.22));
+  border: 1px solid rgba(245,197,24,.35);
+  border-radius: 14px;
+  color: var(--by, #f5c518);
+  font-family: Heebo, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .18s, transform .12s;
+  letter-spacing: .3px;
+}
+.stats-share-btn:active { transform: scale(.97); }
+
+/* ── Stagger entrance animation ── */
+@keyframes statCardIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stat-card:nth-child(1) { animation-delay: .04s; }
+.stat-card:nth-child(2) { animation-delay: .08s; }
+.stat-card:nth-child(3) { animation-delay: .12s; }
+.stat-card:nth-child(4) { animation-delay: .16s; }
+.stat-card:nth-child(5) { animation-delay: .20s; }
+.stat-card:nth-child(6) { animation-delay: .24s; }
+
+/* ── Responsive tweaks ── */
+@media (max-width: 380px) {
+  .stat-card-val  { font-size: 24px; }
+  .stats-kpi-val  { font-size: 19px; }
+  .stats-hero-av  { font-size: 38px; }
+  .stats-tab      { font-size: 12px; padding: 8px 9px 9px; }
+}
+@media (max-width: 360px) {
+  .stats-hero     { padding: 12px; gap: 10px; }
+  .stat-card      { padding: 12px 10px 10px; }
+  .stats-content  { padding: 12px 10px 20px; }
+}
 </style>
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
@@ -10026,45 +10498,376 @@ function _renderProfileScreen(){
 }
 
 // ── Stats Screen ──
+// ══════════════════════════════════════════════════════
+// STATS SCREEN — data model + rendering
+// ══════════════════════════════════════════════════════
+
+// Mock stats data — replace each field with real Firebase/localStorage
+// values later. The shape is intentionally separate from UI rendering.
+const _mockPlayerStats = {
+  player: {
+    name: 'שחקן בוסט',
+    avatar: '🏆',
+    rank: 124,
+    rankTier: 'gold',
+    percentile: 78
+  },
+  summary: {
+    gamesPlayed: 143,
+    gamesWon: 89,
+    gamesLost: 49,
+    gamesDraw: 5,
+    winRate: 62,
+    currentStreak: 5,
+    longestStreak: 11,
+    highScore: 412,
+    totalScore: 34034,
+    averageScore: 238,
+    averageWordLength: 4.7,
+    boostsUsed: 318,
+    wordsPlayed: 1406
+  },
+  performance: {
+    rating: 1840,
+    tierProgress: 68,
+    pointsPerMove: 21.4,
+    pointsPerTile: 6.2,
+    averageMoveTime: '18 שנ׳',
+    comebackWins: 14,
+    lastMoveWins: 7,
+    closeWins: 19,
+    winRateTrend: [45, 50, 48, 55, 59, 62]
+  },
+  boosts: {
+    totalUsed: 318,
+    averagePerGame: 2.2,
+    favoriteBoost: 'החלפת אות',
+    favoriteBoostIcon: '🔄',
+    favoriteBoostUsage: 41,
+    winRateWithBoost: 68,
+    lastMoveBoostWins: 9,
+    mostImpactfulBoost: 'שאילתה',
+    bestCombo: ['שאילתה', 'החלפת אות', 'ניצחון']
+  },
+  rivals: {
+    mainRival: { name: 'דניאל', wins: 12, losses: 9, avatar: '🦊' },
+    topDefeated: { name: 'אורי', rank: 32, avatar: '🦁' },
+    vsStronger: { wins: 8, losses: 16 },
+    vsWeaker: { wins: 31, losses: 10 },
+    recentOpponents: []
+  },
+  fun: {
+    longestWord: 'התחדשות',
+    mostRepeatedWord: 'בית',
+    fastestWin: '2:14',
+    biggestComeback: 87,
+    bestDay: 'שלישי',
+    luckFactor: 82
+  }
+};
+
+// Current active time filter
+let _statsTimeKey = 'all';
+
+// Merge real user stats with mock structure, preferring real data where available
+function _buildStatsData(){
+  const real = (currentUserProfile && currentUserProfile.stats) || null;
+  if(!real || (real.gamesPlayed || 0) < 3){
+    // Not enough data — use mock with real fields overlaid
+    const d = JSON.parse(JSON.stringify(_mockPlayerStats));
+    if(real){
+      d.summary.gamesPlayed  = real.gamesPlayed  || d.summary.gamesPlayed;
+      d.summary.gamesWon     = real.gamesWon     || d.summary.gamesWon;
+      d.summary.gamesLost    = real.gamesLost    || d.summary.gamesLost;
+      d.summary.gamesDraw    = real.gamesDraw    || d.summary.gamesDraw;
+      d.summary.highScore    = real.highScore    || d.summary.highScore;
+      d.summary.totalScore   = real.totalScore   || d.summary.totalScore;
+      d.summary.currentStreak= real.currentStreak|| d.summary.currentStreak;
+      d.summary.longestStreak= real.longestStreak|| d.summary.longestStreak;
+      d.summary.boostsUsed   = real.bonusesTriggered || d.summary.boostsUsed;
+      d.summary.wordsPlayed  = real.wordsPlayed  || d.summary.wordsPlayed;
+    }
+    if(currentUserProfile){
+      d.player.name   = currentUserProfile.displayName || d.player.name;
+      d.player.avatar = _avatarEmoji(currentUserProfile.equippedAvatar) || d.player.avatar;
+    }
+    return d;
+  }
+  // Enough real data — build from real stats
+  const played = real.gamesPlayed || 0;
+  const won    = real.gamesWon    || 0;
+  const lost   = real.gamesLost   || 0;
+  const draw   = real.gamesDraw   || 0;
+  const wr     = played > 0 ? Math.round(won / played * 100) : 0;
+  const avg    = played > 0 ? Math.round((real.totalScore || 0) / played) : 0;
+  return {
+    player: {
+      name: currentUserProfile.displayName || 'שחקן',
+      avatar: _avatarEmoji(currentUserProfile.equippedAvatar) || '🏆',
+      rank: real.rank || null,
+      rankTier: _statsTier(real.rating || 0),
+      percentile: real.percentile || null
+    },
+    summary: {
+      gamesPlayed: played, gamesWon: won, gamesLost: lost, gamesDraw: draw,
+      winRate: wr, currentStreak: real.currentStreak || 0,
+      longestStreak: real.longestStreak || 0,
+      highScore: real.highScore || 0, totalScore: real.totalScore || 0,
+      averageScore: avg, averageWordLength: real.avgWordLength || 0,
+      boostsUsed: real.bonusesTriggered || 0, wordsPlayed: real.wordsPlayed || 0
+    },
+    performance: {
+      rating: real.rating || 0, tierProgress: _statsTierPct(real.rating || 0),
+      pointsPerMove: real.pointsPerMove || 0, pointsPerTile: real.pointsPerTile || 0,
+      averageMoveTime: real.avgMoveTime || '—',
+      comebackWins: real.comebackWins || 0, lastMoveWins: real.lastMoveWins || 0,
+      closeWins: real.closeWins || 0,
+      winRateTrend: real.winRateTrend || [wr]
+    },
+    boosts: {
+      totalUsed: real.bonusesTriggered || 0,
+      averagePerGame: played > 0 ? +((real.bonusesTriggered||0)/played).toFixed(1) : 0,
+      favoriteBoost: real.favoriteBoost || '—', favoriteBoostIcon: '⚡',
+      favoriteBoostUsage: real.favoriteBoostPct || 0,
+      winRateWithBoost: real.winRateWithBoost || 0,
+      lastMoveBoostWins: real.lastMoveBoostWins || 0,
+      mostImpactfulBoost: real.mostImpactfulBoost || '—',
+      bestCombo: real.bestCombo || []
+    },
+    rivals: _mockPlayerStats.rivals,
+    fun: {
+      longestWord: real.longestWord || '—', mostRepeatedWord: real.mostRepeatedWord || '—',
+      fastestWin: real.fastestWin || '—',
+      biggestComeback: real.biggestComeback || 0,
+      bestDay: real.bestDay || '—', luckFactor: real.luckFactor || 0
+    }
+  };
+}
+
+function _statsTier(rating){
+  if(rating >= 2000) return 'diamond';
+  if(rating >= 1600) return 'gold';
+  if(rating >= 1200) return 'silver';
+  return 'bronze';
+}
+function _statsTierPct(rating){
+  const brackets = [[0,1200],[1200,1600],[1600,2000],[2000,2400]];
+  const tier = _statsTier(rating);
+  const map  = {bronze:0,silver:1,gold:2,diamond:3};
+  const [lo,hi] = brackets[map[tier]];
+  return Math.min(100, Math.round((rating - lo) / (hi - lo) * 100));
+}
+const _tierLabelsHe = { bronze:'ארד', silver:'כסף', gold:'זהב', diamond:'יהלום' };
+const _tierEmojis   = { bronze:'🥉', silver:'🥈', gold:'⚡', diamond:'💎' };
+
 function showStatsScreen(){
   if(!currentUserProfile) return;
+  _statsTimeKey = 'all';
+  // Reset time filter UI
+  document.querySelectorAll('.stats-tfseg').forEach((b,i)=>{ b.classList.toggle('active', i===2); });
+  _statsTab('overview', document.querySelector('.stats-tab'));
   _renderStatsScreen();
   showSc('sstats');
 }
 
-function _renderStatsScreen(){
-  const stats = (currentUserProfile && currentUserProfile.stats) || {};
-  const played = stats.gamesPlayed || 0;
-  const won = stats.gamesWon || 0;
-  const lost = stats.gamesLost || 0;
-  const draw = stats.gamesDraw || 0;
-  const wr = played > 0 ? Math.round(won / played * 100) : 0;
-  const avg = played > 0 ? Math.round((stats.totalScore || 0) / played) : 0;
-  const _s = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-  _s('st-played', played);
-  _s('st-won', won);
-  _s('st-lost', lost);
-  _s('st-highscore', stats.highScore || 0);
-  _s('st-avg', avg);
-  _s('st-streak', stats.currentStreak || 0);
-  _s('st-best-streak', stats.longestStreak || 0);
-  _s('st-bonuses', stats.bonusesTriggered || 0);
-  _s('st-words', stats.wordsPlayed || 0);
-  _s('stats-wr-pct', wr + '%');
-  // Donut arc: circumference = 2π×42 ≈ 263.9
-  const arc = document.getElementById('stats-donut-arc');
-  if(arc){
-    const filled = (263.9 * wr / 100).toFixed(1);
-    arc.setAttribute('stroke-dasharray', filled + ' ' + (263.9 - filled).toFixed(1));
+function _statsRefresh(){
+  _renderStatsScreen();
+}
+
+function _statsTab(tab, btn){
+  document.querySelectorAll('.stats-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.stats-tab').forEach(b=>b.classList.remove('active'));
+  const panel = document.getElementById('st-panel-' + tab);
+  if(panel) panel.classList.add('active');
+  if(btn)   btn.classList.add('active');
+}
+
+function _statsTimeFilter(key, btn){
+  _statsTimeKey = key;
+  document.querySelectorAll('.stats-tfseg').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  _renderStatsScreen();
+}
+
+function _statsCountUp(el, target, duration){
+  if(!el) return;
+  const isFloat = String(target).includes('.');
+  const start = Date.now();
+  const from  = 0;
+  function tick(){
+    const p = Math.min(1, (Date.now()-start)/duration);
+    const ease = 1 - Math.pow(1-p, 3);
+    const val  = from + (target-from)*ease;
+    el.textContent = isFloat ? val.toFixed(1) : Math.round(val);
+    if(p < 1) requestAnimationFrame(tick);
   }
-  // Stacked W/L/D bar
+  requestAnimationFrame(tick);
+}
+
+function _renderStatsScreen(){
+  const d  = _buildStatsData();
+  const s  = d.summary;
+  const p  = d.performance;
+  const b  = d.boosts;
+  const rv = d.rivals;
+  const f  = d.fun;
+  const _s = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  const _cu= (id, val, dur) => _statsCountUp(document.getElementById(id), val, dur||700);
+
+  // ── Hero ──
+  _s('st-hero-av',   d.player.avatar);
+  _s('st-hero-name', d.player.name);
+  _s('st-hero-wr',   s.winRate + '%');
+  _s('st-hero-streak', s.currentStreak + ' 🔥');
+  _s('st-hero-rank', d.player.rank ? '#' + d.player.rank : '#—');
+  const tierBadge = document.getElementById('st-hero-tier');
+  if(tierBadge){
+    tierBadge.textContent = _tierEmojis[d.player.rankTier] + ' ' + _tierLabelsHe[d.player.rankTier];
+    tierBadge.className = 'stats-tier ' + d.player.rankTier;
+  }
+  const insightEl = document.getElementById('st-hero-insight');
+  if(insightEl){
+    if(d.player.percentile) insightEl.textContent = 'טוב יותר מ־' + d.player.percentile + '% מהשחקנים';
+    else insightEl.textContent = '';
+  }
+
+  // ── Tab 1: Overview ──
+  _cu('st-highscore', s.highScore);
+  _cu('st-avg',       s.averageScore);
+  _cu('st-played',    s.gamesPlayed);
+  _cu('st-best-streak', s.longestStreak);
+  _cu('st-bonuses',   s.boostsUsed);
+  _s('st-avgword', s.averageWordLength ? s.averageWordLength.toFixed(1) : '0');
+
+  _cu('st-won',  s.gamesWon);
+  _cu('st-lost', s.gamesLost);
+  _cu('st-draw', s.gamesDraw || 0);
+
   const wb = document.getElementById('st-bar-w');
   const lb = document.getElementById('st-bar-l');
   const db = document.getElementById('st-bar-d');
-  if(wb && lb && db){
-    wb.style.width = (played > 0 ? (won / played * 100).toFixed(1) : 0) + '%';
-    lb.style.width = (played > 0 ? (lost / played * 100).toFixed(1) : 0) + '%';
-    db.style.width = (played > 0 ? (draw / played * 100).toFixed(1) : 0) + '%';
+  if(wb && lb && db && s.gamesPlayed > 0){
+    setTimeout(()=>{
+      wb.style.width = (s.gamesWon  / s.gamesPlayed * 100).toFixed(1) + '%';
+      lb.style.width = (s.gamesLost / s.gamesPlayed * 100).toFixed(1) + '%';
+      db.style.width = ((s.gamesDraw||0) / s.gamesPlayed * 100).toFixed(1) + '%';
+    }, 200);
+  }
+  _s('st-wr-pct-lbl',  'אחוז ניצחון ' + s.winRate + '%');
+  _s('st-streak-lbl',  'רצף נוכחי: ' + s.currentStreak);
+
+  // ── Tab 2: Performance ──
+  _cu('st-rating',     p.rating);
+  _cu('st-pts-move',   p.pointsPerMove);
+  _cu('st-pts-tile',   p.pointsPerTile);
+  _s('st-move-time',   p.averageMoveTime);
+  _cu('st-comeback',   p.comebackWins);
+  _cu('st-lastmove',   p.lastMoveWins);
+  _cu('st-closewins',  p.closeWins);
+
+  const tierBarEl = document.getElementById('st-tier-bar');
+  if(tierBarEl) setTimeout(()=>{ tierBarEl.style.width = p.tierProgress + '%'; }, 250);
+
+  const perfTierBadge = document.getElementById('st-perf-tier-badge');
+  if(perfTierBadge){
+    perfTierBadge.textContent = _tierEmojis[d.player.rankTier] + ' ' + _tierLabelsHe[d.player.rankTier];
+    perfTierBadge.className = 'stats-tier ' + d.player.rankTier;
+  }
+
+  // Sparkline
+  const sparkEl = document.getElementById('st-sparkline');
+  if(sparkEl && p.winRateTrend && p.winRateTrend.length){
+    const max = Math.max(...p.winRateTrend, 1);
+    sparkEl.innerHTML = p.winRateTrend.map(v =>
+      `<div class="stats-spark-bar" style="height:${Math.max(6, Math.round(v/max*100))}%"></div>`
+    ).join('');
+  }
+
+  // ── Tab 3: Boosts ──
+  _cu('st-boost-total',   b.totalUsed);
+  _s('st-boost-avg',      b.averagePerGame);
+  _s('st-boost-winrate',  b.winRateWithBoost + '%');
+  _s('st-boost-fav-icon', b.favoriteBoostIcon || '⚡');
+  _s('st-boost-fav-name', b.favoriteBoost);
+  _s('st-boost-fav-pct',  b.favoriteBoostUsage + '% מהבוסטים שלך');
+  _cu('st-boost-impact-wins', b.lastMoveBoostWins);
+  _s('st-boost-impact-best',  b.mostImpactfulBoost);
+
+  const comboEl = document.getElementById('st-boost-combo');
+  if(comboEl && b.bestCombo && b.bestCombo.length){
+    comboEl.innerHTML = b.bestCombo.map((item, i) =>
+      (i > 0 ? '<span class="boost-combo-arrow">→</span>' : '') +
+      `<span class="boost-combo-item">${item}</span>`
+    ).join('');
+  }
+
+  // ── Tab 4: Rivals ──
+  const rivelsEl = document.getElementById('st-rivals-content');
+  if(rivelsEl){
+    if(rv.mainRival && rv.mainRival.name){
+      rivelsEl.innerHTML = `
+        <div class="stats-sec-lbl">היריב המרכזי שלך</div>
+        <div class="rival-card">
+          <div class="rival-av">${rv.mainRival.avatar || '🎮'}</div>
+          <div class="rival-info">
+            <div class="rival-name">${rv.mainRival.name}</div>
+            <div class="rival-sub">ראש בראש</div>
+          </div>
+          <div class="rival-record">
+            <span class="w">${rv.mainRival.wins} ניצחונות</span>
+            <span style="color:rgba(255,255,255,.3)"> · </span>
+            <span class="l">${rv.mainRival.losses} הפסדים</span>
+          </div>
+        </div>
+        ${rv.topDefeated ? `
+        <div class="stats-sec-lbl">החזק ביותר שניצחת</div>
+        <div class="rival-card">
+          <div class="rival-av">${rv.topDefeated.avatar || '🏅'}</div>
+          <div class="rival-info">
+            <div class="rival-name">${rv.topDefeated.name}</div>
+            <div class="rival-sub">${rv.topDefeated.rank ? 'מקום #' + rv.topDefeated.rank : ''}</div>
+          </div>
+          <div style="font-size:20px;">🏆</div>
+        </div>` : ''}`;
+    } else {
+      rivelsEl.innerHTML = `
+        <div class="stats-empty">
+          <div class="stats-empty-icon">🎮</div>
+          שחק מול חברים כדי לפתוח<br>סטטיסטיקות יריבים
+        </div>`;
+    }
+  }
+
+  _cu('st-vs-stronger-w', rv.vsStronger ? rv.vsStronger.wins : 0);
+  _cu('st-vs-weaker-w',   rv.vsWeaker   ? rv.vsWeaker.wins   : 0);
+
+  // ── Tab 5: Fun ──
+  _s('st-fun-longest',  f.longestWord);
+  _s('st-fun-repeated', f.mostRepeatedWord);
+  _s('st-fun-fastest',  f.fastestWin);
+  _s('st-fun-comeback', f.biggestComeback ? '+' + f.biggestComeback + ' נקודות' : '—');
+  _s('st-fun-bestday',  f.bestDay);
+  _s('st-fun-luck',     f.luckFactor ? f.luckFactor + ' / 100' : '—');
+}
+
+// ── Share ──
+function _statsShare(){
+  const d = _buildStatsData();
+  const s = d.summary;
+  const text = [
+    '⚡ הסטטיסטיקות שלי בבוסט:',
+    `🎮 ${s.gamesPlayed} משחקים`,
+    `🏆 שיא: ${s.highScore} נקודות`,
+    `📊 אחוז ניצחון: ${s.winRate}%`,
+    `🔥 רצף: ${s.currentStreak}`,
+    `⭐ בוסטים: ${s.boostsUsed}`,
+    'שחק גם אתה! boost-game.web.app'
+  ].join('\n');
+  if(navigator.share){
+    navigator.share({ text }).catch(()=>{});
+  } else {
+    try{ navigator.clipboard.writeText(text); }catch(_){}
+    alert('הסטטיסטיקות הועתקו ללוח!');
   }
 }
 
@@ -10393,78 +11196,329 @@ function animateScore(el, from, to, duration){
 </div>
 
 <!-- STATS SCREEN -->
-<div id="sstats" class="screen hidden">
-  <div style="width:100%;max-width:360px;display:flex;flex-direction:column;height:100%;padding:16px 12px;box-sizing:border-box;gap:12px;overflow-y:auto;">
+<div id="sstats" class="screen hidden" dir="rtl">
+  <div class="stats-wrap">
 
-    <!-- Header -->
-    <div style="display:flex;align-items:center;gap:10px;">
+    <!-- Top bar -->
+    <div class="stats-topbar">
       <button class="bd" style="width:auto;padding:8px 14px;font-size:13px;flex-shrink:0;" onclick="showProfileScreen()">←</button>
-      <div style="font-size:17px;font-weight:900;color:var(--by,#f5c518);flex:1;text-align:center;">📊 הסטטיסטיקות שלי</div>
+      <div class="stats-topbar-title">סטטיסטיקות</div>
+      <button class="bd" style="width:auto;padding:8px 12px;font-size:12px;flex-shrink:0;opacity:.7;" onclick="_statsRefresh()" title="רענן">↻</button>
     </div>
 
-    <!-- Win Rate Donut + summary row -->
-    <div style="background:rgba(0,0,0,.25);border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;">
-      <svg width="90" height="90" viewBox="0 0 100 100" style="flex-shrink:0;">
-        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="12"/>
-        <circle id="stats-donut-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--by,#f5c518)"
-          stroke-width="12" stroke-linecap="round"
-          stroke-dasharray="0 263.9" stroke-dashoffset="65.97"
-          style="transition:stroke-dasharray .6s ease;"/>
-        <text x="50" y="46" text-anchor="middle" font-size="17" font-weight="900" fill="#fff" font-family="Heebo,sans-serif" id="stats-wr-pct">0%</text>
-        <text x="50" y="60" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.5)" font-family="Heebo,sans-serif">אחוז ניצחון</text>
-      </svg>
-      <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;">
-          <div><div style="font-size:9px;color:rgba(255,255,255,.5)">משחקים</div><div id="st-played" style="font-size:20px;font-weight:900;color:var(--by,#f5c518)">0</div></div>
-          <div><div style="font-size:9px;color:rgba(255,255,255,.5)">ניצחונות</div><div id="st-won" style="font-size:20px;font-weight:900;color:#8eff8e">0</div></div>
-          <div><div style="font-size:9px;color:rgba(255,255,255,.5)">הפסדים</div><div id="st-lost" style="font-size:20px;font-weight:900;color:#ff8e8e">0</div></div>
+    <!-- Hero summary card -->
+    <div class="stats-hero">
+      <div class="stats-hero-av boost-pulse" id="st-hero-av">🏆</div>
+      <div class="stats-hero-info">
+        <div class="stats-hero-name" id="st-hero-name">שחקן בוסט</div>
+        <div id="st-hero-tier" class="stats-tier gold">⚡ זהב</div>
+        <div class="stats-hero-kpis">
+          <div class="stats-kpi">
+            <div class="stats-kpi-val" id="st-hero-wr">0%</div>
+            <div class="stats-kpi-lbl">אחוז ניצחון</div>
+          </div>
+          <div class="stats-kpi">
+            <div class="stats-kpi-val" id="st-hero-streak">0 🔥</div>
+            <div class="stats-kpi-lbl">רצף נוכחי</div>
+          </div>
+          <div class="stats-kpi">
+            <div class="stats-kpi-val" id="st-hero-rank">#—</div>
+            <div class="stats-kpi-lbl">דירוג</div>
+          </div>
         </div>
-        <!-- Stacked W/L/D bar -->
-        <div style="height:8px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.1);display:flex;">
-          <div id="st-bar-w" style="background:#8eff8e;height:100%;transition:width .6s ease;width:0%"></div>
-          <div id="st-bar-l" style="background:#ff8e8e;height:100%;transition:width .6s ease;width:0%"></div>
-          <div id="st-bar-d" style="background:rgba(255,255,255,.35);height:100%;transition:width .6s ease;width:0%"></div>
+        <div class="stats-hero-insight" id="st-hero-insight"></div>
+      </div>
+    </div>
+
+    <!-- Time filter -->
+    <div class="stats-timefilter">
+      <button class="stats-tfseg" onclick="_statsTimeFilter('week',this)">שבוע</button>
+      <button class="stats-tfseg" onclick="_statsTimeFilter('month',this)">חודש</button>
+      <button class="stats-tfseg active" onclick="_statsTimeFilter('all',this)">הכל</button>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="stats-tabbar">
+      <button class="stats-tab active" onclick="_statsTab('overview',this)">סקירה</button>
+      <button class="stats-tab" onclick="_statsTab('performance',this)">ביצועים</button>
+      <button class="stats-tab" onclick="_statsTab('boosts',this)">בוסטים</button>
+      <button class="stats-tab" onclick="_statsTab('rivals',this)">יריבים</button>
+      <button class="stats-tab" onclick="_statsTab('fun',this)">כיף</button>
+    </div>
+
+    <!-- Tab content -->
+    <div class="stats-content">
+
+      <!-- ── TAB 1: סקירה ── -->
+      <div id="st-panel-overview" class="stats-panel active">
+        <div class="stats-grid" id="st-overview-grid">
+          <div class="stat-card yellow">
+            <div class="stat-card-icon">🏆</div>
+            <div class="stat-card-val" id="st-highscore">0</div>
+            <div class="stat-card-lbl">שיא ניקוד</div>
+            <div class="stat-card-trend trend-up" id="st-highscore-trend"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">📊</div>
+            <div class="stat-card-val" id="st-avg">0</div>
+            <div class="stat-card-lbl">ממוצע ניקוד</div>
+            <div class="stat-card-trend" id="st-avg-trend"></div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-card-icon">🎮</div>
+            <div class="stat-card-val" id="st-played">0</div>
+            <div class="stat-card-lbl">משחקים</div>
+            <div class="stat-card-trend trend-neu" id="st-played-trend"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">🔥</div>
+            <div class="stat-card-val" id="st-best-streak">0</div>
+            <div class="stat-card-lbl">רצף שיא</div>
+            <div class="stat-card-trend" id="st-streak-trend"></div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-card-icon">⭐</div>
+            <div class="stat-card-val" id="st-bonuses">0</div>
+            <div class="stat-card-lbl">בוסטים בשימוש</div>
+            <div class="stat-card-trend trend-up" id="st-bonuses-trend"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">📝</div>
+            <div class="stat-card-val" id="st-avgword">0</div>
+            <div class="stat-card-lbl">אורך מילה ממוצע</div>
+            <div class="stat-card-trend" id="st-avgword-trend"></div>
+          </div>
+        </div>
+
+        <!-- W/L summary bar -->
+        <div class="stats-trend-chart">
+          <div class="stats-trend-chart-title">ניצחונות / הפסדים</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:10px;">
+            <div><div style="font-size:9px;color:rgba(255,255,255,.5)">ניצחונות</div><div id="st-won" style="font-size:22px;font-weight:900;color:#5dfc8c">0</div></div>
+            <div><div style="font-size:9px;color:rgba(255,255,255,.5)">הפסדים</div><div id="st-lost" style="font-size:22px;font-weight:900;color:#ff6b6b">0</div></div>
+            <div><div style="font-size:9px;color:rgba(255,255,255,.5)">תיקו</div><div id="st-draw" style="font-size:22px;font-weight:900;color:rgba(255,255,255,.5)">0</div></div>
+          </div>
+          <div style="height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.08);display:flex;direction:ltr;">
+            <div id="st-bar-w" style="background:linear-gradient(90deg,#5dfc8c,#00c85a);height:100%;transition:width .6s ease;width:0%"></div>
+            <div id="st-bar-l" style="background:linear-gradient(90deg,#ff6b6b,#cc2222);height:100%;transition:width .6s ease;width:0%"></div>
+            <div id="st-bar-d" style="background:rgba(255,255,255,.25);height:100%;transition:width .6s ease;width:0%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:rgba(255,255,255,.35);">
+            <span id="st-wr-pct-lbl">אחוז ניצחון 0%</span>
+            <span id="st-streak-lbl">רצף נוכחי: 0</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Score stats -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div style="background:rgba(0,0,0,.25);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:4px;">שיא אישי 🏆</div>
-        <div id="st-highscore" style="font-size:26px;font-weight:900;color:var(--by,#f5c518)">0</div>
-      </div>
-      <div style="background:rgba(0,0,0,.25);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:4px;">ממוצע למשחק</div>
-        <div id="st-avg" style="font-size:26px;font-weight:900;color:rgba(255,255,255,.85)">0</div>
-      </div>
-    </div>
+      <!-- ── TAB 2: ביצועים ── -->
+      <div id="st-panel-performance" class="stats-panel">
 
-    <!-- Streak -->
-    <div style="background:rgba(0,0,0,.25);border-radius:10px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;">
-      <div>
-        <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:4px;">רצף נוכחי 🔥</div>
-        <div id="st-streak" style="font-size:26px;font-weight:900;color:var(--lcd,#c8ff00)">0</div>
-      </div>
-      <div>
-        <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:4px;">רצף שיא</div>
-        <div id="st-best-streak" style="font-size:26px;font-weight:900;color:#f5a623">0</div>
-      </div>
-    </div>
+        <!-- Win rate trend sparkline -->
+        <div class="stats-trend-chart">
+          <div class="stats-trend-chart-title">אחוז ניצחונות — 6 משחקים אחרונים</div>
+          <div class="stats-sparkline" id="st-sparkline"></div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,.3);margin-top:4px;direction:ltr;">
+            <span>ישן</span><span>עדכני</span>
+          </div>
+        </div>
 
-    <!-- Game-mechanic stats -->
-    <div style="background:rgba(0,0,0,.25);border-radius:10px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;">
-      <div>
-        <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:4px;">בונוסים שהופעלו ⭐</div>
-        <div id="st-bonuses" style="font-size:26px;font-weight:900;color:#c084fc">0</div>
-      </div>
-      <div>
-        <div style="font-size:9px;color:rgba(255,255,255,.5);margin-bottom:4px;">מילים שהונחו 📝</div>
-        <div id="st-words" style="font-size:26px;font-weight:900;color:rgba(255,255,255,.85)">0</div>
-      </div>
-    </div>
+        <!-- Skill rating -->
+        <div class="stats-sec-lbl">דירוג מיומנות</div>
+        <div class="stat-card" style="margin-bottom:10px;text-align:right;padding:14px 16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div>
+              <div class="stat-card-lbl" style="text-align:right;margin-bottom:2px;">דירוג ELO</div>
+              <div style="font-size:26px;font-weight:900;color:var(--by,#f5c518);" id="st-rating">0</div>
+            </div>
+            <div id="st-perf-tier-badge" class="stats-tier gold" style="margin:0;">⚡ זהב</div>
+          </div>
+          <div class="stats-tier-bar-wrap">
+            <div class="stats-tier-bar-fill" id="st-tier-bar" style="width:0%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,.3);margin-top:4px;">
+            <span>ארד</span><span>כסף</span><span>זהב</span><span>יהלום</span>
+          </div>
+        </div>
 
-  </div>
+        <!-- Efficiency -->
+        <div class="stats-sec-lbl">יעילות</div>
+        <div class="stats-grid" style="margin-bottom:10px;">
+          <div class="stat-card">
+            <div class="stat-card-icon">⚡</div>
+            <div class="stat-card-val" id="st-pts-move">0</div>
+            <div class="stat-card-lbl">נקודות למהלך</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">🔤</div>
+            <div class="stat-card-val" id="st-pts-tile">0</div>
+            <div class="stat-card-lbl">נקודות לאריח</div>
+          </div>
+          <div class="stat-card accent" style="grid-column:1/-1;">
+            <div class="stat-card-icon">⏱️</div>
+            <div class="stat-card-val" id="st-move-time">—</div>
+            <div class="stat-card-lbl">זמן ממוצע למהלך</div>
+          </div>
+        </div>
+
+        <!-- Clutch -->
+        <div class="stats-sec-lbl">קלאץ׳ / קאמבק</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-icon">💪</div>
+            <div class="stat-card-val" id="st-comeback">0</div>
+            <div class="stat-card-lbl">ניצחונות בקאמבק</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">🎯</div>
+            <div class="stat-card-val" id="st-lastmove">0</div>
+            <div class="stat-card-lbl">ניצחונות במהלך אחרון</div>
+          </div>
+          <div class="stat-card accent" style="grid-column:1/-1;">
+            <div class="stat-card-icon">🤝</div>
+            <div class="stat-card-val" id="st-closewins">0</div>
+            <div class="stat-card-lbl">משחקים צמודים שניצחת</div>
+          </div>
+        </div>
+
+        <!-- Legacy compat IDs kept hidden for _renderStatsScreen -->
+        <span id="st-streak" style="display:none">0</span>
+        <span id="st-words" style="display:none">0</span>
+        <svg style="display:none"><circle id="stats-donut-arc"/><text id="stats-wr-pct"/></svg>
+      </div>
+
+      <!-- ── TAB 3: בוסטים ── -->
+      <div id="st-panel-boosts" class="stats-panel">
+
+        <!-- Usage summary -->
+        <div class="stats-sec-lbl">שימוש בבוסטים</div>
+        <div class="stats-grid cols3" style="margin-bottom:10px;">
+          <div class="stat-card">
+            <div class="stat-card-icon boost-pulse">⚡</div>
+            <div class="stat-card-val" id="st-boost-total">0</div>
+            <div class="stat-card-lbl">סה״כ</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon boost-pulse">📈</div>
+            <div class="stat-card-val" id="st-boost-avg">0</div>
+            <div class="stat-card-lbl">ממוצע למשחק</div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-card-icon boost-pulse">🥇</div>
+            <div class="stat-card-val" id="st-boost-winrate">0%</div>
+            <div class="stat-card-lbl">ניצחון עם בוסט</div>
+          </div>
+        </div>
+
+        <!-- Favorite boost -->
+        <div class="stats-sec-lbl">הבוסט האהוב</div>
+        <div class="boost-fav-card">
+          <div class="boost-fav-icon boost-pulse" id="st-boost-fav-icon">💡</div>
+          <div class="boost-fav-info">
+            <div class="boost-fav-name" id="st-boost-fav-name">—</div>
+            <div class="boost-fav-pct" id="st-boost-fav-pct">— % מהבוסטים שלך</div>
+            <div class="boost-fav-desc">הבוסט שאתה הכי אוהב להשתמש בו</div>
+          </div>
+        </div>
+
+        <!-- Boost impact -->
+        <div class="stats-sec-lbl">השפעת בוסטים</div>
+        <div class="stats-grid" style="margin-bottom:10px;">
+          <div class="stat-card">
+            <div class="stat-card-icon">🎇</div>
+            <div class="stat-card-val" id="st-boost-impact-wins">0</div>
+            <div class="stat-card-lbl">ניצחונות בזכות בוסט</div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-card-icon">🔮</div>
+            <div class="stat-card-val" id="st-boost-impact-best">—</div>
+            <div class="stat-card-lbl">בוסט עם הכי הרבה השפעה</div>
+          </div>
+        </div>
+
+        <!-- Best combo -->
+        <div class="stats-sec-lbl">קומבו מנצח</div>
+        <div class="boost-combo-card">
+          <div class="boost-combo-title">הסדרה שהכי עובדת עבורך</div>
+          <div class="boost-combo-chain" id="st-boost-combo"></div>
+        </div>
+      </div>
+
+      <!-- ── TAB 4: יריבים ── -->
+      <div id="st-panel-rivals" class="stats-panel">
+
+        <div id="st-rivals-content">
+          <!-- Filled by JS -->
+        </div>
+
+        <!-- vs breakdown -->
+        <div class="stats-sec-lbl">פילוח יריבים</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-icon">⬆️</div>
+            <div class="stat-card-val" id="st-vs-stronger-w">0</div>
+            <div class="stat-card-lbl">ניצחונות מול חזקים</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">⬇️</div>
+            <div class="stat-card-val" id="st-vs-weaker-w">0</div>
+            <div class="stat-card-lbl">ניצחונות מול חלשים</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB 5: כיף ── -->
+      <div id="st-panel-fun" class="stats-panel">
+
+        <div class="stats-sec-lbl">עובדות מגניבות עליך</div>
+
+        <div class="fun-card">
+          <div class="fun-card-icon">📏</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">המילה הארוכה ביותר</div>
+            <div class="fun-card-val" id="st-fun-longest">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">🔁</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">המילה הכי חוזרת</div>
+            <div class="fun-card-val" id="st-fun-repeated">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">⚡</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">הניצחון הכי מהיר</div>
+            <div class="fun-card-val" id="st-fun-fastest">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">🚀</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">הקאמבק הכי גדול</div>
+            <div class="fun-card-val" id="st-fun-comeback">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">📅</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">היום הכי חזק שלך</div>
+            <div class="fun-card-val" id="st-fun-bestday">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">🎲</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">מדד מזל</div>
+            <div class="fun-card-val" id="st-fun-luck">—</div>
+          </div>
+        </div>
+
+        <button class="stats-share-btn" onclick="_statsShare()">📤 שתף את הסטטיסטיקות שלי</button>
+      </div>
+
+    </div><!-- /stats-content -->
+  </div><!-- /stats-wrap -->
 </div>
 
 <!-- AVATAR UNLOCK NOTIFICATION OVERLAY -->
