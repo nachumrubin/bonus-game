@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260429201213">
+<meta name="version" content="20260501103030">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
@@ -1872,7 +1872,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260429201213</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260501103030</div>
   </div>
 </div>
 
@@ -2003,6 +2003,15 @@ body.tile-selected .bsq:not(.used){
         <input type="checkbox" id="mm-strict-chk" checked style="accent-color:var(--by)">
         <span>חיפוש מדויק בלבד</span>
       </label>
+      <div class="mm-pref-row" style="margin-top:6px">
+        <span>טווח דירוג</span>
+        <div style="display:flex;gap:4px;">
+          <button id="mm-rr-any" class="sopt-btn active" style="font-size:10px" onclick="mmSetRatingRange(null)">כולם</button>
+          <button id="mm-rr-100" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(100)">±100</button>
+          <button id="mm-rr-200" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(200)">±200</button>
+          <button id="mm-rr-500" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(500)">±500</button>
+        </div>
+      </div>
     </div>
     <div id="mm-status" style="display:none" class="waiting-spinner">
       <div class="spinner-dots"><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div></div>
@@ -2507,7 +2516,7 @@ body.tile-selected .bsq:not(.used){
       <div class="fsc-c"><div class="fsc-n" id="en1"></div><div class="fsc-v" style="color:var(--p1)" id="es1">0</div></div>
       <div class="fsc-c"><div class="fsc-n" id="en2"></div><div class="fsc-v" style="color:var(--p2)" id="es2">0</div></div>
     </div>
-    <div style="margin-top:10px"><div class="ovd" style="margin-bottom:6px">טבלת אלופים — 10 התוצאות הגבוהות</div><div id="champions-wrap"></div></div>
+    <div style="margin-top:10px"><div class="ovd" style="margin-bottom:6px">טבלת דירוגים — 10 השחקנים המובילים</div><div id="champions-wrap"></div></div>
     <div class="ovbtns">
       <button class="ovb p" onclick="rematch()">🔄 שוב</button>
       <button class="ovb s" onclick="goHome()">🏠 בית</button>
@@ -2530,10 +2539,30 @@ body.tile-selected .bsq:not(.used){
 <!-- CHAMPIONS (standalone, from home screen) -->
 <div id="ov-champs" class="ov hidden" onclick="if(event.target===this)ovClose('ov-champs')">
   <div class="ovc" style="max-width:380px;max-height:85vh;overflow-y:auto;">
-    <div class="ovt" style="margin-bottom:12px">🏆 טבלת אלופים</div>
+    <div class="ovt" style="margin-bottom:12px">🏆 טבלת דירוגים</div>
     <div id="champions-wrap-home"></div>
     <div class="ovbtns" style="margin-top:14px">
       <button class="ovb p" onclick="ovClose('ov-champs')">סגור</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTO CROP -->
+<div id="ov-photo-crop" class="ov hidden">
+  <div class="ovc" style="max-width:300px;padding:18px 16px;">
+    <div class="ovt" style="margin-bottom:6px;">חתוך תמונה</div>
+    <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.45);margin-bottom:12px;">גרור להזזה • הגדל/הקטן עם המחוון</div>
+    <div id="crop-container" style="position:relative;width:200px;height:200px;border-radius:50%;overflow:hidden;margin:0 auto;cursor:grab;border:3px solid rgba(245,197,24,.55);touch-action:none;background:#111;">
+      <img id="crop-img" style="position:absolute;user-select:none;-webkit-user-drag:none;pointer-events:none;" draggable="false" alt="">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:14px auto 0;width:200px;">
+      <span style="font-size:12px;opacity:.5;">−</span>
+      <input type="range" id="crop-zoom" min="100" max="300" value="100" oninput="onCropZoom(+this.value)" style="flex:1;accent-color:var(--by,#f5c518);">
+      <span style="font-size:16px;opacity:.5;">+</span>
+    </div>
+    <div class="ovbtns" style="margin-top:14px;">
+      <button class="ovb p" onclick="confirmPhotoCrop()">שמור ✓</button>
+      <button class="ovb s" onclick="cancelPhotoCrop()">ביטול</button>
     </div>
   </div>
 </div>
@@ -4356,7 +4385,7 @@ function legBack(){
   document.querySelectorAll('.lc').forEach(e=>e.classList.remove('lb-active'));
 }
 function openChampions(){
-  renderChampions('champions-wrap-home');
+  renderRankings('champions-wrap-home');
   ovOpen('ov-champs');
 }
 function clearChampions(){
@@ -5912,7 +5941,7 @@ function buildHoneycomb(){
   row.style.cssText='display:flex;gap:5px;margin-bottom:7px;align-items:center;';
   const inp=document.createElement('input');
   inp.type='text';inp.id='hc-inp';inp.className='ri';inp.style.marginBottom='0';
-  inp.dir='rtl';inp.placeholder='הקלד מילה...';
+  inp.dir='rtl';inp.placeholder='הקלד מילה...';inp.inputMode='none';
   const okBtn=document.createElement('button');
   okBtn.textContent='✓';
   okBtn.style.cssText='padding:8px 14px;background:var(--by);border:none;border-radius:4px;font-weight:900;font-size:15px;cursor:pointer;flex-shrink:0;color:#111;';
@@ -7822,9 +7851,12 @@ function loadSettings(){
   }catch(e){}
 }
 
-// ===== Champions =====
-const CHAMPIONS_LIMIT = 10;
-const CHAMPIONS_DB_PATH = 'globalChampions';
+// ===== Rankings =====
+const RANKINGS_LIMIT = 10;
+const RANKINGS_DB_PATH = 'globalRankings';
+const RATING_START = 800;
+const RATING_K = 40;
+const BOT_WIN_POINTS = [0, 5, 10]; // indexed by diff: 0=easy, 1=medium, 2=hard
 
 async function ensureFirebaseReadyForChampions(){
   if(initFirebase()) return true;
@@ -7835,49 +7867,57 @@ async function ensureFirebaseReadyForChampions(){
   });
 }
 
-async function getChampions(){
-  const ready = await ensureFirebaseReadyForChampions();
-  if(!ready || !fbDb) return [];
-  try{
-    const snap = await fbRef(CHAMPIONS_DB_PATH).orderByChild('score').limitToLast(CHAMPIONS_LIMIT).once('value');
-    const raw = snap && snap.val ? snap.val() : null;
-    if(!raw || typeof raw !== 'object') return [];
-    return Object.values(raw)
-      .filter(r => r && typeof r.name === 'string' && Number.isFinite(Number(r.score)))
-      .map(r => ({
-        name: String(r.name || '').slice(0,30),
-        score: Number(r.score) || 0,
-        date: r.date || ''
-      }))
-      .sort((a,b)=> (b.score||0) - (a.score||0))
-      .slice(0, CHAMPIONS_LIMIT);
-  }catch(e){ return []; }
+function calcElo(myRating, oppRating, actual){ // actual: 1=win, 0.5=draw, 0=loss
+  const expected = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400));
+  return Math.round(RATING_K * (actual - expected));
 }
-async function addChampion(name, score){
-  if(!name || !Number.isFinite(score)) return;
+
+async function updateRankingRating(uid, name, newRating){
   const ready = await ensureFirebaseReadyForChampions();
   if(!ready || !fbDb) return;
   try{
-    const now = new Date();
-    await fbRef(CHAMPIONS_DB_PATH).push({
+    const tier = _statsTier(newRating);
+    await fbRef(RANKINGS_DB_PATH).child(uid).set({
       name: String(name).trim().slice(0,30),
-      score: Number(score) || 0,
-      date: now.toLocaleDateString('he-IL'),
-      createdAt: firebase.database.ServerValue.TIMESTAMP
+      rating: newRating,
+      tier,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
     });
   }catch(e){}
 }
-async function renderChampions(targetId='champions-wrap'){
+
+async function getRankings(){
+  const ready = await ensureFirebaseReadyForChampions();
+  if(!ready || !fbDb) return [];
+  try{
+    const snap = await fbRef(RANKINGS_DB_PATH).orderByChild('rating').limitToLast(RANKINGS_LIMIT).once('value');
+    const raw = snap && snap.val ? snap.val() : null;
+    if(!raw || typeof raw !== 'object') return [];
+    return Object.values(raw)
+      .filter(r => r && typeof r.name === 'string' && Number.isFinite(Number(r.rating)))
+      .map(r => ({name: String(r.name||'').slice(0,30), rating: Number(r.rating)||0, tier: r.tier||'bronze'}))
+      .sort((a,b)=>(b.rating||0)-(a.rating||0))
+      .slice(0, RANKINGS_LIMIT);
+  }catch(e){ return []; }
+}
+
+function _tierBadge(tier){
+  const map={bronze:['#cd7f32','ברונזה'],silver:['#aaa','כסף'],gold:['#ffd700','זהב'],diamond:['#a8d8ea','יהלום']};
+  const [col,lbl]=map[tier]||map.bronze;
+  return `<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:${col}22;color:${col};border:1px solid ${col}44;font-size:10px;font-weight:700">${lbl}</span>`;
+}
+
+async function renderRankings(targetId='champions-wrap'){
   const host = document.getElementById(targetId);
   if(!host) return;
-  host.innerHTML = '<div class="champs-empty">טוען תוצאות...</div>';
-  const arr = await getChampions();
+  host.innerHTML = '<div class="champs-empty">טוען דירוגים...</div>';
+  const arr = await getRankings();
   if(!arr.length){
-    host.innerHTML = '<div class="champs-empty">עדיין אין תוצאות גלובליות זמינות</div>';
+    host.innerHTML = '<div class="champs-empty">עדיין אין שחקנים מדורגים</div>';
     return;
   }
-  host.innerHTML = '<table class="champs-table"><thead><tr><th>#</th><th>שם</th><th>ניקוד</th><th>תאריך</th></tr></thead><tbody>' +
-    arr.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.score}</td><td>${r.date||''}</td></tr>`).join('') +
+  host.innerHTML = '<table class="champs-table"><thead><tr><th>#</th><th>שם</th><th>דירוג</th><th>רמה</th></tr></thead><tbody>' +
+    arr.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.rating}</td><td>${_tierBadge(r.tier)}</td></tr>`).join('') +
     '</tbody></table>';
 }
 
@@ -7974,7 +8014,8 @@ settAdj = function(key,delta){
 loadSettings();
 document.addEventListener('DOMContentLoaded', ()=>{
   setupShailtaInputSupport();
-  renderChampions();
+  _initCropDrag();
+  renderRankings();
   const hasProfile = !!localStorage.getItem(STORAGE_KEYS.userProfile);
   const guestChosen = localStorage.getItem('bonusGuestChosen') === '1';
   if(!hasProfile && !guestChosen){
@@ -7982,25 +8023,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 });
 
-// extend endGame to persist champions and refresh table
+// extend endGame to update ratings and refresh ranking table
 const _origEndGame = endGame;
 endGame = function(){
   _origEndGame.apply(this, arguments);
-  // Never save bot player to high-scores
-  const championName0 = (currentUserProfile && fbCurrentUser && !fbCurrentUser.isAnonymous) ? currentUserProfile.displayName : pNames[0];
-  addChampion(championName0, scores[0]).then(()=>renderChampions()).catch(()=>renderChampions());
-  if(gMode !== 'bot'){
-    addChampion(pNames[1], scores[1]).then(()=>renderChampions()).catch(()=>renderChampions());
-  } else {
-    renderChampions();
-  }
-  // Update stats for registered users
+  // Update stats and rating for registered users, then refresh ranking table
   if(currentUserProfile && fbCurrentUser && !fbCurrentUser.isAnonymous){
     const myIdx = (gMode === 'online' && typeof window._myPlayerIndex !== 'undefined') ? window._myPlayerIndex : 0;
     const myScore = scores[myIdx];
     const _oppIdx = 1 - myIdx;
     const result = scores[myIdx] > scores[_oppIdx] ? 'win' : scores[myIdx] < scores[_oppIdx] ? 'loss' : 'draw';
-    updateUserStats(result, myScore, _gameBonuses, _gameWords).catch(()=>{});
+    updateUserStats(result, myScore, _gameBonuses, _gameWords)
+      .then(()=>renderRankings()).catch(()=>renderRankings());
+  } else {
+    renderRankings();
   }
   // Show guest upgrade prompt once per session
   if((!fbCurrentUser || fbCurrentUser.isAnonymous) && !localStorage.getItem('bonusGuestUpgradeSeen')){
@@ -8535,6 +8571,7 @@ async function crConfirm(){
     ready: { host:false, guest:false },
     status: 'waiting',
     mode: crSettings.mode,
+    hostRating: (currentUserProfile && currentUserProfile.rating != null) ? currentUserProfile.rating : RATING_START,
     settings: {
       timelimit: crSettings.mode === 'live' ? crSettings.timelimit : false,
       botTime: crSettings.botTime,
@@ -8650,6 +8687,7 @@ async function jcConfirm(){
 // ── MATCHMAKING ──
 let mmCurrentMode = 'live';
 let mmCurrentTL = true;
+let mmRatingRange = null; // null = any, or a number like 100/200/500
 
 function onlineMatchmaking(){
   document.getElementById('mm-name').value = 'שחקן 2';
@@ -8670,6 +8708,13 @@ function mmSetTL(v){
   mmCurrentTL = v;
   document.getElementById('mm-tl-yes').classList.toggle('active', v);
   document.getElementById('mm-tl-no').classList.toggle('active', !v);
+}
+function mmSetRatingRange(v){
+  mmRatingRange = v;
+  document.getElementById('mm-rr-any').classList.toggle('active', v === null);
+  document.getElementById('mm-rr-100').classList.toggle('active', v === 100);
+  document.getElementById('mm-rr-200').classList.toggle('active', v === 200);
+  document.getElementById('mm-rr-500').classList.toggle('active', v === 500);
 }
 
 async function mmStartSearch(){
@@ -8696,6 +8741,7 @@ async function mmStartSearch(){
   let matchedCode = null;
 
   if(allRooms.exists()){
+    const myRatingNow = (currentUserProfile && currentUserProfile.rating != null) ? currentUserProfile.rating : RATING_START;
     allRooms.forEach(child => {
       if(matchedCode) return;
       const r = child.val();
@@ -8703,6 +8749,10 @@ async function mmStartSearch(){
       if(strict){
         if(r.mode !== mmCurrentMode) return;
         if(mmCurrentMode === 'live' && r.settings && r.settings.timelimit !== mmCurrentTL) return;
+      }
+      if(mmRatingRange !== null){
+        const hostRating = (r.hostRating != null) ? r.hostRating : RATING_START;
+        if(Math.abs(hostRating - myRatingNow) > mmRatingRange) return;
       }
       matchedCode = child.key;
     });
@@ -8742,6 +8792,7 @@ async function mmStartSearch(){
       host: name, guest: null, status:'waiting',
       ready:{host:false, guest:false},
       mode: mmCurrentMode,
+      hostRating: (currentUserProfile && currentUserProfile.rating != null) ? currentUserProfile.rating : RATING_START,
       settings:{ timelimit: mmCurrentMode==='live' ? mmCurrentTL : false, botTime:20, appeals:0 },
       createdAt: firebase.database.ServerValue.TIMESTAMP,
     };
@@ -9769,7 +9820,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260429201213', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260501103030', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -10486,12 +10537,14 @@ async function createUserProfile(user, displayName){
     displayName: displayName,
     email: user.email || '',
     equippedAvatar: DEFAULT_AVATAR,
+    rating: RATING_START,
     stats: { gamesPlayed:0, gamesWon:0, gamesLost:0, gamesDraw:0, highScore:0, totalScore:0, currentStreak:0, longestStreak:0, bonusesTriggered:0, wordsPlayed:0 },
     createdAt: firebase.database.ServerValue.TIMESTAMP,
     lastActive: firebase.database.ServerValue.TIMESTAMP
   };
   await fbRef('usernames/' + displayName.toLowerCase()).set(user.uid);
   await fbRef('users/' + user.uid + '/profile').set(profile);
+  updateRankingRating(user.uid, displayName, RATING_START).catch(()=>{});
   const localProfile = Object.assign({}, profile, {createdAt: Date.now(), lastActive: Date.now()});
   currentUserProfile = localProfile;
   try{ localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(localProfile)); }catch(_){}
@@ -10607,12 +10660,177 @@ function updateHomeProfileButton(){
   const lbl = document.getElementById('home-user-label');
   if(!ic || !lbl) return;
   if(currentUserProfile && fbCurrentUser && !fbCurrentUser.isAnonymous){
-    ic.textContent = _avatarEmoji(currentUserProfile.equippedAvatar);
+    if(currentUserProfile.customPhoto){
+      ic.innerHTML = `<img src="${currentUserProfile.customPhoto}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;">`;
+    } else {
+      ic.textContent = _avatarEmoji(currentUserProfile.equippedAvatar);
+    }
     lbl.textContent = currentUserProfile.displayName;
   } else {
     ic.textContent = '👤';
     lbl.textContent = 'כניסה / הרשמה';
   }
+}
+
+// ── Profile Photo Upload ──
+function triggerPhotoUpload(){
+  if(!fbCurrentUser || fbCurrentUser.isAnonymous){ alert('יש להתחבר כדי להעלות תמונה'); return; }
+  const inp = document.getElementById('profile-photo-input');
+  if(inp) inp.click();
+}
+
+// ── Photo Crop State ──
+const CROP_SIZE = 200;
+let _cs = null; // {bScale, zoom, x, y}
+let _cropDrag = null; // {sx, sy, ox, oy}
+let _pinchDist0 = 0, _pinchZoom0 = 1;
+
+function handlePhotoUpload(input){
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file || !file.type.startsWith('image/')) return;
+  if(!fbCurrentUser || fbCurrentUser.isAnonymous) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('crop-img');
+    img.onload = ()=>{
+      const bScale = Math.max(CROP_SIZE / img.naturalWidth, CROP_SIZE / img.naturalHeight);
+      const dw = img.naturalWidth * bScale, dh = img.naturalHeight * bScale;
+      _cs = {bScale, zoom:1, x:(CROP_SIZE-dw)/2, y:(CROP_SIZE-dh)/2};
+      document.getElementById('crop-zoom').value = 100;
+      _applyCrop();
+      ovOpen('ov-photo-crop');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function _applyCrop(){
+  if(!_cs) return;
+  const img = document.getElementById('crop-img');
+  const scale = _cs.bScale * _cs.zoom;
+  const dw = img.naturalWidth * scale, dh = img.naturalHeight * scale;
+  _cs.x = Math.min(0, Math.max(CROP_SIZE - dw, _cs.x));
+  _cs.y = Math.min(0, Math.max(CROP_SIZE - dh, _cs.y));
+  img.style.width = dw + 'px';
+  img.style.height = dh + 'px';
+  img.style.left = _cs.x + 'px';
+  img.style.top = _cs.y + 'px';
+}
+
+function onCropZoom(val){
+  if(!_cs) return;
+  const prevScale = _cs.bScale * _cs.zoom;
+  _cs.zoom = val / 100;
+  const newScale = _cs.bScale * _cs.zoom;
+  const cx = CROP_SIZE / 2, cy = CROP_SIZE / 2;
+  _cs.x = cx - (cx - _cs.x) * newScale / prevScale;
+  _cs.y = cy - (cy - _cs.y) * newScale / prevScale;
+  _applyCrop();
+}
+
+function _initCropDrag(){
+  const c = document.getElementById('crop-container');
+  if(!c) return;
+  // Mouse
+  c.addEventListener('mousedown', e=>{
+    if(!_cs) return;
+    _cropDrag = {sx:e.clientX, sy:e.clientY, ox:_cs.x, oy:_cs.y};
+    c.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!_cropDrag || !_cs) return;
+    _cs.x = _cropDrag.ox + (e.clientX - _cropDrag.sx);
+    _cs.y = _cropDrag.oy + (e.clientY - _cropDrag.sy);
+    _applyCrop();
+  });
+  document.addEventListener('mouseup', ()=>{
+    _cropDrag = null;
+    if(c) c.style.cursor = 'grab';
+  });
+  // Touch — pan + pinch-to-zoom
+  c.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    if(e.touches.length === 1 && _cs){
+      _cropDrag = {sx:e.touches[0].clientX, sy:e.touches[0].clientY, ox:_cs.x, oy:_cs.y};
+    } else if(e.touches.length === 2 && _cs){
+      _cropDrag = null;
+      const dx = e.touches[1].clientX - e.touches[0].clientX;
+      const dy = e.touches[1].clientY - e.touches[0].clientY;
+      _pinchDist0 = Math.sqrt(dx*dx+dy*dy);
+      _pinchZoom0 = _cs.zoom;
+    }
+  },{passive:false});
+  c.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    if(!_cs) return;
+    if(e.touches.length === 1 && _cropDrag){
+      _cs.x = _cropDrag.ox + (e.touches[0].clientX - _cropDrag.sx);
+      _cs.y = _cropDrag.oy + (e.touches[0].clientY - _cropDrag.sy);
+      _applyCrop();
+    } else if(e.touches.length === 2 && _pinchDist0){
+      const dx = e.touches[1].clientX - e.touches[0].clientX;
+      const dy = e.touches[1].clientY - e.touches[0].clientY;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      const newZoom = Math.min(3, Math.max(1, _pinchZoom0 * dist / _pinchDist0));
+      const prevScale = _cs.bScale * _cs.zoom;
+      _cs.zoom = newZoom;
+      const slider = document.getElementById('crop-zoom');
+      if(slider) slider.value = Math.round(newZoom * 100);
+      const newScale = _cs.bScale * _cs.zoom;
+      const cx = CROP_SIZE/2, cy = CROP_SIZE/2;
+      _cs.x = cx - (cx - _cs.x) * newScale / prevScale;
+      _cs.y = cy - (cy - _cs.y) * newScale / prevScale;
+      _applyCrop();
+    }
+  },{passive:false});
+  c.addEventListener('touchend', e=>{
+    if(e.touches.length < 2) _pinchDist0 = 0;
+    if(e.touches.length === 0) _cropDrag = null;
+  });
+}
+
+async function confirmPhotoCrop(){
+  if(!_cs || !fbCurrentUser || fbCurrentUser.isAnonymous) return;
+  const img = document.getElementById('crop-img');
+  const scale = _cs.bScale * _cs.zoom;
+  const canvas = document.createElement('canvas');
+  canvas.width = 150; canvas.height = 150;
+  canvas.getContext('2d').drawImage(img, -_cs.x/scale, -_cs.y/scale, CROP_SIZE/scale, CROP_SIZE/scale, 0, 0, 150, 150);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+  ovClose('ov-photo-crop');
+  _cs = null;
+  const avatarDisplay = document.getElementById('profile-avatar-display');
+  if(avatarDisplay) avatarDisplay.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,.5);line-height:5">שומר...</div>';
+  try{
+    await fbRef('users/' + fbCurrentUser.uid + '/profile/customPhoto').set(dataUrl);
+    currentUserProfile.customPhoto = dataUrl;
+    try{ localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(currentUserProfile)); }catch(_){}
+    _renderProfileScreen();
+    updateHomeProfileButton();
+  }catch(e){
+    const errEl = document.getElementById('profile-name-error');
+    if(errEl){ errEl.textContent = 'שגיאה בשמירת תמונה — נסה שוב'; setTimeout(()=>{ errEl.textContent=''; },3000); }
+    _renderProfileScreen();
+  }
+}
+
+function cancelPhotoCrop(){
+  ovClose('ov-photo-crop');
+  _cs = null;
+}
+
+async function removeProfilePhoto(){
+  if(!fbCurrentUser || fbCurrentUser.isAnonymous) return;
+  try{
+    await fbRef('users/' + fbCurrentUser.uid + '/profile/customPhoto').remove();
+    delete currentUserProfile.customPhoto;
+    try{ localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(currentUserProfile)); }catch(_){}
+    _renderProfileScreen();
+    updateHomeProfileButton();
+  }catch(_){}
 }
 
 // ── Update user stats (Firebase transaction) ──
@@ -10648,6 +10866,33 @@ async function updateUserStats(result, myScore, gameBonuses, gameWords){
       currentUserProfile.stats = snap.val();
       try{ localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(currentUserProfile)); }catch(_){}
       _checkNewUnlocks(statsBefore, currentUserProfile.stats);
+    }
+  }catch(_){}
+
+  // Rating update
+  try{
+    const myRating = (currentUserProfile && currentUserProfile.rating != null) ? currentUserProfile.rating : RATING_START;
+    let ratingDelta = 0;
+    if(gMode === 'bot'){
+      if(result === 'win') ratingDelta = BOT_WIN_POINTS[diff] || 0;
+    } else if(gMode === 'online'){
+      const myIdx2 = (typeof window._myPlayerIndex !== 'undefined') ? window._myPlayerIndex : 0;
+      const oppName = pNames[1 - myIdx2];
+      const uidSnap = await fbRef('usernames/' + oppName.toLowerCase()).once('value');
+      const oppUid = uidSnap.val();
+      if(oppUid){
+        const rSnap = await fbRef('users/' + oppUid + '/profile/rating').once('value');
+        const oppRating = (rSnap.val() != null) ? rSnap.val() : RATING_START;
+        const actual = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0;
+        ratingDelta = calcElo(myRating, oppRating, actual);
+      }
+    }
+    if(ratingDelta !== 0){
+      const newRating = Math.max(0, myRating + ratingDelta);
+      await fbRef('users/' + uid + '/profile/rating').set(newRating);
+      if(currentUserProfile) currentUserProfile.rating = newRating;
+      try{ localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(currentUserProfile)); }catch(_){}
+      await updateRankingRating(uid, currentUserProfile.displayName, newRating);
     }
   }catch(_){}
 }
@@ -10690,7 +10935,15 @@ function showProfileScreen(){
 function _renderProfileScreen(){
   const p = currentUserProfile;
   const avatarDisplay = document.getElementById('profile-avatar-display');
-  if(avatarDisplay) avatarDisplay.textContent = _avatarEmoji(p.equippedAvatar);
+  if(avatarDisplay){
+    if(p.customPhoto){
+      avatarDisplay.innerHTML = `<img src="${p.customPhoto}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(245,197,24,.4);">`;
+    } else {
+      avatarDisplay.textContent = _avatarEmoji(p.equippedAvatar);
+    }
+  }
+  const removeBtn = document.getElementById('profile-photo-remove');
+  if(removeBtn) removeBtn.style.display = p.customPhoto ? '' : 'none';
 
   const nameDisplay = document.getElementById('profile-name-display');
   if(nameDisplay) nameDisplay.textContent = p.displayName || '';
@@ -11380,7 +11633,12 @@ function animateScore(el, from, to, duration){
     <div class="stitle">👤 הפרופיל שלי</div>
     <div style="text-align:center;">
       <div id="profile-avatar-display" style="font-size:52px;line-height:1;cursor:pointer;" onclick="showAvatarGallery()">👑</div>
-      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;">לחץ לשינוי</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;">לחץ לשינוי אווטאר</div>
+      <div style="margin-top:8px;display:flex;gap:6px;justify-content:center;align-items:center;">
+        <button class="bd" style="font-size:11px;width:auto;padding:6px 12px;" onclick="triggerPhotoUpload()">📷 העלאת תמונה</button>
+        <span id="profile-photo-remove" style="display:none;font-size:11px;cursor:pointer;color:rgba(255,120,120,.8);text-decoration:underline;" onclick="removeProfilePhoto()">הסר תמונה</span>
+      </div>
+      <input type="file" id="profile-photo-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this)">
     </div>
     <div style="text-align:center;">
       <div id="profile-name-display" style="font-size:20px;font-weight:900;color:var(--by,#f5c518);cursor:pointer;" onclick="startNameEdit()"></div>
