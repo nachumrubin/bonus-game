@@ -32,6 +32,36 @@
         ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid"
       }
+    },
+    "userIds": {
+      ".read": true,
+      "$userId": {
+        ".write": "auth != null && (!data.exists() || data.val() === auth.uid)"
+      }
+    },
+    "friendRequests": {
+      "$recipientUid": {
+        ".read": "$recipientUid === auth.uid",
+        "$senderUid": {
+          ".write": "auth != null"
+        }
+      }
+    },
+    "friends": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        "$friendUid": {
+          ".write": "auth != null && (auth.uid === $uid || auth.uid === $friendUid)"
+        }
+      }
+    },
+    "invites": {
+      "$recipientUid": {
+        ".read": "$recipientUid === auth.uid",
+        "$senderUid": {
+          ".write": "auth != null"
+        }
+      }
     }
   }
 }

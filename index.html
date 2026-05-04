@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260502193744">
+<meta name="version" content="20260504190326">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -1877,7 +1877,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260502193744</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260504190326</div>
   </div>
 </div>
 
@@ -1953,6 +1953,30 @@ body.tile-selected .bsq:not(.used){
     <div style="display:flex;gap:6px;margin-top:12px;">
       <button class="ovb p" style="flex:1;background:#25D366;border:none;color:#fff" onclick="crShareWhatsApp()">שתף ב-WhatsApp</button>
       <button class="ovb s" style="flex:1" onclick="crCancelRoom()">ביטול</button>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);">
+      <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:5px">הזמן שחקן לפי שם משתמש:</div>
+      <div style="display:flex;gap:6px;align-items:flex-start;">
+        <div style="flex:1;position:relative;">
+          <input class="ri" id="wr-invite-name" type="text" placeholder="חפש חבר..." maxlength="15" style="font-size:13px;width:100%;box-sizing:border-box;" oninput="filterInviteList(this.value)" onfocus="filterInviteList(this.value)" autocomplete="off">
+          <div id="wr-invite-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:rgba(6,19,61,.98);border:1px solid rgba(255,255,255,.2);border-radius:8px;max-height:140px;overflow-y:auto;z-index:200;margin-top:3px;"></div>
+        </div>
+        <button class="ovb p" style="padding:8px 12px;font-size:13px;white-space:nowrap;" onclick="crSendInvite()">שלח</button>
+      </div>
+      <div id="wr-invite-status" style="font-size:11px;text-align:center;min-height:16px;margin-top:4px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- INCOMING GAME INVITE -->
+<div id="ov-incoming-invite" class="ov hidden">
+  <div class="ovc" style="text-align:center;">
+    <div style="font-size:44px;margin-bottom:4px;" id="ii-avatar">🎮</div>
+    <div class="ovt">הוזמנת למשחק!</div>
+    <div id="ii-body" style="font-size:14px;color:rgba(255,255,255,.75);margin:8px 0 20px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="ovb p" style="flex:1;" onclick="_acceptIncomingInvite()">הצטרף 🚀</button>
+      <button class="ovb s" style="flex:1;" onclick="_dismissIncomingInvite()">לא עכשיו</button>
     </div>
   </div>
 </div>
@@ -2072,6 +2096,7 @@ body.tile-selected .bsq:not(.used){
     <!-- top bar -->
     <div class="tbar">
       <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
+      <button class="tb" id="btn-async-home" onclick="goHome()" style="display:none"><span class="tb-ic">🏠</span><span class="tb-tx">בית</span></button>
       <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
       <button class="tb" onclick="doExchange()">החלפת<br>אות</button>
       <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
@@ -3237,6 +3262,8 @@ let gMode='bot', diff=0, pNames=['שחקן 1','שחקן 2'];
 let bData=[], bag=[], racks=[[],[]], scores=[0,0], futBon=[{},{}];
 let turn=0, firstMove=true, passCount=0, moveCount=0;
 let _gameWords=0, _gameBonuses=0;
+let _gameTotalTiles=0, _gameHumanMoves=0, _gameTotalMoveSeconds=0;
+let _gameMinScoreDiff=0, _gameLongestWord='', _gameStartTime=0, _gameMoveStartTime=0;
 let placed=[], selTile=null, selPlaced=null, dir='H'; // selPlaced = {r,c} of a picked-up placed tile
 let botBusy=false, bonusPend=null, timerInt=null;
 let moveTimerInt=null, botThinkTimeout=null;
@@ -3930,7 +3957,7 @@ function botCommit(result){
 // ═══════════════════════════════════════════════════
 function ovClose(id){ document.getElementById(id).classList.add('hidden'); }
 function ovOpen(id){ document.getElementById(id).classList.remove('hidden'); }
-function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-bonus-intro','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm','ov-move-summary','ov-dict-login','ov-dict-admin','ov-dict-confirm','ov-guest-upgrade','ov-avatar-unlocked'].forEach(ovClose); showSc('sh'); }
+function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-bonus-intro','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm','ov-move-summary','ov-dict-login','ov-dict-admin','ov-dict-confirm','ov-guest-upgrade','ov-avatar-unlocked','ov-incoming-invite'].forEach(ovClose); showSc('sh'); }
 // showSc defined above in music section
 function showLegend(){ buildVtbl(); legBack(); document.getElementById('lb-boosts-wrap').classList.add('hidden'); document.getElementById('lb-boost-desc').classList.add('hidden'); ovOpen('ov-leg'); }
 
@@ -4628,6 +4655,8 @@ function beginOnlineGameAfterBothReady(){
   if(gameSettings.music && !musicPlaying) startMusic();
   setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
   updateUI(); renderRack(); renderBoard();
+  var asyncHomeBtn = document.getElementById('btn-async-home');
+  if(asyncHomeBtn) asyncHomeBtn.style.display = (onlineMode === 'async') ? '' : 'none';
   saveOnlineSession();
   setupPresence();
   listenForRoomStatus();
@@ -4665,6 +4694,8 @@ function initGame(startingTurn){
   placed=[]; selTile=null; selPlaced=null; dir='H'; botBusy=false; bonusPend=null; lastMoveCells=[];
   lastRejWord=''; lastRejScore=0; lastRejPlaced=[]; exchUsed=false;
   _gameWords=0; _gameBonuses=0;
+  _gameTotalTiles=0; _gameHumanMoves=0; _gameTotalMoveSeconds=0;
+  _gameMinScoreDiff=0; _gameLongestWord=''; _gameStartTime=Date.now(); _gameMoveStartTime=Date.now();
   replacedThisTurn=null; pendingReview=null;
   appealsUsed=[0,0];
   jokerTarget=null; pendingLockCell=null;
@@ -5855,6 +5886,7 @@ function buildWordSearch(){
         chips[hit.word].style.background=col+'44';
         foundCount++;
         scoreEl.textContent=foundCount+' / '+actualWords.length+' מילים — '+foundCount*10+' נקודות';
+        broadcastBoostProgress(foundCount*10, foundCount+' / '+actualWords.length+' מילים');
         if(foundCount===actualWords.length){ clearT(); finish(); return; }
       }
       firstSel=null;
@@ -5972,6 +6004,7 @@ function buildHoneycomb(){
     if(!isValid(raw)){showFb('מילה לא תקינה ✗','#ff8e8e');return;}
     const p=wPts(raw);score+=p;found.add(norm(raw));
     scoreEl.textContent=score+' נקודות';
+    broadcastBoostProgress(score, found.size+' מילים');
     const chip=document.createElement('span');
     chip.style.cssText='font-size:11px;background:rgba(0,160,70,.3);border:1px solid rgba(0,180,70,.45);border-radius:3px;padding:2px 6px;color:#7eff9e;';
     chip.textContent=raw+' +'+p;
@@ -6409,6 +6442,7 @@ function buildCrossword(){
     const {legal,illegal}=scanMbWords();
     mbWords=Object.keys(legal);
     mbScore=Object.values(legal).reduce((a,b)=>a+b,0);
+    if(mbWords.length>0) broadcastBoostProgress(mbScore, mbWords.length+' מילים');
     const illegalList=Object.keys(illegal);
     const totalWords=mbWords.length+illegalList.length;
     if(totalWords>0){
@@ -6917,7 +6951,16 @@ function commitPlay(sc,ws,bonus,pi){
   scores[pi] += fs;
   if(isNaN(scores[pi])){ console.error('NaN score detected! sc=',sc,'fs=',fs,'pi=',pi,'bonus=',bonus,'ws=',ws); scores[pi]=0; }
   const _humanIdxCP = (gMode === 'online' && typeof window._myPlayerIndex !== 'undefined') ? window._myPlayerIndex : 0;
-  if(pi === _humanIdxCP) _gameWords++;
+  if(pi === _humanIdxCP){
+    _gameWords++;
+    _gameHumanMoves++;
+    _gameTotalTiles += placed.length;
+    if(ws && ws.length > _gameLongestWord.length) _gameLongestWord = ws;
+    if(_gameMoveStartTime > 0) _gameTotalMoveSeconds += Math.round((Date.now()-_gameMoveStartTime)/1000);
+    _gameMoveStartTime = Date.now();
+  }
+  const _scoreDiffNow = scores[_humanIdxCP] - scores[1-_humanIdxCP];
+  if(_scoreDiffNow < _gameMinScoreDiff) _gameMinScoreDiff = _scoreDiffNow;
   // ── log this player move ──
   // Note: placed is still populated here, cleared below
   (function(){
@@ -7089,7 +7132,9 @@ function _doTurnStart(){
     setS(myTurnMsg());
     startMoveTimer();
   }
-  if(gMode==='online') pushMoveToFirebase();
+  // Defer by one tick so any synchronous post-commitPlay code (e.g. setting
+  // futBon[pi].quadNext for the ×4 boost) runs before the state is serialized.
+  if(gMode==='online') setTimeout(pushMoveToFirebase, 0);
 }
 function showTileSwapPicker(pi, onDone){
   const modal=document.createElement('div');
@@ -8026,12 +8071,22 @@ const _origEndGame = endGame;
 endGame = function(){
   _origEndGame.apply(this, arguments);
   // Update stats and rating for registered users, then refresh ranking table
-  if(currentUserProfile && fbCurrentUser && !fbCurrentUser.isAnonymous){
+  const _asyncVoid = gMode === 'online' && onlineMode === 'async' && (moveCount || 0) < 2;
+  if(currentUserProfile && fbCurrentUser && !fbCurrentUser.isAnonymous && !_asyncVoid){
     const myIdx = (gMode === 'online' && typeof window._myPlayerIndex !== 'undefined') ? window._myPlayerIndex : 0;
     const myScore = scores[myIdx];
     const _oppIdx = 1 - myIdx;
     const result = scores[myIdx] > scores[_oppIdx] ? 'win' : scores[myIdx] < scores[_oppIdx] ? 'loss' : 'draw';
-    updateUserStats(result, myScore, _gameBonuses, _gameWords)
+    const _extraStats = {
+      moves: _gameHumanMoves,
+      tiles: _gameTotalTiles,
+      moveSeconds: _gameTotalMoveSeconds,
+      minScoreDiff: _gameMinScoreDiff,
+      longestWord: _gameLongestWord,
+      duration: _gameStartTime > 0 ? Math.round((Date.now()-_gameStartTime)/1000) : 0,
+      scoreDiff: scores[myIdx] - scores[_oppIdx]
+    };
+    updateUserStats(result, myScore, _gameBonuses, _gameWords, _extraStats)
       .then(()=>renderRankings()).catch(()=>renderRankings());
   } else {
     renderRankings();
@@ -8139,6 +8194,131 @@ async function initOneSignal(){
 async function _storeTokenInRoom(role){
   if(!_osSubscriptionId || !roomCode) return;
   try{ await fbRef('rooms/' + roomCode + '/tokens/' + role).set(_osSubscriptionId); }catch(_){}
+}
+
+async function _sendPushNotification(opponentRole, title, body){
+  const cfg = window.APP_CONFIG || {};
+  if(!cfg.onesignalKey || !cfg.onesignalAppId || !roomCode) return;
+  try{
+    const tokenSnap = await fbRef('rooms/' + roomCode + '/tokens/' + opponentRole).once('value');
+    const subscriptionId = tokenSnap.val();
+    if(!subscriptionId) return;
+    fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + cfg.onesignalKey },
+      body: JSON.stringify({
+        app_id: cfg.onesignalAppId,
+        include_subscription_ids: [subscriptionId],
+        headings: { en: title },
+        contents: { en: body },
+        data: { roomCode: roomCode }
+      })
+    }).catch(()=>{});
+  } catch(_){}
+}
+
+async function _sendInviteNotification(inviteeUid, inviterName, code, suffix){
+  const cfg = window.APP_CONFIG || {};
+  if(!cfg.onesignalKey || !cfg.onesignalAppId) return;
+  const body = suffix
+    ? inviterName + ' הזמין אותך למשחק — ' + suffix
+    : inviterName + ' מזמין אותך למשחק';
+  fetch('https://onesignal.com/api/v1/notifications', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + cfg.onesignalKey },
+    body: JSON.stringify({
+      app_id: cfg.onesignalAppId,
+      include_aliases: { external_id: [inviteeUid] },
+      target_channel: 'push',
+      headings: { en: 'הוזמנת למשחק! 🎮' },
+      contents: { en: body },
+      data: { roomCode: code, type: 'invite' }
+    })
+  }).catch(()=>{});
+}
+
+async function _sendFriendRequestNotification(recipientUid, senderName){
+  const cfg = window.APP_CONFIG || {};
+  if(!cfg.onesignalKey || !cfg.onesignalAppId) return;
+  fetch('https://onesignal.com/api/v1/notifications', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + cfg.onesignalKey },
+    body: JSON.stringify({
+      app_id: cfg.onesignalAppId,
+      include_aliases: { external_id: [recipientUid] },
+      target_channel: 'push',
+      headings: { en: 'בקשת חברות! 👥' },
+      contents: { en: senderName + ' שלח לך בקשת חברות' },
+      data: { type: 'friendRequest' }
+    })
+  }).catch(()=>{});
+}
+
+async function _sendFriendAcceptedNotification(recipientUid, accepterName){
+  const cfg = window.APP_CONFIG || {};
+  if(!cfg.onesignalKey || !cfg.onesignalAppId) return;
+  fetch('https://onesignal.com/api/v1/notifications', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + cfg.onesignalKey },
+    body: JSON.stringify({
+      app_id: cfg.onesignalAppId,
+      include_aliases: { external_id: [recipientUid] },
+      target_channel: 'push',
+      headings: { en: 'בקשת החברות אושרה! 🤝' },
+      contents: { en: accepterName + ' קיבל את בקשת החברות שלך' },
+      data: { type: 'friendAccepted' }
+    })
+  }).catch(()=>{});
+}
+
+// ── In-app invite notifications (Firebase Realtime) ──
+let _inviteListenerRef = null;
+let _pendingInviteData = null;
+
+function _listenForInvites(uid){
+  if(_inviteListenerRef){ _inviteListenerRef.off(); _inviteListenerRef = null; }
+  _inviteListenerRef = fbRef('invites/' + uid);
+  _inviteListenerRef.on('child_added', function(snap){
+    if(!snap || !snap.exists()) return;
+    const data = snap.val();
+    const inviterUid = snap.key;
+    if(!data || !data.roomCode) return;
+    if(data.timestamp && Date.now() - data.timestamp > 10 * 60 * 1000){
+      fbRef('invites/' + uid + '/' + inviterUid).remove().catch(()=>{});
+      return;
+    }
+    _showIncomingInvite(data, inviterUid);
+  });
+}
+
+function _stopListeningForInvites(){
+  if(_inviteListenerRef){ _inviteListenerRef.off(); _inviteListenerRef = null; }
+}
+
+function _showIncomingInvite(data, inviterUid){
+  _pendingInviteData = { roomCode: data.roomCode, inviterUid };
+  const avatarEl = document.getElementById('ii-avatar');
+  const bodyEl = document.getElementById('ii-body');
+  if(avatarEl) avatarEl.textContent = data.fromAvatar || '🎮';
+  if(bodyEl) bodyEl.textContent = (data.fromName || 'שחקן') + ' מזמין אותך למשחק';
+  ovOpen('ov-incoming-invite');
+}
+
+function _acceptIncomingInvite(){
+  if(!_pendingInviteData) return;
+  const { roomCode: rc, inviterUid } = _pendingInviteData;
+  _pendingInviteData = null;
+  ovClose('ov-incoming-invite');
+  if(fbCurrentUser) fbRef('invites/' + fbCurrentUser.uid + '/' + inviterUid).remove().catch(()=>{});
+  _openJoinWithCode(rc);
+}
+
+function _dismissIncomingInvite(){
+  if(!_pendingInviteData) return;
+  const { inviterUid } = _pendingInviteData;
+  _pendingInviteData = null;
+  ovClose('ov-incoming-invite');
+  if(fbCurrentUser) fbRef('invites/' + fbCurrentUser.uid + '/' + inviterUid).remove().catch(()=>{});
 }
 
 async function requestNotifPermission(){
@@ -8667,6 +8847,9 @@ async function crConfirm(){
   document.getElementById('wr-code').textContent = code;
   document.getElementById('wr-mode-label').textContent =
     crSettings.mode === 'live' ? '⚡ משחק לייב' : '📬 משחק אסינכרוני';
+  document.getElementById('wr-invite-name').value = '';
+  document.getElementById('wr-invite-status').textContent = '';
+  _loadFriends().catch(function(){});
   ovOpen('ov-waiting-room');
 
   // Listen for guest joining
@@ -8688,7 +8871,70 @@ function crShareWhatsApp(){
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
 
+async function crSendInvite(){
+  const inputName = (document.getElementById('wr-invite-name').value || '').trim();
+  const statusEl = document.getElementById('wr-invite-status');
+  document.getElementById('wr-invite-dropdown').style.display = 'none';
+  if(!inputName){ statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'בחר חבר מהרשימה'; return; }
+  const friends = window._myFriends || {};
+  const friend = Object.values(friends).find(f => f.name.toLowerCase() === inputName.toLowerCase());
+  if(!friend){ statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'ניתן להזמין חברים בלבד'; return; }
+  statusEl.style.color = 'rgba(255,255,255,.6)'; statusEl.textContent = 'שולח...';
+  try {
+    // Set flag before Firebase write so guestListener callback can read it
+    window._asyncInviteUid = friend.uid;
+    await fbRef('rooms/' + roomCode + '/invitedUid').set(friend.uid);
+    // Writing guest name triggers guestListener → startOnlineGame() + closes overlay
+    await fbRef('rooms/' + roomCode + '/guest').set(friend.name);
+    // Send in-app invite notification so friend sees it immediately
+    const myAvatar = (currentUserProfile && _avatarEmoji(currentUserProfile.equippedAvatar)) || '🎮';
+    const myName = pNames[0] || (currentUserProfile && currentUserProfile.displayName) || 'שחקן';
+    fbRef('invites/' + friend.uid + '/' + fbCurrentUser.uid).set({
+      roomCode, fromName: myName, fromAvatar: myAvatar,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    }).catch(()=>{});
+    window._sentInviteToUid = friend.uid;
+  } catch(e){
+    window._asyncInviteUid = null;
+    statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'שגיאה בשליחת ההזמנה';
+  }
+}
+
+function filterInviteList(q){
+  const dropdown = document.getElementById('wr-invite-dropdown');
+  const list = Object.values(window._myFriends || {});
+  if(!list.length){
+    dropdown.innerHTML = '<div style="padding:8px 10px;font-size:12px;color:rgba(255,255,255,.4);">אין חברים עדיין</div>';
+    dropdown.style.display = 'block';
+    return;
+  }
+  const filtered = q ? list.filter(f => f.name.toLowerCase().includes(q.toLowerCase())) : list;
+  if(!filtered.length){ dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = filtered.map(f => {
+    const safe = f.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    return `<div data-name="${safe}" style="padding:8px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:6px;"
+         onmousedown="selectInviteFriend(this.dataset.name)">${f.avatar||'👤'} <span>${f.name}</span></div>`;
+  }).join('');
+  dropdown.style.display = 'block';
+}
+
+function selectInviteFriend(name){
+  document.getElementById('wr-invite-name').value = name;
+  document.getElementById('wr-invite-dropdown').style.display = 'none';
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#wr-invite-name') && !e.target.closest('#wr-invite-dropdown')){
+    var d = document.getElementById('wr-invite-dropdown');
+    if(d) d.style.display = 'none';
+  }
+});
+
 async function crCancelRoom(){
+  if(window._sentInviteToUid && fbCurrentUser){
+    fbRef('invites/' + window._sentInviteToUid + '/' + fbCurrentUser.uid).remove().catch(()=>{});
+    window._sentInviteToUid = null;
+  }
   if(roomCode) await fbRef('rooms/' + roomCode).remove();
   roomCode = null; roomRef = null;
   cleanupOnlineListeners();
@@ -8726,8 +8972,11 @@ async function jcConfirm(){
   }
   if(!snap.exists()){ errEl.textContent = 'קוד לא נמצא — בדוק שוב'; return; }
   const room = snap.val();
-  if(room.status !== 'waiting'){ errEl.textContent = 'המשחק כבר התחיל'; return; }
-  if(room.guest){ errEl.textContent = 'המשחק מלא'; return; }
+  const isAsyncInviteRejoin = room.status === 'playing' && room.mode === 'async' &&
+    fbCurrentUser && !fbCurrentUser.isAnonymous && room.invitedUid === fbCurrentUser.uid;
+  if(room.status !== 'waiting' && !isAsyncInviteRejoin){ errEl.textContent = 'המשחק כבר התחיל'; return; }
+  if(!isAsyncInviteRejoin && room.guest){ errEl.textContent = 'המשחק מלא'; return; }
+  if(isAsyncInviteRejoin) window._asyncInviteRejoin = true;
 
   // Join the room
   roomCode = code;
@@ -8753,6 +9002,7 @@ async function jcConfirm(){
     return;
   }
   _storeTokenInRoom('guest');
+  if(!window._asyncInviteRejoin) _sendPushNotification('host', 'יריב נמצא! 🎮', name + ' הצטרף למשחקך. המשחק מתחיל!');
   ovClose('ov-join-code');
 
   // Guest waits for host to write the initial game state
@@ -8849,6 +9099,7 @@ async function mmStartSearch(){
     try { await fbRef('rooms/' + matchedCode + '/guest').set(name); }
     catch(e){ roomCode=null; myRole=null; document.getElementById('mm-status-text').textContent='שגיאת חיבור'; return; }
     _storeTokenInRoom('guest');
+    _sendPushNotification('host', 'יריב נמצא! 🎮', name + ' הצטרף למשחקך. המשחק מתחיל!');
     ovClose('ov-matchmaking');
     waitForGameStart();
   } else {
@@ -8933,10 +9184,40 @@ function startOnlineGame(){
       })
       .then(function(){
         showOnlineCoinToss(starter, function(){
-          setupOnlineReadySync();
+          if(window._asyncInviteUid) {
+            _onAsyncInviteCoinToss(starter);
+          } else {
+            setupOnlineReadySync();
+          }
         });
       })
       .catch(function(e){ console.error('startOnlineGame error:', e); });
+  }
+}
+
+// ── POST-COIN-TOSS FOR ASYNC INVITE ──
+function _onAsyncInviteCoinToss(starter){
+  var uid = window._asyncInviteUid;
+  var myName = pNames[0] || 'שחקן';
+  window._asyncInviteUid = null;
+  window._sentInviteToUid = null;
+  if(starter === 0){ // P1 (host) starts first
+    window._invitePendingNotif = uid;
+    onlineCoinJoinReady.host = true;
+    onlineCoinJoinReady.guest = true;
+    beginOnlineGameAfterBothReady();
+  } else { // P2 (guest) starts first
+    _sendInviteNotification(uid, myName, roomCode, 'אתה מתחיל! 🎲');
+    var coinSub = document.getElementById('coin-sub');
+    var coinMsg = document.getElementById('coin-msg');
+    var enterBtn = document.getElementById('coin-enter');
+    if(coinSub) coinSub.textContent = 'ממתין ל-' + pNames[1] + ' שיצטרף...';
+    if(coinMsg) coinMsg.textContent = 'תקבל הודעה כשיגיע תורך';
+    if(enterBtn){
+      enterBtn.disabled = false;
+      enterBtn.textContent = 'חזור לתפריט';
+      enterBtn.onclick = function(){ goHome(); };
+    }
   }
 }
 
@@ -8960,9 +9241,16 @@ function waitForGameStart(){
     gMode = 'online';
     document.getElementById('sn1').textContent = pNames[0];
     document.getElementById('sn2').textContent = pNames[1];
-    showOnlineCoinToss(turn, function(){
-      setupOnlineReadySync();
-    });
+    if(window._asyncInviteRejoin){
+      window._asyncInviteRejoin = false;
+      onlineCoinJoinReady.host = true;
+      onlineCoinJoinReady.guest = true;
+      beginOnlineGameAfterBothReady();
+    } else {
+      showOnlineCoinToss(turn, function(){
+        setupOnlineReadySync();
+      });
+    }
   }
 
   stateRef.on('value', onInitialState);
@@ -9473,6 +9761,12 @@ const INTERACTIVE_BONUS_TYPES = new Set(['honeycomb','us40','fill100','us100','c
 function openBonusAndBroadcast(){
   const ct = bonusPend && bonusPend.ct;
   if(ct && INTERACTIVE_BONUS_TYPES.has(ct)){
+    // Freeze turn timer immediately — player needs time for intro + the game itself
+    if(gMode === 'online' && onlineMode === 'live' && roomCode && gameSettings.timelimit){
+      clearMoveTimer();
+      setOnlineTurnDeadline(0);
+      fbRef('rooms/' + roomCode + '/state/turnDeadlineMs').set(0).catch(()=>{});
+    }
     document.getElementById('bintro-ic').textContent = document.getElementById('bovic').textContent;
     document.getElementById('bintro-title').textContent = document.getElementById('bovt').textContent;
     document.getElementById('bintro-desc').textContent = document.getElementById('bovd').textContent;
@@ -9490,6 +9784,11 @@ function startBonusGame(){
 function _openBonusOverlay(){
   ovOpen('ov-bonus');
   if(gMode === 'online' && roomCode){
+    // Freeze the turn timer so it doesn't expire while the boost game is playing
+    clearMoveTimer();
+    setOnlineTurnDeadline(0);
+    // Write deadline=0 to Firebase so the opponent's watchdog won't claim the turn
+    if(gameSettings.timelimit) fbRef('rooms/' + roomCode + '/state/turnDeadlineMs').set(0).catch(()=>{});
     fbRef('rooms/' + roomCode + '/liveBonus').set({
       active: true,
       icon: document.getElementById('bovic').textContent,
@@ -9502,6 +9801,11 @@ function _openBonusOverlay(){
 function clearLiveBonus(){
   if(gMode === 'online' && roomCode)
     fbRef('rooms/' + roomCode + '/liveBonus').set(null).catch(()=>{});
+}
+
+function broadcastBoostProgress(score, label){
+  if(gMode !== 'online' || !roomCode) return;
+  fbRef('rooms/' + roomCode + '/liveBonus/progress').set({score, label}).catch(()=>{});
 }
 
 function listenForLive(){
@@ -9533,19 +9837,30 @@ function listenForLiveBonus(){
     }
     // Only SHOW the bonus overlay when it's the opponent's turn (i.e. we are waiting)
     if(turn === window._myPlayerIndex) return;
+    // Freeze our local deadline so the watchdog won't claim the turn while opponent plays boost
+    clearMoveTimer();
+    setOnlineTurnDeadline(0);
     const d = snap.val();
+    const prog = d.progress;
+    // Update the live progress area (fires on both first-open and subsequent progress updates)
+    document.getElementById('bchal').innerHTML = prog && prog.score > 0
+      ? '<div style="text-align:center;padding:12px 0 6px">'
+        + '<div style="font-size:36px;font-weight:900;color:var(--by);text-shadow:0 0 12px rgba(232,200,64,.5)">+' + prog.score + '</div>'
+        + '<div style="font-size:13px;color:rgba(255,255,255,.7);margin-top:4px">' + prog.label + '</div>'
+        + '</div>'
+      : '<div style="text-align:center;padding:16px 0 8px;font-size:13px;color:rgba(255,255,255,.5)">⏳ ממתין לתוצאה...</div>';
+    const bonusEl = document.getElementById('ov-bonus');
+    // If overlay is already open in watch mode, progress update is done
+    if(bonusEl && bonusEl._watchMode) return;
+    // First time: populate header, hide buttons, open overlay
     document.getElementById('bovic').textContent = d.icon || '🌟';
     document.getElementById('bovt').textContent = d.title || 'בוסט!';
     document.getElementById('bovd').innerHTML = d.desc || '';
     document.getElementById('btw').style.display = 'none';
-    document.getElementById('bchal').innerHTML =
-      '<div style="text-align:center;padding:16px 0 8px;font-size:13px;color:rgba(255,255,255,.5)">⏳ ממתין לתוצאה...</div>';
-    // Hide interactive buttons — watcher only observes
     const okBtn = document.getElementById('bok');
     const skipBtn = document.querySelector('#ov-bonus .ovb.s');
     if(okBtn) okBtn.style.display = 'none';
     if(skipBtn) skipBtn.style.display = 'none';
-    const bonusEl = document.getElementById('ov-bonus');
     if(bonusEl) bonusEl._watchMode = true;
     ovOpen('ov-bonus');
   });
@@ -9566,14 +9881,15 @@ function pushMoveToFirebase(){
   if(onlineMode === 'async'){
     var nudge = document.getElementById('async-nudge');
     if(nudge) nudge.style.display = 'flex';
-    // Request Cloud Function to push-notify the opponent
     var myIdx = window._myPlayerIndex;
     var opponentRole = (myIdx === 0) ? 'guest' : 'host';
-    fbRef('rooms/' + roomCode + '/notifyOpponent').set({
-      opponentRole: opponentRole,
-      moverName: pNames[myIdx] || 'יריב',
-      ts: firebase.database.ServerValue.TIMESTAMP
-    }).catch(()=>{});
+    if(window._invitePendingNotif){
+      var invUid = window._invitePendingNotif;
+      window._invitePendingNotif = null;
+      _sendInviteNotification(invUid, pNames[myIdx] || 'יריב', roomCode, 'עכשיו תורך! 🎯');
+    } else {
+      _sendPushNotification(opponentRole, 'תורך! 🎯', (pNames[myIdx] || 'יריב') + ' סיים את מהלכו. תורך בבוסט!');
+    }
   }
 }
 
@@ -9623,6 +9939,8 @@ goHome = function(){
     else if(roomCode) removeOnlineSession(roomCode);
     gMode = 'bot'; roomCode = null; myRole = null; window._myPlayerIndex = null;
   }
+  var asyncHomeBtn = document.getElementById('btn-async-home');
+  if(asyncHomeBtn) asyncHomeBtn.style.display = 'none';
   _origGoHome.apply(this, arguments);
   checkForOnlineSession();
 };
@@ -9903,7 +10221,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260502193744', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260504190326', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -10185,6 +10503,9 @@ async function rejoinOnlineGame(code){
   setTimeout(function(){ computeSizes(); renderBoard(); renderBonusStrips(); }, 100);
   updateUI(); renderBoard(); renderRack('turn');
 
+  var asyncHomeBtn = document.getElementById('btn-async-home');
+  if(asyncHomeBtn) asyncHomeBtn.style.display = (onlineMode === 'async') ? '' : 'none';
+
   var myTurn = (turn === window._myPlayerIndex);
   if(myTurn){
     setS(myTurnMsg());
@@ -10203,6 +10524,33 @@ async function rejoinOnlineGame(code){
 
 // Check on home load
 document.addEventListener('DOMContentLoaded', checkForOnlineSession);
+
+function _openJoinWithCode(code){
+  onlineJoinByCode();
+  document.getElementById('jc-code').value = code;
+}
+
+// Open screen when launched from a push notification (?join=XXXXXX or ?profile=friends)
+document.addEventListener('DOMContentLoaded', function(){
+  var params = new URLSearchParams(window.location.search);
+  var joinCode = params.get('join');
+  if(joinCode && /^\d{6}$/.test(joinCode)){ _openJoinWithCode(joinCode); return; }
+  if(params.get('profile') === 'friends') setTimeout(openFriendsOrAuth, 800);
+});
+
+function openFriendsOrAuth(){
+  if(fbCurrentUser && !fbCurrentUser.isAnonymous && currentUserProfile) showFriendsScreen();
+  else showSc('sauth-login');
+}
+
+// Open join screen when app is already open and invite notification is clicked
+if(navigator.serviceWorker){
+  navigator.serviceWorker.addEventListener('message', function(e){
+    if(!e.data) return;
+    if(e.data.type === 'OPEN_JOIN' && e.data.roomCode) _openJoinWithCode(e.data.roomCode);
+    if(e.data.type === 'OPEN_PROFILE') openFriendsOrAuth();
+  });
+}
 
 // Save session on hide/close
 document.addEventListener('visibilitychange', function(){
@@ -10516,25 +10864,25 @@ let currentUserProfile = null;
 let _profileWriteQueue = [];
 
 const AVATAR_CATALOG = [
-  // Starter — unlocked immediately on registration
-  { id:'crown',     emoji:'👑', nameHe:'כתר',     rarity:'starter', unlock:null },
-  { id:'star',      emoji:'⭐', nameHe:'כוכב',    rarity:'starter', unlock:null },
+  // Starter — unlocked immediately
+  { id:'crown',     emoji:'👑', nameHe:'כתר',      achievementHe:'ניצוץ ראשון',    rarity:'starter', unlock:null },
+  { id:'star',      emoji:'⭐', nameHe:'כוכב',     achievementHe:'אמן מילים',      rarity:'starter', unlock:{ stat:'wordsPlayed',   min:1,   label:'שחק מילה ראשונה' } },
   // Bronze — first milestones
-  { id:'rocket',    emoji:'🚀', nameHe:'טיל',     rarity:'bronze',  unlock:{ stat:'gamesPlayed', min:3,   label:'3 משחקים' } },
-  { id:'brain',     emoji:'🧠', nameHe:'מוח',     rarity:'bronze',  unlock:{ stat:'gamesWon',    min:1,   label:'ניצחון ראשון' } },
-  { id:'fire',      emoji:'🔥', nameHe:'אש',      rarity:'bronze',  unlock:{ stat:'highScore',   min:150, label:'150 נקודות במשחק' } },
+  { id:'rocket',    emoji:'🚀', nameHe:'טיל',      achievementHe:'רצף ×3',         rarity:'bronze',  unlock:{ stat:'longestStreak', min:3,   label:'3 ניצחונות ברצף' } },
+  { id:'brain',     emoji:'🧠', nameHe:'מוח',      achievementHe:'ציון כפול',      rarity:'bronze',  unlock:{ stat:'highScore',    min:150, label:'150 נקודות במשחק' } },
+  { id:'fire',      emoji:'🔥', nameHe:'אש',       achievementHe:'ילד קאמבק',      rarity:'bronze',  unlock:{ stat:'gamesWon',     min:1,   label:'ניצחון ראשון' } },
   // Silver — regular player
-  { id:'diamond',   emoji:'💎', nameHe:'יהלום',   rarity:'silver',  unlock:{ stat:'gamesPlayed', min:15,  label:'15 משחקים' } },
-  { id:'lightning', emoji:'⚡', nameHe:'ברק',     rarity:'silver',  unlock:{ stat:'gamesWon',    min:5,   label:'5 ניצחונות' } },
-  { id:'trophy',    emoji:'🏆', nameHe:'גביע',    rarity:'silver',  unlock:{ stat:'highScore',   min:350, label:'350 נקודות במשחק' } },
+  { id:'diamond',   emoji:'💎', nameHe:'יהלום',    achievementHe:'מרתוניסט',       rarity:'silver',  unlock:{ stat:'gamesPlayed',  min:25,  label:'25 משחקים' } },
+  { id:'lightning', emoji:'⚡', nameHe:'ברק',      achievementHe:'מכת ברק',        rarity:'silver',  unlock:{ stat:'highScore',    min:350, label:'350 נקודות במשחק' } },
+  { id:'trophy',    emoji:'🏆', nameHe:'גביע',     achievementHe:'בלתי עצור',      rarity:'silver',  unlock:{ stat:'longestStreak',min:5,   label:'5 ניצחונות ברצף' } },
   // Gold — dedicated player
-  { id:'dragon',    emoji:'🐉', nameHe:'דרקון',   rarity:'gold',    unlock:{ stat:'gamesPlayed', min:40,  label:'40 משחקים' } },
-  { id:'wizard',    emoji:'🧙', nameHe:'קוסם',    rarity:'gold',    unlock:{ stat:'gamesWon',    min:15,  label:'15 ניצחונות' } },
-  { id:'ninja',     emoji:'🥷', nameHe:'נינג\'ה', rarity:'gold',    unlock:{ stat:'totalScore',  min:3000,label:'3,000 ניקוד כולל' } },
+  { id:'dragon',    emoji:'🐉', nameHe:'דרקון',    achievementHe:'ללא רחמים',      rarity:'gold',    unlock:{ stat:'gamesPlayed',  min:40,  label:'40 משחקים' } },
+  { id:'wizard',    emoji:'🧙', nameHe:'קוסם',     achievementHe:'רוצח יריבים',    rarity:'gold',    unlock:{ stat:'gamesWon',     min:15,  label:'15 ניצחונות' } },
+  { id:'ninja',     emoji:'🥷', nameHe:'נינג\'ה',  achievementHe:'חיית מילים',     rarity:'gold',    unlock:{ stat:'wordsPlayed',  min:100, label:'100 מילים' } },
   // Legend — elite
-  { id:'alien',     emoji:'👾', nameHe:'חייזר',   rarity:'legend',  unlock:{ stat:'gamesPlayed', min:100, label:'100 משחקים' } },
-  { id:'gem',       emoji:'💠', nameHe:'ספיר',    rarity:'legend',  unlock:{ stat:'highScore',   min:650, label:'650 נקודות במשחק' } },
-  { id:'medal',     emoji:'🥇', nameHe:'מדליה',   rarity:'legend',  unlock:{ stat:'gamesWon',    min:40,  label:'40 ניצחונות' } },
+  { id:'alien',     emoji:'👾', nameHe:'חייזר',    achievementHe:'המכונה',         rarity:'legend',  unlock:{ stat:'gamesPlayed',  min:100, label:'100 משחקים' } },
+  { id:'gem',       emoji:'💠', nameHe:'ספיר',     achievementHe:'פרפקציוניסט',    rarity:'legend',  unlock:{ stat:'longestStreak',min:10,  label:'10 ניצחונות ברצף' } },
+  { id:'medal',     emoji:'🥇', nameHe:'מדליה',    achievementHe:'מאסטר אוצר מילים', rarity:'legend', unlock:{ stat:'wordsPlayed', min:500, label:'500 מילים' } },
 ];
 const RARITY_COLORS = { starter:'rgba(255,255,255,.85)', bronze:'#cd7f32', silver:'#aaa', gold:'#f5c518', legend:'#c084fc' };
 const RARITY_LABELS = { starter:'בסיסי', bronze:'ברונזה', silver:'כסף', gold:'זהב', legend:'אגדי' };
@@ -10608,16 +10956,40 @@ function onAuthStateChanged_handler(user){
     loadUserProfile(user.uid);
     flushProfileWriteQueue();
     initOneSignal();
+    _listenForInvites(user.uid);
   } else {
     currentUserProfile = null;
     updateHomeProfileButton();
+    _stopListeningForInvites();
   }
 }
 
 // ── Create profile in Firebase after sign-up / social sign-in ──
+function _generateUserId(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = '';
+  for(let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+
+async function _ensureUserId(){
+  if(!fbCurrentUser || !currentUserProfile) return;
+  let userId = currentUserProfile.userId;
+  if(!userId){
+    userId = _generateUserId();
+    await fbRef('users/' + fbCurrentUser.uid + '/profile/userId').set(userId);
+    currentUserProfile.userId = userId;
+    try{ localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(currentUserProfile)); }catch(_){}
+  }
+  // Always (re-)write reverse lookup — idempotent; fixes users who missed the initial write
+  fbRef('userIds/' + userId).set(fbCurrentUser.uid).catch(()=>{});
+}
+
 async function createUserProfile(user, displayName){
+  const userId = _generateUserId();
   const profile = {
     uid: user.uid,
+    userId: userId,
     displayName: displayName,
     email: user.email || '',
     equippedAvatar: DEFAULT_AVATAR,
@@ -10627,6 +10999,7 @@ async function createUserProfile(user, displayName){
     lastActive: firebase.database.ServerValue.TIMESTAMP
   };
   await fbRef('usernames/' + displayName.toLowerCase()).set(user.uid);
+  await fbRef('userIds/' + userId).set(user.uid).catch(()=>{});
   await fbRef('users/' + user.uid + '/profile').set(profile);
   updateRankingRating(user.uid, displayName, RATING_START).catch(()=>{});
   const localProfile = Object.assign({}, profile, {createdAt: Date.now(), lastActive: Date.now()});
@@ -10644,6 +11017,7 @@ async function loadUserProfile(uid){
       try{ localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(currentUserProfile)); }catch(_){}
       fbRef('users/' + uid + '/profile/lastActive').set(firebase.database.ServerValue.TIMESTAMP);
       updateHomeProfileButton();
+      _ensureUserId().catch(()=>{});
     }
   }catch(_){}
 }
@@ -10918,10 +11292,12 @@ async function removeProfilePhoto(){
 }
 
 // ── Update user stats (Firebase transaction) ──
-async function updateUserStats(result, myScore, gameBonuses, gameWords){
+async function updateUserStats(result, myScore, gameBonuses, gameWords, extra){
   // result: 'win' | 'loss' | 'draw'
   if(!currentUserProfile || !fbCurrentUser || fbCurrentUser.isAnonymous) return;
+  if(gMode !== 'online') return;
   const uid = fbCurrentUser.uid;
+  const ex = extra || {};
   const statsBefore = Object.assign({}, (currentUserProfile.stats||{}));
   try{
     await fbRef('users/' + uid + '/profile/stats').transaction(function(stats){
@@ -10942,6 +11318,34 @@ async function updateUserStats(result, myScore, gameBonuses, gameWords){
       stats.totalScore = (stats.totalScore||0) + myScore;
       stats.bonusesTriggered = (stats.bonusesTriggered||0) + (gameBonuses||0);
       stats.wordsPlayed = (stats.wordsPlayed||0) + (gameWords||0);
+      // Extended per-game tracking
+      stats.totalMoves = (stats.totalMoves||0) + (ex.moves||0);
+      stats.totalTiles = (stats.totalTiles||0) + (ex.tiles||0);
+      stats.totalMoveSeconds = (stats.totalMoveSeconds||0) + (ex.moveSeconds||0);
+      const isCloseWin = result==='win' && typeof ex.scoreDiff==='number' && ex.scoreDiff>0 && ex.scoreDiff<=10;
+      const isComebackWin = result==='win' && (ex.minScoreDiff||0) < 0;
+      if(isCloseWin) stats.closeWins = (stats.closeWins||0) + 1;
+      if(isComebackWin){
+        stats.comebackWins = (stats.comebackWins||0) + 1;
+        const margin = Math.abs(ex.minScoreDiff||0);
+        if(margin > (stats.biggestComeback||0)) stats.biggestComeback = margin;
+      }
+      if(ex.longestWord && ex.longestWord.length > (stats.longestWord||'').length) stats.longestWord = ex.longestWord;
+      if(result==='win' && (ex.duration||0) > 0){
+        if(!(stats.fastestWin>0) || ex.duration < stats.fastestWin) stats.fastestWin = ex.duration;
+      }
+      const rr = (stats.recentResults||[]).slice();
+      rr.push(result==='win'?1:result==='draw'?0.5:0);
+      if(rr.length > 6) rr.splice(0, rr.length-6);
+      stats.recentResults = rr;
+      stats.gamesWithBoost = (stats.gamesWithBoost||0) + ((gameBonuses||0)>0?1:0);
+      if((gameBonuses||0)>0 && result==='win') stats.winsWithBoost = (stats.winsWithBoost||0) + 1;
+      if(result==='win'){
+        const dw = (stats.dayWins||[0,0,0,0,0,0,0]).slice();
+        const day = new Date().getDay();
+        dw[day] = (dw[day]||0) + 1;
+        stats.dayWins = dw;
+      }
       return stats;
     });
     // Refresh local cache
@@ -10969,6 +11373,8 @@ async function updateUserStats(result, myScore, gameBonuses, gameWords){
         const oppRating = (rSnap.val() != null) ? rSnap.val() : RATING_START;
         const actual = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0;
         ratingDelta = calcElo(myRating, oppRating, actual);
+        // Rival tracking — fire-and-forget
+        _updateRivalData(uid, oppUid, oppName, result, myRating, oppRating).catch(()=>{});
       }
     }
     if(ratingDelta !== 0){
@@ -10978,6 +11384,23 @@ async function updateUserStats(result, myScore, gameBonuses, gameWords){
       try{ localStorage.setItem(STORAGE_KEYS.userProfile, JSON.stringify(currentUserProfile)); }catch(_){}
       await updateRankingRating(uid, currentUserProfile.displayName, newRating);
     }
+  }catch(_){}
+}
+
+// ── Rival tracking ──
+async function _updateRivalData(uid, oppUid, oppName, result, myRating, oppRating){
+  try{
+    await fbRef('users/'+uid+'/profile/rivals/'+oppUid).transaction(function(r){
+      if(!r) r={name:'',wins:0,losses:0,draws:0,theirRating:0};
+      r.name = oppName;
+      r.theirRating = oppRating || 0;
+      if(result==='win') r.wins=(r.wins||0)+1;
+      else if(result==='loss') r.losses=(r.losses||0)+1;
+      else r.draws=(r.draws||0)+1;
+      return r;
+    });
+    const rivSnap = await fbRef('users/'+uid+'/profile/rivals').once('value');
+    if(rivSnap.val() && currentUserProfile) currentUserProfile.rivals = rivSnap.val();
   }catch(_){}
 }
 
@@ -11019,15 +11442,7 @@ function showProfileScreen(){
 function _renderProfileScreen(){
   const p = currentUserProfile;
   const avatarDisplay = document.getElementById('profile-avatar-display');
-  if(avatarDisplay){
-    if(p.customPhoto){
-      avatarDisplay.innerHTML = `<img src="${p.customPhoto}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(245,197,24,.4);">`;
-    } else {
-      avatarDisplay.textContent = _avatarEmoji(p.equippedAvatar);
-    }
-  }
-  const removeBtn = document.getElementById('profile-photo-remove');
-  if(removeBtn) removeBtn.style.display = p.customPhoto ? '' : 'none';
+  if(avatarDisplay) avatarDisplay.textContent = _avatarEmoji(p.equippedAvatar);
 
   const nameDisplay = document.getElementById('profile-name-display');
   if(nameDisplay) nameDisplay.textContent = p.displayName || '';
@@ -11039,11 +11454,11 @@ function _renderProfileScreen(){
   const played = document.getElementById('stat-played');
   const wins = document.getElementById('stat-wins');
   const hs = document.getElementById('stat-highscore');
-  const total = document.getElementById('stat-total');
+  const lsEl = document.getElementById('stat-longeststreak');
   if(played) played.textContent = stats.gamesPlayed || 0;
   if(wins) wins.textContent = stats.gamesWon || 0;
   if(hs) hs.textContent = stats.highScore || 0;
-  if(total) total.textContent = stats.totalScore || 0;
+  if(lsEl) lsEl.textContent = stats.longestStreak || 0;
   const wrEl = document.getElementById('stat-winrate');
   const strkEl = document.getElementById('stat-streak');
   const gp = stats.gamesPlayed || 0;
@@ -11057,6 +11472,155 @@ function _renderProfileScreen(){
 
   const upgradeBtn = document.getElementById('btn-upgrade-account');
   if(upgradeBtn) upgradeBtn.style.display = 'none';
+
+  _loadFriendRequests().then(function(){
+    const count = Object.keys(window._myFriendRequests).length;
+    const badge = document.getElementById('friends-req-badge');
+    if(badge){ badge.textContent = count; badge.style.display = count > 0 ? '' : 'none'; }
+  }).catch(function(){});
+}
+
+// ── Friends ──
+
+window._myFriends = {};        // { uid: { uid, name, avatar, ts } }
+window._myFriendRequests = {}; // { uid: { uid, name, avatar, ts } }
+
+async function _loadFriends(){
+  if(!fbCurrentUser || fbCurrentUser.isAnonymous) return;
+  try {
+    const snap = await fbRef('friends/' + fbCurrentUser.uid).once('value');
+    window._myFriends = snap.val() || {};
+  } catch(_){}
+}
+
+async function _loadFriendRequests(){
+  if(!fbCurrentUser || fbCurrentUser.isAnonymous) return;
+  try {
+    const snap = await fbRef('friendRequests/' + fbCurrentUser.uid).once('value');
+    window._myFriendRequests = snap.val() || {};
+  } catch(_){}
+}
+
+function _renderFriendsScreen(){
+  const friends = Object.values(window._myFriends);
+  const requests = Object.values(window._myFriendRequests);
+
+  const countEl = document.getElementById('fr-friends-count');
+  if(countEl) countEl.textContent = '(' + friends.length + ')';
+
+  const badge = document.getElementById('friends-req-badge');
+  if(badge){ badge.textContent = requests.length; badge.style.display = requests.length > 0 ? '' : 'none'; }
+
+  const reqWrap = document.getElementById('fr-requests-wrap');
+  const reqList = document.getElementById('fr-requests-list');
+  if(reqList && reqWrap){
+    if(requests.length){
+      reqWrap.style.display = 'block';
+      reqList.innerHTML = requests.map(r =>
+        `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07);">
+          <span style="font-size:20px;">${r.avatar||'👤'}</span>
+          <span style="flex:1;font-size:12px;font-weight:700;">${r.name}</span>
+          <button class="bd g" style="font-size:11px;padding:4px 8px;" onclick="acceptFriendRequest('${r.uid}')">קבל</button>
+          <button class="bd" style="font-size:11px;padding:4px 8px;" onclick="rejectFriendRequest('${r.uid}')">דחה</button>
+        </div>`
+      ).join('');
+    } else {
+      reqWrap.style.display = 'none';
+    }
+  }
+
+  const fl = document.getElementById('fr-friends-list');
+  if(fl){
+    if(friends.length){
+      fl.innerHTML = friends.map(f =>
+        `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07);">
+          <span style="font-size:20px;">${f.avatar||'👤'}</span>
+          <span style="font-size:12px;font-weight:700;">${f.name}</span>
+        </div>`
+      ).join('');
+    } else {
+      fl.innerHTML = '<div style="font-size:11px;color:rgba(255,255,255,.3);text-align:center;padding:8px 0;">אין חברים עדיין</div>';
+    }
+  }
+}
+
+function showFriendsScreen(){
+  const myIdEl = document.getElementById('fr-my-id');
+  if(myIdEl) myIdEl.textContent = (currentUserProfile && currentUserProfile.userId) || '...';
+  const copyStatus = document.getElementById('fr-copy-status');
+  if(copyStatus) copyStatus.textContent = '';
+  const statusEl = document.getElementById('add-friend-status');
+  if(statusEl) statusEl.textContent = '';
+  const input = document.getElementById('add-friend-input');
+  if(input) input.value = '';
+  _ensureUserId().then(function(){
+    const el = document.getElementById('fr-my-id');
+    if(el && currentUserProfile && currentUserProfile.userId) el.textContent = currentUserProfile.userId;
+  }).catch(()=>{});
+  _loadFriends().then(function(){ return _loadFriendRequests(); }).then(function(){ _renderFriendsScreen(); }).catch(()=>{});
+  showSc('sfriends');
+}
+
+function copyUserId(){
+  const id = currentUserProfile && currentUserProfile.userId;
+  if(!id) return;
+  navigator.clipboard.writeText(id).then(function(){
+    const el = document.getElementById('fr-copy-status');
+    if(el){ el.textContent = 'הועתק! ✓'; setTimeout(function(){ el.textContent = ''; }, 2000); }
+  }).catch(()=>{});
+}
+
+async function sendFriendRequest(){
+  const inputId = (document.getElementById('add-friend-input').value || '').trim().toUpperCase();
+  const statusEl = document.getElementById('add-friend-status');
+  if(!inputId){ statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'הזן מזהה משתמש'; return; }
+  if(!/^[A-Z2-9]{6}$/.test(inputId)){ statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'מזהה לא תקין (6 תווים)'; return; }
+  statusEl.style.color = 'rgba(255,255,255,.6)'; statusEl.textContent = 'מחפש...';
+  try {
+    const snap = await fbRef('userIds/' + inputId).once('value');
+    const uid = snap.val();
+    if(!uid){ statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'מזהה לא נמצא'; return; }
+    if(uid === fbCurrentUser.uid){ statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'לא ניתן להוסיף את עצמך'; return; }
+    if(window._myFriends[uid]){ statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'כבר חבר שלך'; return; }
+
+    const myAvatar = currentUserProfile ? _avatarEmoji(currentUserProfile.equippedAvatar) : '👤';
+    const myName = currentUserProfile ? currentUserProfile.displayName : 'שחקן';
+    await fbRef('friendRequests/' + uid + '/' + fbCurrentUser.uid).set({
+      uid: fbCurrentUser.uid, name: myName, avatar: myAvatar,
+      ts: firebase.database.ServerValue.TIMESTAMP
+    });
+    await _sendFriendRequestNotification(uid, myName);
+    statusEl.style.color = '#7fff7f'; statusEl.textContent = 'הבקשה נשלחה ✓';
+    document.getElementById('add-friend-input').value = '';
+  } catch(e){
+    const isPerms = e && e.message && e.message.includes('PERMISSION_DENIED');
+    statusEl.style.color = '#ff8e8e';
+    statusEl.textContent = isPerms ? 'שגיאת הרשאות — יש לפרוס כללי Firebase' : 'שגיאה בשליחת הבקשה';
+  }
+}
+
+async function acceptFriendRequest(senderUid){
+  const req = window._myFriendRequests[senderUid];
+  if(!req) return;
+  const myAvatar = currentUserProfile ? _avatarEmoji(currentUserProfile.equippedAvatar) : '👤';
+  const myName = currentUserProfile ? currentUserProfile.displayName : 'שחקן';
+  const myEntry = { uid: fbCurrentUser.uid, name: myName, avatar: myAvatar, ts: firebase.database.ServerValue.TIMESTAMP };
+  const theirEntry = { uid: senderUid, name: req.name, avatar: req.avatar, ts: firebase.database.ServerValue.TIMESTAMP };
+  await Promise.all([
+    fbRef('friends/' + fbCurrentUser.uid + '/' + senderUid).set(theirEntry),
+    fbRef('friends/' + senderUid + '/' + fbCurrentUser.uid).set(myEntry),
+    fbRef('friendRequests/' + fbCurrentUser.uid + '/' + senderUid).remove()
+  ]);
+  await _sendFriendAcceptedNotification(senderUid, myName);
+  window._myFriends[senderUid] = theirEntry;
+  delete window._myFriendRequests[senderUid];
+  _renderFriendsScreen();
+}
+
+async function rejectFriendRequest(senderUid){
+  await fbRef('friendRequests/' + fbCurrentUser.uid + '/' + senderUid).remove().catch(()=>{});
+  delete window._myFriendRequests[senderUid];
+  _renderFriendsScreen();
 }
 
 // ── Stats Screen ──
@@ -11161,47 +11725,86 @@ function _buildStatsData(){
   const lost   = real.gamesLost   || 0;
   const draw   = real.gamesDraw   || 0;
   const wr     = played > 0 ? Math.round(won / played * 100) : 0;
-  const avg    = played > 0 ? Math.round((real.totalScore || 0) / played) : 0;
+  const avg    = played > 0 ? Math.round((real.totalScore||0) / played) : 0;
+  const tm     = real.totalMoves || 0;
+  const tt     = real.totalTiles || 0;
+  const ppm    = tm > 0 ? +((real.totalScore||0) / tm).toFixed(1) : 0;
+  const ppt    = tt > 0 ? +((real.totalScore||0) / tt).toFixed(1) : 0;
+  const awl    = tm > 0 ? +(tt / tm).toFixed(1) : 0;
+  const avgMoveSecs = tm > 0 ? Math.round((real.totalMoveSeconds||0) / tm) : 0;
+  const amtStr = avgMoveSecs > 0
+    ? (avgMoveSecs >= 60 ? `${Math.floor(avgMoveSecs/60)}:${String(avgMoveSecs%60).padStart(2,'0')} דק׳` : `${avgMoveSecs} שנ׳`)
+    : '—';
+  const fastWinStr = (real.fastestWin||0) > 0
+    ? `${Math.floor(real.fastestWin/60)}:${String(real.fastestWin%60).padStart(2,'0')}`
+    : '—';
+  const wrt = (real.recentResults && real.recentResults.length > 0)
+    ? real.recentResults.map((v,i,a) => { const sl=a.slice(0,i+1); return Math.round(sl.reduce((s,x)=>s+x,0)/sl.length*100); })
+    : [wr];
+  const wrBoost = (real.gamesWithBoost||0) > 0 ? Math.round((real.winsWithBoost||0)/(real.gamesWithBoost)*100) : 0;
+  const HE_DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const bestDay = (function(){ const dw=real.dayWins; if(!dw||!dw.length) return '—'; const mx=Math.max.apply(null,dw); return mx===0?'—':HE_DAYS[dw.indexOf(mx)]; })();
+  // Rivals from locally cached data
+  const _rivals = (currentUserProfile && currentUserProfile.rivals) || {};
+  const myRatingNow = (currentUserProfile && currentUserProfile.rating) || 800;
+  let _mainRival=null, _topDefeated=null, _topBeatRating=-1, _maxGames=0;
+  let _vsStrongW=0, _vsStrongL=0, _vsWeakW=0, _vsWeakL=0;
+  Object.values(_rivals).forEach(function(r){
+    const tot=(r.wins||0)+(r.losses||0)+(r.draws||0);
+    if(tot>_maxGames){ _maxGames=tot; _mainRival=r; }
+    if((r.wins||0)>0 && (r.theirRating||0)>_topBeatRating){ _topBeatRating=r.theirRating||0; _topDefeated=r; }
+    const stronger=(r.theirRating||0)>myRatingNow;
+    if(stronger){ _vsStrongW+=(r.wins||0); _vsStrongL+=(r.losses||0); }
+    else { _vsWeakW+=(r.wins||0); _vsWeakL+=(r.losses||0); }
+  });
   return {
     player: {
       name: currentUserProfile.displayName || 'שחקן',
       avatar: _avatarEmoji(currentUserProfile.equippedAvatar) || '🏆',
-      rank: real.rank || null,
-      rankTier: _statsTier(real.rating || 0),
-      percentile: real.percentile || null
+      rank: null,
+      rankTier: _statsTier(myRatingNow),
+      percentile: null
     },
     summary: {
       gamesPlayed: played, gamesWon: won, gamesLost: lost, gamesDraw: draw,
       winRate: wr, currentStreak: real.currentStreak || 0,
       longestStreak: real.longestStreak || 0,
       highScore: real.highScore || 0, totalScore: real.totalScore || 0,
-      averageScore: avg, averageWordLength: real.avgWordLength || 0,
+      averageScore: avg, averageWordLength: awl,
       boostsUsed: real.bonusesTriggered || 0, wordsPlayed: real.wordsPlayed || 0
     },
     performance: {
-      rating: real.rating || 0, tierProgress: _statsTierPct(real.rating || 0),
-      pointsPerMove: real.pointsPerMove || 0, pointsPerTile: real.pointsPerTile || 0,
-      averageMoveTime: real.avgMoveTime || '—',
-      comebackWins: real.comebackWins || 0, lastMoveWins: real.lastMoveWins || 0,
+      rating: myRatingNow, tierProgress: _statsTierPct(myRatingNow),
+      pointsPerMove: ppm, pointsPerTile: ppt,
+      averageMoveTime: amtStr,
+      comebackWins: real.comebackWins || 0,
+      lastMoveWins: 0,
       closeWins: real.closeWins || 0,
-      winRateTrend: real.winRateTrend || [wr]
+      winRateTrend: wrt
     },
     boosts: {
       totalUsed: real.bonusesTriggered || 0,
       averagePerGame: played > 0 ? +((real.bonusesTriggered||0)/played).toFixed(1) : 0,
-      favoriteBoost: real.favoriteBoost || '—', favoriteBoostIcon: '⚡',
-      favoriteBoostUsage: real.favoriteBoostPct || 0,
-      winRateWithBoost: real.winRateWithBoost || 0,
-      lastMoveBoostWins: real.lastMoveBoostWins || 0,
-      mostImpactfulBoost: real.mostImpactfulBoost || '—',
-      bestCombo: real.bestCombo || []
+      favoriteBoost: '—', favoriteBoostIcon: '⚡',
+      favoriteBoostUsage: 0,
+      winRateWithBoost: wrBoost,
+      lastMoveBoostWins: 0,
+      mostImpactfulBoost: '—',
+      bestCombo: []
     },
-    rivals: _mockPlayerStats.rivals,
+    rivals: {
+      mainRival: _mainRival,
+      topDefeated: _topDefeated,
+      vsStronger: { wins: _vsStrongW, losses: _vsStrongL },
+      vsWeaker:   { wins: _vsWeakW,   losses: _vsWeakL }
+    },
     fun: {
-      longestWord: real.longestWord || '—', mostRepeatedWord: real.mostRepeatedWord || '—',
-      fastestWin: real.fastestWin || '—',
+      longestWord: real.longestWord || '—',
+      mostRepeatedWord: '—',
+      fastestWin: fastWinStr,
       biggestComeback: real.biggestComeback || 0,
-      bestDay: real.bestDay || '—', luckFactor: real.luckFactor || 0
+      bestDay: bestDay,
+      luckFactor: 0
     }
   };
 }
@@ -11225,11 +11828,19 @@ const _tierEmojis   = { bronze:'🥉', silver:'🥈', gold:'⚡', diamond:'💎'
 function showStatsScreen(){
   if(!currentUserProfile) return;
   _statsTimeKey = 'all';
-  // Reset time filter UI
   document.querySelectorAll('.stats-tfseg').forEach((b,i)=>{ b.classList.toggle('active', i===2); });
   _statsTab('overview', document.querySelector('.stats-tab'));
   _renderStatsScreen();
   showSc('sstats');
+  // Load rivals asynchronously and re-render when ready
+  if(fbCurrentUser && !fbCurrentUser.isAnonymous){
+    fbRef('users/'+fbCurrentUser.uid+'/profile/rivals').once('value').then(function(snap){
+      if(snap.val() && currentUserProfile){
+        currentUserProfile.rivals = snap.val();
+        _renderStatsScreen();
+      }
+    }).catch(function(){});
+  }
 }
 
 function _statsRefresh(){
@@ -11459,7 +12070,7 @@ function _buildGalleryGrid(){
                border:2px solid ${isEquipped?'#f5c518':'rgba(255,255,255,.12)'};
                transition:border-color .15s,background .15s;">
         <div style="font-size:36px;line-height:1;">${av.emoji}</div>
-        <div style="font-size:10px;font-weight:700;color:#fff;">${av.nameHe}</div>
+        <div style="font-size:10px;font-weight:700;color:#fff;text-align:center;line-height:1.2;">${av.achievementHe}</div>
         <div style="font-size:9px;font-weight:700;color:${rarityColor};">${RARITY_LABELS[av.rarity]}</div>
         ${isEquipped?'<div style="font-size:9px;color:#f5c518;">✓ מצויד</div>':''}
       </div>`;
@@ -11470,7 +12081,7 @@ function _buildGalleryGrid(){
         style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:10px;cursor:pointer;
                background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.07);opacity:.6;">
         <div style="font-size:36px;line-height:1;filter:grayscale(1);">${av.emoji}</div>
-        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);">${av.nameHe}</div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.5);text-align:center;line-height:1.2;">${av.achievementHe}</div>
         <div style="font-size:9px;font-weight:700;color:${rarityColor};opacity:.7;">${RARITY_LABELS[av.rarity]}</div>
         <div style="font-size:9px;color:rgba(255,255,255,.4);">🔒 ${cur}/${u.min}</div>
       </div>`;
@@ -11485,7 +12096,7 @@ function _showLockedHint(avatarId){
   const cur = stats[av.unlock.stat]||0;
   const hint = document.getElementById('av-locked-hint');
   if(!hint) return;
-  hint.textContent = `${av.emoji} ${av.nameHe} — ${av.unlock.label} (${cur}/${av.unlock.min})`;
+  hint.textContent = `${av.emoji} ${av.achievementHe} — ${av.unlock.label} (${cur}/${av.unlock.min})`;
   hint.style.opacity = '1';
   clearTimeout(hint._t);
   hint._t = setTimeout(()=>{ hint.style.opacity='0'; }, 2500);
@@ -11550,7 +12161,7 @@ function _checkNewUnlocks(statsBefore, statsAfter){
   const rar = document.getElementById('av-unlock-rarity');
   const cond = document.getElementById('av-unlock-cond');
   if(ic) ic.textContent = best.emoji;
-  if(nm) nm.textContent = best.nameHe;
+  if(nm) nm.textContent = best.achievementHe;
   if(rar){ rar.textContent = RARITY_LABELS[best.rarity]; rar.style.color = RARITY_COLORS[best.rarity]; }
   if(cond) cond.textContent = best.unlock ? best.unlock.label : '';
   setTimeout(()=>{ if(document.getElementById('ov-avatar-unlocked')) ovOpen('ov-avatar-unlocked'); }, 1800);
@@ -11716,13 +12327,8 @@ function animateScore(el, from, to, duration){
   <div class="sbox" style="max-width:320px;gap:12px;">
     <div class="stitle">👤 הפרופיל שלי</div>
     <div style="text-align:center;">
-      <div id="profile-avatar-display" style="font-size:52px;line-height:1;cursor:pointer;" onclick="showAvatarGallery()">👑</div>
+      <div id="profile-avatar-display" style="font-size:72px;line-height:1;cursor:pointer;" onclick="showAvatarGallery()">👑</div>
       <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;">לחץ לשינוי אווטאר</div>
-      <div style="margin-top:8px;display:flex;gap:6px;justify-content:center;align-items:center;">
-        <button class="bd" style="font-size:11px;width:auto;padding:6px 12px;" onclick="triggerPhotoUpload()">📷 העלאת תמונה</button>
-        <span id="profile-photo-remove" style="display:none;font-size:11px;cursor:pointer;color:rgba(255,120,120,.8);text-decoration:underline;" onclick="removeProfilePhoto()">הסר תמונה</span>
-      </div>
-      <input type="file" id="profile-photo-input" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this)">
     </div>
     <div style="text-align:center;">
       <div id="profile-name-display" style="font-size:20px;font-weight:900;color:var(--by,#f5c518);cursor:pointer;" onclick="startNameEdit()"></div>
@@ -11741,15 +12347,51 @@ function animateScore(el, from, to, duration){
       <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">ניצחונות</div><div id="stat-wins" style="font-size:22px;font-weight:900;color:#8eff8e">0</div></div>
       <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">אחוז ניצחון</div><div id="stat-winrate" style="font-size:22px;font-weight:900;color:#8eff8e">0%</div></div>
       <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">שיא אישי</div><div id="stat-highscore" style="font-size:22px;font-weight:900;color:var(--by,#f5c518)">0</div></div>
-      <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">ניקוד כולל</div><div id="stat-total" style="font-size:22px;font-weight:900;color:rgba(255,255,255,.7)">0</div></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">שיא רצף 🏅</div><div id="stat-longeststreak" style="font-size:22px;font-weight:900;color:rgba(255,255,255,.85)">0</div></div>
       <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">רצף נוכחי 🔥</div><div id="stat-streak" style="font-size:22px;font-weight:900;color:var(--lcd,#c8ff00)">0</div></div>
     </div>
     <div id="profile-email-display" style="font-size:10px;color:rgba(255,255,255,.35);text-align:center;"></div>
+    <button class="bd" style="position:relative;" onclick="showFriendsScreen()">👥 חברים<span id="friends-req-badge" style="display:none;position:absolute;top:5px;right:8px;background:#f5c518;color:#000;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:900;line-height:1.4;"></span></button>
     <button id="btn-avatar-gallery" class="bd" style="background:linear-gradient(180deg,#6a4a9a,#4a2a7a);border-color:#3a1a6a;color:#fff;" onclick="showAvatarGallery()">🎨 אוסף אווטארים</button>
     <button class="bd" style="background:linear-gradient(180deg,#2d6080,#1a3a55);border-color:#1a3a55;color:#fff;" onclick="showStatsScreen()">📊 סטטיסטיקות מלאות</button>
     <button id="btn-upgrade-account" class="bd b" style="display:none;" onclick="showSc('sauth-signup')">✨ צור חשבון — שמור את ההתקדמות</button>
     <button class="bd" style="background:linear-gradient(180deg,#c85050,#8a2a2a);border-color:#6a1a1a;color:#fff;" onclick="logoutUser()">התנתקות 🚪</button>
     <button class="bd" style="font-size:12px" onclick="goHome()">← חזרה לתפריט</button>
+  </div>
+</div>
+
+<!-- FRIENDS SCREEN -->
+<div id="sfriends" class="screen hidden">
+  <div class="sbox" style="max-width:320px;gap:10px;overflow-y:auto;max-height:92vh;">
+    <div class="stitle">👥 חברים</div>
+    <!-- My user ID -->
+    <div style="background:rgba(0,0,0,.25);border-radius:8px;padding:10px;text-align:center;">
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:5px;">המזהה שלך — שתף כדי שחברים יוסיפו אותך</div>
+      <div id="fr-my-id" style="font-family:monospace;font-size:22px;font-weight:900;color:var(--by,#f5c518);letter-spacing:5px;cursor:pointer;" onclick="copyUserId()">------</div>
+      <div id="fr-copy-status" style="font-size:10px;color:#7fff7f;min-height:14px;margin-top:3px;"></div>
+    </div>
+    <!-- Pending requests -->
+    <div id="fr-requests-wrap" style="display:none;">
+      <div style="font-size:11px;color:rgba(255,200,100,.85);font-weight:700;margin-bottom:5px;">⏳ בקשות ממתינות</div>
+      <div id="fr-requests-list"></div>
+    </div>
+    <!-- Add friend -->
+    <div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:5px;">הוסף לפי מזהה</div>
+      <div style="display:flex;gap:6px;">
+        <input class="ri" id="add-friend-input" type="text" placeholder="הזן מזהה (6 תווים)..." maxlength="6" style="flex:3;min-width:0;font-size:14px;letter-spacing:3px;text-transform:uppercase;" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+        <button class="bd g" style="flex:1;min-width:0;font-size:13px;padding:8px 6px;" onclick="sendFriendRequest()">הוסף</button>
+      </div>
+      <div id="add-friend-status" style="font-size:11px;text-align:center;min-height:14px;margin-top:4px;"></div>
+    </div>
+    <!-- Friends list -->
+    <div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:5px;">חברים <span id="fr-friends-count">(0)</span></div>
+      <div id="fr-friends-list">
+        <div style="font-size:11px;color:rgba(255,255,255,.3);text-align:center;padding:8px 0;">אין חברים עדיין</div>
+      </div>
+    </div>
+    <button class="bd" style="font-size:12px;" onclick="openProfileOrAuth()">← חזרה לפרופיל</button>
   </div>
 </div>
 
