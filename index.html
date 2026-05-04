@@ -7149,7 +7149,7 @@ function nextTurn(){
     const skName=pNames[turn];
     updateUI(); renderRack('turn'); renderBoard();
     setS(`⛔ ${skName} מפסיד תור!`,'err');
-    setTimeout(()=>nextTurn(), 1600);
+    setTimeout(()=>nextTurn(), gMode === 'online' ? 0 : 1600);
     return;
   }
 
