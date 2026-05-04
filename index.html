@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260504190326">
+<meta name="version" content="20260504211855">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -1877,7 +1877,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260504190326</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260504211855</div>
   </div>
 </div>
 
@@ -3271,6 +3271,9 @@ let onlineTimerRenderInt=null, onlineTurnDeadlineMs=0, localTurnDeadlineMs=0;
 let onlineTimeoutWatchdogInt=null;
 let onlineMissedTurns=[0,0];
 let onlinePresenceByPlayer=[true,true];
+let onlineStateSeq=0;
+let onlinePendingEffect=null;
+let onlineResolvingEffectId=null;
 let fbServerTimeOffsetMs=0;
 let lastRejWord='', lastRejScore=0, lastRejPlaced=[];
 let replacedThisTurn=null, pendingReview=null;
@@ -3476,8 +3479,11 @@ function renderBoard(){
     const cell = document.getElementById(`c${r}_${c}`);
     if (!cell) continue;
     const rep  = replacedThisTurn && replacedThisTurn.r===r && replacedThisTurn.c===c ? replacedThisTurn.newTile : null;
+    const opRep = window._opponentLiveReplacement && window._opponentLiveReplacement.r===r && window._opponentLiveReplacement.c===c
+      ? (window._opponentLiveReplacement.newTile || null)
+      : null;
     const pp   = rep || placed.find(p => p.r===r && p.c===c);
-    const tile = rep ? null : bData[r][c];
+    const tile = (rep || opRep) ? null : bData[r][c];
     const lk   = lockedCells[`${r},${c}`];
     cell.classList.remove('np','lk','ht','locked-cell','last-move','op-live');
     cell.style.background = '';
@@ -3662,6 +3668,61 @@ function setLocalTurnDeadline(deadlineMs){
   localTurnDeadlineMs = Number(deadlineMs || 0);
   refreshSharedTurnTimer();
 }
+function nextOnlineStateSeq(){
+  onlineStateSeq = Number(onlineStateSeq || 0) + 1;
+  return onlineStateSeq;
+}
+function serverTimestampOrNow(){
+  return (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue && firebase.database.ServerValue.TIMESTAMP)
+    ? firebase.database.ServerValue.TIMESTAMP
+    : Date.now();
+}
+function syncOnlineDeadlineState(deadlineMs, reason){
+  if(gMode !== 'online' || !roomCode || onlineMode !== 'live' || !gameSettings.timelimit) return;
+  const safeDeadline = Number(deadlineMs || 0);
+  setOnlineTurnDeadline(safeDeadline);
+  const requestedSeq = nextOnlineStateSeq();
+  const expectedMoveCount = Number(moveCount || 0);
+  const expectedTurn = Number(turn || 0);
+  const stateRef = fbRef('rooms/' + roomCode + '/state');
+  stateRef.transaction(function(curr){
+    if(!curr || typeof curr !== 'object') return curr;
+    if(Number(curr.moveCount || 0) !== expectedMoveCount || Number(curr.turn || 0) !== expectedTurn) return curr;
+    const nextSeq = Math.max(Number(curr.stateSeq || curr.revision || 0) + 1, requestedSeq);
+    return Object.assign({}, curr, {
+      stateSeq: nextSeq,
+      turnDeadlineMs: safeDeadline,
+      lastSyncReason: reason || 'deadline',
+      ts: serverTimestampOrNow()
+    });
+  }).then(function(res){
+    try{
+      const v = res && res.snapshot && res.snapshot.val && res.snapshot.val();
+      if(v && v.stateSeq !== undefined) onlineStateSeq = Math.max(Number(onlineStateSeq || 0), Number(v.stateSeq || 0));
+    }catch(_){}
+  }).catch(function(e){ console.error('syncOnlineDeadlineState failed:', e); });
+}
+function consumeTurnTimeLimitForPlayer(playerIdx, announce){
+  let limitMs = getMoveTimeLimit();
+  if(!limitMs) return null;
+  if(futBon[playerIdx] && futBon[playerIdx].timerBonus > 0){
+    const bonusSecs = Number(futBon[playerIdx].timerBonus || 0);
+    futBon[playerIdx].timerBonus = 0;
+    limitMs += bonusSecs * 1000;
+    if(announce) setS(`ג±ן¸ +${bonusSecs} ׳©׳ ׳™׳•׳× ׳ ׳•׳¡׳₪׳•׳× ׳׳×׳•׳¨ ׳”׳–׳”!`,'bon');
+  }
+  return limitMs;
+}
+function prepareOnlineDeadlineForTurn(playerIdx, announce){
+  if(!(gMode==='online' && onlineMode==='live' && gameSettings.timelimit)){
+    setOnlineTurnDeadline(0);
+    return 0;
+  }
+  const limitMs = consumeTurnTimeLimitForPlayer(playerIdx, announce);
+  const deadline = limitMs ? (getSyncedNowMs() + limitMs) : 0;
+  setOnlineTurnDeadline(deadline);
+  return deadline;
+}
 function moveTimerBaseMessage(){
   return (gMode==='bot' && turn===1) ? `${pNames[1]} חושב...` : myTurnMsg();
 }
@@ -3758,7 +3819,7 @@ function expireCurrentMove(){
 }
 function startMoveTimer(){
   clearMoveTimer();
-  let limitMs = getMoveTimeLimit();
+  let limitMs = consumeTurnTimeLimitForPlayer(turn, true);
   if(!limitMs) return;
   // Apply timer bonus from wheel of fortune
   if(futBon[turn] && futBon[turn].timerBonus > 0){
@@ -4671,20 +4732,17 @@ function beginOnlineGameAfterBothReady(){
     setS('ממתין ל-' + pNames[1-myTurn] + '...');
   }
   if(myRole === 'host'){
-    if(onlineMode === 'live' && gameSettings.timelimit){
-      setOnlineTurnDeadline(getSyncedNowMs() + getMoveTimeLimit());
-    } else {
-      setOnlineTurnDeadline(0);
-    }
-    fbRef('rooms/' + roomCode + '/state/turnDeadlineMs').set(onlineTurnDeadlineMs || 0).catch(function(e){
-      console.error('sync initial turn deadline failed:', e);
-    });
+    prepareOnlineDeadlineForTurn(turn, turn===myTurn);
+    pushMoveToFirebase('initial-deadline');
   }
 }
 
 function initGame(startingTurn){
   setOnlineTurnDeadline(0);
   setLocalTurnDeadline(0);
+  onlineStateSeq=0;
+  onlinePendingEffect=null;
+  onlineResolvingEffectId=null;
   onlineMissedTurns=[0,0];
   onlinePresenceByPlayer=[true,true];
   initBag();
@@ -7070,12 +7128,8 @@ function nextTurn(){
     if(gMode==='bot'&&turn===1){
       scheduleBotMove();
     } else if(gMode==='online'){
-      if(onlineMode==='live' && gameSettings.timelimit){
-        setOnlineTurnDeadline(getSyncedNowMs() + getMoveTimeLimit());
-      } else {
-        setOnlineTurnDeadline(0);
-      }
       const myTurn=(myRole==='host')?0:1;
+      prepareOnlineDeadlineForTurn(turn, turn===myTurn);
       if(turn===myTurn){ startMoveTimer(); } else { setS(`ממתין ל-${pNames[1-myTurn]}...`); }
       updateAbsentLossCountdownForCurrentTurn();
     } else {
@@ -7106,6 +7160,15 @@ function nextTurn(){
   // ── Tile swap: player picks which tile to give away ──
   if(futBon[turn] && futBon[turn].tileSwap > 0 && racks[turn].length>0 && racks[1-turn].length>0){
     futBon[turn].tileSwap--;
+    if(gMode==='online'){
+      onlinePendingEffect = { type:'tileSwap', player:turn, effectId:'swap-' + moveCount + '-' + turn + '-' + Date.now() };
+      setOnlineTurnDeadline(0);
+      updateUI(); renderRack('turn'); renderBoard();
+      setS(turn===window._myPlayerIndex ? '׳”׳—׳׳₪׳× ׳׳•׳× ׳׳׳×׳™׳ ׳”...' : waitingMsg(), 'bon');
+      pushMoveToFirebase('pending-tile-swap');
+      handleOnlinePendingEffect();
+      return;
+    }
     showTileSwapPicker(turn, function(){ renderRack('turn'); _doTurnStart(); });
     return;
   }
@@ -7115,12 +7178,8 @@ function _doTurnStart(){
   if(gMode==='bot'&&turn===1){
     scheduleBotMove();
   } else if(gMode==='online'){
-    if(onlineMode==='live' && gameSettings.timelimit){
-      setOnlineTurnDeadline(getSyncedNowMs() + getMoveTimeLimit());
-    } else {
-      setOnlineTurnDeadline(0);
-    }
     const myTurn=(myRole==='host')?0:1;
+    prepareOnlineDeadlineForTurn(turn, turn===myTurn);
     if(turn===myTurn){
       setS(myTurnMsg());
       if(onlineMode==='live' && gameSettings.timelimit) startMoveTimer();
@@ -7135,6 +7194,24 @@ function _doTurnStart(){
   // Defer by one tick so any synchronous post-commitPlay code (e.g. setting
   // futBon[pi].quadNext for the ×4 boost) runs before the state is serialized.
   if(gMode==='online') setTimeout(pushMoveToFirebase, 0);
+}
+function handleOnlinePendingEffect(){
+  if(gMode !== 'online' || !onlinePendingEffect) return false;
+  const effect = onlinePendingEffect;
+  if(effect.type !== 'tileSwap') return false;
+  const player = Number(effect.player);
+  if(player !== window._myPlayerIndex || turn !== player) return true;
+  if(onlineResolvingEffectId === effect.effectId) return true;
+  onlineResolvingEffectId = effect.effectId;
+  clearMoveTimer();
+  setOnlineTurnDeadline(0);
+  showTileSwapPicker(player, function(){
+    onlinePendingEffect = null;
+    onlineResolvingEffectId = null;
+    renderRack('turn');
+    _doTurnStart();
+  });
+  return true;
 }
 function showTileSwapPicker(pi, onDone){
   const modal=document.createElement('div');
@@ -7466,6 +7543,10 @@ function renderBoard(){
       cell.innerHTML=`<div class="${pp.isJoker?'btile nw jk':'btile nw'}${isPicked?' picked':''}"><div class="bt-l" style="font-size:${fs}px">${pp.letter}</div><div class="bt-v" style="font-size:${vs}px">${pp.val||''}</div></div>`;
       cell.classList.add('ht','np');
       if(!_hadTile){ const _pt=cell.querySelector('.btile'); if(_pt) _pt.classList.add('tile-place-in'); }
+    } else if (opRep) {
+      const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
+      cell.innerHTML=`<div class="${opRep.isJoker?'btile ghost jk':'btile ghost'}"><div class="bt-l" style="font-size:${fs}px">${opRep.letter}</div><div class="bt-v" style="font-size:${vs}px">${opRep.val||''}</div></div>`;
+      cell.classList.add('ht','op-live');
     } else if (window._opponentLive && window._opponentLive.some(p=>p.r===r&&p.c===c)) {
       const op = window._opponentLive.find(p=>p.r===r&&p.c===c);
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
@@ -7486,6 +7567,9 @@ function renderBoard(){
     const el = document.getElementById(`bsq-${idx}`);
     if (!el) return;
     const rep  = replacedThisTurn && replacedThisTurn.r===b.br && replacedThisTurn.c===b.bc ? replacedThisTurn.newTile : null;
+    const opRep = window._opponentLiveReplacement && window._opponentLiveReplacement.r===b.br && window._opponentLiveReplacement.c===b.bc
+      ? (window._opponentLiveReplacement.newTile || null)
+      : null;
     const pp   = rep || placed.find(p => p.r===b.br && p.c===b.bc);
     const key  = `${b.br},${b.bc}`;
     const committed = bonusSqUsed[idx];
@@ -7497,6 +7581,10 @@ function renderBoard(){
       el.innerHTML=`<div class="${pp.isJoker?'btile nw jk':'btile nw'}${isBonusPicked?' picked':''}" style="width:100%;height:100%"><div class="bt-l" style="font-size:${fs}px">${pp.letter}</div><div class="bt-v" style="font-size:${vs}px">${pp.val||''}</div></div>`;
       el.classList.remove('used');
       if(!_bsqHadTile){ const _bt=el.querySelector('.btile'); if(_bt) _bt.classList.add('tile-place-in'); }
+    } else if (opRep) {
+      const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
+      el.innerHTML=`<div class="${opRep.isJoker?'btile ghost jk':'btile ghost'}" style="width:100%;height:100%"><div class="bt-l" style="font-size:${fs}px">${opRep.letter}</div><div class="bt-v" style="font-size:${vs}px">${opRep.val||''}</div></div>`;
+      el.classList.remove('used');
     } else if (window._opponentLive && window._opponentLive.some(p=>p.r===b.br&&p.c===b.bc)) {
       const op = window._opponentLive.find(p=>p.r===b.br&&p.c===b.bc);
       const fs=Math.max(8,CELL_SIZE*.52), vs=Math.max(4,CELL_SIZE*.22);
@@ -8990,6 +9078,7 @@ async function jcConfirm(){
   applyOnlineSettings(room.settings);
 
   window._myLastPush = undefined;
+  window._myLastPushSeq = undefined;
   window._gameStarted = false;
 
   // Write guest name — host listener will fire and start the game on host side
@@ -9095,6 +9184,7 @@ async function mmStartSearch(){
     pNames[1] = name;       // guest = player 1 (me)
     applyOnlineSettings(room.settings);
     window._myLastPush = undefined;
+    window._myLastPushSeq = undefined;
     window._gameStarted = false;
     try { await fbRef('rooms/' + matchedCode + '/guest').set(name); }
     catch(e){ roomCode=null; myRole=null; document.getElementById('mm-status-text').textContent='שגיאת חיבור'; return; }
@@ -9165,6 +9255,7 @@ function startOnlineGame(){
   gMode = 'online';
   window._myPlayerIndex = (myRole === 'host') ? 0 : 1;
   window._myLastPush = undefined;
+  window._myLastPushSeq = undefined;
   document.getElementById('sn1').textContent = pNames[0];
   document.getElementById('sn2').textContent = pNames[1];
 
@@ -9226,6 +9317,7 @@ function waitForGameStart(){
   resetOnlineCoinJoinState();
   window._gameStarted = false;
   window._myLastPush = undefined;
+  window._myLastPushSeq = undefined;
   window._myPlayerIndex = 1; // guest is always player 1
 
   var stateRef = fbRef('rooms/' + roomCode + '/state');
@@ -9339,6 +9431,8 @@ function serializeGameState(){
     missedTurns: {0:(onlineMissedTurns||[0,0])[0], 1:(onlineMissedTurns||[0,0])[1]},
     exchUsed: !!exchUsed,
     turnDeadlineMs: onlineTurnDeadlineMs || 0,
+    stateSeq: Number(onlineStateSeq || 0),
+    pendingEffect: onlinePendingEffect ? JSON.parse(JSON.stringify(onlinePendingEffect)) : null,
     ts: firebase.database.ServerValue.TIMESTAMP,
   };
 }
@@ -9400,6 +9494,7 @@ function loadGameState(s){
   firstMove = (s.firstMove !== undefined) ? s.firstMove : true;
   passCount = s.passCount || 0;
   moveCount = s.moveCount || 0;
+  onlineStateSeq = Math.max(Number(onlineStateSeq || 0), Number(s.stateSeq || s.revision || 0));
 
   // bonusAssignment
   var baRaw = fbObjToArray(s.bonusAssignment, []);
@@ -9436,6 +9531,8 @@ function loadGameState(s){
   ];
 
   exchUsed = !!s.exchUsed;
+  onlinePendingEffect = s.pendingEffect || null;
+  if(!onlinePendingEffect) onlineResolvingEffectId = null;
   setOnlineTurnDeadline(s.turnDeadlineMs || 0);
   // Preserve placed/replacedThisTurn if a move is mid-review so commitPlay still
   // has the tiles to commit.  (listenForMoves guards this first, but be defensive.)
@@ -9510,6 +9607,7 @@ function computeExpiredOnlineTurnState(state, nowMs, limitMs){
     passCount: passCountNow,
     moveCount: Number(state.moveCount || 0) + 1,
     turnDeadlineMs: nextDeadline,
+    stateSeq: Number(state.stateSeq || state.revision || 0) + 1,
     missedTurns: {0: missed[0], 1: missed[1]},
     ts: (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue && firebase.database.ServerValue.TIMESTAMP)
       ? firebase.database.ServerValue.TIMESTAMP
@@ -9675,6 +9773,7 @@ function listenForMoves(){
   var stateRef = fbRef('rooms/' + roomCode + '/state');
   var _lastSeenMoveCount = undefined;
   var _lastSeenTurn = undefined;
+  var _lastSeenStateSeq = undefined;
   var moveListener = stateRef.on('value', function(snap){
     if(!snap || !snap.exists() || gMode !== 'online') return;
     var s = snap.val();
@@ -9682,10 +9781,21 @@ function listenForMoves(){
     var myIdx = window._myPlayerIndex;
     var incomingMoveCount = Number(s.moveCount || 0);
     var incomingTurn = Number((s.turn !== undefined) ? s.turn : 0);
+    var incomingStateSeq = Number(s.stateSeq || s.revision || 0);
 
     // Skip our own push echo.
-    if(window._myLastPush !== undefined && incomingMoveCount === Number(window._myLastPush)){
+    if(window._myLastPushSeq !== undefined && incomingStateSeq && incomingStateSeq === Number(window._myLastPushSeq)){
       window._myLastPush = undefined;
+      window._myLastPushSeq = undefined;
+      _lastSeenMoveCount = incomingMoveCount;
+      _lastSeenTurn = incomingTurn;
+      _lastSeenStateSeq = incomingStateSeq;
+      onlineStateSeq = Math.max(Number(onlineStateSeq || 0), incomingStateSeq);
+      return;
+    }
+    if(!incomingStateSeq && window._myLastPush !== undefined && incomingMoveCount === Number(window._myLastPush)){
+      window._myLastPush = undefined;
+      window._myLastPushSeq = undefined;
       _lastSeenMoveCount = incomingMoveCount;
       _lastSeenTurn = incomingTurn;
       return;
@@ -9694,18 +9804,22 @@ function listenForMoves(){
     // Ignore stale snapshots (Firebase value events can occasionally arrive out of order).
     // Without this guard, an old state can overwrite a newer local state and break turn sync
     // starting from the second move onward.
-    if(_lastSeenMoveCount !== undefined){
+    if(incomingStateSeq && _lastSeenStateSeq !== undefined){
+      if(incomingStateSeq <= _lastSeenStateSeq) return;
+    } else if(_lastSeenMoveCount !== undefined){
       if(incomingMoveCount < _lastSeenMoveCount) return;
       if(incomingMoveCount === _lastSeenMoveCount && incomingTurn === _lastSeenTurn) return;
     }
 
     _lastSeenMoveCount = incomingMoveCount;
     _lastSeenTurn = incomingTurn;
+    if(incomingStateSeq) _lastSeenStateSeq = incomingStateSeq;
+    if(incomingStateSeq) onlineStateSeq = Math.max(Number(onlineStateSeq || 0), incomingStateSeq);
 
     // If the player has a move in review, skip loading remote state — loadGameState()
     // clears `placed`, which would destroy the pending move tiles before commitPlay runs.
     // The board will re-sync on the next Firebase event after the review closes.
-    if(pendingReview || pendingMoveSnapshot){
+    if(pendingReview || pendingMoveSnapshot || bonusPend){
       return;
     }
 
@@ -9714,8 +9828,10 @@ function listenForMoves(){
     // leave player 2 with a stale board in long opponent turns and cause
     // local turn-state desyncs (appearing as a stuck game).
     window._myLastPush = undefined;
+    window._myLastPushSeq = undefined;
     clearMoveTimer();
     window._opponentLive = [];
+    window._opponentLiveReplacement = null;
     // Safety: if the boost overlay is open in watch mode, close it now that
     // the full committed state has arrived (handles race where clearLiveBonus
     // fires after listenForMoves).
@@ -9734,6 +9850,12 @@ function listenForMoves(){
     if(_rackEmpty || _moveLimitHit || _maxMHit || _passLimitHit){ endGame(); return; }
 
     updateAbsentLossCountdownForCurrentTurn();
+    if(handleOnlinePendingEffect()){
+      if(incomingTurn !== myIdx) setS(waitingMsg());
+      ensureOnlineTimeoutWatchdog();
+      saveOnlineSession();
+      return;
+    }
     if(incomingTurn === myIdx){
       setS(myTurnMsg());
       if(onlineMode === 'live' && gameSettings.timelimit) startMoveTimer();
@@ -9748,11 +9870,30 @@ function listenForMoves(){
 
 // ── LIVE TILE STREAMING ──
 window._opponentLive = [];
+window._opponentLiveReplacement = null;
 
 function pushLiveToFirebase(){
   if(gMode !== 'online' || !roomCode) return;
   if(turn !== window._myPlayerIndex) return;
-  const data = placed.map(p => ({r:p.r, c:p.c, letter:p.letter, val:p.val, isJoker:!!p.isJoker}));
+  const data = {
+    placed: placed.map(p => ({r:p.r, c:p.c, letter:p.letter, val:p.val, isJoker:!!p.isJoker})),
+    replacedThisTurn: replacedThisTurn ? {
+      r: replacedThisTurn.r,
+      c: replacedThisTurn.c,
+      oldTile: replacedThisTurn.oldTile ? {
+        letter: replacedThisTurn.oldTile.letter,
+        val: replacedThisTurn.oldTile.val,
+        isJoker: !!replacedThisTurn.oldTile.isJoker
+      } : null,
+      newTile: replacedThisTurn.newTile ? {
+        r: replacedThisTurn.newTile.r,
+        c: replacedThisTurn.newTile.c,
+        letter: replacedThisTurn.newTile.letter,
+        val: replacedThisTurn.newTile.val,
+        isJoker: !!replacedThisTurn.newTile.isJoker
+      } : null
+    } : null
+  };
   fbRef('rooms/' + roomCode + '/live').set(data).catch(()=>{});
 }
 
@@ -9764,8 +9905,7 @@ function openBonusAndBroadcast(){
     // Freeze turn timer immediately — player needs time for intro + the game itself
     if(gMode === 'online' && onlineMode === 'live' && roomCode && gameSettings.timelimit){
       clearMoveTimer();
-      setOnlineTurnDeadline(0);
-      fbRef('rooms/' + roomCode + '/state/turnDeadlineMs').set(0).catch(()=>{});
+      syncOnlineDeadlineState(0, 'boost-intro');
     }
     document.getElementById('bintro-ic').textContent = document.getElementById('bovic').textContent;
     document.getElementById('bintro-title').textContent = document.getElementById('bovt').textContent;
@@ -9786,9 +9926,8 @@ function _openBonusOverlay(){
   if(gMode === 'online' && roomCode){
     // Freeze the turn timer so it doesn't expire while the boost game is playing
     clearMoveTimer();
-    setOnlineTurnDeadline(0);
-    // Write deadline=0 to Firebase so the opponent's watchdog won't claim the turn
-    if(gameSettings.timelimit) fbRef('rooms/' + roomCode + '/state/turnDeadlineMs').set(0).catch(()=>{});
+    // Write deadline=0 through the revisioned state path so opponents cannot ignore it as stale.
+    if(gameSettings.timelimit) syncOnlineDeadlineState(0, 'boost-open');
     fbRef('rooms/' + roomCode + '/liveBonus').set({
       active: true,
       icon: document.getElementById('bovic').textContent,
@@ -9813,10 +9952,16 @@ function listenForLive(){
   const liveRef = fbRef('rooms/' + roomCode + '/live');
   const fn = liveRef.on('value', function(snap){
     // Only show ghost tiles when it's the opponent's turn
-    if(turn === window._myPlayerIndex){ window._opponentLive = []; return; }
-    if(!snap || !snap.exists()){ window._opponentLive = []; renderBoard(); return; }
+    if(turn === window._myPlayerIndex){ window._opponentLive = []; window._opponentLiveReplacement = null; return; }
+    if(!snap || !snap.exists()){ window._opponentLive = []; window._opponentLiveReplacement = null; renderBoard(); return; }
     const data = snap.val();
-    window._opponentLive = Array.isArray(data) ? data : [];
+    if(Array.isArray(data)){
+      window._opponentLive = data;
+      window._opponentLiveReplacement = null;
+    } else {
+      window._opponentLive = Array.isArray(data && data.placed) ? data.placed : [];
+      window._opponentLiveReplacement = data && data.replacedThisTurn ? data.replacedThisTurn : null;
+    }
     renderBoard();
   });
   onlineListeners.push({ref: liveRef, type:'value', fn});
@@ -9868,10 +10013,14 @@ function listenForLiveBonus(){
 }
 
 // ── PUSH MOVE TO FIREBASE ──
-function pushMoveToFirebase(){
+function pushMoveToFirebase(reason){
   if(gMode !== 'online' || !roomCode) return;
+  nextOnlineStateSeq();
   var state = serializeGameState();
+  state.stateSeq = onlineStateSeq;
+  if(reason) state.lastSyncReason = reason;
   window._myLastPush = state.moveCount;
+  window._myLastPushSeq = state.stateSeq;
   fbRef('rooms/' + roomCode + '/state').set(state).catch(function(e){
     console.error('pushMoveToFirebase error:', e);
   });
@@ -9926,6 +10075,7 @@ function cleanupOnlineListeners(){
   onlinePresenceByPlayer = [true, true];
   window._gameStarted = false;
   window._myLastPush = undefined;
+  window._myLastPushSeq = undefined;
 }
 
 // ── HOOK goHome ──
@@ -10221,7 +10371,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260504190326', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260504211855', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
