@@ -2,4 +2,5 @@
 // config.js is gitignored — never commit it.
 window.APP_CONFIG = {
   onesignalAppId: '',   // OneSignal dashboard → Settings → Keys & IDs → App ID
+  onesignalKey:   '',   // OneSignal dashboard → Settings → Keys & IDs → REST API Key
 };

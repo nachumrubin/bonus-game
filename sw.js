@@ -10,17 +10,29 @@ try {
 
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
+  var data = e.notification.data || {};
+  var url;
+  if (data.type === 'invite' && data.roomCode) url = '/?join=' + data.roomCode;
+  else if (data.type === 'friendRequest' || data.type === 'friendAccepted') url = '/?profile=friends';
+  else url = '/';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
       for (var i = 0; i < list.length; i++) {
-        if ('focus' in list[i]) return list[i].focus();
+        if ('focus' in list[i]) {
+          if (data.type === 'invite' && data.roomCode) {
+            list[i].postMessage({ type: 'OPEN_JOIN', roomCode: data.roomCode });
+          } else if (data.type === 'friendRequest' || data.type === 'friendAccepted') {
+            list[i].postMessage({ type: 'OPEN_PROFILE' });
+          }
+          return list[i].focus();
+        }
       }
-      return clients.openWindow('/');
+      return clients.openWindow(url);
     })
   );
 });
 
-var CACHE_NAME = 'boost-20260502193744';
+var CACHE_NAME = 'boost-20260504190326';
 var ASSETS = [
   './',
   './index.html',
