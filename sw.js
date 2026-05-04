@@ -1,6 +1,26 @@
 // בוסט — Service Worker
 // Cache name includes build timestamp — auto-invalidates on every deploy
-var CACHE_NAME = 'boost-20260501103030';
+
+// OneSignal (wrapped in try-catch — caching works even if CDN fails to load)
+try {
+  importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+} catch(e) {
+  // OneSignal unavailable — caching and offline mode unaffected
+}
+
+self.addEventListener('notificationclick', function(e) {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+      for (var i = 0; i < list.length; i++) {
+        if ('focus' in list[i]) return list[i].focus();
+      }
+      return clients.openWindow('/');
+    })
+  );
+});
+
+var CACHE_NAME = 'boost-20260502193744';
 var ASSETS = [
   './',
   './index.html',
