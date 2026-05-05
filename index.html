@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260505100249">
+<meta name="version" content="20260505190020">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -531,7 +531,7 @@ body.tile-selected .bsq:not(.used){
 .aword{font-size:18px;font-weight:900;color:var(--by);text-align:center;margin:5px 0;}
 /* שאילתה */
 .shin-wrap{position:relative;margin-bottom:8px;}
-.shin{width:100%;padding:10px 12px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:18px;font-family:'Heebo',sans-serif;direction:rtl;outline:none;text-align:center;letter-spacing:3px;}
+.shin{width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:18px;font-family:'Heebo',sans-serif;direction:rtl;outline:none;text-align:center;letter-spacing:3px;}
 .shin:focus{border-color:var(--by);}
 .shres{text-align:center;font-size:14px;font-weight:700;min-height:22px;margin-bottom:8px;}
 .shres.ok{color:#8eff8e;}.shres.bad{color:#ff8e8e;}
@@ -1877,7 +1877,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260505100249</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260505190020</div>
   </div>
 </div>
 
@@ -2281,6 +2281,12 @@ body.tile-selected .bsq:not(.used){
       </div>
     </div>
     <!-- Dictionary Management — full width below panels -->
+    <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+      <div class="set-panel-title" style="margin-bottom:10px;">🔎 שאילתה — בדיקת מילה <span class="sett-info">i<span class="sett-tip">בדוק אם מילה קיימת במילון המשחק בלי לפתוח משחק חדש</span></span></div>
+      <div class="shin-wrap"><input class="shin" id="settings-shin" type="text" maxlength="40" placeholder="הקלד מילה..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="shres" id="settings-shres"></div>
+      <button onclick="checkSettingsShailta()" style="width:100%;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#f8d86a,#d59c28);border:2px solid #a97918;color:#2a1d05;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #76530f;">בדוק ✓</button>
+    </div>
     <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
       <div class="set-panel-title" style="margin-bottom:10px;">📖 ניהול מילון <span class="sett-info">i<span class="sett-tip">הצע מילה חדשה להוספה למילון המשחק. ההצעה תועבר לאישור מנהל לפני שתתווסף</span></span></div>
       <input id="dict-word-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
@@ -5054,17 +5060,39 @@ function openShailta(){
     input.select();
   },0);
 }
-function checkShailta(){
-  const inp=document.getElementById('shin');
-  const w=inp.value.trim();
-  const el=document.getElementById('shres');
-  if(!w){ el.textContent='הקלד מילה'; el.className='shres'; return; }
+
+function cleanShailtaInputValue(value){
+  return String(value || '').replace(/[^א-ת]/g,'').trim();
+}
+
+function checkDictionaryQuery(inputId, resultId, opts={}){
+  const inp=document.getElementById(inputId);
+  const el=document.getElementById(resultId);
+  if(!inp || !el) return false;
+  const w=cleanShailtaInputValue(inp.value);
+  inp.value=w;
+  if(!w){ el.textContent='הקלד מילה'; el.className='shres'; return false; }
+  if(!dictReady || DICT.size === 0){
+    el.textContent='המילון עדיין נטען...';
+    el.className='shres';
+    return false;
+  }
   if(isValid(w)){ el.textContent=`"${w}" — מילה חוקית ✓`; el.className='shres ok'; }
   else{ el.textContent=`"${w}" — לא נמצאה במילון ✗`; el.className='shres bad'; }
-  if(isTutorial && !tutShailtaDone && w){ tutShailtaDone=true; setTimeout(tutPhase4_exchange,400); }
-  // Clear input so player can immediately check another word
-  inp.value='';
-  inp.focus();
+  if(opts.clearAfterCheck){
+    inp.value='';
+    inp.focus();
+  }
+  return true;
+}
+
+function checkShailta(){
+  const checked = checkDictionaryQuery('shin','shres',{clearAfterCheck:true});
+  if(isTutorial && !tutShailtaDone && checked){ tutShailtaDone=true; setTimeout(tutPhase4_exchange,400); }
+}
+
+function checkSettingsShailta(){
+  checkDictionaryQuery('settings-shin','settings-shres');
 }
 
 // ── APPEAL ──
@@ -6763,7 +6791,11 @@ function runScoringAnimation(opts){
   // opts: { words:[{tiles:[{r,c}], pts}], bingo, multLabel, bonusExtra,
   //         totalMoveScore, playerId, scoreBeforeMove, scoreAfterMove, onComplete }
   var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-  if(reducedMotion || !opts.words || !opts.words.length){ if(opts.onComplete) opts.onComplete(); return; }
+  if(reducedMotion || !opts.words || !opts.words.length){
+    releaseScoreDisplayHold(opts.playerId, opts.scoreAfterMove, true);
+    if(opts.onComplete) opts.onComplete();
+    return;
+  }
 
   var n = opts.words.length;
   var totalMs = n >= 3 ? 1800 : n === 2 ? 1200 : 800;
@@ -6787,8 +6819,7 @@ function runScoringAnimation(opts){
     _cleanup();
     if(immediate){
       var pi = opts.playerId;
-      [document.getElementById(pi===0?'sv1':'sv2'), document.getElementById(pi===0?'is-sv1':'is-sv2')]
-        .filter(Boolean).forEach(function(el){ if(el._cancelScoreAnim) el._cancelScoreAnim(); el.textContent = opts.scoreAfterMove; });
+      releaseScoreDisplayHold(pi, opts.scoreAfterMove, true);
       _prevScores[pi] = opts.scoreAfterMove;
     }
     if(opts.onComplete) opts.onComplete();
@@ -6889,6 +6920,7 @@ function runScoringAnimation(opts){
           p.classList.remove('score-panel-arrive'); void p.offsetWidth; p.classList.add('score-panel-arrive');
         });
       // Animate score count-up from pre-move to final
+      releaseScoreDisplayHold(pi, opts.scoreAfterMove, false);
       var svD = document.getElementById(pi===0?'sv1':'sv2');
       var svM = document.getElementById(pi===0?'is-sv1':'is-sv2');
       [svD, svM].filter(Boolean).forEach(function(el){
@@ -7022,6 +7054,12 @@ function commitPlay(sc,ws,bonus,pi){
   const _scoreBeforeMove = scores[pi]; // capture pre-move score for animation
   scores[pi] += fs;
   if(isNaN(scores[pi])){ console.error('NaN score detected! sc=',sc,'fs=',fs,'pi=',pi,'bonus=',bonus,'ws=',ws); scores[pi]=0; }
+  const _scoreAnimReview = window._lastAcceptedReview;
+  const _willRunScoreAnim = _scoreAnimReview && _scoreAnimReview.words && _scoreAnimReview.words.length > 0 && !(typeof isTutorial !== 'undefined' && isTutorial);
+  if(_willRunScoreAnim) setScoreDisplayHold(pi, _scoreBeforeMove);
+  function _releaseHeldScoreNow(){
+    if(_willRunScoreAnim) releaseScoreDisplayHold(pi, scores[pi], true);
+  }
   const _humanIdxCP = (gMode === 'online' && typeof window._myPlayerIndex !== 'undefined') ? window._myPlayerIndex : 0;
   if(pi === _humanIdxCP){
     _gameWords++;
@@ -7070,9 +7108,9 @@ function commitPlay(sc,ws,bonus,pi){
   updateUI(); renderBoard(); renderRack(); renderBonusStrips();
   // Valid-word gold flash on committed tiles
   if(lastMoveCells.length){ const _lmSnap=lastMoveCells.slice(); requestAnimationFrame(()=>{ _lmSnap.forEach(({r,c})=>{ const _el=coordToCellEl(r,c); const _t=_el&&_el.querySelector('.btile'); if(_t){ _t.classList.remove('is-valid'); void _t.offsetWidth; _t.classList.add('is-valid'); } }); }); }
-  if(racks[pi].length===0&&bag.length===0){endGame();return;}
-  if(settings.moveLimitOn && moveCount>=settings.moveLimit){endGame();return;}
-  const maxM=getMaxMoves(); if(maxM&&moveCount>=maxM){endGame();return;}
+  if(racks[pi].length===0&&bag.length===0){_releaseHeldScoreNow();endGame();return;}
+  if(settings.moveLimitOn && moveCount>=settings.moveLimit){_releaseHeldScoreNow();endGame();return;}
+  const maxM=getMaxMoves(); if(maxM&&moveCount>=maxM){_releaseHeldScoreNow();endGame();return;}
   // ── Animated scoring flow (replaces static move summary) ──
   (function(){
     try{
@@ -7127,7 +7165,7 @@ function commitPlay(sc,ws,bonus,pi){
         window._lastAcceptedReview = null;
         return;
       }
-    }catch(e){ console.warn('scoringAnim error',e); }
+    }catch(e){ console.warn('scoringAnim error',e); _releaseHeldScoreNow(); }
     nextTurn();
   })();
 }
@@ -7748,10 +7786,24 @@ function _buildSideStripDOM(container, tiles, withAnim){
 }
 
 function updateUI(){
+  const _scoreDisplayVals = [getScoreDisplayValue(0), getScoreDisplayValue(1)];
+  const _scorePrevVals = (typeof _prevScores!=='undefined' && Array.isArray(_prevScores)) ? _prevScores.slice() : [-1,-1];
+  function _paintScoreEl(el, pi, pop){
+    if(!el) return;
+    const val = _scoreDisplayVals[pi];
+    const prev = _scorePrevVals[pi];
+    if(prev >= 0 && prev !== val){
+      animateScore(el, prev, val, 480);
+      if(pop){ el.classList.remove('score-pop'); void el.offsetWidth; el.classList.add('score-pop'); }
+    } else {
+      el.textContent = val;
+    }
+  }
+
   // Animate desktop score changes
   const _sv1=document.getElementById('sv1'), _sv2=document.getElementById('sv2');
-  if(_sv1){ if(typeof _prevScores!=='undefined' && _prevScores[0]>=0 && _prevScores[0]!==scores[0]){ animateScore(_sv1,_prevScores[0],scores[0],480); _sv1.classList.remove('score-pop'); void _sv1.offsetWidth; _sv1.classList.add('score-pop'); } else if(_sv1) _sv1.textContent=scores[0]; if(typeof _prevScores!=='undefined') _prevScores[0]=scores[0]; }
-  if(_sv2){ if(typeof _prevScores!=='undefined' && _prevScores[1]>=0 && _prevScores[1]!==scores[1]){ animateScore(_sv2,_prevScores[1],scores[1],480); _sv2.classList.remove('score-pop'); void _sv2.offsetWidth; _sv2.classList.add('score-pop'); } else if(_sv2) _sv2.textContent=scores[1]; if(typeof _prevScores!=='undefined') _prevScores[1]=scores[1]; }
+  _paintScoreEl(_sv1, 0, true);
+  _paintScoreEl(_sv2, 1, true);
   document.getElementById('sb1').classList.toggle('act', turn===0);
   document.getElementById('sb2').classList.toggle('act', turn===1);
   document.getElementById('lcd').textContent = String(moveCount).padStart(2,'0');
@@ -7816,8 +7868,12 @@ function updateUI(){
   // Mobile info strip sync
   const isl = document.getElementById('is-lcd');
   if(isl) isl.textContent = String(moveCount).padStart(2,'0');
-  const isv1 = document.getElementById('is-sv1'); if(isv1){ if(typeof _prevScores!=='undefined' && _prevScores[0]>=0) animateScore(isv1,_prevScores[0],scores[0],480); else isv1.textContent=scores[0]; }
-  const isv2 = document.getElementById('is-sv2'); if(isv2){ if(typeof _prevScores!=='undefined' && _prevScores[1]>=0) animateScore(isv2,_prevScores[1],scores[1],480); else isv2.textContent=scores[1]; }
+  const isv1 = document.getElementById('is-sv1'); _paintScoreEl(isv1, 0, false);
+  const isv2 = document.getElementById('is-sv2'); _paintScoreEl(isv2, 1, false);
+  if(typeof _prevScores!=='undefined'){
+    _prevScores[0] = _scoreDisplayVals[0];
+    _prevScores[1] = _scoreDisplayVals[1];
+  }
   const isn1 = document.getElementById('is-sn1'); if(isn1) isn1.textContent = pNames[0];
   const isn2 = document.getElementById('is-sn2'); if(isn2) isn2.textContent = pNames[1];
   const issb1 = document.getElementById('is-sb1'); if(issb1) issb1.classList.toggle('act-cell', turn===0);
@@ -8130,19 +8186,26 @@ function restorePendingMoveSnapshot(){
 
 // ===== שאילתה input support =====
 function setupShailtaInputSupport(){
-  const input = document.getElementById('shin');
-  if(!input || input.dataset.shReady === '1') return;
-  input.dataset.shReady = '1';
-  input.addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter'){
-      e.preventDefault();
-      checkShailta();
-    }
-  });
-  input.addEventListener('input', ()=>{
-    const res = document.getElementById('shres');
-    res.textContent='';
-    res.className='shres';
+  [
+    {inputId:'shin', resultId:'shres', check:checkShailta},
+    {inputId:'settings-shin', resultId:'settings-shres', check:checkSettingsShailta}
+  ].forEach(({inputId,resultId,check})=>{
+    const input = document.getElementById(inputId);
+    if(!input || input.dataset.shReady === '1') return;
+    input.dataset.shReady = '1';
+    input.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        check();
+      }
+    });
+    input.addEventListener('input', ()=>{
+      input.value = cleanShailtaInputValue(input.value);
+      const res = document.getElementById(resultId);
+      if(!res) return;
+      res.textContent='';
+      res.className='shres';
+    });
   });
 }
 
@@ -10434,7 +10497,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260505100249', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260505190020', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -12439,6 +12502,35 @@ async function saveDisplayName(){
 // Tracking variables for delta-based animations
 var _prevBagCount = -1;
 var _prevScores   = [-1, -1];
+var _scoreDisplayHolds = [null, null];
+
+function getScoreDisplayValue(pi){
+  return (_scoreDisplayHolds && _scoreDisplayHolds[pi] !== null && _scoreDisplayHolds[pi] !== undefined)
+    ? _scoreDisplayHolds[pi]
+    : scores[pi];
+}
+
+function setScoreDisplayHold(pi, value){
+  if(!_scoreDisplayHolds) _scoreDisplayHolds = [null, null];
+  _scoreDisplayHolds[pi] = value;
+  if(typeof _prevScores !== 'undefined') _prevScores[pi] = value;
+  [document.getElementById(pi===0?'sv1':'sv2'), document.getElementById(pi===0?'is-sv1':'is-sv2')]
+    .filter(Boolean).forEach(function(el){
+      if(el._cancelScoreAnim) el._cancelScoreAnim();
+      el.textContent = value;
+    });
+}
+
+function releaseScoreDisplayHold(pi, value, paintNow){
+  if(_scoreDisplayHolds) _scoreDisplayHolds[pi] = null;
+  if(paintNow){
+    [document.getElementById(pi===0?'sv1':'sv2'), document.getElementById(pi===0?'is-sv1':'is-sv2')]
+      .filter(Boolean).forEach(function(el){
+        if(el._cancelScoreAnim) el._cancelScoreAnim();
+        el.textContent = value;
+      });
+  }
+}
 
 // Smooth number increment using requestAnimationFrame
 function animateScore(el, from, to, duration){
