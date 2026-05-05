@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260505193446">
+<meta name="version" content="20260505202237">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -1877,7 +1877,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260505193446</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260505202237</div>
   </div>
 </div>
 
@@ -1977,6 +1977,18 @@ body.tile-selected .bsq:not(.used){
     <div style="display:flex;gap:8px;">
       <button class="ovb p" style="flex:1;" onclick="_acceptIncomingInvite()">הצטרף 🚀</button>
       <button class="ovb s" style="flex:1;" onclick="_dismissIncomingInvite()">לא עכשיו</button>
+    </div>
+  </div>
+</div>
+
+<!-- INVITE REJECTED NOTICE -->
+<div id="ov-invite-rejected" class="ov hidden">
+  <div class="ovc" style="text-align:center;">
+    <div style="font-size:44px;margin-bottom:4px;">✋</div>
+    <div class="ovt">ההזמנה נדחתה</div>
+    <div id="invite-rejected-desc" style="font-size:14px;color:rgba(255,255,255,.75);margin:8px 0 20px;">השחקן שהזמנת לא זמין כרגע.</div>
+    <div class="ovbtns">
+      <button class="ovb p" onclick="closeInviteRejectedNotice()">חזור לאונליין</button>
     </div>
   </div>
 </div>
@@ -4050,7 +4062,7 @@ function botCommit(result){
 // ═══════════════════════════════════════════════════
 function ovClose(id){ document.getElementById(id).classList.add('hidden'); }
 function ovOpen(id){ document.getElementById(id).classList.remove('hidden'); }
-function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-bonus-intro','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm','ov-move-summary','ov-dict-login','ov-dict-admin','ov-dict-confirm','ov-guest-upgrade','ov-avatar-unlocked','ov-incoming-invite'].forEach(ovClose); showSc('sh'); }
+function goHome(){ clearT(); clearMoveTimer(); clearBotThinkTimeout(); stopMusic(); ['ov-bonus','ov-bonus-intro','ov-end','ov-leg','ov-joker','ov-exch','ov-appeal','ov-lock','ov-shailta','ov-settings','ov-champs','ov-create-room','ov-waiting-room','ov-join-code','ov-matchmaking','ov-disconnect','ov-pause','ov-back-confirm','ov-move-summary','ov-dict-login','ov-dict-admin','ov-dict-confirm','ov-guest-upgrade','ov-avatar-unlocked','ov-incoming-invite','ov-invite-rejected'].forEach(ovClose); showSc('sh'); }
 // showSc defined above in music section
 function showLegend(){ buildVtbl(); legBack(); document.getElementById('lb-boosts-wrap').classList.add('hidden'); document.getElementById('lb-boost-desc').classList.add('hidden'); ovOpen('ov-leg'); }
 
@@ -8479,6 +8491,8 @@ async function _sendFriendAcceptedNotification(recipientUid, accepterName){
 // ── In-app invite notifications (Firebase Realtime) ──
 let _inviteListenerRef = null;
 let _pendingInviteData = null;
+let _inviteResponseListenerRef = null;
+let _inviteResponseListenerFn = null;
 
 function _listenForInvites(uid){
   if(_inviteListenerRef){ _inviteListenerRef.off(); _inviteListenerRef = null; }
@@ -8500,6 +8514,14 @@ function _stopListeningForInvites(){
   if(_inviteListenerRef){ _inviteListenerRef.off(); _inviteListenerRef = null; }
 }
 
+function _clearInviteResponseListener(){
+  if(_inviteResponseListenerRef && _inviteResponseListenerFn){
+    try{ _inviteResponseListenerRef.off('value', _inviteResponseListenerFn); }catch(_){}
+  }
+  _inviteResponseListenerRef = null;
+  _inviteResponseListenerFn = null;
+}
+
 function _showIncomingInvite(data, inviterUid){
   _pendingInviteData = { roomCode: data.roomCode, inviterUid };
   const avatarEl = document.getElementById('ii-avatar');
@@ -8518,12 +8540,69 @@ function _acceptIncomingInvite(){
   _openJoinWithCode(rc);
 }
 
-function _dismissIncomingInvite(){
+async function _dismissIncomingInvite(){
   if(!_pendingInviteData) return;
-  const { inviterUid } = _pendingInviteData;
+  const { inviterUid, roomCode: rc } = _pendingInviteData;
   _pendingInviteData = null;
   ovClose('ov-incoming-invite');
+  if(fbCurrentUser && inviterUid){
+    await fbRef('inviteResponses/' + inviterUid + '/' + fbCurrentUser.uid).set({
+      status: 'rejected',
+      roomCode: rc || null,
+      fromName: (currentUserProfile && currentUserProfile.displayName) || pNames[1] || 'שחקן',
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    }).catch(()=>{});
+  }
   if(fbCurrentUser) fbRef('invites/' + fbCurrentUser.uid + '/' + inviterUid).remove().catch(()=>{});
+}
+
+function listenForInviteResponse(inviteeUid, inviteeName){
+  if(!fbCurrentUser || !inviteeUid) return;
+  _clearInviteResponseListener();
+  const ref = fbRef('inviteResponses/' + fbCurrentUser.uid + '/' + inviteeUid);
+  _inviteResponseListenerRef = ref;
+  _inviteResponseListenerFn = function(snap){
+    if(!snap || !snap.exists()) return;
+    const data = snap.val() || {};
+    if(data.status !== 'rejected') return;
+    ref.remove().catch(()=>{});
+    handleInviteRejected(data, inviteeUid, inviteeName);
+  };
+  ref.on('value', _inviteResponseListenerFn);
+}
+
+function handleInviteRejected(data, inviteeUid, inviteeName){
+  _clearInviteResponseListener();
+  const name = data.fromName || inviteeName || 'השחקן';
+  const desc = document.getElementById('invite-rejected-desc');
+  if(desc) desc.textContent = name + ' דחה את ההזמנה למשחק. אפשר להזמין חבר אחר או לפתוח משחק חדש.';
+  const rejectedInviteeUid = window._sentInviteToUid || inviteeUid;
+  if(rejectedInviteeUid && fbCurrentUser){
+    fbRef('invites/' + rejectedInviteeUid + '/' + fbCurrentUser.uid).remove().catch(()=>{});
+  }
+  window._sentInviteToUid = null;
+  window._asyncInviteUid = null;
+  window._invitePendingNotif = null;
+  window._myPlayerIndex = null;
+  clearMoveTimer();
+  clearBotThinkTimeout();
+  stopDcTimer();
+  cleanupOnlineListeners();
+  if(roomCode) fbRef('rooms/' + roomCode).remove().catch(()=>{});
+  removeOnlineSession(roomCode);
+  roomCode = null;
+  roomRef = null;
+  myRole = null;
+  gMode = 'bot';
+  ovClose('ov-waiting-room');
+  ovClose('ov-matchmaking');
+  showSc('so');
+  ovOpen('ov-invite-rejected');
+}
+
+function closeInviteRejectedNotice(){
+  ovClose('ov-invite-rejected');
+  showSc('so');
 }
 
 async function requestNotifPermission(){
@@ -9088,6 +9167,8 @@ async function crSendInvite(){
   try {
     // Set flag before Firebase write so guestListener callback can read it
     window._asyncInviteUid = friend.uid;
+    await fbRef('inviteResponses/' + fbCurrentUser.uid + '/' + friend.uid).remove().catch(()=>{});
+    listenForInviteResponse(friend.uid, friend.name);
     await fbRef('rooms/' + roomCode + '/invitedUid').set(friend.uid);
     // Writing guest name triggers guestListener → startOnlineGame() + closes overlay
     await fbRef('rooms/' + roomCode + '/guest').set(friend.name);
@@ -9100,6 +9181,7 @@ async function crSendInvite(){
     }).catch(()=>{});
     window._sentInviteToUid = friend.uid;
   } catch(e){
+    _clearInviteResponseListener();
     window._asyncInviteUid = null;
     statusEl.style.color = '#ff8e8e'; statusEl.textContent = 'שגיאה בשליחת ההזמנה';
   }
@@ -9136,6 +9218,7 @@ document.addEventListener('click', function(e){
 });
 
 async function crCancelRoom(){
+  _clearInviteResponseListener();
   if(window._sentInviteToUid && fbCurrentUser){
     fbRef('invites/' + window._sentInviteToUid + '/' + fbCurrentUser.uid).remove().catch(()=>{});
     window._sentInviteToUid = null;
@@ -10231,6 +10314,7 @@ cellClick = function(r, c){
 function cleanupOnlineListeners(){
   onlineListeners.forEach(function(l){ try{ l.ref.off(l.type, l.fn); }catch(e){} });
   onlineListeners = [];
+  _clearInviteResponseListener();
   if(myPresenceHeartbeatInt){ clearInterval(myPresenceHeartbeatInt); myPresenceHeartbeatInt = null; }
   if(onlineTimeoutWatchdogInt){ clearInterval(onlineTimeoutWatchdogInt); onlineTimeoutWatchdogInt = null; }
   if(myConnRef){ try{ myConnRef.onDisconnect().cancel(); myConnRef.remove(); }catch(e){} myConnRef = null; }
@@ -10535,7 +10619,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260505193446', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260505202237', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
