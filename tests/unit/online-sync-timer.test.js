@@ -84,6 +84,29 @@ test('online state sync uses revision independent of moveCount and turn', () => 
   );
 });
 
+test('online writes use unique push ids and Firebase-assigned revisions', () => {
+  assert.match(
+    source,
+    /function makeOnlinePushId\(\)/,
+    'online state writes should carry a unique push id'
+  );
+  assert.match(
+    source,
+    /function pushMoveToFirebase\(reason\)[\s\S]*\.transaction\(function\(curr\)[\s\S]*currSeq \+ 1/,
+    'committed online moves should allocate stateSeq from the current Firebase state'
+  );
+  assert.match(
+    source,
+    /incomingPushId[\s\S]*incomingPushId === window\._myLastPushId/,
+    'own echo detection should use push ids rather than only moveCount/stateSeq'
+  );
+  assert.match(
+    source,
+    /incomingWriterId === getOnlineClientId\(\)/,
+    'stateSeq echo fallback should not skip another client with the same sequence'
+  );
+});
+
 test('online timer pause uses revisioned state instead of direct child writes', () => {
   assert.doesNotMatch(
     source,

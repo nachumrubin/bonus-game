@@ -3672,6 +3672,16 @@ function nextOnlineStateSeq(){
   onlineStateSeq = Number(onlineStateSeq || 0) + 1;
   return onlineStateSeq;
 }
+function getOnlineClientId(){
+  if(typeof window === 'undefined') return 'server';
+  if(!window._onlineClientId){
+    window._onlineClientId = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+  return window._onlineClientId;
+}
+function makeOnlinePushId(){
+  return getOnlineClientId() + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
 function serverTimestampOrNow(){
   return (typeof firebase !== 'undefined' && firebase.database && firebase.database.ServerValue && firebase.database.ServerValue.TIMESTAMP)
     ? firebase.database.ServerValue.TIMESTAMP
@@ -3684,6 +3694,8 @@ function syncOnlineDeadlineState(deadlineMs, reason){
   const requestedSeq = nextOnlineStateSeq();
   const expectedMoveCount = Number(moveCount || 0);
   const expectedTurn = Number(turn || 0);
+  const pushId = makeOnlinePushId();
+  window._myLastPushId = pushId;
   const stateRef = fbRef('rooms/' + roomCode + '/state');
   stateRef.transaction(function(curr){
     if(!curr || typeof curr !== 'object') return curr;
@@ -3692,6 +3704,8 @@ function syncOnlineDeadlineState(deadlineMs, reason){
     return Object.assign({}, curr, {
       stateSeq: nextSeq,
       turnDeadlineMs: safeDeadline,
+      lastWriterId: getOnlineClientId(),
+      pushId: pushId,
       lastSyncReason: reason || 'deadline',
       ts: serverTimestampOrNow()
     });
@@ -9079,6 +9093,7 @@ async function jcConfirm(){
 
   window._myLastPush = undefined;
   window._myLastPushSeq = undefined;
+  window._myLastPushId = undefined;
   window._gameStarted = false;
 
   // Write guest name — host listener will fire and start the game on host side
@@ -9185,6 +9200,7 @@ async function mmStartSearch(){
     applyOnlineSettings(room.settings);
     window._myLastPush = undefined;
     window._myLastPushSeq = undefined;
+    window._myLastPushId = undefined;
     window._gameStarted = false;
     try { await fbRef('rooms/' + matchedCode + '/guest').set(name); }
     catch(e){ roomCode=null; myRole=null; document.getElementById('mm-status-text').textContent='שגיאת חיבור'; return; }
@@ -9256,6 +9272,7 @@ function startOnlineGame(){
   window._myPlayerIndex = (myRole === 'host') ? 0 : 1;
   window._myLastPush = undefined;
   window._myLastPushSeq = undefined;
+  window._myLastPushId = undefined;
   document.getElementById('sn1').textContent = pNames[0];
   document.getElementById('sn2').textContent = pNames[1];
 
@@ -9318,6 +9335,7 @@ function waitForGameStart(){
   window._gameStarted = false;
   window._myLastPush = undefined;
   window._myLastPushSeq = undefined;
+  window._myLastPushId = undefined;
   window._myPlayerIndex = 1; // guest is always player 1
 
   var stateRef = fbRef('rooms/' + roomCode + '/state');
@@ -9433,6 +9451,8 @@ function serializeGameState(){
     turnDeadlineMs: onlineTurnDeadlineMs || 0,
     stateSeq: Number(onlineStateSeq || 0),
     pendingEffect: onlinePendingEffect ? JSON.parse(JSON.stringify(onlinePendingEffect)) : null,
+    lastWriterId: (typeof window !== 'undefined') ? getOnlineClientId() : null,
+    pushId: null,
     ts: firebase.database.ServerValue.TIMESTAMP,
   };
 }
@@ -9782,11 +9802,24 @@ function listenForMoves(){
     var incomingMoveCount = Number(s.moveCount || 0);
     var incomingTurn = Number((s.turn !== undefined) ? s.turn : 0);
     var incomingStateSeq = Number(s.stateSeq || s.revision || 0);
+    var incomingPushId = s.pushId || s.lastPushId || null;
+    var incomingWriterId = s.lastWriterId || null;
 
     // Skip our own push echo.
-    if(window._myLastPushSeq !== undefined && incomingStateSeq && incomingStateSeq === Number(window._myLastPushSeq)){
+    if(window._myLastPushId && incomingPushId && incomingPushId === window._myLastPushId){
       window._myLastPush = undefined;
       window._myLastPushSeq = undefined;
+      window._myLastPushId = undefined;
+      _lastSeenMoveCount = incomingMoveCount;
+      _lastSeenTurn = incomingTurn;
+      _lastSeenStateSeq = incomingStateSeq || _lastSeenStateSeq;
+      if(incomingStateSeq) onlineStateSeq = Math.max(Number(onlineStateSeq || 0), incomingStateSeq);
+      return;
+    }
+    if(window._myLastPushSeq !== undefined && incomingStateSeq && incomingStateSeq === Number(window._myLastPushSeq) && (!incomingWriterId || incomingWriterId === getOnlineClientId())){
+      window._myLastPush = undefined;
+      window._myLastPushSeq = undefined;
+      window._myLastPushId = undefined;
       _lastSeenMoveCount = incomingMoveCount;
       _lastSeenTurn = incomingTurn;
       _lastSeenStateSeq = incomingStateSeq;
@@ -9796,6 +9829,7 @@ function listenForMoves(){
     if(!incomingStateSeq && window._myLastPush !== undefined && incomingMoveCount === Number(window._myLastPush)){
       window._myLastPush = undefined;
       window._myLastPushSeq = undefined;
+      window._myLastPushId = undefined;
       _lastSeenMoveCount = incomingMoveCount;
       _lastSeenTurn = incomingTurn;
       return;
@@ -9829,6 +9863,7 @@ function listenForMoves(){
     // local turn-state desyncs (appearing as a stuck game).
     window._myLastPush = undefined;
     window._myLastPushSeq = undefined;
+    window._myLastPushId = undefined;
     clearMoveTimer();
     window._opponentLive = [];
     window._opponentLiveReplacement = null;
@@ -10015,13 +10050,32 @@ function listenForLiveBonus(){
 // ── PUSH MOVE TO FIREBASE ──
 function pushMoveToFirebase(reason){
   if(gMode !== 'online' || !roomCode) return;
-  nextOnlineStateSeq();
+  const requestedSeq = Number(onlineStateSeq || 0) + 1;
+  const pushId = makeOnlinePushId();
   var state = serializeGameState();
-  state.stateSeq = onlineStateSeq;
+  state.stateSeq = requestedSeq;
+  state.lastWriterId = getOnlineClientId();
+  state.pushId = pushId;
   if(reason) state.lastSyncReason = reason;
   window._myLastPush = state.moveCount;
   window._myLastPushSeq = state.stateSeq;
-  fbRef('rooms/' + roomCode + '/state').set(state).catch(function(e){
+  window._myLastPushId = pushId;
+  fbRef('rooms/' + roomCode + '/state').transaction(function(curr){
+    var currSeq = curr && typeof curr === 'object' ? Number(curr.stateSeq || curr.revision || 0) : 0;
+    var nextSeq = Math.max(currSeq + 1, requestedSeq);
+    return Object.assign({}, state, {
+      stateSeq: nextSeq,
+      ts: serverTimestampOrNow()
+    });
+  }).then(function(res){
+    try{
+      var v = res && res.snapshot && res.snapshot.val && res.snapshot.val();
+      if(v && v.stateSeq !== undefined){
+        onlineStateSeq = Math.max(Number(onlineStateSeq || 0), Number(v.stateSeq || 0));
+        if(v.pushId === pushId) window._myLastPushSeq = Number(v.stateSeq || 0);
+      }
+    }catch(_){}
+  }).catch(function(e){
     console.error('pushMoveToFirebase error:', e);
   });
   // Clear live tile preview — move is now committed
@@ -10076,6 +10130,7 @@ function cleanupOnlineListeners(){
   window._gameStarted = false;
   window._myLastPush = undefined;
   window._myLastPushSeq = undefined;
+  window._myLastPushId = undefined;
 }
 
 // ── HOOK goHome ──
