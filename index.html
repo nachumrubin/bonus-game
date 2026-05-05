@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260505120000">
+<meta name="version" content="20260505100249">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -1877,7 +1877,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260505120000</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260505100249</div>
   </div>
 </div>
 
@@ -7526,6 +7526,9 @@ function renderBoard(){
     const cell = document.getElementById(`c${r}_${c}`);
     if (!cell) continue;
     const rep  = replacedThisTurn && replacedThisTurn.r===r && replacedThisTurn.c===c ? replacedThisTurn.newTile : null;
+    const opRep = window._opponentLiveReplacement && window._opponentLiveReplacement.r===r && window._opponentLiveReplacement.c===c
+      ? (window._opponentLiveReplacement.newTile || null)
+      : null;
     const pp   = rep || placed.find(p => p.r===r && p.c===c);
     const tile = rep ? null : bData[r][c];
     const lk   = lockedCells[`${r},${c}`];
@@ -10376,7 +10379,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260505120000', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260505100249', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
