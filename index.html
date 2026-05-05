@@ -7578,6 +7578,9 @@ function renderBoard(){
     const cell = document.getElementById(`c${r}_${c}`);
     if (!cell) continue;
     const rep  = replacedThisTurn && replacedThisTurn.r===r && replacedThisTurn.c===c ? replacedThisTurn.newTile : null;
+    const opRep = window._opponentLiveReplacement && window._opponentLiveReplacement.r===r && window._opponentLiveReplacement.c===c
+      ? (window._opponentLiveReplacement.newTile || null)
+      : null;
     const pp   = rep || placed.find(p => p.r===r && p.c===c);
     const tile = rep ? null : bData[r][c];
     const lk   = lockedCells[`${r},${c}`];
@@ -9116,6 +9119,11 @@ function onlineJoinByCode(){
 }
 
 async function jcConfirm(){
+  if(!fbDb){
+    await new Promise(function(res){ loadFirebaseSDK(res); });
+    initFirebase();
+  }
+
   const code = document.getElementById('jc-code').value.trim();
   const name = document.getElementById('jc-name').value.trim() || 'שחקן 2';
   const errEl = document.getElementById('jc-error');

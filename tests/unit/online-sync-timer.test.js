@@ -145,3 +145,11 @@ test('live preview includes replacement moves', () => {
     'renderer should track opponent replacement preview separately'
   );
 });
+
+test('renderBoard declares opponent replacement tile before usage on regular cells', () => {
+  assert.match(
+    source,
+    /const opRep = window\._opponentLiveReplacement && window\._opponentLiveReplacement\.r===r && window\._opponentLiveReplacement\.c===c[\s\S]*else if \(opRep\)/,
+    'regular board rendering should define opRep before testing it to avoid ReferenceError'
+  );
+});
