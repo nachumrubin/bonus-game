@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260505190020">
+<meta name="version" content="20260505193446">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -1877,7 +1877,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260505190020</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260505193446</div>
   </div>
 </div>
 
@@ -2534,6 +2534,18 @@ body.tile-selected .bsq:not(.used){
     <div class="ovd" id="bintro-desc"></div>
     <div class="ovbtns">
       <button class="ovb p" onclick="startBonusGame()">בוא נשחק ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOOST VETO NOTICE -->
+<div id="ov-boost-veto" class="ov hidden" onclick="if(event.target===this)ovClose('ov-boost-veto')">
+  <div class="ovc">
+    <div class="ovic">🛡️</div>
+    <div class="ovt" id="boost-veto-title">הבוסט בוטל</div>
+    <div class="ovd" id="boost-veto-desc"></div>
+    <div class="ovbtns">
+      <button class="ovb p" onclick="ovClose('ov-boost-veto')">הבנתי ✓</button>
     </div>
   </div>
 </div>
@@ -5768,6 +5780,18 @@ function runBonusBuilder(builder, fallbackPoints){
   openBonusAndBroadcast();
 }
 
+function showBoostVetoNotice(vetoedPlayer, vetoingPlayer){
+  if(vetoedPlayer !== 1) return;
+  const title = document.getElementById('boost-veto-title');
+  const desc = document.getElementById('boost-veto-desc');
+  if(title) title.textContent = 'הבוסט שלך בוטל';
+  if(desc){
+    const vetoingName = pNames[vetoingPlayer] || 'היריב';
+    desc.textContent = `${vetoingName} החזיק בוסט "ביטול בוסט ליריב", ולכן הבוסט שהפעלת עכשיו בוטל. המהלך עצמו נשמר, אבל לא תקבל נקודות או אפקט מהבוסט הזה.`;
+  }
+  ovOpen('ov-boost-veto');
+}
+
 function triggerBonus(type,ws,sc){
   if(isTutorial && !tutBoostDone) tutBoostDone=true;
   // ── Cancel-boost power: if opponent has this stored, they veto this bonus ──
@@ -5777,8 +5801,18 @@ function triggerBonus(type,ws,sc){
   if(futBon[_opp] && futBon[_opp].cancelBoost > 0){
     futBon[_opp].cancelBoost--;
     setS(`🛡️ ${pNames[_opp]} ביטל את הבוסט!`,'bon');
-    if(bonusPend.bsqIdxs) bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
-    commitPlay(bonusPend.sc,bonusPend.ws,0,_pi); bonusPend=null; return;
+    const _cancelledBonus = {
+      ws: bonusPend.ws,
+      sc: bonusPend.sc,
+      bsqIdxs: bonusPend.bsqIdxs ? bonusPend.bsqIdxs.slice() : [],
+      player: _pi
+    };
+    _cancelledBonus.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
+    bonusPend = null;
+    resetBonusOverlay();
+    commitPlay(_cancelledBonus.sc,_cancelledBonus.ws,0,_cancelledBonus.player);
+    showBoostVetoNotice(_cancelledBonus.player,_opp);
+    return;
   }
   // Flash bonus squares to signal activation
   if(bonusPend && bonusPend.bsqIdxs){
@@ -6756,31 +6790,34 @@ function bonusOk(ok=true){
   if(bonusPend.ct==='extraturn'){
     futBon[pi].extraTurn=true;
     setS('⚡ תור נוסף ממתין לך!','bon');
-    if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
-    commitPlay(bonusPend.sc,bonusPend.ws,0,pi); bonusPend=null; return;
+    const bp=bonusPend; bonusPend=null;
+    if(bp.bsqIdxs)bp.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
+    commitPlay(bp.sc,bp.ws,0,pi); return;
   }
   if(bonusPend.ct==='quad'){
-    if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
-    commitPlay(bonusPend.sc,bonusPend.ws,0,pi);
+    const bp=bonusPend; bonusPend=null;
+    if(bp.bsqIdxs)bp.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
+    commitPlay(bp.sc,bp.ws,0,pi);
     futBon[pi].quadNext=(futBon[pi].quadNext||0)+1; // set AFTER commit so it applies to next turn
     setS('⚡ ×4 בתור הבא!','bon');
-    bonusPend=null; return;
+    return;
   }
   if(bonusPend.ct==='double2'){
-    if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
-    commitPlay(bonusPend.sc,bonusPend.ws,0,pi);
+    const bp=bonusPend; bonusPend=null;
+    if(bp.bsqIdxs)bp.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
+    commitPlay(bp.sc,bp.ws,0,pi);
     futBon[pi].doubleNext=(futBon[pi].doubleNext||0)+2; // set AFTER commit so it applies to next turns
     setS('⚡ ×2 בשני התורות הבאים!','bon');
-    bonusPend=null; return;
+    return;
   }
   const extra=ok?bonusPend.extra:0;
   if(ok&&extra>0)setS(`🎉 בוסט! +${extra} נקודות!`,'bon');
   else if(!ok&&bonusPend.ct!=='auto')setS('❌ לא נכון — ללא בוסט','err');
-  if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
-  commitPlay(bonusPend.sc,bonusPend.ws,extra,pi); // pass word score and bonus separately
-  bonusPend=null;
+  const bp=bonusPend; bonusPend=null;
+  if(bp.bsqIdxs)bp.bsqIdxs.forEach(i=>bonusSqUsed[i]=true);
+  commitPlay(bp.sc,bp.ws,extra,pi); // pass word score and bonus separately
 }
-function bonusSkip(){ clearT(); ovClose('ov-bonus'); clearLiveBonus(); if(bonusPend.bsqIdxs)bonusPend.bsqIdxs.forEach(i=>bonusSqUsed[i]=true); commitPlay(bonusPend.sc,bonusPend.ws,0,bonusPend.player); bonusPend=null; }
+function bonusSkip(){ clearT(); ovClose('ov-bonus'); clearLiveBonus(); const bp=bonusPend; bonusPend=null; if(bp.bsqIdxs)bp.bsqIdxs.forEach(i=>bonusSqUsed[i]=true); commitPlay(bp.sc,bp.ws,0,bp.player); }
 
 // ═══════════════════════════════════════════════════
 // COMMIT
@@ -10084,6 +10121,7 @@ function listenForLiveBonus(){
     if(isInactive){
       const bonusEl = document.getElementById('ov-bonus');
       if(bonusEl && bonusEl._watchMode){ bonusEl._watchMode = false; ovClose('ov-bonus'); }
+      resetBonusOverlay();
       return;
     }
     // Only SHOW the bonus overlay when it's the opponent's turn (i.e. we are waiting)
@@ -10497,7 +10535,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260505190020', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260505193446', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
