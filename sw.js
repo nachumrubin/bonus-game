@@ -35,7 +35,7 @@ self.addEventListener('notificationclick', function(e) {
   );
 });
 
-var CACHE_NAME = 'boost-20260506121924';
+var CACHE_NAME = 'boost-20260506130514';
 var ASSETS = [
   './',
   './index.html',
@@ -69,6 +69,29 @@ self.addEventListener('activate', function(e){
 
 self.addEventListener('fetch', function(e){
   if(e.request.method !== 'GET') return;
+  var url = e.request.url || '';
+  var isHTML = e.request.mode === 'navigate' ||
+    url.endsWith('/') ||
+    url.indexOf('index.html') !== -1 ||
+    (e.request.headers && (e.request.headers.get('accept') || '').indexOf('text/html') !== -1);
+  if(isHTML){
+    e.respondWith(
+      fetch(e.request).then(function(resp){
+        if(resp && resp.status === 200 && resp.type === 'basic'){
+          var clone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache){
+            cache.put('./index.html', clone);
+          });
+        }
+        return resp;
+      }).catch(function(){
+        return caches.match('./index.html').then(function(cached){
+          return cached || caches.match('./');
+        });
+      })
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(function(cached){
       if(cached) return cached;
