@@ -8362,6 +8362,8 @@ const PRESENCE_GRACE_MS = 35000; // keep player "online" briefly during app swit
 // ── OneSignal Push Notifications ──
 // App ID is read from config.js (gitignored) via window.APP_CONFIG.onesignalAppId
 let _osSubscriptionId = null; // OneSignal subscription ID for this device
+let _oneSignalInitPromise = null;
+let _oneSignalSubscriptionListenerAttached = false;
 
 function _notifEnabled(){
   try{ return localStorage.getItem('notifEnabled') !== 'false'; }catch(e){ return true; }
@@ -8392,31 +8394,57 @@ function _refreshNotifToggle(message){
 
 async function initOneSignal(){
   const appId = (window.APP_CONFIG || {}).onesignalAppId;
-  if(!appId) return;
-  if(typeof OneSignal === 'undefined') return;
+  if(!appId) return false;
+  if(typeof OneSignal === 'undefined') return false;
+  if(!_oneSignalInitPromise){
+    _oneSignalInitPromise = (async function(){
+      try{
+        await OneSignal.init({
+          appId: appId,
+          serviceWorkerParam: { scope: '/' },
+          serviceWorkerPath: 'sw.js',
+          notifyButton: { enable: false },
+          allowLocalhostAsSecureOrigin: true,
+        });
+        return true;
+      } catch(err){
+        const msg = err && err.message ? err.message : String(err || '');
+        if(/already initialized/i.test(msg)) return true;
+        if(!/not configured for web push/i.test(msg)){
+          console.warn('OneSignal init:', msg || err);
+        }
+        return false;
+      }
+    })();
+  }
+
   try{
-    await OneSignal.init({
-      appId: appId,
-      serviceWorkerParam: { scope: '/' },
-      serviceWorkerPath: 'sw.js',
-      notifyButton: { enable: false },
-      allowLocalhostAsSecureOrigin: true,
-    });
+    const initialized = await _oneSignalInitPromise;
+    if(!initialized){
+      _refreshNotifToggle();
+      return false;
+    }
     // Link the OneSignal identity to the Firebase UID so the Cloud Function can target by user
-    if(fbCurrentUser && !fbCurrentUser.isAnonymous){
+    if(fbCurrentUser && !fbCurrentUser.isAnonymous && typeof OneSignal.login === 'function'){
       await OneSignal.login(fbCurrentUser.uid);
     }
     // Cache subscription ID for room token storage
-    _osSubscriptionId = OneSignal.User.PushSubscription.id || null;
-    OneSignal.User.PushSubscription.addEventListener('change', function(e){
-      _osSubscriptionId = (e && e.current && e.current.id) || null;
-      _refreshNotifToggle();
-      if(_osSubscriptionId && roomCode && myRole) _storeTokenInRoom(myRole);
-    });
+    const pushSub = OneSignal.User && OneSignal.User.PushSubscription;
+    _osSubscriptionId = (pushSub && pushSub.id) || null;
+    if(pushSub && typeof pushSub.addEventListener === 'function' && !_oneSignalSubscriptionListenerAttached){
+      pushSub.addEventListener('change', function(e){
+        _osSubscriptionId = (e && e.current && e.current.id) || null;
+        _refreshNotifToggle();
+        if(_osSubscriptionId && roomCode && myRole) _storeTokenInRoom(myRole);
+      });
+      _oneSignalSubscriptionListenerAttached = true;
+    }
     _refreshNotifToggle();
+    return true;
   } catch(err){
     console.warn('OneSignal init:', err.message || err);
     _refreshNotifToggle();
+    return false;
   }
 }
 
@@ -8648,9 +8676,9 @@ async function requestNotifPermission(){
     }
 
     if(typeof OneSignal !== 'undefined'){
-      await initOneSignal();
+      const oneSignalReady = await initOneSignal();
       if(OneSignal.Notifications && typeof OneSignal.Notifications.requestPermission === 'function'){
-        await OneSignal.Notifications.requestPermission();
+        if(oneSignalReady) await OneSignal.Notifications.requestPermission();
       }
       _osSubscriptionId = (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.id) || null;
     }
