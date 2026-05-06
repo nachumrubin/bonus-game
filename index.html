@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260506060220">
+<meta name="version" content="20260506115653">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -612,6 +612,11 @@ body.tile-selected .bsq:not(.used){
 .set-num{font-family:'Courier New',monospace;font-size:20px;font-weight:700;color:var(--lcd);background:#1a2a1a;border:2px inset #2a4a2a;border-radius:3px;padding:2px 8px;min-width:52px;text-align:center;text-shadow:0 0 6px rgba(200,255,0,.4);}
 .set-btn{width:26px;height:26px;background:var(--btn);border:2px solid var(--bborder);border-radius:4px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 0 var(--tshadow);}
 .set-btn:active{transform:translateY(1px);box-shadow:none;}
+#sett-notif-status{display:inline-flex;align-items:center;gap:5px;min-width:88px;justify-content:flex-end;white-space:nowrap;}
+.sett-notif-detail{font-size:10px;color:rgba(255,255,255,.48);margin-top:4px;line-height:1.45;max-width:260px;}
+#sett-notif-button[disabled]{filter:saturate(.65);opacity:.68;cursor:not-allowed !important;}
+.sett-notif-spinner{display:inline-block;width:10px;height:10px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:notifSpin .75s linear infinite;vertical-align:-1px;}
+@keyframes notifSpin{to{transform:rotate(360deg);}}
 /* ── MUSIC BUTTON ── */
 .music-btn{padding:4px 8px;background:var(--btn);border:2px solid var(--bborder);border-radius:3px;font-family:'Heebo',sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:#111;box-shadow:0 2px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.55);}
 .music-btn.playing{background:#2a5a2a;border-color:#4a8a4a;color:#8eff8e;box-shadow:0 2px 0 #1a3a1a;}
@@ -1877,7 +1882,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260506060220</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260506115653</div>
   </div>
 </div>
 
@@ -8569,6 +8574,12 @@ function _showIncomingInvite(data, inviterUid){
   if(avatarEl) avatarEl.textContent = data.fromAvatar || '🎮';
   if(bodyEl) bodyEl.textContent = (data.fromName || 'שחקן') + ' מזמין אותך למשחק';
   ovOpen('ov-incoming-invite');
+  if(document.visibilityState === 'hidden'){
+    _showBrowserOnlyNotification('הזמנה למשחק', (data.fromName || 'שחקן') + ' מזמין אותך למשחק', {
+      type: 'invite',
+      roomCode: data.roomCode
+    });
+  }
 }
 
 function _acceptIncomingInvite(){
@@ -8688,6 +8699,357 @@ async function requestNotifPermission(){
     _refreshNotifToggle('שגיאה');
   } finally {
     _setNotifButtonBusy(false);
+  }
+}
+
+// Robust notification settings. These definitions intentionally override the
+// earlier lightweight helpers so browser support, OneSignal sync timeouts, and
+// browser-only fallback all share one UI path.
+const NOTIF_ONE_SIGNAL_INIT_TIMEOUT_MS = 7000;
+const NOTIF_ONE_SIGNAL_SYNC_TIMEOUT_MS = 6000;
+const NOTIF_PERMISSION_TIMEOUT_MS = 45000;
+let _notifBusy = false;
+let _lastNotifFallbackReason = '';
+
+function _getNotifSupport(){
+  const host = location.hostname;
+  const localhost = host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+  const secure = !!(window.isSecureContext || location.protocol === 'https:' || localhost);
+  const appId = (window.APP_CONFIG || {}).onesignalAppId || '';
+  return {
+    hasNotification: 'Notification' in window,
+    hasServiceWorker: 'serviceWorker' in navigator,
+    hasPush: 'PushManager' in window,
+    secure,
+    appId,
+    sdkLoaded: typeof OneSignal !== 'undefined',
+  };
+}
+
+function _notifPermission(){
+  return ('Notification' in window) ? Notification.permission : 'unsupported';
+}
+
+function _notifBrowserSupported(support){
+  return !!(support && support.hasNotification && support.secure);
+}
+
+function _notifOneSignalPossible(support){
+  return !!(support && _notifBrowserSupported(support) && support.hasServiceWorker && support.hasPush && support.appId && support.sdkLoaded);
+}
+
+function _notifSupportDetail(support){
+  if(!support.hasNotification) return 'הדפדפן הזה לא תומך בהתראות.';
+  if(!support.secure) return 'התראות דורשות HTTPS או localhost.';
+  const parts = ['התראות דפדפן זמינות'];
+  parts.push(support.hasServiceWorker ? 'Service Worker זמין' : 'אין Service Worker');
+  parts.push(support.hasPush ? 'Push נתמך' : 'Push לא נתמך');
+  if(!support.appId) parts.push('OneSignal לא מוגדר');
+  else parts.push(support.sdkLoaded ? 'OneSignal זמין' : 'OneSignal עדיין נטען');
+  if(_lastNotifFallbackReason) parts.push(_lastNotifFallbackReason);
+  return parts.join(' · ');
+}
+
+function _ensureNotifDetailEl(){
+  let detail = document.getElementById('sett-notif-detail');
+  if(detail) return detail;
+  const status = document.getElementById('sett-notif-status');
+  const card = status && status.closest('div[style*="space-between"]');
+  const copy = card && card.firstElementChild;
+  if(!copy) return null;
+  detail = document.createElement('div');
+  detail.id = 'sett-notif-detail';
+  detail.className = 'sett-notif-detail';
+  copy.appendChild(detail);
+  return detail;
+}
+
+function _setNotifStatusText(el, text, busy){
+  if(!el) return;
+  el.innerHTML = '';
+  if(busy){
+    const spinner = document.createElement('span');
+    spinner.className = 'sett-notif-spinner';
+    spinner.setAttribute('aria-hidden', 'true');
+    el.appendChild(spinner);
+  }
+  el.appendChild(document.createTextNode(text));
+}
+
+function _readOneSignalSubscriptionId(){
+  try{
+    const pushSub = OneSignal && OneSignal.User && OneSignal.User.PushSubscription;
+    return (pushSub && pushSub.id) || null;
+  } catch(_){
+    return null;
+  }
+}
+
+function _refreshNotifToggle(message){
+  const support = _getNotifSupport();
+  const el = document.getElementById('sett-notif-status');
+  const btn = document.getElementById('sett-notif-button');
+  const detail = _ensureNotifDetailEl();
+  const permission = _notifPermission();
+  const browserSupported = _notifBrowserSupported(support);
+  const oneSignalOn = !!_osSubscriptionId && permission === 'granted';
+  const browserOn = permission === 'granted';
+  let text = message || '';
+  let color = 'rgba(255,255,255,.45)';
+
+  if(!text){
+    if(!support.hasNotification) text = 'לא נתמך';
+    else if(!support.secure) text = 'נדרש HTTPS';
+    else if(permission === 'denied') text = 'חסום בדפדפן';
+    else if(oneSignalOn) text = 'פעיל ומסונכרן';
+    else if(browserOn) text = 'פעיל בדפדפן';
+    else text = 'כבוי';
+  }
+
+  if(permission === 'denied' || !support.hasNotification || !support.secure) color = '#ff8e8e';
+  else if(oneSignalOn) color = 'var(--by)';
+  else if(browserOn) color = '#8ecfef';
+  else if(_notifBusy) color = '#fff';
+
+  _setNotifStatusText(el, text, _notifBusy);
+  if(el) el.style.color = color;
+  if(detail) detail.textContent = _notifSupportDetail(support);
+  if(btn){
+    btn.disabled = !!(_notifBusy || !browserSupported || permission === 'denied');
+    btn.setAttribute('aria-busy', _notifBusy ? 'true' : 'false');
+    if(_notifBusy) btn.textContent = 'בודק...';
+    else if(permission === 'denied') btn.textContent = 'חסום';
+    else if(browserOn && !oneSignalOn && _notifOneSignalPossible(support)) btn.textContent = 'סנכרן';
+    else if(browserOn) btn.textContent = 'פעיל';
+    else btn.textContent = 'הפעל';
+  }
+}
+
+function _setNotifButtonBusy(isBusy, message){
+  _notifBusy = !!isBusy;
+  _refreshNotifToggle(message || (_notifBusy ? 'בודק...' : undefined));
+}
+
+function _withNotifTimeout(promise, ms, label){
+  let timer = null;
+  let settled = false;
+  return new Promise(function(resolve){
+    timer = setTimeout(function(){
+      if(settled) return;
+      settled = true;
+      resolve({ ok:false, timedOut:true, label:label });
+    }, ms);
+    Promise.resolve(promise).then(function(value){
+      if(settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ ok:true, value:value });
+    }).catch(function(error){
+      if(settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({ ok:false, error:error, label:label });
+    });
+  });
+}
+
+async function initOneSignal(){
+  const support = _getNotifSupport();
+  _lastNotifFallbackReason = '';
+  if(!support.appId){
+    _lastNotifFallbackReason = 'נשמר כמצב דפדפן בלבד';
+    _refreshNotifToggle();
+    return false;
+  }
+  if(!_notifOneSignalPossible(support)){
+    _lastNotifFallbackReason = 'Fallback לדפדפן בלבד';
+    _refreshNotifToggle();
+    return false;
+  }
+
+  if(!_oneSignalInitPromise){
+    _oneSignalInitPromise = (async function(){
+      try{
+        await OneSignal.init({
+          appId: support.appId,
+          serviceWorkerParam: { scope: '/' },
+          serviceWorkerPath: 'sw.js',
+          notifyButton: { enable: false },
+          allowLocalhostAsSecureOrigin: true,
+        });
+        return true;
+      } catch(err){
+        const msg = err && err.message ? err.message : String(err || '');
+        if(/already initialized/i.test(msg)) return true;
+        if(!/not configured for web push/i.test(msg)) console.warn('OneSignal init:', msg || err);
+        return false;
+      }
+    })();
+  }
+
+  const initResult = await _withNotifTimeout(_oneSignalInitPromise, NOTIF_ONE_SIGNAL_INIT_TIMEOUT_MS, 'OneSignal init');
+  if(!initResult.ok || !initResult.value){
+    _lastNotifFallbackReason = initResult.timedOut ? 'OneSignal לא הגיב בזמן' : 'OneSignal לא זמין';
+    if(initResult.timedOut) console.warn('OneSignal init timed out; using browser-only notifications.');
+    _refreshNotifToggle();
+    return false;
+  }
+
+  if(fbCurrentUser && !fbCurrentUser.isAnonymous && typeof OneSignal.login === 'function'){
+    const loginResult = await _withNotifTimeout(OneSignal.login(fbCurrentUser.uid), NOTIF_ONE_SIGNAL_SYNC_TIMEOUT_MS, 'OneSignal login');
+    if(!loginResult.ok){
+      _lastNotifFallbackReason = loginResult.timedOut ? 'סנכרון משתמש לא הגיב בזמן' : 'סנכרון משתמש נכשל';
+      if(loginResult.timedOut) console.warn('OneSignal login timed out; continuing with browser-only fallback.');
+    }
+  }
+
+  const pushSub = OneSignal.User && OneSignal.User.PushSubscription;
+  _osSubscriptionId = _readOneSignalSubscriptionId();
+  if(pushSub && typeof pushSub.addEventListener === 'function' && !_oneSignalSubscriptionListenerAttached){
+    pushSub.addEventListener('change', function(e){
+      _osSubscriptionId = (e && e.current && e.current.id) || _readOneSignalSubscriptionId();
+      _lastNotifFallbackReason = _osSubscriptionId ? '' : _lastNotifFallbackReason;
+      _refreshNotifToggle();
+      if(_osSubscriptionId && roomCode && myRole) _storeTokenInRoom(myRole);
+    });
+    _oneSignalSubscriptionListenerAttached = true;
+  }
+  _refreshNotifToggle();
+  return true;
+}
+
+async function _requestBrowserNotificationPermission(){
+  if(!('Notification' in window)) return 'unsupported';
+  if(Notification.permission !== 'default') return Notification.permission;
+  const request = Notification.requestPermission.length
+    ? new Promise(function(resolve){ Notification.requestPermission(resolve); })
+    : Notification.requestPermission();
+  const result = await _withNotifTimeout(request, NOTIF_PERMISSION_TIMEOUT_MS, 'browser permission');
+  if(result.ok) return result.value;
+  _lastNotifFallbackReason = 'לא התקבלה תשובה מהדפדפן';
+  return Notification.permission || 'default';
+}
+
+async function _syncOneSignalSubscription(){
+  const support = _getNotifSupport();
+  if(!_notifOneSignalPossible(support)){
+    return { mode:'browser', reason:'onesignal-unavailable' };
+  }
+
+  const initResult = await _withNotifTimeout(initOneSignal(), NOTIF_ONE_SIGNAL_INIT_TIMEOUT_MS + 500, 'OneSignal init wrapper');
+  if(!initResult.ok || !initResult.value){
+    return { mode:'browser', reason:initResult.timedOut ? 'onesignal-timeout' : 'onesignal-init-failed' };
+  }
+
+  if(OneSignal.Notifications && typeof OneSignal.Notifications.requestPermission === 'function'){
+    const permResult = await _withNotifTimeout(OneSignal.Notifications.requestPermission(), NOTIF_ONE_SIGNAL_SYNC_TIMEOUT_MS, 'OneSignal permission');
+    if(!permResult.ok){
+      _lastNotifFallbackReason = permResult.timedOut ? 'סנכרון Push לא הגיב בזמן' : 'סנכרון Push נכשל';
+      return { mode:'browser', reason:permResult.timedOut ? 'onesignal-permission-timeout' : 'onesignal-permission-failed' };
+    }
+  }
+
+  const pushSub = OneSignal.User && OneSignal.User.PushSubscription;
+  if(pushSub && typeof pushSub.optIn === 'function' && !pushSub.optedIn){
+    await _withNotifTimeout(pushSub.optIn(), NOTIF_ONE_SIGNAL_SYNC_TIMEOUT_MS, 'OneSignal opt-in');
+  }
+
+  _osSubscriptionId = _readOneSignalSubscriptionId();
+  if(!_osSubscriptionId){
+    await new Promise(function(resolve){ setTimeout(resolve, 300); });
+    _osSubscriptionId = _readOneSignalSubscriptionId();
+  }
+  if(_osSubscriptionId){
+    _lastNotifFallbackReason = '';
+    if(roomCode && myRole) _storeTokenInRoom(myRole);
+    return { mode:'onesignal' };
+  }
+
+  _lastNotifFallbackReason = 'נשמר כמצב דפדפן בלבד';
+  return { mode:'browser', reason:'missing-subscription-id' };
+}
+
+async function requestNotifPermission(){
+  const support = _getNotifSupport();
+  _setNotifEnabled(true);
+  _setNotifButtonBusy(true, 'בודק תמיכה...');
+  try{
+    if(!support.hasNotification){
+      _osSubscriptionId = null;
+      _refreshNotifToggle('לא נתמך בדפדפן');
+      return;
+    }
+    if(!support.secure){
+      _osSubscriptionId = null;
+      _refreshNotifToggle('נדרש HTTPS');
+      return;
+    }
+
+    let browserPermission = _notifPermission();
+    if(browserPermission === 'default'){
+      _refreshNotifToggle('ממתין לאישור...');
+      browserPermission = await _requestBrowserNotificationPermission();
+    }
+
+    if(browserPermission !== 'granted'){
+      _osSubscriptionId = null;
+      _refreshNotifToggle(browserPermission === 'denied' ? 'חסום בדפדפן' : 'לא הופעל');
+      return;
+    }
+
+    _refreshNotifToggle('מסנכרן Push...');
+    const sync = await _syncOneSignalSubscription();
+    if(sync.mode === 'onesignal'){
+      _refreshNotifToggle('פעיל ומסונכרן');
+    } else {
+      _osSubscriptionId = null;
+      _refreshNotifToggle('פעיל בדפדפן');
+    }
+  } catch(err){
+    console.warn('Notification permission:', err && err.message ? err.message : err);
+    _lastNotifFallbackReason = 'אירעה שגיאה';
+    _refreshNotifToggle('שגיאה');
+  } finally {
+    _setNotifButtonBusy(false);
+    _refreshNotifToggle();
+  }
+}
+
+function _handleBrowserNotificationClick(data){
+  try{ window.focus(); }catch(_){}
+  if(data && data.type === 'invite' && data.roomCode){
+    _openJoinWithCode(data.roomCode);
+  } else if(data && (data.type === 'friendRequest' || data.type === 'friendAccepted')){
+    openFriendsOrAuth();
+  }
+}
+
+function _showBrowserOnlyNotification(title, body, data){
+  if(!_notifEnabled() || !('Notification' in window) || Notification.permission !== 'granted') return;
+  const options = {
+    body: body || '',
+    icon: './icon-512.png',
+    badge: './icon-512.png',
+    data: data || {},
+    tag: data && data.roomCode ? 'bonus-invite-' + data.roomCode : 'bonus-game-notification',
+    renotify: true,
+  };
+  const fallback = function(){
+    try{
+      const n = new Notification(title, options);
+      n.onclick = function(){ _handleBrowserNotificationClick(options.data); n.close(); };
+    } catch(_){}
+  };
+  if(navigator.serviceWorker && navigator.serviceWorker.ready){
+    _withNotifTimeout(navigator.serviceWorker.ready, 2000, 'service worker ready').then(function(result){
+      if(result.ok && result.value && typeof result.value.showNotification === 'function'){
+        result.value.showNotification(title, options).catch(fallback);
+      } else {
+        fallback();
+      }
+    });
+  } else {
+    fallback();
   }
 }
 
@@ -10681,7 +11043,7 @@ function backConfirmStay(){
   // Caches the page for offline use
   var SW_CODE = [
     '"use strict";',
-    'var CACHE = "bonus-1775820200";',
+    'var CACHE = "bonus-20260506115653";',
     'self.addEventListener("install", function(e){',
     '  self.skipWaiting();',
     '});',
@@ -10713,7 +11075,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260506060220', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260506115653', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)

@@ -35,6 +35,11 @@ const filesToUpdate = [
         replace: `$1${timestamp}$3`,
         description: 'service worker registration cache-buster',
       },
+      {
+        find: /(var CACHE = "bonus-)(\d+)(";\s*',)/,
+        replace: `$1${timestamp}$3`,
+        description: 'inline fallback service worker cache name',
+      },
     ],
   },
 ];
