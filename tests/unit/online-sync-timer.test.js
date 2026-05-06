@@ -153,3 +153,52 @@ test('renderBoard declares opponent replacement tile before usage on regular cel
     'regular board rendering should define opRep before testing it to avoid ReferenceError'
   );
 });
+
+
+test('inactive live bonus snapshots do not reset the active player boost overlay', () => {
+  const ctx = buildContextWith(['isLocalActiveBonusOverlayOpen'], {
+    gMode: 'online',
+    turn: 0,
+    bonusPend: { ct: 'wordsearch' },
+    window: { _myPlayerIndex: 0 },
+    document: {
+      getElementById: (id) => id === 'ov-bonus'
+        ? { _watchMode: false, classList: { contains: () => false } }
+        : null
+    }
+  });
+
+  assert.equal(ctx.isLocalActiveBonusOverlayOpen(), true);
+});
+
+test('inactive live bonus snapshots can reset watchers and already closed local overlays', () => {
+  const watcherCtx = buildContextWith(['isLocalActiveBonusOverlayOpen'], {
+    gMode: 'online',
+    turn: 1,
+    bonusPend: { ct: 'wordsearch' },
+    window: { _myPlayerIndex: 0 },
+    document: {
+      getElementById: () => ({ _watchMode: false, classList: { contains: () => false } })
+    }
+  });
+  assert.equal(watcherCtx.isLocalActiveBonusOverlayOpen(), false, 'opponent watcher must still process inactive clears');
+
+  const closedCtx = buildContextWith(['isLocalActiveBonusOverlayOpen'], {
+    gMode: 'online',
+    turn: 0,
+    bonusPend: { ct: 'wordsearch' },
+    window: { _myPlayerIndex: 0 },
+    document: {
+      getElementById: () => ({ _watchMode: false, classList: { contains: (cls) => cls === 'hidden' } })
+    }
+  });
+  assert.equal(closedCtx.isLocalActiveBonusOverlayOpen(), false, 'local overlay cleanup should run after the boost overlay closes');
+});
+
+test('listenForLiveBonus ignores stale inactive clears while local bonus is open', () => {
+  assert.match(
+    source,
+    /if\(isInactive\)\{[\s\S]*if\(isLocalActiveBonusOverlayOpen\(\)\) return;[\s\S]*resetBonusOverlay\(\);[\s\S]*return;\n    \}/,
+    'inactive liveBonus handler should not reset an active local boost challenge'
+  );
+});
