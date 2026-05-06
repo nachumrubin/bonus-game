@@ -62,6 +62,14 @@
           ".write": "auth != null"
         }
       }
+    },
+    "inviteResponses": {
+      "$inviterUid": {
+        "$inviteeUid": {
+          ".read": "auth != null && auth.uid === $inviterUid",
+          ".write": "auth != null && (auth.uid === $inviterUid || auth.uid === $inviteeUid)"
+        }
+      }
     }
   }
 }
