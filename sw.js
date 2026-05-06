@@ -32,7 +32,7 @@ self.addEventListener('notificationclick', function(e) {
   );
 });
 
-var CACHE_NAME = 'boost-20260506055000';
+var CACHE_NAME = 'boost-20260506061928';
 var ASSETS = [
   './',
   './index.html',
