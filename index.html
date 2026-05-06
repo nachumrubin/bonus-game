@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260506115653">
+<meta name="version" content="20260506121924">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -747,6 +747,8 @@ body.tile-selected .bsq:not(.used){
 .online-pill.connected{background:rgba(100,220,100,.15);color:#8eff8e;border:1px solid rgba(100,220,100,.3);}
 .online-pill.waiting{background:rgba(245,166,35,.15);color:var(--p2);border:1px solid rgba(245,166,35,.3);}
 .online-pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor;animation:onpulse 1.5s ease-in-out infinite;}
+.online-session-turn.my-turn{color:#8eff8e;text-shadow:0 0 8px rgba(142,255,142,.28);}
+.online-session-turn.waiting{color:rgba(255,255,255,.68);}
 @keyframes onpulse{0%,100%{opacity:.4}50%{opacity:1}}
 .turn-timer{
   display:none;align-items:center;justify-content:center;gap:8px;
@@ -1882,7 +1884,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260506115653</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260506121924</div>
   </div>
 </div>
 
@@ -8473,7 +8475,7 @@ async function _sendPushNotification(opponentRole, title, body){
         include_subscription_ids: [subscriptionId],
         headings: { en: title },
         contents: { en: body },
-        data: { roomCode: roomCode }
+        data: { roomCode: roomCode, type: 'turn' }
       })
     }).catch(()=>{});
   } catch(_){}
@@ -9019,6 +9021,8 @@ function _handleBrowserNotificationClick(data){
   try{ window.focus(); }catch(_){}
   if(data && data.type === 'invite' && data.roomCode){
     _openJoinWithCode(data.roomCode);
+  } else if(data && data.type === 'turn' && data.roomCode){
+    rejoinOnlineGame(data.roomCode);
   } else if(data && (data.type === 'friendRequest' || data.type === 'friendAccepted')){
     openFriendsOrAuth();
   }
@@ -10473,6 +10477,7 @@ function listenForMoves(){
       if(incomingMoveCount === _lastSeenMoveCount && incomingTurn === _lastSeenTurn) return;
     }
 
+    var previousSeenTurn = _lastSeenTurn;
     _lastSeenMoveCount = incomingMoveCount;
     _lastSeenTurn = incomingTurn;
     if(incomingStateSeq) _lastSeenStateSeq = incomingStateSeq;
@@ -10517,6 +10522,9 @@ function listenForMoves(){
       if(incomingTurn !== myIdx) setS(waitingMsg());
       ensureOnlineTimeoutWatchdog();
       saveOnlineSession();
+      if(onlineMode === 'async' && incomingTurn === myIdx){
+        _notifyAsyncTurnIfNeeded(roomCode, _loadSessions()[roomCode], previousSeenTurn);
+      }
       return;
     }
     if(incomingTurn === myIdx){
@@ -10527,6 +10535,9 @@ function listenForMoves(){
     }
     ensureOnlineTimeoutWatchdog();
     saveOnlineSession();
+    if(onlineMode === 'async' && incomingTurn === myIdx){
+      _notifyAsyncTurnIfNeeded(roomCode, _loadSessions()[roomCode], previousSeenTurn);
+    }
   });
   onlineListeners.push({ ref: stateRef, type:'value', fn: moveListener });
 }
@@ -11043,7 +11054,7 @@ function backConfirmStay(){
   // Caches the page for offline use
   var SW_CODE = [
     '"use strict";',
-    'var CACHE = "bonus-20260506115653";',
+    'var CACHE = "bonus-20260506121924";',
     'self.addEventListener("install", function(e){',
     '  self.skipWaiting();',
     '});',
@@ -11075,7 +11086,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260506115653', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260506121924', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
@@ -11232,15 +11243,93 @@ function _saveSessions(sessions){
   try { localStorage.setItem(STORAGE_KEYS.onlineSession, JSON.stringify({_multi: sessions})); } catch(e){}
 }
 
+function _escapeHtml(v){
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(ch){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch];
+  });
+}
+
+function _sessionMyIndex(s){
+  var idx = Number(s && s.myPlayerIndex);
+  if(idx === 0 || idx === 1) return idx;
+  return s && s.myRole === 'host' ? 0 : 1;
+}
+
+function _sessionOpponentName(s){
+  var idx = _sessionMyIndex(s);
+  return s && s.pNames ? (s.pNames[1 - idx] || '?') : '?';
+}
+
+function _sessionTurnLabel(s){
+  if(!s || s.turn === undefined || s.turn === null) return 'בודק תור...';
+  var currentTurn = Number(s.turn);
+  var myIdx = _sessionMyIndex(s);
+  if(currentTurn === myIdx) return 'תורך';
+  var names = s.pNames || [];
+  return 'תור ' + (names[currentTurn] || _sessionOpponentName(s));
+}
+
+function _sessionTurnClass(s){
+  return s && Number(s.turn) === _sessionMyIndex(s) ? 'my-turn' : 'waiting';
+}
+
+function _updateStoredSessionTurn(code, state, room){
+  if(!code || !state) return null;
+  var sessions = _loadSessions();
+  var s = sessions[code];
+  if(!s) return null;
+  var prevTurn = s.turn;
+  var nextTurn = Number(state.turn);
+  if(nextTurn !== 0 && nextTurn !== 1) nextTurn = undefined;
+  if(nextTurn !== undefined) s.turn = nextTurn;
+  s.stateSeq = Number(state.stateSeq || state.revision || s.stateSeq || 0);
+  s.moveCount = Number(state.moveCount || s.moveCount || 0);
+  if(room){
+    s.onlineMode = room.mode || s.onlineMode;
+    if(room.host || room.guest){
+      s.pNames = [
+        room.host || (s.pNames && s.pNames[0]) || 'שחקן 1',
+        room.guest || (s.pNames && s.pNames[1]) || 'שחקן 2'
+      ];
+    }
+  }
+  _saveSessions(sessions);
+  return { session:s, prevTurn:prevTurn };
+}
+
+function _notifyAsyncTurnIfNeeded(code, session, prevTurn){
+  if(!session || session.onlineMode !== 'async') return;
+  var myIdx = _sessionMyIndex(session);
+  if(Number(session.turn) !== myIdx) return;
+  if(prevTurn === undefined || Number(prevTurn) === myIdx) return;
+  var marker = String(session.stateSeq || session.moveCount || Date.now());
+  if(session.lastTurnNotifiedMarker === marker) return;
+  var sessions = _loadSessions();
+  if(sessions[code]){
+    sessions[code].lastTurnNotifiedMarker = marker;
+    _saveSessions(sessions);
+  }
+  var opp = _sessionOpponentName(session);
+  _showBrowserOnlyNotification('תורך בבוסט!', (opp || 'היריב') + ' סיים מהלך. עכשיו תורך.', {
+    type: 'turn',
+    roomCode: code
+  });
+}
+
 function saveOnlineSession(){
   if(gMode !== 'online' || !roomCode || !myRole) return;
   var sessions = _loadSessions();
+  var existing = sessions[roomCode] || {};
   sessions[roomCode] = {
     roomCode: roomCode,
     myRole: myRole,
     onlineMode: onlineMode,
     pNames: pNames.slice(),
     myPlayerIndex: window._myPlayerIndex,
+    turn: (turn === 0 || turn === 1) ? turn : existing.turn,
+    stateSeq: Number(onlineStateSeq || existing.stateSeq || 0),
+    moveCount: Number(moveCount || existing.moveCount || 0),
+    lastTurnNotifiedMarker: existing.lastTurnNotifiedMarker || null,
     gameSettings: JSON.parse(JSON.stringify(gameSettings)),
     savedAt: Date.now()
   };
@@ -11251,10 +11340,73 @@ function removeOnlineSession(code){
   var sessions = _loadSessions();
   delete sessions[code];
   _saveSessions(sessions);
+  _removeOnlineSessionTurnWatcher(code);
   checkForOnlineSession();
 }
 
-function checkForOnlineSession(){
+var _onlineSessionTurnWatchers = {};
+
+function _removeOnlineSessionTurnWatcher(code){
+  var w = _onlineSessionTurnWatchers[code];
+  if(!w) return;
+  try{ w.ref.off('value', w.fn); }catch(_){}
+  delete _onlineSessionTurnWatchers[code];
+}
+
+function _syncOnlineSessionTurnWatchers(codes){
+  var live = {};
+  (codes || []).forEach(function(code){ live[code] = true; });
+  Object.keys(_onlineSessionTurnWatchers).forEach(function(code){
+    if(!live[code]) _removeOnlineSessionTurnWatcher(code);
+  });
+  if(!fbDb) return;
+  (codes || []).forEach(function(code){
+    var sessions = _loadSessions();
+    var s = sessions[code];
+    if(!s || s.onlineMode !== 'async' || _onlineSessionTurnWatchers[code]) return;
+    var ref = fbRef('rooms/' + code + '/state');
+    var fn = function(snap){
+      var currentSessions = _loadSessions();
+      var current = currentSessions[code];
+      if(!current){ _removeOnlineSessionTurnWatcher(code); return; }
+      if(!snap || !snap.exists()) return;
+      var prevTurn = current.turn;
+      var updated = _updateStoredSessionTurn(code, snap.val(), null);
+      if(!updated) return;
+      checkForOnlineSession(true);
+      _notifyAsyncTurnIfNeeded(code, updated.session, prevTurn);
+    };
+    ref.on('value', fn);
+    _onlineSessionTurnWatchers[code] = { ref:ref, fn:fn };
+  });
+}
+
+function refreshOnlineSessionTurns(){
+  var sessions = _loadSessions();
+  var codes = Object.keys(sessions);
+  _syncOnlineSessionTurnWatchers(codes);
+  if(!fbDb || !codes.length) return;
+
+  codes.forEach(function(code){
+    fbRef('rooms/' + code).once('value').then(function(snap){
+      if(!snap || !snap.exists()) return;
+      var room = snap.val() || {};
+      if(room.status === 'abandoned' || room.status === 'resigned'){
+        removeOnlineSession(code);
+        return;
+      }
+      if(!room.state) return;
+      var before = _loadSessions()[code];
+      var prevTurn = before && before.turn;
+      var updated = _updateStoredSessionTurn(code, room.state, room);
+      if(!updated) return;
+      checkForOnlineSession(true);
+      _notifyAsyncTurnIfNeeded(code, updated.session, prevTurn);
+    }).catch(function(){});
+  });
+}
+
+function checkForOnlineSession(skipTurnRefresh){
   var sessions = _loadSessions();
   var codes = Object.keys(sessions);
 
@@ -11275,7 +11427,9 @@ function checkForOnlineSession(){
   var rows = '';
   codes.forEach(function(code){
     var s = sessions[code];
-    var opp = s.pNames ? s.pNames[1 - s.myPlayerIndex] : '?';
+    var opp = _sessionOpponentName(s);
+    var turnLabel = _sessionTurnLabel(s);
+    var turnCls = _sessionTurnClass(s);
     var modeIc = s.onlineMode === 'async' ? '\uD83D\uDCEC' : '\u26A1';
     var timeAgo = '';
     if(s.savedAt){
@@ -11284,7 +11438,7 @@ function checkForOnlineSession(){
     }
     rows += '<div style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.07);">'
       + '<div style="flex:1;min-width:0;">'
-        + '<div style="font-size:12px;font-weight:900;color:#fff;">' + modeIc + ' \u05E0\u05D2\u05D3 ' + opp + '</div>'
+        + '<div style="font-size:12px;font-weight:900;color:#fff;">' + modeIc + ' \u05E0\u05D2\u05D3 ' + _escapeHtml(opp) + ' - <span class="online-session-turn ' + turnCls + '">' + _escapeHtml(turnLabel) + '</span></div>'
         + '<div style="font-size:9px;color:rgba(255,255,255,.35);">' + (timeAgo ? '\u05DC\u05E4\u05E0\u05D9 ' + timeAgo : '') + '</div>'
       + '</div>'
       + '<button data-rejoin="' + code + '" style="background:#e8c840;border:none;border-radius:5px;font-family:Heebo,sans-serif;font-size:11px;font-weight:900;color:#000;padding:5px 10px;cursor:pointer;">\u05D4\u05DE\u05E9\u05DA</button>'
@@ -11304,6 +11458,8 @@ function checkForOnlineSession(){
     if(rejoin) rejoinOnlineGame(rejoin);
     else if(remove) removeOnlineSession(remove);
   };
+
+  if(!skipTurnRefresh) refreshOnlineSessionTurns();
 }
 
 async function rejoinOnlineGame(code){
@@ -11388,6 +11544,8 @@ function _openJoinWithCode(code){
 document.addEventListener('DOMContentLoaded', function(){
   var params = new URLSearchParams(window.location.search);
   var joinCode = params.get('join');
+  var resumeCode = params.get('resume');
+  if(resumeCode && /^\d{6}$/.test(resumeCode)){ setTimeout(function(){ rejoinOnlineGame(resumeCode); }, 500); return; }
   if(joinCode && /^\d{6}$/.test(joinCode)){ _openJoinWithCode(joinCode); return; }
   if(params.get('profile') === 'friends') setTimeout(openFriendsOrAuth, 800);
 });
@@ -11402,6 +11560,7 @@ if(navigator.serviceWorker){
   navigator.serviceWorker.addEventListener('message', function(e){
     if(!e.data) return;
     if(e.data.type === 'OPEN_JOIN' && e.data.roomCode) _openJoinWithCode(e.data.roomCode);
+    if(e.data.type === 'OPEN_TURN' && e.data.roomCode) rejoinOnlineGame(e.data.roomCode);
     if(e.data.type === 'OPEN_PROFILE') openFriendsOrAuth();
   });
 }

@@ -13,6 +13,7 @@ self.addEventListener('notificationclick', function(e) {
   var data = e.notification.data || {};
   var url;
   if (data.type === 'invite' && data.roomCode) url = '/?join=' + data.roomCode;
+  else if (data.type === 'turn' && data.roomCode) url = '/?resume=' + data.roomCode;
   else if (data.type === 'friendRequest' || data.type === 'friendAccepted') url = '/?profile=friends';
   else url = '/';
   e.waitUntil(
@@ -21,6 +22,8 @@ self.addEventListener('notificationclick', function(e) {
         if ('focus' in list[i]) {
           if (data.type === 'invite' && data.roomCode) {
             list[i].postMessage({ type: 'OPEN_JOIN', roomCode: data.roomCode });
+          } else if (data.type === 'turn' && data.roomCode) {
+            list[i].postMessage({ type: 'OPEN_TURN', roomCode: data.roomCode });
           } else if (data.type === 'friendRequest' || data.type === 'friendAccepted') {
             list[i].postMessage({ type: 'OPEN_PROFILE' });
           }
@@ -32,7 +35,7 @@ self.addEventListener('notificationclick', function(e) {
   );
 });
 
-var CACHE_NAME = 'boost-20260506115653';
+var CACHE_NAME = 'boost-20260506121924';
 var ASSETS = [
   './',
   './index.html',
