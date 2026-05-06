@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260506055000">
+<meta name="version" content="20260506060220">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -1877,7 +1877,7 @@ body.tile-selected .bsq:not(.used){
         <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
       </button>
     </nav>
-    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260506055000</div>
+    <div class="credit"><a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260506060220</div>
   </div>
 </div>
 
@@ -2289,7 +2289,7 @@ body.tile-selected .bsq:not(.used){
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span id="sett-notif-status" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4)">כבוי</span>
-        <button onclick="requestNotifPermission()" style="padding:7px 14px;border-radius:6px;border:none;background:linear-gradient(180deg,#4a7fc1,#2a5a9a);color:#fff;font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">הפעל</button>
+        <button id="sett-notif-button" onclick="requestNotifPermission()" style="padding:7px 14px;border-radius:6px;border:none;background:linear-gradient(180deg,#4a7fc1,#2a5a9a);color:#fff;font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">הפעל</button>
       </div>
     </div>
     <!-- Dictionary Management — full width below panels -->
@@ -8370,12 +8370,24 @@ function _setNotifEnabled(v){
   try{ localStorage.setItem('notifEnabled', v ? 'true' : 'false'); }catch(e){}
   _refreshNotifToggle();
 }
-function _refreshNotifToggle(){
+function _refreshNotifToggle(message){
   const el = document.getElementById('sett-notif-status');
   if(!el) return;
-  const on = !!_osSubscriptionId && Notification && Notification.permission === 'granted';
-  el.textContent = on ? 'פעיל' : 'כבוי';
-  el.style.color = on ? 'var(--by)' : 'rgba(255,255,255,.4)';
+  if(!('Notification' in window)){
+    el.textContent = 'לא נתמך';
+    el.style.color = '#ff8e8e';
+    return;
+  }
+  const permission = Notification.permission;
+  const on = !!_osSubscriptionId && permission === 'granted';
+  if(message){
+    el.textContent = message;
+  } else if(permission === 'denied'){
+    el.textContent = 'חסום';
+  } else {
+    el.textContent = on ? 'פעיל' : 'כבוי';
+  }
+  el.style.color = on ? 'var(--by)' : (permission === 'denied' ? '#ff8e8e' : 'rgba(255,255,255,.4)');
 }
 
 async function initOneSignal(){
@@ -8605,14 +8617,49 @@ function closeInviteRejectedNotice(){
   showSc('so');
 }
 
+function _setNotifButtonBusy(isBusy){
+  const btn = document.getElementById('sett-notif-button');
+  if(!btn) return;
+  btn.disabled = !!isBusy;
+  btn.style.opacity = isBusy ? '.65' : '';
+  btn.style.cursor = isBusy ? 'wait' : 'pointer';
+}
+
+async function _requestBrowserNotificationPermission(){
+  if(!('Notification' in window)) return 'unsupported';
+  if(Notification.permission !== 'default') return Notification.permission;
+  return await Notification.requestPermission();
+}
+
 async function requestNotifPermission(){
   _setNotifEnabled(true);
-  if(typeof OneSignal !== 'undefined'){
-    try{
-      await OneSignal.Notifications.requestPermission();
-      _osSubscriptionId = OneSignal.User.PushSubscription.id || null;
-      _refreshNotifToggle();
-    } catch(_){}
+  _setNotifButtonBusy(true);
+  _refreshNotifToggle('מבקש...');
+  try{
+    const browserPermission = await _requestBrowserNotificationPermission();
+    if(browserPermission === 'unsupported'){
+      _refreshNotifToggle('לא נתמך');
+      return;
+    }
+    if(browserPermission !== 'granted'){
+      _osSubscriptionId = null;
+      _refreshNotifToggle(browserPermission === 'denied' ? 'חסום' : 'כבוי');
+      return;
+    }
+
+    if(typeof OneSignal !== 'undefined'){
+      await initOneSignal();
+      if(OneSignal.Notifications && typeof OneSignal.Notifications.requestPermission === 'function'){
+        await OneSignal.Notifications.requestPermission();
+      }
+      _osSubscriptionId = (OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.id) || null;
+    }
+    _refreshNotifToggle(_osSubscriptionId ? undefined : 'פעיל בדפדפן');
+  } catch(err){
+    console.warn('Notification permission:', err && err.message ? err.message : err);
+    _refreshNotifToggle('שגיאה');
+  } finally {
+    _setNotifButtonBusy(false);
   }
 }
 
@@ -10638,7 +10685,7 @@ function backConfirmStay(){
 
   if('serviceWorker' in navigator){
     // Try to register sw.js from the same directory (works on GitHub Pages / any web server)
-    navigator.serviceWorker.register('./sw.js?v=20260506055000', {updateViaCache: 'none'}).then(function(reg){
+    navigator.serviceWorker.register('./sw.js?v=20260506060220', {updateViaCache: 'none'}).then(function(reg){
       console.log('SW registered:', reg.scope);
     }).catch(function(){
       // Fallback: blob-based SW (works when file is opened directly)
