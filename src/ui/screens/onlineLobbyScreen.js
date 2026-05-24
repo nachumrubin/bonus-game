@@ -166,7 +166,7 @@ function startGlobe(root) {
     ctx.lineWidth   = 1;
     ctx.stroke();
 
-    lonOff += 0.5;   // ~18° / s at 60 fps
+    lonOff += 0.9;   // ~18° / s at 60 fps
     rafId = requestAnimationFrame(frame);
   }
 
