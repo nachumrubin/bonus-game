@@ -56,7 +56,7 @@ import { showScreen as spineShowScreen } from './ui/screens/screenTransitions.js
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './ui/screens/menuScreen.js';
 import { mountSetupScreen, SETUP_INTENT, SETUP_OPEN } from './ui/screens/setupScreen.js';
 import { mountOnlineLobbyScreen, LOBBY_INTENT } from './ui/screens/onlineLobbyScreen.js';
-import { mountMatchmakingOverlayScreen, MM_INTENT } from './ui/screens/matchmakingOverlayScreen.js';
+import { mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, MM_INTENT, PS_INTENT } from './ui/screens/matchmakingOverlayScreen.js';
 import { mountCreateRoomScreen, CR_INTENT } from './ui/screens/createRoomScreen.js';
 import { mountWaitingRoomScreen, WR_INTENT, WR_OPEN, WR_CLOSE, buildWhatsAppShareUrl } from './ui/screens/waitingRoomScreen.js';
 import { mountJoinCodeScreen, JC_INTENT } from './ui/screens/joinCodeScreen.js';
@@ -232,7 +232,7 @@ async function boot() {
       mountGameScreen, GAME_SCREEN_INTENT, mountMenuScreen, mountSetupScreen, mountOnlineLobbyScreen, mountJokerPicker,
       mountEndGameScreen, mountPauseScreen, mountBackConfirmScreen, mountCoinTossScreen,
       mountSettingsScreen, mountDisconnectScreen, mountResignConfirmScreen,
-      mountMatchmakingOverlayScreen, mountCreateRoomScreen, mountWaitingRoomScreen, mountJoinCodeScreen, mountIncomingInviteScreen,
+      mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, mountCreateRoomScreen, mountWaitingRoomScreen, mountJoinCodeScreen, mountIncomingInviteScreen,
       mountAsyncSessionListScreen, mountAsyncHomeButton,
       mountBonusIntroScreen, mountBoostVetoScreen, mountBoostBadges,
       mountUnscrambleMiniGame, mountWheelMiniGame,
@@ -625,7 +625,7 @@ async function boot() {
     });
 
     function hideOnlineStartOverlays() {
-      for (const id of ['ov-create-room', 'ov-waiting-room', 'ov-join-code', 'ov-matchmaking']) {
+      for (const id of ['ov-create-room', 'ov-waiting-room', 'ov-join-code', 'ov-matchmaking', 'ov-partner-search']) {
         globalThis.document?.getElementById?.(id)?.classList?.add?.('hidden');
       }
     }
@@ -684,6 +684,13 @@ async function boot() {
         filters?.name ?? fbUser.displayName ?? profile.displayName ?? 'שחקן';
       if (displayName) settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: displayName });
 
+      // Hide search form, show partner-search overlay with slot animation.
+      globalThis.document?.getElementById?.('ov-matchmaking')?.classList?.add?.('hidden');
+      bus.emit(PS_INTENT.SHOW, {
+        name:   displayName,
+        avatar: avatarEmoji(profile.equippedAvatar) || '👑',
+      });
+
       activeMatchmaking = startMatchmaking({
         db: fbDb,
         uid: fbUser.uid,
@@ -704,6 +711,15 @@ async function boot() {
       activeMatchmaking.onMatched(async ({ room, mySlot }) => {
         const fullRoom = await roomService.readRoom(fbDb, room.roomId);
         if (!fullRoom) return;
+        const opponentSlot = 1 - mySlot;
+        const opponent = fullRoom.players?.[opponentSlot];
+        bus.emit(PS_INTENT.MATCHED, {
+          name:   opponent?.displayName ?? 'שחקן',
+          avatar: avatarEmoji(opponent?.avatar) || '👑',
+        });
+        // Brief pause so the player sees the matched opponent before game starts.
+        await new Promise(r => setTimeout(r, 1400));
+        bus.emit(PS_INTENT.HIDE, {});
         startOnlineGameViaSpine({ db: fbDb, room: fullRoom, mySlot });
       });
       globalThis.__spine.activeMatchmaking = activeMatchmaking;
@@ -721,6 +737,7 @@ async function boot() {
         activeMatchmaking = null;
         globalThis.__spine.activeMatchmaking = null;
       }
+      bus.emit(PS_INTENT.HIDE, {});
       globalThis.document?.getElementById?.('ov-matchmaking')?.classList?.add?.('hidden');
     });
 
@@ -2037,7 +2054,7 @@ async function boot() {
 
   async function startOnlineGameViaSpine({ db, room, mySlot, skipCoin = false } = {}) {
     ensureDictionaryLoaded().catch((e) => console.warn('[spine] dictionary preload before online game failed:', e));
-    for (const id of ['ov-create-room', 'ov-waiting-room', 'ov-join-code', 'ov-matchmaking']) {
+    for (const id of ['ov-create-room', 'ov-waiting-room', 'ov-join-code', 'ov-matchmaking', 'ov-partner-search']) {
       globalThis.document?.getElementById?.(id)?.classList?.add?.('hidden');
     }
     if (skipCoin && room?.status !== 'playing' && !(room?.mode ?? '').endsWith('-async')) {
@@ -2281,6 +2298,7 @@ async function boot() {
   });
   const onlineLobby = mountOnlineLobbyScreen({ bus });
   const matchmakingOverlay = mountMatchmakingOverlayScreen({ bus });
+  mountPartnerSearchOverlay({ bus });
   const createRoomScreen   = mountCreateRoomScreen({ bus });
   const waitingRoomScreen  = mountWaitingRoomScreen({ bus });
   const joinCodeScreen     = mountJoinCodeScreen({ bus });

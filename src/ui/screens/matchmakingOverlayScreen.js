@@ -63,6 +63,101 @@ export function readMatchmakingFilters(root = globalThis.document) {
   };
 }
 
+export const PS_INTENT = Object.freeze({
+  SHOW:    'partnerSearch/show',
+  HIDE:    'partnerSearch/hide',
+  MATCHED: 'partnerSearch/matched',
+});
+
+const SLOT_PROFILES = [
+  { av: '👑', nm: 'דניאל' }, { av: '🔥', nm: 'שרה' },
+  { av: '💎', nm: 'יוסי' }, { av: '🦈', nm: 'מרים' },
+  { av: '🐉', nm: 'אלי' }, { av: '🐯', nm: 'רונית' },
+  { av: '👾', nm: 'דוד' }, { av: '🧙', nm: 'תמר' },
+  { av: '🤖', nm: 'משה' }, { av: '🚀', nm: 'לילך' },
+  { av: '🛡️', nm: 'ניר' }, { av: '🥷', nm: 'עינת' },
+  { av: '🧠', nm: 'אמיר' }, { av: '🧛', nm: 'נועה' },
+  { av: '⭐', nm: 'גיל' },
+];
+
+const ITEM_H = 68;
+
+function makeItem({ av, nm }) {
+  return `<div class="ps-slot-item"><div class="ps-slot-av">${av}</div><div class="ps-slot-nm">${nm}</div></div>`;
+}
+
+export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = {}) {
+  if (!bus) throw new Error('mountPartnerSearchOverlay: bus required');
+
+  const ov       = root.getElementById?.('ov-partner-search');
+  const myAvEl   = root.getElementById?.('ps-my-avatar');
+  const myNmEl   = root.getElementById?.('ps-my-name');
+  const reelEl   = root.getElementById?.('ps-slot-reel');
+  const slotCard = root.getElementById?.('ps-slot-card');
+  const slotLbl  = root.getElementById?.('ps-slot-lbl');
+  const cancelBtn = root.getElementById?.('ps-cancel-btn');
+
+  const cleanups = [];
+
+  if (cancelBtn) {
+    cleanups.push(on(cancelBtn, 'click', () => bus.emit(MM_INTENT.CANCEL, {})));
+  }
+
+  function startSpin() {
+    if (!reelEl) return;
+    const all = [...SLOT_PROFILES, ...SLOT_PROFILES];
+    reelEl.innerHTML = all.map(makeItem).join('');
+    const spinDist = SLOT_PROFILES.length * ITEM_H;
+    const spinDur  = (SLOT_PROFILES.length * 0.28).toFixed(2);
+    reelEl.style.setProperty('--ps-spin-dist', `-${spinDist}px`);
+    reelEl.style.setProperty('--ps-spin-dur',  `${spinDur}s`);
+    reelEl.classList.remove('ps-landing');
+    slotCard?.classList.remove('ps-found');
+    reelEl.classList.add('ps-spinning');
+    if (slotLbl) slotLbl.textContent = 'מחפש...';
+  }
+
+  function showOverlay({ name, avatar } = {}) {
+    if (myAvEl) myAvEl.textContent = avatar || '👑';
+    if (myNmEl) myNmEl.textContent = name   || 'שחקן';
+    startSpin();
+    ov?.classList.remove('hidden');
+  }
+
+  function hideOverlay() {
+    ov?.classList.add('hidden');
+    if (reelEl) {
+      reelEl.classList.remove('ps-spinning', 'ps-landing');
+      reelEl.style.animation = 'none';
+    }
+    slotCard?.classList.remove('ps-found');
+  }
+
+  function showMatched({ name, avatar } = {}) {
+    if (!reelEl) return;
+    reelEl.classList.remove('ps-spinning');
+    reelEl.style.animation = 'none';
+    reelEl.innerHTML = makeItem({ av: avatar || '👑', nm: name || 'שחקן' });
+    void reelEl.offsetHeight; // force reflow before adding animation
+    reelEl.classList.add('ps-landing');
+    slotCard?.classList.add('ps-found');
+    if (slotLbl) slotLbl.textContent = name || 'שחקן';
+  }
+
+  cleanups.push(
+    bus.on(PS_INTENT.SHOW,    showOverlay),
+    bus.on(PS_INTENT.HIDE,    hideOverlay),
+    bus.on(PS_INTENT.MATCHED, showMatched),
+  );
+
+  function unmount() {
+    for (const off of cleanups) try { off?.(); } catch { /* swallow */ }
+    cleanups.length = 0;
+  }
+
+  return { unmount };
+}
+
 export function mountMatchmakingOverlayScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountMatchmakingOverlayScreen: bus required');
 
