@@ -2069,5 +2069,5 @@ button[aria-disabled="true"] {
   cursor: not-allowed;
   filter: saturate(0.6);
 }
-#brack.is-disabled .bt2 { pointer-events: none; }
+#brack.is-disabled .bt2 { pointer-events: none; opacity: 0.45; filter: saturate(0.6); cursor: not-allowed; }
 

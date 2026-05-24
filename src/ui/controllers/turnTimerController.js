@@ -30,7 +30,6 @@ export function createTurnTimerController({
   const eventTypes = [
     EV.GAME_STARTED,
     EV.TURN_CHANGED,
-    EV.OPPONENT_MOVED,
     EV.GAME_COMPLETED,
   ];
   for (const type of eventTypes) cleanups.push(bus.on(type, sync));
@@ -118,6 +117,7 @@ export function createTurnTimerController({
   }
   cleanups.push(bus.on(EV.MOVE_CONFIRMED,       freezeForScoreAnimation));
   cleanups.push(bus.on(EV.MOVE_SCORE_COMMITTED, freezeForScoreAnimation));
+  cleanups.push(bus.on(EV.OPPONENT_MOVED,       freezeForScoreAnimation));
 
   sync();
   interval = setIntervalFn?.(sync, tickMs) ?? null;
