@@ -2,21 +2,32 @@
 <div id="so" class="screen hidden">
   <div class="online-wrap">
     <div class="online-title">
-      <span class="globe3d" aria-hidden="true">
-        <span class="globe3d-scene">
-          <span class="globe3d-spin">
-            <span class="globe3d-m"></span>
-            <span class="globe3d-m" style="--r:36deg"></span>
-            <span class="globe3d-m" style="--r:72deg"></span>
-            <span class="globe3d-m" style="--r:108deg"></span>
-            <span class="globe3d-m" style="--r:144deg"></span>
-          </span>
-          <span class="globe3d-lat" style="--t:20%"></span>
-          <span class="globe3d-lat" style="--t:44%"></span>
-          <span class="globe3d-lat" style="--t:68%"></span>
-          <span class="globe3d-shine"></span>
-        </span>
-      </span>
+      <svg class="globe3d" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <radialGradient id="olGlobeBg" cx="38%" cy="32%" r="65%">
+            <stop offset="0%" stop-color="#93c5fd"/>
+            <stop offset="38%" stop-color="#2563eb"/>
+            <stop offset="72%" stop-color="#1e3a8a"/>
+            <stop offset="100%" stop-color="#0c1f5c"/>
+          </radialGradient>
+          <radialGradient id="olGlobeShine" cx="30%" cy="28%" r="45%">
+            <stop offset="0%" stop-color="white" stop-opacity="0.38"/>
+            <stop offset="100%" stop-color="white" stop-opacity="0"/>
+          </radialGradient>
+          <clipPath id="olGlobeClip"><circle cx="20" cy="20" r="19.5"/></clipPath>
+        </defs>
+        <circle cx="20" cy="20" r="19.5" fill="url(#olGlobeBg)"/>
+        <g clip-path="url(#olGlobeClip)" class="globe3d-spin">
+          <ellipse cx="20" cy="20" rx="4"  ry="19.5" fill="none" stroke="rgba(255,255,255,.6)" stroke-width=".9"/>
+          <ellipse cx="20" cy="20" rx="11" ry="19.5" fill="none" stroke="rgba(255,255,255,.5)" stroke-width=".8"/>
+          <ellipse cx="20" cy="20" rx="17" ry="19.5" fill="none" stroke="rgba(255,255,255,.45)" stroke-width=".8"/>
+        </g>
+        <ellipse cx="20" cy="20" rx="19.5" ry="4.5" fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".8" clip-path="url(#olGlobeClip)"/>
+        <ellipse cx="20" cy="12"  rx="15"  ry="3.5"  fill="none" stroke="rgba(255,255,255,.4)"  stroke-width=".7" clip-path="url(#olGlobeClip)"/>
+        <ellipse cx="20" cy="28"  rx="15"  ry="3.5"  fill="none" stroke="rgba(255,255,255,.4)"  stroke-width=".7" clip-path="url(#olGlobeClip)"/>
+        <circle cx="20" cy="20" r="19.5" fill="url(#olGlobeShine)"/>
+        <circle cx="20" cy="20" r="19.5" fill="none" stroke="rgba(0,30,100,.4)" stroke-width="1.5"/>
+      </svg>
       משחק אונליין
     </div>
     <div class="online-subtitle">בחר כיצד תרצה לשחק</div>
