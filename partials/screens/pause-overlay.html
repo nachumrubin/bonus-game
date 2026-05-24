@@ -1,0 +1,13 @@
+﻿<!-- PAUSE OVERLAY -->
+<div id="ov-pause" class="ov hidden" style="background:rgba(0,0,0,.85);">
+  <div class="ovc" style="text-align:center;">
+    <div style="font-size:36px;margin-bottom:6px;">⏸️</div>
+    <div class="ovt">המשחק מושהה</div>
+    <div class="ovd" id="pause-player-name"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+      <button class="ovb p" style="padding:12px;font-size:14px;" onclick="resumeGame()">▶ המשך משחק</button>
+      <button class="ovb s" style="padding:10px;font-size:13px;" onclick="savePauseAndHome()">💾 שמור וצא לתפריט</button>
+      <button class="ovb s" style="padding:10px;font-size:13px;color:#ff8e8e;" onclick="discardPauseAndHome()">🗑 צא בלי לשמור</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,13 @@
+﻿<!-- ADMIN CONFIRM DECISION OVERLAY -->
+<div id="ov-dict-confirm" class="ov hidden" style="z-index:300;" onclick="if(event.target===this)cancelDictionaryDecision()">
+  <div class="ovc" style="max-width:340px;border-bottom:3px solid #8b6b31;background:#2d2010;">
+    <div class="ovic">⚠️</div>
+    <div class="ovt" style="color:#f5c842;margin-bottom:8px;">אישור פעולה</div>
+    <div id="dict-admin-confirm-text" style="font-size:13px;color:#ffe6b3;text-align:center;line-height:1.6;margin-bottom:16px;padding:10px;background:rgba(0,0,0,.25);border-radius:8px;">האם לאשר פעולה?</div>
+    <div style="font-size:11px;color:rgba(255,200,100,.6);text-align:center;margin-bottom:16px;">⚠ פעולה זו בלתי הפיכה</div>
+    <div style="display:flex;gap:8px;">
+      <button class="ovb p" style="flex:1;padding:12px;font-size:14px;" onclick="confirmDictionaryDecision()">אישור סופי ✓</button>
+      <button class="ovb s" style="flex:1;padding:12px;font-size:14px;" onclick="cancelDictionaryDecision()">ביטול</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,46 @@
+﻿<!-- ONLINE: MATCHMAKING -->
+<div id="ov-matchmaking" class="ov hidden">
+  <div class="ovc"><div class="ovh"></div>
+    <div class="ovic">🎲</div><div class="ovt">חיפוש יריב</div>
+    <div class="sf" style="margin-bottom:8px"><label style="font-size:10px;color:rgba(255,255,255,.5);display:block;margin-bottom:3px">השם שלך</label>
+      <input class="ri" id="mm-name" type="text" value="שחקן" maxlength="10">
+    </div>
+    <div class="mm-prefs">
+      <div class="mm-pref-row">
+        <span>סוג משחק</span>
+        <div style="display:flex;gap:4px;">
+          <button id="mm-mode-live" class="sopt-btn active" style="font-size:10px" onclick="mmSetMode('live')">לייב</button>
+          <button id="mm-mode-async" class="sopt-btn" style="font-size:10px" onclick="mmSetMode('async')">אסינכרוני</button>
+        </div>
+      </div>
+      <div class="mm-pref-row" id="mm-tl-row">
+        <span>זמן למהלך</span>
+        <div style="display:flex;gap:4px;">
+          <button id="mm-tl-yes" class="sopt-btn active" style="font-size:10px" onclick="mmSetTL(true)">כן</button>
+          <button id="mm-tl-no"  class="sopt-btn"        style="font-size:10px" onclick="mmSetTL(false)">לא</button>
+        </div>
+      </div>
+      <label class="mm-strict">
+        <input type="checkbox" id="mm-strict-chk" checked style="accent-color:var(--by)">
+        <span>חיפוש מדויק בלבד</span>
+      </label>
+      <div class="mm-pref-row" style="margin-top:6px">
+        <span>טווח דירוג</span>
+        <div style="display:flex;gap:4px;">
+          <button id="mm-rr-any" class="sopt-btn active" style="font-size:10px" onclick="mmSetRatingRange(null)">כולם</button>
+          <button id="mm-rr-100" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(100)">±100</button>
+          <button id="mm-rr-200" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(200)">±200</button>
+          <button id="mm-rr-500" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(500)">±500</button>
+        </div>
+      </div>
+    </div>
+    <div id="mm-status" style="display:none" class="waiting-spinner">
+      <div class="spinner-dots"><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div></div>
+      <div class="wsub" id="mm-status-text">מחפש יריב...</div>
+    </div>
+    <div class="ovbtns" style="margin-top:10px">
+      <button class="ovb p" id="mm-search-btn">חפש יריב</button>
+      <button class="ovb s" onclick="mmCancel()">ביטול</button>
+    </div>
+  </div>
+</div>

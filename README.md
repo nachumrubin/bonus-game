@@ -41,9 +41,9 @@ node scripts/stamp-build.js 20260329150000
 
 The script expects a 14-digit format: `YYYYMMDDHHmmss` (UTC).
 
-## Firebase Realtime Database index for champions
+## Firebase Realtime Database index for ratings
 
-The global champions leaderboard queries `globalChampions` ordered by `score`.
+The ratings leaderboard queries `globalRatings` ordered by `rating`.
 
 To avoid Firebase's `Using an unspecified index` warning and improve performance, publish `firebase.database.rules.json` in your Firebase project:
 
@@ -52,8 +52,8 @@ firebase deploy --only database
 ```
 
 This repo's rules include:
-- `globalChampions` path
-- `.indexOn: ["score"]` for efficient `orderByChild("score")` queries
+- `globalRatings` path
+- `.indexOn: ["rating"]` for efficient rating leaderboard queries
 
 ## Dictionary admin authentication
 
@@ -72,9 +72,9 @@ In-app settings now expose:
 Admin moderation requires an explicit confirmation step before applying irreversible decisions.
 The moderation list filters out suggestions whose words already exist in `dictionaryRejected`.
 
-## E2E multiplayer regression tests
+## E2E spine smoke tests
 
-A Playwright-based browser suite is available under `tests/online-turn-sync.spec.js`.
+A Playwright-based browser suite is available under `tests/e2e/`.
 
 Run:
 
@@ -84,7 +84,7 @@ npm run test:e2e
 ```
 
 What it currently validates:
-- Online state publish happens after `nextTurn()` resolves a normal turn handoff.
-- Online state publish also happens on the extra-turn early-return path.
+- The spine module boots in the browser.
+- An offline 2-player spine session can be started from `window.__spine`.
 
-> Note: this suite is designed to run fully in this environment against the local `index.html` runtime (served with `python3 -m http.server`) and does not require live Firebase connectivity.
+> Note: this suite runs against the local `index.html` runtime (served with `python3 -m http.server`) and does not require live Firebase connectivity.

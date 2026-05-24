@@ -1,0 +1,34 @@
+﻿<!-- ONLINE: CREATE ROOM -->
+<div id="ov-create-room" class="ov hidden">
+  <div class="ovc"><div class="ovh"></div>
+    <div class="ovic">🏠</div><div class="ovt">פתיחת משחק חדש</div>
+    <div class="ovd">בחר הגדרות ושלח את הקוד לחבר</div>
+    <div class="sf" style="margin-bottom:8px"><label style="font-size:10px;color:rgba(255,255,255,.5);display:block;margin-bottom:3px">השם שלך</label>
+      <input class="ri" id="cr-name" type="text" value="שחקן 1" maxlength="10">
+    </div>
+    <div style="margin-bottom:8px">
+      <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:4px">סוג משחק</div>
+      <div style="display:flex;gap:6px;">
+        <button id="cr-mode-live" class="sopt-btn active" style="flex:1;font-size:11px" onclick="crSetMode('live')">⚡ לייב</button>
+        <button id="cr-mode-async" class="sopt-btn" style="flex:1;font-size:11px" onclick="crSetMode('async')">📬 אסינכרוני</button>
+      </div>
+    </div>
+    <div id="cr-timelimit-row" style="margin-bottom:8px">
+      <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:4px">זמן למהלך</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button id="cr-tl-yes" class="sopt-btn active" style="flex:1;font-size:10px" onclick="crToggleTL(true)">כן</button>
+        <button id="cr-tl-no"  class="sopt-btn"        style="flex:1;font-size:10px" onclick="crToggleTL(false)">לא</button>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <button class="sopt-adj" onclick="crAdjTime(-5)">-</button>
+          <span id="cr-time-val" style="font-size:13px;font-weight:900;color:var(--by);min-width:28px;text-align:center;">20</span>
+          <button class="sopt-adj" onclick="crAdjTime(5)">+</button>
+          <span style="font-size:10px;color:rgba(255,255,255,.4)">שנ'</span>
+        </div>
+      </div>
+    </div>
+    <div class="ovbtns">
+      <button class="ovb p" onclick="crConfirm()">פתח משחק</button>
+      <button class="ovb s" onclick="ovClose('ov-create-room')">ביטול</button>
+    </div>
+  </div>
+</div>

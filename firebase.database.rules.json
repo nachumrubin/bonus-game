@@ -1,25 +1,85 @@
 {
   "rules": {
+    "pendingRooms": {
+      ".read": true,
+      "$code": {
+        ".write": "auth != null && ((!data.exists() && newData.exists() && auth.uid === newData.child('hostUid').val()) || (data.exists() && !newData.exists()))",
+        ".validate": "newData.hasChildren(['hostUid', 'mode', 'createdAt', 'expiresAt'])"
+      }
+    },
     "rooms": {
-  	".read": true,
-  	".write": true
-		},
+      ".read": true,
+      "$roomId": {
+        ".write": "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && (((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/0/uid').val()) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/1/uid').val())) || (data.child('status').val() === 'playing' && data.child('settings/timelimit').val() === true && data.child('turnDeadlineMs').val() <= now && newData.child('turnDeadlineMs').val() > now && ((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/1/uid').val() && newData.child('currentTurnSlot').val() === 1) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/0/uid').val() && newData.child('currentTurnSlot').val() === 0))))))",
+        "ready": {
+          "$slot": {
+            ".write": "auth != null && auth.uid === root.child('rooms').child($roomId).child('players').child($slot).child('uid').val()"
+          }
+        },
+        "settings": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
+        "livePreview": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
+        "liveBonus": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
+        "status": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
+        "turnDeadlineMs": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
+        "updatedAt": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
+        "lastReminderAt": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
+        "abandonedBy": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
+        "players": {
+          "$slot": {
+            "oneSignalSubId": {
+              ".write": "auth != null && auth.uid === root.child('rooms').child($roomId).child('players').child($slot).child('uid').val()"
+            }
+          }
+        }
+      }
+    },
     "dictionarySuggestions": {
       ".read": true,
-      ".write": true
+      "$suggestionId": {
+        ".write": "auth != null"
+      }
     },
     "dictionaryApproved": {
       ".read": true,
-      ".write": true
+      "$word": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
     },
     "dictionaryRejected": {
       ".read": true,
-      ".write": true
+      "$id": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
     },
-    "globalChampions": {
+    "admins": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    },
+    "globalRatings": {
       ".read": true,
-      ".write": true,
-      ".indexOn": ["score"]
+      ".indexOn": ["rating"],
+      "$uid": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['uid', 'name', 'rating', 'updatedAt']) && newData.child('uid').val() === $uid && newData.child('name').isString() && newData.child('rating').isNumber() && newData.child('updatedAt').isNumber()"
+      }
     },
     "usernames": {
       ".read": true,
@@ -30,7 +90,15 @@
     "users": {
       "$uid": {
         ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".write": "$uid === auth.uid",
+        "activeRoom": {
+          ".write": "$uid === auth.uid || (newData.exists() && (auth.uid === root.child('rooms').child(newData.val()).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child(newData.val()).child('players').child('1').child('uid').val()) && ($uid === root.child('rooms').child(newData.val()).child('players').child('0').child('uid').val() || $uid === root.child('rooms').child(newData.val()).child('players').child('1').child('uid').val()))"
+        },
+        "asyncRooms": {
+          "$roomId": {
+            ".write": "auth != null && ((!newData.exists() && (auth.uid === $uid || auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())) || (newData.exists() && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val()) && ($uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || $uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())))"
+          }
+        }
       }
     },
     "userIds": {
@@ -58,17 +126,31 @@
     "invites": {
       "$recipientUid": {
         ".read": "$recipientUid === auth.uid",
-        "$senderUid": {
-          ".write": "auth != null"
+        "$inviteId": {
+          ".write": "auth != null && (auth.uid === $recipientUid || auth.uid === newData.child('fromUid').val() || auth.uid === data.child('fromUid').val())"
         }
       }
     },
-    "inviteResponses": {
+    "inviteAcks": {
       "$inviterUid": {
+        ".read": "auth != null && auth.uid === $inviterUid",
         "$inviteeUid": {
-          ".read": "auth != null && auth.uid === $inviterUid",
           ".write": "auth != null && (auth.uid === $inviterUid || auth.uid === $inviteeUid)"
         }
+      }
+    },
+    "matchmakingQueue": {
+      "$mode": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && (auth.uid === $uid || !newData.exists())"
+        }
+      }
+    },
+    "presence": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
       }
     }
   }

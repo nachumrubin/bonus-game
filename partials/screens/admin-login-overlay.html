@@ -1,0 +1,13 @@
+﻿<!-- ADMIN LOGIN OVERLAY -->
+<div id="ov-dict-login" class="ov hidden" style="z-index:200;" onclick="if(event.target===this)closeDictionaryAdvancedSettings()">
+  <div class="ovc" style="max-width:340px;">
+    <div class="ovt" style="margin-bottom:6px">🔐 כניסת מנהל</div>
+    <div class="ovd" style="margin-bottom:14px;">הגדרות מתקדמות — גישה לניהול המילון</div>
+    <input id="dict-admin-password" type="password" placeholder="סיסמה" autocomplete="current-password" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;margin-bottom:12px;box-sizing:border-box;">
+    <div id="dict-login-status" style="min-height:18px;font-size:12px;color:#ff9c9c;text-align:center;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button id="dict-admin-login-btn" class="ovb p" style="flex:1;padding:11px;" onclick="dictionaryAdminSignIn()">התחבר</button>
+      <button class="ovb s" style="flex:1;padding:11px;" onclick="closeDictionaryAdvancedSettings()">ביטול</button>
+    </div>
+  </div>
+</div>

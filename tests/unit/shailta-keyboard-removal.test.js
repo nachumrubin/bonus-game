@@ -5,7 +5,7 @@ const path = require('node:path');
 
 test('שאילתה overlay relies on text input without virtual keyboard markup', () => {
   const root = path.join(__dirname, '..', '..');
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'partials', 'screens', 'shailta-overlay.html'), 'utf8');
 
   assert.match(html, /<div class="ovt">שאילתה — מילון<\/div>/);
   assert.match(html, /id="shin" type="text"/);
@@ -16,7 +16,7 @@ test('שאילתה overlay relies on text input without virtual keyboard markup'
 
 test('שאילתה toolbar button no longer uses keyboard icon', () => {
   const root = path.join(__dirname, '..', '..');
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(root, 'partials', 'screens', 'game.html'), 'utf8');
 
   assert.match(html, /openShailta\(\)/);
   assert.match(html, /<span class="tb-ic">📖<\/span><span class="tb-tx">שאילתה<\/span>/);
@@ -26,8 +26,8 @@ test('שאילתה toolbar button no longer uses keyboard icon', () => {
 
 test('החלפת אות overlay uses larger tile dimensions', () => {
   const root = path.join(__dirname, '..', '..');
-  const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
-  assert.match(html, /#exch-rack \.bt2\{width:54px;height:64px;\}/);
-  assert.match(html, /#exch-rack \.bt2-l\{font-size:28px;\}/);
+  assert.match(css, /#exch-rack \.bt2\{width:54px;height:64px;\}/);
+  assert.match(css, /#exch-rack \.bt2-l\{font-size:28px;\}/);
 });

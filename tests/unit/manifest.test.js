@@ -3,24 +3,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const INDEX_FILE = 'index.html';
+const MANIFEST_FILE = 'manifest.json';
 
-test('manifest start_url uses a fully qualified URL', () => {
+test('index links the static web manifest', () => {
   const html = fs.readFileSync(INDEX_FILE, 'utf8');
 
-  assert.match(
-    html,
-    /var manifestStartUrl = \(window\.location\.origin && window\.location\.origin !== 'null'\)[\s\S]*window\.location\.href\.split\('#'\)\[0\];/,
-    'manifestStartUrl should derive an absolute URL from window.location'
-  );
+  assert.match(html, /<link rel="manifest" href="manifest\.json">/);
+  assert.doesNotMatch(html, /manifestStartUrl/);
+});
 
-  assert.match(
-    html,
-    /start_url:\s*manifestStartUrl,/
-  );
+test('manifest start_url remains app-relative', () => {
+  const manifest = JSON.parse(fs.readFileSync(MANIFEST_FILE, 'utf8'));
 
-  assert.doesNotMatch(
-    html,
-    /start_url:\s*['"]\.['"],/,
-    'start_url should not use a dot-relative path in blob manifest mode'
-  );
+  assert.equal(manifest.start_url, './');
 });

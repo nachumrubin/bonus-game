@@ -1,0 +1,51 @@
+﻿<!-- HOME -->
+<div id="sh" class="screen hidden">
+  <div class="hc">
+    <div class="hlogo">
+      <img src="logo_no_mascot.png" alt="בוסט">
+    </div>
+    <nav class="hbtns">
+      <button class="bd" id="btn-profile-home" onclick="openProfileOrAuth()">
+        <span class="bd-icon" id="home-avatar-ic">👤</span>
+        <span class="bd-text"><span class="bd-title" id="home-user-label">כניסה / הרשמה</span><span class="bd-sub">פרופיל אישי</span></span>
+      </button>
+      <button class="bd bd-gold" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none">
+        <span class="bd-icon">▶</span>
+        <span class="bd-text"><span class="bd-title">המשך משחק שמור</span></span>
+      </button>
+      <button class="bd g" onclick="startSetup('vs')">
+        <span class="bd-icon">👥</span>
+        <span class="bd-text"><span class="bd-title">שני שחקנים</span><span class="bd-sub">מתחרים מקומיים</span></span>
+      </button>
+      <button class="bd b" onclick="startSetup('bot')">
+        <span class="bd-icon">🤖</span>
+        <span class="bd-text"><span class="bd-title">נגד המחשב</span><span class="bd-sub">שחק נגד AI</span></span>
+      </button>
+      <button class="bd bd-cyan" id="btn-online-lobby" onclick="showOnlineLobby()">
+        <span class="bd-icon">🌐<span id="online-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;font-weight:900;line-height:15px;text-align:center;box-shadow:0 0 5px rgba(231,76,60,.7);animation:onpulse 1.5s ease-in-out infinite;"></span></span>
+        <span class="bd-text"><span class="bd-title">משחק אונליין</span><span class="bd-sub">שחק נגד יריב מרחוק</span></span>
+      </button>
+      <button class="bd bd-dark" onclick="showTutorialIntro()">
+        <span class="bd-icon">🎓</span>
+        <span class="bd-text"><span class="bd-title">הדרכה</span><span class="bd-sub">למד את המשחק</span></span>
+      </button>
+      <button class="bd bd-dark" onclick="openChampions()">
+        <span class="bd-icon">🏆</span>
+        <span class="bd-text"><span class="bd-title">טבלת דירוגים</span><span class="bd-sub">דירוג השחקנים</span></span>
+      </button>
+      <button class="bd bd-dark" onclick="openSettings()">
+        <span class="bd-icon">⚙️</span>
+        <span class="bd-text"><span class="bd-title">הגדרות</span><span class="bd-sub">התאמת המשחק</span></span>
+      </button>
+      <button class="bd bd-gold" id="btn-share-game" onclick="shareGame()" style="display:none">
+        <span class="bd-icon">📤</span>
+        <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
+      </button>
+    </nav>
+    <div class="credit">
+      <a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260523222705
+      <br>
+      <span dir="ltr">Music: “Inspire Action” by <a href="https://freemusicarchive.org/music/ura-megis/" target="_blank" rel="noopener">Yuri Megis</a> · <a href="https://freemusicarchive.org/music/ura-megis/single/inspire-action-1/" target="_blank" rel="noopener">Free Music Archive</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></span>
+    </div>
+  </div>
+</div>
