@@ -11,15 +11,22 @@ export function createDisconnectController({
   watchPresence = defaultWatchPresence,
   graceMs = PRESENCE_GRACE_MS,
   now = () => Date.now(),
+  pollMs = 5_000,
 } = {}) {
   if (!bus) throw new Error('createDisconnectController: bus required');
 
   const cleanups = [];
   let unwatch = null;
+  let pollInterval = null;
   let watchedUid = null;
+  let lastPresence = null;
+  let disconnectOpen = false;
 
   cleanups.push(bus.on(EV.GAME_STARTED, resubscribe));
-  cleanups.push(bus.on(EV.GAME_COMPLETED, () => bus.emit(DISCONNECT_CLOSE, {})));
+  cleanups.push(bus.on(EV.GAME_COMPLETED, () => {
+    stopWatch();
+    bus.emit(DISCONNECT_CLOSE, {});
+  }));
   cleanups.push(bus.on(DISCONNECT_INTENT.AUTO_WIN, () => {
     const session = sessionRef();
     const mySlot = session?.mySlot;
@@ -46,16 +53,36 @@ export function createDisconnectController({
 
     stopWatch();
     watchedUid = opponentUid;
-    unwatch = watchPresence(db, opponentUid, (presence) => {
+    lastPresence = null;
+    disconnectOpen = false;
+
+    function handlePresence(presence) {
       if (isPresenceOnline(presence, now(), graceMs)) {
-        bus.emit(DISCONNECT_CLOSE, {});
+        if (disconnectOpen) {
+          disconnectOpen = false;
+          bus.emit(DISCONNECT_CLOSE, {});
+        }
         return;
       }
-      bus.emit(DISCONNECT_OPEN, {
-        seconds: Math.ceil(graceMs / 1000),
-        opponentName: state?.players?.[opponentSlot]?.displayName,
-      });
+      if (!disconnectOpen) {
+        disconnectOpen = true;
+        bus.emit(DISCONNECT_OPEN, {
+          seconds: Math.ceil(graceMs / 1000),
+          opponentName: state?.players?.[opponentSlot]?.displayName,
+        });
+      }
+    }
+
+    unwatch = watchPresence(db, opponentUid, (presence) => {
+      lastPresence = presence;
+      handlePresence(presence);
     });
+
+    // Poll periodically so a stale lastSeen is caught even when Firebase's
+    // onDisconnect hook hasn't fired yet (can take up to a minute in RTDB).
+    pollInterval = setInterval(() => {
+      if (lastPresence != null) handlePresence(lastPresence);
+    }, pollMs);
   }
 
   function stopWatch() {
@@ -63,7 +90,13 @@ export function createDisconnectController({
       try { unwatch(); } catch {}
       unwatch = null;
     }
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
     watchedUid = null;
+    lastPresence = null;
+    disconnectOpen = false;
   }
 
   function dispose() {

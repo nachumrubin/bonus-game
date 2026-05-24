@@ -11,7 +11,7 @@
 import { PATH } from './schema.js';
 
 export const HEARTBEAT_MS = 10_000;
-export const PRESENCE_GRACE_MS = 35_000;
+export const PRESENCE_GRACE_MS = 30_000;
 
 function presenceRef(db, uid) {
   return db.ref(`${PATH.presence}/${uid}`);
