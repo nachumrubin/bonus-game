@@ -30,7 +30,7 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 .hbtns{width:100%;flex:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(5px,1.05svh,9px);min-height:0;}
 /* ── Glossy button — used across entire app ── */
 .bd{--c1:#1268e8;--c2:#251288;--glow:rgba(36,134,255,.35);position:relative;border:1px solid rgba(255,255,255,.2);width:100%;min-height:clamp(44px,6svh,54px);padding:8px 14px;border-radius:clamp(8px,2.4vw,12px);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;isolation:isolate;font-family:'Heebo',system-ui,sans-serif;font-size:clamp(13px,3.8vw,15px);font-weight:700;background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 -3px 0 rgba(0,0,0,.22),0 8px 16px rgba(0,0,0,.32),0 0 12px var(--glow);transition:transform .18s cubic-bezier(.2,.9,.2,1),filter .18s ease;}
-.bd::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(116deg,rgba(255,255,255,.26),transparent 34%),radial-gradient(circle at 24% 20%,rgba(255,255,255,.22),transparent 25%),linear-gradient(180deg,rgba(255,255,255,.13),transparent 45%);opacity:.75;}
+.bd::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:linear-gradient(116deg,rgba(255,255,255,.26),transparent 34%),radial-gradient(circle at 24% 20%,rgba(255,255,255,.22),transparent 25%),linear-gradient(180deg,rgba(255,255,255,.13),transparent 45%);opacity:.75;}
 .bd:hover{transform:translateY(-2px);filter:brightness(1.07);}
 .bd:active{transform:scale(.975);filter:brightness(1.12);}
 /* Home menu: full icon + arrow treatment */
