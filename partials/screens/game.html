@@ -1,0 +1,101 @@
+﻿<!-- GAME -->
+<div id="sg" class="screen hidden">
+  <div class="gr">
+    <!-- top bar -->
+    <div class="tbar">
+      <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
+      <button class="tb" id="btn-async-home" onclick="goHome()" style="display:none"><span class="tb-ic">🏠</span><span class="tb-tx">בית</span></button>
+      <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
+      <button class="tb" id="btn-exchange">החלפת<br>אות</button>
+      <button class="tb" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
+      
+      <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
+      <button class="tb music-btn" id="music-toggle" onclick="toggleMusic()"><span class="tb-ic">🎵</span><span class="tb-tx">מוזיקה</span></button>
+      
+      <!-- Bag display in top bar -->
+      <div id="bag-char" style="line-height:1;text-align:center;cursor:default;flex:1.4;min-width:0;" title="שקית האותיות">
+        <div id="bag-display" style="display:flex;flex-direction:row;align-items:center;justify-content:space-around;background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.2);border-radius:3px;width:100%;height:100%;box-sizing:border-box;overflow:hidden;gap:2px;padding:0 2px;">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;">
+            <span style="font-family:'Heebo',sans-serif;font-size:8px;font-weight:900;color:rgba(255,255,255,.5);letter-spacing:.5px;line-height:1;">קופה</span>
+            <span id="bag-count-text" style="font-family:'Heebo',sans-serif;font-size:19px;font-weight:900;color:#e8c840;line-height:1.1;">98</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- status -->
+    <div class="sbar" id="sbar">בחר אות מהמגש ולחץ על משבצת</div>
+    <div id="turn-banner" style="display:none;text-align:center;font-size:13px;font-weight:900;padding:3px 8px;flex-shrink:0;letter-spacing:.5px;"></div>
+    <div id="turn-timer" class="turn-timer">
+      <span class="tt-label">טיימר תור</span>
+      <span class="tt-value" id="turn-timer-value">--</span>
+    </div>
+
+    <!-- MOBILE INFO STRIP — replaces side panels on small screens -->
+    <div class="info-strip" id="info-strip">
+      <!-- P1 score card -->
+      <div class="is-cell is-pcard" id="is-sb1">
+        <div class="is-pcname" id="is-sn1">שחקן 1</div>
+        <div class="is-pcav" id="is-av1">👑</div>
+        <div class="is-val" style="color:var(--p1)" id="is-sv1">0</div>
+        <div class="is-pclbl">נקודות</div>
+        <div class="is-pclocks" id="is-locks-1"></div>
+      </div>
+      <!-- P2 score card -->
+      <div class="is-cell is-pcard" id="is-sb2">
+        <div class="is-pcname" id="is-sn2">שחקן 2</div>
+        <div class="is-pcav" id="is-av2">👤</div>
+        <div class="is-val" style="color:var(--p2)" id="is-sv2">0</div>
+        <div class="is-pclbl">נקודות</div>
+        <div class="is-pclocks" id="is-locks-2"></div>
+      </div>
+    </div>
+    <!-- main game area -->
+    <div class="game-area">
+      <!-- left panel: scores + P1 waiting tiles -->
+      <div class="left-panel">
+        <div class="pb"><div class="lcd" id="lcd">00</div><div class="pl">מהלכים</div></div>
+        <div class="scbox act" id="sb1"><div class="scname" id="sn1">שחקן 1</div><div class="scval" style="color:var(--p1)" id="sv1">0</div></div>
+        <div class="scbox" id="sb2"><div class="scname" id="sn2">שחקן 2</div><div class="scval" style="color:var(--p2)" id="sv2">0</div></div>
+        <!-- P1 waiting tiles appear here when it's P2's turn -->
+        <div id="ss-label-p1" style="font-size:8px;font-weight:900;color:var(--p1);text-align:center;padding:2px 0 1px;opacity:.85;display:none;"></div>
+        <div class="ss-tiles" id="ss-tiles-p1"></div>
+      </div>
+      <!-- board center: single 12×12 unified grid -->
+      <div class="board-center">
+        <div class="board-center-inner" id="board-center-inner">
+          <div id="board-bg"></div>
+          <div id="game-grid"></div>
+          <div id="board-border"></div>
+        </div>
+      </div>
+      <!-- right panel: controls + P2 waiting tiles -->
+      <div class="right-panel">
+        <!-- direction buttons hidden -->
+        <div class="pb" style="display:none"><div class="pl">כיוון</div><div class="dpair"><button class="dm a" id="bh" onclick="setDir('H')">→ אופקי</button><button class="dm" id="bv" onclick="setDir('V')">↕ אנכי</button></div></div>
+        <div class="pb">
+          <div class="pl">נעילות</div>
+          <div id="lock-inv-display" style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;font-size:10px;color:var(--by);font-weight:700;min-height:16px;"></div>
+        </div>
+        <div class="pb" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">
+          <div class="pl">תור</div>
+          <div id="turn-name" style="font-size:9px;color:rgba(255,255,255,.8);text-align:center;font-weight:700;word-break:break-all;"></div>
+        </div>
+        <!-- P2 waiting tiles appear here when it's P1's turn -->
+        <div id="ss-label-p2" style="font-size:8px;font-weight:900;color:var(--p2);text-align:center;padding:2px 0 1px;opacity:.85;display:none;"></div>
+        <div class="ss-tiles" id="ss-tiles-p2"></div>
+      </div>
+    </div>
+
+    <!-- bottom rack: active player's tiles -->
+    <div class="bot">
+      <div class="brack" id="brack"></div>
+      <button class="bplay" id="btn-recall" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2);">בטל<br>↩</button>
+      <button class="bplay" id="btn-play">שבץ<br>✓</button>
+    </div>
+    <!-- hidden brack2 kept for compatibility -->
+    <div id="brack2-row" style="display:none">
+      <span id="brack2-label"></span>
+      <div id="brack2" style="display:none"></div>
+    </div>
+  </div>
+</div>

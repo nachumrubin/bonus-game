@@ -1,0 +1,16 @@
+﻿<!-- ONLINE: JOIN BY CODE -->
+<div id="ov-join-code" class="ov hidden">
+  <div class="ovc"><div class="ovh"></div>
+    <div class="ovic">🔑</div><div class="ovt">הצטרף למשחק</div>
+    <div class="ovd">הזן את הקוד שקיבלת</div>
+    <div class="sf" style="margin-bottom:8px"><label style="font-size:10px;color:rgba(255,255,255,.5);display:block;margin-bottom:3px">השם שלך</label>
+      <input class="ri" id="jc-name" type="text" value="שחקן 2" maxlength="10">
+    </div>
+    <input class="code-input" id="jc-code" type="tel" placeholder="000000" maxlength="6" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
+    <div id="jc-error" style="color:#ff8e8e;font-size:11px;text-align:center;min-height:18px;margin-top:4px;"></div>
+    <div class="ovbtns" style="margin-top:8px">
+      <button class="ovb p" onclick="jcConfirm()">הצטרף</button>
+      <button class="ovb s" onclick="ovClose('ov-join-code')">ביטול</button>
+    </div>
+  </div>
+</div>

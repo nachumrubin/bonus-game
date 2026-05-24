@@ -11,39 +11,112 @@ try {
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
   var data = e.notification.data || {};
-  var url;
-  if (data.type === 'invite' && data.roomCode) url = '/?join=' + data.roomCode;
-  else if (data.type === 'turn' && data.roomCode) url = '/?resume=' + data.roomCode;
-  else if (data.type === 'friendRequest' || data.type === 'friendAccepted') url = '/?profile=friends';
-  else url = '/';
+  // The new spine's pushPayloadBuilder writes `data.type = kind` for both
+  // legacy and new kinds, plus `data.roomId` (new) alongside `data.roomCode`
+  // (legacy). Read both so we work either way.
+  var roomId = data.roomId || data.roomCode || null;
+  var kind = data.type;
+
+  // Map kind → URL + postMessage type. Unknown kinds fall through to '/'.
+  var route = mapKindToRoute(kind, roomId);
+
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
       for (var i = 0; i < list.length; i++) {
         if ('focus' in list[i]) {
-          if (data.type === 'invite' && data.roomCode) {
-            list[i].postMessage({ type: 'OPEN_JOIN', roomCode: data.roomCode });
-          } else if (data.type === 'turn' && data.roomCode) {
-            list[i].postMessage({ type: 'OPEN_TURN', roomCode: data.roomCode });
-          } else if (data.type === 'friendRequest' || data.type === 'friendAccepted') {
-            list[i].postMessage({ type: 'OPEN_PROFILE' });
-          }
+          if (route.message) list[i].postMessage(route.message);
           return list[i].focus();
         }
       }
-      return clients.openWindow(url);
+      return clients.openWindow(route.url);
     })
   );
 });
 
-var CACHE_NAME = 'boost-20260506132206';
+function mapKindToRoute(kind, roomId) {
+  switch (kind) {
+    case 'invite':
+      return {
+        url: roomId ? '/?join=' + roomId : '/',
+        message: roomId ? { type: 'OPEN_JOIN', roomCode: roomId, roomId: roomId } : null,
+      };
+    case 'invite_accepted':
+      return {
+        url: roomId ? '/?resume=' + roomId : '/',
+        message: roomId ? { type: 'OPEN_TURN', roomCode: roomId, roomId: roomId } : null,
+      };
+    case 'invite_rejected':
+      return { url: '/', message: null };
+    case 'turn':
+    case 'reminder':
+      return {
+        url: roomId ? '/?resume=' + roomId : '/',
+        message: roomId ? { type: 'OPEN_TURN', roomCode: roomId, roomId: roomId } : null,
+      };
+    case 'completed':
+    case 'expired':
+      return {
+        url: roomId ? '/?summary=' + roomId : '/',
+        message: roomId ? { type: 'OPEN_GAME_SUMMARY', roomCode: roomId, roomId: roomId } : null,
+      };
+    case 'friendRequest':
+    case 'friendAccepted':
+      return { url: '/?profile=friends', message: { type: 'OPEN_PROFILE' } };
+    default:
+      return { url: '/', message: null };
+  }
+}
+
+var CACHE_NAME = 'boost-20260523222705';
 var ASSETS = [
   './',
   './index.html',
+  './styles.css',
   './manifest.json',
   './icon.svg',
   './icon-512.png',
   './data/dictionary.base.txt',
   './jocker.PNG',
+  './assets/music/inspire-action.mp3',
+  './src/ui/screenPartials.js',
+  './src/ui/screenPartialManifest.js',
+  './partials/screens/admin-advanced-settings-overlay.html',
+  './partials/screens/admin-confirm-decision-overlay.html',
+  './partials/screens/admin-login-overlay.html',
+  './partials/screens/avatar-gallery-screen.html',
+  './partials/screens/avatar-unlock-overlay.html',
+  './partials/screens/back-confirm-overlay.html',
+  './partials/screens/bonus-challenge.html',
+  './partials/screens/bonus-intro-shown-before-every-interactive-boost-mini-game.html',
+  './partials/screens/boost-veto-notice.html',
+  './partials/screens/champions-standalone-from-home-screen.html',
+  './partials/screens/coin-toss.html',
+  './partials/screens/end.html',
+  './partials/screens/exchange.html',
+  './partials/screens/friends-screen.html',
+  './partials/screens/game.html',
+  './partials/screens/guest-upgrade-overlay.html',
+  './partials/screens/home.html',
+  './partials/screens/incoming-game-invite.html',
+  './partials/screens/invite-rejected.html',
+  './partials/screens/joker-picker.html',
+  './partials/screens/log-in-screen.html',
+  './partials/screens/online-create-room.html',
+  './partials/screens/online-disconnect.html',
+  './partials/screens/online-join-code.html',
+  './partials/screens/online-lobby.html',
+  './partials/screens/online-matchmaking.html',
+  './partials/screens/online-waiting-room.html',
+  './partials/screens/pause-overlay.html',
+  './partials/screens/profile-screen.html',
+  './partials/screens/settings.html',
+  './partials/screens/setup.html',
+  './partials/screens/shailta-overlay.html',
+  './partials/screens/sign-up-screen.html',
+  './partials/screens/stats-screen.html',
+  './partials/screens/tutorial-intro-modal.html',
+  './partials/screens/tutorial-overlay-elements.html',
+  './partials/screens/tutorial-prompt-shown-to-new-users-on-first-game-mode-entry.html',
 ];  // sw.js intentionally excluded — browser fetches it fresh
 
 self.addEventListener('install', function(e){
@@ -70,6 +143,10 @@ self.addEventListener('activate', function(e){
 self.addEventListener('fetch', function(e){
   if(e.request.method !== 'GET') return;
   var url = e.request.url || '';
+  var isSourceAsset = url.indexOf('/src/') !== -1 ||
+    url.indexOf('/partials/') !== -1 ||
+    url.indexOf('.js') !== -1 ||
+    url.indexOf('.css') !== -1;
   var isHTML = e.request.mode === 'navigate' ||
     url.endsWith('/') ||
     url.indexOf('index.html') !== -1 ||
@@ -87,6 +164,24 @@ self.addEventListener('fetch', function(e){
       }).catch(function(){
         return caches.match('./index.html').then(function(cached){
           return cached || caches.match('./');
+        });
+      })
+    );
+    return;
+  }
+  if(isSourceAsset){
+    e.respondWith(
+      fetch(e.request).then(function(resp){
+        if(resp && resp.status === 200 && resp.type === 'basic'){
+          var clone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache){
+            cache.put(e.request, clone);
+          });
+        }
+        return resp;
+      }).catch(function(){
+        return caches.match(e.request).then(function(cached){
+          return cached || caches.match('./index.html');
         });
       })
     );

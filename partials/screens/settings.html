@@ -1,0 +1,92 @@
+﻿<!-- SETTINGS -->
+<div id="ov-settings" class="ov hidden" onclick="if(event.target===this)ovClose('ov-settings')">
+  <div class="ovc">
+    <div class="ovt" style="margin-bottom:10px">⚙️ הגדרות</div>
+    <div class="settings-panels">
+      <!-- Panel 1: computer time limit -->
+      <div class="set-panel">
+        <div class="set-panel-title">זמן מוגבל למהלך? <span class="sett-info">i<span class="sett-tip">אם מופעל, כל שחקן חייב לסיים את מהלכו בתוך מספר השניות שנקבע</span></span></div>
+        <div class="set-yesno">
+          <div class="set-yn active-yes" id="sett-timelimit-yes" onclick="settToggle('timelimit',true)">✓ כן</div>
+          <div class="set-yn" id="sett-timelimit-no"  onclick="settToggle('timelimit',false)">✗ לא</div>
+        </div>
+        <div class="set-counter">
+          <div class="set-btn" onclick="settAdj('botTime',-5)">−</div>
+          <div class="set-num" id="sett-bottime">20</div>
+          <div class="set-btn" onclick="settAdj('botTime',5)">+</div>
+        </div>
+      </div>
+      <!-- Panel 3: move count limit -->
+      <div class="set-panel">
+        <div class="set-panel-title">הגבלת מספר המהלכים? <span class="sett-info">i<span class="sett-tip">אם מופעל, המשחק יסתיים אוטומטית לאחר מספר המהלכים שנקבע</span></span></div>
+        <div class="set-yesno">
+          <div class="set-yn" id="sett-movelimit-yes" onclick="settToggle('movelimit',true)">✓ כן</div>
+          <div class="set-yn active-no" id="sett-movelimit-no"  onclick="settToggle('movelimit',false)">✗ לא</div>
+        </div>
+        <div class="set-counter">
+          <div class="set-btn" onclick="settAdj('maxMoves',-5)">−</div>
+          <div class="set-num" id="sett-maxmoves">30</div>
+          <div class="set-btn" onclick="settAdj('maxMoves',5)">+</div>
+        </div>
+      </div>
+      <!-- Panel 4: music -->
+      <div class="set-panel">
+        <div class="set-panel-title">מוזיקה <span class="sett-info">i<span class="sett-tip">הפעלת מוסיקת רקע במהלך המשחק</span></span></div>
+        <div class="set-yesno">
+          <div class="set-yn active-yes" id="sett-music-yes" onclick="settToggle('music',true)">🎵 כן</div>
+          <div class="set-yn" id="sett-music-no"  onclick="settToggle('music',false)">🔇 לא</div>
+        </div>
+      </div>
+      <!-- Panel 5: show both racks -->
+      <div class="set-panel">
+        <div class="set-panel-title">הצג מגש שני השחקנים <span class="sett-info">i<span class="sett-tip">תמיד: שני המגשים גלויים. רק נוכחי: רואים רק את אותיות השחקן שתורו כעת</span></span></div>
+        <div class="set-yesno">
+          <div class="set-yn" id="sett-showBothRacks-yes" onclick="settToggle('showBothRacks',true)">👁 תמיד</div>
+          <div class="set-yn active-no" id="sett-showBothRacks-no"  onclick="settToggle('showBothRacks',false)">👤 רק נוכחי</div>
+        </div>
+      </div>
+      <!-- Panel 6: sound effects -->
+      <div class="set-panel">
+        <div class="set-panel-title">אפקטי קול <span class="sett-info">i<span class="sett-tip">צלילים קצרים לאירועי משחק (מילה לא תקינה, בונוס, סוף המשחק)</span></span></div>
+        <div class="set-yesno">
+          <div class="set-yn active-yes" id="sett-soundfx-yes">🔊 כן</div>
+          <div class="set-yn" id="sett-soundfx-no">🔇 לא</div>
+        </div>
+      </div>
+      <!-- Panel 7: vibration -->
+      <div class="set-panel">
+        <div class="set-panel-title">רטט <span class="sett-info">i<span class="sett-tip">רטט קצר במכשירים תומכים לאירועי משחק עיקריים</span></span></div>
+        <div class="set-yesno">
+          <div class="set-yn active-yes" id="sett-vibration-yes">📳 כן</div>
+          <div class="set-yn" id="sett-vibration-no">🚫 לא</div>
+        </div>
+      </div>
+    </div>
+    <!-- Notifications -->
+    <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div class="set-panel-title" style="margin-bottom:2px;">🔔 התראות משחק <span class="sett-info">i<span class="sett-tip">קבל התראה כשתורך במשחק אסינכרוני ​או כשיריב מצטרף למשחקך</span></span></div>
+        <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">דורש אישור דפדפן</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="sett-notif-status" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4)">כבוי</span>
+        <button id="sett-notif-button" onclick="requestNotifPermission()" style="padding:7px 14px;border-radius:6px;border:none;background:linear-gradient(180deg,#4a7fc1,#2a5a9a);color:#fff;font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">הפעל</button>
+      </div>
+    </div>
+    <!-- Dictionary Management — full width below panels -->
+    <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+      <div class="set-panel-title" style="margin-bottom:10px;">🔎 שאילתה — בדיקת מילה <span class="sett-info">i<span class="sett-tip">בדוק אם מילה קיימת במילון המשחק בלי לפתוח משחק חדש</span></span></div>
+      <div class="shin-wrap"><input class="shin" id="settings-shin" type="text" maxlength="40" placeholder="הקלד מילה..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="shres" id="settings-shres"></div>
+      <button onclick="checkSettingsShailta()" style="width:100%;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#f8d86a,#d59c28);border:2px solid #a97918;color:#2a1d05;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #76530f;">בדוק ✓</button>
+    </div>
+    <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+      <div class="set-panel-title" style="margin-bottom:10px;">📖 ניהול מילון <span class="sett-info">i<span class="sett-tip">הצע מילה חדשה להוספה למילון המשחק. ההצעה תועבר לאישור מנהל לפני שתתווסף</span></span></div>
+      <input id="dict-word-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
+      <button onclick="suggestDictionaryWord()" style="width:100%;margin-top:8px;padding:11px;border-radius:8px;border:none;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.75);font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.09)'">📨 שלח הצעה</button>
+      <button id="btn-dict-advanced" onclick="openDictionaryAdvancedSettings()" style="display:none;width:100%;margin-top:6px;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#5a8ad0,#3a5aaa);border:2px solid #2a3a8a;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #1a2a6a;">🔐 הגדרות מתקדמות</button>
+      <div id="dict-word-status" style="margin-top:8px;font-size:12px;min-height:18px;color:#9fd4f5;text-align:center;"></div>
+    </div>
+    <div class="ovbtns"><button class="ovb p" onclick="ovClose('ov-settings')">אישור ✓</button></div>
+  </div>
+</div>

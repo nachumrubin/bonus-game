@@ -1,0 +1,325 @@
+﻿<!-- STATS SCREEN -->
+<div id="sstats" class="screen hidden" dir="rtl">
+  <div class="stats-wrap">
+
+    <!-- Top bar -->
+    <div class="stats-topbar">
+      <button class="bd" style="width:auto;padding:8px 14px;font-size:13px;flex-shrink:0;" onclick="showProfileScreen()">←</button>
+      <div class="stats-topbar-title">סטטיסטיקות</div>
+      <button class="bd" style="width:auto;padding:8px 12px;font-size:12px;flex-shrink:0;opacity:.7;" onclick="_statsRefresh()" title="רענן">↻</button>
+    </div>
+
+    <!-- Hero summary card -->
+    <div class="stats-hero">
+      <div class="stats-hero-av boost-pulse" id="st-hero-av">🏆</div>
+      <div class="stats-hero-info">
+        <div class="stats-hero-name" id="st-hero-name">שחקן בוסט</div>
+        <div id="st-hero-tier" class="stats-tier gold">⚡ זהב</div>
+        <div class="stats-hero-kpis">
+          <div class="stats-kpi">
+            <div class="stats-kpi-val" id="st-hero-wr">0%</div>
+            <div class="stats-kpi-lbl">אחוז ניצחון</div>
+          </div>
+          <div class="stats-kpi">
+            <div class="stats-kpi-val" id="st-hero-streak">0 🔥</div>
+            <div class="stats-kpi-lbl">רצף נוכחי</div>
+          </div>
+          <div class="stats-kpi">
+            <div class="stats-kpi-val" id="st-hero-rank">#—</div>
+            <div class="stats-kpi-lbl">דירוג</div>
+          </div>
+        </div>
+        <div class="stats-hero-insight" id="st-hero-insight"></div>
+      </div>
+    </div>
+
+    <!-- Time filter -->
+    <div class="stats-timefilter">
+      <button class="stats-tfseg" onclick="_statsTimeFilter('week',this)">שבוע</button>
+      <button class="stats-tfseg" onclick="_statsTimeFilter('month',this)">חודש</button>
+      <button class="stats-tfseg active" onclick="_statsTimeFilter('all',this)">הכל</button>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="stats-tabbar">
+      <button class="stats-tab active" onclick="_statsTab('overview',this)">סקירה</button>
+      <button class="stats-tab" onclick="_statsTab('performance',this)">ביצועים</button>
+      <button class="stats-tab" onclick="_statsTab('boosts',this)">בוסטים</button>
+      <button class="stats-tab" onclick="_statsTab('rivals',this)">יריבים</button>
+      <button class="stats-tab" onclick="_statsTab('fun',this)">כיף</button>
+    </div>
+
+    <!-- Tab content -->
+    <div class="stats-content">
+
+      <!-- ── TAB 1: סקירה ── -->
+      <div id="st-panel-overview" class="stats-panel active">
+        <div class="stats-grid" id="st-overview-grid">
+          <div class="stat-card yellow">
+            <div class="stat-card-icon">🏆</div>
+            <div class="stat-card-val" id="st-highscore">0</div>
+            <div class="stat-card-lbl">שיא ניקוד</div>
+            <div class="stat-card-trend trend-up" id="st-highscore-trend"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">📊</div>
+            <div class="stat-card-val" id="st-avg">0</div>
+            <div class="stat-card-lbl">ממוצע ניקוד</div>
+            <div class="stat-card-trend" id="st-avg-trend"></div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-card-icon">🎮</div>
+            <div class="stat-card-val" id="st-played">0</div>
+            <div class="stat-card-lbl">משחקים</div>
+            <div class="stat-card-trend trend-neu" id="st-played-trend"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">🔥</div>
+            <div class="stat-card-val" id="st-best-streak">0</div>
+            <div class="stat-card-lbl">רצף שיא</div>
+            <div class="stat-card-trend" id="st-streak-trend"></div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-card-icon">⭐</div>
+            <div class="stat-card-val" id="st-bonuses">0</div>
+            <div class="stat-card-lbl">בוסטים בשימוש</div>
+            <div class="stat-card-trend trend-up" id="st-bonuses-trend"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">📝</div>
+            <div class="stat-card-val" id="st-avgword">0</div>
+            <div class="stat-card-lbl">אורך מילה ממוצע</div>
+            <div class="stat-card-trend" id="st-avgword-trend"></div>
+          </div>
+        </div>
+
+        <!-- W/L summary bar -->
+        <div class="stats-trend-chart">
+          <div class="stats-trend-chart-title">ניצחונות / הפסדים</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:10px;">
+            <div><div style="font-size:9px;color:rgba(255,255,255,.5)">ניצחונות</div><div id="st-won" style="font-size:22px;font-weight:900;color:#5dfc8c">0</div></div>
+            <div><div style="font-size:9px;color:rgba(255,255,255,.5)">הפסדים</div><div id="st-lost" style="font-size:22px;font-weight:900;color:#ff6b6b">0</div></div>
+            <div><div style="font-size:9px;color:rgba(255,255,255,.5)">תיקו</div><div id="st-draw" style="font-size:22px;font-weight:900;color:rgba(255,255,255,.5)">0</div></div>
+          </div>
+          <div style="height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.08);display:flex;direction:ltr;">
+            <div id="st-bar-w" style="background:linear-gradient(90deg,#5dfc8c,#00c85a);height:100%;transition:width .6s ease;width:0%"></div>
+            <div id="st-bar-l" style="background:linear-gradient(90deg,#ff6b6b,#cc2222);height:100%;transition:width .6s ease;width:0%"></div>
+            <div id="st-bar-d" style="background:rgba(255,255,255,.25);height:100%;transition:width .6s ease;width:0%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:rgba(255,255,255,.35);">
+            <span id="st-wr-pct-lbl">אחוז ניצחון 0%</span>
+            <span id="st-streak-lbl">רצף נוכחי: 0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB 2: ביצועים ── -->
+      <div id="st-panel-performance" class="stats-panel">
+
+        <!-- Win rate trend sparkline -->
+        <div class="stats-trend-chart">
+          <div class="stats-trend-chart-title">אחוז ניצחונות — 6 משחקים אחרונים</div>
+          <div class="stats-sparkline" id="st-sparkline"></div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,.3);margin-top:4px;direction:ltr;">
+            <span>ישן</span><span>עדכני</span>
+          </div>
+        </div>
+
+        <!-- Skill rating -->
+        <div class="stats-sec-lbl">דירוג מיומנות</div>
+        <div class="stat-card" style="margin-bottom:10px;text-align:right;padding:14px 16px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div>
+              <div class="stat-card-lbl" style="text-align:right;margin-bottom:2px;">דירוג ELO</div>
+              <div style="font-size:26px;font-weight:900;color:var(--by,#f5c518);" id="st-rating">0</div>
+            </div>
+            <div id="st-perf-tier-badge" class="stats-tier gold" style="margin:0;">⚡ זהב</div>
+          </div>
+          <div class="stats-tier-bar-wrap">
+            <div class="stats-tier-bar-fill" id="st-tier-bar" style="width:0%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,.3);margin-top:4px;">
+            <span>ארד</span><span>כסף</span><span>זהב</span><span>יהלום</span>
+          </div>
+        </div>
+
+        <!-- Efficiency -->
+        <div class="stats-sec-lbl">יעילות</div>
+        <div class="stats-grid" style="margin-bottom:10px;">
+          <div class="stat-card">
+            <div class="stat-card-icon">⚡</div>
+            <div class="stat-card-val" id="st-pts-move">0</div>
+            <div class="stat-card-lbl">נקודות למהלך</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">🔤</div>
+            <div class="stat-card-val" id="st-pts-tile">0</div>
+            <div class="stat-card-lbl">נקודות לאריח</div>
+          </div>
+          <div class="stat-card accent" style="grid-column:1/-1;">
+            <div class="stat-card-icon">⏱️</div>
+            <div class="stat-card-val" id="st-move-time">—</div>
+            <div class="stat-card-lbl">זמן ממוצע למהלך</div>
+          </div>
+        </div>
+
+        <!-- Clutch -->
+        <div class="stats-sec-lbl">קלאץ׳ / קאמבק</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-icon">💪</div>
+            <div class="stat-card-val" id="st-comeback">0</div>
+            <div class="stat-card-lbl">ניצחונות בקאמבק</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">🎯</div>
+            <div class="stat-card-val" id="st-lastmove">0</div>
+            <div class="stat-card-lbl">ניצחונות במהלך אחרון</div>
+          </div>
+          <div class="stat-card accent" style="grid-column:1/-1;">
+            <div class="stat-card-icon">🤝</div>
+            <div class="stat-card-val" id="st-closewins">0</div>
+            <div class="stat-card-lbl">משחקים צמודים שניצחת</div>
+          </div>
+        </div>
+
+        <!-- Legacy compat IDs kept hidden for _renderStatsScreen -->
+        <span id="st-streak" style="display:none">0</span>
+        <span id="st-words" style="display:none">0</span>
+        <svg style="display:none"><circle id="stats-donut-arc"/><text id="stats-wr-pct"/></svg>
+      </div>
+
+      <!-- ── TAB 3: בוסטים ── -->
+      <div id="st-panel-boosts" class="stats-panel">
+
+        <!-- Usage summary -->
+        <div class="stats-sec-lbl">שימוש בבוסטים</div>
+        <div class="stats-grid cols3" style="margin-bottom:10px;">
+          <div class="stat-card">
+            <div class="stat-card-icon boost-pulse">⚡</div>
+            <div class="stat-card-val" id="st-boost-total">0</div>
+            <div class="stat-card-lbl">סה״כ</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon boost-pulse">📈</div>
+            <div class="stat-card-val" id="st-boost-avg">0</div>
+            <div class="stat-card-lbl">ממוצע למשחק</div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-card-icon boost-pulse">🥇</div>
+            <div class="stat-card-val" id="st-boost-winrate">0%</div>
+            <div class="stat-card-lbl">ניצחון עם בוסט</div>
+          </div>
+        </div>
+
+        <!-- Favorite boost -->
+        <div class="stats-sec-lbl">הבוסט האהוב</div>
+        <div class="boost-fav-card">
+          <div class="boost-fav-icon boost-pulse" id="st-boost-fav-icon">💡</div>
+          <div class="boost-fav-info">
+            <div class="boost-fav-name" id="st-boost-fav-name">—</div>
+            <div class="boost-fav-pct" id="st-boost-fav-pct">— % מהבוסטים שלך</div>
+            <div class="boost-fav-desc">הבוסט שאתה הכי אוהב להשתמש בו</div>
+          </div>
+        </div>
+
+        <!-- Boost impact -->
+        <div class="stats-sec-lbl">השפעת בוסטים</div>
+        <div class="stats-grid" style="margin-bottom:10px;">
+          <div class="stat-card">
+            <div class="stat-card-icon">🎇</div>
+            <div class="stat-card-val" id="st-boost-impact-wins">0</div>
+            <div class="stat-card-lbl">ניצחונות בזכות בוסט</div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-card-icon">🔮</div>
+            <div class="stat-card-val" id="st-boost-impact-best">—</div>
+            <div class="stat-card-lbl">בוסט עם הכי הרבה השפעה</div>
+          </div>
+        </div>
+
+        <!-- Best combo -->
+        <div class="stats-sec-lbl">קומבו מנצח</div>
+        <div class="boost-combo-card">
+          <div class="boost-combo-title">הסדרה שהכי עובדת עבורך</div>
+          <div class="boost-combo-chain" id="st-boost-combo"></div>
+        </div>
+      </div>
+
+      <!-- ── TAB 4: יריבים ── -->
+      <div id="st-panel-rivals" class="stats-panel">
+
+        <div id="st-rivals-content">
+          <!-- Filled by JS -->
+        </div>
+
+        <!-- vs breakdown -->
+        <div class="stats-sec-lbl">פילוח יריבים</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-card-icon">⬆️</div>
+            <div class="stat-card-val" id="st-vs-stronger-w">0</div>
+            <div class="stat-card-lbl">ניצחונות מול חזקים</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">⬇️</div>
+            <div class="stat-card-val" id="st-vs-weaker-w">0</div>
+            <div class="stat-card-lbl">ניצחונות מול חלשים</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB 5: כיף ── -->
+      <div id="st-panel-fun" class="stats-panel">
+
+        <div class="stats-sec-lbl">עובדות מגניבות עליך</div>
+
+        <div class="fun-card">
+          <div class="fun-card-icon">📏</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">המילה הארוכה ביותר</div>
+            <div class="fun-card-val" id="st-fun-longest">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">🔁</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">המילה הכי חוזרת</div>
+            <div class="fun-card-val" id="st-fun-repeated">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">⚡</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">הניצחון הכי מהיר</div>
+            <div class="fun-card-val" id="st-fun-fastest">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">🚀</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">הקאמבק הכי גדול</div>
+            <div class="fun-card-val" id="st-fun-comeback">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">📅</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">היום הכי חזק שלך</div>
+            <div class="fun-card-val" id="st-fun-bestday">—</div>
+          </div>
+        </div>
+        <div class="fun-card">
+          <div class="fun-card-icon">🎲</div>
+          <div class="fun-card-info">
+            <div class="fun-card-lbl">מדד מזל</div>
+            <div class="fun-card-val" id="st-fun-luck">—</div>
+          </div>
+        </div>
+
+        <button class="stats-share-btn" onclick="_statsShare()">📤 שתף את הסטטיסטיקות שלי</button>
+      </div>
+
+    </div><!-- /stats-content -->
+  </div><!-- /stats-wrap -->
+</div>

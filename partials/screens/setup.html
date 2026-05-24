@@ -1,0 +1,20 @@
+﻿<!-- SETUP -->
+<div id="ss" class="screen hidden">
+  <div class="sbox">
+    <div class="stitle" id="stitle">הגדרות</div>
+    <div class="sf"><label>שם שחקן 1</label><input id="ip1" type="text" value="שחקן 1" maxlength="10"></div>
+    <div class="sf" id="p2f"><label>שם שחקן 2</label><input id="ip2" type="text" value="שחקן 2" maxlength="10"></div>
+    <div class="sf" id="dff" style="display:none">
+      <label>רמת קושי</label>
+      <div class="drow">
+        <button class="db a" onclick="setDiff(0,this)">קל</button>
+        <button class="db" onclick="setDiff(1,this)">בינוני</button>
+        <button class="db" onclick="setDiff(2,this)">קשה</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="bd" style="flex:1;font-size:12px" onclick="goHome()">← חזרה</button>
+      <button class="bd g" style="flex:2;font-size:13px" onclick="startGame()">▶ שחק!</button>
+    </div>
+  </div>
+</div>

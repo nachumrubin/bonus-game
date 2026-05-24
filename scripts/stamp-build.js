@@ -25,20 +25,33 @@ const filesToUpdate = [
         replace: `$1${timestamp}$3`,
         description: 'version meta tag',
       },
+    ],
+  },
+  {
+    file: 'partials/screens/home.html',
+    updates: [
       {
-        find: /(build )(\d{14})(<\/div>)/,
-        replace: `$1${timestamp}$3`,
+        // Match the `build NNNNNNNNNNNNNN` label wherever it sits inside the
+        // credit line. Not anchored to `</div>` so adding sibling content
+        // (e.g. music attribution on a new line) doesn't break the stamp.
+        find: /(build )(\d{14})/,
+        replace: `$1${timestamp}`,
         description: 'build label',
       },
+    ],
+  },
+  {
+    // Stamps the `?v=YYYYMMDDHHMMSS` cache-bust on the spine's module + CSS
+    // imports (styles.css, src/ui/screenPartials.js, src/main.js). Without
+    // this, deploying a new build only refreshes the HTML's <meta version>;
+    // browsers keep serving the old JS/CSS from cache under the unchanged
+    // query string until users hard-reload.
+    file: 'index.html',
+    updates: [
       {
-        find: /(navigator\.serviceWorker\.register\('\.\/sw\.js\?v=)(\d{14})('\, \{updateViaCache: 'none'\}\))/,
-        replace: `$1${timestamp}$3`,
-        description: 'service worker registration cache-buster',
-      },
-      {
-        find: /(var CACHE = "bonus-)(\d+)(";\s*',)/,
-        replace: `$1${timestamp}$3`,
-        description: 'inline fallback service worker cache name',
+        find: /\?v=\d{14}/g,
+        replace: `?v=${timestamp}`,
+        description: 'asset cache-bust query strings',
       },
     ],
   },
@@ -49,9 +62,20 @@ for (const entry of filesToUpdate) {
   let content = fs.readFileSync(fullPath, 'utf8');
 
   for (const update of entry.updates) {
+    // `find` is reused across iterations (and entries) when it carries the
+    // /g flag — its lastIndex would survive between calls. Clone the regex
+    // so .test() below is independent of .replace() above.
+    const probe = new RegExp(update.find.source, update.find.flags.replace('g', ''));
+    const hadMatch = probe.test(content);
     const nextContent = content.replace(update.find, update.replace);
 
     if (nextContent === content) {
+      // Identical output is a no-op when the pattern is already present
+      // (stamp-build run twice in the same UTC second). Only fail when
+      // the pattern doesn't appear at all — that means we couldn't find
+      // the thing we were supposed to stamp.
+      if (hadMatch) continue;
+      if (entry.optional) continue;
       throw new Error(`Could not update ${update.description} in ${entry.file}.`);
     }
 

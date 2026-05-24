@@ -1,0 +1,26 @@
+﻿<!-- ONLINE: WAITING ROOM -->
+<div id="ov-waiting-room" class="ov hidden">
+  <div class="ovc" style="text-align:center;">
+    <div style="font-size:32px">⏳</div>
+    <div class="ovt">ממתין לשחקן שני...</div>
+    <div style="margin:6px 0 4px;font-size:11px;color:rgba(255,255,255,.5)">שתף את הקוד:</div>
+    <div class="code-display" id="wr-code">------</div>
+    <div class="waiting-spinner"><div class="spinner-dots"><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div></div></div>
+    <div class="wsub" id="wr-mode-label"></div>
+    <div style="display:flex;gap:6px;margin-top:12px;">
+      <button class="ovb p" style="flex:1;background:#25D366;border:none;color:#fff" onclick="crShareWhatsApp()">שתף ב-WhatsApp</button>
+      <button class="ovb s" style="flex:1" onclick="crCancelRoom()">ביטול</button>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);">
+      <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:5px">הזמן שחקן לפי שם משתמש:</div>
+      <div style="display:flex;gap:6px;align-items:flex-start;">
+        <div style="flex:1;position:relative;">
+          <input class="ri" id="wr-invite-name" type="text" placeholder="חפש חבר..." maxlength="15" style="font-size:13px;width:100%;box-sizing:border-box;" oninput="filterInviteList(this.value)" onfocus="filterInviteList(this.value)" autocomplete="off">
+          <div id="wr-invite-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:rgba(6,19,61,.98);border:1px solid rgba(255,255,255,.2);border-radius:8px;max-height:140px;overflow-y:auto;z-index:200;margin-top:3px;"></div>
+        </div>
+        <button class="ovb p" style="padding:8px 12px;font-size:13px;white-space:nowrap;" onclick="crSendInvite()">שלח</button>
+      </div>
+      <div id="wr-invite-status" style="font-size:11px;text-align:center;min-height:16px;margin-top:4px;"></div>
+    </div>
+  </div>
+</div>

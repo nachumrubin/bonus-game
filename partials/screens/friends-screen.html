@@ -1,0 +1,34 @@
+﻿<!-- FRIENDS SCREEN -->
+<div id="sfriends" class="screen hidden">
+  <div class="sbox" style="max-width:320px;gap:10px;overflow-y:auto;max-height:92vh;">
+    <div class="stitle">👥 חברים</div>
+    <!-- My user ID -->
+    <div style="background:rgba(0,0,0,.25);border-radius:8px;padding:10px;text-align:center;">
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:5px;">המזהה שלך — שתף כדי שחברים יוסיפו אותך</div>
+      <div id="fr-my-id" style="font-family:monospace;font-size:22px;font-weight:900;color:var(--by,#f5c518);letter-spacing:5px;cursor:pointer;" onclick="copyUserId()">------</div>
+      <div id="fr-copy-status" style="font-size:10px;color:#7fff7f;min-height:14px;margin-top:3px;"></div>
+    </div>
+    <!-- Pending requests -->
+    <div id="fr-requests-wrap" style="display:none;">
+      <div style="font-size:11px;color:rgba(255,200,100,.85);font-weight:700;margin-bottom:5px;">⏳ בקשות ממתינות</div>
+      <div id="fr-requests-list"></div>
+    </div>
+    <!-- Add friend -->
+    <div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:5px;">הוסף לפי מזהה</div>
+      <div style="display:flex;gap:6px;">
+        <input class="ri" id="add-friend-input" type="text" placeholder="הזן מזהה (6 תווים)..." maxlength="6" style="flex:3;min-width:0;font-size:14px;letter-spacing:3px;text-transform:uppercase;" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+        <button class="bd g" style="flex:1;min-width:0;font-size:13px;padding:8px 6px;" onclick="sendFriendRequest()">הוסף</button>
+      </div>
+      <div id="add-friend-status" style="font-size:11px;text-align:center;min-height:14px;margin-top:4px;"></div>
+    </div>
+    <!-- Friends list -->
+    <div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:5px;">חברים <span id="fr-friends-count">(0)</span></div>
+      <div id="fr-friends-list">
+        <div style="font-size:11px;color:rgba(255,255,255,.3);text-align:center;padding:8px 0;">אין חברים עדיין</div>
+      </div>
+    </div>
+    <button class="bd" style="font-size:12px;" onclick="openProfileOrAuth()">← חזרה לפרופיל</button>
+  </div>
+</div>

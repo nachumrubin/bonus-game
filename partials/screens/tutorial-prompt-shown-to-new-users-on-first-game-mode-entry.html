@@ -1,0 +1,16 @@
+﻿<!-- TUTORIAL PROMPT (shown to new users on first game mode entry) -->
+<div id="ov-tut-prompt" class="ov hidden">
+  <div class="ovc">
+    <div class="ovic">🎓</div>
+    <div class="ovt">ברוך הבא!</div>
+    <div class="ovd" style="text-align:center;line-height:1.8">זו הפעם הראשונה שלך במשחק.<br>האם תרצה לעבור את ההדרכה לפני שמתחילים?</div>
+    <div class="ovbtns">
+      <button class="ovb p" onclick="tutPromptYes()">כן ✓</button>
+      <button class="ovb s" onclick="tutPromptNo()">לא ×</button>
+    </div>
+    <label style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.55);cursor:pointer;justify-content:center;">
+      <input type="checkbox" id="tut-prompt-noshowcb" style="width:16px;height:16px;cursor:pointer;">
+      <span>אל תציג שוב</span>
+    </label>
+  </div>
+</div>
