@@ -660,7 +660,7 @@ async function boot() {
       }
       if (activeMatchmaking) await activeMatchmaking.cancel();
 
-      const profile = globalThis.currentUserProfile ?? {};
+      const profile = lastProfile ?? globalThis.currentUserProfile ?? {};
       const rating = (profile.rating != null) ? profile.rating : 1000;
       const displayName =
         filters?.name ?? fbUser.displayName ?? profile.displayName ?? 'שחקן';
@@ -733,7 +733,7 @@ async function boot() {
       }
       await teardownPending();
 
-      const profile = globalThis.currentUserProfile ?? {};
+      const profile = lastProfile ?? globalThis.currentUserProfile ?? {};
       const hostProfile = {
         displayName: filters?.name ?? fbUser.displayName ?? profile.displayName ?? 'שחקן 1',
         avatar:      fbUser.photoURL ?? profile.avatar ?? null,
@@ -822,7 +822,7 @@ async function boot() {
         bus.emit(JC_INTENT.ERROR, { reason: 'connection', message: 'נדרשת התחברות — נסה שוב' });
         return;
       }
-      const profile = globalThis.currentUserProfile ?? {};
+      const profile = lastProfile ?? globalThis.currentUserProfile ?? {};
       const guestProfile = {
         displayName: name ?? fbUser.displayName ?? profile.displayName ?? 'שחקן 2',
         avatar:      fbUser.photoURL ?? profile.avatar ?? null,
@@ -1279,6 +1279,8 @@ async function boot() {
         }
         lastProfile = profile;
         const fbUser = activeFbCurrentUser;
+        const _dn = profile?.displayName ?? fbUser?.displayName;
+        if (_dn) settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: _dn });
         bus.emit(PROFILE_RENDER, {
           profile,
           isAnonymous: !!fbUser?.isAnonymous,
@@ -2256,7 +2258,7 @@ async function boot() {
     getDisplayName: () => {
       const fbUser = activeFbCurrentUser;
       if (!fbUser) return null;
-      return fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? null;
+      return lastProfile?.displayName ?? fbUser.displayName ?? null;
     },
   });
   const onlineLobby = mountOnlineLobbyScreen({ bus });
