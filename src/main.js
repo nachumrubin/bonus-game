@@ -816,6 +816,7 @@ async function boot() {
 
       activePending = {
         code,
+        mode: filters.spineMode,
         offWatch: roomCodeService.watchPending(fbDb, code, () => {}),
         offActiveRoom: () => fbDb.ref(`users/${fbUser.uid}/activeRoom`).off('value', activeRoomHandler),
       };
@@ -2557,6 +2558,83 @@ function installCutoverGlobals() {
   globalThis.computeSizes = globalThis.computeSizes ?? computeBasicSizes;
   globalThis.scheduleGameLayoutRefresh = globalThis.scheduleGameLayoutRefresh ?? scheduleBasicLayoutRefresh;
   globalThis.buildUnifiedGrid = globalThis.buildUnifiedGrid ?? buildSpineUnifiedGrid;
+
+  // ── Waiting-room friend-invite search ──
+  // Called from oninput/onfocus on #wr-invite-name. Filters the cached
+  // friends list and renders a dropdown of matches.
+  globalThis.filterInviteList = globalThis.filterInviteList ?? function filterInviteList(query) {
+    const dropdown = globalThis.document?.getElementById?.('wr-invite-dropdown');
+    if (!dropdown) return;
+    const filtered = friendsService.filterFriendsByName(lastFriends, query);
+    if (!filtered.length) {
+      dropdown.innerHTML = '';
+      dropdown.style.display = 'none';
+      return;
+    }
+    dropdown.innerHTML = filtered.map(f => {
+      const uid  = String(f.uid  ?? '');
+      const name = String(f.name ?? '?');
+      const eName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const eUid  = uid.replace(/"/g, '&quot;');
+      return `<div class="wr-invite-item" data-uid="${eUid}" ` +
+        `onmousedown="event.preventDefault()" onclick="wrPickFriend(this)" ` +
+        `style="padding:8px 12px;cursor:pointer;font-size:13px;` +
+        `border-bottom:1px solid rgba(255,255,255,.08);">${eName}</div>`;
+    }).join('');
+    dropdown.style.display = 'block';
+  };
+
+  // Called from onclick on each dropdown item. Fills the input and records
+  // the selected UID on the element's dataset.
+  globalThis.wrPickFriend = globalThis.wrPickFriend ?? function wrPickFriend(el) {
+    const uid  = el?.dataset?.uid ?? '';
+    const name = el?.textContent?.trim() ?? '';
+    const input    = globalThis.document?.getElementById?.('wr-invite-name');
+    const dropdown = globalThis.document?.getElementById?.('wr-invite-dropdown');
+    if (input) { input.value = name; input.dataset.selectedUid = uid; }
+    if (dropdown) dropdown.style.display = 'none';
+  };
+
+  // Called from onclick on the שלח button. Sends a spine invite to the
+  // selected friend using the current pending room's mode/settings.
+  globalThis.crSendInvite = globalThis.crSendInvite ?? function crSendInvite() {
+    const fbDb   = activeFbDb;
+    const fbUser = activeFbCurrentUser;
+    const input    = globalThis.document?.getElementById?.('wr-invite-name');
+    const statusEl = globalThis.document?.getElementById?.('wr-invite-status');
+    if (!fbDb || !fbUser?.uid) return;
+
+    const toUid = input?.dataset?.selectedUid;
+    if (!toUid) {
+      if (statusEl) { statusEl.textContent = 'בחר חבר מהרשימה'; statusEl.style.color = '#f87'; }
+      return;
+    }
+
+    const profile  = lastProfile ?? {};
+    const mode     = activePending?.mode ?? 'friend-live';
+    const settings = settingsCompat.settingsFromLegacyGlobals(globalThis);
+
+    if (statusEl) { statusEl.textContent = 'שולח...'; statusEl.style.color = ''; }
+
+    inviteService.sendInvite(fbDb, {
+      fromUid:   fbUser.uid,
+      fromName:  fbUser.displayName ?? profile.displayName ?? 'שחקן',
+      fromAvatar: fbUser.photoURL ?? profile.equippedAvatar ?? null,
+      toUid,
+      mode,
+      settings,
+      serverTimestamp: Date.now(),
+    }).then(() => {
+      if (statusEl) { statusEl.textContent = 'ההזמנה נשלחה! ✓'; statusEl.style.color = '#4f4'; }
+      if (input) { input.value = ''; delete input.dataset.selectedUid; }
+      globalThis.setTimeout?.(() => {
+        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; }
+      }, 3000);
+    }).catch((e) => {
+      console.error('[spine] crSendInvite', e);
+      if (statusEl) { statusEl.textContent = 'שגיאה בשליחת ההזמנה'; statusEl.style.color = '#f87'; }
+    });
+  };
 }
 
 async function ensureFirebaseGlobals() {
