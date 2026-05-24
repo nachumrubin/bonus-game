@@ -2560,43 +2560,48 @@ function installCutoverGlobals() {
   globalThis.buildUnifiedGrid = globalThis.buildUnifiedGrid ?? buildSpineUnifiedGrid;
 
   // ── Waiting-room friend-invite search ──
-  // Called from oninput/onfocus on #wr-invite-name. Filters the cached
-  // friends list and renders a dropdown of matches.
+  // Called from oninput/onfocus on #wr-invite-name. Fetches the friends list
+  // directly (activeFbDb/activeFbCurrentUser are module-level) so this works
+  // even though installCutoverGlobals is defined outside boot().
   globalThis.filterInviteList = globalThis.filterInviteList ?? function filterInviteList(query) {
     const dropdown = globalThis.document?.getElementById?.('wr-invite-dropdown');
     if (!dropdown) return;
-    const filtered = friendsService.filterFriendsByName(lastFriends, query);
-    if (!filtered.length) {
-      dropdown.innerHTML = '';
-      dropdown.style.display = 'none';
-      return;
-    }
-    dropdown.innerHTML = filtered.map(f => {
-      const uid  = String(f.uid  ?? '');
-      const name = String(f.name ?? '?');
-      const eName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const eUid  = uid.replace(/"/g, '&quot;');
-      return `<div class="wr-invite-item" data-uid="${eUid}" ` +
-        `onmousedown="event.preventDefault()" onclick="wrPickFriend(this)" ` +
-        `style="padding:8px 12px;cursor:pointer;font-size:13px;` +
-        `border-bottom:1px solid rgba(255,255,255,.08);">${eName}</div>`;
-    }).join('');
-    dropdown.style.display = 'block';
+    const fbDb   = activeFbDb;
+    const fbUser = activeFbCurrentUser;
+    if (!fbDb || !fbUser?.uid) return;
+
+    friendsService.listFriends(fbDb, fbUser.uid).then(friends => {
+      const filtered = friendsService.filterFriendsByName(friends, query);
+      if (!filtered.length) {
+        dropdown.innerHTML = '';
+        dropdown.style.display = 'none';
+        return;
+      }
+      dropdown.innerHTML = filtered.map(f => {
+        const uid   = String(f.uid  ?? '');
+        const name  = String(f.name ?? '?');
+        const eName = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const eUid  = uid.replace(/"/g, '&quot;');
+        return `<div class="wr-invite-item" data-uid="${eUid}" ` +
+          `onmousedown="event.preventDefault()" onclick="wrPickFriend(this)" ` +
+          `style="padding:8px 12px;cursor:pointer;font-size:13px;` +
+          `border-bottom:1px solid rgba(255,255,255,.08);">${eName}</div>`;
+      }).join('');
+      dropdown.style.display = 'block';
+    }).catch(() => {});
   };
 
-  // Called from onclick on each dropdown item. Fills the input and records
-  // the selected UID on the element's dataset.
+  // Called from onclick on each dropdown item.
   globalThis.wrPickFriend = globalThis.wrPickFriend ?? function wrPickFriend(el) {
-    const uid  = el?.dataset?.uid ?? '';
-    const name = el?.textContent?.trim() ?? '';
+    const uid      = el?.dataset?.uid ?? '';
+    const name     = el?.textContent?.trim() ?? '';
     const input    = globalThis.document?.getElementById?.('wr-invite-name');
     const dropdown = globalThis.document?.getElementById?.('wr-invite-dropdown');
     if (input) { input.value = name; input.dataset.selectedUid = uid; }
     if (dropdown) dropdown.style.display = 'none';
   };
 
-  // Called from onclick on the שלח button. Sends a spine invite to the
-  // selected friend using the current pending room's mode/settings.
+  // Called from onclick on the שלח button.
   globalThis.crSendInvite = globalThis.crSendInvite ?? function crSendInvite() {
     const fbDb   = activeFbDb;
     const fbUser = activeFbCurrentUser;
@@ -2610,16 +2615,16 @@ function installCutoverGlobals() {
       return;
     }
 
-    const profile  = lastProfile ?? {};
-    const mode     = activePending?.mode ?? 'friend-live';
+    // activePending is set on __spine when the room is created (inside boot).
+    const mode     = globalThis.__spine?.activePending?.mode ?? 'friend-live';
     const settings = settingsCompat.settingsFromLegacyGlobals(globalThis);
 
     if (statusEl) { statusEl.textContent = 'שולח...'; statusEl.style.color = ''; }
 
     inviteService.sendInvite(fbDb, {
-      fromUid:   fbUser.uid,
-      fromName:  fbUser.displayName ?? profile.displayName ?? 'שחקן',
-      fromAvatar: fbUser.photoURL ?? profile.equippedAvatar ?? null,
+      fromUid:    fbUser.uid,
+      fromName:   fbUser.displayName ?? 'שחקן',
+      fromAvatar: fbUser.photoURL ?? null,
       toUid,
       mode,
       settings,
