@@ -807,8 +807,8 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .online-session-turn.waiting{color:rgba(255,255,255,.68);}
 @keyframes onpulse{0%,100%{opacity:.4}50%{opacity:1}}
 .globe3d{display:inline-block;width:1.1em;height:1.1em;vertical-align:-.1em;margin-left:.2em;filter:drop-shadow(0 0 6px rgba(59,130,246,.65));}
-.globe3d-spin{transform-origin:20px 20px;animation:globe3dSpin 5s linear infinite;}
-@keyframes globe3dSpin{to{transform:rotateY(360deg);}}
+.globe-mer{transform-origin:20px 20px;animation:globeMerSpin 5s linear infinite;}
+@keyframes globeMerSpin{0%,100%{transform:scaleX(1)}25%{transform:scaleX(0.01)}50%{transform:scaleX(-1)}75%{transform:scaleX(0.01)}}
 .turn-timer{
   display:none;align-items:center;justify-content:center;gap:8px;
   margin:2px 0 3px;padding:4px 8px;border-radius:8px;
