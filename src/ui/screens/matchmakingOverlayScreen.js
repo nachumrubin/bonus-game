@@ -111,8 +111,10 @@ export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = 
     const spinDur  = (SLOT_PROFILES.length * 0.28).toFixed(2);
     reelEl.style.setProperty('--ps-spin-dist', `-${spinDist}px`);
     reelEl.style.setProperty('--ps-spin-dur',  `${spinDur}s`);
+    reelEl.style.animation = ''; // clear any inline override from previous stop
     reelEl.classList.remove('ps-landing');
     slotCard?.classList.remove('ps-found');
+    void reelEl.offsetHeight; // force reflow so browser picks up the cleared animation
     reelEl.classList.add('ps-spinning');
     if (slotLbl) slotLbl.textContent = 'מחפש...';
   }
