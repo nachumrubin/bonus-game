@@ -616,6 +616,12 @@ async function boot() {
     });
     bus.on(LOBBY_INTENT.MATCHMAKING, () => {
       globalThis.document?.getElementById?.('ov-matchmaking')?.classList?.remove?.('hidden');
+      const nameInput = globalThis.document?.getElementById?.('mm-name');
+      if (nameInput) {
+        const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
+                  ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
+        if (name) nameInput.value = name;
+      }
     });
 
     function hideOnlineStartOverlays() {
