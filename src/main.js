@@ -2251,7 +2251,14 @@ async function boot() {
   // but the wiring now goes through the bus so we can swap individual
   // intents to new-spine flows one at a time.
   const menu = mountMenuScreen({ bus });
-  const setup = mountSetupScreen({ bus });
+  const setup = mountSetupScreen({
+    bus,
+    getDisplayName: () => {
+      const fbUser = activeFbCurrentUser;
+      if (!fbUser) return null;
+      return fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? null;
+    },
+  });
   const onlineLobby = mountOnlineLobbyScreen({ bus });
   const matchmakingOverlay = mountMatchmakingOverlayScreen({ bus });
   const createRoomScreen   = mountCreateRoomScreen({ bus });

@@ -40,7 +40,7 @@ const SELECTORS = {
   backBtn:    'button[onclick="goHome()"]',
 };
 
-export function mountSetupScreen({ root = globalThis.document, bus } = {}) {
+export function mountSetupScreen({ root = globalThis.document, bus, getDisplayName } = {}) {
   if (!bus) throw new Error('mountSetupScreen: bus required');
 
   const setup = $(SELECTORS.setupRoot, root);
@@ -106,9 +106,11 @@ export function mountSetupScreen({ root = globalThis.document, bus } = {}) {
     // Title
     const title = $(SELECTORS.title, setup);
     if (title) title.textContent = mode === 'bot' ? 'נגד המחשב' : 'שני שחקנים';
-    const lastName = loadUiPreferences(globalThis.localStorage).lastDisplayName;
     const p1Input = $(SELECTORS.p1Input, setup);
-    if (p1Input && lastName && !p1Input.value?.trim?.()) p1Input.value = lastName;
+    if (p1Input) {
+      const name = getDisplayName?.() ?? loadUiPreferences(globalThis.localStorage).lastDisplayName;
+      if (name) p1Input.value = name;
+    }
     // Show P2 input only in vs mode; show difficulty only in bot mode
     const p2Field = $(SELECTORS.p2Field, setup);
     if (p2Field) p2Field.style.display = mode === 'vs' ? '' : 'none';
