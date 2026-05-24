@@ -782,6 +782,8 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .online-session-turn.my-turn{color:#8eff8e;text-shadow:0 0 8px rgba(142,255,142,.28);}
 .online-session-turn.waiting{color:rgba(255,255,255,.68);}
 @keyframes onpulse{0%,100%{opacity:.4}50%{opacity:1}}
+.globe-spin{display:inline-block;animation:globeSpin 4s linear infinite;transform-style:preserve-3d;}
+@keyframes globeSpin{0%{transform:perspective(80px) rotateY(0deg);}100%{transform:perspective(80px) rotateY(360deg);}}
 .turn-timer{
   display:none;align-items:center;justify-content:center;gap:8px;
   margin:2px 0 3px;padding:4px 8px;border-radius:8px;
