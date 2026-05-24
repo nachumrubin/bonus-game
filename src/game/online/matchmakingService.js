@@ -100,7 +100,7 @@ export async function tryPair(db, { uid, mode, createRoomFromPair }) {
   // Verify both were ours to claim — re-read; if either entry has been
   // re-added (race) or the partner was claimed by someone else, abort.
   const verify = await queueRef(db, mode).get();
-  const remaining = verify?.val ? verify.val() : {};
+  const remaining = (verify?.val ? verify.val() : null) ?? {};
   if (remaining[uid] || remaining[partner.uid]) {
     return { matched: false };
   }
