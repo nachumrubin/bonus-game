@@ -26,11 +26,14 @@ const MODE_LABEL = {
 export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountWaitingRoomScreen: bus required');
 
-  const overlay = $('#ov-waiting-room', root);
-  const codeEl  = $('#wr-code', root);
-  const modeEl  = $('#wr-mode-label', root);
-  const cancelBtn = $('button[onclick="crCancelRoom()"]', root);
-  const shareBtn  = $('button[onclick="crShareWhatsApp()"]', root);
+  const overlay       = $('#ov-waiting-room', root);
+  const codeEl        = $('#wr-code', root);
+  const modeEl        = $('#wr-mode-label', root);
+  const cancelBtn     = $('button[onclick="crCancelRoom()"]', root);
+  const shareBtn      = $('button[onclick="crShareWhatsApp()"]', root);
+  const inviteInput   = $('#wr-invite-name', root);
+  const inviteDropdown = $('#wr-invite-dropdown', root);
+  const inviteStatus  = $('#wr-invite-status', root);
 
   const cleanups = [];
   if (cancelBtn) {
@@ -46,13 +49,30 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
     cleanups.push(on(shareBtn, 'click', () => bus.emit(WR_INTENT.SHARE_WHATSAPP, {})));
   }
 
+  // Close the friend dropdown when the input loses focus. The dropdown items
+  // use onmousedown="event.preventDefault()" so clicking them doesn't blur
+  // the input, letting the onclick fire first.
+  if (inviteInput && inviteDropdown) {
+    cleanups.push(on(inviteInput, 'blur', () => {
+      inviteDropdown.style.display = 'none';
+    }));
+  }
+
+  function resetInviteFields() {
+    if (inviteInput)    { inviteInput.value = ''; delete inviteInput.dataset.selectedUid; }
+    if (inviteDropdown) { inviteDropdown.innerHTML = ''; inviteDropdown.style.display = 'none'; }
+    if (inviteStatus)   { inviteStatus.textContent = ''; inviteStatus.style.color = ''; }
+  }
+
   const offOpen = bus.on(WR_OPEN, ({ code, mode } = {}) => {
     if (codeEl && code) setText(codeEl, code);
     if (modeEl && mode) setText(modeEl, MODE_LABEL[mode] ?? '');
+    resetInviteFields();
     overlay?.classList?.remove?.('hidden');
   });
   const offClose = bus.on(WR_CLOSE, () => {
     overlay?.classList?.add?.('hidden');
+    resetInviteFields();
   });
 
   function unmount() {
