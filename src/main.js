@@ -598,9 +598,21 @@ async function boot() {
     });
     bus.on(LOBBY_INTENT.CREATE_ROOM, () => {
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.remove?.('hidden');
+      const nameInput = globalThis.document?.getElementById?.('cr-name');
+      if (nameInput) {
+        const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
+                  ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
+        if (name) nameInput.value = name;
+      }
     });
     bus.on(LOBBY_INTENT.JOIN_BY_CODE, () => {
       globalThis.document?.getElementById?.('ov-join-code')?.classList?.remove?.('hidden');
+      const nameInput = globalThis.document?.getElementById?.('jc-name');
+      if (nameInput) {
+        const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
+                  ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
+        if (name) nameInput.value = name;
+      }
     });
     bus.on(LOBBY_INTENT.MATCHMAKING, () => {
       globalThis.document?.getElementById?.('ov-matchmaking')?.classList?.remove?.('hidden');
