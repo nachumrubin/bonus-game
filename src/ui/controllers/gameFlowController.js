@@ -80,6 +80,12 @@ export function createGameFlowController({
 
   cleanups.push(bus.on(PAUSE_INTENT.RESUME, () => hideOverlay('ov-pause')));
   cleanups.push(bus.on(PAUSE_INTENT.SAVE_AND_EXIT, () => {
+    const ag = activeGameRef();
+    if (ag?.online && !ag?.isAsync) {
+      hideOverlay('ov-pause');
+      ag.session?.dispatch?.({ type: CMD.RESIGN_GAME, payload: { slot: ag.session.mySlot } });
+      return;
+    }
     endActiveGame();
     showScreen('sh');
   }));
@@ -99,6 +105,15 @@ export function createGameFlowController({
     bus.emit(PAUSE_OPEN, currentPlayerPayload());
   }));
   cleanups.push(bus.on(BACK_INTENT.LEAVE, () => {
+    const ag = activeGameRef();
+    if (ag?.online && !ag?.isAsync) {
+      // Live online: resign so the opponent is notified, then show end screen.
+      // The user already confirmed "leave" via the back-confirm dialog so we
+      // skip the resign-confirm step and go straight to the resign dispatch.
+      ag.session?.dispatch?.({ type: CMD.RESIGN_GAME, payload: { slot: ag.session.mySlot } });
+      hideOverlay('ov-back-confirm');
+      return;
+    }
     endActiveGame();
     showScreen('sh');
   }));
