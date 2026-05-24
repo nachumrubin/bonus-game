@@ -547,12 +547,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     renderInteractionGate(v);
   }
 
-  // Disable the rack + action buttons whenever it isn't this client's turn.
+  // Disable the rack + action buttons whenever it isn't this client's turn,
+  // OR while the score-animation glow swap is still in flight. The glow,
+  // timer, and bottom row all flip together when activeSlotTimer fires.
   // We deliberately do NOT disable the cell grid itself — recall-on-occupied
   // and ghost previews still work via click handlers, which already early-out
   // on canInteract() when the player isn't allowed to mutate state.
   function renderInteractionGate(v) {
-    const enabled = v.isMyTurn !== false;
+    const enabled = v.isMyTurn !== false && !activeSlotTimer;
     for (const btn of [btnPlay, btnRecall, btnExchange, btnDirH, btnDirV]) {
       if (!btn) continue;
       btn.disabled = !enabled;
@@ -650,7 +652,13 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const target = v?.currentTurnSlot;
     if (target == null) return;
     if (displayedTurnSlot == null) { displayedTurnSlot = target; return; }
-    if (displayedTurnSlot === target) return;
+    if (displayedTurnSlot === target) {
+      // Target reverted to the currently-displayed slot (e.g. bot played
+      // before the previous animation finished). Cancel any pending swap so
+      // the interaction gate opens immediately for the correct player.
+      if (activeSlotTimer) { clearTimeout(activeSlotTimer); activeSlotTimer = null; }
+      return;
+    }
     if (activeSlotTimer) return;
     // count-up finishes ~900ms after it starts; align swap with that
     // (and include the score-merge sequence so the swap doesn't beat the
@@ -664,8 +672,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     }, total);
   }
   function _renderAll() {
-    // Re-fire renderScores so the .act class swaps after the timer.
-    try { renderScores(controller.view); } catch { /* swallow */ }
+    // Re-render everything so the glow swap, timer resume, and interaction
+    // gate all become visible in the same frame.
+    try { renderAll(controller.view); } catch { /* swallow */ }
   }
 
   function renderStatus(v) {
