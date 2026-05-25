@@ -58,18 +58,21 @@ export function mountIncomingInviteScreen({ root = globalThis.document, bus } = 
   const cleanups = [];
 
   if (acceptBtn) {
+    acceptBtn.removeAttribute?.('onclick');
     cleanups.push(on(acceptBtn, 'click', () => {
       bus.emit(II_INTENT.ACCEPT, pendingInvite ?? {});
       overlay?.classList?.add?.('hidden');
     }));
   }
   if (rejectBtn) {
+    rejectBtn.removeAttribute?.('onclick');
     cleanups.push(on(rejectBtn, 'click', () => {
       bus.emit(II_INTENT.REJECT, pendingInvite ?? {});
       overlay?.classList?.add?.('hidden');
     }));
   }
   if (rejectedCloseBtn) {
+    rejectedCloseBtn.removeAttribute?.('onclick');
     cleanups.push(on(rejectedCloseBtn, 'click', () => {
       bus.emit(IR_INTENT.CLOSE, {});
     }));
