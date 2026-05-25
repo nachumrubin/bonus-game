@@ -152,6 +152,25 @@ export async function cancelInvite(db, { toUid, inviteId }) {
   return { ok: true };
 }
 
+// Check whether a potential recipient can receive a live-game invite.
+// Returns { available: true } or { available: false, reason: 'in-live-game' }.
+// For async-mode invites this always returns available:true — async invites
+// are deliverable regardless of game state.
+export async function checkRecipientAvailability(db, toUid, mode) {
+  if (!mode?.endsWith('-live')) return { available: true };
+  try {
+    const activeRoomSnap = await db.ref(`${PATH.users}/${toUid}/activeRoom`).get();
+    const activeRoomId = activeRoomSnap?.val ? activeRoomSnap.val() : null;
+    if (!activeRoomId) return { available: true };
+    const modeSnap = await db.ref(`${PATH.rooms}/${activeRoomId}/mode`).get();
+    const activeMode = modeSnap?.val ? modeSnap.val() : null;
+    if (activeMode?.endsWith('-live')) return { available: false, reason: 'in-live-game' };
+    return { available: true };
+  } catch {
+    return { available: true }; // non-fatal: allow the invite if the check fails
+  }
+}
+
 // Subscribe to all incoming invites for `uid`. The cb is fired with each new
 // invite that arrives; returns an unsubscribe function.
 export function listenForInvites(db, uid, cb) {
