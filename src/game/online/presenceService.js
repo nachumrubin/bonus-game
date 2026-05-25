@@ -18,7 +18,7 @@
 import { PATH } from './schema.js';
 
 export const HEARTBEAT_MS = 10_000;
-export const PRESENCE_GRACE_MS = 15_000;
+export const PRESENCE_GRACE_MS = 30_000;
 
 function presenceRef(db, uid) {
   return db.ref(`${PATH.presence}/${uid}`);
@@ -35,7 +35,7 @@ export async function startPresence(db, {
   const initiallyHidden = !!(doc && doc.visibilityState === 'hidden');
   await r.set({ connected: true, lastSeen: timestamp(), currentRoom, backgrounded: initiallyHidden });
   if (r.onDisconnect) {
-    await r.onDisconnect().update({ connected: false, lastSeen: timestamp() });
+    await r.onDisconnect().update({ connected: false, backgrounded: false, lastSeen: timestamp() });
   }
   const interval = setInterval(() => {
     r.update({ lastSeen: timestamp() }).catch(() => {});
