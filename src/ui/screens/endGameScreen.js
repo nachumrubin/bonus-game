@@ -94,6 +94,11 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
         ? 'הפסדת — התנתקת מהמשחק'
         : 'ניצחת — היריב התנתק מהמשחק';
     }
+    if (abandonReason === 'left') {
+      return iLost
+        ? 'עזבת את המשחק'
+        : 'ניצחת — היריב עזב את המשחק';
+    }
     return iLost ? 'פרשת מהמשחק' : 'היריב פרש';
   }
 

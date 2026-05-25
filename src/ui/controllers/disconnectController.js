@@ -20,18 +20,26 @@ export function createDisconnectController({
   let pollInterval = null;
   let watchedUid = null;
   let lastPresence = null;
+
+  // Accumulating disconnect state — persists across Firebase callbacks and poll ticks.
+  // totalDisconnectedMs accumulates across reconnect/disconnect cycles; does not reset on reconnect.
   let disconnectOpen = false;
+  let totalDisconnectedMs = 0;
+  let disconnectStart = null;
+  let awaitingTurnForAppClose = false;
+  let offTurnChanged = null;
 
   cleanups.push(bus.on(EV.GAME_STARTED, resubscribe));
   cleanups.push(bus.on(EV.GAME_COMPLETED, () => {
     stopWatch();
     bus.emit(DISCONNECT_CLOSE, {});
   }));
-  cleanups.push(bus.on(DISCONNECT_INTENT.AUTO_WIN, () => {
+  cleanups.push(bus.on(DISCONNECT_INTENT.AUTO_WIN, (payload = {}) => {
     const session = sessionRef();
     const mySlot = session?.mySlot;
     const opponentSlot = mySlot === 0 ? 1 : mySlot === 1 ? 0 : session?.state?.currentTurnSlot;
-    session?.dispatch?.({ type: CMD.RESIGN_GAME, payload: { slot: opponentSlot, reason: 'disconnect' } });
+    const reason = payload?.reason ?? 'disconnect';
+    session?.dispatch?.({ type: CMD.RESIGN_GAME, payload: { slot: opponentSlot, reason } });
   }));
 
   resubscribe();
@@ -54,20 +62,74 @@ export function createDisconnectController({
     stopWatch();
     watchedUid = opponentUid;
     lastPresence = null;
-    disconnectOpen = false;
 
     function handlePresence(presence) {
-      if (isPresenceOnline(presence, now(), graceMs)) {
+      const ts = now();
+      const online = isPresenceOnline(presence, ts, graceMs);
+
+      if (online) {
+        // Opponent came back online — accumulate this disconnect period.
+        if (disconnectStart !== null) {
+          totalDisconnectedMs += ts - disconnectStart;
+          disconnectStart = null;
+        }
         if (disconnectOpen) {
           disconnectOpen = false;
           bus.emit(DISCONNECT_CLOSE, {});
         }
+        if (awaitingTurnForAppClose) {
+          awaitingTurnForAppClose = false;
+          if (offTurnChanged) { offTurnChanged(); offTurnChanged = null; }
+        }
         return;
       }
-      if (!disconnectOpen) {
+
+      // App-close: backgrounded:true + connected:false → deliberate quit.
+      // Bypasses the grace period — immediate resign (or after current move completes).
+      if (isAppClosed(presence) && !awaitingTurnForAppClose) {
+        awaitingTurnForAppClose = true;
+        const sess = sessionRef();
+        const currentTurnSlot = sess?.state?.currentTurnSlot;
+        const sesMySlot = sess?.mySlot;
+
+        if (currentTurnSlot === sesMySlot) {
+          // I'm mid-move — finish it, then resign the opponent.
+          offTurnChanged = bus.on(EV.TURN_CHANGED, () => {
+            if (offTurnChanged) { offTurnChanged(); offTurnChanged = null; }
+            bus.emit(DISCONNECT_INTENT.AUTO_WIN, { reason: 'left' });
+          });
+        } else {
+          // Closing player's turn or unknown — resign immediately.
+          bus.emit(DISCONNECT_INTENT.AUTO_WIN, { reason: 'left' });
+        }
+        return;
+      }
+
+      if (awaitingTurnForAppClose) return;
+
+      // Internet disconnect / stale presence — accumulating grace + countdown.
+      if (disconnectStart === null) {
+        // For the stale-lastSeen fallback (no `connected` field in presence): anchor
+        // the clock at when the heartbeat actually stopped, not when we first noticed.
+        // This ensures the grace window reflects real offline duration.
+        const lastSeen = Number(presence?.lastSeen || 0);
+        const hasConnectedField = presence && typeof presence === 'object' && 'connected' in presence;
+        if (!hasConnectedField && lastSeen > 0 && lastSeen < ts) {
+          const staleMs = Math.min(ts - lastSeen, graceMs * 2);
+          disconnectStart = ts - staleMs;
+        } else {
+          disconnectStart = ts;
+        }
+      }
+
+      const maxMs = graceMs * 2;
+      const elapsed = totalDisconnectedMs + (ts - disconnectStart);
+
+      if (!disconnectOpen && elapsed >= graceMs) {
+        const remainingSeconds = Math.max(1, Math.ceil((maxMs - elapsed) / 1000));
         disconnectOpen = true;
         bus.emit(DISCONNECT_OPEN, {
-          seconds: Math.ceil(graceMs / 1000),
+          seconds: remainingSeconds,
           opponentName: state?.players?.[opponentSlot]?.displayName,
         });
       }
@@ -78,25 +140,23 @@ export function createDisconnectController({
       handlePresence(presence);
     });
 
-    // Poll periodically so a stale lastSeen is caught even when Firebase's
-    // onDisconnect hook hasn't fired yet (can take up to a minute in RTDB).
+    // Poll periodically so stale lastSeen is caught even when Firebase's
+    // onDisconnect hook hasn't fired yet.
     pollInterval = setInterval(() => {
       if (lastPresence != null) handlePresence(lastPresence);
     }, pollMs);
   }
 
   function stopWatch() {
-    if (unwatch) {
-      try { unwatch(); } catch {}
-      unwatch = null;
-    }
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
-    }
+    if (unwatch) { try { unwatch(); } catch {} unwatch = null; }
+    if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+    if (offTurnChanged) { offTurnChanged(); offTurnChanged = null; }
     watchedUid = null;
     lastPresence = null;
     disconnectOpen = false;
+    totalDisconnectedMs = 0;
+    disconnectStart = null;
+    awaitingTurnForAppClose = false;
   }
 
   function dispose() {
@@ -109,26 +169,30 @@ export function createDisconnectController({
   return { resubscribe, dispose };
 }
 
+// Returns true if the opponent's presence indicates they are reachable.
+// backgrounded:true + connected:true = alive (game open in background, no overlay).
+// connected:false = offline regardless of other fields.
 export function isPresenceOnline(presence, nowMs = Date.now(), graceMs = PRESENCE_GRACE_MS) {
   if (presence === true) return true;
   if (!presence || typeof presence !== 'object') return !!presence;
-  // Firebase onDisconnect explicitly cleared the connected flag: authoritative.
-  // Must be checked BEFORE backgrounded so a closed tab (visibilitychange set
-  // backgrounded:true, then onDisconnect fires connected:false) is treated as
-  // offline rather than alive.
+  // Tab/app close writes backgrounded:true then connected:false — check
+  // connected:false first so the closed state wins over the backgrounded flag.
   if (presence.connected === false) return false;
-  const lastSeen = Number(presence.lastSeen || 0);
-  // Backgrounded tabs suppress the disconnect overlay — mobile OS timers are
-  // throttled so the 10 s heartbeat may stall without the tab being gone.
-  // However we still bound by 2× graceMs: if the heartbeat has been silent
-  // that long the tab is gone (covers the case where Firebase fell back to
-  // HTTP long-polling and onDisconnect never fired, e.g. WebSocket blocked
-  // by a browser extension or corporate proxy).
-  if (presence.backgrounded === true) {
-    if (lastSeen > 0 && nowMs - lastSeen > graceMs * 2) return false;
-    return true;
-  }
+  // App backgrounded (game still open) with WebSocket alive — counts as online.
+  if (presence.backgrounded === true) return true;
   if (presence.connected === true) return true;
-  // Fallback when `connected` is missing entirely (legacy / stale entries).
+  // Fallback when `connected` is absent (legacy / stale entries).
+  const lastSeen = Number(presence.lastSeen || 0);
   return lastSeen > 0 && nowMs - lastSeen <= graceMs;
+}
+
+// Returns true when the opponent deliberately closed the app:
+// visibilitychange set backgrounded:true, then Firebase onDisconnect fired connected:false.
+export function isAppClosed(presence) {
+  return !!(
+    presence &&
+    typeof presence === 'object' &&
+    presence.connected === false &&
+    presence.backgrounded === true
+  );
 }

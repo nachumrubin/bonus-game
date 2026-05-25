@@ -17,7 +17,7 @@ import { BACK_INTENT } from '../../src/ui/screens/backConfirmScreen.js';
 import { PAUSE_INTENT } from '../../src/ui/screens/pauseScreen.js';
 import { DISCONNECT_INTENT, DISCONNECT_OPEN, DISCONNECT_CLOSE } from '../../src/ui/screens/disconnectScreen.js';
 import { createGameFlowController } from '../../src/ui/controllers/gameFlowController.js';
-import { createDisconnectController, isPresenceOnline } from '../../src/ui/controllers/disconnectController.js';
+import { createDisconnectController, isPresenceOnline, isAppClosed } from '../../src/ui/controllers/disconnectController.js';
 import { PRESENCE_GRACE_MS } from '../../src/game/online/presenceService.js';
 import { makeMockDb } from '../../src/game/online/mockFirebase.js';
 import {
@@ -426,6 +426,8 @@ test('AUTO_WIN resigns the opponent slot and writes abandoned+disconnect to Fire
 // ─────────────────────────────────────────────────────────────────────────────
 
 test('disconnect controller opens DISCONNECT_OPEN when opponent goes offline', () => {
+  // graceMs:0 collapses the grace period so the overlay fires on the first
+  // offline presence tick — isolating the detection logic from the timer.
   bus._reset();
 
   let presenceCb = null;
@@ -446,7 +448,7 @@ test('disconnect controller opens DISCONNECT_OPEN when opponent goes offline', (
       presenceCb = cb;
       return () => {};
     },
-    graceMs: 1_000,
+    graceMs: 0,
     now: () => 10_000,
   });
 
@@ -851,85 +853,31 @@ test('isPresenceOnline: connected:false takes priority over backgrounded:true (t
   );
 });
 
-test('isPresenceOnline: backgrounded:true with recent lastSeen counts as alive', () => {
-  // A tab that is merely backgrounded (app switched to background on mobile)
-  // should not trigger the disconnect overlay if lastSeen is still fresh.
+test('isPresenceOnline: backgrounded:true + connected:true is always alive regardless of lastSeen', () => {
+  // Per spec: backgrounding the app = game is open. No disconnect overlay.
+  // The 2-missed-turns forfeit handles players who stay backgrounded for too long.
   const now = Date.now();
-  const presence = { backgrounded: true, connected: true, lastSeen: now - 1_000 };
-  assert.equal(
-    isPresenceOnline(presence, now, 30_000),
-    true,
-    'backgrounded tab with recent heartbeat must be treated as alive',
-  );
+  const recentPresence = { backgrounded: true, connected: true, lastSeen: now - 1_000 };
+  const stalePresence  = { backgrounded: true, connected: true, lastSeen: now - 1_000_000 };
+  assert.equal(isPresenceOnline(recentPresence, now, 30_000), true,
+    'backgrounded + connected with recent lastSeen must be alive');
+  assert.equal(isPresenceOnline(stalePresence, now, 30_000), true,
+    'backgrounded + connected with stale lastSeen must STILL be alive — no 2x grace check');
 });
 
-test('isPresenceOnline: backgrounded:true but lastSeen stale beyond 2x grace returns false', () => {
-  // Scenario: browser tab closed without WebSocket (Firebase fell back to
-  // HTTP long-polling). onDisconnect never fired so connected stays true.
-  // visibilitychange set backgrounded:true. Heartbeat stopped. After 2×
-  // graceMs of silence the tab must be treated as gone.
-  const now = Date.now();
-  const presence = { backgrounded: true, connected: true, lastSeen: now - 61_000 };
-  assert.equal(
-    isPresenceOnline(presence, now, 30_000),
-    false,
-    'backgrounded tab silent for >2x grace must be treated as disconnected',
-  );
-});
-
-test('disconnect controller: backgrounded tab with stale lastSeen opens overlay via polling (no-WebSocket scenario)', async () => {
-  // Scenario: opponent's browser had no WebSocket (extension blocked it).
-  // Firebase used HTTP long-polling → onDisconnect never fired.
-  // Tab closed: visibilitychange set backgrounded:true, heartbeat stopped.
-  // Poll should detect stale lastSeen > 2× graceMs and open the overlay.
-  bus._reset();
-
-  let nowMs = 1_000_000;
-  let presenceCb = null;
-  let opened = 0;
-
-  const session = {
-    mySlot: 0,
-    state: { mode: 'friend-live', players: PLAYERS },
-  };
-
-  const ctl = createDisconnectController({
-    bus,
-    dbRef: () => ({}),
-    sessionRef: () => session,
-    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
-    graceMs: 5_000,
-    now: () => nowMs,
-    pollMs: 10,
-  });
-
-  bus.on(DISCONNECT_OPEN, () => opened++);
-
-  // Presence last seen at t=1 000 000. Tab closed — backgrounded:true set,
-  // connected stays true (onDisconnect never fired without WebSocket).
-  presenceCb({ backgrounded: true, connected: true, lastSeen: 1_000_000 });
-  assert.equal(opened, 0, 'not stale yet — overlay must not open immediately');
-
-  // Advance the clock past 2× graceMs (10 s with graceMs = 5 s).
-  nowMs = 1_011_000;
-
-  await new Promise(r => setTimeout(r, 80));
-
-  assert.equal(opened, 1,
-    'polling must detect stale backgrounded presence and open the disconnect overlay');
-
-  ctl.dispose();
-});
-
-test('disconnect controller: tab close (backgrounded:true + connected:false) opens disconnect overlay', () => {
+test('disconnect controller: app-close (backgrounded:true + connected:false) triggers AUTO_WIN, not overlay', () => {
+  // Per spec: closing the app = deliberate quit, treated like pressing "end game".
+  // The disconnect overlay (countdown) is NOT shown — AUTO_WIN fires immediately
+  // so the remaining player wins without waiting for the grace period.
   bus._reset();
 
   let presenceCb = null;
-  let opened = 0;
+  let overlayOpened = 0;
+  const autoWins = [];
 
   const session = {
     mySlot: 0,
-    state: { mode: 'friend-live', players: PLAYERS },
+    state: { mode: 'friend-live', currentTurnSlot: 1, players: PLAYERS },
   };
 
   const ctl = createDisconnectController({
@@ -941,13 +889,19 @@ test('disconnect controller: tab close (backgrounded:true + connected:false) ope
     now: () => Date.now(),
   });
 
-  bus.on(DISCONNECT_OPEN, () => opened++);
+  bus.on(DISCONNECT_OPEN, () => overlayOpened++);
+  bus.on(DISCONNECT_INTENT.AUTO_WIN, p => autoWins.push(p));
 
-  // Simulates the sequence of Firebase writes when a browser tab closes:
+  // Simulates the sequence of Firebase writes when a tab/app closes:
   //   visibilitychange → backgrounded:true, then onDisconnect → connected:false
   presenceCb({ backgrounded: true, connected: false, lastSeen: 0 });
-  assert.equal(opened, 1,
-    'closed tab must trigger the disconnect overlay — connected:false must win over backgrounded:true');
+
+  assert.equal(overlayOpened, 0,
+    'app-close must NOT open the disconnect countdown overlay');
+  assert.equal(autoWins.length, 1,
+    'app-close must immediately emit AUTO_WIN — no grace period');
+  assert.equal(autoWins[0]?.reason, 'left',
+    'AUTO_WIN reason must be "left" for deliberate app-close');
 
   ctl.dispose();
 });
@@ -1018,6 +972,298 @@ test('version-bumped terminal status does not double-fire GAME_COMPLETED', async
   assert.equal(completed.length, 1,
     'GAME_COMPLETED must fire exactly once — not again when setStatus echoes back');
 
+  await sess.dispose();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 18. Accumulating disconnect timer
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('accumulating timer: grace period (< graceMs total) suppresses the overlay', async () => {
+  // Opponent disconnects for less than graceMs → no overlay.
+  bus._reset();
+
+  let nowMs = 1_000_000;
+  let presenceCb = null;
+  let opened = 0;
+
+  const session = { mySlot: 0, state: { mode: 'friend-live', players: PLAYERS } };
+  const ctl = createDisconnectController({
+    bus, dbRef: () => ({}), sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: 10_000,
+    now: () => nowMs,
+    pollMs: 5,
+  });
+
+  bus.on(DISCONNECT_OPEN, () => opened++);
+
+  // Opponent goes offline at t=0.
+  presenceCb({ connected: false, lastSeen: 0 });
+  // Advance 8 s — still within grace.
+  nowMs = 1_008_000;
+  await new Promise(r => setTimeout(r, 30));
+
+  assert.equal(opened, 0, 'overlay must not open while within the grace period');
+
+  ctl.dispose();
+});
+
+test('accumulating timer: overlay opens when elapsed equals graceMs', async () => {
+  // Opponent disconnects and stays offline past graceMs — overlay opens.
+  bus._reset();
+
+  let nowMs = 1_000_000;
+  let presenceCb = null;
+  let opened = 0;
+
+  const session = { mySlot: 0, state: { mode: 'friend-live', players: PLAYERS } };
+  const ctl = createDisconnectController({
+    bus, dbRef: () => ({}), sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: 10_000,
+    now: () => nowMs,
+    pollMs: 5,
+  });
+
+  bus.on(DISCONNECT_OPEN, () => opened++);
+
+  presenceCb({ connected: false, lastSeen: 0 });
+  // Advance past graceMs (10 s) — poll will detect elapsed >= 10 000.
+  nowMs = 1_011_000;
+  await new Promise(r => setTimeout(r, 30));
+
+  assert.equal(opened, 1, 'overlay must open once elapsed time crosses graceMs');
+
+  ctl.dispose();
+});
+
+test('accumulating timer: overlay seconds reflects remaining time (maxMs - elapsed)', async () => {
+  // Opponent disconnects at t=0, reconnects at t=graceMs+5s (overlay was open),
+  // disconnects again at t=graceMs+5s. Remaining = maxMs - accumulated = graceMs - 5s.
+  bus._reset();
+
+  let nowMs = 0;
+  let presenceCb = null;
+  const openedWith = [];
+
+  const GRACE = 10_000;
+  const session = { mySlot: 0, state: { mode: 'friend-live', players: PLAYERS } };
+  const ctl = createDisconnectController({
+    bus, dbRef: () => ({}), sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: GRACE,
+    now: () => nowMs,
+    pollMs: 5,
+  });
+
+  bus.on(DISCONNECT_OPEN, p => openedWith.push(p));
+
+  // First disconnect — stays offline past grace.
+  presenceCb({ connected: false, lastSeen: 0 });
+  nowMs = GRACE + 5_000;  // 15 s elapsed (5 s into countdown)
+  await new Promise(r => setTimeout(r, 30));
+
+  assert.equal(openedWith.length, 1, 'first disconnect should open overlay');
+  const firstSeconds = openedWith[0].seconds;
+  // remaining = maxMs - elapsed = 20 000 - 15 000 = 5 000 → 5 s
+  assert.equal(firstSeconds, 5, 'overlay must show remaining countdown seconds');
+
+  // Reconnect (closes overlay), then immediately disconnect again.
+  presenceCb({ connected: true, lastSeen: nowMs });
+  presenceCb({ connected: false, lastSeen: 0 });
+  // elapsed = totalAccumulated (15 s) + 0 new = 15 s → remaining = 20 - 15 = 5 s
+  await new Promise(r => setTimeout(r, 30));
+
+  // Second open should show remaining time, not full grace again.
+  assert.equal(openedWith.length, 2, 'second disconnect after reconnect reopens overlay');
+  assert.equal(openedWith[1].seconds, 5,
+    'second open must show remaining time from accumulated total, not a reset to full grace');
+
+  ctl.dispose();
+});
+
+test('accumulating timer: reconnect accumulates time; second disconnect skips grace', async () => {
+  // Disconnect for exactly graceMs, reconnect (accumulated = graceMs),
+  // immediately disconnect again → overlay opens at once (elapsed >= graceMs).
+  bus._reset();
+
+  let nowMs = 0;
+  let presenceCb = null;
+  let opened = 0;
+
+  const GRACE = 10_000;
+  const session = { mySlot: 0, state: { mode: 'friend-live', players: PLAYERS } };
+  const ctl = createDisconnectController({
+    bus, dbRef: () => ({}), sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: GRACE,
+    now: () => nowMs,
+    pollMs: 5,
+  });
+
+  bus.on(DISCONNECT_OPEN, () => opened++);
+
+  // First disconnect — exactly at grace boundary (no overlay yet, elapsed = graceMs - 1).
+  presenceCb({ connected: false, lastSeen: 0 });
+  nowMs = GRACE;  // elapsed = GRACE → overlay opens
+  await new Promise(r => setTimeout(r, 30));
+  assert.equal(opened, 1, 'first disconnect opens overlay at grace boundary');
+
+  // Reconnect — total accumulated = GRACE (all of it).
+  presenceCb({ connected: true, lastSeen: nowMs });
+  // Second disconnect immediately — accumulated = GRACE → elapsed >= graceMs from the start.
+  presenceCb({ connected: false, lastSeen: 0 });
+  await new Promise(r => setTimeout(r, 30));
+  assert.equal(opened, 2, 'second disconnect must immediately open overlay (no grace left)');
+
+  ctl.dispose();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 19. App-close: immediate resign and wait-for-turn-change variants
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('app-close: AUTO_WIN fires immediately when it is the opponent\'s turn', () => {
+  // Opponent closes app mid their own turn — resign right away.
+  bus._reset();
+
+  let presenceCb = null;
+  const autoWins = [];
+
+  const session = {
+    mySlot: 0,
+    // currentTurnSlot: 1 → opponent's turn
+    state: { mode: 'friend-live', currentTurnSlot: 1, players: PLAYERS },
+  };
+
+  const ctl = createDisconnectController({
+    bus, dbRef: () => ({}), sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: 30_000,
+    now: () => Date.now(),
+  });
+  bus.on(DISCONNECT_INTENT.AUTO_WIN, p => autoWins.push(p));
+
+  presenceCb({ backgrounded: true, connected: false, lastSeen: 0 });
+
+  assert.equal(autoWins.length, 1, 'AUTO_WIN must fire immediately on app-close during opponent turn');
+  assert.equal(autoWins[0]?.reason, 'left');
+
+  ctl.dispose();
+});
+
+test('app-close: AUTO_WIN is deferred until TURN_CHANGED when it is my turn', () => {
+  // Opponent closes app while I am mid-move (my turn). Per spec: game ends
+  // "immediately upon completion" of my move — i.e. on the next TURN_CHANGED.
+  bus._reset();
+
+  let presenceCb = null;
+  const autoWins = [];
+
+  const session = {
+    mySlot: 0,
+    // currentTurnSlot: 0 → my turn
+    state: { mode: 'friend-live', currentTurnSlot: 0, players: PLAYERS },
+  };
+
+  const ctl = createDisconnectController({
+    bus, dbRef: () => ({}), sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: 30_000,
+    now: () => Date.now(),
+  });
+  bus.on(DISCONNECT_INTENT.AUTO_WIN, p => autoWins.push(p));
+
+  // Opponent closes app while I am playing.
+  presenceCb({ backgrounded: true, connected: false, lastSeen: 0 });
+  assert.equal(autoWins.length, 0,
+    'AUTO_WIN must NOT fire immediately when the remaining player is mid-move');
+
+  // I complete my move — TURN_CHANGED fires.
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 2 });
+  assert.equal(autoWins.length, 1,
+    'AUTO_WIN must fire after TURN_CHANGED completes my move');
+  assert.equal(autoWins[0]?.reason, 'left');
+
+  ctl.dispose();
+});
+
+test('app-close: TURN_CHANGED listener is cancelled if opponent comes back online', () => {
+  // Opponent closes app (backgrounded+disconnected), then quickly reconnects.
+  // The pending TURN_CHANGED wait must be cancelled so AUTO_WIN doesn't fire.
+  bus._reset();
+
+  let presenceCb = null;
+  const autoWins = [];
+
+  const session = {
+    mySlot: 0,
+    state: { mode: 'friend-live', currentTurnSlot: 0, players: PLAYERS },
+  };
+
+  const ctl = createDisconnectController({
+    bus, dbRef: () => ({}), sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: 30_000,
+    now: () => Date.now(),
+  });
+  bus.on(DISCONNECT_INTENT.AUTO_WIN, p => autoWins.push(p));
+
+  presenceCb({ backgrounded: true, connected: false, lastSeen: 0 });
+  assert.equal(autoWins.length, 0, 'deferred — waiting for TURN_CHANGED');
+
+  // Opponent reconnects (false alarm).
+  presenceCb({ connected: true, lastSeen: Date.now() });
+  // TURN_CHANGED fires (normal game play).
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 2 });
+
+  assert.equal(autoWins.length, 0,
+    'AUTO_WIN must NOT fire after opponent reconnected — TURN_CHANGED listener must have been cancelled');
+
+  ctl.dispose();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 20. isAppClosed helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('isAppClosed: true only when backgrounded:true AND connected:false', () => {
+  assert.equal(isAppClosed({ backgrounded: true, connected: false }), true);
+  assert.equal(isAppClosed({ backgrounded: true, connected: true }), false,
+    'backgrounded + still connected = NOT closed (just backgrounded)');
+  assert.equal(isAppClosed({ connected: false }), false,
+    'internet disconnect without backgrounded flag = NOT app-close');
+  assert.equal(isAppClosed(null), false);
+  assert.equal(isAppClosed(true), false);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 21. AUTO_WIN reason propagates to RESIGN_GAME
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('AUTO_WIN with reason:left dispatches RESIGN_GAME with reason:left', async () => {
+  bus._reset();
+
+  const db = makeMockDb();
+  const room = await setupPlayingRoom(db, 'friend-live');
+  const sess = await createOnlineGameSession({ bus, db, room, mySlot: 0 });
+
+  const ctl = createDisconnectController({
+    bus, dbRef: () => db, sessionRef: () => sess,
+    watchPresence: () => () => {},
+    graceMs: 100, now: () => Date.now(),
+  });
+
+  bus.emit(DISCONNECT_INTENT.AUTO_WIN, { reason: 'left' });
+  await new Promise(r => setTimeout(r, 20));
+
+  const roomNow = await readRoom(db);
+  assert.equal(roomNow.status, 'abandoned');
+  assert.equal(roomNow.abandonedBy, 1, 'opponent (slot 1) is the abandoner');
+  assert.equal(roomNow.abandonReason, 'left', 'reason must be "left" for app-close');
+
+  ctl.dispose();
   await sess.dispose();
 });
 
