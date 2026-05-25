@@ -851,15 +851,74 @@ test('isPresenceOnline: connected:false takes priority over backgrounded:true (t
   );
 });
 
-test('isPresenceOnline: backgrounded:true without connected:false counts as alive', () => {
+test('isPresenceOnline: backgrounded:true with recent lastSeen counts as alive', () => {
   // A tab that is merely backgrounded (app switched to background on mobile)
-  // should not trigger the disconnect overlay. connected is not false here.
-  const presence = { backgrounded: true, connected: true, lastSeen: Date.now() - 60_000 };
+  // should not trigger the disconnect overlay if lastSeen is still fresh.
+  const now = Date.now();
+  const presence = { backgrounded: true, connected: true, lastSeen: now - 1_000 };
   assert.equal(
-    isPresenceOnline(presence, Date.now(), 30_000),
+    isPresenceOnline(presence, now, 30_000),
     true,
-    'backgrounded but still connected tab must be treated as alive',
+    'backgrounded tab with recent heartbeat must be treated as alive',
   );
+});
+
+test('isPresenceOnline: backgrounded:true but lastSeen stale beyond 2x grace returns false', () => {
+  // Scenario: browser tab closed without WebSocket (Firebase fell back to
+  // HTTP long-polling). onDisconnect never fired so connected stays true.
+  // visibilitychange set backgrounded:true. Heartbeat stopped. After 2×
+  // graceMs of silence the tab must be treated as gone.
+  const now = Date.now();
+  const presence = { backgrounded: true, connected: true, lastSeen: now - 61_000 };
+  assert.equal(
+    isPresenceOnline(presence, now, 30_000),
+    false,
+    'backgrounded tab silent for >2x grace must be treated as disconnected',
+  );
+});
+
+test('disconnect controller: backgrounded tab with stale lastSeen opens overlay via polling (no-WebSocket scenario)', async () => {
+  // Scenario: opponent's browser had no WebSocket (extension blocked it).
+  // Firebase used HTTP long-polling → onDisconnect never fired.
+  // Tab closed: visibilitychange set backgrounded:true, heartbeat stopped.
+  // Poll should detect stale lastSeen > 2× graceMs and open the overlay.
+  bus._reset();
+
+  let nowMs = 1_000_000;
+  let presenceCb = null;
+  let opened = 0;
+
+  const session = {
+    mySlot: 0,
+    state: { mode: 'friend-live', players: PLAYERS },
+  };
+
+  const ctl = createDisconnectController({
+    bus,
+    dbRef: () => ({}),
+    sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: 5_000,
+    now: () => nowMs,
+    pollMs: 10,
+  });
+
+  bus.on(DISCONNECT_OPEN, () => opened++);
+
+  // Presence last seen at t=1 000 000. Tab closed — backgrounded:true set,
+  // connected stays true (onDisconnect never fired without WebSocket).
+  presenceCb({ backgrounded: true, connected: true, lastSeen: 1_000_000 });
+  assert.equal(opened, 0, 'not stale yet — overlay must not open immediately');
+
+  // Advance the clock past 2× graceMs (10 s with graceMs = 5 s).
+  nowMs = 1_011_000;
+
+  await new Promise(r => setTimeout(r, 80));
+
+  assert.equal(opened, 1,
+    'polling must detect stale backgrounded presence and open the disconnect overlay');
+
+  ctl.dispose();
 });
 
 test('disconnect controller: tab close (backgrounded:true + connected:false) opens disconnect overlay', () => {

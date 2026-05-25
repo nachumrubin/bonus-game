@@ -117,11 +117,18 @@ export function isPresenceOnline(presence, nowMs = Date.now(), graceMs = PRESENC
   // backgrounded:true, then onDisconnect fires connected:false) is treated as
   // offline rather than alive.
   if (presence.connected === false) return false;
-  // Backgrounded tabs are alive but throttled. Don't fire the disconnect
-  // overlay — the turn timer + missed-turns forfeit cover the away case.
-  if (presence.backgrounded === true) return true;
+  const lastSeen = Number(presence.lastSeen || 0);
+  // Backgrounded tabs suppress the disconnect overlay — mobile OS timers are
+  // throttled so the 10 s heartbeat may stall without the tab being gone.
+  // However we still bound by 2× graceMs: if the heartbeat has been silent
+  // that long the tab is gone (covers the case where Firebase fell back to
+  // HTTP long-polling and onDisconnect never fired, e.g. WebSocket blocked
+  // by a browser extension or corporate proxy).
+  if (presence.backgrounded === true) {
+    if (lastSeen > 0 && nowMs - lastSeen > graceMs * 2) return false;
+    return true;
+  }
   if (presence.connected === true) return true;
   // Fallback when `connected` is missing entirely (legacy / stale entries).
-  const lastSeen = Number(presence.lastSeen || 0);
   return lastSeen > 0 && nowMs - lastSeen <= graceMs;
 }
