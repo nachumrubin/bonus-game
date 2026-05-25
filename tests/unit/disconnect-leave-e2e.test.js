@@ -17,7 +17,7 @@ import { BACK_INTENT } from '../../src/ui/screens/backConfirmScreen.js';
 import { PAUSE_INTENT } from '../../src/ui/screens/pauseScreen.js';
 import { DISCONNECT_INTENT, DISCONNECT_OPEN, DISCONNECT_CLOSE } from '../../src/ui/screens/disconnectScreen.js';
 import { createGameFlowController } from '../../src/ui/controllers/gameFlowController.js';
-import { createDisconnectController } from '../../src/ui/controllers/disconnectController.js';
+import { createDisconnectController, isPresenceOnline } from '../../src/ui/controllers/disconnectController.js';
 import { PRESENCE_GRACE_MS } from '../../src/game/online/presenceService.js';
 import { makeMockDb } from '../../src/game/online/mockFirebase.js';
 import {
@@ -487,10 +487,11 @@ test('disconnect controller does not open overlay for backgrounded opponent', ()
 
   bus.on(DISCONNECT_OPEN, () => opened++);
 
-  // Opponent's tab is backgrounded (mobile throttles heartbeat; counts as alive).
-  presenceCb({ backgrounded: true, connected: false, lastSeen: 0 });
+  // Opponent's tab is backgrounded but still CONNECTED (mobile throttles
+  // heartbeat; counts as alive). connected:true means the socket is open.
+  presenceCb({ backgrounded: true, connected: true, lastSeen: 0 });
   assert.equal(opened, 0,
-    'backgrounded opponent must NOT trigger the disconnect overlay');
+    'backgrounded (but still connected) opponent must NOT trigger the disconnect overlay');
 
   ctl.dispose();
 });
@@ -827,6 +828,138 @@ test('BACK_INTENT.LEAVE resigns mySlot even when it is not the current turn', ()
 
   assert.equal(dispatched[0]?.payload?.slot, 0,
     'must resign mySlot (0), not currentTurnSlot (1)');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 16. Bug fix: isPresenceOnline — connected:false is authoritative over backgrounded:true
+//     (browser tab-close: visibilitychange sets backgrounded:true first, then
+//      Firebase onDisconnect fires connected:false)
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('isPresenceOnline: connected:false takes priority over backgrounded:true (tab-close scenario)', () => {
+  // When a browser tab closes:
+  //   1. visibilitychange fires  → presence.backgrounded = true  (written to Firebase)
+  //   2. onDisconnect fires      → presence.connected   = false (written to Firebase)
+  // The resulting presence { backgrounded: true, connected: false } must be
+  // treated as OFFLINE. Before the fix, backgrounded:true was checked first
+  // and incorrectly returned true, so the opponent never saw the disconnect.
+  const presence = { backgrounded: true, connected: false, lastSeen: Date.now() - 1000 };
+  assert.equal(
+    isPresenceOnline(presence, Date.now(), 30_000),
+    false,
+    'closed tab (connected:false) must be offline even when backgrounded:true is also set',
+  );
+});
+
+test('isPresenceOnline: backgrounded:true without connected:false counts as alive', () => {
+  // A tab that is merely backgrounded (app switched to background on mobile)
+  // should not trigger the disconnect overlay. connected is not false here.
+  const presence = { backgrounded: true, connected: true, lastSeen: Date.now() - 60_000 };
+  assert.equal(
+    isPresenceOnline(presence, Date.now(), 30_000),
+    true,
+    'backgrounded but still connected tab must be treated as alive',
+  );
+});
+
+test('disconnect controller: tab close (backgrounded:true + connected:false) opens disconnect overlay', () => {
+  bus._reset();
+
+  let presenceCb = null;
+  let opened = 0;
+
+  const session = {
+    mySlot: 0,
+    state: { mode: 'friend-live', players: PLAYERS },
+  };
+
+  const ctl = createDisconnectController({
+    bus,
+    dbRef: () => ({}),
+    sessionRef: () => session,
+    watchPresence: (_db, _uid, cb) => { presenceCb = cb; return () => {}; },
+    graceMs: 30_000,
+    now: () => Date.now(),
+  });
+
+  bus.on(DISCONNECT_OPEN, () => opened++);
+
+  // Simulates the sequence of Firebase writes when a browser tab closes:
+  //   visibilitychange → backgrounded:true, then onDisconnect → connected:false
+  presenceCb({ backgrounded: true, connected: false, lastSeen: 0 });
+  assert.equal(opened, 1,
+    'closed tab must trigger the disconnect overlay — connected:false must win over backgrounded:true');
+
+  ctl.dispose();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 17. Bug fix: version-bumped terminal status (timeout watchdog) must trigger
+//     EV.GAME_COMPLETED on the observing session.
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('version-bumped room update with terminal status triggers GAME_COMPLETED on observer session', async () => {
+  // Scenario: the timeout watchdog calls commitTransaction (which bumps room.version)
+  // and sets status:'abandoned'. The normal watchRoom path (version > lastApplied)
+  // must detect the terminal status and emit EV.GAME_COMPLETED.
+  // Before the fix, only applyTerminalStatusIfNeeded (called on non-version-bumped
+  // writes) emitted GAME_COMPLETED, so the watchdog forfeit was silently ignored.
+  bus._reset();
+
+  const db = makeMockDb();
+  const room = await setupPlayingRoom(db, 'random-live');
+  const sess = await createOnlineGameSession({ bus, db, room, mySlot: 0 });
+
+  const completed = [];
+  bus.on(EV.GAME_COMPLETED, p => completed.push(p));
+
+  // Simulate a watchdog forfeit: version bump + terminal status, no new lastMove.
+  const currentRoom = await readRoom(db);
+  await db.ref('rooms/room').update({
+    version: currentRoom.version + 1,
+    status: 'abandoned',
+    abandonedBy: 1,
+    abandonReason: 'timeout',
+  });
+  await new Promise(r => setTimeout(r, 10));
+
+  assert.equal(completed.length, 1,
+    'GAME_COMPLETED must fire when a version-bumped write carries a terminal status (watchdog forfeit)');
+  assert.equal(completed[0].status, 'abandoned');
+  assert.equal(completed[0].abandonedBy, 1);
+  assert.equal(completed[0].abandonReason, 'timeout');
+
+  await sess.dispose();
+});
+
+test('version-bumped terminal status does not double-fire GAME_COMPLETED', async () => {
+  // After the watchdog forfeit emits GAME_COMPLETED, the GAME_COMPLETED handler
+  // calls setStatus (no version bump). The resulting echo must NOT emit a second
+  // GAME_COMPLETED via applyTerminalStatusIfNeeded.
+  bus._reset();
+
+  const db = makeMockDb();
+  const room = await setupPlayingRoom(db, 'random-live');
+  const sess = await createOnlineGameSession({ bus, db, room, mySlot: 0 });
+
+  const completed = [];
+  bus.on(EV.GAME_COMPLETED, p => completed.push(p));
+
+  const currentRoom = await readRoom(db);
+  await db.ref('rooms/room').update({
+    version: currentRoom.version + 1,
+    status: 'abandoned',
+    abandonedBy: 1,
+    abandonReason: 'timeout',
+  });
+  // Allow GAME_COMPLETED handler's async setStatus to resolve and watchRoom
+  // echo to fire.
+  await new Promise(r => setTimeout(r, 40));
+
+  assert.equal(completed.length, 1,
+    'GAME_COMPLETED must fire exactly once — not again when setStatus echoes back');
+
+  await sess.dispose();
 });
 
 console.info = _origInfo;

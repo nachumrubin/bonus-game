@@ -257,6 +257,7 @@ export async function createOnlineGameSession({
 
     const previousTurnSlot = state.currentTurnSlot;
     const previousTurnNumber = state.turnNumber;
+    const previousStatus = state.status;
     const rawLast = incoming.lastMove ?? incoming.moveHistory?.[incoming.moveHistory.length - 1];
     // A snapshot only counts as "carrying a new move" if its lastMove.ts
     // advanced past what we've already seen. Watchdog rotations / settings
@@ -346,6 +347,20 @@ export async function createOnlineGameSession({
         currentTurnSlot: state.currentTurnSlot,
         turnNumber: state.turnNumber,
         reason: 'remote-sync',
+      });
+    }
+    // A version-bumped write (e.g. timeout-watchdog forfeit via commitTransaction)
+    // may carry a terminal status without going through applyTerminalStatusIfNeeded.
+    // Detect the transition here so EV.GAME_COMPLETED always fires on terminal status.
+    if (isTerminalStatus(state.status) && state.status !== previousStatus) {
+      state.abandonedBy = incoming.abandonedBy ?? state.abandonedBy ?? null;
+      state.abandonReason = incoming.abandonReason ?? state.abandonReason ?? null;
+      bus.emit(EV.GAME_COMPLETED, {
+        status: state.status,
+        winnerSlot: null,
+        scores: { ...state.scores },
+        abandonedBy: state.abandonedBy,
+        abandonReason: state.abandonReason,
       });
     }
   });
