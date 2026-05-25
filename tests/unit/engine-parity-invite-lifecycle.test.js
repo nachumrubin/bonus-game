@@ -35,7 +35,8 @@ function loadModules() {
     import('../../src/game/online/mockFirebase.js'),
     import('../../src/game/online/inviteService.js'),
     import('../../src/game/online/schema.js'),
-  ]).then(([mock, invite, schema]) => ({ mock, invite, schema }));
+    import('../../src/notifications/notificationService.js'),
+  ]).then(([mock, invite, schema, notif]) => ({ mock, invite, schema, notif }));
   return modulesPromise;
 }
 
@@ -261,4 +262,69 @@ test('parity: sender cancels; receiver listener sees the invite vanish; no ack',
   assert.ok(ackHistory.every(n => n === 0), 'no ack written for sender-initiated cancel');
 
   offRecv(); offSend();
+});
+
+// ───────────────────────────────────────────────────────────────────────
+// 6. Recipient availability check — live invite to a player mid live game.
+// The inviter should be blocked before the invite is even written.
+test('checkRecipientAvailability: recipient in active live game blocks live invite', async () => {
+  const { db, invite } = await setup();
+
+  // Put bob in an active live room.
+  await db.ref('users/bob/activeRoom').set('live-room-1');
+  await db.ref('rooms/live-room-1').set({ mode: 'friend-live', status: 'playing' });
+
+  const result = await invite.checkRecipientAvailability(db, 'bob', 'friend-live');
+  assert.equal(result.available, false);
+  assert.equal(result.reason, 'in-live-game');
+});
+
+test('checkRecipientAvailability: recipient in async game does NOT block live invite', async () => {
+  const { db, invite } = await setup();
+
+  // Bob is in an async room — live invite should still go through.
+  await db.ref('users/bob/activeRoom').set('async-room-1');
+  await db.ref('rooms/async-room-1').set({ mode: 'friend-async', status: 'playing' });
+
+  const result = await invite.checkRecipientAvailability(db, 'bob', 'friend-live');
+  assert.equal(result.available, true);
+});
+
+test('checkRecipientAvailability: recipient with no active room is always available', async () => {
+  const { db, invite } = await setup();
+  const result = await invite.checkRecipientAvailability(db, 'bob', 'friend-live');
+  assert.equal(result.available, true);
+});
+
+test('checkRecipientAvailability: async invite is always available regardless of game state', async () => {
+  const { db, invite } = await setup();
+
+  // Even if bob is mid live game, async invites go through.
+  await db.ref('users/bob/activeRoom').set('live-room-2');
+  await db.ref('rooms/live-room-2').set({ mode: 'random-live', status: 'playing' });
+
+  const result = await invite.checkRecipientAvailability(db, 'bob', 'friend-async');
+  assert.equal(result.available, true);
+});
+
+// ───────────────────────────────────────────────────────────────────────
+// 7. Push notification sent when invite is dispatched.
+// notificationService.pushInvite is what delivers the invite to a closed app.
+test('pushInvite delivers to the correct recipient uid with inviter name', async () => {
+  const { notif } = await setup();
+  notif._resetForTests();
+  const sent = [];
+  notif.configure({
+    appId: 'test-app',
+    restKey: 'test-key',
+    sendPush: async (body) => sent.push(body),
+  });
+
+  await notif.pushInvite({ inviteeUid: 'bob', inviterName: 'Alice', roomId: null });
+
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].include_aliases.external_id, ['bob']);
+  assert.equal(sent[0].data.type, 'invite');
+  assert.ok(sent[0].contents.en.includes('Alice'),
+    'notification body must name the inviter');
 });

@@ -2602,7 +2602,7 @@ function installCutoverGlobals() {
   };
 
   // Called from onclick on the שלח button.
-  globalThis.crSendInvite = globalThis.crSendInvite ?? function crSendInvite() {
+  globalThis.crSendInvite = globalThis.crSendInvite ?? async function crSendInvite() {
     const fbDb   = activeFbDb;
     const fbUser = activeFbCurrentUser;
     const input    = globalThis.document?.getElementById?.('wr-invite-name');
@@ -2619,26 +2619,44 @@ function installCutoverGlobals() {
     const mode     = globalThis.__spine?.activePending?.mode ?? 'friend-live';
     const settings = settingsCompat.settingsFromLegacyGlobals(globalThis);
 
+    // For live invites: check whether the recipient is already in an active live
+    // game. If so, notify the inviter and cancel — we don't interrupt someone
+    // mid-game with a live-game invite.
+    const availability = await inviteService.checkRecipientAvailability(fbDb, toUid, mode);
+    if (!availability.available) {
+      if (statusEl) { statusEl.textContent = 'השחקן נמצא כעת במשחק ולא ניתן להזמינו'; statusEl.style.color = '#f87'; }
+      return;
+    }
+
     if (statusEl) { statusEl.textContent = 'שולח...'; statusEl.style.color = ''; }
 
-    inviteService.sendInvite(fbDb, {
-      fromUid:    fbUser.uid,
-      fromName:   fbUser.displayName ?? 'שחקן',
-      fromAvatar: fbUser.photoURL ?? null,
-      toUid,
-      mode,
-      settings,
-      serverTimestamp: Date.now(),
-    }).then(() => {
+    try {
+      await inviteService.sendInvite(fbDb, {
+        fromUid:    fbUser.uid,
+        fromName:   fbUser.displayName ?? 'שחקן',
+        fromAvatar: fbUser.photoURL ?? null,
+        toUid,
+        mode,
+        settings,
+        serverTimestamp: Date.now(),
+      });
       if (statusEl) { statusEl.textContent = 'ההזמנה נשלחה! ✓'; statusEl.style.color = '#4f4'; }
       if (input) { input.value = ''; delete input.dataset.selectedUid; }
+      // Push notification so the invite reaches the recipient even when their
+      // app is closed (OneSignal suppresses the system notification silently
+      // when the app is already open and the in-app listener handles it).
+      notificationService.pushInvite({
+        inviteeUid:  toUid,
+        inviterName: fbUser.displayName ?? 'שחקן',
+        roomId:      null, // room is created on accept; deep-link goes to home
+      }).catch((e) => console.warn('[spine] pushInvite', e));
       globalThis.setTimeout?.(() => {
         if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; }
       }, 3000);
-    }).catch((e) => {
+    } catch (e) {
       console.error('[spine] crSendInvite', e);
       if (statusEl) { statusEl.textContent = 'שגיאה בשליחת ההזמנה'; statusEl.style.color = '#f87'; }
-    });
+    }
   };
 }
 
