@@ -80,7 +80,7 @@ export function createTimeoutWatchdog({
   // (the active player's tab is likely hung/disconnected, so they won't
   // clear it themselves).
   function applyPatchToRoom(room, patch) {
-    return {
+    const out = {
       ...room,
       currentTurnSlot: patch.currentTurnSlot,
       turnNumber: Number(room.turnNumber ?? 1) + 1,
@@ -91,6 +91,20 @@ export function createTimeoutWatchdog({
       livePreview: null,
       updatedAt: patch.ts ?? now(),
     };
+    // When the patch signals a forfeit (2 consecutive missed turns), also
+    // promote the room to a terminal status. Both clients' watchRoom
+    // listeners then see the status flip and route through the game-end
+    // overlay with the correct abandonReason.
+    if (patch.status) {
+      out.status = patch.status;
+      if (patch.abandonedBy === 0 || patch.abandonedBy === 1) {
+        out.abandonedBy = patch.abandonedBy;
+      }
+      if (patch.abandonReason) {
+        out.abandonReason = patch.abandonReason;
+      }
+    }
+    return out;
   }
 
   async function tick() {

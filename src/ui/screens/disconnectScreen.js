@@ -16,9 +16,9 @@ export const DISCONNECT_INTENT = Object.freeze({
 export const DISCONNECT_OPEN  = 'overlay/disconnect/open';
 export const DISCONNECT_CLOSE = 'overlay/disconnect/close';
 
-const DEFAULT_GRACE_SECONDS = 30;
+export const DEFAULT_GRACE_SECONDS = 15;
 
-export function mountDisconnectScreen({ root = globalThis.document, bus } = {}) {
+export function mountDisconnectScreen({ root = globalThis.document, bus, now = () => Date.now() } = {}) {
   if (!bus) throw new Error('mountDisconnectScreen: bus required');
   const overlay = $('#ov-disconnect', root);
   if (!overlay) {
@@ -28,31 +28,36 @@ export function mountDisconnectScreen({ root = globalThis.document, bus } = {}) 
 
   const cleanups = [];
   let interval = null;
-  let secondsLeft = 0;
 
   const timerEl = $('#dc-timer', overlay);
   const barEl   = $('#dc-bar', overlay);
   const msgEl   = $('#dc-msg', overlay);
 
   cleanups.push(bus.on(DISCONNECT_OPEN, ({ seconds = DEFAULT_GRACE_SECONDS, opponentName } = {}) => {
-    secondsLeft = seconds;
     if (opponentName) setText(msgEl, `${opponentName} התנתק. ממתין לחזרה...`);
-    setText(timerEl, String(secondsLeft));
-    if (barEl?.style) barEl.style.width = '100%';
+    const total = Math.max(1, seconds);
+    const startedAt = now();
+    const deadline = startedAt + total * 1000;
+
+    function paint() {
+      const remaining = Math.max(0, Math.ceil((deadline - now()) / 1000));
+      setText(timerEl, String(remaining));
+      if (barEl?.style) barEl.style.width = `${Math.max(0, remaining / total) * 100}%`;
+      return remaining;
+    }
+
+    paint();
     overlay.classList?.remove('hidden');
 
     if (interval) clearInterval(interval);
-    const total = seconds;
     interval = setInterval(() => {
-      secondsLeft -= 1;
-      setText(timerEl, String(Math.max(0, secondsLeft)));
-      if (barEl?.style) barEl.style.width = `${Math.max(0, secondsLeft / total) * 100}%`;
-      if (secondsLeft <= 0) {
+      const remaining = paint();
+      if (remaining <= 0) {
         clearInterval(interval); interval = null;
         overlay.classList?.add('hidden');
         bus.emit(DISCONNECT_INTENT.AUTO_WIN);
       }
-    }, 1000);
+    }, 500);
   }));
 
   cleanups.push(bus.on(DISCONNECT_CLOSE, () => {

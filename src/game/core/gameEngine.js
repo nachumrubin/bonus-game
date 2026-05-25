@@ -433,9 +433,10 @@ export function createEngine({ state, bus }) {
     emit(EV.TURN_CHANGED, { currentTurnSlot: state.currentTurnSlot, turnNumber: state.turnNumber, reason: 'lock', prevSlot: slot });
   }
 
-  function handleResign({ slot } = {}) {
+  function handleResign({ slot, reason } = {}) {
     const s = (slot === 0 || slot === 1) ? slot : state.currentTurnSlot;
     applyResign(state, s);
+    if (reason) state.abandonReason = reason;
     finishGame();
   }
 
@@ -520,6 +521,7 @@ export function createEngine({ state, bus }) {
       winnerSlot: winnerSlot(state),
       scores: { ...state.scores },
       abandonedBy: state.abandonedBy,
+      abandonReason: state.abandonReason ?? null,
     });
   }
 

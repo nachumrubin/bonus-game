@@ -5,6 +5,7 @@ import { makeMockDb } from './mockFirebase.js';
 import {
   createRoom, readRoom, watchRoom, commitTransaction, engineStateFromRoom, setReady,
   markReadyAndMaybeStart, leaveRoom, setPlayerSubscriptionId, setSettings, setLivePreview,
+  computeExpiredOnlineTurnState, MISSED_TURNS_FORFEIT_THRESHOLD,
 } from './roomService.js';
 import { createInitialState } from '../core/gameEngine.js';
 import { STATUS } from './schema.js';
@@ -186,4 +187,48 @@ test('setLivePreview writes and clears sanitized preview payload', async () => {
   assert.deepEqual(db._data.rooms.r9.livePreview.tiles[0], { r: 4, c: 5, letter: 'א', val: 1, isJoker: false });
   await setLivePreview(db, 'r9', { slot: 0, tiles: [] });
   assert.equal(db._data.rooms.r9.livePreview ?? null, null);
+});
+
+test('computeExpiredOnlineTurnState rotates turn and increments missed counter', () => {
+  const state = {
+    currentTurnSlot: 0,
+    missedTurns: { 0: 0, 1: 0 },
+    stateSeq: 5,
+  };
+  const patch = computeExpiredOnlineTurnState(state, 10_000, 60_000);
+  assert.equal(patch.currentTurnSlot, 1);
+  assert.equal(patch.missedTurns[0], 1);
+  assert.equal(patch.missedTurns[1], 0);
+  assert.equal(patch.status, undefined);
+  assert.equal(patch.abandonedBy, undefined);
+});
+
+test('computeExpiredOnlineTurnState resets opponent missed count on rotation', () => {
+  // Player 1 missed last turn, but player 0 just moved (missedTurns[0] was 0
+  // and player 1 is on the clock now). Player 1 then misses too: rotation
+  // increments missedTurns[1] and resets missedTurns[0].
+  const state = {
+    currentTurnSlot: 1,
+    missedTurns: { 0: 1, 1: 0 },
+    stateSeq: 7,
+  };
+  const patch = computeExpiredOnlineTurnState(state, 10_000, 60_000);
+  assert.equal(patch.missedTurns[0], 0);
+  assert.equal(patch.missedTurns[1], 1);
+  assert.equal(patch.status, undefined);
+});
+
+test('computeExpiredOnlineTurnState forfeits on consecutive missed turns', () => {
+  // Player 0 already missed once; this rotation pushes them to threshold.
+  const state = {
+    currentTurnSlot: 0,
+    missedTurns: { 0: MISSED_TURNS_FORFEIT_THRESHOLD - 1, 1: 0 },
+    stateSeq: 9,
+  };
+  const patch = computeExpiredOnlineTurnState(state, 10_000, 60_000);
+  assert.equal(patch.missedTurns[0], MISSED_TURNS_FORFEIT_THRESHOLD);
+  assert.equal(patch.status, STATUS.ABANDONED);
+  assert.equal(patch.abandonedBy, 0);
+  assert.equal(patch.abandonReason, 'missed-turns');
+  assert.equal(patch.turnDeadlineMs, 0);
 });

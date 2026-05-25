@@ -301,6 +301,10 @@ export async function setLivePreview(db, roomId, { slot, tiles = [] } = {}) {
   await db.ref(`${PATH.rooms}/${roomId}/${FIELD.livePreview}`).set(preview.tiles.length ? preview : null);
 }
 
+// Two consecutive missed turns by the same player force a forfeit. The
+// loser is the player who failed to move twice in a row.
+export const MISSED_TURNS_FORFEIT_THRESHOLD = 2;
+
 export function computeExpiredOnlineTurnState(state, nowMs, limitMs) {
   if (!state || typeof state !== 'object') return null;
   const now = Number(nowMs || Date.now());
@@ -317,7 +321,8 @@ export function computeExpiredOnlineTurnState(state, nowMs, limitMs) {
   const nextDeadline = Number(limitMs || 0) > 0 ? now + Number(limitMs || 0) : 0;
   const passCountNow = Number(state.passCount || state._passCount || 0) + 1;
   const seq = Number(state.stateSeq || state.revision || 0) + 1;
-  return {
+  const forfeit = missed[currentTurn] >= MISSED_TURNS_FORFEIT_THRESHOLD;
+  const base = {
     ...state,
     turn: nextTurn,
     currentTurnSlot: nextTurn,
@@ -329,6 +334,13 @@ export function computeExpiredOnlineTurnState(state, nowMs, limitMs) {
     missedTurns: { 0: missed[0], 1: missed[1] },
     ts: now,
   };
+  if (forfeit) {
+    base.status = STATUS.ABANDONED;
+    base.abandonedBy = currentTurn;
+    base.abandonReason = 'missed-turns';
+    base.turnDeadlineMs = 0;
+  }
+  return base;
 }
 
 export function shouldClaimExpiredOnlineTurn(state, myIdx, nowMs, graceMs) {

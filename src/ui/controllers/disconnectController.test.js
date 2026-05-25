@@ -20,10 +20,28 @@ function makeSession() {
   };
 }
 
-test('isPresenceOnline honors connected flag and recent lastSeen grace', () => {
-  assert.equal(isPresenceOnline({ connected: true }, 1_000), true);
-  assert.equal(isPresenceOnline({ connected: false, lastSeen: 900 }, 1_000, 200), true);
+test('isPresenceOnline: connected:false is authoritative (no lastSeen grace)', () => {
+  // Firebase onDisconnect cleared the flag — opponent is gone, don't wait.
+  assert.equal(isPresenceOnline({ connected: false, lastSeen: 900 }, 1_000, 200), false);
   assert.equal(isPresenceOnline({ connected: false, lastSeen: 100 }, 1_000, 200), false);
+});
+
+test('isPresenceOnline: connected:true returns true regardless of lastSeen', () => {
+  assert.equal(isPresenceOnline({ connected: true }, 1_000), true);
+  assert.equal(isPresenceOnline({ connected: true, lastSeen: 0 }, 1_000), true);
+});
+
+test('isPresenceOnline: backgrounded:true means alive but paused', () => {
+  // Mobile tab backgrounded → throttled heartbeat. Don't fire disconnect overlay;
+  // the missed-turns forfeit handles long absences instead.
+  assert.equal(isPresenceOnline({ backgrounded: true, connected: false, lastSeen: 0 }, 1_000_000, 1000), true);
+  assert.equal(isPresenceOnline({ backgrounded: true, connected: true }, 1_000), true);
+});
+
+test('isPresenceOnline: missing connected falls back to lastSeen grace', () => {
+  // Legacy / partial entries without a connected field — keep grace fallback.
+  assert.equal(isPresenceOnline({ lastSeen: 900 }, 1_000, 200), true);
+  assert.equal(isPresenceOnline({ lastSeen: 100 }, 1_000, 200), false);
 });
 
 test('offline opponent opens disconnect overlay; online closes it', () => {
