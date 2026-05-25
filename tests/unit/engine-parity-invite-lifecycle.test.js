@@ -118,6 +118,7 @@ test('parity: receiver accepts; room created with both players; fresh engine sta
     accepterProfile: { displayName: 'Bob', avatar: '👑' },
     now: 2000,
     roomIdFn: () => 'room-accept-parity',
+    startingSlot: 0,
   });
 
   assert.equal(result.ok, true);
