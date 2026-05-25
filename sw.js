@@ -143,6 +143,8 @@ self.addEventListener('activate', function(e){
 self.addEventListener('fetch', function(e){
   if(e.request.method !== 'GET') return;
   var url = e.request.url || '';
+  // Cache API does not support non-http(s) schemes (e.g. chrome-extension://).
+  if(url.indexOf('http') !== 0) return;
   var isSourceAsset = url.indexOf('/src/') !== -1 ||
     url.indexOf('/partials/') !== -1 ||
     url.indexOf('.js') !== -1 ||
