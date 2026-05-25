@@ -214,9 +214,13 @@ export async function createOnlineGameSession({
     // a transaction abort. roomService.setStatus skips the version check and
     // clears async indexes for terminal async rooms.
     try {
-      const extras = state.abandonedBy === 0 || state.abandonedBy === 1
-        ? { abandonedBy: state.abandonedBy }
-        : {};
+      const extras = {};
+      if (state.abandonedBy === 0 || state.abandonedBy === 1) {
+        extras.abandonedBy = state.abandonedBy;
+      }
+      if (state.abandonReason) {
+        extras.abandonReason = state.abandonReason;
+      }
       await setStatus(db, room.roomId, state.status, extras);
     } catch { /* swallow */ }
   }));
@@ -351,11 +355,13 @@ export async function createOnlineGameSession({
     if (!isTerminalStatus(incoming?.status) || incoming.status === state.status) return;
     state.status = incoming.status;
     state.abandonedBy = incoming.abandonedBy ?? state.abandonedBy ?? null;
+    state.abandonReason = incoming.abandonReason ?? state.abandonReason ?? null;
     bus.emit(EV.GAME_COMPLETED, {
       status: state.status,
       winnerSlot: null,
       scores: { ...state.scores },
       abandonedBy: state.abandonedBy,
+      abandonReason: state.abandonReason,
     });
   }
 

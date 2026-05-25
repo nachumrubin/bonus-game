@@ -112,7 +112,13 @@ export function createDisconnectController({
 export function isPresenceOnline(presence, nowMs = Date.now(), graceMs = PRESENCE_GRACE_MS) {
   if (presence === true) return true;
   if (!presence || typeof presence !== 'object') return !!presence;
+  // Backgrounded tabs are alive but throttled. Don't fire the disconnect
+  // overlay — the turn timer + missed-turns forfeit cover the away case.
+  if (presence.backgrounded === true) return true;
+  // Firebase onDisconnect explicitly cleared the connected flag: authoritative.
+  if (presence.connected === false) return false;
   if (presence.connected === true) return true;
+  // Fallback when `connected` is missing entirely (legacy / stale entries).
   const lastSeen = Number(presence.lastSeen || 0);
   return lastSeen > 0 && nowMs - lastSeen <= graceMs;
 }

@@ -45,8 +45,8 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
   }
 
   // ─── Auto-open on GAME_COMPLETED ────────────────────────
-  cleanups.push(bus.on(EV.GAME_COMPLETED, ({ winnerSlot, scores, players, abandonedBy } = {}) => {
-    bus.emit(END_OPEN, { winnerSlot, scores, players, abandonedBy });
+  cleanups.push(bus.on(EV.GAME_COMPLETED, ({ winnerSlot, scores, players, abandonedBy, abandonReason } = {}) => {
+    bus.emit(END_OPEN, { winnerSlot, scores, players, abandonedBy, abandonReason });
   }));
 
   cleanups.push(bus.on(END_OPEN, (payload = {}) => {
@@ -54,7 +54,7 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     overlay.classList?.remove('hidden');
   }));
 
-  function render({ winnerSlot, scores = { 0: 0, 1: 0 }, players, abandonedBy } = {}) {
+  function render({ winnerSlot, scores = { 0: 0, 1: 0 }, players, abandonedBy, abandonReason } = {}) {
     setText($('#es1', overlay), String(scores[0] ?? 0));
     setText($('#es2', overlay), String(scores[1] ?? 0));
     setText($('#en1', overlay), players?.[0]?.displayName ?? 'שחקן 1');
@@ -62,15 +62,39 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
 
     const wn = $('#wn', overlay);
     const ws = $('#wws', overlay);
-    if (winnerSlot == null) {
+    const mySlot = globalThis.__spine?.activeGame?.session?.mySlot;
+    const effectiveWinner = winnerSlot != null
+      ? winnerSlot
+      : (abandonedBy === 0 ? 1 : abandonedBy === 1 ? 0 : null);
+
+    if (effectiveWinner == null) {
       setText(wn, 'תיקו!');
       setText(ws, '');
-    } else {
-      const name = players?.[winnerSlot]?.displayName ?? `שחקן ${winnerSlot + 1}`;
-      setText(wn, `${name} ניצח!`);
-      const margin = Math.abs((scores[0] ?? 0) - (scores[1] ?? 0));
-      setText(ws, abandonedBy != null ? 'היריב פרש' : `בהפרש של ${margin}`);
+      return;
     }
+
+    const name = players?.[effectiveWinner]?.displayName ?? `שחקן ${effectiveWinner + 1}`;
+    setText(wn, `${name} ניצח!`);
+    setText(ws, abandonMessage({ abandonedBy, abandonReason, mySlot, scores }));
+  }
+
+  function abandonMessage({ abandonedBy, abandonReason, mySlot, scores }) {
+    if (abandonedBy == null) {
+      const margin = Math.abs((scores?.[0] ?? 0) - (scores?.[1] ?? 0));
+      return `בהפרש של ${margin}`;
+    }
+    const iLost = mySlot === abandonedBy;
+    if (abandonReason === 'missed-turns') {
+      return iLost
+        ? 'הפסדת — לא שיחקת 2 תורים ברצף'
+        : 'ניצחת — היריב לא שיחק 2 תורים ברצף';
+    }
+    if (abandonReason === 'disconnect') {
+      return iLost
+        ? 'הפסדת — התנתקת מהמשחק'
+        : 'ניצחת — היריב התנתק מהמשחק';
+    }
+    return iLost ? 'פרשת מהמשחק' : 'היריב פרש';
   }
 
   function unmount() {
