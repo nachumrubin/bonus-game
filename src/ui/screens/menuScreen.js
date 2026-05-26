@@ -45,6 +45,13 @@ const BUTTONS = [
   { sel: 'button[onclick="openNotifications()"]',  intent: MENU_INTENT.OPEN_NOTIFICATIONS },
 ];
 
+function ratingTierEmoji(rating) {
+  if (rating >= 1200) return '💎';
+  if (rating >= 950)  return '🥇';
+  if (rating >= 800)  return '🥈';
+  return '🪙';
+}
+
 export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountMenuScreen: bus required');
 
@@ -127,6 +134,10 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     const eloValue = $('#home-elo-value', menuRoot);
     if (eloValue && rating != null) {
       eloValue.textContent = Number(rating).toLocaleString('he');
+    }
+    const eloBolt = $('#home-elo-bolt', menuRoot);
+    if (eloBolt && rating != null) {
+      eloBolt.textContent = ratingTierEmoji(Number(rating));
     }
 
     const onlineBadge = $('#online-badge', menuRoot);
