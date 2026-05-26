@@ -1,0 +1,23 @@
+name = "bonus-game-push"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Public values — safe to commit
+FIREBASE_PROJECT_ID = "boost-8ef11"
+FIREBASE_DATABASE_NAME = "boost-8ef11"     # RTDB instance name (usually same as project id)
+ONESIGNAL_APP_ID = "af9b2a0e-c48b-475e-a06b-9b842bde5e49"   # fill in from OneSignal dashboard → Settings → Keys & IDs → App ID
+ALLOWED_ORIGIN = "*"    # tighten to "https://your-app-domain" once known
+# Comma-separated Firebase UIDs allowed to invoke /cron-debug. Leave empty
+# to disable manual sweep triggering.
+CRON_ADMIN_UIDS = ""
+
+# Scheduled handler — runs runCronSweep() on this cadence. Free tier allows
+# unlimited cron triggers. Every 4 hours = 6 sweeps/day, giving ~4h reminder
+# precision (vs. the 24h reminder threshold).
+[triggers]
+crons = ["0 */4 * * *"]
+
+# Secrets are NOT in this file. Set them once with:
+#   wrangler secret put ONESIGNAL_REST_KEY
+#   wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON   # full service account JSON

@@ -1,8 +1,9 @@
 {
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
-      "Bash(node -e ' *)"
-    ]
+      "Bash(node -e ' *)",
+      "Bash"
+    ],
+    "defaultMode": "acceptEdits"
   }
 }

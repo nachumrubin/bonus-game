@@ -29,6 +29,14 @@ import { $, on, setText, setClass } from '../domHelpers.js';
 import { HV } from '../../game/core/letterDistribution.js';
 import { BDEFS } from '../../game/boosts/data.js';
 import { EV } from '../../events/eventTypes.js';
+import {
+  WORD_MERGE_STAGGER_MS as SCORE_MERGE_WORD_STAGGER_MS,
+  WORD_MERGE_FLIGHT_MS  as SCORE_MERGE_WORD_FLIGHT_MS,
+  BOOST_MERGE_DELAY_MS  as SCORE_MERGE_BOOST_DELAY_MS,
+  HOLD_AFTER_MERGE_MS   as SCORE_MERGE_HOLD_AFTER_MS,
+  SUM_FLIGHT_MS         as SCORE_MERGE_SUM_FLIGHT_MS,
+  SUM_CHIP_HOLD_MS,
+} from '../scoreAnimationTimings.js';
 
 export const GAME_SCREEN_INTENT = Object.freeze({
   LIVE_PREVIEW_CHANGED: 'gameScreen/livePreviewChanged',
@@ -1284,15 +1292,15 @@ function floatScore(root, { score, wordTiles, placed, delayMs = 0 } = {}) {
   if (delayMs > 0) setTimeout(fire, delayMs); else fire();
 }
 
-// The total-of-the-move sum chip pauses for SUM_CHIP_HOLD_MS at the played
-// word's anchor before it flies, so the player has time to read the total
-// before it gets vacuumed into the score panel. The companion timings
-// (count-up delay in renderScores, glow duration in animationController's
-// emitScoreSequence, score-pop, active-slot glow swap) all add this same
-// hold so the sum chip's landing still synchronises with the count-up
-// start and the panel glow flip. Per-word floats (`isSum = false`) keep
-// the legacy snappy lifecycle.
-const SUM_CHIP_HOLD_MS = 500;
+// SUM_CHIP_HOLD_MS comes from ../scoreAnimationTimings.js (shared with
+// animationController so per-word floats and the sum chip stay in sync).
+// The sum chip pauses for SUM_CHIP_HOLD_MS at the played word's anchor
+// before flying to the score panel, so the player has time to read the
+// total. The companion timings (count-up delay in renderScores, glow
+// duration in animationController's emitScoreSequence, score-pop,
+// active-slot glow swap) all add this same hold so the sum chip's landing
+// still synchronises with the count-up start and the panel glow flip.
+// Per-word floats (`isSum = false`) keep the legacy snappy lifecycle.
 
 function flyScoreToPanel(root, { slot, score, wordTiles, placed, delayMs = 0, isSum = false } = {}) {
   if (!score) return;
@@ -1325,14 +1333,10 @@ function flyScoreToPanel(root, { slot, score, wordTiles, placed, delayMs = 0, is
   if (delayMs > 0) setTimeout(fire, delayMs); else fire();
 }
 
-// Score-merge animation timings — keep in sync with the matching
-// constants in animationController.scoreMergeTiming / renderScores
-// countUpDelay / turnTimerController.scoreAnimationDurationMs.
-const SCORE_MERGE_WORD_STAGGER_MS = 250;
-const SCORE_MERGE_WORD_FLIGHT_MS  = 380;
-const SCORE_MERGE_BOOST_DELAY_MS  = 250;
-const SCORE_MERGE_HOLD_AFTER_MS   = 420;
-const SCORE_MERGE_SUM_FLIGHT_MS   = 480;
+// Score-merge animation timings come from ../scoreAnimationTimings.js
+// (single source of truth, shared with animationController). The local
+// aliases preserve the descriptive `SCORE_MERGE_*` names used throughout
+// this file without re-declaring values.
 
 // The cohesive scoring animation. A red sum chip is planted above the
 // played word(s). Each scoring word's +N chip launches at the word's

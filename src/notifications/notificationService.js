@@ -10,7 +10,9 @@
 //
 // The actual HTTP send is injected via `sendPush` so tests don't need fetch
 // and so the network surface stays in one place. Production wires it to
-// fetch('https://onesignal.com/api/v1/notifications').
+// POST the OneSignal body to the Cloudflare push worker (see /worker), which
+// holds the REST key as a secret and forwards to OneSignal. The browser never
+// sees the REST key.
 
 import { EV } from '../events/eventTypes.js';
 import { buildPushBody, KIND } from './pushPayloadBuilder.js';
@@ -18,23 +20,31 @@ import { modeDescriptor } from '../game/sessions/modes.js';
 
 let _booted = false;
 let _appId = null;
-let _restKey = null;
+let _pushWorkerUrl = null;
+let _getIdToken = null;
 let _sendPush = null;
 let _busSubs = [];
 let _oneSignalReady = false;
 
-export function configure({ appId, restKey, sendPush }) {
+export function configure({ appId, pushWorkerUrl, getIdToken, sendPush }) {
   _appId = appId;
-  _restKey = restKey;
+  _pushWorkerUrl = pushWorkerUrl ?? null;
+  _getIdToken = typeof getIdToken === 'function' ? getIdToken : null;
   _sendPush = sendPush ?? defaultSendPush;
 }
 
 async function defaultSendPush(body) {
-  if (!_restKey) return; // no key, skip silently
+  if (!_pushWorkerUrl) return; // not configured — skip silently
+  let idToken = null;
+  try { idToken = await _getIdToken?.(); } catch { /* swallow */ }
+  if (!idToken) return; // unauthenticated — worker would reject anyway
   try {
-    await fetch('https://onesignal.com/api/v1/notifications', {
+    await fetch(_pushWorkerUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + _restKey },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + idToken,
+      },
       body: JSON.stringify(body),
     });
   } catch (e) {
@@ -198,7 +208,8 @@ export async function pushExpired({ recipientUid, roomId }) {
 export function _resetForTests() {
   _booted = false;
   _appId = null;
-  _restKey = null;
+  _pushWorkerUrl = null;
+  _getIdToken = null;
   _sendPush = null;
   _oneSignalReady = false;
   detach();

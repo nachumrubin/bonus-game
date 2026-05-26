@@ -101,3 +101,24 @@ test('syncApprovedDictionaryWordsOnce adds approved words to a dictionary Set', 
   assert.equal(await syncApprovedDictionaryWordsOnce(db, dict), 1);
   assert.ok(dict.has('אחד'));
 });
+
+// ── End-to-end: Firebase-approved words become valid in gameplay (GAP_REPORT item 11) ─
+// The gap raised the concern that approved words might not flow into the
+// active dictionary used by isValid(). This test wires the real
+// `hebrewDictionary.DICT` (the same Set used by isValid) and proves a
+// word in dictionaryApproved becomes playable.
+test('syncApprovedDictionaryWordsOnce: approved words become valid via isValid()', async () => {
+  const { DICT, isValid } = await import('../core/hebrewDictionary.js');
+  const customWord = 'בוסטטסט'; // unlikely to be in the base dictionary
+  assert.equal(isValid(customWord), false, 'baseline: custom word is not valid before sync');
+
+  const db = makeMockDb();
+  await db.ref('dictionaryApproved/ב').set({ word: customWord });
+  const added = await syncApprovedDictionaryWordsOnce(db, DICT);
+  assert.ok(added >= 1, 'at least the custom word was added');
+  assert.ok(DICT.has(customWord), 'word is in the live DICT Set');
+  assert.equal(isValid(customWord), true, 'word now passes isValid() — playable in-game');
+
+  // Cleanup so other tests don't see the synthetic word.
+  DICT.delete(customWord);
+});

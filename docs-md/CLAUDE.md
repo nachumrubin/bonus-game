@@ -71,7 +71,7 @@ Run `npm run test:unit` before any PR. 609+ tests must remain passing.
 5. Add CSS to `styles.css` using existing variable conventions
 
 ### Animation Changes
-- Animation timing constants are defined in both `animationController.js` and `gameScreen.js`. If you change timings, sync both files.
+- Animation timing constants live in [src/ui/scoreAnimationTimings.js](../src/ui/scoreAnimationTimings.js) (shared module). `animationController.js` and `gameScreen.js` both import from there — edit the shared module instead of duplicating values.
 - Never add `setTimeout` inside game engine code. Timers belong in UI controllers.
 - Bonus overlay polling (`animationController.js`) checks specific element IDs (`#ov-bonus`, `#ov-bonus-intro`). Don't rename these without updating the poll.
 - Score-commit animations are held while bonus overlays are visible. Ensure any new overlay uses the existing `liveBonus.active` gate.
@@ -163,7 +163,7 @@ The animation system is a **subscriber only** — it never mutates game state. K
 Rules:
 1. `animationController.js` and `gameScreen.js` may only *read* from the event bus, never write commands
 2. Animation timing must never gate gameplay. If an animation is still running, gameplay must continue (the game does not pause for animation — only bonus overlays pause the watchdog)
-3. Score-merge timing constants (`WORD_MERGE_STAGGER_MS`, etc.) exist in both `animationController.js` and `gameScreen.js`. If you change them, update both files
+3. Score-merge timing constants (`WORD_MERGE_STAGGER_MS`, etc.) live in [src/ui/scoreAnimationTimings.js](../src/ui/scoreAnimationTimings.js). Both `animationController.js` and `gameScreen.js` import from there — edit the shared module to change a value
 4. Polling for overlay close (`setInterval(check, 100)`) is a known pattern. Keep the interval at 100ms or slower
 
 ---

@@ -164,7 +164,14 @@ async function boot() {
   if (cfg.onesignalAppId) {
     notificationService.configure({
       appId: cfg.onesignalAppId,
-      restKey: cfg.onesignalKey,
+      pushWorkerUrl: cfg.pushWorkerUrl,
+      getIdToken: async () => {
+        try {
+          return await activeFbCurrentUser?.getIdToken?.();
+        } catch {
+          return null;
+        }
+      },
     });
   }
   // Wait for sign-in to call notificationService.boot({ uid }) — that's the

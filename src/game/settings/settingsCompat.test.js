@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import {
   LEGACY_SETTINGS_KEY,
   UI_PREFERENCES_KEY,
+  DEFAULT_GAME_SETTINGS,
+  DEFAULT_UI_PREFERENCES,
   applyGameSettingsToGlobals,
   loadGameSettings,
   loadUiPreferences,
@@ -70,6 +72,8 @@ test('UI preferences support animation skip, music, and last display name', () =
   assert.deepEqual(JSON.parse(s.getItem(UI_PREFERENCES_KEY)), {
     animationsEnabled: false,
     music: false,
+    soundFx: true,    // default applied by normalizer when not provided
+    vibration: true,  // default applied by normalizer when not provided
     lastDisplayName: 'Alice',
   });
   assert.equal(loadUiPreferences(s).animationsEnabled, false);
@@ -81,4 +85,73 @@ test('UI preferences support animation skip, music, and last display name', () =
 test('uiPreferencePatchFromSettings extracts only preference-backed keys', () => {
   assert.deepEqual(uiPreferencePatchFromSettings({ music: false, botTime: 20 }), { music: false });
   assert.deepEqual(uiPreferencePatchFromSettings({ skipAnimations: true }), { animationsEnabled: false });
+});
+
+// ── Migration edge cases (GAP_REPORT item 14) ───────────────────────
+// Past versions of the app may have written non-standard shapes to
+// localStorage. The migration path must survive these without throwing
+// or silently reverting all settings to defaults.
+
+test('loadGameSettings: corrupt JSON in localStorage falls back to defaults without throwing', () => {
+  const s = storage();
+  s.setItem(LEGACY_SETTINGS_KEY, '{not valid json');
+  const result = loadGameSettings(s, {});
+  assert.equal(result.botTime, DEFAULT_GAME_SETTINGS.botTime);
+  assert.equal(result.timelimit, DEFAULT_GAME_SETTINGS.timelimit);
+});
+
+test('loadGameSettings: out-of-range numeric values clamp instead of crashing', () => {
+  const s = storage();
+  s.setItem(LEGACY_SETTINGS_KEY, JSON.stringify({
+    botTime: 99999, maxMoves: -10, appealsMax: 'banana',
+  }));
+  const result = loadGameSettings(s, {});
+  assert.equal(result.botTime, 120, 'botTime clamped to max');
+  assert.equal(result.maxMoves, 5, 'maxMoves clamped to min');
+  assert.equal(result.appealsMax, DEFAULT_GAME_SETTINGS.appealsMax, 'non-numeric falls back to default');
+});
+
+test('loadGameSettings: unknown fields in storage are dropped; known fields preserved', () => {
+  const s = storage();
+  s.setItem(LEGACY_SETTINGS_KEY, JSON.stringify({
+    botTime: 45,
+    legacyOnlyField: 'should-be-ignored',
+    yetAnotherFutureField: { nested: true },
+    music: false,
+  }));
+  const result = loadGameSettings(s, {});
+  assert.equal(result.botTime, 45);
+  assert.equal(result.music, false);
+  assert.equal('legacyOnlyField' in result, false, 'unknown fields dropped by normalizer');
+});
+
+test('loadUiPreferences: missing key returns defaults (no throw)', () => {
+  const s = storage();
+  const result = loadUiPreferences(s);
+  assert.equal(result.animationsEnabled, DEFAULT_UI_PREFERENCES.animationsEnabled);
+  assert.equal(result.music, DEFAULT_UI_PREFERENCES.music);
+  assert.equal(result.lastDisplayName, '');
+});
+
+test('loadUiPreferences: corrupt JSON falls back to defaults', () => {
+  const s = storage();
+  s.setItem(UI_PREFERENCES_KEY, 'not-json-at-all');
+  const result = loadUiPreferences(s);
+  assert.equal(result.animationsEnabled, DEFAULT_UI_PREFERENCES.animationsEnabled);
+});
+
+test('saveGameSettings: storage throwing (e.g., quota exceeded) is caught and returns false', () => {
+  const failingStorage = {
+    getItem: () => null,
+    setItem: () => { throw new Error('QuotaExceededError'); },
+  };
+  assert.equal(saveGameSettings(failingStorage, DEFAULT_GAME_SETTINGS), false);
+});
+
+test('saveUiPreferences: storage throwing returns false instead of propagating', () => {
+  const failingStorage = {
+    getItem: () => null,
+    setItem: () => { throw new Error('QuotaExceededError'); },
+  };
+  assert.equal(saveUiPreferences(failingStorage, DEFAULT_UI_PREFERENCES), false);
 });

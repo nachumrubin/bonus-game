@@ -27,7 +27,8 @@ function captureSends() {
   const sent = [];
   configure({
     appId: 'test-app',
-    restKey: 'test-key',
+    pushWorkerUrl: 'https://test.invalid/push',
+    getIdToken: async () => 'test-token',
     sendPush: async (body) => { sent.push(body); },
   });
   return sent;

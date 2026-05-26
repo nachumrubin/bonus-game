@@ -14,6 +14,14 @@
 
 import { EV } from '../../events/eventTypes.js';
 import { RACK_SIZE } from '../../game/core/tileBag.js';
+import {
+  WORD_MERGE_STAGGER_MS,
+  WORD_MERGE_FLIGHT_MS,
+  BOOST_MERGE_DELAY_MS,
+  HOLD_AFTER_MERGE_MS,
+  SUM_FLIGHT_MS,
+  COUNTUP_PEAK_MS,
+} from '../scoreAnimationTimings.js';
 
 export function createAnimationController({ bus, mySlot = null }) {
   if (!bus) throw new Error('createAnimationController: bus required');
@@ -41,17 +49,10 @@ export function createAnimationController({ bus, mySlot = null }) {
 
   const subs = [];
 
-  // Score-merge sequence constants. Shared with gameScreen.renderScores
-  // (countUpDelay) and turnTimerController (freeze duration) so timings
-  // stay synchronised. Each word's +N chip flies to a central sum chip
-  // (`isSum`) and adds its points; once all words + bonus extra have
-  // merged, the sum holds briefly then flies into the player's score box.
-  const WORD_MERGE_STAGGER_MS = 250;
-  const WORD_MERGE_FLIGHT_MS  = 380;
-  const BOOST_MERGE_DELAY_MS  = 250;
-  const HOLD_AFTER_MERGE_MS   = 420;
-  const SUM_FLIGHT_MS         = 480;
-  const COUNTUP_PEAK_MS       = 900;
+  // Score-merge sequence constants come from src/ui/scoreAnimationTimings.js
+  // (single source of truth, shared with gameScreen.renderScores). Each
+  // word's +N chip flies to a central sum chip; once all words + bonus
+  // extra have merged, the sum holds briefly then flies into the score box.
 
   // Returns { mergeEnd, totalToPanelLanding } so callers can align their
   // own timing (count-up, glow duration, etc.) to the merge sequence.

@@ -16,6 +16,7 @@
       ".gitignore",
       ".firebaseignore",
       "node_modules/**",
+      "worker/**",
       "android/**",
       "scripts/**",
       "tests/**",

@@ -103,19 +103,39 @@ export async function acceptInvite(db, {
     startingSlot,
     settings,
   });
-  await roomService.createRoom(db, {
-    roomId,
-    mode: invite.mode,
-    players,
-    settings,
-    engineState,
-    serverTimestamp: now,
-  });
-  // Async games can start immediately. Live invite games stay WAITING until
-  // both clients click through the coin screen; that ready handshake starts
-  // the shared turn timer.
-  if (invite.mode?.endsWith('-async')) {
-    await db.ref(`${PATH.rooms}/${roomId}`).update({ status: STATUS.PLAYING });
+  // Past the invite-claim transaction, the invite is GONE. Any failure
+  // creating the room (network blip, RTDB rules rejection, etc.) leaves
+  // the sender's listener with no signal — they'd wait forever for an ack
+  // that never arrives. Recover by writing a failure ack so the sender's
+  // UI sees the rejection and can re-invite. (GAP_REPORT item 8.)
+  try {
+    await roomService.createRoom(db, {
+      roomId,
+      mode: invite.mode,
+      players,
+      settings,
+      engineState,
+      serverTimestamp: now,
+    });
+    // Async games can start immediately. Live invite games stay WAITING until
+    // both clients click through the coin screen; that ready handshake starts
+    // the shared turn timer.
+    if (invite.mode?.endsWith('-async')) {
+      await db.ref(`${PATH.rooms}/${roomId}`).update({ status: STATUS.PLAYING });
+    }
+  } catch (e) {
+    try {
+      await ackRef(db, invite.fromUid, toUid).set({
+        inviteId,
+        accepted: false,
+        reason: 'room-create-failed',
+        fromName: accepterProfile?.displayName ?? players[1].displayName,
+        timestamp: now,
+      });
+    } catch (ackErr) {
+      console.warn('[inviteService.acceptInvite] failed to write failure ack', ackErr);
+    }
+    return { ok: false, reason: 'room-create-failed', error: String(e?.message ?? e) };
   }
   await ackRef(db, invite.fromUid, toUid).set({
     inviteId,

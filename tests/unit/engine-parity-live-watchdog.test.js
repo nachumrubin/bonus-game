@@ -221,6 +221,190 @@ test('parity: watchdog no-ops when turnDeadlineMs is unset', async () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────
+// 4b. Two consecutive missed turns by the same player forfeits the game.
+// Covers GAP_REPORT.md item 3: prove the missed-turns threshold actually
+// promotes the room to ABANDONED with the right abandonedBy / abandonReason
+// fields, so both clients route through the game-end overlay.
+test('parity: two consecutive missed turns by the same player forfeits the room', async () => {
+  const { mock, watchdog } = await loadModules();
+  const db = mock.makeMockDb();
+  // Bob is currentTurn=1 and has already missed once (missedTurns[1] = 1).
+  // Alice played in between, so this is Bob's SECOND consecutive miss.
+  seedRoom(db, { missedTurns: { 0: 0, 1: 1 } });
+
+  const now = 50_000;
+  const wd = watchdog.createTimeoutWatchdog({
+    db, roomId: ROOM_ID, mySlot: 0, limitMs: LIMIT_MS, graceMs: GRACE_MS,
+    setIntervalFn: null, now: () => now,
+  });
+  const result = await wd.tick();
+
+  assert.equal(result.committed, true);
+  const room = db._data.rooms[ROOM_ID];
+  assert.equal(room.status, 'abandoned', 'room promoted to terminal status');
+  assert.equal(room.abandonedBy, 1, 'forfeit attributed to the player who missed twice');
+  assert.equal(room.abandonReason, 'missed-turns', 'reason set so UI can route to the right overlay');
+  assert.equal(room.turnDeadlineMs, 0, 'deadline cleared so no further watchdog ticks fire');
+  assert.deepEqual(room.missedTurns, { 0: 0, 1: 2 }, 'missedTurns reflects the second miss');
+  assert.equal(room.version, 2, 'version bumped once for the forfeit transaction');
+  wd.dispose();
+});
+
+// ───────────────────────────────────────────────────────────────────────
+// 4c. The watchdog's "retry" mechanism is implicit: polling. If a tick
+// no-ops (transaction returns committed:false because liveBonus.active,
+// status flipped, status briefly not-playing, etc.), the next tick must
+// still be able to claim once conditions clear. Covers the GAP_REPORT
+// concern that `committed: false` is "not traced to a retry."
+test('parity: transient no-op tick does not latch — next tick claims when conditions clear', async () => {
+  const { mock, watchdog } = await loadModules();
+  const db = mock.makeMockDb();
+  // Mid-bonus: watchdog must no-op (liveBonus.active gate).
+  seedRoom(db, { liveBonus: { active: true } });
+
+  const now = 50_000;
+  const wd = watchdog.createTimeoutWatchdog({
+    db, roomId: ROOM_ID, mySlot: 0, limitMs: LIMIT_MS, graceMs: GRACE_MS,
+    setIntervalFn: null, now: () => now,
+  });
+
+  const r1 = await wd.tick();
+  assert.equal(r1.committed, false, 'first tick no-ops while bonus is active');
+  assert.equal(db._data.rooms[ROOM_ID].currentTurnSlot, 1, 'room state unchanged');
+  assert.equal(db._data.rooms[ROOM_ID].version, 1, 'no version bump on no-op');
+
+  // Active player's bonus completes; deadline is still long-expired.
+  db._data.rooms[ROOM_ID].liveBonus = { active: false };
+
+  const r2 = await wd.tick();
+  assert.equal(r2.committed, true, 'subsequent tick claims successfully');
+  assert.equal(db._data.rooms[ROOM_ID].currentTurnSlot, 0, 'turn flipped on retry');
+  assert.equal(db._data.rooms[ROOM_ID].version, 2, 'version bumped exactly once across both ticks');
+  wd.dispose();
+});
+
+// ───────────────────────────────────────────────────────────────────────
+// 4d. Multiplier forfeiture on timeout (GAP_REPORT item 7).
+// Offline engine forfeits multiply_next_turns when a player times out
+// (gameEngine.js:forfeitTimeoutBoosts). The online watchdog must do the
+// same — otherwise a player who activates ×2 for 2 turns can time out the
+// first one and still get the full multiplier on their next play.
+test('parity: timed-out player\'s multiply_next_turns is forfeited by the watchdog claim', async () => {
+  const { mock, watchdog } = await loadModules();
+  const db = mock.makeMockDb();
+  // Bob is active (slot=1). He has an active ×2-for-2-turns multiplier.
+  seedRoom(db, {
+    activeBoosts: [{
+      slot: 1, boostId: 'multiply_next_turns',
+      payload: { multiplier: 2, turnsRemaining: 2 }, turnNumber: 3,
+    }],
+  });
+
+  const now = 50_000;
+  const wd = watchdog.createTimeoutWatchdog({
+    db, roomId: ROOM_ID, mySlot: 0, limitMs: LIMIT_MS, graceMs: GRACE_MS,
+    setIntervalFn: null, now: () => now,
+  });
+  const result = await wd.tick();
+
+  assert.equal(result.committed, true);
+  const room = db._data.rooms[ROOM_ID];
+  assert.equal(room.currentTurnSlot, 0, 'turn flipped to opponent');
+  const bobMultipliers = (room.activeBoosts ?? []).filter(b =>
+    b?.slot === 1 && b?.boostId === 'multiply_next_turns'
+  );
+  assert.equal(bobMultipliers.length, 0,
+    'Bob\'s multiplier must be forfeited on timeout — matches offline engine forfeitTimeoutBoosts');
+  wd.dispose();
+});
+
+test('parity: opponent\'s multiply_next_turns survives a watchdog claim against the active player', async () => {
+  const { mock, watchdog } = await loadModules();
+  const db = mock.makeMockDb();
+  // Bob (slot=1) is timing out. Alice (slot=0) has an active multiplier
+  // that should NOT be touched by the forfeit logic.
+  seedRoom(db, {
+    activeBoosts: [{
+      slot: 0, boostId: 'multiply_next_turns',
+      payload: { multiplier: 4, turnsRemaining: 1 }, turnNumber: 2,
+    }],
+  });
+
+  const wd = watchdog.createTimeoutWatchdog({
+    db, roomId: ROOM_ID, mySlot: 0, limitMs: LIMIT_MS, graceMs: GRACE_MS,
+    setIntervalFn: null, now: () => 50_000,
+  });
+  await wd.tick();
+
+  const room = db._data.rooms[ROOM_ID];
+  const aliceMultipliers = (room.activeBoosts ?? []).filter(b =>
+    b?.slot === 0 && b?.boostId === 'multiply_next_turns'
+  );
+  assert.equal(aliceMultipliers.length, 1, 'opponent\'s multiplier must NOT be forfeited');
+  assert.equal(aliceMultipliers[0].payload.turnsRemaining, 1, 'opponent\'s multiplier payload untouched');
+  wd.dispose();
+});
+
+test('parity: non-multiplier boosts of the timed-out player survive the claim (only multiply_next_turns forfeits)', async () => {
+  const { mock, watchdog } = await loadModules();
+  const db = mock.makeMockDb();
+  // Bob (slot=1) has a future extra_turn AND a multiply_next_turns. Only
+  // the multiplier should be forfeited; extra_turn matches the offline
+  // engine's forfeitTimeoutBoosts which only filters multiply_next_turns.
+  seedRoom(db, {
+    activeBoosts: [
+      { slot: 1, boostId: 'extra_turn', payload: {}, turnNumber: 2 },
+      { slot: 1, boostId: 'multiply_next_turns',
+        payload: { multiplier: 2, turnsRemaining: 2 }, turnNumber: 3 },
+    ],
+  });
+
+  const wd = watchdog.createTimeoutWatchdog({
+    db, roomId: ROOM_ID, mySlot: 0, limitMs: LIMIT_MS, graceMs: GRACE_MS,
+    setIntervalFn: null, now: () => 50_000,
+  });
+  await wd.tick();
+
+  const surviving = db._data.rooms[ROOM_ID].activeBoosts ?? [];
+  const stillHasExtraTurn = surviving.some(b => b.slot === 1 && b.boostId === 'extra_turn');
+  const stillHasMultiplier = surviving.some(b => b.slot === 1 && b.boostId === 'multiply_next_turns');
+  assert.equal(stillHasExtraTurn, true, 'extra_turn survives — not a multiplier');
+  assert.equal(stillHasMultiplier, false, 'multiply_next_turns forfeited');
+  wd.dispose();
+});
+
+// ───────────────────────────────────────────────────────────────────────
+// 4e. Watchdog × presence interaction (GAP_REPORT item 9).
+// The watchdog does NOT consult /presence — it claims based purely on the
+// room's deadline + grace. This is correct: if the active player has
+// disconnected, the disconnected client can't dispatch PASS_TURN, so the
+// watchdog is the only thing that flips the turn. The disconnect overlay
+// and the watchdog operate independently.
+test('parity: watchdog claims the timed-out turn regardless of opponent presence state', async () => {
+  const { mock, watchdog } = await loadModules();
+  const db = mock.makeMockDb();
+  seedRoom(db);
+  // Seed Bob's presence as disconnected. This must NOT prevent Alice's
+  // watchdog from claiming Bob's expired turn — presence is for the
+  // overlay, not the claim transaction.
+  db._data.presence = {
+    bob: { connected: false, lastSeen: 100, backgrounded: false },
+  };
+
+  const now = 50_000;
+  const wd = watchdog.createTimeoutWatchdog({
+    db, roomId: ROOM_ID, mySlot: 0, limitMs: LIMIT_MS, graceMs: GRACE_MS,
+    setIntervalFn: null, now: () => now,
+  });
+  const result = await wd.tick();
+
+  assert.equal(result.committed, true, 'watchdog still claimed despite opponent being offline');
+  assert.equal(db._data.rooms[ROOM_ID].currentTurnSlot, 0, 'turn flipped to claimant');
+  assert.equal(db._data.rooms[ROOM_ID].missedTurns[1], 1, 'absent player gets a missed-turn');
+  wd.dispose();
+});
+
+// ───────────────────────────────────────────────────────────────────────
 // 5. dispose() halts future ticks: a tick called after dispose must not claim.
 test('parity: dispose() prevents future ticks from claiming', async () => {
   const { mock, watchdog } = await loadModules();
