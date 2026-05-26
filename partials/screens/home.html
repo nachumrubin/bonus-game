@@ -16,6 +16,9 @@
         <button class="em-icon-btn" onclick="showTutorialIntro()">
           <span class="em-help-q">?</span>
         </button>
+        <button class="em-icon-btn em-icon-btn--home-active" aria-current="page" disabled>
+          <span class="em-icon-btn-inner">⚡</span>
+        </button>
       </div>
       <!-- LEFT side: profile (last in RTL flex = leftmost) -->
       <button class="em-profile-btn" id="btn-profile-home" onclick="openProfileOrAuth()">
@@ -219,12 +222,6 @@
       <button class="em-nav-item" onclick="openStats()">
         <span class="em-nav-icon">📊</span>
         <span class="em-nav-label">סטטיסטיקות</span>
-      </button>
-
-      <!-- LEFT: בית (active) -->
-      <button class="em-nav-item em-nav-item--active" aria-current="page">
-        <span class="em-nav-icon">⚡</span>
-        <span class="em-nav-label">בית</span>
       </button>
 
     </nav>
