@@ -5,6 +5,15 @@
 
 ---
 
+## Completed (May 2026)
+
+- ✅ Electric Floating Platforms main menu redesign — `menu-electric.css` + updated `home.html`, `menuScreen.js`, `main.js`
+- ✅ Electric Floating Platforms Phase 2 visual polish — premium platform architecture, double-path SVG lightning, atmospheric background, animations
+- ✅ Electric Floating Platforms Stage 3 depth pass — floating illusion via offset shadow, curved organic lightning, particle field, compressed layout, blue ELO badge, enlarged online icon
+- ✅ Electric Floating Platforms Stage 4 gap-report pass — viewport-fit=cover, near-black background, 3D slab bottom face, icon depth with specular highlight, logo glow, nav 28px icons + active pill, lightning pulse + particle drift animations
+
+---
+
 ## Active Cutover Checklist (from `SPINE_TODO.md`)
 
 The `SPINE_TODO.md` file is the authoritative tracking document for the legacy→spine migration. Key outstanding areas as of documentation date:
