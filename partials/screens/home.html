@@ -2,38 +2,6 @@
 <div id="sh" class="screen hidden">
   <div class="hc em-home">
 
-    <!-- ─ Top Bar ─────────────────────────────────── -->
-    <header class="em-topbar">
-      <!-- RIGHT side: icon buttons (first in RTL flex = rightmost) -->
-      <div class="em-topbar-icons">
-        <button class="em-icon-btn" id="btn-notifications-home" onclick="openNotifications()">
-          <span class="em-icon-btn-inner">🔔</span>
-          <span class="em-icon-badge" id="online-badge" style="display:none"></span>
-        </button>
-        <button class="em-icon-btn" onclick="openSettings()">
-          <span class="em-icon-btn-inner">⚙️</span>
-        </button>
-        <button class="em-icon-btn" onclick="showTutorialIntro()">
-          <span class="em-help-q">?</span>
-        </button>
-        <button class="em-icon-btn em-icon-btn--home-active" aria-current="page" disabled>
-          <span class="em-icon-btn-inner">🏠</span>
-        </button>
-      </div>
-      <!-- LEFT side: profile (last in RTL flex = leftmost) -->
-      <button class="em-profile-btn" id="btn-profile-home" onclick="openProfileOrAuth()">
-        <div class="em-avatar-wrap">
-          <span id="home-avatar-ic">👤</span>
-        </div>
-        <div class="em-profile-info">
-          <span class="em-player-name" id="home-user-label">כניסה / הרשמה</span>
-          <span class="em-elo-badge" id="home-elo-label" style="display:none">
-            <span class="em-elo-bolt" id="home-elo-bolt">🪙</span><span id="home-elo-value">1000</span>
-          </span>
-        </div>
-      </button>
-    </header>
-
     <!-- ─ Logo ──────────────────────────────────── -->
     <div class="hlogo">
       <img src="logo_no_mascot.png" alt="בוסט">

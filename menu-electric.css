@@ -9,6 +9,32 @@
      overflow:visible lets rim protrude above button clip bounds.
    ══════════════════════════════════════════════════════ */
 
+/* ─ Global topbar height variable ───────────────────── */
+/* Mirrors .em-topbar padding + button height so screens can offset their
+   content exactly below the fixed bar without hardcoding a magic number. */
+:root {
+  --em-topbar-h: calc(
+    max(clamp(6px, 1.2svh, 10px), env(safe-area-inset-top))
+    + clamp(28px, 7.2vw, 33px)
+    + clamp(6px, 1.2svh, 10px)
+  );
+}
+
+/* ─ Global topbar — fixed overlay above all screens ─── */
+#global-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  /* width and flex layout come from .em-topbar */
+}
+
+/* Push non-home, non-game screen content below the fixed topbar */
+.screen:not(#sh):not(#sg) {
+  padding-top: var(--em-topbar-h);
+}
+
 /* ─ Near-black background override ──────────────────── */
 /* Overrides the global #sh gradient (which has a light #03759f stop) */
 #sh.screen {
@@ -24,6 +50,10 @@
   padding: 0;
   gap: 0;
   justify-content: flex-start;
+  /* .hc has height:100svh; subtract the fixed global topbar so content
+     fills the viewport below it without overflow. */
+  height: calc(100svh - var(--em-topbar-h));
+  margin-top: var(--em-topbar-h);
 }
 
 /* ─ Particle field (::before) ────────────────────────── */

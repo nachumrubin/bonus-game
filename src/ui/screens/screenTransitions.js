@@ -42,6 +42,30 @@ export function showScreen(id, { doc = globalThis.document, setTimeoutFn = setTi
   }
   if (!active) return null;
 
+  // Show the global topbar on every screen except the game board.
+  // On the home screen the home button becomes the active/disabled indicator;
+  // on all other screens it is a regular clickable navigation target.
+  const topbar = doc.getElementById?.('global-topbar');
+  if (topbar) {
+    if (id === 'sg') {
+      topbar.style.display = 'none';
+    } else {
+      topbar.style.display = '';
+      const homeBtn = doc.getElementById?.('topbar-home-btn');
+      if (homeBtn) {
+        if (id === 'sh') {
+          homeBtn.classList?.add('em-icon-btn--home-active');
+          homeBtn.setAttribute?.('disabled', '');
+          homeBtn.setAttribute?.('aria-current', 'page');
+        } else {
+          homeBtn.classList?.remove('em-icon-btn--home-active');
+          homeBtn.removeAttribute?.('disabled');
+          homeBtn.removeAttribute?.('aria-current');
+        }
+      }
+    }
+  }
+
   // Re-trigger entrance animation on the newly shown screen.
   void active.offsetWidth;
   active.classList?.add('screen-enter');

@@ -29,6 +29,36 @@
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
 </head>
 <body>
+<!-- Global top bar — shown on all screens except the game board (#sg).
+     Visibility and home-button active state are managed by screenTransitions.js. -->
+<header id="global-topbar" class="em-topbar" style="display:none">
+  <div class="em-topbar-icons">
+    <button class="em-icon-btn" id="btn-notifications-home" onclick="openNotifications()">
+      <span class="em-icon-btn-inner">🔔</span>
+      <span class="em-icon-badge" id="online-badge" style="display:none"></span>
+    </button>
+    <button class="em-icon-btn" onclick="openSettings()">
+      <span class="em-icon-btn-inner">⚙️</span>
+    </button>
+    <button class="em-icon-btn" onclick="showTutorialIntro()">
+      <span class="em-help-q">?</span>
+    </button>
+    <button id="topbar-home-btn" class="em-icon-btn" onclick="goHome()">
+      <span class="em-icon-btn-inner">🏠</span>
+    </button>
+  </div>
+  <button class="em-profile-btn" id="btn-profile-home" onclick="openProfileOrAuth()">
+    <div class="em-avatar-wrap">
+      <span id="home-avatar-ic">👤</span>
+    </div>
+    <div class="em-profile-info">
+      <span class="em-player-name" id="home-user-label">כניסה / הרשמה</span>
+      <span class="em-elo-badge" id="home-elo-label" style="display:none">
+        <span class="em-elo-bolt" id="home-elo-bolt">🪙</span><span id="home-elo-value">1000</span>
+      </span>
+    </div>
+  </button>
+</header>
 <div id="app-shell"></div>
 <script type="module" src="src/ui/screenPartials.js?v=20260526121754"></script>
 <script type="module" src="src/main.js?v=20260526121754"></script>
