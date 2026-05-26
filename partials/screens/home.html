@@ -45,11 +45,11 @@
     <!-- ─ Floating Platforms ─────────────────────── -->
     <div class="em-platforms">
 
-      <!-- Decorative lightning connecting platforms -->
+      <!-- Energy network linking platforms — organic curves, double-path glow technique -->
       <svg class="em-lightning-bg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" preserveAspectRatio="xMidYMid meet">
         <defs>
           <filter id="em-glow">
-            <feGaussianBlur stdDeviation="4" result="blur"/>
+            <feGaussianBlur stdDeviation="4.5" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
           <filter id="em-glow-sm">
@@ -57,23 +57,23 @@
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-        <!-- Central bolt: halo glow layer -->
-        <path class="em-lightning-main" d="M160 8 L150 65 L164 65 L142 125" stroke="rgba(0,180,255,0.22)" stroke-width="10" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <!-- Central bolt: jagged zigzag — halo -->
+        <path class="em-lightning-main" d="M160 6 L153 50 L168 50 L157 94 L164 94 L142 128" stroke="rgba(0,178,255,0.20)" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
         <!-- Central bolt: bright core -->
-        <path class="em-lightning-main" d="M160 8 L150 65 L164 65 L142 125" stroke="rgba(0,225,255,0.88)" stroke-width="2" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
-        <!-- Left branch: halo glow layer -->
-        <path class="em-lightning-branch" d="M142 125 L70 210" stroke="rgba(0,160,255,0.18)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <path class="em-lightning-main" d="M160 6 L153 50 L168 50 L157 94 L164 94 L142 128" stroke="rgba(0,228,255,0.90)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
+        <!-- Left branch: organic curve — halo -->
+        <path class="em-lightning-branch" d="M142 128 Q100 170 68 212" stroke="rgba(0,158,255,0.16)" stroke-width="9" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
         <!-- Left branch: bright core -->
-        <path class="em-lightning-branch" d="M142 125 L70 210" stroke="rgba(0,205,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
-        <!-- Right branch: halo glow layer -->
-        <path class="em-lightning-branch" d="M142 125 L224 210" stroke="rgba(0,160,255,0.18)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <path class="em-lightning-branch" d="M142 128 Q100 170 68 212" stroke="rgba(0,208,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
+        <!-- Right branch: organic curve — halo -->
+        <path class="em-lightning-branch" d="M142 128 Q186 170 226 212" stroke="rgba(0,158,255,0.16)" stroke-width="9" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
         <!-- Right branch: bright core -->
-        <path class="em-lightning-branch" d="M142 125 L224 210" stroke="rgba(0,205,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
-        <!-- Junction node at branch point -->
-        <circle class="em-lightning-main" cx="142" cy="125" r="5" fill="rgba(0,225,255,0.72)" filter="url(#em-glow)"/>
-        <!-- Terminal nodes at platform endpoints -->
-        <circle class="em-lightning-branch" cx="70" cy="210" r="4" fill="rgba(0,205,255,0.55)" filter="url(#em-glow)"/>
-        <circle class="em-lightning-branch" cx="224" cy="210" r="4" fill="rgba(0,205,255,0.55)" filter="url(#em-glow)"/>
+        <path class="em-lightning-branch" d="M142 128 Q186 170 226 212" stroke="rgba(0,208,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
+        <!-- Junction node -->
+        <circle class="em-lightning-main" cx="142" cy="128" r="5.5" fill="rgba(0,228,255,0.74)" filter="url(#em-glow)"/>
+        <!-- Terminal nodes -->
+        <circle class="em-lightning-branch" cx="68" cy="212" r="4" fill="rgba(0,208,255,0.56)" filter="url(#em-glow)"/>
+        <circle class="em-lightning-branch" cx="226" cy="212" r="4" fill="rgba(0,208,255,0.56)" filter="url(#em-glow)"/>
       </svg>
 
       <!-- Primary platform: Online -->
