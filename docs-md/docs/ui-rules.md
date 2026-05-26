@@ -262,6 +262,7 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#home-avatar-ic`: shows `avatar` emoji when provided
 - `#home-elo-label`: hidden if `!isAuthed`
 - `#home-elo-value`: shows `rating` formatted as locale number
+- `#home-elo-bolt`: tier emoji (🪙/🥈/🥇/💎); set by `ratingTierEmoji()` in `menuScreen.js`
 - `#online-badge`: shows if `hasOnlineUnread`; now located inside `#btn-notifications-home`
 - `#btn-notifications-home`: notification bell in top bar (Electric Menu redesign)
 
