@@ -391,6 +391,22 @@
 .em-float-icon--bot { animation-duration: 4.2s; animation-delay: 0.5s; }
 .em-float-icon--2p  { animation-duration: 5s;   animation-delay: 1s; }
 
+/* Spinning globe canvas in the online platform orb */
+#home-globe {
+  width: 83%;
+  height: 83%;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Custom SVG icons (robot, two-players) sized to match emoji scale */
+.home-icon-svg {
+  width: 1.15em;
+  height: 1.15em;
+  display: block;
+  overflow: visible;
+}
+
 /* ─ Platform cards ───────────────────────────────────── */
 /* The 3D slab look uses THREE shadow layers:
    1. box-shadow: 0 Npx 0  → crisp bottom face (slab depth edge)

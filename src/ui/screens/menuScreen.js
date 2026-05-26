@@ -6,6 +6,7 @@
 //   menu.unmount();
 //
 import { $, on } from '../domHelpers.js';
+import { startGlobe } from '../globeRenderer.js';
 
 export const MENU_INTENT = Object.freeze({
   OPEN_PROFILE:       'menu/openProfile',
@@ -143,8 +144,11 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     hasOnlineUnread: false,
   });
 
+  const stopHomeGlobe = startGlobe($('#home-globe', menuRoot));
+
   return {
     unmount() {
+      stopHomeGlobe();
       for (const off of cleanups) try { off(); } catch { /* swallow */ }
       cleanups.length = 0;
     },
