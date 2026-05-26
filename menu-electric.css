@@ -429,31 +429,8 @@
   padding-top: 36px;
 }
 
-/* Metallic disk rim — the platform's upper socket edge */
-.em-platform::before {
-  content: "";
-  position: absolute;
-  top: -8px;
-  left: 9%;
-  width: 82%;
-  height: 25px;
-  border-radius: 50%;
-  background: linear-gradient(180deg,
-    rgba(85, 192, 255, 0.25) 0%,
-    #1e3d78 28%,
-    #0f2050 62%,
-    #060e2c 100%
-  );
-  border: 1.5px solid rgba(0, 205, 255, 0.70);
-  border-bottom-color: rgba(0, 100, 200, 0.22);
-  box-shadow:
-    0 0 20px rgba(0, 192, 255, 0.56),
-    0 0 42px rgba(0, 115, 255, 0.24),
-    inset 0 2px 0 rgba(0, 242, 255, 0.32),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.54);
-  z-index: 2;
-  pointer-events: none;
-}
+/* Oval rim removed — icon floats directly onto the platform top */
+.em-platform::before { display: none; }
 
 /* Upper-zone interior reflection */
 .em-platform::after {
@@ -497,26 +474,7 @@
   animation: emPrimaryPulse 4.5s ease-in-out infinite;
 }
 
-/* Primary rim — taller, wider, stronger neon */
-.em-platform--primary::before {
-  left: 5%;
-  width: 90%;
-  height: 32px;
-  top: -10px;
-  border-color: rgba(0, 235, 255, 0.82);
-  border-bottom-color: rgba(0, 122, 228, 0.20);
-  background: linear-gradient(180deg,
-    rgba(120, 225, 255, 0.30) 0%,
-    #1e4888 28%,
-    #10285e 62%,
-    #060e2e 100%
-  );
-  box-shadow:
-    0 0 30px rgba(0, 225, 255, 0.68),
-    0 0 64px rgba(0, 150, 255, 0.32),
-    inset 0 2px 0 rgba(0, 255, 255, 0.36),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.54);
-}
+/* Primary rim removed along with base rule */
 
 /* Secondary platforms */
 .em-platform--secondary {
@@ -705,7 +663,6 @@
   }
   .em-platform--primary   { padding-top: 42px; }
   .em-platform--secondary { padding-top: 30px; }
-  .em-platform--primary::before { height: 25px; top: -8px; }
   .em-platforms { gap: clamp(2px, 0.6svh, 5px); }
   .em-bottom-nav { padding-top: 6px; }
   .em-nav-icon   { font-size: clamp(18px, 4.8vw, 22px); }
