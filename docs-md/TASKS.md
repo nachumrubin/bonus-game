@@ -5,6 +5,12 @@
 
 ---
 
+## Completed (May 2026)
+
+- ✅ Electric Floating Platforms main menu redesign — `menu-electric.css` + updated `home.html`, `menuScreen.js`, `main.js`
+
+---
+
 ## Active Cutover Checklist (from `SPINE_TODO.md`)
 
 The `SPINE_TODO.md` file is the authoritative tracking document for the legacy→spine migration. Key outstanding areas as of documentation date:

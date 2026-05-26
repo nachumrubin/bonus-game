@@ -17,6 +17,9 @@ export const MENU_INTENT = Object.freeze({
   OPEN_CHAMPIONS:     'menu/openChampions',
   OPEN_SETTINGS:      'menu/openSettings',
   SHARE_GAME:         'menu/shareGame',
+  OPEN_STATS:         'menu/openStats',
+  OPEN_FRIENDS:       'menu/openFriends',
+  OPEN_NOTIFICATIONS: 'menu/openNotifications',
 });
 
 // The bus event the menu listens for to refresh its visible state. Other
@@ -36,6 +39,9 @@ const BUTTONS = [
   { sel: 'button[onclick="openChampions()"]',      intent: MENU_INTENT.OPEN_CHAMPIONS },
   { sel: 'button[onclick="openSettings()"]',       intent: MENU_INTENT.OPEN_SETTINGS },
   { sel: 'button[onclick="shareGame()"]',          intent: MENU_INTENT.SHARE_GAME },
+  { sel: 'button[onclick="openStats()"]',          intent: MENU_INTENT.OPEN_STATS },
+  { sel: 'button[onclick="openFriends()"]',        intent: MENU_INTENT.OPEN_FRIENDS },
+  { sel: 'button[onclick="openNotifications()"]',  intent: MENU_INTENT.OPEN_NOTIFICATIONS },
 ];
 
 export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
@@ -67,10 +73,11 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
 
   // Initial render — read current state from the spine/debug surface and
   // saved-session globals.
-  function render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread } = {}) {
+  function render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar } = {}) {
     const resumeBtn = $('#btn-resume-home', menuRoot);
     if (resumeBtn) resumeBtn.style.display = hasSavedGame ? '' : 'none';
-    const shareBtn  = $('#btn-share-game', menuRoot);
+
+    const shareBtn = $('#btn-share-game', menuRoot);
     if (shareBtn) {
       const wasHidden = shareBtn.style.display === 'none';
       shareBtn.style.display = isAuthed ? '' : 'none';
@@ -95,6 +102,7 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
         shareBtn.addEventListener?.('animationend', clearInlineAnim, { once: true });
       }
     }
+
     const nameLabel = $('#home-user-label', menuRoot);
     if (nameLabel) {
       if (displayName) {
@@ -103,6 +111,23 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
         nameLabel.textContent = 'כניסה / הרשמה';
       }
     }
+
+    // Avatar
+    const avatarEl = $('#home-avatar-ic', menuRoot);
+    if (avatarEl && avatar) {
+      avatarEl.textContent = avatar;
+    }
+
+    // ELO badge — show only when authenticated
+    const eloLabel = $('#home-elo-label', menuRoot);
+    if (eloLabel) {
+      eloLabel.style.display = isAuthed ? '' : 'none';
+    }
+    const eloValue = $('#home-elo-value', menuRoot);
+    if (eloValue && rating != null) {
+      eloValue.textContent = Number(rating).toLocaleString('he');
+    }
+
     const onlineBadge = $('#online-badge', menuRoot);
     if (onlineBadge) onlineBadge.style.display = hasOnlineUnread ? '' : 'none';
   }

@@ -5,6 +5,32 @@
 
 ---
 
+## Electric Floating Platforms Menu Redesign (May 2026)
+
+**Branch:** `claude/boost-electric-menu-redesign-3LWAt`
+
+**Summary:** Visual redesign of the main menu screen (`#sh`) into an "Electric Floating Platforms" premium hub. UI refactor only — no game logic, Firebase, or routing behavior changed.
+
+**Changed files:**
+- `partials/screens/home.html` — new layout: top bar (profile + ELO + icon buttons), BOOST logo, three floating platform cards, bottom navigation bar
+- `menu-electric.css` (new) — all electric theme styles: dark navy, neon platform glow, floating animation, lightning SVG decoration, bottom nav, reduced-motion support
+- `src/ui/screens/menuScreen.js` — added `OPEN_STATS`, `OPEN_FRIENDS`, `OPEN_NOTIFICATIONS` intents; ELO and avatar display in `render()`
+- `src/main.js` — added handlers for new MENU_INTENTs; added `rating` and `avatar` fields to `MENU_REFRESH` payload
+- `index.html` — added `<link>` for `menu-electric.css`
+
+**New DOM IDs:**
+- `#btn-notifications-home` — notification bell button in top bar
+- `#home-elo-label` — ELO badge container (hidden when unauthenticated)
+- `#home-elo-value` — numeric ELO text node
+- `#online-badge` — moved from inside online button to inside notification bell
+
+**New MENU_INTENT values:**
+- `menu/openStats` — opens stats screen
+- `menu/openFriends` — opens friends screen
+- `menu/openNotifications` — opens online lobby (where async sessions are listed)
+
+---
+
 ## Recent Changes (May 2026)
 
 ### Phase 1A Disconnect/Leave Flows (PR #203–206)
