@@ -191,9 +191,9 @@
 .em-profile-info {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
   direction: rtl;
-  text-align: right;
 }
 
 .em-player-name {
@@ -459,7 +459,7 @@
 /* PRIMARY: online — dominant, 3px border, strongest glow */
 .em-platform--primary {
   max-width: clamp(274px, 85vw, 338px);
-  border: 3px solid rgba(0, 218, 255, 0.66);
+  border: 2px solid rgba(0, 218, 255, 0.66);
   box-shadow:
     /* 3D slab bottom face — deeper */
     0 12px 0 rgba(0, 25, 100, 0.80),

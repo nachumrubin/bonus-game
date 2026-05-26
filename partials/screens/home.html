@@ -45,7 +45,7 @@
     <!-- ─ Floating Platforms ─────────────────────── -->
     <div class="em-platforms">
 
-      <!-- Energy network linking platforms — organic curves, double-path glow technique -->
+      <!-- Energy network linking platforms — zigzag lightning, double-path glow technique -->
       <svg class="em-lightning-bg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" preserveAspectRatio="xMidYMid meet">
         <defs>
           <filter id="em-glow">
@@ -57,23 +57,31 @@
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-        <!-- Central bolt: jagged zigzag — halo -->
-        <path class="em-lightning-main" d="M160 6 L153 50 L168 50 L157 94 L164 94 L142 128" stroke="rgba(0,178,255,0.20)" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
+        <!-- Central bolt: zigzag — halo -->
+        <path class="em-lightning-main" d="M160 6 L153 42 L170 55 L155 82 L167 95 L148 118 L142 128" stroke="rgba(0,178,255,0.20)" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
         <!-- Central bolt: bright core -->
-        <path class="em-lightning-main" d="M160 6 L153 50 L168 50 L157 94 L164 94 L142 128" stroke="rgba(0,228,255,0.90)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
-        <!-- Left branch: organic curve — halo -->
-        <path class="em-lightning-branch" d="M142 128 Q100 170 68 212" stroke="rgba(0,158,255,0.16)" stroke-width="9" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
-        <!-- Left branch: bright core -->
-        <path class="em-lightning-branch" d="M142 128 Q100 170 68 212" stroke="rgba(0,208,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
-        <!-- Right branch: organic curve — halo -->
-        <path class="em-lightning-branch" d="M142 128 Q186 170 226 212" stroke="rgba(0,158,255,0.16)" stroke-width="9" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
-        <!-- Right branch: bright core -->
-        <path class="em-lightning-branch" d="M142 128 Q186 170 226 212" stroke="rgba(0,208,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
+        <path class="em-lightning-main" d="M160 6 L153 42 L170 55 L155 82 L167 95 L148 118 L142 128" stroke="rgba(0,228,255,0.90)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
+
+        <!-- Left branch A: zigzag strand 1 — halo -->
+        <path class="em-lightning-branch" d="M142 128 L124 142 L110 156 L95 146 L80 160 L70 162" stroke="rgba(0,158,255,0.16)" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
+        <!-- Left branch A: bright core -->
+        <path class="em-lightning-branch" d="M142 128 L124 142 L110 156 L95 146 L80 160 L70 162" stroke="rgba(0,208,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
+        <!-- Left branch B: zigzag strand 2 (offset kinks for layered effect) — halo -->
+        <path class="em-lightning-branch" d="M142 128 L128 138 L114 152 L100 143 L84 157 L70 162" stroke="rgba(0,140,255,0.10)" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
+        <!-- Left branch B: bright core -->
+        <path class="em-lightning-branch" d="M142 128 L128 138 L114 152 L100 143 L84 157 L70 162" stroke="rgba(0,200,255,0.45)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
+
+        <!-- Right branch A: zigzag strand 1 — halo -->
+        <path class="em-lightning-branch" d="M142 128 L160 142 L174 156 L189 146 L204 160 L214 162" stroke="rgba(0,158,255,0.16)" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
+        <!-- Right branch A: bright core -->
+        <path class="em-lightning-branch" d="M142 128 L160 142 L174 156 L189 146 L204 160 L214 162" stroke="rgba(0,208,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
+        <!-- Right branch B: zigzag strand 2 (offset kinks) — halo -->
+        <path class="em-lightning-branch" d="M142 128 L156 138 L170 152 L184 143 L200 157 L214 162" stroke="rgba(0,140,255,0.10)" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
+        <!-- Right branch B: bright core -->
+        <path class="em-lightning-branch" d="M142 128 L156 138 L170 152 L184 143 L200 157 L214 162" stroke="rgba(0,200,255,0.45)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
+
         <!-- Junction node -->
         <circle class="em-lightning-main" cx="142" cy="128" r="5.5" fill="rgba(0,228,255,0.74)" filter="url(#em-glow)"/>
-        <!-- Terminal nodes -->
-        <circle class="em-lightning-branch" cx="68" cy="212" r="4" fill="rgba(0,208,255,0.56)" filter="url(#em-glow)"/>
-        <circle class="em-lightning-branch" cx="226" cy="212" r="4" fill="rgba(0,208,255,0.56)" filter="url(#em-glow)"/>
       </svg>
 
       <!-- Primary platform: Online -->
