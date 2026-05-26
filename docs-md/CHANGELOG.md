@@ -5,6 +5,27 @@
 
 ---
 
+## Main Menu Icon Upgrades — Spinning Globe + Custom SVGs (May 2026)
+
+**Branch:** `claude/main-menu-emoji-updates-aGqo4`
+
+**Summary:** Replaced the three emoji icons on the main menu platform cards with richer custom graphics. UI-only change — no game logic, Firebase, or test files touched.
+
+**Key changes:**
+- **Online platform orb**: Replaced `🌐` with a live canvas spinning globe (same orthographic renderer as the online-lobby title). The globe renderer was extracted into `src/ui/globeRenderer.js` to be shared between `onlineLobbyScreen.js` and `menuScreen.js`. `menuScreen.js` now starts/stops the globe on mount/unmount via `#home-globe` canvas.
+- **Two-players platform orb**: Replaced `👥` with a custom inline SVG showing two layered person silhouettes in the game's blue palette (with subtle glow filter).
+- **Bot platform orb**: Replaced `🤖` with a custom inline SVG robot featuring glowing square eyes, body indicator lights, and an **electrical pulse animation** — a glowing circle that travels from the antenna base up to the tip using SVG `<animate>` elements at 1.8 s per cycle.
+- **CSS additions** in `menu-electric.css`: `#home-globe` (83% fill, border-radius 50%) and `.home-icon-svg` (1.15em square, `overflow: visible` for glow filters).
+
+**Files changed:**
+- `src/ui/globeRenderer.js` *(new)* — shared globe canvas renderer
+- `src/ui/screens/onlineLobbyScreen.js` — imports shared renderer; removed duplicated LAND/startGlobe
+- `src/ui/screens/menuScreen.js` — imports shared renderer; starts home globe on mount
+- `partials/screens/home.html` — replaced emoji text with `<canvas>` and inline `<svg>`
+- `menu-electric.css` — sizing rules for home globe and SVG icons
+
+---
+
 ## Electric Floating Platforms Menu — Stage 5 Polish Fixes (May 2026)
 
 **Branch:** `claude/boost-electric-menu-redesign-3LWAt`
