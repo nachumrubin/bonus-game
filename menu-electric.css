@@ -237,7 +237,7 @@
     drop-shadow(0 12px 18px rgba(0, 0, 0, 0.52)) !important;
 }
 .em-home .hlogo img {
-  max-width: clamp(112px, 26vw, 158px) !important;
+  max-width: clamp(170px, 44vw, 240px) !important;
 }
 
 /* ─ Resume button ────────────────────────────────────── */
@@ -317,6 +317,7 @@
   width: 100%;
   position: relative;
   z-index: 2;
+  margin-top: clamp(14px, 3svh, 26px);
 }
 
 .em-platform-col {
@@ -648,7 +649,7 @@
 @media (max-height: 700px) {
   .em-platform-sub  { display: none; }
   .em-home .hlogo   { margin-top: 1px; margin-bottom: 0; }
-  .em-home .hlogo img { max-width: clamp(96px, 22vw, 128px) !important; }
+  .em-home .hlogo img { max-width: clamp(140px, 36vw, 185px) !important; }
   .em-float-icon--online {
     width:  clamp(60px, 16vw, 72px);
     height: clamp(60px, 16vw, 72px);
