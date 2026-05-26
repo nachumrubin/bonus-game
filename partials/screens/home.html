@@ -48,45 +48,6 @@
     <!-- ─ Floating Platforms ─────────────────────── -->
     <div class="em-platforms">
 
-      <!-- Energy network linking platforms — zigzag lightning, double-path glow technique -->
-      <svg class="em-lightning-bg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <filter id="em-glow">
-            <feGaussianBlur stdDeviation="4.5" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <filter id="em-glow-sm">
-            <feGaussianBlur stdDeviation="2" result="blur"/>
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <!-- Central bolt: zigzag — halo -->
-        <path class="em-lightning-main" d="M160 6 L153 42 L170 55 L155 82 L167 95 L148 118 L142 128" stroke="rgba(0,178,255,0.20)" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
-        <!-- Central bolt: bright core -->
-        <path class="em-lightning-main" d="M160 6 L153 42 L170 55 L155 82 L167 95 L148 118 L142 128" stroke="rgba(0,228,255,0.90)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
-
-        <!-- Left branch A: zigzag strand 1 — halo -->
-        <path class="em-lightning-branch" d="M142 128 L124 142 L110 156 L95 146 L80 160 L70 162" stroke="rgba(0,158,255,0.16)" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
-        <!-- Left branch A: bright core -->
-        <path class="em-lightning-branch" d="M142 128 L124 142 L110 156 L95 146 L80 160 L70 162" stroke="rgba(0,208,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
-        <!-- Left branch B: zigzag strand 2 (offset kinks for layered effect) — halo -->
-        <path class="em-lightning-branch" d="M142 128 L128 138 L114 152 L100 143 L84 157 L70 162" stroke="rgba(0,140,255,0.10)" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
-        <!-- Left branch B: bright core -->
-        <path class="em-lightning-branch" d="M142 128 L128 138 L114 152 L100 143 L84 157 L70 162" stroke="rgba(0,200,255,0.45)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
-
-        <!-- Right branch A: zigzag strand 1 — halo -->
-        <path class="em-lightning-branch" d="M142 128 L160 142 L174 156 L189 146 L204 160 L214 162" stroke="rgba(0,158,255,0.16)" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
-        <!-- Right branch A: bright core -->
-        <path class="em-lightning-branch" d="M142 128 L160 142 L174 156 L189 146 L204 160 L214 162" stroke="rgba(0,208,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
-        <!-- Right branch B: zigzag strand 2 (offset kinks) — halo -->
-        <path class="em-lightning-branch" d="M142 128 L156 138 L170 152 L184 143 L200 157 L214 162" stroke="rgba(0,140,255,0.10)" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow)"/>
-        <!-- Right branch B: bright core -->
-        <path class="em-lightning-branch" d="M142 128 L156 138 L170 152 L184 143 L200 157 L214 162" stroke="rgba(0,200,255,0.45)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#em-glow-sm)"/>
-
-        <!-- Junction node -->
-        <circle class="em-lightning-main" cx="142" cy="128" r="5.5" fill="rgba(0,228,255,0.74)" filter="url(#em-glow)"/>
-      </svg>
-
       <!-- Primary platform: Online -->
       <div class="em-platform-row em-platform-row--primary">
         <div class="em-float-icon em-float-icon--online" aria-hidden="true">
@@ -112,7 +73,7 @@
         <!-- RIGHT: שני שחקנים -->
         <div class="em-platform-col">
           <div class="em-float-icon em-float-icon--2p" aria-hidden="true">
-            <!-- Two upper-body silhouettes with animated encompassing border -->
+            <!-- Two upper-body silhouettes, bright traces ride directly on each edge -->
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 40" class="home-icon-svg">
               <defs>
                 <filter id="hm-2p-glow" x="-60%" y="-60%" width="220%" height="220%">
@@ -130,20 +91,42 @@
               <!-- Front person — upper body silhouette -->
               <circle cx="16" cy="16" r="8" fill="#2563eb" stroke="#bfdbfe" stroke-width="1.4" filter="url(#hm-2p-glow)"/>
               <path d="M3,40 C3,29 29,29 29,40" fill="#1d4ed8" stroke="#bfdbfe" stroke-width="1.4" stroke-linecap="round"/>
-              <!-- Animated bright line encompassing both silhouettes — outer glow halo -->
-              <ellipse cx="22" cy="22" rx="19" ry="17"
-                       fill="none" stroke="rgba(56,189,248,0.38)" stroke-width="3"
-                       stroke-dasharray="14 99" filter="url(#hm-2p-glow)">
-                <animate attributeName="stroke-dashoffset"
-                         values="113;0" dur="2.8s" repeatCount="indefinite" calcMode="linear"/>
-              </ellipse>
-              <!-- Animated bright line — crisp bright core -->
-              <ellipse cx="22" cy="22" rx="19" ry="17"
-                       fill="none" stroke="rgba(224,242,254,0.95)" stroke-width="1.2"
-                       stroke-dasharray="14 99" filter="url(#hm-2p-bright)">
-                <animate attributeName="stroke-dashoffset"
-                         values="113;0" dur="2.8s" repeatCount="indefinite" calcMode="linear"/>
-              </ellipse>
+              <!-- Back person head — bright trace (glow halo + crisp core) -->
+              <circle cx="28" cy="13" r="7.5" fill="none" stroke="rgba(56,189,248,0.50)" stroke-width="3.5"
+                      stroke-dasharray="28 19" filter="url(#hm-2p-glow)">
+                <animate attributeName="stroke-dashoffset" values="47;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
+              </circle>
+              <circle cx="28" cy="13" r="7.5" fill="none" stroke="rgba(186,230,255,0.92)" stroke-width="1.3"
+                      stroke-dasharray="28 19" filter="url(#hm-2p-bright)">
+                <animate attributeName="stroke-dashoffset" values="47;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
+              </circle>
+              <!-- Back person body — bright trace -->
+              <path d="M15,38 C15,28 41,28 41,38" fill="none" stroke="rgba(56,189,248,0.45)" stroke-width="3.5"
+                    stroke-dasharray="20 15" stroke-linecap="round" filter="url(#hm-2p-glow)">
+                <animate attributeName="stroke-dashoffset" values="35;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
+              </path>
+              <path d="M15,38 C15,28 41,28 41,38" fill="none" stroke="rgba(186,230,255,0.88)" stroke-width="1.3"
+                    stroke-dasharray="20 15" stroke-linecap="round" filter="url(#hm-2p-bright)">
+                <animate attributeName="stroke-dashoffset" values="35;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
+              </path>
+              <!-- Front person head — bright trace (faster, brighter) -->
+              <circle cx="16" cy="16" r="8" fill="none" stroke="rgba(56,189,248,0.65)" stroke-width="4"
+                      stroke-dasharray="32 18" filter="url(#hm-2p-glow)">
+                <animate attributeName="stroke-dashoffset" values="50;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
+              </circle>
+              <circle cx="16" cy="16" r="8" fill="none" stroke="rgba(224,242,254,0.98)" stroke-width="1.5"
+                      stroke-dasharray="32 18" filter="url(#hm-2p-bright)">
+                <animate attributeName="stroke-dashoffset" values="50;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
+              </circle>
+              <!-- Front person body — bright trace -->
+              <path d="M3,40 C3,29 29,29 29,40" fill="none" stroke="rgba(56,189,248,0.60)" stroke-width="4"
+                    stroke-dasharray="22 15" stroke-linecap="round" filter="url(#hm-2p-glow)">
+                <animate attributeName="stroke-dashoffset" values="37;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
+              </path>
+              <path d="M3,40 C3,29 29,29 29,40" fill="none" stroke="rgba(224,242,254,0.95)" stroke-width="1.5"
+                    stroke-dasharray="22 15" stroke-linecap="round" filter="url(#hm-2p-bright)">
+                <animate attributeName="stroke-dashoffset" values="37;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
+              </path>
             </svg>
           </div>
           <button class="em-platform em-platform--secondary" onclick="startSetup('vs')">
