@@ -5,7 +5,27 @@
 
 ---
 
-## Electric Floating Platforms Menu Redesign (May 2026)
+## Electric Floating Platforms Menu — Phase 2 Visual Polish (May 2026)
+
+**Branch:** `claude/boost-electric-menu-redesign-3LWAt`
+
+**Summary:** Premium visual pass on the Phase 1 layout. CSS and SVG changes only — no JS, IDs, routing, or functionality changed.
+
+**Changed files:**
+- `menu-electric.css` — complete rewrite with premium platform architecture
+- `partials/screens/home.html` — SVG lightning upgraded to double-path glow technique
+
+**Key changes:**
+- Platforms: icon orbs overlap button tops via `margin-bottom: -Npx`; metallic elliptical disk rim via `::before`; upper glossy highlight via `::after`; `overflow: visible` so rim protrudes; primary platform 1.5× wider with `emPrimaryPulse` glow animation
+- Background: atmospheric radial glows + electric crack lines on `em-home::after`; energy field radials on `em-platforms::before`
+- Lightning SVG: double-path technique (wide halo + sharp core per bolt); junction and terminal circle nodes; `em-lightning-main` / `em-lightning-branch` flicker animation in opposite phase; second filter `em-glow-sm` (2px blur)
+- Top bar: icon buttons in glassmorphism pill container; circular buttons with neon border; ELO styled as glowing gold chip `⚡ ELO 1230`
+- Bottom nav: 52% opacity on inactive items; gold active-home glow; tighter padding; `clamp()`-based sizing
+- Animations: `emFloat` 3px / 4–6s alternate; `emPrimaryPulse` 4.5s; `emLightningFlicker` staggered; `prefers-reduced-motion` disables all movement
+
+---
+
+## Electric Floating Platforms Menu Redesign — Phase 1 (May 2026)
 
 **Branch:** `claude/boost-electric-menu-redesign-3LWAt`
 

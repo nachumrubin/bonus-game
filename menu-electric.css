@@ -1,124 +1,148 @@
-/* ══════════════════════════════════════════
-   BOOST ELECTRIC MENU — menu-electric.css
-   Layered on top of styles.css for the
-   Electric Floating Platforms redesign.
-   ══════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   BOOST ELECTRIC MENU — menu-electric.css  v2
+   "Electric Floating Platforms" — premium visual pass
 
-/* ── Container ─────────────────────────── */
+   Architecture note for platforms:
+     Icon sits ON the platform via negative margin overlap.
+     ::before creates the metallic disk rim at the top edge.
+     overflow:visible lets the disk rim protrude above the button.
+   ══════════════════════════════════════════════════════ */
+
+/* ─ Container ────────────────────────────────────────── */
 .em-home {
   padding: 0;
   gap: 0;
   justify-content: flex-start;
 }
 
-/* ── Top Bar ──────────────────────────── */
+/* ─ Atmospheric background ───────────────────────────── */
+
+/* Electric crack overlay and deep radial glow */
+.em-home::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    /* Central energy field behind platforms */
+    radial-gradient(ellipse 65% 55% at 50% 58%, rgba(0, 70, 200, 0.13) 0%, transparent 68%),
+    /* Lower glow split toward secondary platforms */
+    radial-gradient(ellipse 35% 28% at 28% 82%, rgba(0, 60, 180, 0.09) 0%, transparent 55%),
+    radial-gradient(ellipse 35% 28% at 72% 82%, rgba(0, 60, 180, 0.09) 0%, transparent 55%),
+    /* Electric crack lines */
+    linear-gradient(124deg, transparent 49%, rgba(0, 185, 255, 0.035) 50%, transparent 51%),
+    linear-gradient( 56deg, transparent 49%, rgba(0, 165, 255, 0.028) 50%, transparent 51%),
+    linear-gradient(168deg, transparent 49%, rgba(0, 170, 255, 0.025) 50%, transparent 51%);
+  background-size:
+    100% 100%, 100% 100%, 100% 100%,
+    190px 190px, 270px 270px, 340px 340px;
+  background-position:
+    0 0, 0 0, 0 0,
+    55px 45px, 130px 90px, 40px 130px;
+}
+
+/* ─ Top Bar ──────────────────────────────────────────── */
 .em-topbar {
   width: 100%;
   display: flex;
   flex-direction: row;
-  /* RTL: first child = RIGHT side, last child = LEFT side */
+  /* RTL: first child = RIGHT, last child = LEFT */
   align-items: center;
   justify-content: space-between;
-  padding: clamp(8px, 1.8svh, 14px) clamp(10px, 3vw, 16px);
-  background: rgba(0, 8, 40, 0.72);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 170, 255, 0.18);
+  padding: clamp(7px, 1.5svh, 11px) clamp(10px, 3vw, 16px);
+  background: rgba(1, 5, 28, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(0, 155, 255, 0.14);
   flex-shrink: 0;
   position: relative;
-  z-index: 2;
+  z-index: 5;
 }
 
-/* Icon group on the RIGHT (first in HTML for RTL) */
+/* Icon pill group (RIGHT side, first in RTL HTML) */
 .em-topbar-icons {
   display: flex;
   flex-direction: row;
-  /* RTL: first=rightmost, so bell icon (first) is farthest right */
-  gap: clamp(6px, 2vw, 10px);
+  gap: clamp(4px, 1.4vw, 7px);
   align-items: center;
+  background: rgba(0, 18, 55, 0.5);
+  border: 1px solid rgba(0, 148, 255, 0.2);
+  border-radius: 22px;
+  padding: 4px 5px;
 }
 
 .em-icon-btn {
   position: relative;
-  width: clamp(34px, 9vw, 42px);
-  height: clamp(34px, 9vw, 42px);
+  width: clamp(30px, 7.8vw, 36px);
+  height: clamp(30px, 7.8vw, 36px);
   border-radius: 50%;
-  background: linear-gradient(145deg, rgba(0, 40, 100, 0.8), rgba(0, 10, 40, 0.9));
-  border: 1.5px solid rgba(0, 170, 255, 0.45);
+  background: linear-gradient(150deg, rgba(0, 38, 95, 0.9), rgba(0, 7, 32, 0.92));
+  border: 1.5px solid rgba(0, 158, 255, 0.38);
   color: white;
   cursor: pointer;
   display: grid;
   place-items: center;
-  font-size: clamp(15px, 4vw, 18px);
-  box-shadow: 0 0 10px rgba(0, 160, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  font-size: clamp(13px, 3.4vw, 16px);
+  box-shadow: 0 0 7px rgba(0, 130, 255, 0.18), inset 0 1px 0 rgba(255,255,255,0.07);
+  transition: box-shadow 0.2s ease, transform 0.14s ease;
   font-family: 'Heebo', sans-serif;
   flex-shrink: 0;
 }
-
-.em-icon-btn:hover {
-  box-shadow: 0 0 18px rgba(0, 200, 255, 0.5);
-  transform: translateY(-1px);
-}
-
-.em-icon-btn:active {
-  transform: scale(0.93);
-}
+.em-icon-btn:hover  { box-shadow: 0 0 14px rgba(0, 195, 255, 0.42); transform: translateY(-1px); }
+.em-icon-btn:active { transform: scale(0.92); }
 
 .em-help-q {
-  font-size: clamp(14px, 4vw, 18px);
+  font-size: clamp(13px, 3.4vw, 16px);
   font-weight: 900;
-  color: rgba(160, 220, 255, 0.9);
+  color: rgba(155, 215, 255, 0.88);
+  line-height: 1;
 }
 
-/* Notification badge (sits on bell icon) */
+/* Notification badge */
 .em-icon-badge {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  top: -2px;
+  right: -2px;
   background: #e74c3c;
   color: #fff;
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  font-size: 9px;
+  width: 14px;
+  height: 14px;
+  font-size: 8px;
   font-weight: 900;
-  line-height: 16px;
+  line-height: 14px;
   text-align: center;
-  box-shadow: 0 0 6px rgba(231, 76, 60, 0.8);
+  box-shadow: 0 0 5px rgba(231, 76, 60, 0.85);
   animation: onpulse 1.5s ease-in-out infinite;
   pointer-events: none;
 }
 
-/* Profile button on the LEFT (last in HTML for RTL) */
+/* Profile area (LEFT side, last in RTL HTML) */
 .em-profile-btn {
   display: flex;
   flex-direction: row;
-  /* In RTL, flex-row goes right→left, so first child=right, last=left */
-  /* We want avatar on the left (start of LTR visual), info on the right */
   align-items: center;
-  gap: clamp(7px, 2vw, 11px);
+  gap: clamp(6px, 1.7vw, 10px);
   background: none;
   border: none;
   cursor: pointer;
   color: white;
   padding: 0;
   font-family: 'Heebo', sans-serif;
-  text-align: right;
-  /* Use direction:ltr so avatar is visually on the left */
-  direction: ltr;
+  direction: ltr; /* so avatar is visually left, info is right */
 }
 
 .em-avatar-wrap {
-  width: clamp(38px, 10vw, 48px);
-  height: clamp(38px, 10vw, 48px);
+  width: clamp(34px, 9vw, 42px);
+  height: clamp(34px, 9vw, 42px);
   border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #1a3a6a, #060f28);
-  border: 2px solid rgba(0, 200, 255, 0.55);
+  background: radial-gradient(circle at 40% 35%, #1a3a6a, #06102a);
+  border: 2px solid rgba(0, 192, 255, 0.48);
   display: grid;
   place-items: center;
-  font-size: clamp(18px, 5vw, 23px);
-  box-shadow: 0 0 14px rgba(0, 170, 255, 0.35);
+  font-size: clamp(16px, 4.4vw, 20px);
+  box-shadow: 0 0 10px rgba(0, 158, 255, 0.28);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -132,13 +156,13 @@
 }
 
 .em-player-name {
-  font-size: clamp(13px, 3.6vw, 16px);
+  font-size: clamp(12px, 3.2vw, 15px);
   font-weight: 700;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: clamp(80px, 28vw, 130px);
+  max-width: clamp(72px, 25vw, 116px);
   display: block;
 }
 
@@ -146,28 +170,36 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(232, 200, 64, 0.45);
-  border-radius: 9px;
-  padding: 2px 7px 2px 5px;
-  font-size: clamp(10px, 2.8vw, 12px);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(232, 200, 64, 0.38);
+  border-radius: 8px;
+  padding: 1px 6px 1px 4px;
+  font-size: clamp(9px, 2.4vw, 11px);
   color: #e8c840;
   font-weight: 700;
   white-space: nowrap;
+  box-shadow: 0 0 5px rgba(232, 200, 64, 0.18);
 }
 
-.em-elo-bolt {
-  font-size: 10px;
-  line-height: 1;
-}
+.em-elo-bolt { font-size: 9px; line-height: 1; }
 
-/* ── Logo zone ────────────────────────── */
+/* ─ Logo (reduced size, tight margins) ───────────────── */
 .em-home .hlogo {
-  margin-top: clamp(4px, 1.2svh, 10px);
-  margin-bottom: clamp(2px, 0.8svh, 6px);
+  margin-top: clamp(2px, 0.7svh, 6px);
+  margin-bottom: clamp(0px, 0.3svh, 4px);
+}
+.em-home .hlogo img {
+  max-width: clamp(120px, 28vw, 168px) !important;
 }
 
-/* ── Platforms area ──────────────────── */
+/* ─ Resume button ────────────────────────────────────── */
+.em-resume-btn {
+  width: calc(100% - clamp(20px, 6vw, 36px));
+  margin-bottom: clamp(3px, 0.8svh, 6px);
+  flex-shrink: 0;
+}
+
+/* ─ Platforms container ──────────────────────────────── */
 .em-platforms {
   flex: 1;
   width: 100%;
@@ -175,13 +207,27 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(8px, 1.8svh, 14px);
-  padding: 0 clamp(10px, 3vw, 18px);
+  gap: clamp(5px, 1.2svh, 10px);
+  padding: clamp(2px, 0.8svh, 8px) clamp(12px, 3.5vw, 20px);
   position: relative;
   min-height: 0;
+  z-index: 2;
 }
 
-/* Decorative lightning SVG behind platforms */
+/* Radial energy glow behind platform area */
+.em-platforms::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 42%, rgba(0, 105, 230, 0.16) 0%, transparent 62%),
+    radial-gradient(ellipse 44% 30% at 26% 84%, rgba(0, 85, 210, 0.11) 0%, transparent 52%),
+    radial-gradient(ellipse 44% 30% at 74% 84%, rgba(0, 85, 210, 0.11) 0%, transparent 52%);
+}
+
+/* ─ Lightning SVG ────────────────────────────────────── */
 .em-lightning-bg {
   position: absolute;
   inset: 0;
@@ -189,133 +235,212 @@
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.7;
-  filter: blur(0.5px);
+  overflow: visible;
 }
 
-/* ── Platform rows ────────────────────── */
+/* Lightning animation classes (applied to SVG path elements) */
+.em-lightning-main   { animation: emLightningFlicker 2.6s ease-in-out infinite alternate; }
+.em-lightning-branch { animation: emLightningFlicker 2.6s ease-in-out infinite alternate-reverse; }
+
+/* ─ Platform rows ────────────────────────────────────── */
 .em-platform-row--primary {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(4px, 1svh, 8px);
+  gap: 0; /* icon and button overlap — negative margin handles spacing */
   width: 100%;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .em-platform-row--secondary {
   display: flex;
   flex-direction: row;
-  /* RTL: first item appears on RIGHT, second on LEFT */
   justify-content: center;
   gap: clamp(8px, 2.5vw, 14px);
   width: 100%;
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 .em-platform-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(3px, 0.8svh, 6px);
+  gap: 0; /* icon overlaps button via negative margin */
   flex: 1;
-  max-width: clamp(130px, 44vw, 175px);
+  max-width: clamp(130px, 44vw, 168px);
+  position: relative;
 }
 
-/* ── Floating icons above platforms ──── */
+/* ─ Icon orbs ────────────────────────────────────────── */
+/* The icon "sits on" the platform via negative margin-bottom,
+   creating a physically integrated look. pointer-events:none
+   ensures clicks reach the button below. */
 .em-float-icon {
-  width: clamp(48px, 13vw, 64px);
-  height: clamp(48px, 13vw, 64px);
+  width: clamp(46px, 12.5vw, 58px);
+  height: clamp(46px, 12.5vw, 58px);
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #162e5a 0%, #050d25 70%);
-  border: 2px solid rgba(0, 190, 255, 0.6);
+  background: radial-gradient(circle at 36% 30%, #1d3870 0%, #0e2050 45%, #060d28 80%);
+  border: 2px solid rgba(0, 200, 255, 0.62);
   display: grid;
   place-items: center;
-  font-size: clamp(22px, 6vw, 30px);
+  font-size: clamp(22px, 6vw, 28px);
   box-shadow:
-    0 0 18px rgba(0, 170, 255, 0.45),
-    0 0 36px rgba(0, 100, 255, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  animation: emFloat 3.8s ease-in-out infinite alternate;
+    0 0 20px rgba(0, 178, 255, 0.5),
+    0 0 40px rgba(0, 100, 255, 0.18),
+    0 12px 18px rgba(0, 0, 0, 0.55), /* downward shadow onto disk */
+    inset 0 2px 5px rgba(100, 215, 255, 0.18),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.3);
+  animation: emFloat 4.8s ease-in-out infinite alternate;
   flex-shrink: 0;
   position: relative;
-  z-index: 2;
+  z-index: 4;
+  pointer-events: none;
+  /* Pull the button up to create visual attachment */
+  margin-bottom: -24px;
 }
 
-.em-float-icon--online { animation-duration: 4s; }
-.em-float-icon--bot    { animation-duration: 3.3s; animation-delay: 0.4s; }
-.em-float-icon--2p     { animation-duration: 3.7s; animation-delay: 0.9s; }
+/* Primary (online) icon — larger, dominant */
+.em-float-icon--online {
+  width: clamp(60px, 16.5vw, 76px);
+  height: clamp(60px, 16.5vw, 76px);
+  font-size: clamp(28px, 7.8vw, 36px);
+  border-color: rgba(0, 220, 255, 0.78);
+  box-shadow:
+    0 0 28px rgba(0, 200, 255, 0.62),
+    0 0 56px rgba(0, 130, 255, 0.24),
+    0 16px 24px rgba(0, 0, 0, 0.6),
+    inset 0 2px 6px rgba(130, 230, 255, 0.22),
+    inset 0 -1px 4px rgba(0, 0, 0, 0.35);
+  margin-bottom: -32px;
+  animation-duration: 5.5s;
+  /* Extra inner specular highlight */
+  background: radial-gradient(circle at 34% 28%, #1e3f7a 0%, #102558 40%, #060e2c 80%);
+}
 
-/* ── Platform cards ───────────────────── */
+.em-float-icon--bot { animation-duration: 4.2s; animation-delay: 0.5s; }
+.em-float-icon--2p  { animation-duration: 5s;   animation-delay: 1s; }
+
+/* ─ Platform cards ───────────────────────────────────── */
+/* overflow:visible so disk rim ::before can extend above the button */
 .em-platform {
-  background: linear-gradient(170deg, #0d1e42 0%, #030916 100%);
-  border: 1.5px solid rgba(0, 170, 255, 0.5);
-  border-radius: clamp(14px, 4vw, 20px);
+  background: linear-gradient(
+    175deg,
+    #13244c 0%,
+    #0c1a3a 25%,
+    rgba(0, 155, 255, 0.06) 26.5%, /* luminous separator line */
+    #080f27 28%,
+    #040816 100%
+  );
+  border: 1.5px solid rgba(0, 172, 255, 0.48);
+  border-radius: clamp(14px, 3.8vw, 18px);
   cursor: pointer;
   color: white;
   font-family: 'Heebo', sans-serif;
   width: 100%;
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* disk rim protrudes above button */
   box-shadow:
-    0 0 24px rgba(0, 140, 255, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+    0 0 22px rgba(0, 130, 255, 0.26),
+    0 -6px 18px rgba(0, 148, 255, 0.15), /* glow upward toward icon */
+    0 8px 20px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(0, 195, 255, 0.1),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35);
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.2, 1), box-shadow 0.18s ease;
+  /* Extra top padding for icon overlap */
+  padding-top: 28px;
 }
 
-/* Glossy inner highlight */
+/* Metallic disk rim — elliptical band protruding above button top */
 .em-platform::before {
   content: "";
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.08) 0%,
-    transparent 40%
-  );
+  top: -6px;
+  left: 11%;
+  width: 78%;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #1e3870 0%, #102048 55%, #080f2e 100%);
+  border: 1.5px solid rgba(0, 192, 255, 0.62);
+  box-shadow:
+    0 0 16px rgba(0, 175, 255, 0.48),
+    0 0 30px rgba(0, 100, 255, 0.18),
+    inset 0 2px 0 rgba(0, 225, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  z-index: 2;
   pointer-events: none;
+}
+
+/* Upper zone glossy highlight */
+.em-platform::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 38%;
+  border-radius: clamp(14px, 3.8vw, 18px) clamp(14px, 3.8vw, 18px) 60% 60% / clamp(14px, 3.8vw, 18px) clamp(14px, 3.8vw, 18px) 8px 8px;
+  background: linear-gradient(to bottom, rgba(0, 175, 255, 0.07) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .em-platform:hover {
   transform: translateY(-3px);
   box-shadow:
-    0 0 36px rgba(0, 180, 255, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 0 36px rgba(0, 185, 255, 0.44),
+    0 -8px 22px rgba(0, 165, 255, 0.18),
+    0 12px 26px rgba(0, 0, 0, 0.5);
 }
+.em-platform:active { transform: scale(0.97) translateY(0); }
 
-.em-platform:active {
-  transform: scale(0.97);
-}
-
-/* Primary (online) platform */
+/* Primary (online) platform — dominant, 1.5× larger */
 .em-platform--primary {
-  padding: clamp(14px, 3.5svh, 20px) clamp(16px, 4.5vw, 24px);
-  border-color: rgba(0, 200, 255, 0.65);
+  max-width: clamp(256px, 80vw, 318px);
+  border-color: rgba(0, 210, 255, 0.62);
   box-shadow:
-    0 0 32px rgba(0, 170, 255, 0.38),
-    0 0 64px rgba(0, 80, 255, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  animation: emPlatformPulse 3.5s ease-in-out infinite;
+    0 0 38px rgba(0, 168, 255, 0.42),
+    0 0 72px rgba(0, 95, 255, 0.18),
+    0 -8px 22px rgba(0, 165, 255, 0.2),
+    0 10px 26px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(0, 225, 255, 0.15);
+  padding-top: 38px;
+  padding-bottom: clamp(14px, 3.5svh, 20px);
+  padding-inline: clamp(16px, 4.5vw, 24px);
+  animation: emPrimaryPulse 4.5s ease-in-out infinite;
+}
+
+.em-platform--primary::before {
+  left: 7%;
+  width: 86%;
+  height: 26px;
+  top: -7px;
+  border-color: rgba(0, 220, 255, 0.74);
+  box-shadow:
+    0 0 24px rgba(0, 210, 255, 0.6),
+    0 0 48px rgba(0, 145, 255, 0.24),
+    inset 0 2px 0 rgba(0, 240, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, #1e3f7a 0%, #102558 55%, #070f30 100%);
 }
 
 /* Secondary platforms */
 .em-platform--secondary {
-  padding: clamp(10px, 2.8svh, 16px) clamp(10px, 3vw, 16px);
+  padding-top: 28px;
+  padding-bottom: clamp(10px, 2.6svh, 14px);
+  padding-inline: clamp(10px, 3vw, 14px);
 }
 
-/* Platform inner layout */
+/* ─ Platform inner content ───────────────────────────── */
 .em-platform-content {
   display: flex;
   flex-direction: row;
-  /* RTL: text (first) = RIGHT, arrow (last) = LEFT */
+  /* RTL: text = right side, arrow = left side */
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  gap: 8px;
+  gap: 6px;
+  position: relative;
+  z-index: 3;
 }
 
 .em-platform-text {
@@ -329,49 +454,44 @@
   font-size: clamp(15px, 4.2vw, 19px);
   font-weight: 900;
   color: #fff;
-  text-shadow: 0 0 12px rgba(0, 200, 255, 0.4);
+  text-shadow: 0 0 10px rgba(0, 200, 255, 0.35), 0 1px 2px rgba(0,0,0,0.5);
   line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
 .em-platform-sub {
   display: block;
-  font-size: clamp(10px, 2.6vw, 12px);
-  color: rgba(130, 210, 255, 0.75);
+  font-size: clamp(10px, 2.5vw, 12px);
+  color: rgba(125, 205, 255, 0.72);
   margin-top: 3px;
   font-weight: 400;
   line-height: 1.2;
 }
 
 .em-platform-arrow {
-  font-size: clamp(20px, 5vw, 26px);
-  color: rgba(0, 200, 255, 0.75);
+  font-size: clamp(20px, 5vw, 25px);
+  color: rgba(0, 200, 255, 0.72);
   font-weight: 300;
   flex-shrink: 0;
   line-height: 1;
+  text-shadow: 0 0 6px rgba(0, 200, 255, 0.45);
 }
 
-/* ── Resume button ────────────────────── */
-.em-resume-btn {
-  width: calc(100% - clamp(20px, 6vw, 36px));
-  margin-bottom: clamp(4px, 1svh, 8px);
-  flex-shrink: 0;
-}
-
-/* ── Bottom Navigation ────────────────── */
+/* ─ Bottom Navigation ────────────────────────────────── */
 .em-bottom-nav {
   width: 100%;
   display: flex;
   flex-direction: row;
-  /* RTL: first item = RIGHT (share), last item = LEFT (home) */
+  /* RTL: first = RIGHT (share), last = LEFT (home) */
   justify-content: space-around;
-  align-items: stretch;
-  background: rgba(0, 4, 20, 0.92);
-  border-top: 1px solid rgba(0, 160, 255, 0.22);
-  padding: clamp(6px, 1.4svh, 10px) 4px;
-  padding-bottom: max(clamp(6px, 1.4svh, 10px), env(safe-area-inset-bottom));
+  align-items: center;
+  background: rgba(0, 2, 15, 0.95);
+  border-top: 1px solid rgba(0, 145, 255, 0.16);
+  padding: clamp(5px, 1svh, 7px) 4px;
+  padding-bottom: max(clamp(5px, 1svh, 7px), env(safe-area-inset-bottom));
   flex-shrink: 0;
   position: relative;
-  z-index: 2;
+  z-index: 5;
 }
 
 .em-nav-item {
@@ -379,106 +499,106 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   background: none;
   border: none;
   cursor: pointer;
-  color: rgba(100, 150, 210, 0.65);
+  color: rgba(80, 125, 200, 0.52); /* 52% = dimmed inactive */
   font-family: 'Heebo', sans-serif;
-  padding: 4px clamp(6px, 2.5vw, 14px);
+  padding: 3px clamp(5px, 1.8vw, 12px);
   border-radius: 10px;
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: color 0.2s ease;
   flex: 1;
 }
 
-.em-nav-item:hover {
-  color: rgba(150, 210, 255, 0.9);
-  background: rgba(0, 100, 200, 0.1);
-}
-
-.em-nav-item:active {
-  transform: scale(0.95);
-}
+.em-nav-item:hover  { color: rgba(140, 200, 255, 0.82); }
+.em-nav-item:active { transform: scale(0.93); }
 
 .em-nav-item--active {
   color: #e8c840;
+  text-shadow: 0 0 8px rgba(232, 200, 64, 0.45);
 }
 
-.em-nav-icon {
-  font-size: clamp(18px, 4.8vw, 22px);
-  line-height: 1;
-  display: block;
-}
+.em-nav-icon  { font-size: clamp(16px, 4.3vw, 20px); line-height: 1; display: block; }
+.em-nav-label { font-size: clamp(8px, 2.1vw, 10px); font-weight: 700; line-height: 1; white-space: nowrap; }
 
-.em-nav-label {
-  font-size: clamp(9px, 2.4vw, 11px);
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
+/* ─ Animations ───────────────────────────────────────── */
 
-/* ── Animations ───────────────────────── */
+/* Icon and platform floating: 2–3 px, 4–6 s */
 @keyframes emFloat {
   from { transform: translateY(0px); }
-  to   { transform: translateY(-5px); }
+  to   { transform: translateY(-3px); }
 }
 
-@keyframes emPlatformPulse {
+/* Primary platform energy pulse */
+@keyframes emPrimaryPulse {
   0%, 100% {
     box-shadow:
-      0 0 32px rgba(0, 170, 255, 0.38),
-      0 0 64px rgba(0, 80, 255, 0.16),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      0 0 38px rgba(0, 168, 255, 0.42),
+      0 0 72px rgba(0, 95, 255, 0.18),
+      0 -8px 22px rgba(0, 165, 255, 0.20),
+      0 10px 26px rgba(0, 0, 0, 0.52),
+      inset 0 1px 0 rgba(0, 225, 255, 0.15);
   }
   50% {
     box-shadow:
-      0 0 44px rgba(0, 200, 255, 0.52),
-      0 0 80px rgba(0, 120, 255, 0.22),
-      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      0 0 54px rgba(0, 196, 255, 0.56),
+      0 0 96px rgba(0, 122, 255, 0.24),
+      0 -10px 28px rgba(0, 190, 255, 0.25),
+      0 10px 26px rgba(0, 0, 0, 0.52),
+      inset 0 1px 0 rgba(0, 235, 255, 0.2);
   }
 }
 
-/* ── Reduced-motion safety ────────────── */
+/* Lightning flicker */
+@keyframes emLightningFlicker {
+  0%   { opacity: 0.52; }
+  30%  { opacity: 1; }
+  55%  { opacity: 0.60; }
+  80%  { opacity: 0.92; }
+  100% { opacity: 0.48; }
+}
+
+/* ─ Reduced motion ───────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .em-float-icon,
-  .em-platform--primary {
+  .em-platform--primary,
+  .em-lightning-main,
+  .em-lightning-branch {
     animation: none;
   }
 }
 
-/* ── Responsive tweaks ───────────────── */
+/* ─ Responsive ───────────────────────────────────────── */
 
-/* Compact height — hide sub-labels on platforms */
 @media (max-height: 700px) {
-  .em-platform-sub { display: none; }
-  .em-platform--primary {
-    padding: clamp(10px, 2.6svh, 14px) clamp(14px, 4vw, 20px);
-  }
-  .em-platform--secondary {
-    padding: clamp(8px, 2svh, 12px) clamp(8px, 2.5vw, 12px);
+  .em-platform-sub  { display: none; }
+  .em-home .hlogo   { margin-top: 1px; margin-bottom: 0; }
+  .em-home .hlogo img { max-width: clamp(100px, 24vw, 136px) !important; }
+  .em-float-icon--online {
+    width:  clamp(52px, 14vw, 62px);
+    height: clamp(52px, 14vw, 62px);
+    font-size: clamp(24px, 6.5vw, 30px);
+    margin-bottom: -26px;
   }
   .em-float-icon {
-    width: clamp(40px, 11vw, 52px);
-    height: clamp(40px, 11vw, 52px);
-    font-size: clamp(18px, 5vw, 24px);
+    width:  clamp(40px, 10.5vw, 50px);
+    height: clamp(40px, 10.5vw, 50px);
+    font-size: clamp(18px, 5vw, 23px);
+    margin-bottom: -20px;
   }
-  .em-home .hlogo {
-    margin-top: 2px;
-    margin-bottom: 2px;
-  }
-  .em-platforms {
-    gap: clamp(5px, 1.2svh, 8px);
-  }
+  .em-platform--primary  { padding-top: 30px; }
+  .em-platform--secondary { padding-top: 24px; }
+  .em-platform--primary::before { height: 20px; }
+  .em-platforms { gap: clamp(4px, 0.9svh, 7px); }
 }
 
-/* Very compact */
 @media (max-height: 620px) {
-  .em-nav-label { display: none; }
-  .em-bottom-nav { padding-top: 6px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
-  .em-elo-badge { display: none !important; }
+  .em-nav-label   { display: none; }
+  .em-bottom-nav  { padding-top: 5px; padding-bottom: max(5px, env(safe-area-inset-bottom)); }
+  .em-elo-badge   { display: none !important; }
 }
 
-/* Wide phones — tighter horizontal padding */
 @media (min-width: 400px) {
-  .em-platform-title { font-size: clamp(16px, 4.2vw, 20px); }
+  .em-platform-title { font-size: clamp(16px, 4vw, 20px); }
 }

@@ -49,16 +49,31 @@
       <svg class="em-lightning-bg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" preserveAspectRatio="xMidYMid meet">
         <defs>
           <filter id="em-glow">
-            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feGaussianBlur stdDeviation="4" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="em-glow-sm">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-        <!-- Central bolt downward -->
-        <path d="M160 10 L150 65 L164 65 L142 125" stroke="rgba(0,165,255,0.45)" stroke-width="2.5" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
-        <!-- Left branch to bot platform -->
-        <path d="M142 125 L72 205" stroke="rgba(0,140,255,0.3)" stroke-width="2" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
-        <!-- Right branch to 2p platform -->
-        <path d="M142 125 L224 205" stroke="rgba(0,140,255,0.3)" stroke-width="2" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <!-- Central bolt: halo glow layer -->
+        <path class="em-lightning-main" d="M160 8 L150 65 L164 65 L142 125" stroke="rgba(0,180,255,0.22)" stroke-width="10" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <!-- Central bolt: bright core -->
+        <path class="em-lightning-main" d="M160 8 L150 65 L164 65 L142 125" stroke="rgba(0,225,255,0.88)" stroke-width="2" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
+        <!-- Left branch: halo glow layer -->
+        <path class="em-lightning-branch" d="M142 125 L70 210" stroke="rgba(0,160,255,0.18)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <!-- Left branch: bright core -->
+        <path class="em-lightning-branch" d="M142 125 L70 210" stroke="rgba(0,205,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
+        <!-- Right branch: halo glow layer -->
+        <path class="em-lightning-branch" d="M142 125 L224 210" stroke="rgba(0,160,255,0.18)" stroke-width="8" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <!-- Right branch: bright core -->
+        <path class="em-lightning-branch" d="M142 125 L224 210" stroke="rgba(0,205,255,0.72)" stroke-width="1.5" fill="none" stroke-linecap="round" filter="url(#em-glow-sm)"/>
+        <!-- Junction node at branch point -->
+        <circle class="em-lightning-main" cx="142" cy="125" r="5" fill="rgba(0,225,255,0.72)" filter="url(#em-glow)"/>
+        <!-- Terminal nodes at platform endpoints -->
+        <circle class="em-lightning-branch" cx="70" cy="210" r="4" fill="rgba(0,205,255,0.55)" filter="url(#em-glow)"/>
+        <circle class="em-lightning-branch" cx="224" cy="210" r="4" fill="rgba(0,205,255,0.55)" filter="url(#em-glow)"/>
       </svg>
 
       <!-- Primary platform: Online -->
