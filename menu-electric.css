@@ -386,6 +386,7 @@
     #132a60 30%,
     #080f2a 80%
   );
+  overflow: hidden; /* clip content to circle; box-shadow is unaffected */
   animation: emCirclePulse 4.5s ease-in-out infinite, emCardFloat 6s ease-in-out infinite alternate;
 }
 
@@ -402,16 +403,17 @@
   height: clamp(46px, 12vw, 54px);
 }
 .em-circle-btn--online .em-circle-icon {
-  width: clamp(66px, 17vw, 76px);
-  height: clamp(66px, 17vw, 76px);
+  width: clamp(76px, 20vw, 88px);
+  height: clamp(76px, 20vw, 88px);
 }
 
-/* Spinning globe canvas */
+/* Spinning globe canvas — explicit px so canvas % doesn't resolve to button size */
 #home-globe {
-  width: 100%;
-  height: 100%;
+  width: clamp(76px, 20vw, 88px);
+  height: clamp(76px, 20vw, 88px);
   border-radius: 50%;
   display: block;
+  flex-shrink: 0;
 }
 
 /* SVG icons fill their container */
@@ -429,7 +431,8 @@
   align-items: center;
   text-align: center;
   gap: 2px;
-  padding: 0 clamp(6px, 2vw, 10px);
+  /* max-width keeps text from reaching the narrow edges of the circle */
+  max-width: 78%;
 }
 
 .em-circle-title {
@@ -438,7 +441,7 @@
   font-weight: 900;
   color: #fff;
   text-shadow: 0 0 10px rgba(0, 208, 255, 0.50), 0 1px 2px rgba(0,0,0,0.6);
-  line-height: 1.15;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -447,12 +450,14 @@
   font-size: clamp(8px, 2.1vw, 10px);
   color: rgba(148, 212, 255, 0.75);
   font-weight: 400;
-  line-height: 1.2;
-  white-space: nowrap;
+  line-height: 1.3;
+  white-space: normal; /* allow wrapping for long subtitles */
+  text-align: center;
 }
 
-.em-circle-btn--online .em-circle-title { font-size: clamp(14px, 3.8vw, 17px); }
-.em-circle-btn--online .em-circle-sub   { font-size: clamp(10px, 2.6vw, 12px); }
+.em-circle-btn--online .em-circle-title { font-size: clamp(13px, 3.6vw, 16px); white-space: nowrap; }
+.em-circle-btn--online .em-circle-sub   { font-size: clamp(9px, 2.4vw, 11px); }
+.em-circle-btn--online .em-circle-text  { max-width: 72%; }
 
 /* ─ Bottom Navigation ────────────────────────────────── */
 .em-bottom-nav {
@@ -570,8 +575,13 @@
   .em-home .hlogo   { margin-top: 1px; margin-bottom: 0; }
   .em-home .hlogo img { max-width: clamp(210px, 54vw, 278px) !important; }
   .em-circle-btn--online {
-    width:  clamp(148px, 40vw, 172px);
-    height: clamp(148px, 40vw, 172px);
+    width:  clamp(150px, 40vw, 174px);
+    height: clamp(150px, 40vw, 174px);
+  }
+  .em-circle-btn--online .em-circle-icon,
+  #home-globe {
+    width:  clamp(62px, 16vw, 72px);
+    height: clamp(62px, 16vw, 72px);
   }
   .em-circle-btn {
     width:  clamp(100px, 27vw, 118px);
