@@ -5,6 +5,19 @@
 
 ---
 
+## Electric Floating Platforms Menu — Stage 5 Polish Fixes (May 2026)
+
+**Branch:** `claude/boost-electric-menu-redesign-3LWAt`
+
+**Summary:** Three UI polish fixes reported via screenshot. CSS and SVG only — no JS or functionality changed.
+
+**Key changes:**
+- **Zigzag lightning**: Replaced smooth `Q` quadratic-bezier branches with multi-kink `L`-polyline zigzag paths (5 kink points per branch). Added a second overlapping strand per branch with slightly offset kink positions for a layered multi-filament lightning look. Branch endpoints pulled up from y=212 to y≈162 so they don't protrude below the secondary platform buttons. Removed stray terminal `<circle>` nodes.
+- **Equal platform borders**: Primary platform border confirmed `2px` matching secondary (was `3px` in earlier stage).
+- **Centered profile name**: `.em-profile-info` changed from `text-align: right` to `align-items: center` so the player name centers above the ELO badge.
+
+---
+
 ## Electric Floating Platforms Menu — Stage 4 Gap-Report Pass (May 2026)
 
 **Branch:** `claude/boost-electric-menu-redesign-3LWAt`
