@@ -317,7 +317,6 @@
   width: 100%;
   position: relative;
   z-index: 2;
-  animation: emCardFloat 6s ease-in-out infinite alternate;
 }
 
 .em-platform-row--secondary {
@@ -344,220 +343,116 @@
 .em-platform-col:first-child { animation: emCardFloat 5.5s ease-in-out 1s   infinite alternate; }
 .em-platform-col:last-child  { animation: emCardFloat 5.5s ease-in-out 2.3s  infinite alternate; }
 
-/* ─ Icon orbs — 3D sphere appearance ────────────────── */
-/* Bright specular at top-left quadrant, dark shadow at bottom-right.
-   pointer-events:none passes click to the button below. */
-.em-float-icon {
-  /* Secondary icons ≈ 70px (gap-report target) */
-  width: clamp(62px, 16.5vw, 74px);
-  height: clamp(62px, 16.5vw, 74px);
+/* ─ Circle mode buttons ──────────────────────────────── */
+.em-circle-btn {
   border-radius: 50%;
-  /* 3D sphere: specular highlight top-left → dark shadow bottom-right */
-  background: radial-gradient(circle at 33% 27%,
-    rgba(155, 225, 255, 0.45) 0%,
-    #2248a0 14%,
-    #152f72 32%,
-    #0f2254 55%,
-    #060c26 80%
-  );
-  border: 2px solid rgba(0, 208, 255, 0.66);
-  display: grid;
-  place-items: center;
-  font-size: clamp(28px, 7.5vw, 35px);
-  box-shadow:
-    0 0 22px rgba(0, 188, 255, 0.54),
-    0 0 48px rgba(0, 112, 255, 0.22),
-    0 16px 24px rgba(0, 0, 0, 0.64),
-    inset 0 2px 8px rgba(120, 230, 255, 0.24),
-    inset 0 -2px 5px rgba(0, 0, 0, 0.40);
-  animation: emFloat 4.8s ease-in-out infinite alternate;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 5;
-  pointer-events: none;
-  margin-bottom: -35px;
-}
-
-/* Online icon — 80px dominant orb */
-.em-float-icon--online {
-  width: clamp(72px, 19.5vw, 88px);
-  height: clamp(72px, 19.5vw, 88px);
-  font-size: clamp(34px, 9vw, 42px);
-  border-color: rgba(0, 235, 255, 0.86);
-  box-shadow:
-    0 0 34px rgba(0, 215, 255, 0.70),
-    0 0 72px rgba(0, 148, 255, 0.32),
-    0 22px 32px rgba(0, 0, 0, 0.68),
-    inset 0 2px 10px rgba(150, 248, 255, 0.28),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.42);
-  margin-bottom: -35px;
-  animation-duration: 5.5s;
-  background: radial-gradient(circle at 33% 27%,
-    rgba(175, 238, 255, 0.50) 0%,
-    #2852b0 12%,
-    #183880 30%,
-    #102458 55%,
-    #070f30 80%
-  );
-}
-
-.em-float-icon--bot { animation-duration: 4.2s; animation-delay: 0.5s; }
-.em-float-icon--2p  { animation-duration: 5s;   animation-delay: 1s; }
-
-/* Spinning globe canvas in the online platform orb */
-#home-globe {
-  width: 83%;
-  height: 83%;
-  border-radius: 50%;
-  display: block;
-}
-
-/* Custom SVG icons (robot, two-players) sized to match emoji scale */
-.home-icon-svg {
-  width: 1.15em;
-  height: 1.15em;
-  display: block;
-  overflow: visible;
-}
-
-/* ─ Platform cards ───────────────────────────────────── */
-/* The 3D slab look uses THREE shadow layers:
-   1. box-shadow: 0 Npx 0  → crisp bottom face (slab depth edge)
-   2. box-shadow: 0 Ypx Xpx glow → colored lift (floating illusion)
-   3. box-shadow: 0 Zpx Zpx dark → grounding shadow underneath      */
-.em-platform {
-  background: linear-gradient(
-    168deg,
-    #162449 0%,
-    #0d1c3c 22%,
-    rgba(0, 145, 255, 0.055) 23.5%,
-    #080e26 25%,
-    #03091a 100%
-  );
-  /* Primary has 3px border, secondary gets 2px via .em-platform--secondary */
-  border: 2px solid rgba(0, 178, 255, 0.46);
-  border-radius: clamp(14px, 3.8vw, 18px);
+  width: clamp(120px, 32vw, 140px);
+  height: clamp(120px, 32vw, 140px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(5px, 1.4svh, 9px);
   cursor: pointer;
   color: white;
   font-family: 'Heebo', sans-serif;
-  width: 100%;
+  border: 2px solid rgba(0, 198, 255, 0.62);
+  background: radial-gradient(circle at 34% 28%,
+    rgba(155, 225, 255, 0.32) 0%,
+    #1d3270 14%,
+    #0f1f50 32%,
+    #060c26 80%
+  );
+  box-shadow:
+    0 0 22px rgba(0, 178, 255, 0.42),
+    0 0 48px rgba(0, 100, 255, 0.18),
+    0 10px 26px rgba(0, 0, 0, 0.62),
+    inset 0 2px 8px rgba(120, 230, 255, 0.18),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.40);
   position: relative;
   overflow: visible;
-  box-shadow:
-    /* ─ Crisp bottom-face (3D slab depth) */
-    0 9px 0 rgba(0, 22, 88, 0.78),
-    /* ─ Large-offset colored lift = floating above ground */
-    0 28px 64px rgba(0, 82, 235, 0.38),
-    /* ─ Tight dark grounding shadow */
-    0 10px 22px rgba(0, 0, 0, 0.80),
-    /* ─ Ambient electric glow */
-    0 0 28px rgba(0, 142, 255, 0.16),
-    /* ─ Inner top highlight (backlit edge) */
-    inset 0 1px 0 rgba(0, 205, 255, 0.18),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.50);
-  transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.2, 1), box-shadow 0.22s ease;
-  padding-top: 36px;
+  transition: transform 0.18s ease, box-shadow 0.20s ease;
+  padding: 0;
+  flex-shrink: 0;
 }
 
-/* Oval rim removed — icon floats directly onto the platform top */
-.em-platform::before { display: none; }
-
-/* Upper-zone interior reflection */
-.em-platform::after {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 36%;
-  border-radius: clamp(14px, 3.8vw, 18px) clamp(14px, 3.8vw, 18px) 60% 60% / clamp(14px, 3.8vw, 18px) clamp(14px, 3.8vw, 18px) 8px 8px;
-  background: linear-gradient(to bottom, rgba(0, 178, 255, 0.065) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 1;
+.em-circle-btn--online {
+  width: clamp(180px, 48vw, 210px);
+  height: clamp(180px, 48vw, 210px);
+  border-color: rgba(0, 235, 255, 0.86);
+  background: radial-gradient(circle at 34% 28%,
+    rgba(175, 238, 255, 0.38) 0%,
+    #203a80 12%,
+    #132a60 30%,
+    #080f2a 80%
+  );
+  animation: emCirclePulse 4.5s ease-in-out infinite, emCardFloat 6s ease-in-out infinite alternate;
 }
 
-/* Hover: platform rises, shadow stretches down */
-.em-platform:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 9px 0 rgba(0, 22, 88, 0.70),
-    0 40px 84px rgba(0, 102, 255, 0.46),
-    0 12px 28px rgba(0, 0, 0, 0.82),
-    0 0 50px rgba(0, 182, 255, 0.26);
-}
-.em-platform:active { transform: scale(0.97) translateY(0); }
+.em-circle-btn:hover  { transform: scale(1.05); }
+.em-circle-btn:active { transform: scale(0.96); }
 
-/* PRIMARY: online — dominant, 3px border, strongest glow */
-.em-platform--primary {
-  max-width: clamp(274px, 85vw, 338px);
-  border: 2px solid rgba(0, 218, 255, 0.66);
-  box-shadow:
-    /* 3D slab bottom face — deeper */
-    0 12px 0 rgba(0, 25, 100, 0.80),
-    /* Large colored lift */
-    0 36px 92px rgba(0, 110, 255, 0.52),
-    0 14px 34px rgba(0, 0, 0, 0.82),
-    0 0 75px rgba(0, 180, 255, 0.32),
-    0 0 148px rgba(0, 92, 255, 0.14),
-    inset 0 1px 0 rgba(0, 245, 255, 0.24);
-  padding-top: 36px;
-  padding-bottom: clamp(12px, 3svh, 16px);
-  padding-inline: clamp(18px, 5vw, 26px);
-  animation: emPrimaryPulse 4.5s ease-in-out infinite;
-}
-
-/* Primary rim removed along with base rule */
-
-/* Secondary platforms */
-.em-platform--secondary {
-  padding-top: 36px;
-  padding-bottom: clamp(12px, 3svh, 16px);
-  padding-inline: clamp(10px, 3vw, 14px);
-}
-
-/* ─ Platform inner content ───────────────────────────── */
-.em-platform-content {
+/* Icon container — fills top portion of circle */
+.em-circle-icon {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  flex-shrink: 0;
+  width: clamp(46px, 12vw, 54px);
+  height: clamp(46px, 12vw, 54px);
+}
+.em-circle-btn--online .em-circle-icon {
+  width: clamp(66px, 17vw, 76px);
+  height: clamp(66px, 17vw, 76px);
+}
+
+/* Spinning globe canvas */
+#home-globe {
   width: 100%;
-  gap: 6px;
-  position: relative;
-  z-index: 3;
-}
-
-.em-platform-text {
-  flex: 1;
-  text-align: right;
-  min-width: 0;
-}
-
-.em-platform-title {
+  height: 100%;
+  border-radius: 50%;
   display: block;
-  font-size: clamp(15px, 4.2vw, 19px);
+}
+
+/* SVG icons fill their container */
+.home-icon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+/* Text block — sits below icon inside the circle */
+.em-circle-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 2px;
+  padding: 0 clamp(6px, 2vw, 10px);
+}
+
+.em-circle-title {
+  display: block;
+  font-size: clamp(11px, 3vw, 13px);
   font-weight: 900;
   color: #fff;
-  text-shadow: 0 0 12px rgba(0, 208, 255, 0.38), 0 1px 2px rgba(0,0,0,0.5);
-  line-height: 1.1;
-  letter-spacing: -0.01em;
+  text-shadow: 0 0 10px rgba(0, 208, 255, 0.50), 0 1px 2px rgba(0,0,0,0.6);
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
-.em-platform-sub {
+.em-circle-sub {
   display: block;
-  font-size: clamp(10px, 2.5vw, 12px);
-  color: rgba(120, 200, 255, 0.68);
-  margin-top: 3px;
+  font-size: clamp(8px, 2.1vw, 10px);
+  color: rgba(148, 212, 255, 0.75);
   font-weight: 400;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
-.em-platform-arrow {
-  font-size: clamp(20px, 5vw, 25px);
-  color: rgba(0, 202, 255, 0.74);
-  font-weight: 300;
-  flex-shrink: 0;
-  line-height: 1;
-  text-shadow: 0 0 7px rgba(0, 202, 255, 0.48);
-}
+.em-circle-btn--online .em-circle-title { font-size: clamp(14px, 3.8vw, 17px); }
+.em-circle-btn--online .em-circle-sub   { font-size: clamp(10px, 2.6vw, 12px); }
 
 /* ─ Bottom Navigation ────────────────────────────────── */
 .em-bottom-nav {
@@ -610,37 +505,28 @@
 
 /* ─ Animations ───────────────────────────────────────── */
 
-/* Icon float: 3px, 4–6s */
-@keyframes emFloat {
-  from { transform: translateY(0px); }
-  to   { transform: translateY(-3px); }
-}
-
 /* Game-mode card float: 2px, barely visible */
 @keyframes emCardFloat {
   from { transform: translateY(0px); }
   to   { transform: translateY(-2px); }
 }
 
-/* Primary platform energy pulse */
-@keyframes emPrimaryPulse {
+/* Online circle pulse glow */
+@keyframes emCirclePulse {
   0%, 100% {
     box-shadow:
-      0 12px 0 rgba(0, 25, 100, 0.80),
-      0 36px 92px rgba(0, 110, 255, 0.52),
-      0 14px 34px rgba(0, 0, 0, 0.82),
-      0 0 75px rgba(0, 180, 255, 0.32),
-      0 0 148px rgba(0, 92, 255, 0.14),
-      inset 0 1px 0 rgba(0, 245, 255, 0.24);
+      0 0 22px rgba(0, 215, 255, 0.50),
+      0 0 52px rgba(0, 148, 255, 0.24),
+      0 10px 26px rgba(0, 0, 0, 0.62),
+      inset 0 2px 10px rgba(150, 248, 255, 0.18);
   }
   50% {
     box-shadow:
-      0 12px 0 rgba(0, 28, 112, 0.82),
-      0 36px 112px rgba(0, 138, 255, 0.62),
-      0 14px 34px rgba(0, 0, 0, 0.82),
-      0 0 100px rgba(0, 215, 255, 0.40),
-      0 0 185px rgba(0, 118, 255, 0.19),
-      inset 0 1px 0 rgba(0, 255, 255, 0.30);
+      0 0 40px rgba(0, 228, 255, 0.82),
+      0 0 88px rgba(0, 162, 255, 0.46),
+      0 0 130px rgba(0, 100, 255, 0.20),
+      0 10px 26px rgba(0, 0, 0, 0.62),
+      inset 0 2px 10px rgba(170, 252, 255, 0.28);
   }
 }
 
@@ -667,8 +553,7 @@
 
 /* ─ Reduced motion ───────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .em-float-icon,
-  .em-platform--primary,
+  .em-circle-btn--online,
   .em-platform-row--primary,
   .em-platform-col,
   .em-lightning-main,
@@ -681,23 +566,17 @@
 /* ─ Responsive ───────────────────────────────────────── */
 
 @media (max-height: 700px) {
-  .em-platform-sub  { display: none; }
+  .em-circle-sub    { display: none; }
   .em-home .hlogo   { margin-top: 1px; margin-bottom: 0; }
   .em-home .hlogo img { max-width: clamp(210px, 54vw, 278px) !important; }
-  .em-float-icon--online {
-    width:  clamp(60px, 16vw, 72px);
-    height: clamp(60px, 16vw, 72px);
-    font-size: clamp(28px, 7.5vw, 34px);
-    margin-bottom: -37px;
+  .em-circle-btn--online {
+    width:  clamp(148px, 40vw, 172px);
+    height: clamp(148px, 40vw, 172px);
   }
-  .em-float-icon {
-    width:  clamp(50px, 13vw, 60px);
-    height: clamp(50px, 13vw, 60px);
-    font-size: clamp(22px, 5.8vw, 27px);
-    margin-bottom: -28px;
+  .em-circle-btn {
+    width:  clamp(100px, 27vw, 118px);
+    height: clamp(100px, 27vw, 118px);
   }
-  .em-platform--primary   { padding-top: 42px; }
-  .em-platform--secondary { padding-top: 30px; }
   .em-platforms { gap: clamp(2px, 0.6svh, 5px); }
   .em-bottom-nav { padding-top: 6px; }
   .em-nav-icon   { font-size: clamp(18px, 4.8vw, 22px); }
@@ -714,5 +593,6 @@
 }
 
 @media (min-width: 400px) {
-  .em-platform-title { font-size: clamp(16px, 4vw, 20px); }
+  .em-circle-title { font-size: clamp(12px, 3.2vw, 14px); }
+  .em-circle-btn--online .em-circle-title { font-size: clamp(15px, 4vw, 18px); }
 }
