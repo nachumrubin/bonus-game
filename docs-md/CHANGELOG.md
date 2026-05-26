@@ -5,6 +5,26 @@
 
 ---
 
+## Electric Floating Platforms Menu — Stage 4 Gap-Report Pass (May 2026)
+
+**Branch:** `claude/boost-electric-menu-redesign-3LWAt`
+
+**Summary:** Implements UI gap-report findings. CSS, manifest, index.html only — no JS or functionality changed.
+
+**Key changes:**
+- **PWA edge-to-edge**: `viewport-fit=cover` added to meta viewport (critical for iOS full-bleed). `theme_color`/`background_color` in `manifest.json` and `<meta name="theme-color">` updated to `#04081a`.
+- **Near-black background**: `#sh.screen` background override removes the `#03759f` teal stop, replacing with `linear-gradient(165deg, #020614, #030818, #040b1e)`.
+- **Safe-area top**: Topbar `padding-top` uses `max(clamp, env(safe-area-inset-top))` for notched phones.
+- **3D slab bottom face**: Added `box-shadow: 0 9/12px 0 rgba(dark)` as crisp bottom edge — the CSS 3D slab trick. Combined with the large-offset lift shadow, platforms now visually stand on a ledge.
+- **Border hierarchy**: Primary platform border `3px`, secondary `2px`.
+- **Icon depth**: Secondary icons ≈ 70px; primary ≈ 80px. Both use `radial-gradient` with a specular highlight at top-left quadrant for a 3D sphere appearance. Deeper embed (−35/−46px).
+- **Logo glow**: Multi-layer `drop-shadow` chain (7px → 22px → 52px bloom halo).
+- **Bottom nav**: Taller (~80px via padding 10–14px). Nav icons 22–28px. Active item has a gold pill background. Top border replaced with CSS `mask` gradient fade.
+- **Lightning pulse animation**: `emLightningPulse` fires a bright `drop-shadow` flash every 3.8s, staggered between main bolt and branches.
+- **Particle drift**: `emParticleDrift` 14s slow translateY/X on the particle field layer.
+
+---
+
 ## Electric Floating Platforms Menu — Stage 3 Depth Pass (May 2026)
 
 **Branch:** `claude/boost-electric-menu-redesign-3LWAt`
