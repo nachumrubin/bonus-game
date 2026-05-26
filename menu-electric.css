@@ -335,9 +335,9 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  flex: 1;
-  /* Wider to accommodate 70px secondary icons */
-  max-width: clamp(140px, 46vw, 178px);
+  /* size to circle, not flex fraction — prevents column box from appearing as large as online circle */
+  width: clamp(120px, 32vw, 140px);
+  flex-shrink: 0;
   position: relative;
 }
 .em-platform-col:first-child { animation: emCardFloat 5.5s ease-in-out 1s   infinite alternate; }
@@ -403,14 +403,14 @@
   height: clamp(46px, 12vw, 54px);
 }
 .em-circle-btn--online .em-circle-icon {
-  width: clamp(76px, 20vw, 88px);
-  height: clamp(76px, 20vw, 88px);
+  width: clamp(96px, 26vw, 112px);
+  height: clamp(96px, 26vw, 112px);
 }
 
 /* Spinning globe canvas — explicit px so canvas % doesn't resolve to button size */
 #home-globe {
-  width: clamp(76px, 20vw, 88px);
-  height: clamp(76px, 20vw, 88px);
+  width: clamp(96px, 26vw, 112px);
+  height: clamp(96px, 26vw, 112px);
   border-radius: 50%;
   display: block;
   flex-shrink: 0;
@@ -455,9 +455,10 @@
   text-align: center;
 }
 
-.em-circle-btn--online .em-circle-title { font-size: clamp(13px, 3.6vw, 16px); white-space: nowrap; }
-.em-circle-btn--online .em-circle-sub   { font-size: clamp(9px, 2.4vw, 11px); }
-.em-circle-btn--online .em-circle-text  { max-width: 72%; }
+.em-circle-btn--online .em-circle-title { font-size: clamp(12px, 3.3vw, 15px); white-space: nowrap; }
+.em-circle-btn--online .em-circle-sub   { font-size: clamp(8px, 2.1vw, 10px); white-space: normal; }
+/* 58% of 180px ≈ 104px — stays well inside the narrowing circle edges at the bottom */
+.em-circle-btn--online .em-circle-text  { max-width: 58%; }
 
 /* ─ Bottom Navigation ────────────────────────────────── */
 .em-bottom-nav {
