@@ -562,6 +562,16 @@ async function boot() {
     bus.on(MENU_INTENT.OPEN_SETTINGS, () => {
       bus.emit(SETTINGS_OPEN, {});
     });
+    bus.on(MENU_INTENT.OPEN_STATS, () => {
+      showLegacyScreen('sstats');
+      statsScreen?.refresh?.();
+    });
+    bus.on(MENU_INTENT.OPEN_FRIENDS, () => {
+      showLegacyScreen('sfriends');
+    });
+    bus.on(MENU_INTENT.OPEN_NOTIFICATIONS, () => {
+      showLegacyScreen('so');
+    });
     bus.on(MENU_INTENT.SHARE_GAME, async () => {
       // Prefer the native Web Share API on mobile (gives the user system
       // share targets — WhatsApp, Messages, etc.). Fall back to copying
@@ -1325,6 +1335,8 @@ async function boot() {
         bus.emit(MENU_REFRESH, {
           isAuthed: !!fbUser?.uid && !fbUser?.isAnonymous,
           displayName: profile?.displayName ?? fbUser?.displayName ?? '',
+          rating: profile?.rating ?? null,
+          avatar: avatarEmoji(profile?.equippedAvatar) || null,
         });
         bus.emit(AV_RENDER, {
           stats: profile?.stats ?? {},

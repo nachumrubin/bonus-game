@@ -1,51 +1,157 @@
-﻿<!-- HOME -->
+<!-- HOME -->
 <div id="sh" class="screen hidden">
-  <div class="hc">
+  <div class="hc em-home">
+
+    <!-- ─ Top Bar ─────────────────────────────────── -->
+    <header class="em-topbar">
+      <!-- RIGHT side: icon buttons (first in RTL flex = rightmost) -->
+      <div class="em-topbar-icons">
+        <button class="em-icon-btn" id="btn-notifications-home" onclick="openNotifications()">
+          <span class="em-icon-btn-inner">🔔</span>
+          <span class="em-icon-badge" id="online-badge" style="display:none"></span>
+        </button>
+        <button class="em-icon-btn" onclick="openSettings()">
+          <span class="em-icon-btn-inner">⚙️</span>
+        </button>
+        <button class="em-icon-btn" onclick="showTutorialIntro()">
+          <span class="em-help-q">?</span>
+        </button>
+      </div>
+      <!-- LEFT side: profile (last in RTL flex = leftmost) -->
+      <button class="em-profile-btn" id="btn-profile-home" onclick="openProfileOrAuth()">
+        <div class="em-avatar-wrap">
+          <span id="home-avatar-ic">👤</span>
+        </div>
+        <div class="em-profile-info">
+          <span class="em-player-name" id="home-user-label">כניסה / הרשמה</span>
+          <span class="em-elo-badge" id="home-elo-label" style="display:none">
+            <span class="em-elo-bolt">⚡</span>ELO <span id="home-elo-value">1000</span>
+          </span>
+        </div>
+      </button>
+    </header>
+
+    <!-- ─ Logo ──────────────────────────────────── -->
     <div class="hlogo">
       <img src="logo_no_mascot.png" alt="בוסט">
     </div>
-    <nav class="hbtns">
-      <button class="bd" id="btn-profile-home" onclick="openProfileOrAuth()">
-        <span class="bd-icon" id="home-avatar-ic">👤</span>
-        <span class="bd-text"><span class="bd-title" id="home-user-label">כניסה / הרשמה</span><span class="bd-sub">פרופיל אישי</span></span>
+
+    <!-- ─ Resume saved game (shown only when a saved game exists) ─ -->
+    <button class="bd bd-gold em-resume-btn" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none">
+      <span class="bd-icon">▶</span>
+      <span class="bd-text"><span class="bd-title">המשך משחק שמור</span></span>
+    </button>
+
+    <!-- ─ Floating Platforms ─────────────────────── -->
+    <div class="em-platforms">
+
+      <!-- Decorative lightning connecting platforms -->
+      <svg class="em-lightning-bg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="em-glow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <!-- Central bolt downward -->
+        <path d="M160 10 L150 65 L164 65 L142 125" stroke="rgba(0,165,255,0.45)" stroke-width="2.5" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <!-- Left branch to bot platform -->
+        <path d="M142 125 L72 205" stroke="rgba(0,140,255,0.3)" stroke-width="2" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+        <!-- Right branch to 2p platform -->
+        <path d="M142 125 L224 205" stroke="rgba(0,140,255,0.3)" stroke-width="2" fill="none" stroke-linecap="round" filter="url(#em-glow)"/>
+      </svg>
+
+      <!-- Primary platform: Online -->
+      <div class="em-platform-row em-platform-row--primary">
+        <div class="em-float-icon em-float-icon--online" aria-hidden="true">🌐</div>
+        <button class="em-platform em-platform--primary" id="btn-online-lobby" onclick="showOnlineLobby()">
+          <div class="em-platform-content">
+            <!-- text is first in RTL flex = rightmost -->
+            <div class="em-platform-text">
+              <span class="em-platform-title">משחק אונליין</span>
+              <span class="em-platform-sub">שחק מול שחקנים מכל העולם</span>
+            </div>
+            <!-- arrow is last in RTL flex = leftmost -->
+            <span class="em-platform-arrow" aria-hidden="true">›</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Secondary platforms: 2P (right) + Bot (left) -->
+      <!-- In RTL flex-row: first child appears on RIGHT, second on LEFT -->
+      <div class="em-platform-row em-platform-row--secondary">
+
+        <!-- RIGHT: שני שחקנים -->
+        <div class="em-platform-col">
+          <div class="em-float-icon em-float-icon--2p" aria-hidden="true">👥</div>
+          <button class="em-platform em-platform--secondary" onclick="startSetup('vs')">
+            <div class="em-platform-content">
+              <div class="em-platform-text">
+                <span class="em-platform-title">שני שחקנים</span>
+                <span class="em-platform-sub">שחק עם חבר</span>
+              </div>
+              <span class="em-platform-arrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+        </div>
+
+        <!-- LEFT: נגד המחשב -->
+        <div class="em-platform-col">
+          <div class="em-float-icon em-float-icon--bot" aria-hidden="true">🤖</div>
+          <button class="em-platform em-platform--secondary" onclick="startSetup('bot')">
+            <div class="em-platform-content">
+              <div class="em-platform-text">
+                <span class="em-platform-title">נגד המחשב</span>
+                <span class="em-platform-sub">התמודד נגד הבינה המלאכותית</span>
+              </div>
+              <span class="em-platform-arrow" aria-hidden="true">›</span>
+            </div>
+          </button>
+        </div>
+
+      </div><!-- /secondary row -->
+
+    </div><!-- /em-platforms -->
+
+    <!-- ─ Bottom Navigation ───────────────────────── -->
+    <!-- RTL flex-row: first item = RIGHT, last item = LEFT -->
+    <nav class="em-bottom-nav" aria-label="ניווט">
+
+      <!-- RIGHT: שתף (shown only when authenticated) -->
+      <button class="em-nav-item" id="btn-share-game" onclick="shareGame()" style="display:none">
+        <span class="em-nav-icon">📤</span>
+        <span class="em-nav-label">שתף</span>
       </button>
-      <button class="bd bd-gold" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none">
-        <span class="bd-icon">▶</span>
-        <span class="bd-text"><span class="bd-title">המשך משחק שמור</span></span>
+
+      <button class="em-nav-item" onclick="openFriends()">
+        <span class="em-nav-icon">👫</span>
+        <span class="em-nav-label">חברים</span>
       </button>
-      <button class="bd g" onclick="startSetup('vs')">
-        <span class="bd-icon">👥</span>
-        <span class="bd-text"><span class="bd-title">שני שחקנים</span><span class="bd-sub">מתחרים מקומיים</span></span>
+
+      <button class="em-nav-item" onclick="openChampions()">
+        <span class="em-nav-icon">🏆</span>
+        <span class="em-nav-label">הישגים</span>
       </button>
-      <button class="bd b" onclick="startSetup('bot')">
-        <span class="bd-icon">🤖</span>
-        <span class="bd-text"><span class="bd-title">נגד המחשב</span><span class="bd-sub">שחק נגד AI</span></span>
+
+      <button class="em-nav-item" onclick="openStats()">
+        <span class="em-nav-icon">📊</span>
+        <span class="em-nav-label">סטטיסטיקות</span>
       </button>
-      <button class="bd bd-cyan" id="btn-online-lobby" onclick="showOnlineLobby()">
-        <span class="bd-icon">🌐<span id="online-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:15px;height:15px;font-size:9px;font-weight:900;line-height:15px;text-align:center;box-shadow:0 0 5px rgba(231,76,60,.7);animation:onpulse 1.5s ease-in-out infinite;"></span></span>
-        <span class="bd-text"><span class="bd-title">משחק אונליין</span><span class="bd-sub">שחק נגד יריב מרחוק</span></span>
+
+      <!-- LEFT: בית (active) -->
+      <button class="em-nav-item em-nav-item--active" aria-current="page">
+        <span class="em-nav-icon">⚡</span>
+        <span class="em-nav-label">בית</span>
       </button>
-      <button class="bd bd-dark" onclick="showTutorialIntro()">
-        <span class="bd-icon">🎓</span>
-        <span class="bd-text"><span class="bd-title">הדרכה</span><span class="bd-sub">למד את המשחק</span></span>
-      </button>
-      <button class="bd bd-dark" onclick="openChampions()">
-        <span class="bd-icon">🏆</span>
-        <span class="bd-text"><span class="bd-title">טבלת דירוגים</span><span class="bd-sub">דירוג השחקנים</span></span>
-      </button>
-      <button class="bd bd-dark" onclick="openSettings()">
-        <span class="bd-icon">⚙️</span>
-        <span class="bd-text"><span class="bd-title">הגדרות</span><span class="bd-sub">התאמת המשחק</span></span>
-      </button>
-      <button class="bd bd-gold" id="btn-share-game" onclick="shareGame()" style="display:none">
-        <span class="bd-icon">📤</span>
-        <span class="bd-text"><span class="bd-title">שתף את המשחק</span><span class="bd-sub">הזמן חברים למשחק</span></span>
-      </button>
+
     </nav>
+
+    <!-- Credit -->
     <div class="credit">
       <a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260525044525
       <br>
-      <span dir="ltr">Music: “Inspire Action” by <a href="https://freemusicarchive.org/music/ura-megis/" target="_blank" rel="noopener">Yuri Megis</a> · <a href="https://freemusicarchive.org/music/ura-megis/single/inspire-action-1/" target="_blank" rel="noopener">Free Music Archive</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></span>
+      <span dir="ltr">Music: "Inspire Action" by <a href="https://freemusicarchive.org/music/ura-megis/" target="_blank" rel="noopener">Yuri Megis</a> · <a href="https://freemusicarchive.org/music/ura-megis/single/inspire-action-1/" target="_blank" rel="noopener">Free Music Archive</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></span>
     </div>
+
   </div>
 </div>

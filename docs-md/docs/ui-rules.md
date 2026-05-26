@@ -93,6 +93,9 @@ button[onclick="showTutorialIntro()"]
 button[onclick="openChampions()"]
 button[onclick="openSettings()"]
 button[onclick="shareGame()"]
+button[onclick="openStats()"]         // → MENU_INTENT.OPEN_STATS
+button[onclick="openFriends()"]       // → MENU_INTENT.OPEN_FRIENDS
+button[onclick="openNotifications()"] // → MENU_INTENT.OPEN_NOTIFICATIONS
 
 // In gameFlowController.js:
 #btn-pause
@@ -250,13 +253,17 @@ Unknown / needs verification — specific transition CSS classes and timing not 
 Source: `src/ui/screens/menuScreen.js`
 
 ```javascript
-render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread })
+render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 ```
 
 - `#btn-resume-home`: hidden if `!hasSavedGame`
 - `#btn-share-game`: hidden if `!isAuthed`; on first reveal: plays `menuBtnIn` animation
 - `#home-user-label`: shows `displayName`
-- `#online-badge`: shows if `hasOnlineUnread`
+- `#home-avatar-ic`: shows `avatar` emoji when provided
+- `#home-elo-label`: hidden if `!isAuthed`
+- `#home-elo-value`: shows `rating` formatted as locale number
+- `#online-badge`: shows if `hasOnlineUnread`; now located inside `#btn-notifications-home`
+- `#btn-notifications-home`: notification bell in top bar (Electric Menu redesign)
 
 ---
 
