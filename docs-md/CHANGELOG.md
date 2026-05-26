@@ -5,6 +5,21 @@
 
 ---
 
+## Home Icon + Two-Player SVG Update (May 2026)
+
+**Branch:** `claude/icon-button-emoji-updates-UfFOM`
+
+**Summary:** Two UI-only changes to `partials/screens/home.html`. No game logic, Firebase, or test files touched.
+
+**Key changes:**
+- **Home icon button**: Changed the top-bar "active page" icon from `⚡` to `🏠` — a house emoji more clearly communicates "you are on the home screen."
+- **Two-player platform orb SVG**: Replaced the static two-person SVG with an updated version featuring explicit upper-body silhouettes (head circles + shoulder arcs) and an **animated bright encompassing line** — a double-layer ellipse trace (soft glow halo + crisp bright core) that continuously circles both figures using `stroke-dasharray`/`stroke-dashoffset` animation at 2.8 s per cycle.
+
+**Files changed:**
+- `partials/screens/home.html` — home icon emoji swap; two-player SVG replacement
+
+---
+
 ## Main Menu Icon Upgrades — Spinning Globe + Custom SVGs (May 2026)
 
 **Branch:** `claude/main-menu-emoji-updates-aGqo4`
