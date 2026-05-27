@@ -812,36 +812,39 @@ async function boot() {
       }
       const { code } = result;
 
-      // Open the waiting-room overlay with our code + mode label.
+      // Open the waiting-room overlay. Capture friend target BEFORE emitting so
+      // the overlay starts in friend-mode immediately (no flash of code UI).
+      const friendNameForWr = pendingFriendTarget?.name ?? null;
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.add?.('hidden');
-      bus.emit(WR_OPEN, { code, mode: filters.spineMode });
+      bus.emit(WR_OPEN, { code, mode: filters.spineMode, friendName: friendNameForWr });
 
       // If triggered from the friend detail overlay, auto-send invite to that friend.
       if (pendingFriendTarget) {
         const ft = pendingFriendTarget;
         pendingFriendTarget = null;
         try {
-          const mode     = filters.spineMode ?? 'friend-live';
+          const invMode  = filters.spineMode ?? 'friend-live';
           const settings = { ...settingsCompat.settingsFromLegacyGlobals(globalThis), timelimit: filters.timelimit, botTime: filters.botTime ?? 40 };
+          const myName   = globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן';
           const { inviteId, expiresAt } = await inviteService.sendInvite(fbDb, {
             fromUid:    fbUser.uid,
-            fromName:   globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן',
+            fromName:   myName,
             fromAvatar: fbUser.photoURL ?? null,
             toUid:      ft.uid,
-            mode,
+            mode:       invMode,
             settings,
             serverTimestamp: Date.now(),
           });
           notificationService?.pushInvite?.({
             inviteeUid:  ft.uid,
-            inviterName: fbUser.displayName ?? 'שחקן',
+            inviterName: myName,
             roomId:      null,
           })?.catch(() => {});
           if (activePending) {
             activePending.inviteId    = inviteId;
             activePending.inviteToUid = ft.uid;
           }
-          bus.emit(WR_LIVE_INVITE_SENT, { expiresAt });
+          bus.emit(WR_LIVE_INVITE_SENT, { expiresAt, friendName: ft.name });
         } catch (e) {
           console.warn('[spine] friend auto-invite failed', e);
         }
@@ -1696,8 +1699,13 @@ async function boot() {
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !uid) return;
       pendingFriendTarget = { uid, name, avatar };
-      // Open the create-room overlay for the user to pick settings.
-      // CR_INTENT.CONFIRM will pick up pendingFriendTarget and auto-send the invite.
+      // Pre-fill host name and open create-room overlay.
+      const _crName = globalThis.document?.getElementById?.('cr-name');
+      if (_crName) {
+        const n = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
+               ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
+        if (n) _crName.value = n;
+      }
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.remove?.('hidden');
     });
 
@@ -2949,7 +2957,7 @@ function installCutoverGlobals() {
           ap.inviteId    = inviteId;
           ap.inviteToUid = toUid;
         }
-        bus.emit(WR_LIVE_INVITE_SENT, { expiresAt: inviteExpiresAt });
+        bus.emit(WR_LIVE_INVITE_SENT, { expiresAt: inviteExpiresAt, friendName: input?.value?.trim() || null });
       }
     } catch (e) {
       console.error('[spine] crSendInvite', e);

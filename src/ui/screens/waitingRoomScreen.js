@@ -31,10 +31,13 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
   if (!bus) throw new Error('mountWaitingRoomScreen: bus required');
 
   const overlay        = $('#ov-waiting-room', root);
+  const titleEl        = $('#wr-title', root);
   const codeEl         = $('#wr-code', root);
+  const codeSect       = $('#wr-code-section', root);
   const modeEl         = $('#wr-mode-label', root);
-  const cancelBtn      = $('button[onclick="crCancelRoom()"]', root);
-  const shareBtn       = $('button[onclick="crShareWhatsApp()"]', root);
+  const cancelBtn      = $('#wr-cancel-btn', root) ?? $('button[onclick="crCancelRoom()"]', root);
+  const shareBtn       = $('#wr-share-btn', root)  ?? $('button[onclick="crShareWhatsApp()"]', root);
+  const inviteSect     = $('#wr-invite-section', root);
   const inviteInput    = $('#wr-invite-name', root);
   const inviteDropdown = $('#wr-invite-dropdown', root);
   const inviteStatus   = $('#wr-invite-status', root);
@@ -67,17 +70,31 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
     countdownTimer = globalThis.setInterval?.(tick, 1000);
   }
 
+  function switchToFriendMode(name) {
+    if (titleEl)    setText(titleEl, `ממתין ל${name}...`);
+    if (codeSect)   codeSect.style.display   = 'none';
+    if (shareBtn)   shareBtn.style.display   = 'none';
+    if (inviteSect) inviteSect.style.display = 'none';
+    if (modeEl)     modeEl.style.display     = 'none';
+    if (cancelBtn)  { cancelBtn.style.flex = '1 1 100%'; cancelBtn.style.maxWidth = '100%'; }
+  }
+
+  function resetToNormalMode() {
+    if (titleEl)    setText(titleEl, 'ממתין לשחקן שני...');
+    if (codeSect)   codeSect.style.display   = '';
+    if (shareBtn)   shareBtn.style.display   = '';
+    if (inviteSect) inviteSect.style.display = '';
+    if (modeEl)     modeEl.style.display     = '';
+    if (cancelBtn)  { cancelBtn.style.flex = ''; cancelBtn.style.maxWidth = ''; }
+  }
+
   const cleanups = [];
   if (cancelBtn) {
-    // Strip the legacy inline handler — `crCancelRoom`/`crShareWhatsApp`
-    // aren't defined in the spine, so leaving onclick attached produces
-    // "ReferenceError: crCancelRoom is not defined" alongside our bus
-    // dispatch.
-    cancelBtn.removeAttribute('onclick');
+    cancelBtn.removeAttribute?.('onclick');
     cleanups.push(on(cancelBtn, 'click', () => bus.emit(WR_INTENT.CANCEL, {})));
   }
   if (shareBtn) {
-    shareBtn.removeAttribute('onclick');
+    shareBtn.removeAttribute?.('onclick');
     cleanups.push(on(shareBtn, 'click', () => bus.emit(WR_INTENT.SHARE_WHATSAPP, {})));
   }
 
@@ -96,19 +113,23 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
     if (inviteStatus)   { inviteStatus.textContent = ''; inviteStatus.style.color = ''; }
   }
 
-  const offOpen = bus.on(WR_OPEN, ({ code, mode } = {}) => {
+  const offOpen = bus.on(WR_OPEN, ({ code, mode, friendName } = {}) => {
     if (codeEl && code) setText(codeEl, code);
     if (modeEl && mode) setText(modeEl, MODE_LABEL[mode] ?? '');
     resetInviteFields();
     clearCountdown();
+    if (friendName) switchToFriendMode(friendName);
+    else resetToNormalMode();
     overlay?.classList?.remove?.('hidden');
   });
   const offClose = bus.on(WR_CLOSE, () => {
     overlay?.classList?.add?.('hidden');
     resetInviteFields();
     clearCountdown();
+    resetToNormalMode();
   });
-  const offLiveInviteSent = bus.on(WR_LIVE_INVITE_SENT, ({ expiresAt } = {}) => {
+  const offLiveInviteSent = bus.on(WR_LIVE_INVITE_SENT, ({ expiresAt, friendName } = {}) => {
+    if (friendName) switchToFriendMode(friendName);
     if (expiresAt) startCountdown(expiresAt);
   });
 

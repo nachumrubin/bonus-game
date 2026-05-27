@@ -2,16 +2,19 @@
 <div id="ov-waiting-room" class="ov hidden">
   <div class="ovc" style="text-align:center;">
     <div style="font-size:32px">⏳</div>
-    <div class="ovt">ממתין לשחקן שני...</div>
-    <div style="margin:6px 0 4px;font-size:11px;color:rgba(255,255,255,.5)">שתף את הקוד:</div>
-    <div class="code-display" id="wr-code">------</div>
+    <div class="ovt" id="wr-title">ממתין לשחקן שני...</div>
+    <div id="wr-code-section">
+      <div style="margin:6px 0 4px;font-size:11px;color:rgba(255,255,255,.5)">שתף את הקוד:</div>
+      <div class="code-display" id="wr-code">------</div>
+    </div>
     <div class="waiting-spinner"><div class="spinner-dots"><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div></div></div>
     <div class="wsub" id="wr-mode-label"></div>
-    <div style="display:flex;gap:6px;margin-top:12px;">
-      <button class="ovb p" style="flex:1;background:#25D366;border:none;color:#fff" onclick="crShareWhatsApp()">שתף ב-WhatsApp</button>
-      <button class="ovb s" style="flex:1" onclick="crCancelRoom()">ביטול</button>
+    <div id="wr-countdown" style="display:none;font-size:11px;color:rgba(255,130,80,.9);margin-top:6px;text-align:center;font-weight:700;"></div>
+    <div id="wr-action-btns" style="display:flex;gap:6px;margin-top:12px;">
+      <button id="wr-share-btn" class="ovb p" style="flex:1;background:#25D366;border:none;color:#fff" onclick="crShareWhatsApp()">שתף ב-WhatsApp</button>
+      <button id="wr-cancel-btn" class="ovb s" style="flex:1" onclick="crCancelRoom()">ביטול</button>
     </div>
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);">
+    <div id="wr-invite-section" style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);">
       <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:5px">הזמן שחקן לפי שם משתמש:</div>
       <div style="display:flex;gap:6px;align-items:flex-start;">
         <div style="flex:1;position:relative;">
@@ -21,7 +24,6 @@
         <button class="ovb p" style="padding:8px 12px;font-size:13px;white-space:nowrap;" onclick="crSendInvite()">שלח</button>
       </div>
       <div id="wr-invite-status" style="font-size:11px;text-align:center;min-height:16px;margin-top:4px;"></div>
-      <div id="wr-countdown" style="display:none;font-size:11px;color:rgba(255,130,80,.9);margin-top:4px;text-align:center;font-weight:700;"></div>
     </div>
   </div>
 </div>
