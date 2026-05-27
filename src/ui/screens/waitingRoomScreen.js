@@ -9,12 +9,16 @@
 import { $, on, setText } from '../domHelpers.js';
 
 export const WR_INTENT = Object.freeze({
-  CANCEL:         'waitingRoom/cancel',
-  SHARE_WHATSAPP: 'waitingRoom/shareWhatsApp',
+  CANCEL:              'waitingRoom/cancel',
+  SHARE_WHATSAPP:      'waitingRoom/shareWhatsApp',
+  LIVE_INVITE_EXPIRED: 'waitingRoom/liveInviteExpired',
 });
 
-export const WR_OPEN  = 'waitingRoom/open';
-export const WR_CLOSE = 'waitingRoom/close';
+export const WR_OPEN             = 'waitingRoom/open';
+export const WR_CLOSE            = 'waitingRoom/close';
+// Emitted by main.js after a live friend-invite is sent successfully.
+// Payload: { expiresAt: number } — epoch ms when the invite expires.
+export const WR_LIVE_INVITE_SENT = 'waitingRoom/liveInviteSent';
 
 const MODE_LABEL = {
   'friend-live':  '⚡ משחק לייב',
@@ -26,14 +30,42 @@ const MODE_LABEL = {
 export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountWaitingRoomScreen: bus required');
 
-  const overlay       = $('#ov-waiting-room', root);
-  const codeEl        = $('#wr-code', root);
-  const modeEl        = $('#wr-mode-label', root);
-  const cancelBtn     = $('button[onclick="crCancelRoom()"]', root);
-  const shareBtn      = $('button[onclick="crShareWhatsApp()"]', root);
-  const inviteInput   = $('#wr-invite-name', root);
+  const overlay        = $('#ov-waiting-room', root);
+  const codeEl         = $('#wr-code', root);
+  const modeEl         = $('#wr-mode-label', root);
+  const cancelBtn      = $('button[onclick="crCancelRoom()"]', root);
+  const shareBtn       = $('button[onclick="crShareWhatsApp()"]', root);
+  const inviteInput    = $('#wr-invite-name', root);
   const inviteDropdown = $('#wr-invite-dropdown', root);
-  const inviteStatus  = $('#wr-invite-status', root);
+  const inviteStatus   = $('#wr-invite-status', root);
+  const countdownEl    = $('#wr-countdown', root);
+
+  let countdownTimer = null;
+
+  function clearCountdown() {
+    globalThis.clearInterval?.(countdownTimer);
+    countdownTimer = null;
+    if (countdownEl) countdownEl.style.display = 'none';
+  }
+
+  function startCountdown(expiresAt) {
+    clearCountdown();
+    if (!countdownEl) return;
+    countdownEl.style.display = '';
+    function tick() {
+      const remaining = Math.max(0, expiresAt - Date.now());
+      const mins = Math.floor(remaining / 60000);
+      const secs = Math.floor((remaining % 60000) / 1000);
+      setText(countdownEl, `ההזמנה תפוג בעוד ${mins}:${String(secs).padStart(2, '0')}`);
+      if (remaining <= 0) {
+        globalThis.clearInterval?.(countdownTimer);
+        countdownTimer = null;
+        bus.emit(WR_INTENT.LIVE_INVITE_EXPIRED, {});
+      }
+    }
+    tick();
+    countdownTimer = globalThis.setInterval?.(tick, 1000);
+  }
 
   const cleanups = [];
   if (cancelBtn) {
@@ -68,17 +100,22 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
     if (codeEl && code) setText(codeEl, code);
     if (modeEl && mode) setText(modeEl, MODE_LABEL[mode] ?? '');
     resetInviteFields();
+    clearCountdown();
     overlay?.classList?.remove?.('hidden');
   });
   const offClose = bus.on(WR_CLOSE, () => {
     overlay?.classList?.add?.('hidden');
     resetInviteFields();
+    clearCountdown();
+  });
+  const offLiveInviteSent = bus.on(WR_LIVE_INVITE_SENT, ({ expiresAt } = {}) => {
+    if (expiresAt) startCountdown(expiresAt);
   });
 
   function unmount() {
+    clearCountdown();
     for (const off of cleanups) try { off(); } catch {}
-    try { offOpen(); } catch {}
-    try { offClose(); } catch {}
+    try { offOpen(); offClose(); offLiveInviteSent(); } catch {}
     cleanups.length = 0;
   }
 

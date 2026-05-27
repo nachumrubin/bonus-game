@@ -58,7 +58,7 @@ import { mountSetupScreen, SETUP_INTENT, SETUP_OPEN } from './ui/screens/setupSc
 import { mountOnlineLobbyScreen, LOBBY_INTENT } from './ui/screens/onlineLobbyScreen.js';
 import { mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, MM_INTENT, PS_INTENT } from './ui/screens/matchmakingOverlayScreen.js';
 import { mountCreateRoomScreen, CR_INTENT } from './ui/screens/createRoomScreen.js';
-import { mountWaitingRoomScreen, WR_INTENT, WR_OPEN, WR_CLOSE, buildWhatsAppShareUrl } from './ui/screens/waitingRoomScreen.js';
+import { mountWaitingRoomScreen, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SENT, buildWhatsAppShareUrl } from './ui/screens/waitingRoomScreen.js';
 import { mountJoinCodeScreen, JC_INTENT } from './ui/screens/joinCodeScreen.js';
 import { mountIncomingInviteScreen, II_INTENT, IR_INTENT, II_OPEN, II_CLOSE, IR_OPEN, IR_CLOSE } from './ui/screens/incomingInviteScreen.js';
 import { mountAsyncSessionListScreen, AS_INTENT, AS_RENDER } from './ui/screens/asyncSessionListScreen.js';
@@ -252,7 +252,7 @@ async function boot() {
       createTutorialController,
       createBonusActivationController,
       MENU_INTENT, MENU_REFRESH, SETUP_INTENT, SETUP_OPEN, LOBBY_INTENT, MM_INTENT,
-      CR_INTENT, WR_INTENT, WR_OPEN, WR_CLOSE,
+      CR_INTENT, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SENT,
       JC_INTENT, II_INTENT, IR_INTENT, II_OPEN, II_CLOSE, IR_OPEN, IR_CLOSE,
       AS_INTENT, AS_RENDER, AH_INTENT, AH_SHOW, AH_HIDE,
       BI_INTENT, BI_OPEN, BI_CLOSE,
@@ -864,6 +864,24 @@ async function boot() {
       if (!code) return;
       const url = buildWhatsAppShareUrl(code);
       try { globalThis.window?.open?.(url, '_blank'); } catch (e) { console.error('[spine] wa share', e); }
+    });
+
+    // Live invite expired: cancel pending room + invite on Firebase, close overlay.
+    bus.on(WR_INTENT.LIVE_INVITE_EXPIRED, async () => {
+      const fbDb     = activeFbDb;
+      const code     = activePending?.code;
+      const inviteId = activePending?.inviteId;
+      const invToUid = activePending?.inviteToUid;
+      await teardownPending();
+      if (fbDb && code) {
+        try { await roomCodeService.cancelPending(fbDb, code); }
+        catch (e) { console.warn('[spine] live invite expiry: cancelPending', e); }
+      }
+      if (fbDb && inviteId && invToUid) {
+        try { await inviteService.cancelInvite(fbDb, { toUid: invToUid, inviteId }); }
+        catch (e) { console.warn('[spine] live invite expiry: cancelInvite', e); }
+      }
+      bus.emit(WR_CLOSE, {});
     });
 
     // ── Join-by-code flow ──────────────────────────────
@@ -2729,7 +2747,7 @@ function installCutoverGlobals() {
     if (statusEl) { statusEl.textContent = 'שולח...'; statusEl.style.color = ''; }
 
     try {
-      await inviteService.sendInvite(fbDb, {
+      const { inviteId, expiresAt: inviteExpiresAt } = await inviteService.sendInvite(fbDb, {
         fromUid:    fbUser.uid,
         fromName:   fbUser.displayName ?? 'שחקן',
         fromAvatar: fbUser.photoURL ?? null,
@@ -2738,19 +2756,36 @@ function installCutoverGlobals() {
         settings,
         serverTimestamp: Date.now(),
       });
+
       if (statusEl) { statusEl.textContent = 'ההזמנה נשלחה! ✓'; statusEl.style.color = '#4f4'; }
       if (input) { input.value = ''; delete input.dataset.selectedUid; }
+
       // Push notification so the invite reaches the recipient even when their
-      // app is closed (OneSignal suppresses the system notification silently
-      // when the app is already open and the in-app listener handles it).
+      // app is closed.
       notificationService.pushInvite({
         inviteeUid:  toUid,
         inviterName: fbUser.displayName ?? 'שחקן',
-        roomId:      null, // room is created on accept; deep-link goes to home
+        roomId:      null,
       }).catch((e) => console.warn('[spine] pushInvite', e));
-      globalThis.setTimeout?.(() => {
-        if (statusEl) { statusEl.textContent = ''; statusEl.style.color = ''; }
-      }, 3000);
+
+      if (mode?.endsWith('-async')) {
+        // Async: cancel the pending room code so no one can join via code while
+        // the direct invite is outstanding, then close the waiting overlay.
+        const code = activePending?.code;
+        await teardownPending();
+        if (code && activeFbDb) {
+          roomCodeService.cancelPending(activeFbDb, code)
+            .catch((e) => console.warn('[spine] crSendInvite cancelPending', e));
+        }
+        globalThis.setTimeout?.(() => bus.emit(WR_CLOSE, {}), 1500);
+      } else {
+        // Live: store invite details for cleanup on expiry, then start countdown.
+        if (activePending) {
+          activePending.inviteId    = inviteId;
+          activePending.inviteToUid = toUid;
+        }
+        bus.emit(WR_LIVE_INVITE_SENT, { expiresAt: inviteExpiresAt });
+      }
     } catch (e) {
       console.error('[spine] crSendInvite', e);
       if (statusEl) { statusEl.textContent = 'שגיאה בשליחת ההזמנה'; statusEl.style.color = '#f87'; }
