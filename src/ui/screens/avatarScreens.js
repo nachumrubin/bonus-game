@@ -53,6 +53,7 @@ export const ACHIEVEMENTS = [
 const TIER_COLOR = {
   bronze: '#c87840', silver: '#9090a0', gold: '#d4a820', legend: '#9a50e8',
 };
+const TIER_LABEL_HE = { bronze: 'ארד', silver: 'כסף', gold: 'זהב', legend: 'אגדה' };
 
 const FREE_AVATAR_BG = '#3a4cf9';
 
@@ -142,7 +143,7 @@ export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}
         + `  <div class="ach-card-desc">${ach.descHe}</div>`
         + `  <div class="ach-progress"><div class="ach-progress-fill" style="width:${Math.round(pct * 100)}%;background:${tierColor};"></div></div>`
         + `  <div class="ach-card-meta"><span style="color:${tierColor};">${curVal}/${ach.condition.min}</span>`
-        + `    <span class="ach-tier-chip" style="background:${tierColor};">${ach.tier}</span>`
+        + `    <span class="ach-tier-chip" style="background:${tierColor};">${TIER_LABEL_HE[ach.tier] ?? ach.tier}</span>`
         + (isUnlocked ? `    <span style="font-size:10px;color:rgba(255,255,255,.6);">הצטייד</span>` : '')
         + `  </div>`
         + `</div>`
