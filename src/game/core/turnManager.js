@@ -30,15 +30,6 @@ export function isGameOver(state) {
     (state.racks?.[0]?.length ?? 0) === 0 ||
     (state.racks?.[1]?.length ?? 0) === 0
   )) return true;
-  const settings = state.settings ?? {};
-  const legacyLimit = settings.moveLimitOn && Number(settings.moveLimit) > 0
-    ? Number(settings.moveLimit)
-    : null;
-  const modularLimit = settings.movelimit && Number(settings.maxMoves) > 0
-    ? Number(settings.maxMoves)
-    : null;
-  const moveLimit = legacyLimit ?? modularLimit;
-  if (moveLimit && (state.moveCount ?? 0) >= moveLimit) return true;
   if (state.status === 'completed' || state.status === 'abandoned' || state.status === 'expired') {
     return true;
   }

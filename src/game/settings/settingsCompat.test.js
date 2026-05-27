@@ -27,23 +27,21 @@ function storage() {
 }
 
 test('normalizeGameSettings fills defaults and clamps numeric values', () => {
-  const s = normalizeGameSettings({ botTime: 500, maxMoves: -2, music: false });
+  const s = normalizeGameSettings({ botTime: 500, music: false });
   assert.equal(s.botTime, 120);
-  assert.equal(s.maxMoves, 5);
   assert.equal(s.music, false);
   assert.equal(s.showMoveSummary, true);
 });
 
 test('settingsFromLegacyGlobals maps old settings names then applies overrides', () => {
   const globals = {
-    settings: { musicOn: false, computerTimerOn: false, computerTimerSecs: 45, moveLimitOn: true, moveLimit: 60 },
+    settings: { musicOn: false, computerTimerOn: false, computerTimerSecs: 45 },
     gameSettings: { showBothRacks: true },
   };
   const s = settingsFromLegacyGlobals(globals, { botTime: 30 });
   assert.equal(s.music, false);
   assert.equal(s.timelimit, false);
   assert.equal(s.botTime, 30);
-  assert.equal(s.movelimit, true);
   assert.equal(s.showBothRacks, true);
 });
 
@@ -103,11 +101,10 @@ test('loadGameSettings: corrupt JSON in localStorage falls back to defaults with
 test('loadGameSettings: out-of-range numeric values clamp instead of crashing', () => {
   const s = storage();
   s.setItem(LEGACY_SETTINGS_KEY, JSON.stringify({
-    botTime: 99999, maxMoves: -10, appealsMax: 'banana',
+    botTime: 99999, appealsMax: 'banana',
   }));
   const result = loadGameSettings(s, {});
   assert.equal(result.botTime, 120, 'botTime clamped to max');
-  assert.equal(result.maxMoves, 5, 'maxMoves clamped to min');
   assert.equal(result.appealsMax, DEFAULT_GAME_SETTINGS.appealsMax, 'non-numeric falls back to default');
 });
 

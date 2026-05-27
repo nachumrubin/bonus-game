@@ -3,33 +3,12 @@
   <div class="ovc">
     <div class="ovt" style="margin-bottom:10px">⚙️ הגדרות</div>
     <div class="settings-panels">
-      <!-- Panel 3: move count limit -->
-      <div class="set-panel">
-        <div class="set-panel-title">הגבלת מספר המהלכים? <span class="sett-info">i<span class="sett-tip">אם מופעל, המשחק יסתיים אוטומטית לאחר מספר המהלכים שנקבע</span></span></div>
-        <div class="set-yesno">
-          <div class="set-yn" id="sett-movelimit-yes" onclick="settToggle('movelimit',true)">✓ כן</div>
-          <div class="set-yn active-no" id="sett-movelimit-no"  onclick="settToggle('movelimit',false)">✗ לא</div>
-        </div>
-        <div class="set-counter">
-          <div class="set-btn" onclick="settAdj('maxMoves',-5)">−</div>
-          <div class="set-num" id="sett-maxmoves">30</div>
-          <div class="set-btn" onclick="settAdj('maxMoves',5)">+</div>
-        </div>
-      </div>
       <!-- Panel 4: music -->
       <div class="set-panel">
         <div class="set-panel-title">מוזיקה <span class="sett-info">i<span class="sett-tip">הפעלת מוסיקת רקע במהלך המשחק</span></span></div>
         <div class="set-yesno">
           <div class="set-yn active-yes" id="sett-music-yes" onclick="settToggle('music',true)">🎵 כן</div>
           <div class="set-yn" id="sett-music-no"  onclick="settToggle('music',false)">🔇 לא</div>
-        </div>
-      </div>
-      <!-- Panel 5: show both racks -->
-      <div class="set-panel">
-        <div class="set-panel-title">הצג מגש שני השחקנים <span class="sett-info">i<span class="sett-tip">תמיד: שני המגשים גלויים. רק נוכחי: רואים רק את אותיות השחקן שתורו כעת</span></span></div>
-        <div class="set-yesno">
-          <div class="set-yn" id="sett-showBothRacks-yes" onclick="settToggle('showBothRacks',true)">👁 תמיד</div>
-          <div class="set-yn active-no" id="sett-showBothRacks-no"  onclick="settToggle('showBothRacks',false)">👤 רק נוכחי</div>
         </div>
       </div>
       <!-- Panel 6: sound effects -->

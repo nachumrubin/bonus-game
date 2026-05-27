@@ -1,7 +1,6 @@
 // settingsScreen — Phase 1 wiring of #ov-settings.
 //
-// Scope: the 4 yes/no toggle pairs (timelimit, movelimit, music, showBothRacks),
-// the 2 counter panels (botTime, maxMoves), and the close button. Each
+// Scope: yes/no toggle pairs (music, soundFx, vibration) and the close button. Each
 // settings change emits SETTINGS_CHANGED with the diff.
 //
 // Out of scope (will be migrated separately):
@@ -26,17 +25,12 @@ export const SETTINGS_CHANGED = 'settings/changed';
 
 // Each toggle has a (key, yesId, noId) triple matching the legacy DOM.
 const TOGGLES = [
-  { key: 'movelimit',     yesId: 'sett-movelimit-yes',     noId: 'sett-movelimit-no' },
-  { key: 'music',         yesId: 'sett-music-yes',         noId: 'sett-music-no' },
-  { key: 'showBothRacks', yesId: 'sett-showBothRacks-yes', noId: 'sett-showBothRacks-no' },
-  { key: 'soundFx',       yesId: 'sett-soundfx-yes',       noId: 'sett-soundfx-no' },
-  { key: 'vibration',     yesId: 'sett-vibration-yes',     noId: 'sett-vibration-no' },
+  { key: 'music',     yesId: 'sett-music-yes',     noId: 'sett-music-no' },
+  { key: 'soundFx',  yesId: 'sett-soundfx-yes',   noId: 'sett-soundfx-no' },
+  { key: 'vibration', yesId: 'sett-vibration-yes', noId: 'sett-vibration-no' },
 ];
 
-// Each counter has (key, displayId, step).
-const COUNTERS = [
-  { key: 'maxMoves', displayId: 'sett-maxmoves', step: 5 },
-];
+const COUNTERS = [];
 
 export function mountSettingsScreen({ root = globalThis.document, bus, getSettings = () => globalThis.gameSettings } = {}) {
   if (!bus) throw new Error('mountSettingsScreen: bus required');

@@ -649,7 +649,7 @@ async function boot() {
       }
     }
 
-    bus.on(SETUP_INTENT.PLAY_CLICKED, ({ mode, p1Name, p2Name, difficulty, botTime = 40 }) => {
+    bus.on(SETUP_INTENT.PLAY_CLICKED, ({ mode, p1Name, p2Name, difficulty, botTime = 40, showBothRacks = false }) => {
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: p1Name });
       const isBot = mode === 'bot';
       const startingSlot = Math.random() < 0.5 ? 0 : 1;
@@ -662,7 +662,7 @@ async function boot() {
           difficulty,
           p1Name, p2Name,
           startingSlot,
-          settings: { timelimit: true, botTime },
+          settings: { timelimit: true, botTime, showBothRacks },
         });
       });
       showLegacyScreen('scoin');

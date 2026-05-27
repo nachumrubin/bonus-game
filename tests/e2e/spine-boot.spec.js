@@ -116,42 +116,16 @@ test.describe('spine boot smoke', () => {
     });
 
     await expect(page.locator('#ov-settings')).not.toHaveClass(/hidden/);
-    await page.locator('#sett-timelimit-no').click();
-    await page.locator('#sett-movelimit-yes').click();
     await page.locator('#sett-music-no').click();
-    await page.locator('#sett-bottime').locator('xpath=following-sibling::*[1]').click();
-    await page.locator('#sett-maxmoves').locator('xpath=preceding-sibling::*[1]').click();
 
-    await expect(page.locator('#sett-timelimit-no')).toHaveClass(/active-no/);
-    await expect(page.locator('#sett-movelimit-yes')).toHaveClass(/active-yes/);
     await expect(page.locator('#sett-music-no')).toHaveClass(/active-no/);
-    await expect(page.locator('#sett-bottime')).toHaveText('25');
-    await expect(page.locator('#sett-maxmoves')).toHaveText('25');
 
     await expect.poll(() => page.evaluate(() => ({
-      globals: {
-        timelimit: window.gameSettings?.timelimit,
-        movelimit: window.gameSettings?.movelimit,
-        music: window.gameSettings?.music,
-        botTime: window.gameSettings?.botTime,
-        maxMoves: window.gameSettings?.maxMoves,
-      },
-      session: { ...window.__spine.activeGame.session.state.settings },
+      globals: { music: window.gameSettings?.music },
+      session: { music: window.__spine.activeGame.session.state.settings?.music },
     }))).toMatchObject({
-      globals: {
-        timelimit: false,
-        movelimit: true,
-        music: false,
-        botTime: 25,
-        maxMoves: 25,
-      },
-      session: {
-        timelimit: false,
-        movelimit: true,
-        music: false,
-        botTime: 25,
-        maxMoves: 25,
-      },
+      globals: { music: false },
+      session: { music: false },
     });
 
     await page.reload();
@@ -161,11 +135,7 @@ test.describe('spine boot smoke', () => {
       window.__spine.bus.emit(window.__spine.ui.SETTINGS_OPEN, {});
     });
 
-    await expect(page.locator('#sett-timelimit-no')).toHaveClass(/active-no/);
-    await expect(page.locator('#sett-movelimit-yes')).toHaveClass(/active-yes/);
     await expect(page.locator('#sett-music-no')).toHaveClass(/active-no/);
-    await expect(page.locator('#sett-bottime')).toHaveText('25');
-    await expect(page.locator('#sett-maxmoves')).toHaveText('25');
   });
 
   test('starts a deterministic online room against mock Firebase and receives remote settings', async ({ page }) => {
