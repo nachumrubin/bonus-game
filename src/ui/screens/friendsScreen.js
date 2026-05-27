@@ -41,17 +41,42 @@ export function buildRequestsHtml(requests = []) {
   ).join('');
 }
 
+export function formatLastSeen(ts, now = Date.now()) {
+  if (!ts) return '';
+  const diff = Math.max(0, now - ts);
+  const mins  = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days  = Math.floor(diff / 86_400_000);
+  const weeks = Math.floor(diff / 604_800_000);
+  if (mins  <  1) return 'עכשיו';
+  if (hours <  1) return `לפני ${mins} דק'`;
+  if (days  <  1) return `לפני ${hours} שע'`;
+  if (weeks <  1) return `לפני ${days} ימים`;
+  if (weeks <  5) return `לפני ${weeks} שבועות`;
+  const months = Math.floor(days / 30);
+  return `לפני ${months} חודשים`;
+}
+
 export function buildFriendsListHtml(friends = []) {
   if (!friends.length) {
     return `<div style="font-size:11px;color:rgba(255,255,255,.3);text-align:center;padding:8px 0;">אין חברים עדיין</div>`;
   }
-  return friends.map(f =>
-    `<div data-fr-row="${escapeHtml(f.uid)}" style="display:flex;align-items:center;gap:6px;padding:6px;border-bottom:1px solid rgba(255,255,255,.06);">`
-    +   `<div style="font-size:18px;">${escapeHtml(f.avatar ?? '👤')}</div>`
-    +   `<div style="flex:1;font-size:12px;color:#fff;font-weight:700;">${escapeHtml(f.name ?? '?')}</div>`
-    +   `<button data-fr-remove="${escapeHtml(f.uid)}" aria-label="הסר" style="background:none;border:none;font-size:14px;color:rgba(255,255,255,.4);cursor:pointer;">×</button>`
-    + `</div>`,
-  ).join('');
+  return friends.map(f => {
+    const online    = !!f.connected;
+    const lastSeen  = f.lastSeen ? formatLastSeen(f.lastSeen) : '';
+    const ratingStr = f.rating != null ? String(f.rating) : '—';
+    const dotClass  = online ? 'fr-online-dot fr-online-dot--on' : 'fr-online-dot';
+    return `<div data-fr-row="${escapeHtml(f.uid)}" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.06);">`
+      + `<div style="font-size:20px;line-height:1;">${escapeHtml(f.avatar ?? '👤')}</div>`
+      + `<div style="flex:1;min-width:0;">`
+      +   `<div style="font-size:12px;color:#fff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(f.name ?? '?')}</div>`
+      +   `<div style="font-size:10px;color:rgba(255,255,255,.45);">⭐ ${escapeHtml(ratingStr)}</div>`
+      + `</div>`
+      + `<div style="font-size:9px;color:rgba(255,255,255,.4);text-align:center;min-width:42px;">${escapeHtml(lastSeen)}</div>`
+      + `<span class="${dotClass}" aria-hidden="true"></span>`
+      + `<button data-fr-remove="${escapeHtml(f.uid)}" aria-label="הסר" style="background:none;border:none;font-size:14px;color:rgba(255,255,255,.35);cursor:pointer;padding:0 2px;">×</button>`
+      + `</div>`;
+  }).join('');
 }
 
 export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {

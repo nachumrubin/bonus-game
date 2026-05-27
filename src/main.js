@@ -1462,9 +1462,26 @@ async function boot() {
         bus.emit(NOTIF_RENDER, { friendRequests: reqs });
         refreshBadgeCount();
       });
-      activeFriendsWatch = friendsService.watchFriends(fbDb, uid, (friends) => {
+      activeFriendsWatch = friendsService.watchFriends(fbDb, uid, async (friends) => {
         lastFriends = friends;
-        bus.emit(FRIENDS_RENDER, { friends });
+        try {
+          const enriched = await Promise.all(friends.map(async (f) => {
+            const [presence, profile] = await Promise.all([
+              presenceService.readPresenceOnce(fbDb, f.uid).catch(() => null),
+              profileService.readProfile(fbDb, f.uid).catch(() => null),
+            ]);
+            return {
+              ...f,
+              connected: !!presence?.connected,
+              lastSeen: presence?.lastSeen ?? f.addedAt ?? 0,
+              rating: profile?.rating ?? null,
+            };
+          }));
+          enriched.sort((a, b) => (b.lastSeen ?? 0) - (a.lastSeen ?? 0));
+          bus.emit(FRIENDS_RENDER, { friends: enriched });
+        } catch {
+          bus.emit(FRIENDS_RENDER, { friends });
+        }
       });
     }
     globalThis.__spine.bootAccount = bootProfileFor;
