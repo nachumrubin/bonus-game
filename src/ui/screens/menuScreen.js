@@ -43,7 +43,6 @@ const SCREEN_BUTTONS = [
   { sel: 'button[onclick="startSetup(\'vs\')"]',   intent: MENU_INTENT.START_2P, legacyArg: 'vs' },
   { sel: 'button[onclick="startSetup(\'bot\')"]',  intent: MENU_INTENT.START_VS_BOT, legacyArg: 'bot' },
   { sel: 'button[onclick="showOnlineLobby()"]',    intent: MENU_INTENT.OPEN_ONLINE_LOBBY },
-  { sel: 'button[onclick="shareGame()"]',          intent: MENU_INTENT.SHARE_GAME },
   { sel: 'button[onclick="openStats()"]',          intent: MENU_INTENT.OPEN_STATS },
   { sel: 'button[onclick="openFriends()"]',        intent: MENU_INTENT.OPEN_FRIENDS },
 ];
@@ -99,32 +98,6 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
   function render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar } = {}) {
     const resumeBtn = $('#btn-resume-home', menuRoot);
     if (resumeBtn) resumeBtn.style.display = hasSavedGame ? '' : 'none';
-
-    const shareBtn = $('#btn-share-game', menuRoot);
-    if (shareBtn) {
-      const wasHidden = shareBtn.style.display === 'none';
-      shareBtn.style.display = isAuthed ? '' : 'none';
-      // First reveal after auth resolves — fade/slide it in so it doesn't
-      // snap into the menu seconds after the cascade finishes.
-      //
-      // Crucially we CLEAR the inline `animation` after it ends. The
-      // shorthand resets `animation-delay` to 0, so a leftover inline value
-      // would override the `.hbtns.menu-enter .bd:nth-child(9)
-      // { animation-delay: 0.56s }` cascade rule on later menu visits —
-      // making the share button animate in at 0s while the rest of the
-      // cascade staggers normally.
-      if (isAuthed && wasHidden) {
-        shareBtn.style.animation = 'none';
-        // Force a reflow so the animation restart applies.
-        void shareBtn.offsetWidth;
-        shareBtn.style.animation = 'menuBtnIn 0.4s cubic-bezier(0.22,1,0.36,1) both';
-        const clearInlineAnim = () => {
-          shareBtn.style.animation = '';
-          shareBtn.removeEventListener?.('animationend', clearInlineAnim);
-        };
-        shareBtn.addEventListener?.('animationend', clearInlineAnim, { once: true });
-      }
-    }
 
     // Display elements are in the global topbar
     const nameLabel = $('#home-user-label', topbarRoot);

@@ -148,9 +148,13 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
     for (const d of speedDefs) {
       if (d.el) (d.speed === botTime ? d.el.classList?.add('a') : d.el.classList?.remove('a'));
     }
-    // Title
-    const title = $(SELECTORS.title, setup);
-    if (title) title.textContent = mode === 'bot' ? 'נגד המחשב' : 'שני שחקנים';
+    // Title + mode icon
+    const titleText = setup.querySelector?.('#stitle-text');
+    if (titleText) titleText.textContent = mode === 'bot' ? 'נגד המחשב' : 'שני שחקנים';
+    const iconBot = setup.querySelector?.('#stitle-icon-bot');
+    const iconVs  = setup.querySelector?.('#stitle-icon-vs');
+    if (iconBot) iconBot.style.display = mode === 'bot' ? 'inline-flex' : 'none';
+    if (iconVs)  iconVs.style.display  = mode === 'vs'  ? 'inline-flex' : 'none';
     const p1Input = $(SELECTORS.p1Input, setup);
     if (p1Input) {
       const name = getDisplayName?.() ?? loadUiPreferences(globalThis.localStorage).lastDisplayName;
