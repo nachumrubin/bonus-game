@@ -1,4 +1,30 @@
-﻿<!-- FRIENDS SCREEN -->
+﻿<!-- Friend detail overlay (position:fixed, lives outside screen div) -->
+<div id="ov-friend-detail" class="ov hidden">
+  <div class="ovc" style="width:min(320px,92vw);max-height:88svh;overflow-y:auto;gap:0;padding:0;">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px;">
+      <div id="fd-avatar" style="font-size:28px;line-height:1;">👤</div>
+      <div style="flex:1;min-width:0;">
+        <div id="fd-name" style="font-size:15px;font-weight:900;color:#fff;"></div>
+        <div id="fd-rating" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;"></div>
+      </div>
+      <button id="fd-close" aria-label="סגור" style="background:none;border:none;font-size:22px;color:rgba(255,255,255,.45);cursor:pointer;padding:0 4px;line-height:1;">×</button>
+    </div>
+    <div style="padding:10px 16px 12px;border-top:1px solid rgba(255,255,255,.07);">
+      <div style="font-size:10px;color:rgba(255,200,100,.8);font-weight:700;margin-bottom:6px;letter-spacing:.3px;">📊 סטטיסטיקה ביניכם</div>
+      <div id="fd-stats" style="font-size:12px;color:rgba(255,255,255,.75);line-height:1.6;"></div>
+    </div>
+    <div style="padding:10px 16px 12px;border-top:1px solid rgba(255,255,255,.07);">
+      <div style="font-size:10px;color:rgba(255,200,100,.8);font-weight:700;margin-bottom:6px;letter-spacing:.3px;">⏱ 5 המשחקים האחרונים</div>
+      <div id="fd-recent"></div>
+    </div>
+    <div style="padding:10px 16px 14px;border-top:1px solid rgba(255,255,255,.07);">
+      <div style="font-size:10px;color:rgba(255,200,100,.8);font-weight:700;margin-bottom:8px;letter-spacing:.3px;">🎮 משחקים פעילים</div>
+      <div id="fd-active-games"></div>
+    </div>
+  </div>
+</div>
+
+<!-- FRIENDS SCREEN -->
 <div id="sfriends" class="screen hidden">
   <div class="sbox" style="max-width:320px;gap:10px;overflow-y:auto;max-height:calc(100svh - var(--em-topbar-h) - 16px);">
     <div class="stitle">👥 חברים</div>

@@ -20,9 +20,13 @@ export const FRIENDS_INTENT = Object.freeze({
   REJECT_REQUEST: 'friendsUi/rejectRequest',
   REMOVE_FRIEND:  'friendsUi/removeFriend',
   BACK:           'friendsUi/back',
+  OPEN_DETAIL:    'friendsUi/openDetail',
+  INVITE_FRIEND:  'friendsUi/inviteFriend',
+  ENTER_GAME:     'friendsUi/enterGame',
 });
 
-export const FRIENDS_RENDER = 'friendsUi/render';
+export const FRIENDS_RENDER        = 'friendsUi/render';
+export const FRIENDS_DETAIL_RENDER = 'friendsUi/detailRender';
 
 function escapeHtml(s) {
   return String(s ?? '')
@@ -79,6 +83,47 @@ export function buildFriendsListHtml(friends = []) {
   }).join('');
 }
 
+function buildDetailStatsHtml(rival) {
+  if (!rival || !rival.played) {
+    return `<span style="color:rgba(255,255,255,.3);">אין היסטוריה משותפת עדיין</span>`;
+  }
+  const pct = Math.round((rival.won / rival.played) * 100);
+  return `משחקים: ${rival.played} &nbsp;|&nbsp; ניצחת: ${rival.won} &nbsp;|&nbsp; הפסדת: ${rival.lost}<br>`
+    + `אחוז ניצחון: <b>${pct}%</b>`;
+}
+
+function buildDetailRecentHtml(games) {
+  if (!games.length) {
+    return `<span style="color:rgba(255,255,255,.3);">אין משחקים קודמים</span>`;
+  }
+  return games.map(g => {
+    const icon = g.result === 'win' ? '✅' : g.result === 'loss' ? '❌' : '🤝';
+    return `<div style="display:flex;gap:8px;padding:3px 0;font-size:11px;">`
+      + `<span>${icon}</span><span style="color:#fff;font-weight:700;">${g.score}</span>`
+      + `<span style="color:rgba(255,255,255,.4);">:</span>`
+      + `<span style="color:rgba(255,255,255,.6);">${g.opponentScore}</span>`
+      + `</div>`;
+  }).join('');
+}
+
+function buildDetailActiveGamesHtml(activeGames, myUid) {
+  if (!activeGames.length) {
+    return `<button data-fd-invite="1" style="width:100%;padding:8px;border:none;border-radius:8px;`
+      + `background:#1ed760;color:#000;font-family:Heebo,sans-serif;font-size:12px;font-weight:900;cursor:pointer;">`
+      + `✉️ הזמן למשחק</button>`;
+  }
+  return activeGames.map(({ roomId, room }) => {
+    const mySlot = room.players?.[0]?.uid === myUid ? 0 : 1;
+    const modeLabel = room.mode?.endsWith('-async') ? '🔄 אסינכרוני' : '⚡ חי';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">`
+      + `<span style="flex:1;font-size:11px;color:rgba(255,255,255,.55);">${modeLabel}</span>`
+      + `<button data-fd-enter="${escapeHtml(roomId)}" data-fd-slot="${mySlot}" `
+      + `style="padding:6px 12px;border:none;border-radius:6px;background:#f5c518;`
+      + `color:#000;font-family:Heebo,sans-serif;font-size:11px;font-weight:900;cursor:pointer;">🕹 כנס</button>`
+      + `</div>`;
+  }).join('');
+}
+
 export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountFriendsScreen: bus required');
 
@@ -116,17 +161,58 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     cleanups.push(on(container, 'click', (e) => {
       const t = e.target;
       const btn = t?.tagName === 'BUTTON' ? t : t?.closest?.('button');
-      if (!btn) return;
-      const accept = btn.getAttribute?.('data-fr-accept');
-      const reject = btn.getAttribute?.('data-fr-reject');
-      const remove = btn.getAttribute?.('data-fr-remove');
-      if (accept) bus.emit(FRIENDS_INTENT.ACCEPT_REQUEST, { fromUid: accept });
-      if (reject) bus.emit(FRIENDS_INTENT.REJECT_REQUEST, { fromUid: reject });
-      if (remove) bus.emit(FRIENDS_INTENT.REMOVE_FRIEND,  { friendUid: remove });
+      if (btn) {
+        const accept = btn.getAttribute?.('data-fr-accept');
+        const reject = btn.getAttribute?.('data-fr-reject');
+        const remove = btn.getAttribute?.('data-fr-remove');
+        if (accept) bus.emit(FRIENDS_INTENT.ACCEPT_REQUEST, { fromUid: accept });
+        if (reject) bus.emit(FRIENDS_INTENT.REJECT_REQUEST, { fromUid: reject });
+        if (remove) bus.emit(FRIENDS_INTENT.REMOVE_FRIEND,  { friendUid: remove });
+        return;
+      }
+      // Row click (no button) → open friend detail
+      const row = t?.closest?.('[data-fr-row]');
+      if (row) {
+        const friendUid = row.getAttribute('data-fr-row');
+        if (friendUid) bus.emit(FRIENDS_INTENT.OPEN_DETAIL, { friendUid });
+      }
     }));
   }
   delegateClick(reqList);
   delegateClick(friendsList);
+
+  // Friend detail overlay
+  const detailOv  = $('#ov-friend-detail', root);
+  const fdClose   = $('#fd-close', root);
+  const fdGames   = $('#fd-active-games', root);
+
+  if (fdClose) {
+    cleanups.push(on(fdClose, 'click', () => {
+      detailOv?.classList?.add('hidden');
+    }));
+  }
+  if (detailOv) {
+    cleanups.push(on(detailOv, 'click', (e) => {
+      if (e.target === detailOv) detailOv.classList?.add('hidden');
+    }));
+    cleanups.push(on(detailOv, 'click', (e) => {
+      const btn = e.target?.tagName === 'BUTTON' ? e.target : e.target?.closest?.('button');
+      if (!btn) return;
+      if (btn.hasAttribute('data-fd-invite')) {
+        const uid    = detailOv.dataset.friendUid;
+        const name   = detailOv.dataset.friendName;
+        const avatar = detailOv.dataset.friendAvatar;
+        detailOv.classList?.add('hidden');
+        bus.emit(FRIENDS_INTENT.INVITE_FRIEND, { uid, name, avatar });
+      }
+      const enterRoomId = btn.getAttribute('data-fd-enter');
+      if (enterRoomId) {
+        const mySlot = Number(btn.getAttribute('data-fd-slot') ?? 0);
+        detailOv.classList?.add('hidden');
+        bus.emit(FRIENDS_INTENT.ENTER_GAME, { roomId: enterRoomId, mySlot });
+      }
+    }));
+  }
 
   function paintRequests(requests = []) {
     if (reqWrap) reqWrap.style.display = requests.length ? '' : 'none';
@@ -140,6 +226,29 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     if (friendsList) friendsList.innerHTML = buildFriendsListHtml(friends);
     if (friendsCount) setText(friendsCount, `(${friends.length})`);
   }
+
+  cleanups.push(bus.on(FRIENDS_DETAIL_RENDER, ({ friend, rivalEntry, vsRecent = [], activeGames = [], myUid } = {}) => {
+    if (!detailOv || !friend) return;
+    // Store friend data on overlay element for button handlers
+    detailOv.dataset.friendUid    = friend.uid ?? '';
+    detailOv.dataset.friendName   = friend.name ?? '';
+    detailOv.dataset.friendAvatar = friend.avatar ?? '';
+
+    const avatarEl  = $('#fd-avatar', root);
+    const nameEl    = $('#fd-name', root);
+    const ratingEl  = $('#fd-rating', root);
+    const statsEl   = $('#fd-stats', root);
+    const recentEl  = $('#fd-recent', root);
+
+    if (avatarEl)  avatarEl.textContent  = friend.avatar ?? '👤';
+    if (nameEl)    nameEl.textContent    = friend.name ?? '?';
+    if (ratingEl)  ratingEl.textContent  = friend.rating != null ? `⭐ ${friend.rating}` : '';
+    if (statsEl)   statsEl.innerHTML     = buildDetailStatsHtml(rivalEntry);
+    if (recentEl)  recentEl.innerHTML    = buildDetailRecentHtml(vsRecent);
+    if (fdGames)   fdGames.innerHTML     = buildDetailActiveGamesHtml(activeGames, myUid);
+
+    detailOv.classList?.remove('hidden');
+  }));
 
   cleanups.push(bus.on(FRIENDS_RENDER, ({ myUserId, requests, friends, copyStatus, addStatus: addS } = {}) => {
     if (myIdEl && myUserId) setText(myIdEl, myUserId);
