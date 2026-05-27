@@ -113,13 +113,17 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
     if (inviteStatus)   { inviteStatus.textContent = ''; inviteStatus.style.color = ''; }
   }
 
-  const offOpen = bus.on(WR_OPEN, ({ code, mode, friendName } = {}) => {
+  const offOpen = bus.on(WR_OPEN, ({ code, mode, friendName, isAuthed } = {}) => {
     if (codeEl && code) setText(codeEl, code);
     if (modeEl && mode) setText(modeEl, MODE_LABEL[mode] ?? '');
     resetInviteFields();
     clearCountdown();
     if (friendName) switchToFriendMode(friendName);
     else resetToNormalMode();
+    // Visitors (anonymous) have no friends list to invite from
+    if (inviteSect && isAuthed !== undefined) {
+      inviteSect.style.display = (isAuthed && !friendName) ? '' : 'none';
+    }
     overlay?.classList?.remove?.('hidden');
   });
   const offClose = bus.on(WR_CLOSE, () => {

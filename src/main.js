@@ -641,6 +641,9 @@ async function boot() {
                   ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
         if (name) nameInput.value = name;
       }
+      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
+      const ratingRow = globalThis.document?.getElementById?.('mm-rating-row');
+      if (ratingRow) ratingRow.style.display = isAuthed ? '' : 'none';
     });
 
     function hideOnlineStartOverlays() {
@@ -816,7 +819,8 @@ async function boot() {
       // the overlay starts in friend-mode immediately (no flash of code UI).
       const friendNameForWr = pendingFriendTarget?.name ?? null;
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.add?.('hidden');
-      bus.emit(WR_OPEN, { code, mode: filters.spineMode, friendName: friendNameForWr });
+      const isAuthedForWr = !!(fbUser?.uid && !fbUser?.isAnonymous);
+      bus.emit(WR_OPEN, { code, mode: filters.spineMode, friendName: friendNameForWr, isAuthed: isAuthedForWr });
 
       // If triggered from the friend detail overlay, auto-send invite to that friend.
       if (pendingFriendTarget) {
