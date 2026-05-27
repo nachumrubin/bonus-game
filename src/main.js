@@ -86,7 +86,7 @@ import {
   diffNewlyUnlocked, findAvatar,
 } from './ui/screens/avatarScreens.js';
 import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE } from './ui/screens/authScreens.js';
-import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER } from './ui/screens/friendsScreen.js';
+import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER } from './ui/screens/friendsScreen.js';
 import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
 import { mountChampionsScreen, CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR } from './ui/screens/championsScreen.js';
 import { mountDictionaryScreen, DICT_INTENT, DICT_RENDER } from './ui/screens/dictionaryScreen.js';
@@ -261,7 +261,7 @@ async function boot() {
       JOKER_INTENT,
       CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR,
       DICT_INTENT, DICT_RENDER,
-      PROFILE_INTENT, PROFILE_RENDER, STATS_INTENT, AV_INTENT, AV_RENDER, FRIENDS_INTENT, FRIENDS_RENDER,
+      PROFILE_INTENT, PROFILE_RENDER, STATS_INTENT, AV_INTENT, AV_RENDER, FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER,
       NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW,
       TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_CLOSE, TUTORIAL_TIP, TUTORIAL_CLEAR,
       END_INTENT, END_OPEN, PAUSE_INTENT, PAUSE_OPEN, BACK_INTENT, BACK_OPEN,
@@ -815,6 +815,37 @@ async function boot() {
       // Open the waiting-room overlay with our code + mode label.
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.add?.('hidden');
       bus.emit(WR_OPEN, { code, mode: filters.spineMode });
+
+      // If triggered from the friend detail overlay, auto-send invite to that friend.
+      if (pendingFriendTarget) {
+        const ft = pendingFriendTarget;
+        pendingFriendTarget = null;
+        try {
+          const mode     = filters.spineMode ?? 'friend-live';
+          const settings = { ...settingsCompat.settingsFromLegacyGlobals(globalThis), timelimit: filters.timelimit, botTime: filters.botTime ?? 40 };
+          const { inviteId, expiresAt } = await inviteService.sendInvite(fbDb, {
+            fromUid:    fbUser.uid,
+            fromName:   globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן',
+            fromAvatar: fbUser.photoURL ?? null,
+            toUid:      ft.uid,
+            mode,
+            settings,
+            serverTimestamp: Date.now(),
+          });
+          notificationService?.pushInvite?.({
+            inviteeUid:  ft.uid,
+            inviterName: fbUser.displayName ?? 'שחקן',
+            roomId:      null,
+          })?.catch(() => {});
+          if (activePending) {
+            activePending.inviteId    = inviteId;
+            activePending.inviteToUid = ft.uid;
+          }
+          bus.emit(WR_LIVE_INVITE_SENT, { expiresAt });
+        } catch (e) {
+          console.warn('[spine] friend auto-invite failed', e);
+        }
+      }
 
       // When a guest claims the code, claimByCode creates the real room
       // AND sets /users/{hostUid}/activeRoom to the new roomId. That
@@ -1407,6 +1438,7 @@ async function boot() {
     let lastProfile = null;
     let lastFriends = [];
     let lastRequests = [];
+    let pendingFriendTarget = null; // set by INVITE_FRIEND, consumed by CR_INTENT.CONFIRM
 
     function bootProfileFor(uid) {
       const fbDb = activeFbDb;
@@ -1600,6 +1632,73 @@ async function boot() {
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !friendUid) return;
       await friendsService.removeFriend(fbDb, { uid: fbUser.uid, friendUid });
+    });
+
+    bus.on(FRIENDS_INTENT.OPEN_DETAIL, async ({ friendUid } = {}) => {
+      const fbDb  = activeFbDb;
+      const myUid = activeFbCurrentUser?.uid;
+      if (!fbDb || !myUid || !friendUid) return;
+
+      const friend = lastFriends.find(f => f.uid === friendUid) ?? { uid: friendUid };
+
+      // Rivalry and recent-game data from my local profile (no extra fetch needed)
+      const rivalEntry = lastProfile?.stats?.rivalStats?.[friendUid] ?? null;
+      const vsRecent   = (lastProfile?.stats?.recentGames ?? [])
+        .filter(g => g.opponentUid === friendUid)
+        .slice(0, 5);
+
+      // Find shared active rooms
+      const activeGames = [];
+      try {
+        const [myRoomId, friendRoomId] = await Promise.all([
+          fbDb.ref(`users/${myUid}/activeRoom`).get().then(s => s?.val?.() ?? null),
+          fbDb.ref(`users/${friendUid}/activeRoom`).get().then(s => s?.val?.() ?? null),
+        ]);
+        // Live game: both share the same active room
+        if (myRoomId && myRoomId === friendRoomId) {
+          const room = await roomService.readRoom(fbDb, myRoomId);
+          if (room && room.status === 'playing') {
+            activeGames.push({ roomId: myRoomId, room });
+          }
+        }
+        // Async games: scan my async index for rooms containing this friend
+        const asyncSnap = await fbDb.ref(`users/${myUid}/asyncRooms`).get();
+        const asyncMap  = asyncSnap?.val?.() ?? {};
+        for (const roomId of Object.keys(asyncMap)) {
+          if (roomId === myRoomId) continue; // already counted
+          const room = await roomService.readRoom(fbDb, roomId);
+          if (!room || room.status !== 'playing') continue;
+          const uids = Object.values(room.players ?? {}).map(p => p.uid);
+          if (uids.includes(friendUid)) activeGames.push({ roomId, room });
+        }
+      } catch (e) {
+        console.warn('[spine] OPEN_DETAIL: active rooms fetch failed', e);
+      }
+
+      bus.emit(FRIENDS_DETAIL_RENDER, { friend, rivalEntry, vsRecent, activeGames, myUid });
+    });
+
+    bus.on(FRIENDS_INTENT.ENTER_GAME, async ({ roomId, mySlot } = {}) => {
+      const fbDb = activeFbDb;
+      if (!fbDb || !roomId) return;
+      try {
+        const room = await roomService.readRoom(fbDb, roomId);
+        if (!room) return;
+        hideOnlineStartOverlays?.();
+        startOnlineGameViaSpine({ db: fbDb, room, mySlot: Number(mySlot ?? 0) });
+      } catch (e) {
+        console.warn('[spine] ENTER_GAME failed', e);
+      }
+    });
+
+    bus.on(FRIENDS_INTENT.INVITE_FRIEND, async ({ uid, name, avatar } = {}) => {
+      const fbDb   = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      if (!fbDb || !fbUser?.uid || !uid) return;
+      pendingFriendTarget = { uid, name, avatar };
+      // Open the create-room overlay for the user to pick settings.
+      // CR_INTENT.CONFIRM will pick up pendingFriendTarget and auto-send the invite.
+      globalThis.document?.getElementById?.('ov-create-room')?.classList?.remove?.('hidden');
     });
 
     bus.on(FRIENDS_INTENT.COPY_MY_ID, async () => {
