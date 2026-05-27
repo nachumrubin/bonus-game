@@ -35,6 +35,7 @@ export const SCREEN_PARTIALS = [
   './partials/screens/log-in-screen.html',
   './partials/screens/profile-screen.html',
   './partials/screens/friends-screen.html',
+  './partials/screens/notifications-inbox.html',
   './partials/screens/avatar-gallery-screen.html',
   './partials/screens/stats-screen.html',
   './partials/screens/avatar-unlock-overlay.html',

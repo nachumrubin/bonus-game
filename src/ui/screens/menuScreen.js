@@ -96,7 +96,7 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
 
   // Initial render — read current state from the spine/debug surface and
   // saved-session globals.
-  function render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar } = {}) {
+  function render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar } = {}) {
     const resumeBtn = $('#btn-resume-home', menuRoot);
     if (resumeBtn) resumeBtn.style.display = hasSavedGame ? '' : 'none';
 
@@ -157,7 +157,15 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     }
 
     const onlineBadge = $('#online-badge', topbarRoot);
-    if (onlineBadge) onlineBadge.style.display = hasOnlineUnread ? '' : 'none';
+    if (onlineBadge) {
+      if (unreadCount != null) {
+        const count = Number(unreadCount);
+        onlineBadge.style.display = count > 0 ? '' : 'none';
+        onlineBadge.textContent   = count > 0 ? String(count) : '';
+      } else {
+        onlineBadge.style.display = hasOnlineUnread ? '' : 'none';
+      }
+    }
   }
 
   // Pull initial values opportunistically; legacy code mutates these

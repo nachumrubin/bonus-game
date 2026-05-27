@@ -1,5 +1,39 @@
 # CHANGELOG.md — Change History
 
+---
+
+## Notifications Bell Inbox (May 2026)
+
+**Branch:** `claude/notifications-bell-invitations-13YM9`
+
+**Summary:** The bell icon in the top bar now shows a live badge count of pending game invites + pending friend requests. Clicking the bell opens a new inbox screen (`#snotif`) that lists both categories with per-item accept/reject buttons.
+
+**New files:**
+- `partials/screens/notifications-inbox.html` — inbox screen with two sections: game invites and friend requests
+- `src/ui/screens/notificationsScreen.js` — screen controller exporting `NOTIF_INTENT`, `NOTIF_RENDER`, `mountNotificationsScreen`
+
+**Modified files:**
+- `src/ui/screenPartialManifest.js` — registered `notifications-inbox.html`
+- `src/ui/screens/menuScreen.js` — `render()` now accepts `unreadCount` (number); badge shows count text when > 0
+- `src/main.js`:
+  - `MENU_INTENT.OPEN_NOTIFICATIONS` now routes to `snotif` instead of `so`
+  - `bootInviteListenersFor` filters pending+non-expired invites, emits `NOTIF_RENDER` and `MENU_REFRESH` (badge count)
+  - `activeRequestsWatch` also emits `NOTIF_RENDER` and `MENU_REFRESH` on change
+  - `NOTIF_INTENT.ACCEPT_INVITE / REJECT_INVITE` handlers (same Firebase logic as `II_INTENT`)
+  - `NOTIF_INTENT.ACCEPT_FRIEND / REJECT_FRIEND` handlers (same Firebase logic as `FRIENDS_INTENT`)
+  - `NOTIF_INTENT.BACK` navigates home
+  - Badge count resets to 0 on sign-out
+  - `snotif` added to `showLegacyScreen` screen list
+
+**Behavior:**
+- Badge = `pendingGameInvites + pendingFriendRequests` (live, updates via Firebase listeners)
+- Inbox shows empty state when no pending items
+- Accepting a game invite starts the game (same flow as the popup overlay)
+- Rejecting sends a push notification to the inviter
+- Accepting a friend request writes the friendship bidirectionally
+
+---
+
 > Based on `git log --oneline -30` (last 30 commits visible from repository).
 > Older history is not available in this output. Full history available via `git log`.
 

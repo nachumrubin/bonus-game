@@ -287,8 +287,30 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#home-elo-label`: hidden if `!isAuthed`
 - `#home-elo-value`: shows `rating` formatted as locale number
 - `#home-elo-bolt`: tier emoji (🪙/🥈/🥇/💎); set by `ratingTierEmoji()` in `menuScreen.js`
-- `#online-badge`: shows if `hasOnlineUnread`; now located inside `#btn-notifications-home`
-- `#btn-notifications-home`: notification bell in top bar (Electric Menu redesign)
+- `#online-badge`: shows count of pending game invites + friend requests; located inside `#btn-notifications-home`. Controlled by `MENU_REFRESH` `unreadCount` field.
+- `#btn-notifications-home`: notification bell in top bar (Electric Menu redesign). Clicking emits `MENU_INTENT.OPEN_NOTIFICATIONS` → opens `#snotif`.
+
+### Notifications Inbox Screen (`#snotif`)
+
+Source: `partials/screens/notifications-inbox.html`, `src/ui/screens/notificationsScreen.js`
+
+Load-bearing IDs (do not rename without updating `notificationsScreen.js`):
+
+```
+#snotif               — notifications inbox screen container
+#notif-empty          — empty-state message (shown when no pending items)
+#notif-invites-wrap   — game invites section wrapper (hidden when no invites)
+#notif-invites-list   — rendered invite cards (event-delegated click handling)
+#notif-friends-wrap   — friend requests section wrapper (hidden when no requests)
+#notif-friends-list   — rendered friend request cards (event-delegated click handling)
+#notif-back-btn       — back to home button
+```
+
+Button `data-*` attributes used for event delegation (do not rename):
+- `data-notif-accept-invite` — accept game invite (value = inviteId)
+- `data-notif-reject-invite` — reject game invite (value = inviteId)
+- `data-notif-accept-friend` — accept friend request (value = fromUid)
+- `data-notif-reject-friend` — reject friend request (value = fromUid)
 
 ---
 

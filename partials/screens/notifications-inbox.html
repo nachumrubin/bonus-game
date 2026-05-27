@@ -1,0 +1,24 @@
+<!-- NOTIFICATIONS INBOX -->
+<div id="snotif" class="screen hidden">
+  <div class="sbox" style="max-width:340px;gap:12px;overflow-y:auto;max-height:calc(100svh - var(--em-topbar-h) - 16px);">
+    <div class="stitle">🔔 הזמנות</div>
+
+    <div id="notif-empty" style="text-align:center;padding:24px 0;color:rgba(255,255,255,.4);font-size:13px;">
+      אין הזמנות ממתינות
+    </div>
+
+    <!-- Game invites -->
+    <div id="notif-invites-wrap" style="display:none;">
+      <div style="font-size:11px;color:rgba(255,200,100,.85);font-weight:700;margin-bottom:6px;">🎮 הזמנות למשחק</div>
+      <div id="notif-invites-list"></div>
+    </div>
+
+    <!-- Friend requests -->
+    <div id="notif-friends-wrap" style="display:none;">
+      <div style="font-size:11px;color:rgba(255,200,100,.85);font-weight:700;margin-bottom:6px;">👥 בקשות חברות</div>
+      <div id="notif-friends-list"></div>
+    </div>
+
+    <button class="bd" style="font-size:12px;" id="notif-back-btn">← חזרה</button>
+  </div>
+</div>
