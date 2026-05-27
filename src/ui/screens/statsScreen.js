@@ -91,6 +91,7 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
     text('#st-fun-comeback', stats.bestComeback);
     text('#st-fun-repeated', stats.repeatedWord);
     text('#st-fun-bestday', stats.bestDay);
+    text('#st-fun-speed', stats.favoriteSpeed);
 
     // Rivals & Boosts tab
     html('#st-rivals-content', stats.rivalsHtml);
@@ -140,6 +141,7 @@ export function deriveStatsView(profile = {}) {
   const favoriteBoost = favoriteBoostFor(s.boostUsage, Number(s.bonusesTriggered) || 0);
   const repeated = repeatedWordFor(s.wordCounts);
   const bestDay = bestDayFor(s.weekdayStats);
+  const favoriteSpeed = favoriteSpeedFor(s.moveSpeedStats);
   const tier = tierFor(rating);
   const totalOutcomes = won + lost + draw;
 
@@ -175,6 +177,7 @@ export function deriveStatsView(profile = {}) {
     repeatedWord: repeated,
     bestComeback: s.biggestComeback != null ? String(s.biggestComeback) : '—',
     bestDay,
+    favoriteSpeed,
   };
 }
 
@@ -205,6 +208,20 @@ function paintSparkline(games, root = globalThis.document) {
     const h = isWin ? 82 : g.result === 'draw' ? 48 : 24;
     return `<span style="display:inline-block;width:7%;height:${h}%;margin:0 1.5%;vertical-align:bottom;border-radius:5px 5px 0 0;background:${isWin ? '#5dfc8c' : g.result === 'draw' ? 'rgba(255,255,255,.35)' : '#ff6b6b'}"></span>`;
   }).join('');
+}
+
+const SPEED_LABELS = { '20': '⚡ בזק (20 שנ\')', '40': '🎯 רגיל (40 שנ\')', '60': '🐢 איטי (60 שנ\')' };
+
+function favoriteSpeedFor(moveSpeedStats = {}) {
+  const entries = Object.entries(moveSpeedStats ?? {}).filter(([, v]) => v?.played > 0);
+  if (!entries.length) return '—';
+  const best = entries.reduce((a, b) => {
+    const wr = (v) => v[1].played > 0 ? v[1].won / v[1].played : 0;
+    return wr(a) >= wr(b) ? a : b;
+  });
+  const [key, val] = best;
+  const wr = val.played > 0 ? Math.round((val.won / val.played) * 100) : 0;
+  return `${SPEED_LABELS[key] ?? key} · ${wr}%`;
 }
 
 function favoriteBoostFor(usage = {}, total) {

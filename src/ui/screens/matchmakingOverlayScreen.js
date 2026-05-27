@@ -26,10 +26,11 @@ function readActiveMode(root) {
   return 'live'; // default + matches legacy initial state
 }
 
-function readActiveTimelimit(root) {
-  // mm-tl-no being active wins over mm-tl-yes
-  if ($('#mm-tl-no', root)?.classList?.contains('active')) return false;
-  return true; // default
+function readBotTime(root) {
+  for (const v of [20, 40, 60]) {
+    if ($(`#mm-spd-${v}`, root)?.classList?.contains('active')) return v;
+  }
+  return 40;
 }
 
 function readActiveRatingRange(root) {
@@ -56,7 +57,8 @@ export function readMatchmakingFilters(root = globalThis.document) {
   return {
     legacyMode,
     spineMode: legacyMode === 'async' ? 'random-async' : 'random-live',
-    timelimit: legacyMode === 'live' ? readActiveTimelimit(root) : false,
+    timelimit: legacyMode === 'live',
+    botTime: legacyMode === 'live' ? readBotTime(root) : 0,
     ratingRange: readActiveRatingRange(root),
     strict: readStrict(root),
     name: readName(root),
@@ -164,6 +166,17 @@ export function mountMatchmakingOverlayScreen({ root = globalThis.document, bus 
   if (!bus) throw new Error('mountMatchmakingOverlayScreen: bus required');
 
   const cleanups = [];
+
+  // ─── Speed buttons ─────────────────────────────────────
+  for (const v of [20, 40, 60]) {
+    const btn = $(`#mm-spd-${v}`, root);
+    if (!btn) continue;
+    cleanups.push(on(btn, 'click', () => {
+      for (const x of [20, 40, 60]) $(`#mm-spd-${x}`, root)?.classList?.remove('active');
+      btn.classList?.add('active');
+    }));
+  }
+
   const search = $('#mm-search-btn', root);
   const cancel = $('button[onclick="mmCancel()"]', root);
 

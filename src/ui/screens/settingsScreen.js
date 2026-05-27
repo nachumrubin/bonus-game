@@ -26,7 +26,6 @@ export const SETTINGS_CHANGED = 'settings/changed';
 
 // Each toggle has a (key, yesId, noId) triple matching the legacy DOM.
 const TOGGLES = [
-  { key: 'timelimit',     yesId: 'sett-timelimit-yes',     noId: 'sett-timelimit-no' },
   { key: 'movelimit',     yesId: 'sett-movelimit-yes',     noId: 'sett-movelimit-no' },
   { key: 'music',         yesId: 'sett-music-yes',         noId: 'sett-music-no' },
   { key: 'showBothRacks', yesId: 'sett-showBothRacks-yes', noId: 'sett-showBothRacks-no' },
@@ -36,7 +35,6 @@ const TOGGLES = [
 
 // Each counter has (key, displayId, step).
 const COUNTERS = [
-  { key: 'botTime',  displayId: 'sett-bottime',  step: 5 },
   { key: 'maxMoves', displayId: 'sett-maxmoves', step: 5 },
 ];
 

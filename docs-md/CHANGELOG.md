@@ -2,6 +2,42 @@
 
 ---
 
+## Speed Presets, Reject-name Fix, Favorite-Speed Stat (May 2026)
+
+**Branch:** `claude/notifications-bell-invitations-13YM9`
+
+**Summary:** Three improvements to invite UX, game setup, and stats.
+
+1. **Reject name fix** — Banner text "X דחה את ההזמנה" now uses `globalThis.__spine?.currentProfile?.displayName` as the primary source (email/password users had `fbUser.displayName === null`). Applied to both the invite-overlay reject handler and the notifications-inbox reject handler in `src/main.js`.
+
+2. **Speed presets replace time-limit setting** — The "זמן מוגבל למהלך" toggle + seconds counter was removed from the Settings screen. In its place, each game-mode configuration window now has a 3-button speed selector: ⚡ בזק (20s) / 🎯 רגיל (40s) / 🐢 איטי (60s). Applied to:
+   - Setup screen (local vs + bot games) — `partials/screens/setup.html` + `src/ui/screens/setupScreen.js`
+   - Create-room overlay (friend online) — `partials/screens/online-create-room.html` + `src/ui/screens/createRoomScreen.js`
+   - Matchmaking overlay (random online) — `partials/screens/online-matchmaking.html` + `src/ui/screens/matchmakingOverlayScreen.js`
+   - Settings overlay — `partials/screens/settings.html` + `src/ui/screens/settingsScreen.js` (panel removed)
+   - Default `botTime` changed from 20 → 40 in `settingsCompat.js`
+   - Legacy globals `crToggleTL`, `crAdjTime`, `mmSetTL` removed; `crSetMode`/`mmSetMode` updated for new row IDs
+
+3. **Favorite move-speed statistic** — New `moveSpeedStats` field in `EMPTY_STATS` tracks `{ played, won }` per speed key (20/40/60). `computeLiveGameStatsDelta` accepts `botTime` and uses `mergeMoveSpeedStats()`. `deriveStatsView` derives `favoriteSpeed` (speed with highest win%). Displayed in the Records tab as "קצב המשחק האהוב".
+
+**Files modified:**
+- `src/main.js` — reject name fix; removed crToggleTL/crAdjTime/mmSetTL; updated crSetMode/mmSetMode; matchmaking botTime wired; botTime passed to computeLiveGameStatsDelta
+- `partials/screens/settings.html` — removed timelimit panel
+- `src/ui/screens/settingsScreen.js` — removed timelimit toggle + botTime counter
+- `src/game/settings/settingsCompat.js` — default botTime 20 → 40
+- `partials/screens/setup.html` — added speed selector row
+- `src/ui/screens/setupScreen.js` — botTime state, speed button wiring, PLAY_CLICKED payload
+- `partials/screens/online-create-room.html` — replaced timelimit row with speed buttons
+- `src/ui/screens/createRoomScreen.js` — readBotTime from speed buttons; timelimit always true for live
+- `partials/screens/online-matchmaking.html` — replaced timelimit row with speed buttons
+- `src/ui/screens/matchmakingOverlayScreen.js` — readBotTime; botTime in readMatchmakingFilters; speed button wiring
+- `src/ui/screens/matchmakingOverlayScreen.test.js` — updated mock DOM + assertions for botTime
+- `src/game/account/profileService.js` — moveSpeedStats in EMPTY_STATS; botTime param; mergeMoveSpeedStats helper
+- `src/ui/screens/statsScreen.js` — favoriteSpeedFor helper; deriveStatsView + paint wired
+- `partials/screens/stats-screen.html` — #st-fun-speed card in Records tab
+
+---
+
 ## Notification Banner + Cancel-clears-invite (May 2026)
 
 **Branch:** `claude/notifications-bell-invitations-13YM9`

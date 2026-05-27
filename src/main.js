@@ -722,7 +722,7 @@ async function boot() {
         settings: {
           ...settingsCompat.settingsFromLegacyGlobals(globalThis),
           timelimit: filters.timelimit,
-          botTime: 20,
+          botTime: filters.botTime ?? 40,
           strict: filters.strict,
           ratingRange: filters.ratingRange,
         },
@@ -1090,12 +1090,12 @@ async function boot() {
             fromUid: invite.fromUid,
             toUid: fbUser.uid,
             inviteId: invite.inviteId,
-            fromName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן',
+            fromName: globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן',
             serverTimestamp: Date.now(),
           });
           await notificationService.pushInviteRejected({
             inviterUid: invite.fromUid,
-            rejecterName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן',
+            rejecterName: globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן',
           });
         } catch (e) { console.error('[spine] rejectInvite', e); }
       }
@@ -1639,12 +1639,12 @@ async function boot() {
             fromUid: invite.fromUid,
             toUid: fbUser.uid,
             inviteId: invite.inviteId,
-            fromName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן',
+            fromName: globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן',
             serverTimestamp: Date.now(),
           });
           await notificationService.pushInviteRejected({
             inviterUid: invite.fromUid,
-            rejecterName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן',
+            rejecterName: globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן',
           });
         } catch (e) { console.error('[spine] notif inbox rejectInvite', e); }
       }
@@ -1782,6 +1782,7 @@ async function boot() {
           },
           mySlot,
           currentStats: lastProfile?.stats ?? {},
+          botTime: session?.state?.settings?.botTime ?? null,
         });
         if (statsDelta) profileService.bumpStats(fbDb, fbUser.uid, statsDelta).catch(() => {});
       }
@@ -2704,31 +2705,16 @@ function installCutoverGlobals() {
     const async = globalThis.document?.getElementById?.('cr-mode-async');
     live?.classList?.[mode === 'live' ? 'add' : 'remove']('active');
     async?.classList?.[mode === 'async' ? 'add' : 'remove']('active');
-    const row = globalThis.document?.getElementById?.('cr-timelimit-row');
+    const row = globalThis.document?.getElementById?.('cr-speed-row');
     if (row) row.style.display = mode === 'async' ? 'none' : '';
-  };
-  globalThis.crToggleTL = globalThis.crToggleTL ?? function crToggleTL(value) {
-    globalThis.document?.getElementById?.('cr-tl-yes')?.classList?.[value ? 'add' : 'remove']('active');
-    globalThis.document?.getElementById?.('cr-tl-no')?.classList?.[value ? 'remove' : 'add']('active');
-  };
-  globalThis.crAdjTime = globalThis.crAdjTime ?? function crAdjTime(delta) {
-    const el = globalThis.document?.getElementById?.('cr-time-val');
-    if (!el) return;
-    const current = Number.parseInt(el.textContent ?? '20', 10);
-    const next = Math.max(5, Math.min(120, (Number.isFinite(current) ? current : 20) + delta));
-    el.textContent = String(next);
   };
   globalThis.mmSetMode = globalThis.mmSetMode ?? function mmSetMode(mode) {
     const live = globalThis.document?.getElementById?.('mm-mode-live');
     const async = globalThis.document?.getElementById?.('mm-mode-async');
     live?.classList?.[mode === 'live' ? 'add' : 'remove']('active');
     async?.classList?.[mode === 'async' ? 'add' : 'remove']('active');
-    const row = globalThis.document?.getElementById?.('mm-tl-row');
+    const row = globalThis.document?.getElementById?.('mm-speed-row');
     if (row) row.style.display = mode === 'async' ? 'none' : '';
-  };
-  globalThis.mmSetTL = globalThis.mmSetTL ?? function mmSetTL(value) {
-    globalThis.document?.getElementById?.('mm-tl-yes')?.classList?.[value ? 'add' : 'remove']('active');
-    globalThis.document?.getElementById?.('mm-tl-no')?.classList?.[value ? 'remove' : 'add']('active');
   };
   globalThis.mmSetRatingRange = globalThis.mmSetRatingRange ?? function mmSetRatingRange(value) {
     for (const id of ['any', '100', '200', '500']) {

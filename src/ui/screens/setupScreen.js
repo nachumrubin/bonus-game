@@ -51,8 +51,26 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
 
   let mode = 'vs';                   // 'vs' or 'bot'
   let difficulty = 1;                // 0=easy, 1=med, 2=hard
+  let botTime = 40;                  // 20 | 40 | 60
 
   const cleanups = [];
+
+  // ─── Speed buttons ─────────────────────────────────────
+  const speedDefs = [
+    { speed: 20, el: setup.querySelector?.('#ss-spd-20') },
+    { speed: 40, el: setup.querySelector?.('#ss-spd-40') },
+    { speed: 60, el: setup.querySelector?.('#ss-spd-60') },
+  ];
+  for (const def of speedDefs) {
+    if (!def.el) continue;
+    cleanups.push(on(def.el, 'click', (e) => {
+      e.preventDefault?.();
+      botTime = def.speed;
+      for (const d of speedDefs) {
+        if (d.el) (d.speed === botTime ? d.el.classList?.add('a') : d.el.classList?.remove('a'));
+      }
+    }));
+  }
 
   // ─── Replace difficulty button onclicks ────────────────
   const diffButtons = [
@@ -85,7 +103,7 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
       e.preventDefault?.();
       const p1 = ($(SELECTORS.p1Input, setup)?.value ?? 'שחקן 1').trim() || 'שחקן 1';
       const p2 = ($(SELECTORS.p2Input, setup)?.value ?? 'שחקן 2').trim() || 'שחקן 2';
-      bus.emit(SETUP_INTENT.PLAY_CLICKED, { mode, p1Name: p1, p2Name: p2, difficulty });
+      bus.emit(SETUP_INTENT.PLAY_CLICKED, { mode, p1Name: p1, p2Name: p2, difficulty, botTime });
     }));
   }
 
@@ -100,9 +118,13 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
   }
 
   // ─── Listen for SETUP_OPEN to configure mode-specific visibility ──
-  cleanups.push(bus.on(SETUP_OPEN, ({ mode: nextMode = 'vs', initialDifficulty = 1 } = {}) => {
+  cleanups.push(bus.on(SETUP_OPEN, ({ mode: nextMode = 'vs', initialDifficulty = 1, initialBotTime = 40 } = {}) => {
     mode = nextMode;
     difficulty = initialDifficulty;
+    botTime = [20, 40, 60].includes(initialBotTime) ? initialBotTime : 40;
+    for (const d of speedDefs) {
+      if (d.el) (d.speed === botTime ? d.el.classList?.add('a') : d.el.classList?.remove('a'));
+    }
     // Title
     const title = $(SELECTORS.title, setup);
     if (title) title.textContent = mode === 'bot' ? 'נגד המחשב' : 'שני שחקנים';
