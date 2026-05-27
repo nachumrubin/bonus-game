@@ -162,6 +162,12 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
       eloBolt.textContent = ratingTierEmoji(Number(rating));
     }
 
+    // Bottom nav — only visible when signed in
+    const bottomNav = $('#home-bottom-nav', menuRoot);
+    if (bottomNav && isAuthed !== undefined) {
+      bottomNav.style.display = isAuthed ? '' : 'none';
+    }
+
     const onlineBadge = $('#online-badge', topbarRoot);
     if (onlineBadge) {
       if (unreadCount != null) {
