@@ -773,8 +773,10 @@ async function boot() {
       try { activePending.offWatch?.(); }       catch {}
       try { activePending.offActiveRoom?.(); }  catch {}
       activePending = null;
-      globalThis.__spine.activePending = null;
+      globalThis.__spine.activePending  = null;
+      globalThis.__spine.teardownPending = teardownPending;
     }
+    globalThis.__spine.teardownPending = teardownPending;
 
     bus.on(CR_INTENT.CONFIRM, async (filters) => {
       try { await ensureAuthedUser(); }
@@ -1042,7 +1044,10 @@ async function boot() {
       bus.emit(II_CLOSE, {});
     });
 
-    bus.on(IR_INTENT.CLOSE, () => bus.emit(IR_CLOSE, {}));
+    // IR_INTENT.CLOSE and IR_CLOSE share the same string value, so the overlay's
+    // own bus.on(IR_CLOSE) handler already fires when the close button emits
+    // IR_INTENT.CLOSE — no forwarding needed here, and adding one would cause
+    // infinite recursion.
 
     // ── Async session list + resume + reminder/expiry + turn banner ──
     // Watches the per-user async-room index. Re-paints `#online-sessions-wrap`
@@ -2771,8 +2776,8 @@ function installCutoverGlobals() {
       if (mode?.endsWith('-async')) {
         // Async: cancel the pending room code so no one can join via code while
         // the direct invite is outstanding, then close the waiting overlay.
-        const code = activePending?.code;
-        await teardownPending();
+        const code = globalThis.__spine?.activePending?.code;
+        await globalThis.__spine?.teardownPending?.();
         if (code && activeFbDb) {
           roomCodeService.cancelPending(activeFbDb, code)
             .catch((e) => console.warn('[spine] crSendInvite cancelPending', e));
@@ -2780,9 +2785,10 @@ function installCutoverGlobals() {
         globalThis.setTimeout?.(() => bus.emit(WR_CLOSE, {}), 1500);
       } else {
         // Live: store invite details for cleanup on expiry, then start countdown.
-        if (activePending) {
-          activePending.inviteId    = inviteId;
-          activePending.inviteToUid = toUid;
+        const ap = globalThis.__spine?.activePending;
+        if (ap) {
+          ap.inviteId    = inviteId;
+          ap.inviteToUid = toUid;
         }
         bus.emit(WR_LIVE_INVITE_SENT, { expiresAt: inviteExpiresAt });
       }
