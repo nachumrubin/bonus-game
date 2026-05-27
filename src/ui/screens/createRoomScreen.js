@@ -22,15 +22,11 @@ function readActiveMode(root) {
   return 'live';
 }
 
-function readActiveTimelimit(root) {
-  if ($('#cr-tl-no', root)?.classList?.contains('active')) return false;
-  return true;
-}
-
 function readBotTime(root) {
-  const el = $('#cr-time-val', root);
-  const n = parseInt(el?.textContent ?? '20', 10);
-  return Number.isFinite(n) ? n : 20;
+  for (const v of [20, 40, 60]) {
+    if ($(`#cr-spd-${v}`, root)?.classList?.contains('active')) return v;
+  }
+  return 40;
 }
 
 function readName(root) {
@@ -44,7 +40,7 @@ export function readCreateRoomFilters(root = globalThis.document) {
   return {
     legacyMode,
     spineMode: legacyMode === 'async' ? 'friend-async' : 'friend-live',
-    timelimit: legacyMode === 'live' ? readActiveTimelimit(root) : false,
+    timelimit: legacyMode === 'live',
     botTime: readBotTime(root),
     name: readName(root),
   };
@@ -54,6 +50,17 @@ export function mountCreateRoomScreen({ root = globalThis.document, bus } = {}) 
   if (!bus) throw new Error('mountCreateRoomScreen: bus required');
 
   const cleanups = [];
+
+  // ─── Speed buttons ─────────────────────────────────────
+  for (const v of [20, 40, 60]) {
+    const btn = $(`#cr-spd-${v}`, root);
+    if (!btn) continue;
+    cleanups.push(on(btn, 'click', () => {
+      for (const x of [20, 40, 60]) $(`#cr-spd-${x}`, root)?.classList?.remove('active');
+      btn.classList?.add('active');
+    }));
+  }
+
   const confirm = $('button[onclick="crConfirm()"]', root);
   const cancel  = $('button[onclick="ovClose(\'ov-create-room\')"]', root);
 

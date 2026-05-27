@@ -35,6 +35,7 @@ export const EMPTY_STATS = Object.freeze({
   boostImpactWins: 0,
   fastestWinMs: 0, longestWord: '', longestWordLength: 0,
   recentGames: [], boostUsage: {}, rivalStats: {}, wordCounts: {}, weekdayStats: {},
+  moveSpeedStats: {},
 });
 
 function profileRef(db, uid)     { return db.ref(`${PATH.users}/${uid}/profile`); }
@@ -199,6 +200,7 @@ export function computeLiveGameStatsDelta({
   mySlot,
   currentStats = {},
   now = Date.now(),
+  botTime = null,
 } = {}) {
   const mode = room?.mode ?? state?.mode;
   if (!state || !isLiveOnlineMode(mode)) return null;
@@ -229,6 +231,7 @@ export function computeLiveGameStatsDelta({
   });
   const rivalStats = mergeRivalStats(currentStats.rivalStats, opponentFor(state, room, mySlot), result, myScore, oppScore);
   const weekdayStats = mergeWeekdayStats(currentStats.weekdayStats, now, result, myScore);
+  const moveSpeedStats = mergeMoveSpeedStats(currentStats.moveSpeedStats, botTime, result);
 
   const currentStreak = Number(currentStats.currentStreak) || 0;
   const longestStreak = Number(currentStats.longestStreak) || 0;
@@ -268,6 +271,7 @@ export function computeLiveGameStatsDelta({
     rivalStats: { set: rivalStats },
     wordCounts: { set: wordStats.wordCounts },
     weekdayStats: { set: weekdayStats },
+    moveSpeedStats: { set: moveSpeedStats },
   };
 }
 
@@ -282,6 +286,17 @@ function collectBoostHits(moves, state) {
     }
   }
   return out;
+}
+
+function mergeMoveSpeedStats(current = {}, botTime, result) {
+  if (!botTime || ![20, 40, 60].includes(Number(botTime))) return { ...(current ?? {}) };
+  const next = { ...(current ?? {}) };
+  const key = String(botTime);
+  const entry = { played: Number(next[key]?.played) || 0, won: Number(next[key]?.won) || 0 };
+  entry.played += 1;
+  if (result === 'win') entry.won += 1;
+  next[key] = entry;
+  return next;
 }
 
 function mergeBoostUsage(current = {}, hits = []) {

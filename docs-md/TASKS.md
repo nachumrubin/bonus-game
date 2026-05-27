@@ -10,6 +10,9 @@
 - ✅ Notifications bell inbox — bell badge shows live count of pending game invites + friend requests; clicking opens `#snotif` inbox with accept/reject per item.
 - ✅ Waiting room async/live invite behavior — async direct invite closes waiting overlay after 1.5 s; live direct invite shows 5-min countdown, cancels pending room + invite on Firebase on expiry.
 - ✅ Notification banner + invite UX — blocking invite popups replaced with slide-down banner from topbar; banner suppressed on app open; cancel in waiting room cancels live invite too.
+- ✅ Reject-name fix — banner now shows real player display name (not "שחקן") when rejecting an invite.
+- ✅ Speed presets — "זמן מוגבל למהלך" removed from settings; 3 presets (בזק/רגיל/איטי) added to setup, create-room, and matchmaking screens.
+- ✅ Favorite move-speed statistic — moveSpeedStats tracked per game; displayed in Records tab.
 
 - ✅ Electric Floating Platforms main menu redesign — `menu-electric.css` + updated `home.html`, `menuScreen.js`, `main.js`
 - ✅ Electric Floating Platforms Phase 2 visual polish — premium platform architecture, double-path SVG lightning, atmospheric background, animations

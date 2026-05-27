@@ -33,8 +33,7 @@ function makeBtn({ id, onclick, classes = [] } = {}) {
 function makeOverlayDom({
   modeLiveActive = true,
   modeAsyncActive = false,
-  tlYesActive = true,
-  tlNoActive = false,
+  spdActive = 40,  // 20 | 40 | 60
   rrActive = null, // null/100/200/500
   strictChecked = true,
   name = '',
@@ -42,8 +41,9 @@ function makeOverlayDom({
   const els = {
     modeLive:   makeBtn({ id: 'mm-mode-live',  classes: modeLiveActive  ? ['active'] : [] }),
     modeAsync:  makeBtn({ id: 'mm-mode-async', classes: modeAsyncActive ? ['active'] : [] }),
-    tlYes:      makeBtn({ id: 'mm-tl-yes', classes: tlYesActive ? ['active'] : [] }),
-    tlNo:       makeBtn({ id: 'mm-tl-no',  classes: tlNoActive  ? ['active'] : [] }),
+    spd20:      makeBtn({ id: 'mm-spd-20', classes: spdActive === 20 ? ['active'] : [] }),
+    spd40:      makeBtn({ id: 'mm-spd-40', classes: spdActive === 40 ? ['active'] : [] }),
+    spd60:      makeBtn({ id: 'mm-spd-60', classes: spdActive === 60 ? ['active'] : [] }),
     rrAny:      makeBtn({ id: 'mm-rr-any', classes: rrActive === null ? ['active'] : [] }),
     rr100:      makeBtn({ id: 'mm-rr-100', classes: rrActive === 100  ? ['active'] : [] }),
     rr200:      makeBtn({ id: 'mm-rr-200', classes: rrActive === 200  ? ['active'] : [] }),
@@ -58,8 +58,9 @@ function makeOverlayDom({
       switch (sel) {
         case '#mm-mode-live':  return els.modeLive;
         case '#mm-mode-async': return els.modeAsync;
-        case '#mm-tl-yes':     return els.tlYes;
-        case '#mm-tl-no':      return els.tlNo;
+        case '#mm-spd-20':     return els.spd20;
+        case '#mm-spd-40':     return els.spd40;
+        case '#mm-spd-60':     return els.spd60;
         case '#mm-rr-100':     return els.rr100;
         case '#mm-rr-200':     return els.rr200;
         case '#mm-rr-500':     return els.rr500;
@@ -74,29 +75,32 @@ function makeOverlayDom({
   return { root, els };
 }
 
-test('readMatchmakingFilters: live + tl-yes + any-range + strict (defaults)', () => {
+test('readMatchmakingFilters: live + spd-normal + any-range + strict (defaults)', () => {
   const { root } = makeOverlayDom();
   assert.deepEqual(readMatchmakingFilters(root), {
     legacyMode: 'live',
     spineMode: 'random-live',
     timelimit: true,
+    botTime: 40,
     ratingRange: null,
     strict: true,
     name: null,
   });
 });
 
-test('readMatchmakingFilters: async forces timelimit=false regardless of tl button', () => {
+test('readMatchmakingFilters: async forces timelimit=false and botTime=0', () => {
   const { root } = makeOverlayDom({ modeLiveActive: false, modeAsyncActive: true });
   const f = readMatchmakingFilters(root);
   assert.equal(f.legacyMode, 'async');
   assert.equal(f.spineMode, 'random-async');
   assert.equal(f.timelimit, false);
+  assert.equal(f.botTime, 0);
 });
 
-test('readMatchmakingFilters: tl-no wins over tl-yes when both somehow active', () => {
-  const { root } = makeOverlayDom({ tlYesActive: true, tlNoActive: true });
-  assert.equal(readMatchmakingFilters(root).timelimit, false);
+test('readMatchmakingFilters: spd-fast sets botTime=20', () => {
+  const { root } = makeOverlayDom({ spdActive: 20 });
+  assert.equal(readMatchmakingFilters(root).botTime, 20);
+  assert.equal(readMatchmakingFilters(root).timelimit, true);
 });
 
 test('readMatchmakingFilters: picks the active rating range', () => {
@@ -130,6 +134,7 @@ test('mount: search click emits SEARCH with current filters', () => {
     legacyMode: 'async',
     spineMode: 'random-async',
     timelimit: false,
+    botTime: 0,
     ratingRange: 100,
     strict: false,
     name: 'נחום',

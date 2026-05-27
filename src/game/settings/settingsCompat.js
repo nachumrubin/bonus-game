@@ -4,7 +4,7 @@ export const UI_PREFERENCES_KEY = 'spine.uiPreferences';
 export const DEFAULT_GAME_SETTINGS = Object.freeze({
   confirm: false,
   timelimit: true,
-  botTime: 20,
+  botTime: 40,
   movelimit: false,
   maxMoves: 30,
   music: true,
