@@ -563,7 +563,7 @@ async function boot() {
       bus.emit(SETUP_OPEN, { mode: 'bot', initialDifficulty: 1 });
     });
     bus.on(MENU_INTENT.OPEN_PROFILE, () => {
-      showLegacyScreen(activeFbCurrentUser?.uid ? 'sprofile' : 'sauth-signup');
+      showLegacyScreen(activeFbCurrentUser?.uid ? 'sprofile' : 'sauth-login');
     });
     bus.on(MENU_INTENT.OPEN_ONLINE_LOBBY, () => {
       showLegacyScreen('so');
@@ -999,9 +999,27 @@ async function boot() {
         isFirstFire = false;
       });
 
-      activeAckListener = inviteService.listenForInviteAcks(fbDb, uid, (acks) => {
-        if (!acks?.length) return;
-        const last = acks.at(-1);
+      // Tracks acks already processed so stale data from a previous session
+      // doesn't re-fire a banner every time the user signs in.
+      const seenAckKeys  = new Set();
+      let isFirstFireAck = true;
+
+      activeAckListener = inviteService.listenForInviteAcks(fbDb, uid, async (acks) => {
+        const allAcks = acks ?? [];
+        const keys    = allAcks.map(a => `${a.toUid}:${a.inviteId ?? ''}`);
+
+        // First snapshot: mark everything as seen, don't act.
+        if (isFirstFireAck) {
+          for (const k of keys) seenAckKeys.add(k);
+          isFirstFireAck = false;
+          return;
+        }
+
+        const freshAcks = allAcks.filter(a => !seenAckKeys.has(`${a.toUid}:${a.inviteId ?? ''}`));
+        for (const k of keys) seenAckKeys.add(k);
+        if (!freshAcks.length) return;
+
+        const last = freshAcks.at(-1);
         if (last && last.accepted === true && last.roomId) {
           resumeOnlineRoomById(last.roomId, { skipCoin: false }).catch((e) => {
             console.warn('[spine] invite accepted resume', e);
@@ -1009,6 +1027,18 @@ async function boot() {
           return;
         }
         if (last && last.accepted === false) {
+          // Close the waiting room if this rejection matches the invite we sent.
+          const pendingInviteId = activePending?.inviteId;
+          if (pendingInviteId && last.inviteId === pendingInviteId) {
+            const localFbDb   = activeFbDb;
+            const pendingCode = activePending?.code;
+            teardownPending().catch(() => {});
+            if (localFbDb && pendingCode) {
+              roomCodeService.cancelPending(localFbDb, pendingCode)
+                .catch(e => console.warn('[spine] reject: cancelPending', e));
+            }
+            bus.emit(WR_CLOSE, {});
+          }
           bus.emit(NOTIF_BANNER_SHOW, {
             avatar: '✋',
             text:   last.fromName ? `${last.fromName} דחה את ההזמנה` : 'ההזמנה נדחתה',
@@ -2783,7 +2813,7 @@ function installCutoverGlobals() {
     try {
       const { inviteId, expiresAt: inviteExpiresAt } = await inviteService.sendInvite(fbDb, {
         fromUid:    fbUser.uid,
-        fromName:   fbUser.displayName ?? 'שחקן',
+        fromName:   fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? globalThis.pNames?.[0] ?? 'שחקן',
         fromAvatar: fbUser.photoURL ?? null,
         toUid,
         mode,
