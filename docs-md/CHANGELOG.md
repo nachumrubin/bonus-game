@@ -2,6 +2,25 @@
 
 ---
 
+## Waiting Room — Async Close + Live Countdown (May 2026)
+
+**Branch:** `claude/notifications-bell-invitations-13YM9`
+
+**Summary:** Async direct invites now close the waiting room after 1.5 s (no need to wait for the other player). Live direct invites show a countdown in the waiting room; when it hits zero, both the pending room code and the invite are cancelled on Firebase and the overlay closes.
+
+**Modified files:**
+- `partials/screens/online-waiting-room.html` — added `#wr-countdown` element
+- `src/ui/screens/waitingRoomScreen.js` — new events `WR_LIVE_INVITE_SENT`, `WR_INTENT.LIVE_INVITE_EXPIRED`; countdown timer logic
+- `src/main.js`:
+  - `crSendInvite()` splits on mode: async → cancel pending room + close overlay after 1.5 s; live → store `inviteId`/`inviteToUid` in `activePending`, emit `WR_LIVE_INVITE_SENT`
+  - `WR_INTENT.LIVE_INVITE_EXPIRED` handler: calls `teardownPending()`, `roomCodeService.cancelPending()`, `inviteService.cancelInvite()`, then emits `WR_CLOSE`
+
+**Behavior:**
+- Async invite: waiting overlay closes after 1.5 s with no further action required
+- Live invite: countdown shows remaining time (5 min TTL); on expiry both pending room and invite are deleted from Firebase and the overlay closes
+
+---
+
 ## Notifications Bell Inbox (May 2026)
 
 **Branch:** `claude/notifications-bell-invitations-13YM9`

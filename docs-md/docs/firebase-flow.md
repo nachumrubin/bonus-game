@@ -83,6 +83,40 @@ Player A's listenForInviteAcks() fires
 For live modes: room starts as `status: 'waiting'`, transitions to `'playing'` when both players mark ready.
 For async modes: room starts as `status: 'playing'` immediately.
 
+#### Live Invite Expiry (client-side)
+
+When a live direct invite is sent, the waiting room shows a countdown matching the 5-min invite TTL:
+
+```
+WR_LIVE_INVITE_SENT { expiresAt } → startCountdown(expiresAt)
+  → ticks every 1 s, displays remaining time in #wr-countdown
+  → on remaining ≤ 0: bus.emit(WR_INTENT.LIVE_INVITE_EXPIRED)
+
+WR_INTENT.LIVE_INVITE_EXPIRED handler (main.js):
+  1. teardownPending() — detach all Firebase listeners, null activePending
+  2. roomCodeService.cancelPending(fbDb, code) — delete /pendingRooms/{code}
+  3. inviteService.cancelInvite(fbDb, { toUid, inviteId }) — delete /invites/{toUid}/{inviteId}
+  4. bus.emit(WR_CLOSE) — hide waiting overlay
+```
+
+Both the pending room code and the invite are removed so the guest cannot join a stale game.
+
+#### Async Invite Close
+
+When an async direct invite is sent, the pending room code is unnecessary (there is no join-by-code flow for direct invites):
+
+```
+crSendInvite() for async mode:
+  1. await inviteService.sendInvite() — writes /invites/{toUid}/{inviteId}
+  2. teardownPending() — detach listeners, null activePending
+  3. roomCodeService.cancelPending(fbDb, code) — delete /pendingRooms/{code}
+  4. setTimeout 1500 ms → bus.emit(WR_CLOSE)
+```
+
+The waiting overlay closes after 1.5 s without requiring the second player to join.
+
+---
+
 ### 2. Room Code Flow
 
 ```

@@ -74,6 +74,12 @@ Critical element IDs referenced by game logic (must not be renamed):
 #is-sb1, #is-sb2       — mobile score boxes
 #lock-inv-display      — lock inventory buttons
 #bh, #bv               — placement direction buttons (horizontal/vertical)
+#wr-code               — waiting room code display
+#wr-mode-label         — waiting room mode label
+#wr-invite-name        — waiting room friend invite input
+#wr-invite-dropdown    — waiting room friend invite autocomplete dropdown
+#wr-invite-status      — waiting room invite status text
+#wr-countdown          — waiting room live-invite countdown (hidden until live invite sent)
 #ov-bonus              — bonus mini-game overlay (checked by animation poller)
 #ov-bonus-intro        — bonus intro overlay (checked by animation poller)
 .bonus-award-positioner — bonus award container (checked by animation poller)
