@@ -5,6 +5,9 @@
 // this module is pure presentational + intent-emitting.
 
 import { $, on } from '../domHelpers.js';
+import { MENU_INTENT } from './menuScreen.js';
+
+export const NOTIF_BANNER_SHOW = 'notif/bannerShow';
 
 export const NOTIF_INTENT = Object.freeze({
   ACCEPT_INVITE: 'notif/acceptInvite',
@@ -123,6 +126,53 @@ export function mountNotificationsScreen({ root = globalThis.document, bus } = {
 
   return {
     unmount() {
+      for (const off of cleanups) try { off(); } catch {}
+      cleanups.length = 0;
+    },
+  };
+}
+
+// Slide-down banner — replaces the blocking popup overlays for incoming
+// game invites and rejected-invite notices. Slides in from behind the
+// top bar, auto-dismisses after 7 s, or dismisses immediately on click.
+// action === 'openNotifications' navigates to the inbox on click.
+export function mountNotifBanner({ root = globalThis.document, bus } = {}) {
+  if (!bus) return { unmount() {} };
+  const banner   = $('#notif-banner', root);
+  const avatarEl = $('#notif-banner-avatar', root);
+  const textEl   = $('#notif-banner-text', root);
+  if (!banner) return { unmount() {} };
+
+  let dismissTimer  = null;
+  let currentAction = 'dismiss';
+
+  function hide() {
+    globalThis.clearTimeout?.(dismissTimer);
+    dismissTimer = null;
+    banner.classList.remove('notif-banner--shown');
+  }
+
+  const cleanups = [];
+
+  cleanups.push(on(banner, 'click', () => {
+    if (currentAction === 'openNotifications') {
+      bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS, { source: 'banner' });
+    }
+    hide();
+  }));
+
+  cleanups.push(bus.on(NOTIF_BANNER_SHOW, ({ avatar, text, action } = {}) => {
+    if (avatarEl) avatarEl.textContent = avatar ?? '🔔';
+    if (textEl)   textEl.textContent   = text   ?? '';
+    currentAction = action ?? 'dismiss';
+    globalThis.clearTimeout?.(dismissTimer);
+    banner.classList.add('notif-banner--shown');
+    dismissTimer = globalThis.setTimeout?.(() => hide(), 7000);
+  }));
+
+  return {
+    unmount() {
+      globalThis.clearTimeout?.(dismissTimer);
       for (const off of cleanups) try { off(); } catch {}
       cleanups.length = 0;
     },

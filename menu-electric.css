@@ -34,6 +34,51 @@
   /* width and flex layout come from .em-topbar */
 }
 
+/* ─ Notification banner — slides down from under the topbar ─── */
+/* Hidden state: moved up above the viewport so the topbar (z:50) fully
+   covers it. Shown state: drops to just below the topbar.
+   The banner has z-index:49 so the topbar clips the slide-in animation. */
+#notif-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 49;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, rgba(0,25,90,0.96) 0%, rgba(0,15,55,0.96) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(0,185,255,0.28);
+  cursor: pointer;
+  transform: translateY(-110%);
+  transition: transform 0.38s cubic-bezier(0.22,1,0.36,1);
+  will-change: transform;
+}
+#notif-banner.notif-banner--shown {
+  transform: translateY(var(--em-topbar-h));
+}
+#notif-banner:hover {
+  background: linear-gradient(90deg, rgba(0,35,110,0.97) 0%, rgba(0,22,70,0.97) 100%);
+}
+#notif-banner-avatar {
+  font-size: 22px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+#notif-banner-text {
+  font-family: Heebo, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Push non-home, non-game screen content below the fixed topbar.
    `.screen:not(#sh):not(#sg)` has specificity (0,2,1,0) — higher than
    any per-screen `#sNN { padding: ... }` shorthand (0,1,0,0) — so this

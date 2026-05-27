@@ -87,7 +87,7 @@ import {
 } from './ui/screens/avatarScreens.js';
 import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE } from './ui/screens/authScreens.js';
 import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER } from './ui/screens/friendsScreen.js';
-import { mountNotificationsScreen, NOTIF_INTENT, NOTIF_RENDER } from './ui/screens/notificationsScreen.js';
+import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
 import { mountChampionsScreen, CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR } from './ui/screens/championsScreen.js';
 import { mountDictionaryScreen, DICT_INTENT, DICT_RENDER } from './ui/screens/dictionaryScreen.js';
 import { mountTutorialScreen, TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_CLOSE, TUTORIAL_TIP, TUTORIAL_CLEAR } from './ui/screens/tutorialScreen.js';
@@ -262,7 +262,7 @@ async function boot() {
       CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR,
       DICT_INTENT, DICT_RENDER,
       PROFILE_INTENT, PROFILE_RENDER, STATS_INTENT, AV_INTENT, AV_RENDER, FRIENDS_INTENT, FRIENDS_RENDER,
-      NOTIF_INTENT, NOTIF_RENDER,
+      NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW,
       TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_CLOSE, TUTORIAL_TIP, TUTORIAL_CLEAR,
       END_INTENT, END_OPEN, PAUSE_INTENT, PAUSE_OPEN, BACK_INTENT, BACK_OPEN,
       COIN_INTENT, COIN_OPEN, SETTINGS_INTENT, SETTINGS_OPEN, SETTINGS_CHANGED,
@@ -852,11 +852,18 @@ async function boot() {
     });
 
     bus.on(WR_INTENT.CANCEL, async () => {
-      const code = activePending?.code;
+      const fbDb    = activeFbDb;
+      const code    = activePending?.code;
+      const inviteId  = activePending?.inviteId;
+      const invToUid  = activePending?.inviteToUid;
       await teardownPending();
-      if (code) {
-        try { await roomCodeService.cancelPending(activeFbDb, code); }
+      if (fbDb && code) {
+        try { await roomCodeService.cancelPending(fbDb, code); }
         catch (e) { console.error('[spine] cancelPending', e); }
+      }
+      if (fbDb && inviteId && invToUid) {
+        try { await inviteService.cancelInvite(fbDb, { toUid: invToUid, inviteId }); }
+        catch (e) { console.warn('[spine] WR cancel: cancelInvite', e); }
       }
       bus.emit(WR_CLOSE, {});
     });
@@ -952,6 +959,13 @@ async function boot() {
       activeAckListener?.();
       const fbDb = activeFbDb;
       if (!fbDb) return;
+
+      // Track which invites have already triggered a banner so we never
+      // show the banner for the same invite twice, and suppress it entirely
+      // on the first Firebase snapshot (existing invites on app open).
+      const seenIds = new Set();
+      let isFirstFire = true;
+
       activeInviteListener = inviteService.listenForInvites(fbDb, uid, (invites) => {
         const now = Date.now();
         const pending = (invites ?? []).filter(
@@ -960,21 +974,31 @@ async function boot() {
         lastInviteCount = pending.length;
         bus.emit(NOTIF_RENDER, { invites: pending });
         refreshBadgeCount();
-        if (!pending.length) return;
-        const next = pending[0];
-        bus.emit(II_OPEN, next);
-        // Browser-notification fallback for tabs in the background. No-op
-        // unless the user is on a hidden tab with Notification permission
-        // granted — matches legacy _showBrowserOnlyNotification gating.
-        const fromName = next?.fromName ?? 'שחקן';
-        browserNotificationFallback.showBrowserNotification({
-          title: 'הזמנה למשחק',
-          body: `${fromName} מזמין אותך למשחק`,
-          data: { type: 'invite' },
-          swRegistration: globalThis.navigator?.serviceWorker?.ready ?? null,
-          onClick: handleBrowserNotificationClick,
-        }).catch(() => { /* swallow — fallback is best-effort */ });
+
+        if (!isFirstFire && pending.length) {
+          // Find the first invite the user hasn't been notified about yet.
+          const next = pending.find(i => !seenIds.has(i.inviteId));
+          if (next) {
+            bus.emit(NOTIF_BANNER_SHOW, {
+              avatar: next.fromAvatar || '🎮',
+              text:   `${next.fromName ?? 'שחקן'} מזמין אותך למשחק`,
+              action: 'openNotifications',
+            });
+            // Browser-notification fallback for background tabs.
+            browserNotificationFallback.showBrowserNotification({
+              title: 'הזמנה למשחק',
+              body:  `${next.fromName ?? 'שחקן'} מזמין אותך למשחק`,
+              data:  { type: 'invite' },
+              swRegistration: globalThis.navigator?.serviceWorker?.ready ?? null,
+              onClick: handleBrowserNotificationClick,
+            }).catch(() => { /* swallow */ });
+          }
+        }
+
+        for (const inv of pending) seenIds.add(inv.inviteId);
+        isFirstFire = false;
       });
+
       activeAckListener = inviteService.listenForInviteAcks(fbDb, uid, (acks) => {
         if (!acks?.length) return;
         const last = acks.at(-1);
@@ -985,7 +1009,11 @@ async function boot() {
           return;
         }
         if (last && last.accepted === false) {
-          bus.emit(IR_OPEN, { message: last.fromName ? `${last.fromName} דחה את ההזמנה.` : undefined });
+          bus.emit(NOTIF_BANNER_SHOW, {
+            avatar: '✋',
+            text:   last.fromName ? `${last.fromName} דחה את ההזמנה` : 'ההזמנה נדחתה',
+            action: 'dismiss',
+          });
         }
       });
     }
@@ -2443,6 +2471,7 @@ async function boot() {
   const authScreens        = mountAuthScreens({ bus });
   const friendsScreen      = mountFriendsScreen({ bus });
   const notificationsScreen = mountNotificationsScreen({ bus });
+  mountNotifBanner({ bus });
   const championsScreen    = mountChampionsScreen({ bus });
   const dictionaryScreen   = mountDictionaryScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });

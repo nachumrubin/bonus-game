@@ -2,6 +2,26 @@
 
 ---
 
+## Notification Banner + Cancel-clears-invite (May 2026)
+
+**Branch:** `claude/notifications-bell-invitations-13YM9`
+
+**Summary:** Three UX improvements to the invite and waiting-room flows.
+
+1. **Cancel in waiting room now also cancels a live direct invite** — `WR_INTENT.CANCEL` handler reads `activePending.inviteId`/`inviteToUid` before teardown and calls `inviteService.cancelInvite`.
+
+2. **Slide-down banner replaces blocking popups** — A `#notif-banner` element sits just below the fixed topbar (`z-index:49`). On a new incoming invite or a rejected-invite ack, a `NOTIF_BANNER_SHOW` event causes it to slide down with a 0.38 s ease animation. Clicking opens the notifications inbox (`openNotifications` action) or dismisses (`dismiss` action). Auto-hides after 7 s. `#ov-incoming-invite` and `#ov-invite-rejected` overlays are no longer shown.
+
+3. **No popup on app open** — `bootInviteListenersFor` now tracks a `seenIds` Set and an `isFirstFire` flag. The first Firebase snapshot (existing invites at login/load) only updates the badge and inbox; the banner is suppressed. Only genuinely new invites that arrive after load trigger the banner.
+
+**New files / modified:**
+- `index.html` — added `#notif-banner`, `#notif-banner-avatar`, `#notif-banner-text`
+- `menu-electric.css` — `#notif-banner` CSS (slide transform, hover, RTL text)
+- `src/ui/screens/notificationsScreen.js` — `NOTIF_BANNER_SHOW` export, `mountNotifBanner()`
+- `src/main.js` — `WR_INTENT.CANCEL` cancel invite; `bootInviteListenersFor` banner/no-open logic; `IR_OPEN` → `NOTIF_BANNER_SHOW`; mount `mountNotifBanner`
+
+---
+
 ## Waiting Room — Async Close + Live Countdown (May 2026)
 
 **Branch:** `claude/notifications-bell-invitations-13YM9`
