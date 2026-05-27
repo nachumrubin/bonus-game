@@ -150,7 +150,7 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
 
     // ELO badge — show only when authenticated
     const eloLabel = $('#home-elo-label', topbarRoot);
-    if (eloLabel) {
+    if (eloLabel && isAuthed !== undefined) {
       eloLabel.style.display = isAuthed ? '' : 'none';
     }
     const eloValue = $('#home-elo-value', topbarRoot);
