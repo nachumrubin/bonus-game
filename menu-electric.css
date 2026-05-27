@@ -493,7 +493,7 @@
   flex-shrink: 0;
   position: relative;
 }
-.em-platform-col:first-child { animation: emCardFloat 5.5s ease-in-out 1s   infinite alternate; position: relative; top: -14px; right: -50px; }
+.em-platform-col:first-child { animation: emCardFloat 5.5s ease-in-out 1s   infinite alternate; position: relative; top: -14px; right: -40px; }
 .em-platform-col:last-child  { animation: emCardFloat 5.5s ease-in-out 2.3s  infinite alternate; margin-top: clamp(28px, 6svh, 44px); }
 
 /* ─ Circle mode buttons ──────────────────────────────── */
