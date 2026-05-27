@@ -72,16 +72,11 @@ export function mountNotificationsScreen({ root = globalThis.document, bus } = {
   const invitesList = $('#notif-invites-list', root);
   const friendsWrap = $('#notif-friends-wrap', root);
   const friendsList = $('#notif-friends-list', root);
-  const backBtn     = $('#notif-back-btn',     root);
 
   let currentInvites        = [];
   let currentFriendRequests = [];
 
   const cleanups = [];
-
-  if (backBtn) {
-    cleanups.push(on(backBtn, 'click', () => bus.emit(NOTIF_INTENT.BACK, {})));
-  }
 
   function delegateClick(container) {
     if (!container?.addEventListener) return;

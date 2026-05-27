@@ -142,6 +142,12 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
       avatarEl.textContent = avatar;
     }
 
+    // Bell — show only when authenticated (guests have no invites to receive)
+    const bellBtn = $('#btn-notifications-home', topbarRoot);
+    if (bellBtn && isAuthed !== undefined) {
+      bellBtn.style.display = isAuthed ? '' : 'none';
+    }
+
     // ELO badge — show only when authenticated
     const eloLabel = $('#home-elo-label', topbarRoot);
     if (eloLabel) {
