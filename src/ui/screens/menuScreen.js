@@ -20,6 +20,7 @@ export const MENU_INTENT = Object.freeze({
   OPEN_STATS:         'menu/openStats',
   OPEN_FRIENDS:       'menu/openFriends',
   OPEN_NOTIFICATIONS: 'menu/openNotifications',
+  TOPBAR_MUSIC:       'menu/topbarMusic',
 });
 
 // The bus event the menu listens for to refresh its visible state. Other
@@ -30,6 +31,7 @@ export const MENU_REFRESH = 'menu/refresh';
 const TOPBAR_BUTTONS = [
   { sel: 'button[onclick="openProfileOrAuth()"]',  intent: MENU_INTENT.OPEN_PROFILE },
   { sel: 'button[onclick="openNotifications()"]',  intent: MENU_INTENT.OPEN_NOTIFICATIONS },
+  { sel: '#topbar-music-btn',                      intent: MENU_INTENT.TOPBAR_MUSIC },
   { sel: 'button[onclick="openSettings()"]',       intent: MENU_INTENT.OPEN_SETTINGS },
   { sel: 'button[onclick="showTutorialIntro()"]',  intent: MENU_INTENT.OPEN_TUTORIAL },
 ];

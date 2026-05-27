@@ -48,6 +48,14 @@ function ratingRef(db, uid) {
   return db.ref(`${RATINGS_PATH}/${uid}`);
 }
 
+// Read a single user's numeric rating from globalRatings (publicly readable).
+export async function readRating(db, uid) {
+  if (!db || !uid) return null;
+  const snap = await ratingRef(db, uid).get().catch(() => null);
+  const val = snap?.val ? snap.val() : null;
+  return val?.rating != null ? Number(val.rating) : null;
+}
+
 export function normalizeRatingEntry(entry, uid) {
   const rating = Number(entry?.rating ?? RATING_START);
   if (!entry || !Number.isFinite(rating)) return null;
