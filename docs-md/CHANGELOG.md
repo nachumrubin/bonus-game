@@ -2,6 +2,41 @@
 
 ---
 
+## Offline Save / Resume for 2P + vs-Bot (May 2026)
+
+**Branch:** `fix-save-game`
+
+**Summary:** Implements the pause-and-save / resume flow for offline games (offline-2p, offline-solo vs-Bot). Previously the "שמור וצא לתפריט" and "השהה ושמור" buttons silently discarded the game and the home Resume button never appeared. Now the active engine state is serialized to localStorage on save-and-exit and rehydrated on resume.
+
+**What changed:**
+
+1. **`src/game/sessions/localSaveService.js`** — new module. `saveLocalGame` / `loadLocalGame` / `clearLocalGame` / `hasLocalSavedGame` under the `spine.localSavedGame` key. Persists the full engine state (status === 'playing' only); converts the `state.bonusBoard` Map ↔ plain object across the JSON boundary; refuses payloads with the wrong version or mismatched schemaVersion.
+
+2. **`createLocalGameSession`** ([src/game/sessions/localGameSession.js](src/game/sessions/localGameSession.js)) — accepts an optional `initialState` to bypass `createInitialState` and rebuild a session around a restored state.
+
+3. **`gameFlowController.js`** — `PAUSE_INTENT.SAVE_AND_EXIT` for offline games now writes the state via `saveLocalGame` before tearing down. `EV.GAME_COMPLETED` clears the local save (a finished game is not resumable). `BACK_INTENT.LEAVE` and `PAUSE_INTENT.QUIT_NO_SAVE` clear the save only when the active game was resumed from it (`ag.resumedFromLocalSave === true`).
+
+4. **`startGameViaSpine` + `resumeLocalGameViaSpine`** ([src/main.js](src/main.js)) — `startGameViaSpine` now accepts `restoredState` + `resumedFromLocalSave` flags. `resumeLocalGameViaSpine` reads the saved payload and replays the local-game lifecycle. `MENU_INTENT.RESUME_SAVED` falls back to it when no online async session is available.
+
+5. **`menuScreen.js`** — the home Resume button (`#btn-resume-home`) is now also shown when `hasLocalSavedGame(localStorage)` returns true, so a paused offline game stays visible across reloads even if no online async sessions exist.
+
+**Tests added:**
+- `src/game/sessions/localSaveService.test.js` — 10 tests covering save/load round-trip (including the bonusBoard Map), bot/difficulty preservation, refusal of non-playing states / corrupt JSON / wrong version / mismatched schemaVersion, clear, null-storage no-op.
+- `src/ui/controllers/gameFlowController.test.js` — 3 new tests: SAVE_AND_EXIT writes state for offline 2P, preserves bot/difficulty, and GAME_COMPLETED clears the save.
+
+**What did NOT change:** Engine state shape, `EV.*` / `CMD.*` constants, Firebase paths, online-game save/restore (still handled by `sessionPersistence.js`), `schemaVersion` (still 2). Pending mini-game state survives in the saved payload but does not re-pop the modal on resume (accepted limitation — player loses that one bonus opportunity).
+
+**Files modified:**
+- `src/game/sessions/localSaveService.js` (new)
+- `src/game/sessions/localSaveService.test.js` (new)
+- `src/game/sessions/localGameSession.js`
+- `src/main.js`
+- `src/ui/controllers/gameFlowController.js`
+- `src/ui/controllers/gameFlowController.test.js`
+- `src/ui/screens/menuScreen.js`
+
+---
+
 ## Achievements Section Redesign (May 2026)
 
 **Branch:** `claude/achievements-redesign-plan-PgEtc`

@@ -35,6 +35,7 @@ import * as roomCodeService from './game/online/roomCodeService.js';
 import * as asyncSessionService from './game/online/asyncSessionService.js';
 import * as asyncReminderService from './game/online/asyncReminderService.js';
 import * as sessionPersistence from './game/online/sessionPersistence.js';
+import { loadLocalGame, clearLocalGame, hasLocalSavedGame } from './game/sessions/localSaveService.js';
 import { createTimeoutWatchdog } from './game/online/timeoutWatchdog.js';
 import * as profileService from './game/account/profileService.js';
 import * as friendsService from './game/account/friendsService.js';
@@ -1231,20 +1232,27 @@ async function boot() {
       catch (e) { console.warn('[spine] dismiss', e); }
     });
 
-    // Menu's "resume" button: prefer the most recent my-turn async game,
-    // otherwise the user's single /users/{uid}/activeRoom.
+    // Menu's "resume" button: this online-route handler covers the case
+    // where Firebase auth is initialised. It prefers the most recent
+    // my-turn async game, then any async game, then /users/{uid}/activeRoom,
+    // then a locally-saved offline game.
+    // (A second unconditional handler below covers the offline-only path
+    // when this branch is not registered.)
     bus.on(MENU_INTENT.RESUME_SAVED, async () => {
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
-      if (!fbDb || !fbUser?.uid) return;
-      const myTurn = lastSessions.find(s => s.isMyTurn);
-      if (myTurn) { resumeRoomById(myTurn.roomId); return; }
-      if (lastSessions[0]) { resumeRoomById(lastSessions[0].roomId); return; }
-      try {
-        const snap = await fbDb.ref(`users/${fbUser.uid}/activeRoom`).get();
-        const rid = snap?.val ? snap.val() : null;
-        if (rid) resumeRoomById(rid);
-      } catch (e) { console.warn('[spine] resume', e); }
+      if (fbDb && fbUser?.uid) {
+        const myTurn = lastSessions.find(s => s.isMyTurn);
+        if (myTurn) { resumeRoomById(myTurn.roomId); return; }
+        if (lastSessions[0]) { resumeRoomById(lastSessions[0].roomId); return; }
+        try {
+          const snap = await fbDb.ref(`users/${fbUser.uid}/activeRoom`).get();
+          const rid = snap?.val ? snap.val() : null;
+          if (rid) { resumeRoomById(rid); return; }
+        } catch (e) { console.warn('[spine] resume', e); }
+      }
+      // No online session to resume — fall back to the offline save.
+      resumeLocalGameViaSpine();
     });
 
     // Async-mode home button: leave without resigning. Tear down the
@@ -2502,10 +2510,13 @@ async function boot() {
     startingSlot = 0,
     tileBagSeed = 'spine-' + Date.now(),
     beforeStart = null,
+    restoredState = null,
+    resumedFromLocalSave = false,
   } = {}) {
     ensureDictionaryLoaded().catch((e) => console.warn('[spine] dictionary preload before local game failed:', e));
 
-    settings = settingsCompat.applyGameSettingsToGlobals(globalThis, settingsCompat.settingsFromLegacyGlobals(globalThis, settings));
+    const effectiveSettings = restoredState?.settings ?? settings;
+    settings = settingsCompat.applyGameSettingsToGlobals(globalThis, settingsCompat.settingsFromLegacyGlobals(globalThis, effectiveSettings));
     settingsCompat.saveGameSettings(globalThis.localStorage, settings);
     // Hide the menu, show the game-board screen. Use legacy showSc if
     // available so screen-transition animation runs; fall back to manual
@@ -2525,17 +2536,19 @@ async function boot() {
       try { globalThis.buildUnifiedGrid(); } catch { /* swallow */ }
     }
 
-    const session = createLocalGameSession({
-      bus,
-      mode,
-      tileBagSeed,
-      players: {
-        0: { uid: 'p0', displayName: p1Name },
-        1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? '🤖' : null },
-      },
-      startingSlot,
-      settings,
-    });
+    const session = restoredState
+      ? createLocalGameSession({ bus, initialState: restoredState })
+      : createLocalGameSession({
+          bus,
+          mode,
+          tileBagSeed,
+          players: {
+            0: { uid: 'p0', displayName: p1Name },
+            1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? '🤖' : null },
+          },
+          startingSlot,
+          settings,
+        });
 
     if (typeof beforeStart === 'function') {
       beforeStart(session);
@@ -2569,7 +2582,10 @@ async function boot() {
 
     // Tear-down hook — exposed so DevTools / future "back to menu" can clean up.
     globalThis.__spine.activeGame = {
-      session, controller, animationController, screen, bonusFlow, tutorial: mode === 'tutorial', mySlot: humanSlot,
+      session, controller, animationController, screen, bonusFlow,
+      tutorial: mode === 'tutorial', mySlot: humanSlot,
+      mode: session.mode, bot, difficulty,
+      resumedFromLocalSave: !!resumedFromLocalSave,
       end() {
         screen.unmount();
         animationController.dispose();
@@ -2584,6 +2600,18 @@ async function boot() {
     scheduleGameLayoutRefresh();
     console.info('[spine] game session started; state:', session.state);
     return session;
+  }
+
+  function resumeLocalGameViaSpine() {
+    const saved = loadLocalGame(globalThis.localStorage);
+    if (!saved) return null;
+    return startGameViaSpine({
+      mode: saved.mode,
+      bot: !!saved.bot,
+      difficulty: saved.difficulty,
+      restoredState: saved.state,
+      resumedFromLocalSave: true,
+    });
   }
 
   function startTutorialViaSpine() {
