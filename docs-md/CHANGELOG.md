@@ -2,6 +2,36 @@
 
 ---
 
+## Achievements Section Redesign (May 2026)
+
+**Branch:** `claude/achievements-redesign-plan-PgEtc`
+
+**Summary:** Replaced the plain avatar emoji grid with a proper achievements hall — named cards with titles, descriptions, and progress bars. The "הישגים" nav button now leads to a screen that actually feels like achievements.
+
+**What changed:**
+
+1. **`ACHIEVEMENTS` table** (`src/ui/screens/avatarScreens.js`) — 8 named milestones that each map to a reward avatar. Each has a Hebrew title, description, unlock condition, and tier (bronze/silver/gold/legend).
+
+2. **`progressPct(achievement, stats)`** — new pure helper (0–1 fraction toward completion).
+
+3. **`findAchievementByRewardId(avatarId)`** — reverse lookup from avatar id to its achievement.
+
+4. **Redesigned `paint()`** — renders a "starter" row (crown + star, always unlocked) followed by vertically stacked achievement cards. Each card shows emoji, title, description, progress bar with current/required count, and tier chip. Locked cards are semi-transparent and show a hint on click. Equipped avatar gets a checkmark.
+
+5. **Screen title** — changed from "🎨 אוסף האווטארים" to "🏆 הישגים שלי" (`partials/screens/avatar-gallery-screen.html`).
+
+6. **CSS** — added `.ach-card`, `.ach-progress`, `.ach-progress-fill`, `.ach-tier-chip`, `.ach-card-left`, `.ach-card-body`, `.ach-card-title`, `.ach-card-desc`, `.ach-card-meta`, `.ach-starter-row` to `styles.css`.
+
+**What did NOT change:** `SPINE_AVATARS`, `isAvatarUnlocked()`, `diffNewlyUnlocked()`, unlock-popup system, all `AV_INTENT.*` / `AV_RENDER` event names. No Firebase, no game engine, no schema changes.
+
+**Files modified:**
+- `src/ui/screens/avatarScreens.js` — ACHIEVEMENTS table, progressPct, findAchievementByRewardId, rewritten paint()
+- `src/ui/screens/avatarScreens.test.js` — new tests for ACHIEVEMENTS coverage, progressPct, findAchievementByRewardId
+- `partials/screens/avatar-gallery-screen.html` — new title, flex-column grid
+- `styles.css` — achievement card styles
+
+---
+
 ## Speed Presets, Reject-name Fix, Favorite-Speed Stat (May 2026)
 
 **Branch:** `claude/notifications-bell-invitations-13YM9`
