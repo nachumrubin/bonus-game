@@ -7,6 +7,8 @@
 
 ## Completed (May 2026)
 
+- ✅ Notifications bell inbox — bell badge shows live count of pending game invites + friend requests; clicking opens `#snotif` inbox with accept/reject per item.
+
 - ✅ Electric Floating Platforms main menu redesign — `menu-electric.css` + updated `home.html`, `menuScreen.js`, `main.js`
 - ✅ Electric Floating Platforms Phase 2 visual polish — premium platform architecture, double-path SVG lightning, atmospheric background, animations
 - ✅ Electric Floating Platforms Stage 3 depth pass — floating illusion via offset shadow, curved organic lightning, particle field, compressed layout, blue ELO badge, enlarged online icon

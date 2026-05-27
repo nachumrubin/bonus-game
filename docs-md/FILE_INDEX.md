@@ -132,7 +132,7 @@ See `/partials/screens/` for corresponding HTML templates.
 **Menu/Home:** `menuScreen.js`, `asyncHomeButton.js`
 **Setup & Lobby:** `setupScreen.js`, `createRoomScreen.js`, `joinCodeScreen.js`, `onlineLobbyScreen.js`, `waitingRoomScreen.js`, `incomingInviteScreen.js`, `matchmakingOverlayScreen.js`, `asyncSessionListScreen.js`
 **Gameplay:** `gameScreen.js`, `pauseScreen.js`, `resignConfirmScreen.js`, `backConfirmScreen.js`, `coinTossScreen.js`, `endGameScreen.js`, `disconnectScreen.js`, `bonusIntroScreen.js`, `bonusSpectatorScreen.js`, `boostVetoScreen.js`, `boostBadges.js`
-**User Management:** `authScreens.js`, `profileScreen.js`, `avatarScreens.js`, `friendsScreen.js`, `championsScreen.js`, `statsScreen.js`, `dictionaryScreen.js`, `settingsScreen.js`
+**User Management:** `authScreens.js`, `profileScreen.js`, `avatarScreens.js`, `friendsScreen.js`, `notificationsScreen.js`, `championsScreen.js`, `statsScreen.js`, `dictionaryScreen.js`, `settingsScreen.js`
 **Mini-Games:** `miniGames/bonusTimer.js`, `miniGames/unscrambleMiniGame.js`, `miniGames/fillMiddleMiniGame.js`, `miniGames/crosswordMiniGame.js`, `miniGames/crossingWordsMiniGame.js`, `miniGames/honeycombMiniGame.js`, `miniGames/wheelMiniGame.js`, `miniGames/wordSearchMiniGame.js`
 **Utilities:** `screenTransitions.js`, `jokerPicker.js`
 

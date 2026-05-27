@@ -87,6 +87,7 @@ import {
 } from './ui/screens/avatarScreens.js';
 import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE } from './ui/screens/authScreens.js';
 import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER } from './ui/screens/friendsScreen.js';
+import { mountNotificationsScreen, NOTIF_INTENT, NOTIF_RENDER } from './ui/screens/notificationsScreen.js';
 import { mountChampionsScreen, CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR } from './ui/screens/championsScreen.js';
 import { mountDictionaryScreen, DICT_INTENT, DICT_RENDER } from './ui/screens/dictionaryScreen.js';
 import { mountTutorialScreen, TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_CLOSE, TUTORIAL_TIP, TUTORIAL_CLEAR } from './ui/screens/tutorialScreen.js';
@@ -247,7 +248,7 @@ async function boot() {
       mountCrossingWordsMiniGame, mountHoneycombMiniGame,
       mountScoreBonusAnimation,
       mountProfileScreen, mountStatsScreen, mountAvatarPickerScreen, mountAvatarUnlockedScreen,
-      mountAuthScreens, mountFriendsScreen, mountChampionsScreen, mountDictionaryScreen, mountTutorialScreen,
+      mountAuthScreens, mountFriendsScreen, mountNotificationsScreen, mountChampionsScreen, mountDictionaryScreen, mountTutorialScreen,
       createTutorialController,
       createBonusActivationController,
       MENU_INTENT, MENU_REFRESH, SETUP_INTENT, SETUP_OPEN, LOBBY_INTENT, MM_INTENT,
@@ -261,6 +262,7 @@ async function boot() {
       CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR,
       DICT_INTENT, DICT_RENDER,
       PROFILE_INTENT, PROFILE_RENDER, STATS_INTENT, AV_INTENT, AV_RENDER, FRIENDS_INTENT, FRIENDS_RENDER,
+      NOTIF_INTENT, NOTIF_RENDER,
       TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_CLOSE, TUTORIAL_TIP, TUTORIAL_CLEAR,
       END_INTENT, END_OPEN, PAUSE_INTENT, PAUSE_OPEN, BACK_INTENT, BACK_OPEN,
       COIN_INTENT, COIN_OPEN, SETTINGS_INTENT, SETTINGS_OPEN, SETTINGS_CHANGED,
@@ -577,7 +579,7 @@ async function boot() {
       showLegacyScreen('sfriends');
     });
     bus.on(MENU_INTENT.OPEN_NOTIFICATIONS, () => {
-      showLegacyScreen('so');
+      showLegacyScreen('snotif');
     });
     bus.on(MENU_INTENT.SHARE_GAME, async () => {
       // Prefer the native Web Share API on mobile (gives the user system
@@ -919,6 +921,11 @@ async function boot() {
     // reads `${PATH.invites}/{toUid}`.
     let activeInviteListener = null;
     let activeAckListener = null;
+    let lastInviteCount = 0;
+    let lastFriendRequestCount = 0;
+    function refreshBadgeCount() {
+      bus.emit(MENU_REFRESH, { unreadCount: lastInviteCount + lastFriendRequestCount });
+    }
     function bootInviteListenersFor(uid) {
       if (!uid) return;
       activeInviteListener?.();
@@ -926,8 +933,15 @@ async function boot() {
       const fbDb = activeFbDb;
       if (!fbDb) return;
       activeInviteListener = inviteService.listenForInvites(fbDb, uid, (invites) => {
-        if (!invites?.length) return;
-        const next = invites[0];
+        const now = Date.now();
+        const pending = (invites ?? []).filter(
+          i => i.status === 'pending' && (!i.expiresAt || i.expiresAt > now),
+        );
+        lastInviteCount = pending.length;
+        bus.emit(NOTIF_RENDER, { invites: pending });
+        refreshBadgeCount();
+        if (!pending.length) return;
+        const next = pending[0];
         bus.emit(II_OPEN, next);
         // Browser-notification fallback for tabs in the background. No-op
         // unless the user is on a hidden tab with Notification permission
@@ -1364,7 +1378,10 @@ async function boot() {
 
       activeRequestsWatch = friendsService.watchIncomingRequests(fbDb, uid, (reqs) => {
         lastRequests = reqs;
+        lastFriendRequestCount = reqs.length;
         bus.emit(FRIENDS_RENDER, { requests: reqs });
+        bus.emit(NOTIF_RENDER, { friendRequests: reqs });
+        refreshBadgeCount();
       });
       activeFriendsWatch = friendsService.watchFriends(fbDb, uid, (friends) => {
         lastFriends = friends;
@@ -1498,6 +1515,74 @@ async function boot() {
     });
     bus.on(FRIENDS_INTENT.BACK, () => {
       showLegacyScreen('sprofile');
+    });
+
+    // ── Notifications inbox intents ──
+    bus.on(NOTIF_INTENT.BACK, () => {
+      showLegacyScreen('sh');
+    });
+
+    bus.on(NOTIF_INTENT.ACCEPT_INVITE, async (invite) => {
+      const fbDb = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      if (!fbDb || !fbUser?.uid || !invite?.inviteId) return;
+      const accepterProfile = {
+        displayName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן',
+        avatar: fbUser.photoURL ?? globalThis.currentUserProfile?.avatar ?? null,
+      };
+      try {
+        const result = await inviteService.acceptInvite(fbDb, {
+          toUid: fbUser.uid, inviteId: invite.inviteId, accepterProfile,
+        });
+        if (result?.ok && result.roomId) {
+          try {
+            await notificationService.pushInviteAccepted({
+              inviterUid: invite.fromUid,
+              accepterName: accepterProfile.displayName,
+              roomId: result.roomId,
+            });
+          } catch (e) { console.warn('[spine] notif inbox invite accepted push', e); }
+          const room = await roomService.readRoom(fbDb, result.roomId);
+          if (room) startOnlineGameViaSpine({ db: fbDb, room, mySlot: 1 });
+        }
+      } catch (e) { console.error('[spine] notif inbox acceptInvite', e); }
+    });
+
+    bus.on(NOTIF_INTENT.REJECT_INVITE, async (invite) => {
+      const fbDb = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      if (fbDb && fbUser?.uid && invite?.inviteId && invite?.fromUid) {
+        try {
+          await inviteService.rejectInvite(fbDb, {
+            fromUid: invite.fromUid,
+            toUid: fbUser.uid,
+            inviteId: invite.inviteId,
+            fromName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן',
+            serverTimestamp: Date.now(),
+          });
+          await notificationService.pushInviteRejected({
+            inviterUid: invite.fromUid,
+            rejecterName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן',
+          });
+        } catch (e) { console.error('[spine] notif inbox rejectInvite', e); }
+      }
+    });
+
+    bus.on(NOTIF_INTENT.ACCEPT_FRIEND, async ({ fromUid }) => {
+      const fbDb = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      if (!fbDb || !fbUser?.uid || !fromUid) return;
+      const fromProfile = await profileService.readProfile(fbDb, fromUid);
+      await friendsService.acceptFriendRequest(fbDb, {
+        fromUid, toUid: fbUser.uid, fromProfile, toProfile: lastProfile,
+      });
+    });
+
+    bus.on(NOTIF_INTENT.REJECT_FRIEND, async ({ fromUid }) => {
+      const fbDb = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      if (!fbDb || !fbUser?.uid || !fromUid) return;
+      await friendsService.rejectFriendRequest(fbDb, { fromUid, toUid: fbUser.uid });
     });
 
     // ── Auth intents (Firebase compat SDK) ──
@@ -1636,6 +1721,7 @@ async function boot() {
       try { await teardownCrossCuttingAuth(); } catch {}
       try { await activeFbAuth?.signOut?.(); } catch {}
       lastProfile = null; lastFriends = []; lastRequests = [];
+      lastInviteCount = 0; lastFriendRequestCount = 0;
       try { activeProfileWatch?.();  activeProfileWatch  = null; } catch {}
       try { activeRequestsWatch?.(); activeRequestsWatch = null; } catch {}
       try { activeFriendsWatch?.();  activeFriendsWatch  = null; } catch {}
@@ -1653,7 +1739,7 @@ async function boot() {
     if (typeof showSc === 'function') {
       try { showSc(id); return; } catch { /* swallow */ }
     }
-    const screens = ['sh', 'ss', 'sg', 'so', 'scoin', 'sprofile', 'sfriends', 'schamps', 'sauth-signup', 'sauth-login', 'sav-gallery', 'sstats'];
+    const screens = ['sh', 'ss', 'sg', 'so', 'scoin', 'sprofile', 'sfriends', 'snotif', 'schamps', 'sauth-signup', 'sauth-login', 'sav-gallery', 'sstats'];
     for (const s of screens) {
       const el = globalThis.document?.getElementById?.(s);
       if (!el) continue;
@@ -2333,6 +2419,7 @@ async function boot() {
   const avatarUnlocked     = mountAvatarUnlockedScreen({ bus });
   const authScreens        = mountAuthScreens({ bus });
   const friendsScreen      = mountFriendsScreen({ bus });
+  const notificationsScreen = mountNotificationsScreen({ bus });
   const championsScreen    = mountChampionsScreen({ bus });
   const dictionaryScreen   = mountDictionaryScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });
