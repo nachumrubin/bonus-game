@@ -2071,3 +2071,17 @@ button[aria-disabled="true"] {
 }
 #brack.is-disabled .bt2 { pointer-events: none; opacity: 0.45; filter: saturate(0.6); cursor: not-allowed; }
 
+/* ── Achievement cards (#sav-gallery) ── */
+.ach-starter-row{display:flex;gap:8px;justify-content:center;margin-bottom:4px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.1);}
+.ach-card{width:100%;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:12px;font-family:'Heebo',system-ui,sans-serif;text-align:right;transition:opacity .2s,transform .15s;box-sizing:border-box;}
+.ach-card:active{transform:scale(.98);}
+.ach-card-left{flex-shrink:0;width:44px;height:44px;border-radius:10px;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;}
+.ach-card-emoji{font-size:26px;line-height:1;}
+.ach-card-body{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0;}
+.ach-card-title{font-size:14px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ach-card-desc{font-size:11px;color:rgba(255,255,255,.6);}
+.ach-progress{height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:2px;}
+.ach-progress-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.ach-card-meta{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:11px;font-weight:700;}
+.ach-tier-chip{padding:1px 6px;border-radius:20px;font-size:9px;font-weight:900;color:#000;text-transform:uppercase;letter-spacing:.03em;}
+

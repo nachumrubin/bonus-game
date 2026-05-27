@@ -1,6 +1,6 @@
 // Avatar-related screens, kept together because they share the avatar
 // definition table:
-//   - mountAvatarPickerScreen — wires #sav-gallery (avatar picker grid).
+//   - mountAvatarPickerScreen — wires #sav-gallery (achievements + avatar picker).
 //   - mountAvatarUnlockedScreen — wires #ov-avatar-unlocked overlay.
 //
 // The legacy AVATAR_DEFS lives in the inline <script>; this module ships
@@ -22,7 +22,8 @@ export const AV_UNLOCK_OPEN  = 'avatar/unlockOpen';
 export const AV_UNLOCK_CLOSE = 'avatar/unlockClose';
 
 // Pared-down avatar table — id, emoji, Hebrew name, rarity, unlock rule.
-// Mirrors the legacy AVATAR_DEFS contract.
+// Mirrors the legacy AVATAR_DEFS contract. Used by diffNewlyUnlocked() and
+// the unlock-popup system — do not remove or rename entries.
 export const SPINE_AVATARS = [
   { id: 'crown',   emoji: '👑', nameHe: 'כתר',     rarity: 'free',   unlock: { stat: 'gamesPlayed',  min: 0   } },
   { id: 'star',    emoji: '⭐', nameHe: 'כוכב',    rarity: 'free',   unlock: { stat: 'gamesPlayed',  min: 0   } },
@@ -36,13 +37,37 @@ export const SPINE_AVATARS = [
   { id: 'robot',   emoji: '🤖', nameHe: 'רובוט',   rarity: 'legend', unlock: { stat: 'gamesWon',     min: 50  } },
 ];
 
-const RARITY_BG = {
-  free:   '#3a4cf9', bronze: '#a06030',
-  silver: '#9090a0', gold:   '#e8c840', legend: '#b06bff',
+// Named achievements — each maps a milestone to a reward avatar.
+// Free avatars (crown, star) are displayed in a separate starter row.
+export const ACHIEVEMENTS = [
+  { id: 'first_steps', titleHe: 'צעדים ראשונים', descHe: 'שחק 5 משחקים',             condition: { stat: 'gamesPlayed',   min: 5   }, rewardAvatarId: 'fire',    tier: 'bronze' },
+  { id: 'winner',      titleHe: 'מנצח',           descHe: 'ניצח 5 משחקים',             condition: { stat: 'gamesWon',      min: 5   }, rewardAvatarId: 'shark',   tier: 'bronze' },
+  { id: 'seasoned',    titleHe: 'שחקן מנוסה',     descHe: 'שחק 25 משחקים',             condition: { stat: 'gamesPlayed',   min: 25  }, rewardAvatarId: 'diamond', tier: 'silver' },
+  { id: 'streaker',    titleHe: 'רצף מנצחים',     descHe: 'הגע לרצף של 5 ניצחונות',   condition: { stat: 'longestStreak', min: 5   }, rewardAvatarId: 'tiger',   tier: 'silver' },
+  { id: 'veteran',     titleHe: 'ותיק',            descHe: 'שחק 40 משחקים',             condition: { stat: 'gamesPlayed',   min: 40  }, rewardAvatarId: 'dragon',  tier: 'gold'   },
+  { id: 'wordsmith',   titleHe: 'אמן המילים',      descHe: 'הגע לשיא של 250 נקודות',   condition: { stat: 'highScore',     min: 250 }, rewardAvatarId: 'wizard',  tier: 'gold'   },
+  { id: 'legend',      titleHe: 'אגדה',            descHe: 'שחק 100 משחקים',            condition: { stat: 'gamesPlayed',   min: 100 }, rewardAvatarId: 'alien',   tier: 'legend' },
+  { id: 'champion',    titleHe: 'אלוף',            descHe: 'ניצח 50 משחקים',            condition: { stat: 'gamesWon',      min: 50  }, rewardAvatarId: 'robot',   tier: 'legend' },
+];
+
+const TIER_COLOR = {
+  bronze: '#c87840', silver: '#9090a0', gold: '#d4a820', legend: '#9a50e8',
 };
+
+const FREE_AVATAR_BG = '#3a4cf9';
 
 export function findAvatar(id) {
   return SPINE_AVATARS.find(a => a.id === id) ?? null;
+}
+
+export function findAchievementByRewardId(avatarId) {
+  return ACHIEVEMENTS.find(a => a.rewardAvatarId === avatarId) ?? null;
+}
+
+// Returns 0–1 representing how close the player is to completing an achievement.
+export function progressPct(achievement, stats = {}) {
+  const val = stats[achievement.condition.stat] ?? 0;
+  return Math.min(1, val / achievement.condition.min);
 }
 
 export function isAvatarUnlocked(avatar, stats = {}) {
@@ -89,25 +114,42 @@ export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}
     if (!grid) return;
     const unlocked = SPINE_AVATARS.filter(a => isAvatarUnlocked(a, stats));
     if (countEl) setText(countEl, `${unlocked.length}/${SPINE_AVATARS.length}`);
-    grid.innerHTML = SPINE_AVATARS.map(a => {
+
+    const FREE_AVATARS = SPINE_AVATARS.filter(a => a.rarity === 'free');
+    const starterRow = FREE_AVATARS.map(a => {
       const isEquipped = a.id === equippedAvatar;
-      const lock = isAvatarUnlocked(a, stats);
-      const bg = RARITY_BG[a.rarity] ?? '#444';
-      return `<button data-av-id="${a.id}" ${!lock ? 'data-locked="1"' : ''} `
-        + `style="background:${bg};border:${isEquipped ? '3px solid #fff' : 'none'};border-radius:8px;padding:8px;`
-        + `font-family:Heebo,sans-serif;color:#000;font-weight:900;cursor:pointer;opacity:${lock ? 1 : 0.35};">`
-        + `<div style="font-size:30px;line-height:1;">${a.emoji}</div>`
-        + `<div style="font-size:10px;margin-top:4px;">${a.nameHe}</div>`
-        + (lock ? '' : `<div style="font-size:9px;color:rgba(0,0,0,.65);margin-top:2px;">${a.unlock.min} ${labelFor(a.unlock.stat)}</div>`)
+      return `<button class="ach-starter-btn" data-av-id="${a.id}" `
+        + `style="background:${FREE_AVATAR_BG};border:${isEquipped ? '3px solid #fff' : '2px solid rgba(255,255,255,.2)'};`
+        + `border-radius:10px;padding:6px 10px;cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;gap:2px;">`
+        + `<span style="font-size:26px;line-height:1;">${a.emoji}</span>`
+        + `<span style="font-size:10px;color:#fff;font-weight:700;">${a.nameHe}</span>`
         + `</button>`;
     }).join('');
-  }
-  function labelFor(stat) {
-    if (stat === 'gamesPlayed') return 'משחקים';
-    if (stat === 'gamesWon')    return 'ניצחונות';
-    if (stat === 'highScore')   return 'שיא';
-    if (stat === 'longestStreak') return 'רצף';
-    return stat;
+
+    const achCards = ACHIEVEMENTS.map(ach => {
+      const av = findAvatar(ach.rewardAvatarId);
+      const isUnlocked = av ? isAvatarUnlocked(av, stats) : false;
+      const isEquipped = ach.rewardAvatarId === equippedAvatar;
+      const pct = isUnlocked ? 1 : progressPct(ach, stats);
+      const curVal = Math.min(stats[ach.condition.stat] ?? 0, ach.condition.min);
+      const tierColor = TIER_COLOR[ach.tier] ?? '#888';
+      const cardBorder = isEquipped ? '2px solid #fff' : isUnlocked ? `2px solid ${tierColor}` : '2px solid rgba(255,255,255,.1)';
+      return `<button class="ach-card" data-av-id="${ach.rewardAvatarId}" ${!isUnlocked ? 'data-locked="1"' : ''} `
+        + `style="opacity:${isUnlocked ? 1 : 0.6};border:${cardBorder};">`
+        + `<div class="ach-card-left"><span class="ach-card-emoji">${av?.emoji ?? '?'}</span></div>`
+        + `<div class="ach-card-body">`
+        + `  <div class="ach-card-title">${ach.titleHe}${isEquipped ? ' ✓' : ''}</div>`
+        + `  <div class="ach-card-desc">${ach.descHe}</div>`
+        + `  <div class="ach-progress"><div class="ach-progress-fill" style="width:${Math.round(pct * 100)}%;background:${tierColor};"></div></div>`
+        + `  <div class="ach-card-meta"><span style="color:${tierColor};">${curVal}/${ach.condition.min}</span>`
+        + `    <span class="ach-tier-chip" style="background:${tierColor};">${ach.tier}</span>`
+        + (isUnlocked ? `    <span style="font-size:10px;color:rgba(255,255,255,.6);">הצטייד</span>` : '')
+        + `  </div>`
+        + `</div>`
+        + `</button>`;
+    }).join('');
+
+    grid.innerHTML = `<div class="ach-starter-row">${starterRow}</div>${achCards}`;
   }
 
   if (grid) {
@@ -118,9 +160,9 @@ export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}
       const id = btn.getAttribute?.('data-av-id');
       if (!id) return;
       if (btn.getAttribute('data-locked')) {
-        const a = findAvatar(id);
-        if (hintEl && a?.unlock) {
-          setText(hintEl, `נעול: השג ${a.unlock.min} ${labelFor(a.unlock.stat)}`);
+        const ach = findAchievementByRewardId(id);
+        if (hintEl && ach) {
+          setText(hintEl, `נעול — ${ach.descHe}`);
           hintEl.style.opacity = '1';
           setTimeout(() => { if (hintEl) hintEl.style.opacity = '0'; }, 1800);
         }

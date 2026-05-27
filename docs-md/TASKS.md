@@ -31,7 +31,7 @@ Surfaced during the May 2026 stats simplification audit. Each is a UI-visible ad
 - [ ] **Unique words discovered (vocabulary size)** — count of `wordCounts{}` keys; surface in Records.
 - [ ] **Win rate by first/second to move** — already trackable from move metadata.
 - [ ] **Hour-of-day stats / power hour** — extend the existing `weekdayStats` model.
-- [ ] **Earned titles** ("Comeback King", "Bingo Hunter", etc.) — turn raw counters into unlockable identifiers.
+- [~] **Earned titles** ("Comeback King", "Bingo Hunter", etc.) — named achievements with Hebrew titles now exist in `ACHIEVEMENTS` table (`avatarScreens.js`). The stat-based conditions are wired; purely narrative titles (Comeback King etc.) require additional stats (comeback tracking, bingo count) not yet collected. See TASKS.md bingo-count and highest-single-word items above.
 - [ ] **Move timing** — `totalMoveTimeMs` is hardcoded to 0 in `profileService.js:251`. Either wire it up (per-move timestamps in the event stream) or remove the field entirely.
 - [ ] **Storage cleanup** — once the new layout settles, remove orphan fields (`boostImpactWins`, `totalMoveTimeMs`, etc.) from `EMPTY_STATS` and add a one-time cleanup migration.
 

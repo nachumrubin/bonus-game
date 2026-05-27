@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import {
-  SPINE_AVATARS, findAvatar, isAvatarUnlocked, diffNewlyUnlocked,
+  SPINE_AVATARS, ACHIEVEMENTS,
+  findAvatar, findAchievementByRewardId, isAvatarUnlocked, diffNewlyUnlocked, progressPct,
   mountAvatarPickerScreen, mountAvatarUnlockedScreen,
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
 } from './avatarScreens.js';
@@ -13,6 +14,27 @@ test('SPINE_AVATARS contains the expected ids', () => {
   assert.ok(ids.includes('crown'));
   assert.ok(ids.includes('dragon'));
   assert.ok(ids.includes('alien'));
+});
+
+test('ACHIEVEMENTS covers all non-free avatars', () => {
+  const rewardIds = new Set(ACHIEVEMENTS.map(a => a.rewardAvatarId));
+  const nonFree = SPINE_AVATARS.filter(a => a.rarity !== 'free');
+  for (const av of nonFree) {
+    assert.ok(rewardIds.has(av.id), `no achievement for avatar '${av.id}'`);
+  }
+});
+
+test('progressPct: returns 0 at start, 1 when met or exceeded', () => {
+  const ach = ACHIEVEMENTS.find(a => a.rewardAvatarId === 'dragon'); // min 40
+  assert.equal(progressPct(ach, {}), 0);
+  assert.equal(progressPct(ach, { gamesPlayed: 20 }), 0.5);
+  assert.equal(progressPct(ach, { gamesPlayed: 40 }), 1);
+  assert.equal(progressPct(ach, { gamesPlayed: 99 }), 1);
+});
+
+test('findAchievementByRewardId: known + unknown', () => {
+  assert.equal(findAchievementByRewardId('dragon').id, 'veteran');
+  assert.equal(findAchievementByRewardId('xx'), null);
 });
 
 test('findAvatar: known + unknown', () => {
