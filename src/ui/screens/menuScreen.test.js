@@ -43,7 +43,6 @@ function makeMenuDom() {
     bot:        makeButton({ onclick: "startSetup('bot')" }),
     online:     makeButton({ onclick: 'showOnlineLobby()' }),
     tutorial:   makeButton({ onclick: 'showTutorialIntro()' }),
-    champions:  makeButton({ onclick: 'openChampions()' }),
     settings:   makeButton({ onclick: 'openSettings()' }),
     share:      makeButton({ onclick: 'shareGame()',              id: 'btn-share-game' }),
     nameLabel:  makeButton({ id: 'home-user-label' }),
@@ -129,7 +128,6 @@ test('mount: each button maps to its specific intent', () => {
   buttons.bot.click();
   buttons.online.click();
   buttons.tutorial.click();
-  buttons.champions.click();
   buttons.settings.click();
   buttons.share.click();
 
@@ -139,7 +137,6 @@ test('mount: each button maps to its specific intent', () => {
   assert.equal(seen.get(MENU_INTENT.START_VS_BOT), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_ONLINE_LOBBY), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_TUTORIAL), 1);
-  assert.equal(seen.get(MENU_INTENT.OPEN_CHAMPIONS), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_SETTINGS), 1);
   assert.equal(seen.get(MENU_INTENT.SHARE_GAME), 1);
 });

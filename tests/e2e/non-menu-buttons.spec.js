@@ -89,15 +89,14 @@ test.describe('non-menu button wiring', () => {
     await expect(page.locator('#sstats')).toBeVisible();
     await expect(page.locator('#st-played')).toHaveText('35');
     await expect(page.locator('#st-highscore')).toHaveText('564');
-    await page.locator('.stats-tfseg').nth(0).click();
-    await expect(page.locator('.stats-tfseg').nth(0)).toHaveClass(/active/);
     await page.locator('.stats-tab').nth(1).click();
-    await expect(page.locator('#st-panel-performance')).toHaveClass(/active/);
-    await page.locator('#sstats .stats-topbar button').nth(1).click();
-    await page.locator('.stats-tab').nth(4).click();
-    await expect(page.locator('#st-panel-fun')).toHaveClass(/active/);
+    await expect(page.locator('#st-panel-records')).toHaveClass(/active/);
+    await page.locator('.stats-tab').nth(2).click();
+    await expect(page.locator('#st-panel-rivals')).toHaveClass(/active/);
+    await page.locator('.stats-tab').nth(1).click();
     await page.locator('.stats-share-btn').click();
-    await page.locator('#sstats .stats-topbar button').nth(0).click();
+
+    await showScreen(page, 'sprofile');
     await expect(page.locator('#sprofile')).toBeVisible();
 
     await profileButtons().nth(4).click();

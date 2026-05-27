@@ -64,6 +64,63 @@ test('acceptInvite consumes invite, creates a room, and writes accepted ack with
   assert.equal(db._data.inviteAcks.a.b.roomId, 'friend-room-1');
 });
 
+// ── Room-creation failure recovery (GAP_REPORT item 8) ─────────────────
+// After the invite-claim transaction succeeds, the invite is gone. If the
+// subsequent createRoom write throws (rules rejection, network blip, etc.),
+// the sender's listener would otherwise wait forever for an ack that never
+// arrives. acceptInvite must write a failure ack so both sides see the
+// outcome.
+test('acceptInvite writes a failure ack when room creation fails AFTER invite is consumed', async () => {
+  const db = makeMockDb();
+  await sendInvite(db, {
+    fromUid: 'a', fromName: 'Alice', fromAvatar: null,
+    toUid: 'b', mode: 'friend-async', settings: {},
+    serverTimestamp: 1000,
+  });
+  const inviteId = Object.keys(db._data.invites.b)[0];
+
+  // Wrap the db so writing to the room path throws. Everything else passes
+  // through unchanged — including the invite-claim transaction and the ack
+  // write. This simulates a transient RTDB failure during room creation.
+  const failingDb = {
+    ...db,
+    ref(path) {
+      const r = db.ref(path);
+      if (path.startsWith('rooms/')) {
+        return {
+          ...r,
+          set: async () => { throw new Error('simulated rules rejection'); },
+        };
+      }
+      return r;
+    },
+  };
+
+  const result = await acceptInvite(failingDb, {
+    toUid: 'b',
+    inviteId,
+    accepterProfile: { displayName: 'Bob', avatar: null },
+    now: 2000,
+    roomIdFn: () => 'friend-room-fail',
+    startingSlot: 0,
+  });
+
+  assert.equal(result.ok, false, 'acceptInvite returns ok:false on room create failure');
+  assert.equal(result.reason, 'room-create-failed');
+  // Invite was consumed by the transaction before the room write failed —
+  // the accepter cannot just retry the same invite.
+  assert.equal(await readInvite(db, { toUid: 'b', inviteId }), null);
+  // The room must not exist (creation failed).
+  assert.equal(db._data.rooms?.['friend-room-fail'], undefined);
+  // Critically: a failure ack must be visible to the sender so their UI
+  // can show the rejection instead of hanging.
+  const ack = db._data.inviteAcks?.a?.b;
+  assert.ok(ack, 'failure ack written to inviteAcks');
+  assert.equal(ack.accepted, false);
+  assert.equal(ack.reason, 'room-create-failed');
+  assert.equal(ack.inviteId, inviteId);
+});
+
 test('acceptInvite rejects duplicate accept after invite was consumed', async () => {
   const db = makeMockDb();
   const { inviteId } = await sendInvite(db, {

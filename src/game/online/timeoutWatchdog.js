@@ -79,7 +79,18 @@ export function createTimeoutWatchdog({
   // here, those ghost tiles stay on the opponent's board indefinitely
   // (the active player's tab is likely hung/disconnected, so they won't
   // clear it themselves).
+  //
+  // Forfeit the timed-out player's multiply_next_turns boosts. Mirrors
+  // `forfeitTimeoutBoosts(state, slot)` in gameEngine.js — without this,
+  // a player can activate ×2-for-2-turns, time out the first turn, and
+  // still get the full multiplier on their next play. Opponent's boosts
+  // and other boost types (extra_turn, etc.) are preserved.
   function applyPatchToRoom(room, patch) {
+    const timedOutSlot = patch.turn === 0 ? 1 : 0;
+    const nextActiveBoosts = Array.isArray(room.activeBoosts)
+      ? room.activeBoosts.filter(b =>
+          !(b?.slot === timedOutSlot && b?.boostId === 'multiply_next_turns'))
+      : room.activeBoosts;
     const out = {
       ...room,
       currentTurnSlot: patch.currentTurnSlot,
@@ -88,6 +99,7 @@ export function createTimeoutWatchdog({
       version: patch.stateSeq,
       missedTurns: patch.missedTurns,
       _passCount: patch.passCount,
+      activeBoosts: nextActiveBoosts,
       livePreview: null,
       updatedAt: patch.ts ?? now(),
     };

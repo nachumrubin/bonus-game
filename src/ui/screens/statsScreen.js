@@ -6,12 +6,6 @@ export const STATS_INTENT = Object.freeze({
   REFRESH: 'stats/refresh',
 });
 
-const PERIOD_MS = {
-  week: 7 * 24 * 60 * 60 * 1000,
-  month: 30 * 24 * 60 * 60 * 1000,
-  all: Infinity,
-};
-
 const BOOST_LABELS = {
   B1: 'בוסט 100',
   B2: 'בוסט 40',
@@ -34,36 +28,6 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
   const screenEl = $('#sstats', root);
   const cleanups = [];
   let lastPayload = {};
-  let period = 'all';
-
-  const backBtn = $('#sstats .stats-topbar button', root);
-  if (backBtn) {
-    backBtn.removeAttribute?.('onclick');
-    cleanups.push(on(backBtn, 'click', (e) => {
-      e?.preventDefault?.();
-      bus.emit(STATS_INTENT.BACK, {});
-    }));
-  }
-
-  const refreshBtn = $$('#sstats .stats-topbar button', root)[1];
-  if (refreshBtn) {
-    refreshBtn.removeAttribute?.('onclick');
-    cleanups.push(on(refreshBtn, 'click', (e) => {
-      e?.preventDefault?.();
-      paint(lastPayload);
-      bus.emit(STATS_INTENT.REFRESH, {});
-    }));
-  }
-
-  for (const btn of $$('.stats-tfseg', root)) {
-    btn.removeAttribute?.('onclick');
-    cleanups.push(on(btn, 'click', (e) => {
-      e?.preventDefault?.();
-      period = btnTextPeriod(btn.textContent);
-      setActive($$('.stats-tfseg', root), btn);
-      paint(lastPayload);
-    }));
-  }
 
   for (const btn of $$('.stats-tab', root)) {
     btn.removeAttribute?.('onclick');
@@ -87,11 +51,6 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
     paint(lastPayload);
     bus.emit(STATS_INTENT.REFRESH, {});
   };
-  win._statsTimeFilter = (nextPeriod, el) => {
-    period = PERIOD_MS[nextPeriod] ? nextPeriod : 'all';
-    setActive($$('.stats-tfseg', root), el);
-    paint(lastPayload);
-  };
   win._statsTab = (tab, el) => switchTab(tab, el, root);
   win._statsShare = () => shareStats(win, lastPayload.profile);
 
@@ -102,64 +61,50 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
 
   function paint({ profile } = {}) {
     if (!screenEl || !profile) return;
-    const stats = deriveStatsView(profile, { period });
+    const stats = deriveStatsView(profile);
     text('#st-hero-av', avatarEmoji(profile.equippedAvatar));
     text('#st-hero-name', profile.displayName ?? 'שחקן בוסט');
     text('#st-hero-tier', stats.tier.label);
     setTierClass($('#st-hero-tier', root), stats.tier.className);
     text('#st-hero-wr', `${stats.winRate}%`);
     text('#st-hero-streak', `${stats.currentStreak} 🔥`);
-    text('#st-hero-rank', stats.rank);
     text('#st-hero-insight', stats.insight);
 
+    // Progress tab
+    paintSparkline(stats.recentGames, root);
+    text('#st-rating', stats.rating);
+    width('#st-tier-bar', stats.tierProgress);
     text('#st-highscore', stats.highScore);
     text('#st-avg', stats.avgScore);
     text('#st-played', stats.gamesPlayed);
-    text('#st-best-streak', stats.longestStreak);
-    text('#st-bonuses', stats.bonusesTriggered);
-    text('#st-avgword', stats.avgWordLength);
     text('#st-won', stats.gamesWon);
     text('#st-lost', stats.gamesLost);
     text('#st-draw', stats.gamesDraw);
-    text('#st-wr-pct-lbl', `אחוז ניצחון ${stats.winRate}%`);
-    text('#st-streak-lbl', `רצף נוכחי: ${stats.currentStreak}`);
     width('#st-bar-w', stats.winPct);
     width('#st-bar-l', stats.lossPct);
     width('#st-bar-d', stats.drawPct);
 
-    text('#st-rating', stats.rating);
-    text('#st-perf-tier-badge', stats.tier.label);
-    setTierClass($('#st-perf-tier-badge', root), stats.tier.className);
-    width('#st-tier-bar', stats.tierProgress);
-    text('#st-pts-move', stats.pointsPerMove);
-    text('#st-pts-tile', stats.pointsPerTile);
-    text('#st-move-time', stats.avgMoveTime);
-    text('#st-comeback', stats.comebackWins);
-    text('#st-lastmove', stats.lastMoveWins);
-    text('#st-closewins', stats.closeWins);
-    paintSparkline(stats.filteredRecent, root);
+    // Records tab
+    text('#st-fun-bestmove', stats.highestMoveScore);
+    text('#st-fun-longest', stats.longestWord);
+    text('#st-fun-streak', stats.longestStreak);
+    text('#st-fun-comeback', stats.bestComeback);
+    text('#st-fun-repeated', stats.repeatedWord);
+    text('#st-fun-bestday', stats.bestDay);
 
+    // Rivals & Boosts tab
+    html('#st-rivals-content', stats.rivalsHtml);
     text('#st-boost-total', stats.bonusesTriggered);
     text('#st-boost-avg', stats.boostsPerGame);
     text('#st-boost-winrate', stats.boostWinRate);
     text('#st-boost-fav-icon', stats.favoriteBoost ? '⚡' : '💡');
     text('#st-boost-fav-name', stats.favoriteBoost?.label ?? '—');
     text('#st-boost-fav-pct', stats.favoriteBoost ? `${stats.favoriteBoost.pct}% מהבוסטים שלך` : '—');
-    text('#st-boost-impact-wins', stats.boostImpactWins);
-    text('#st-boost-impact-best', stats.favoriteBoost?.label ?? '—');
-    html('#st-boost-combo', stats.boostComboHtml);
+    text('#st-comeback', stats.comebackWins);
+    text('#st-lastmove', stats.lastMoveWins);
+    text('#st-closewins', stats.closeWins);
 
-    html('#st-rivals-content', stats.rivalsHtml);
-    text('#st-vs-stronger-w', 0);
-    text('#st-vs-weaker-w', 0);
-
-    text('#st-fun-longest', stats.longestWord);
-    text('#st-fun-repeated', stats.repeatedWord);
-    text('#st-fun-fastest', stats.fastestWin);
-    text('#st-fun-comeback', stats.bestComeback);
-    text('#st-fun-bestday', stats.bestDay);
-    text('#st-fun-luck', stats.luck);
-
+    // Legacy compat hidden nodes
     text('#st-streak', stats.currentStreak);
     text('#st-words', stats.wordsPlayed);
     text('#stats-wr-pct', `${stats.winRate}%`);
@@ -181,20 +126,17 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
   };
 }
 
-export function deriveStatsView(profile = {}, { period = 'all', now = Date.now() } = {}) {
+export function deriveStatsView(profile = {}) {
   const s = profile.stats ?? {};
   const played = Number(s.gamesPlayed) || 0;
   const won = Number(s.gamesWon) || 0;
   const lost = Number(s.gamesLost) || Math.max(0, played - won - (Number(s.gamesDraw) || 0));
   const draw = Number(s.gamesDraw) || 0;
   const totalScore = Number(s.totalScore) || 0;
-  const totalMoves = Number(s.totalMoves) || 0;
-  const totalTiles = Number(s.totalTilesPlayed) || 0;
   const wordsPlayed = Number(s.wordsPlayed) || 0;
   const winRate = played > 0 ? Math.round((won / played) * 100) : 0;
   const rating = Number(profile.rating) || 0;
   const recent = Array.isArray(s.recentGames) ? s.recentGames : [];
-  const filteredRecent = filterRecent(recent, period, now);
   const favoriteBoost = favoriteBoostFor(s.boostUsage, Number(s.bonusesTriggered) || 0);
   const repeated = repeatedWordFor(s.wordCounts);
   const bestDay = bestDayFor(s.weekdayStats);
@@ -207,56 +149,40 @@ export function deriveStatsView(profile = {}, { period = 'all', now = Date.now()
     gamesLost: lost,
     gamesDraw: draw,
     highScore: Number(s.highScore) || 0,
+    highestMoveScore: Number(s.highestMoveScore) || 0,
     avgScore: played > 0 ? Math.round(totalScore / played) : 0,
     winRate,
     currentStreak: Number(s.currentStreak) || 0,
     longestStreak: Number(s.longestStreak) || 0,
     bonusesTriggered: Number(s.bonusesTriggered) || 0,
     wordsPlayed,
-    avgWordLength: wordsPlayed > 0 ? format1(totalTiles / wordsPlayed) : 0,
     winPct: totalOutcomes ? (won / totalOutcomes) * 100 : 0,
     lossPct: totalOutcomes ? (lost / totalOutcomes) * 100 : 0,
     drawPct: totalOutcomes ? (draw / totalOutcomes) * 100 : 0,
     rating,
     tier,
     tierProgress: tierProgress(rating),
-    rank: '#—',
     insight: played ? `${played} משחקים חיים נספרו` : '',
-    pointsPerMove: totalMoves > 0 ? format1(totalScore / totalMoves) : 0,
-    pointsPerTile: totalTiles > 0 ? format1(totalScore / totalTiles) : 0,
-    avgMoveTime: formatDurationAverage(s.totalMoveTimeMs, totalMoves),
     comebackWins: Number(s.comebackWins) || 0,
     lastMoveWins: Number(s.lastMoveWins) || 0,
     closeWins: Number(s.closeWins) || 0,
-    filteredRecent,
+    recentGames: recent,
     boostsPerGame: played > 0 ? format1((Number(s.bonusesTriggered) || 0) / played) : 0,
     boostWinRate: boostedWinRate(recent),
     favoriteBoost,
-    boostImpactWins: Number(s.boostImpactWins) || 0,
-    boostComboHtml: boostComboHtml(s.boostUsage),
     rivalsHtml: rivalsHtml(s.rivalStats),
     longestWord: s.longestWord || '—',
     repeatedWord: repeated,
-    fastestWin: formatDuration(s.fastestWinMs),
     bestComeback: s.biggestComeback != null ? String(s.biggestComeback) : '—',
     bestDay,
-    luck: played ? `${Math.min(99, Math.max(1, winRate))}%` : '—',
   };
-}
-
-function btnTextPeriod(text = '') {
-  if (String(text).includes('שבוע')) return 'week';
-  if (String(text).includes('חודש')) return 'month';
-  return 'all';
 }
 
 function tabFromButton(btn) {
   const text = btn?.textContent ?? '';
-  if (text.includes('ביצועים')) return 'performance';
-  if (text.includes('בוסטים')) return 'boosts';
+  if (text.includes('שיאים')) return 'records';
   if (text.includes('יריבים')) return 'rivals';
-  if (text.includes('כיף')) return 'fun';
-  return 'overview';
+  return 'progress';
 }
 
 function switchTab(tab, el, root) {
@@ -266,21 +192,10 @@ function switchTab(tab, el, root) {
   $(`#st-panel-${tab}`, root)?.classList?.add('active');
 }
 
-function setActive(buttons, active) {
-  for (const btn of buttons) btn.classList?.remove('active');
-  active?.classList?.add('active');
-}
-
-function filterRecent(recent, period, now) {
-  const span = PERIOD_MS[period] ?? Infinity;
-  if (!Number.isFinite(span)) return recent;
-  return recent.filter(g => (now - (Number(g?.ts) || 0)) <= span);
-}
-
 function paintSparkline(games, root = globalThis.document) {
   const el = root?.querySelector?.('#st-sparkline') ?? root?.getElementById?.('st-sparkline');
   if (!el) return;
-  const last = games.slice(0, 6).reverse();
+  const last = games.slice(0, 10).reverse();
   if (!last.length) {
     el.innerHTML = '';
     return;
@@ -288,7 +203,7 @@ function paintSparkline(games, root = globalThis.document) {
   el.innerHTML = last.map((g) => {
     const isWin = g.result === 'win';
     const h = isWin ? 82 : g.result === 'draw' ? 48 : 24;
-    return `<span style="display:inline-block;width:12%;height:${h}%;margin:0 2%;vertical-align:bottom;border-radius:5px 5px 0 0;background:${isWin ? '#5dfc8c' : g.result === 'draw' ? 'rgba(255,255,255,.35)' : '#ff6b6b'}"></span>`;
+    return `<span style="display:inline-block;width:7%;height:${h}%;margin:0 1.5%;vertical-align:bottom;border-radius:5px 5px 0 0;background:${isWin ? '#5dfc8c' : g.result === 'draw' ? 'rgba(255,255,255,.35)' : '#ff6b6b'}"></span>`;
   }).join('');
 }
 
@@ -321,12 +236,6 @@ function boostedWinRate(recent = []) {
   return `${Math.round((boosted.filter(g => g.result === 'win').length / boosted.length) * 100)}%`;
 }
 
-function boostComboHtml(usage = {}) {
-  const entries = Object.entries(usage ?? {}).sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0)).slice(0, 3);
-  if (!entries.length) return '<span style="color:rgba(255,255,255,.45)">—</span>';
-  return entries.map(([type]) => `<span>${escapeHtml(BOOST_LABELS[type] ?? type)}</span>`).join('');
-}
-
 function rivalsHtml(rivals = {}) {
   const entries = Object.values(rivals ?? {}).sort((a, b) => (Number(b.played) || 0) - (Number(a.played) || 0)).slice(0, 5);
   if (!entries.length) return '<div class="champs-empty">אין עדיין יריבים חיים</div>';
@@ -352,19 +261,6 @@ function setTierClass(el, className) {
 function tierProgress(rating) {
   if (!rating) return 0;
   return clamp(((rating - 650) / 700) * 100, 0, 100);
-}
-
-function formatDurationAverage(totalMs, count) {
-  const n = Number(totalMs) || 0;
-  return n > 0 && count > 0 ? formatDuration(n / count) : '—';
-}
-
-function formatDuration(ms) {
-  const n = Number(ms) || 0;
-  if (n <= 0) return '—';
-  const seconds = Math.round(n / 1000);
-  if (seconds < 60) return `${seconds} שנ׳`;
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 function format1(n) {

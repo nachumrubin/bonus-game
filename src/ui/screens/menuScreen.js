@@ -15,7 +15,6 @@ export const MENU_INTENT = Object.freeze({
   START_VS_BOT:       'menu/startVsBot',
   OPEN_ONLINE_LOBBY:  'menu/openOnlineLobby',
   OPEN_TUTORIAL:      'menu/openTutorial',
-  OPEN_CHAMPIONS:     'menu/openChampions',
   OPEN_SETTINGS:      'menu/openSettings',
   SHARE_GAME:         'menu/shareGame',
   OPEN_STATS:         'menu/openStats',
@@ -36,12 +35,14 @@ const TOPBAR_BUTTONS = [
 ];
 
 // Screen buttons live inside #sh (home screen only).
+// The home bottom-nav "הישגים" (trophy) button keeps its inline
+// `onclick="showAvatarGallery()"` — that legacy global already emits
+// PROFILE_INTENT.OPEN_AVATARS, so no dedicated bus intent is needed.
 const SCREEN_BUTTONS = [
   { sel: 'button[onclick="resumeSavedGame()"]',    intent: MENU_INTENT.RESUME_SAVED },
   { sel: 'button[onclick="startSetup(\'vs\')"]',   intent: MENU_INTENT.START_2P, legacyArg: 'vs' },
   { sel: 'button[onclick="startSetup(\'bot\')"]',  intent: MENU_INTENT.START_VS_BOT, legacyArg: 'bot' },
   { sel: 'button[onclick="showOnlineLobby()"]',    intent: MENU_INTENT.OPEN_ONLINE_LOBBY },
-  { sel: 'button[onclick="openChampions()"]',      intent: MENU_INTENT.OPEN_CHAMPIONS },
   { sel: 'button[onclick="shareGame()"]',          intent: MENU_INTENT.SHARE_GAME },
   { sel: 'button[onclick="openStats()"]',          intent: MENU_INTENT.OPEN_STATS },
   { sel: 'button[onclick="openFriends()"]',        intent: MENU_INTENT.OPEN_FRIENDS },

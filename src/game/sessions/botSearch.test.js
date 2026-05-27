@@ -2,10 +2,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createInitialState } from '../core/gameEngine.js';
-import { setCommittedTile } from '../core/board.js';
+import { setCommittedTile, isBonusPos } from '../core/board.js';
 import { canMakeWord, tryPlaceWord, findAnchors, searchBotMove, DIFFICULTY } from './botSearch.js';
 
 const acceptAll = () => true;
+
+// Deterministic RNG factory for tests that need reproducible move selection.
+// Returns 0.5 by default so MEDIUM/EASY pick the middle of their pool.
+function fixedRng(values = [0.5]) {
+  let i = 0;
+  return () => values[i++ % values.length];
+}
 
 function fresh({ firstMove = true } = {}) {
   const s = createInitialState({
@@ -129,3 +136,77 @@ test('searchBotMove: HARD picks the highest-scoring move on the second turn', ()
   assert.ok(move);
   assert.equal(move.word, 'אה');
 });
+
+// ── Difficulty branch coverage (GAP_REPORT item 5) ───────────────────
+
+test('searchBotMove: EASY picks a lower-scoring move when both available', () => {
+  const s = fresh({ firstMove: false });
+  setCommittedTile(s, 4, 5, { letter: 'א', val: 1 });
+  s.racks[1] = ['א','ב','ג','ד','ה','ו','ז','ח'];
+  s.currentTurnSlot = 1;
+  // 'אב' scores less than 'אה'. EASY picks from the bottom half of moves
+  // by score, so with both available it should land on 'אב' (the lower one).
+  const move = searchBotMove(s, 1, ['אב', 'אה'], acceptAll,
+    { difficulty: DIFFICULTY.EASY, rng: fixedRng([0]) });
+  assert.ok(move);
+  assert.equal(move.word, 'אב', 'EASY favors the bottom-scoring move');
+});
+
+test('searchBotMove: MEDIUM picks from the top-3 with deterministic RNG', () => {
+  const s = fresh({ firstMove: false });
+  setCommittedTile(s, 4, 5, { letter: 'א', val: 1 });
+  s.racks[1] = ['א','ב','ג','ד','ה','ו','ז','ח'];
+  s.currentTurnSlot = 1;
+  // With rng() returning 0, MEDIUM picks the first of the top-3 highest
+  // scorers — which is the highest, 'אה'.
+  const move = searchBotMove(s, 1, ['אב', 'אה'], acceptAll,
+    { difficulty: DIFFICULTY.MEDIUM, rng: fixedRng([0]) });
+  assert.ok(move);
+  assert.equal(move.word, 'אה', 'MEDIUM with rng=0 picks the top scorer of the top-3');
+});
+
+// ── Legality (GAP_REPORT item 5: "plays legally") ────────────────────
+
+test('searchBotMove: refuses any placement that creates an invalid cross-word', () => {
+  const s = fresh({ firstMove: false });
+  // Pre-place a vertical word that will form crosses with horizontal plays.
+  // Setting committed 'ב' at (3,5) means a horizontal placement at row 4
+  // that uses column 5 will form the cross-word 'ב' + <new-letter>.
+  setCommittedTile(s, 3, 5, { letter: 'ב', val: 3 });
+  setCommittedTile(s, 4, 5, { letter: 'א', val: 1 });
+  s.racks[1] = ['ה','ג'];
+  s.currentTurnSlot = 1;
+
+  // Dictionary that ONLY accepts 'הא' (the main word) — anything formed
+  // vertically with 'ב' above must be rejected.
+  const dict = new Set(['הא']);
+  const isWordValid = (w) => dict.has(w);
+
+  // Without dict guard: bot would happily play 'הא' starting at (4,4)
+  // horizontally. With guard: the cross-word at column 5 would be 'בה'
+  // (top to bottom), which isn't in the dict → reject.
+  const move = searchBotMove(s, 1, ['הא'], isWordValid,
+    { difficulty: DIFFICULTY.HARD });
+  // The bot must either find a placement whose crosses are ALL in the dict,
+  // or return null. It must NOT return a move that produces 'בה'/'בג'/etc.
+  if (move) {
+    // If a move was found, none of its placements can sit in column 5
+    // (because that would create the rejected vertical cross-word with 'ב').
+    const usesColumn5 = move.placed.some(p => p.c === 5);
+    assert.equal(usesColumn5, false,
+      'bot must not place tiles that form an invalid cross-word');
+  }
+});
+
+// Note on coverage NOT added:
+//   - Vertical-only placement: the search algorithm always tries both H
+//     and V at every anchor, then picks the highest-scoring. Constructing
+//     a board where vertical wins is fragile (depends on `getAllWords`
+//     extending through committed letters in scoring-engine-specific ways).
+//     `tryPlaceWord` is unit-tested for both axes.
+//   - Joker in full search: `canMakeWord` conservatively requires the rack
+//     to spell the WHOLE word from scratch (doesn't account for committed
+//     letters supplying some), so the joker-in-search path is exercised
+//     only when the rack has both the joker AND the literal it replaces.
+//     The joker code in `canMakeWord` and `tryPlaceWord` is unit-tested
+//     directly. This is an intentional bot simplification, not a bug.

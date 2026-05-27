@@ -79,6 +79,30 @@ Critical element IDs referenced by game logic (must not be renamed):
 .bonus-award-positioner — bonus award container (checked by animation poller)
 ```
 
+### Stats Screen (3-tab layout, May 2026 simplification)
+
+Stats screen lives in `partials/screens/stats-screen.html`, painted by `src/ui/screens/statsScreen.js`.
+
+Tabs (parsed from button text by `tabFromButton()`):
+- `תקדמות` → `#st-panel-progress`
+- `שיאים`  → `#st-panel-records`
+- `יריבים ובוסטים` → `#st-panel-rivals`
+
+Load-bearing IDs (do not rename without updating `statsScreen.js` paint code):
+
+```
+Hero:     #st-hero-av, #st-hero-name, #st-hero-tier, #st-hero-wr, #st-hero-streak, #st-hero-insight
+Progress: #st-sparkline, #st-rating, #st-tier-bar, #st-highscore, #st-avg, #st-played,
+          #st-won, #st-lost, #st-draw, #st-bar-w, #st-bar-l, #st-bar-d
+Records:  #st-fun-bestmove, #st-fun-longest, #st-fun-streak, #st-fun-comeback, #st-fun-repeated, #st-fun-bestday
+Rivals:   #st-rivals-content, #st-boost-total, #st-boost-avg, #st-boost-winrate,
+          #st-boost-fav-icon, #st-boost-fav-name, #st-boost-fav-pct,
+          #st-comeback, #st-lastmove, #st-closewins
+Legacy hidden compat: #st-streak, #st-words, #stats-wr-pct, #stats-donut-arc
+```
+
+Removed in May 2026 simplification (do not re-add without product reason): `#st-avgword`, `#st-pts-tile`, `#st-move-time`, `#st-pts-move`, `#st-vs-stronger-w`, `#st-vs-weaker-w`, `#st-boost-impact-wins`, `#st-boost-impact-best`, `#st-boost-combo`, `#st-fun-luck`, `#st-fun-fastest`, `#st-perf-tier-badge`, `#st-hero-rank`, `#st-wr-pct-lbl`, `#st-streak-lbl`, `#st-best-streak`, `#st-bonuses`. The stats-screen topbar (`.stats-topbar`) and time filter (`.stats-tfseg`) are also removed — navigation lives on the persistent app top bar; cards reflect cumulative totals only.
+
 ### Button Selectors (legacy onclick removal)
 Some buttons are targeted by their `onclick` attribute value:
 

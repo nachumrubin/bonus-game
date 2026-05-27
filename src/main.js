@@ -164,7 +164,14 @@ async function boot() {
   if (cfg.onesignalAppId) {
     notificationService.configure({
       appId: cfg.onesignalAppId,
-      restKey: cfg.onesignalKey,
+      pushWorkerUrl: cfg.pushWorkerUrl,
+      getIdToken: async () => {
+        try {
+          return await activeFbCurrentUser?.getIdToken?.();
+        } catch {
+          return null;
+        }
+      },
     });
   }
   // Wait for sign-in to call notificationService.boot({ uid }) — that's the
@@ -1577,10 +1584,6 @@ async function boot() {
       }
     }
 
-    bus.on(MENU_INTENT.OPEN_CHAMPIONS, () => {
-      bus.emit(CHAMPS_OPEN, {});
-    });
-
     bus.on(CHAMPS_INTENT.OPEN, () => {
       refreshChampions('home');
     });
@@ -2503,10 +2506,6 @@ function installCutoverGlobals() {
     bus.emit(FRIENDS_INTENT.SEND_REQUEST, { userId });
   };
   globalThis._statsRefresh = globalThis._statsRefresh ?? function _statsRefresh() {};
-  globalThis._statsTimeFilter = globalThis._statsTimeFilter ?? function _statsTimeFilter(period, el) {
-    for (const btn of globalThis.document?.querySelectorAll?.('.stats-tfseg') ?? []) btn.classList?.remove('active');
-    el?.classList?.add('active');
-  };
   globalThis._statsTab = globalThis._statsTab ?? function _statsTab(tab, el) {
     for (const btn of globalThis.document?.querySelectorAll?.('.stats-tab') ?? []) btn.classList?.remove('active');
     for (const panel of globalThis.document?.querySelectorAll?.('.stats-panel') ?? []) panel.classList?.remove('active');

@@ -10,13 +10,17 @@
    ══════════════════════════════════════════════════════ */
 
 /* ─ Global topbar height variable ───────────────────── */
-/* Mirrors .em-topbar padding + button height so screens can offset their
-   content exactly below the fixed bar without hardcoding a magic number. */
+/* Mirrors .em-topbar padding + .em-icon-btn height so screens can offset
+   their content exactly below the fixed bar without hardcoding a magic
+   number. Must stay in sync with the .em-topbar padding and the
+   `--topbar-btn` formula on #global-topbar (button height drives the
+   bar height; the formulas are duplicated because :root cannot read
+   custom properties declared on a descendant selector). */
 :root {
   --em-topbar-h: calc(
-    max(clamp(6px, 1.2svh, 10px), env(safe-area-inset-top))
-    + clamp(28px, 7.2vw, 33px)
-    + clamp(6px, 1.2svh, 10px)
+    max(clamp(6px, 1.2svh, 14px), env(safe-area-inset-top))
+    + clamp(28px, min(7.5vw, 4.5svh), 60px)
+    + clamp(6px, 1.2svh, 14px)
   );
 }
 
@@ -30,9 +34,22 @@
   /* width and flex layout come from .em-topbar */
 }
 
-/* Push non-home, non-game screen content below the fixed topbar */
+/* Push non-home, non-game screen content below the fixed topbar.
+   `.screen:not(#sh):not(#sg)` has specificity (0,2,1,0) — higher than
+   any per-screen `#sNN { padding: ... }` shorthand (0,1,0,0) — so this
+   wins over things like `#ss { padding: 18px }` and the screen still
+   gets the proper top offset. */
 .screen:not(#sh):not(#sg) {
   padding-top: var(--em-topbar-h);
+}
+
+/* Belt-and-suspenders: any centered `.sbox` used as a non-home,
+   non-game screen's content must fit between the topbar and the
+   bottom edge. The base `.sbox` has no max-height, so this only
+   kicks in when needed; it also caps any inline `max-height: NNvh`
+   that forgot to subtract the topbar. */
+.screen:not(#sh):not(#sg) > .sbox {
+  max-height: calc(100svh - var(--em-topbar-h) - 16px);
 }
 
 /* ─ Near-black background override ──────────────────── */
@@ -54,6 +71,20 @@
      fills the viewport below it without overflow. */
   height: calc(100svh - var(--em-topbar-h));
   margin-top: var(--em-topbar-h);
+}
+
+/* ─ Logo (proportional) ──────────────────────────────────
+   `min(82vw, 45svh)` scales the logo with the smaller viewport
+   dimension. On phones (width-limited) vw wins → big logo.
+   On short landscape displays (Nest Hub) svh wins → logo stays
+   ~15% of viewport height (3:1 aspect → width ≈ 45svh).
+   Upper bound is generous so the proportional scaling continues
+   on tablets (iPad/Surface get ≈ 530-615px) and only caps on
+   4K+ monitors.
+   Overrides the base styles.css `.hlogo img` width clamps for
+   the home screen only. */
+.em-home .hlogo img {
+  max-width: clamp(200px, min(82vw, 45svh), 720px) !important;
 }
 
 /* ─ Particle field (::before) ────────────────────────── */
@@ -108,6 +139,25 @@
 }
 
 /* ─ Top Bar ──────────────────────────────────────────── */
+/* Proportional size scale — same `min(vw, svh)` pattern as the home
+   platforms. The base unit is the icon button size; everything else
+   (font sizes, avatar, ELO badge, pill padding) derives from it.
+   `vw` term scales with width on phones; `svh` term keeps the bar
+   compact on short landscape displays (Nest Hub) so the topbar
+   doesn't eat a quarter of the visible height. */
+#global-topbar {
+  --topbar-btn:        clamp(28px, min(7.5vw, 4.5svh), 60px);
+  --topbar-font:       calc(var(--topbar-btn) * 0.45);
+  --topbar-gap:        calc(var(--topbar-btn) * 0.14);
+  --topbar-avatar:     clamp(42px, min(11vw, 6.6svh), 88px);
+  --topbar-avatar-em:  calc(var(--topbar-avatar) * 0.50);
+  --topbar-name:       clamp(12px, min(3.2vw, 2svh), 22px);
+  --topbar-name-max:   calc(var(--topbar-avatar) * 2.4);
+  --topbar-elo:        calc(var(--topbar-btn) * 0.32);
+  --topbar-badge:      calc(var(--topbar-btn) * 0.40);
+  --topbar-badge-font: calc(var(--topbar-badge) * 0.55);
+}
+
 .em-topbar {
   width: 100%;
   display: flex;
@@ -115,9 +165,9 @@
   align-items: center;
   justify-content: space-between;
   /* Safe-area top so status bar is inside topbar on notched phones */
-  padding: max(clamp(6px, 1.2svh, 10px), env(safe-area-inset-top))
-           clamp(10px, 3vw, 16px)
-           clamp(6px, 1.2svh, 10px);
+  padding: max(clamp(6px, 1.2svh, 14px), env(safe-area-inset-top))
+           clamp(10px, 3vw, 22px)
+           clamp(6px, 1.2svh, 14px);
   background: rgba(1, 4, 20, 0.90);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
@@ -131,18 +181,19 @@
 .em-topbar-icons {
   display: flex;
   flex-direction: row;
-  gap: clamp(3px, 1vw, 5px);
+  gap: var(--topbar-gap);
   align-items: center;
   background: rgba(0, 12, 42, 0.60);
   border: 1px solid rgba(0, 135, 255, 0.18);
-  border-radius: 22px;
-  padding: 3px 4px;
+  /* Pill curvature follows the button radius so it stays a pill */
+  border-radius: calc(var(--topbar-btn) * 0.68);
+  padding: calc(var(--topbar-btn) * 0.10) calc(var(--topbar-btn) * 0.14);
 }
 
 .em-icon-btn {
   position: relative;
-  width: clamp(28px, 7.2vw, 33px);
-  height: clamp(28px, 7.2vw, 33px);
+  width: var(--topbar-btn);
+  height: var(--topbar-btn);
   border-radius: 50%;
   background: linear-gradient(145deg, rgba(0, 32, 85, 0.94), rgba(0, 5, 25, 0.96));
   border: 1.5px solid rgba(0, 148, 255, 0.34);
@@ -150,7 +201,7 @@
   cursor: pointer;
   display: grid;
   place-items: center;
-  font-size: clamp(12px, 3.1vw, 14px);
+  font-size: var(--topbar-font);
   box-shadow: 0 0 6px rgba(0, 115, 255, 0.14), inset 0 1px 0 rgba(255,255,255,0.06);
   transition: box-shadow 0.2s ease, transform 0.14s ease;
   font-family: 'Heebo', sans-serif;
@@ -170,25 +221,25 @@
 .em-icon-btn--home-active:active { transform: none; }
 
 .em-help-q {
-  font-size: clamp(12px, 3.1vw, 14px);
+  font-size: var(--topbar-font);
   font-weight: 900;
   color: rgba(148, 212, 255, 0.88);
   line-height: 1;
 }
 
-/* Notification badge */
+/* Notification badge — sized relative to the icon button it sits on */
 .em-icon-badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: calc(var(--topbar-badge) * -0.15);
+  right: calc(var(--topbar-badge) * -0.15);
   background: #e74c3c;
   color: #fff;
   border-radius: 50%;
-  width: 13px;
-  height: 13px;
-  font-size: 7px;
+  width: var(--topbar-badge);
+  height: var(--topbar-badge);
+  font-size: var(--topbar-badge-font);
   font-weight: 900;
-  line-height: 13px;
+  line-height: var(--topbar-badge);
   text-align: center;
   box-shadow: 0 0 5px rgba(231, 76, 60, 0.85);
   animation: onpulse 1.5s ease-in-out infinite;
@@ -200,7 +251,7 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: clamp(5px, 1.5vw, 8px);
+  gap: calc(var(--topbar-avatar) * 0.15);
   background: none;
   border: none;
   cursor: pointer;
@@ -212,14 +263,14 @@
 
 /* Avatar — glow ring */
 .em-avatar-wrap {
-  width: clamp(42px, 11vw, 50px);
-  height: clamp(42px, 11vw, 50px);
+  width: var(--topbar-avatar);
+  height: var(--topbar-avatar);
   border-radius: 50%;
   background: radial-gradient(circle at 40% 35%, #1a3a6a, #06102a);
   border: 2px solid rgba(0, 190, 255, 0.44);
   display: grid;
   place-items: center;
-  font-size: clamp(20px, 5.2vw, 25px);
+  font-size: var(--topbar-avatar-em);
   box-shadow:
     0 0 12px rgba(0, 150, 255, 0.34),
     0 0 26px rgba(0, 80, 200, 0.16),
@@ -237,13 +288,13 @@
 }
 
 .em-player-name {
-  font-size: clamp(12px, 3.2vw, 15px);
+  font-size: var(--topbar-name);
   font-weight: 700;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: clamp(72px, 25vw, 116px);
+  max-width: var(--topbar-name-max);
   display: block;
 }
 
@@ -254,16 +305,16 @@
   gap: 3px;
   background: rgba(0, 16, 54, 0.82);
   border: 1px solid rgba(0, 172, 255, 0.48);
-  border-radius: 8px;
+  border-radius: calc(var(--topbar-elo) * 0.6);
   padding: 1px 6px 1px 4px;
-  font-size: clamp(9px, 2.4vw, 11px);
+  font-size: var(--topbar-elo);
   color: rgba(100, 215, 255, 0.95);
   font-weight: 700;
   white-space: nowrap;
   box-shadow: 0 0 7px rgba(0, 162, 255, 0.25);
 }
 
-.em-elo-bolt { font-size: 9px; line-height: 1; color: rgba(0, 228, 255, 0.92); }
+.em-elo-bolt { font-size: var(--topbar-elo); line-height: 1; color: rgba(0, 228, 255, 0.92); }
 
 /* ─ Logo — stronger multi-layer glow ────────────────── */
 .em-home .hlogo {
@@ -276,9 +327,9 @@
     drop-shadow(0 0 52px rgba(0, 65, 225, 0.22))
     drop-shadow(0 12px 18px rgba(0, 0, 0, 0.52)) !important;
 }
-.em-home .hlogo img {
-  max-width: 525px !important;
-}
+/* `.em-home .hlogo img` proportional max-width is declared earlier
+   (near the .em-home container rule). Keep it there as the single
+   source of truth. */
 
 /* ─ Resume button ────────────────────────────────────── */
 .em-resume-btn {
@@ -300,6 +351,29 @@
   position: relative;
   min-height: 0;
   z-index: 2;
+
+  /* ─ Proportional size scale ─────────────────────────────
+     Both circles, icons, and font sizes derive from a single
+     viewport-relative base so the home screen keeps the same
+     proportions across phones, tablets, and short displays.
+     `min(vw, svh)` so the smaller dimension constrains the
+     size — phones (width-limited) shrink by vw, short displays
+     like Nest Hub (height-limited) shrink by svh.
+     Upper bounds are deliberately generous so the proportional
+     scaling continues to tablets (iPad/Surface ≈ 330-383px
+     online) and only clamps on 4K+ displays where unbounded
+     `min(48vw, 28svh)` would otherwise produce 600px+ circles.
+     ─────────────────────────────────────────────────────── */
+  --circle-online:    clamp(140px, min(48vw, 28svh), 420px);
+  --circle-secondary: clamp(94px,  min(32vw, 19svh), 280px);
+  --icon-online:      calc(var(--circle-online)    * 0.45);
+  --icon-secondary:   calc(var(--circle-secondary) * 0.42);
+  --title-online:     calc(var(--circle-online)    * 0.082);
+  --sub-online:       calc(var(--circle-online)    * 0.052);
+  --title-secondary:  calc(var(--circle-secondary) * 0.102);
+  --sub-secondary:    calc(var(--circle-secondary) * 0.078);
+  --gap-online:       calc(var(--circle-online)    * 0.045);
+  --gap-secondary:    calc(var(--circle-secondary) * 0.045);
 }
 
 /* Energy field radials behind platform cluster */
@@ -365,8 +439,9 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  /* size to circle, not flex fraction — prevents column box from appearing as large as online circle */
-  width: clamp(120px, 32vw, 140px);
+  /* Size column to its circle so an empty halo doesn't make the
+     secondary row read as wider than the online circle. */
+  width: var(--circle-secondary);
   flex-shrink: 0;
   position: relative;
 }
@@ -376,13 +451,13 @@
 /* ─ Circle mode buttons ──────────────────────────────── */
 .em-circle-btn {
   border-radius: 50%;
-  width: clamp(120px, 32vw, 140px);
-  height: clamp(120px, 32vw, 140px);
+  width: var(--circle-secondary);
+  height: var(--circle-secondary);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(5px, 1.4svh, 9px);
+  gap: var(--gap-secondary);
   cursor: pointer;
   color: white;
   font-family: 'Heebo', sans-serif;
@@ -407,8 +482,9 @@
 }
 
 .em-circle-btn--online {
-  width: clamp(180px, 48vw, 210px);
-  height: clamp(180px, 48vw, 210px);
+  width: var(--circle-online);
+  height: var(--circle-online);
+  gap: var(--gap-online);
   border-color: rgba(0, 235, 255, 0.86);
   background: radial-gradient(circle at 34% 28%,
     rgba(175, 238, 255, 0.38) 0%,
@@ -423,24 +499,25 @@
 .em-circle-btn:hover  { transform: scale(1.05); }
 .em-circle-btn:active { transform: scale(0.96); }
 
-/* Icon container — fills top portion of circle */
+/* Icon container — proportional to its parent circle */
 .em-circle-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: clamp(46px, 12vw, 54px);
-  height: clamp(46px, 12vw, 54px);
+  width: var(--icon-secondary);
+  height: var(--icon-secondary);
 }
 .em-circle-btn--online .em-circle-icon {
-  width: clamp(96px, 26vw, 112px);
-  height: clamp(96px, 26vw, 112px);
+  width: var(--icon-online);
+  height: var(--icon-online);
 }
 
-/* Spinning globe canvas — explicit px so canvas % doesn't resolve to button size */
+/* Spinning globe canvas — explicit px so the canvas's intrinsic 0×0
+   doesn't collapse the layout. Matches the online icon container. */
 #home-globe {
-  width: clamp(96px, 26vw, 112px);
-  height: clamp(96px, 26vw, 112px);
+  width: var(--icon-online);
+  height: var(--icon-online);
   border-radius: 50%;
   display: block;
   flex-shrink: 0;
@@ -467,31 +544,41 @@
 
 .em-circle-title {
   display: block;
-  font-size: clamp(11px, 3vw, 13px);
+  font-size: var(--title-secondary);
   font-weight: 900;
   color: #fff;
   text-shadow: 0 0 10px rgba(0, 208, 255, 0.50), 0 1px 2px rgba(0,0,0,0.6);
-  line-height: 1.2;
+  line-height: 1.15;
   white-space: nowrap;
 }
 
 .em-circle-sub {
   display: block;
-  font-size: clamp(8px, 2.1vw, 10px);
+  font-size: var(--sub-secondary);
   color: rgba(148, 212, 255, 0.75);
   font-weight: 400;
-  line-height: 1.3;
+  line-height: 1.2;
   white-space: normal; /* allow wrapping for long subtitles */
   text-align: center;
 }
 
-.em-circle-btn--online .em-circle-title { font-size: clamp(12px, 3.3vw, 15px); white-space: nowrap; }
-.em-circle-btn--online .em-circle-sub   { font-size: clamp(8px, 2.1vw, 10px); white-space: normal; }
-/* 58% of 180px ≈ 104px — stays well inside the narrowing circle edges at the bottom */
-.em-circle-btn--online .em-circle-text  { max-width: 58%; }
+.em-circle-btn--online .em-circle-title { font-size: var(--title-online); }
+.em-circle-btn--online .em-circle-sub   { font-size: var(--sub-online); }
+/* 70% keeps the wider title + wrapped subtitle inside the narrowing
+   bottom curve of the circle (centered flex column → text-block bottom
+   sits near y = circle*0.85 where the chord width is ~72% of diameter). */
+.em-circle-btn--online .em-circle-text  { max-width: 70%; }
 
 /* ─ Bottom Navigation ────────────────────────────────── */
+/* Proportional size scale — same `min(vw, svh)` pattern.
+   The icon size is the base; padding, label, and item-gap derive
+   from it so the bar scales as one block. */
 .em-bottom-nav {
+  --nav-icon: clamp(22px, min(6vw, 3.6svh), 44px);
+  --nav-label: calc(var(--nav-icon) * 0.40);
+  --nav-pad-y: calc(var(--nav-icon) * 0.42);
+  --nav-gap:   calc(var(--nav-icon) * 0.12);
+
   width: 100%;
   display: flex;
   flex-direction: row;
@@ -502,9 +589,8 @@
   /* Fade from transparent at top → near-black = blends into background */
   -webkit-mask: linear-gradient(to bottom, transparent 0%, black 18%);
           mask: linear-gradient(to bottom, transparent 0%, black 18%);
-  /* Taller bar: ~80px target */
-  padding: clamp(10px, 2svh, 14px) 4px;
-  padding-bottom: max(clamp(10px, 2svh, 14px), env(safe-area-inset-bottom));
+  padding: var(--nav-pad-y) 4px;
+  padding-bottom: max(var(--nav-pad-y), env(safe-area-inset-bottom));
   flex-shrink: 0;
   position: relative;
   z-index: 5;
@@ -515,7 +601,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: var(--nav-gap);
   background: none;
   border: none;
   cursor: pointer;
@@ -535,9 +621,8 @@
   color: rgba(200, 225, 255, 0.95);
 }
 
-/* Nav icons 28px target */
-.em-nav-icon  { font-size: clamp(22px, 5.8vw, 28px); line-height: 1; display: block; }
-.em-nav-label { font-size: clamp(9px, 2.3vw, 11px); font-weight: 700; line-height: 1; white-space: nowrap; }
+.em-nav-icon  { font-size: var(--nav-icon);  line-height: 1; display: block; }
+.em-nav-label { font-size: var(--nav-label); font-weight: 700; line-height: 1; white-space: nowrap; }
 
 /* ─ Animations ───────────────────────────────────────── */
 
@@ -601,26 +686,14 @@
 
 /* ─ Responsive ───────────────────────────────────────── */
 
+/* Short-display tweaks — every size on this screen now scales
+   proportionally via `min(vw, svh)` formulas above (circles, icons,
+   fonts, logo, topbar, nav). The only remaining short-height tweaks
+   are the logo margins and the inter-row platform gap, which aren't
+   tied to the size-scale system. */
 @media (max-height: 700px) {
-  .em-circle-sub    { display: none; }
-  .em-home .hlogo   { margin-top: 1px; margin-bottom: 0; }
-  .em-home .hlogo img { max-width: clamp(210px, 54vw, 278px) !important; }
-  .em-circle-btn--online {
-    width:  clamp(150px, 40vw, 174px);
-    height: clamp(150px, 40vw, 174px);
-  }
-  .em-circle-btn--online .em-circle-icon,
-  #home-globe {
-    width:  clamp(62px, 16vw, 72px);
-    height: clamp(62px, 16vw, 72px);
-  }
-  .em-circle-btn {
-    width:  clamp(100px, 27vw, 118px);
-    height: clamp(100px, 27vw, 118px);
-  }
-  .em-platforms { gap: clamp(2px, 0.6svh, 5px); }
-  .em-bottom-nav { padding-top: 6px; }
-  .em-nav-icon   { font-size: clamp(18px, 4.8vw, 22px); }
+  .em-home .hlogo { margin-top: 1px; margin-bottom: 0; }
+  .em-platforms   { gap: clamp(2px, 0.6svh, 5px); }
 }
 
 @media (max-height: 620px) {
@@ -633,7 +706,3 @@
   .em-elo-badge   { display: none !important; }
 }
 
-@media (min-width: 400px) {
-  .em-circle-title { font-size: clamp(12px, 3.2vw, 14px); }
-  .em-circle-btn--online .em-circle-title { font-size: clamp(15px, 4vw, 18px); }
-}
