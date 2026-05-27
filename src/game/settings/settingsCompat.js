@@ -5,8 +5,6 @@ export const DEFAULT_GAME_SETTINGS = Object.freeze({
   confirm: false,
   timelimit: true,
   botTime: 40,
-  movelimit: false,
-  maxMoves: 30,
   music: true,
   soundFx: true,
   vibration: true,
@@ -29,8 +27,6 @@ export function normalizeGameSettings(input = {}) {
     confirm: !!s.confirm,
     timelimit: !!s.timelimit,
     botTime: clampInt(s.botTime, 5, 120, DEFAULT_GAME_SETTINGS.botTime),
-    movelimit: !!s.movelimit,
-    maxMoves: clampInt(s.maxMoves, 5, 100, DEFAULT_GAME_SETTINGS.maxMoves),
     music: !!s.music,
     soundFx: s.soundFx !== false,
     vibration: s.vibration !== false,
@@ -46,8 +42,6 @@ export function settingsFromLegacyGlobals(globals = globalThis, overrides = {}) 
     music: legacy.musicOn,
     timelimit: legacy.computerTimerOn,
     botTime: legacy.computerTimerSecs,
-    movelimit: legacy.moveLimitOn,
-    maxMoves: legacy.moveLimit,
     appealsMax: legacy.appealsMax,
   } : {};
   return normalizeGameSettings({
@@ -66,8 +60,6 @@ export function applyGameSettingsToGlobals(globals = globalThis, settings = {}) 
       musicOn: next.music,
       computerTimerOn: next.timelimit,
       computerTimerSecs: next.botTime,
-      moveLimitOn: next.movelimit,
-      moveLimit: next.maxMoves,
       appealsMax: next.appealsMax,
     });
   }

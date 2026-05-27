@@ -123,18 +123,6 @@ test('legacy commitPlay: emptyRackEmptyBag ends the game immediately', async () 
   assert.equal(state.status, 'completed', 'legacy commitPlay calls endGame when the player empties rack and bag');
 });
 
-test('legacy commitPlay: moveLimit ends the game after the configured move limit', async () => {
-  const { commands, dict, state, eng } = await makeEngine({
-    settings: { moveLimitOn: true, moveLimit: 1, movelimit: true, maxMoves: 1 },
-  });
-  seedDict(dict, ['אב']);
-
-  placeSimpleWord(commands, eng);
-
-  assert.equal(state.moveCount, 1);
-  assert.equal(state.status, 'completed', 'legacy commitPlay ends when settings.moveLimitOn && moveCount >= settings.moveLimit');
-});
-
 test('legacy nextTurn/_doTurnStart: skipNextTurn auto-skips the opponent turn', async () => {
   const { commands, dict, state, eng } = await makeEngine();
   seedDict(dict, ['אב']);
@@ -479,26 +467,19 @@ test('legacy calcElo/ranking rows: modular rating helpers preserve Elo math and 
   );
 });
 
-test('legacy settings rows: move limit and timer settings round-trip between legacy globals and modular settings', async () => {
+test('legacy settings rows: timer settings round-trip between legacy globals and modular settings', async () => {
   const { settingsCompat } = await loadModules();
   const settings = settingsCompat.settingsFromLegacyGlobals({
-    gameSettings: { timelimit: true, botTime: 45, movelimit: true, maxMoves: 25, music: false, showBothRacks: true },
+    gameSettings: { timelimit: true, botTime: 45, music: false, showBothRacks: true },
   });
-  assert.deepEqual(
-    {
-      timelimit: settings.timelimit,
-      botTime: settings.botTime,
-      movelimit: settings.movelimit,
-      maxMoves: settings.maxMoves,
-      music: settings.music,
-      showBothRacks: settings.showBothRacks,
-    },
-    { timelimit: true, botTime: 45, movelimit: true, maxMoves: 25, music: false, showBothRacks: true },
-  );
+  assert.equal(settings.timelimit, true);
+  assert.equal(settings.botTime, 45);
+  assert.equal(settings.music, false);
+  assert.equal(settings.showBothRacks, true);
   const globals = { settings: {} };
   settingsCompat.applyGameSettingsToGlobals(globals, settings);
-  assert.equal(globals.settings.moveLimitOn, true);
-  assert.equal(globals.settings.moveLimit, 25);
+  assert.equal(globals.settings.computerTimerSecs, 45);
+  assert.equal(globals.settings.musicOn, false);
 });
 
 function constantRng(value) {

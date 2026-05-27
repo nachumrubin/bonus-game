@@ -52,8 +52,31 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
   let mode = 'vs';                   // 'vs' or 'bot'
   let difficulty = 1;                // 0=easy, 1=med, 2=hard
   let botTime = 40;                  // 20 | 40 | 60
+  let showBothRacks = false;
 
   const cleanups = [];
+
+  // ─── Show-both-racks toggle ────────────────────────────
+  const racksShowBtn = setup.querySelector?.('#ss-racks-both');
+  const racksMineBtn = setup.querySelector?.('#ss-racks-mine');
+  function applyRacksClass() {
+    racksShowBtn?.classList?.[showBothRacks ? 'add' : 'remove']('a');
+    racksMineBtn?.classList?.[showBothRacks ? 'remove' : 'add']('a');
+  }
+  if (racksShowBtn) {
+    cleanups.push(on(racksShowBtn, 'click', (e) => {
+      e.preventDefault?.();
+      showBothRacks = true;
+      applyRacksClass();
+    }));
+  }
+  if (racksMineBtn) {
+    cleanups.push(on(racksMineBtn, 'click', (e) => {
+      e.preventDefault?.();
+      showBothRacks = false;
+      applyRacksClass();
+    }));
+  }
 
   // ─── Speed buttons ─────────────────────────────────────
   const speedDefs = [
@@ -103,7 +126,7 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
       e.preventDefault?.();
       const p1 = ($(SELECTORS.p1Input, setup)?.value ?? 'שחקן 1').trim() || 'שחקן 1';
       const p2 = ($(SELECTORS.p2Input, setup)?.value ?? 'שחקן 2').trim() || 'שחקן 2';
-      bus.emit(SETUP_INTENT.PLAY_CLICKED, { mode, p1Name: p1, p2Name: p2, difficulty, botTime });
+      bus.emit(SETUP_INTENT.PLAY_CLICKED, { mode, p1Name: p1, p2Name: p2, difficulty, botTime, showBothRacks: mode === 'vs' ? showBothRacks : false });
     }));
   }
 
@@ -138,11 +161,17 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
     if (p2Field) p2Field.style.display = mode === 'vs' ? '' : 'none';
     const diffField = $(SELECTORS.diffField, setup);
     if (diffField) diffField.style.display = mode === 'bot' ? '' : 'none';
+    // Show racks toggle only in vs mode
+    const racksRow = setup.querySelector?.('#ss-racks-row');
+    if (racksRow) racksRow.style.display = mode === 'vs' ? '' : 'none';
     // Reset difficulty active class
     for (const d of diffButtons) {
       const b = d.el;
       if (b) (d.level === difficulty ? b.classList?.add('a') : b.classList?.remove('a'));
     }
+    // Reset racks toggle (default to "only mine")
+    showBothRacks = false;
+    applyRacksClass();
   }));
 
   function unmount() {
