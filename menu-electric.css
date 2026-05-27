@@ -40,7 +40,7 @@
    The banner has z-index:49 so the topbar clips the slide-in animation. */
 #notif-banner {
   position: fixed;
-  top: 0;
+  top: var(--em-topbar-h);   /* anchored to topbar bottom — never overlaps */
   left: 0;
   right: 0;
   z-index: 49;
@@ -53,12 +53,12 @@
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0,185,255,0.28);
   cursor: pointer;
-  transform: translateY(-110%);
+  transform: translateY(-100%); /* fully behind topbar when hidden */
   transition: transform 0.38s cubic-bezier(0.22,1,0.36,1);
   will-change: transform;
 }
 #notif-banner.notif-banner--shown {
-  transform: translateY(var(--em-topbar-h));
+  transform: translateY(0);   /* slides out below topbar */
 }
 #notif-banner:hover {
   background: linear-gradient(90deg, rgba(0,35,110,0.97) 0%, rgba(0,22,70,0.97) 100%);
