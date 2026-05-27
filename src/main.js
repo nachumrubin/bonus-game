@@ -216,6 +216,11 @@ async function boot() {
     music: uiPreferences.music,
   });
   audioService.init({ storage: globalThis.localStorage, doc: globalThis.document });
+  function syncMusicTopbarIcon() {
+    const ic = globalThis.document?.getElementById?.('topbar-music-ic');
+    if (ic) ic.textContent = audioService.isEnabled() ? '🎵' : '🔇';
+  }
+  syncMusicTopbarIcon();
   feedbackService.init({ storage: globalThis.localStorage, doc: globalThis.document, bus });
 
   // ─── Debug surface ─────────────────────────────────────
@@ -580,6 +585,11 @@ async function boot() {
     });
     bus.on(MENU_INTENT.OPEN_NOTIFICATIONS, () => {
       showLegacyScreen('snotif');
+    });
+    bus.on(MENU_INTENT.TOPBAR_MUSIC, () => {
+      audioService.toggle();
+      syncMusicTopbarIcon();
+      audioService.refreshButton();
     });
     bus.on(MENU_INTENT.SHARE_GAME, async () => {
       // Prefer the native Web Share API on mobile (gives the user system
@@ -1505,15 +1515,15 @@ async function boot() {
         lastFriends = friends;
         try {
           const enriched = await Promise.all(friends.map(async (f) => {
-            const [presence, profile] = await Promise.all([
+            const [presence, rating] = await Promise.all([
               presenceService.readPresenceOnce(fbDb, f.uid).catch(() => null),
-              profileService.readProfile(fbDb, f.uid).catch(() => null),
+              ratingService.readRating(fbDb, f.uid).catch(() => null),
             ]);
             return {
               ...f,
               connected: !!presence?.connected,
               lastSeen: presence?.lastSeen ?? f.addedAt ?? 0,
-              rating: profile?.rating ?? null,
+              rating: rating ?? null,
             };
           }));
           enriched.sort((a, b) => (b.lastSeen ?? 0) - (a.lastSeen ?? 0));
