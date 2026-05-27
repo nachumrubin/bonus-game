@@ -5,6 +5,290 @@
 
 ---
 
+## Stats Screen Simplification (May 2026)
+
+**Branch:** `setup-md-files-and-update`
+
+**Summary:** Audited the stats screen and removed low-value / duplicated / placeholder stats. Collapsed 5 tabs (סקירה / ביצועים / בוסטים / יריבים / כיף) into 3 (תקדמות / שיאים / יריבים ובוסטים). UI-only change — `EMPTY_STATS` and Firebase storage are unchanged so existing user data is preserved.
+
+**Removed from UI:**
+- Average word length (`#st-avgword`) — narrow range, undifferentiating
+- Points per tile (`#st-pts-tile`) — redundant with points-per-move
+- Average move time (`#st-move-time`) — `totalMoveTimeMs` is never written, so the card always rendered `—`
+- Wins vs stronger / weaker (`#st-vs-stronger-w`, `#st-vs-weaker-w`) — not actionable without rating-delta context
+- Boost impact wins / best (`#st-boost-impact-wins`, `#st-boost-impact-best`) — definition is too loose (any boost-triggered win)
+- Winning combo (`#st-boost-combo`) — complex to compute, low payoff
+- Luck index (`#st-fun-luck`) — just `clamp(winRate, 1, 99)` renamed
+- Duplicated tier badge on performance tab (`#st-perf-tier-badge`) — hero card already shows tier
+- Empty rank placeholder (`#st-hero-rank`) — never populated, no global leaderboard yet
+- Win-rate / streak duplicates under W/L bar (`#st-wr-pct-lbl`, `#st-streak-lbl`)
+
+**New tab structure:**
+- **תקדמות (Progress)** — sparkline, ELO/tier bar, high score, avg score, games played, points/move, W/L/D bar
+- **שיאים (Records)** — longest word, longest streak, fastest win, biggest comeback, most repeated word, best weekday, share button
+- **יריבים ובוסטים (Rivals & Boosts)** — rival leaderboard, boost totals/avg/win-rate, favorite boost, clutch cluster (comeback / last-move / close wins)
+
+**Changes:**
+
+- `partials/screens/stats-screen.html`
+  - Replaced 5-tab tabbar with 3 tabs.
+  - Rebuilt panel HTML around the 3-tab grouping; dropped low-value cards.
+  - Hero card dropped the rank KPI; shows 2 KPIs (win rate + current streak).
+  - Share button moved to the Records tab.
+  - New ID: `#st-fun-streak` for the longest-streak fun card.
+
+- `src/ui/screens/statsScreen.js`
+  - `paint()` no longer writes to removed DOM IDs.
+  - `tabFromButton()` parses the new tab labels (תקדמות / שיאים / יריבים).
+  - `deriveStatsView()` no longer returns the unused fields (`avgWordLength`, `pointsPerTile`, `avgMoveTime`, `boostImpactWins`, `boostComboHtml`, `luck`, `rank`).
+  - Removed dead helpers `boostComboHtml()` and `formatDurationAverage()`.
+
+- `src/ui/screens/statsScreen.test.js`
+  - DOM mock IDs and tab labels updated to match the new layout.
+  - Tab assertion now checks `#st-panel-records` instead of `#st-panel-performance`.
+  - Empty-stats test now checks `#st-fun-fastest` (the kept card) instead of `#st-move-time`.
+
+**Files changed:**
+- `partials/screens/stats-screen.html`
+- `src/ui/screens/statsScreen.js`
+- `src/ui/screens/statsScreen.test.js`
+
+**Notes:**
+- `EMPTY_STATS` in `src/game/account/profileService.js` is unchanged. `boostImpactWins`, `totalMoveTimeMs`, etc. continue to be written to Firebase but are no longer surfaced in the UI. A future cleanup pass can remove the orphan fields once the new layout settles.
+- `totalMoveTimeMs` is still hardcoded to `0` at `profileService.js:251` — this remains an open item if move-time tracking is ever wired up.
+- The `ratingService.applyEloForFinishedGame()` flow is fully wired; the ELO/tier UI shows real values.
+
+**Follow-up tweak:** Removed the redundant stats-screen topbar (back arrow + refresh button) — the persistent app-wide top bar already provides navigation. Tightened the hero card layout: tier badge now sits inline next to the display name on the same row, and the avatar is sized down (48px → 36px) so the info column no longer gets squeezed with only 2 KPIs visible.
+
+**Follow-up tweak 2 (2026-05-27):** User-reported issues:
+
+- Removed **fastest-win** card (`#st-fun-fastest`) — abandoned games skewed the stat (a 16-second "win" really meant the opponent left).
+- Removed **points-per-move** card (`#st-pts-move`) — `totalMoves` is under-tracked in `computeLiveGameStatsDelta`, producing impossible values (e.g. 83.2 pts/move). Until the tracking is fixed the metric is noise.
+- Renamed `שיא ניקוד` → `שיא ניקוד למשחק` and `ממוצע ניקוד` → `ממוצע ניקוד למשחק` so the labels make clear these are per-game (not per-move) totals.
+- Removed the **time filter** UI (`שבוע`/`חודש`/`הכל`) entirely. Only the sparkline ever respected the period; every other card used cumulative totals, so the filter was misleading. Restoring proper time-windowed stats requires per-game history beyond the current 20-game `recentGames` cap.
+- Fixed the **W/L bar** colors: removed the inline `direction:ltr` so the bar follows the RTL flow of the card. Now green (wins) aligns under the ניצחונות label on the right, red under הפסדים, gray under תיקו.
+
+**Files changed:**
+- `partials/screens/stats-screen.html`
+- `src/ui/screens/statsScreen.js` — dropped `period` parameter, `pointsPerMove`/`fastestWin`/`filteredRecent` fields, `setActive`/`filterRecent`/`btnTextPeriod`/`formatDuration` helpers, `PERIOD_MS` constant, `win._statsTimeFilter` global
+- `src/ui/screens/statsScreen.test.js`
+- `src/main.js` — dropped the `globalThis._statsTimeFilter` shim
+- `tests/e2e/non-menu-buttons.spec.js` — updated to match the new 3-tab layout (no topbar, no time filter, no performance/fun tabs)
+
+**Storage notes:** `fastestWinMs`, `totalMoves`, `totalScore` etc. are still written to Firebase — UI-only hide.
+
+**Follow-up tweak 3 (2026-05-27):** Added **"הכי הרבה נקודות במהלך אחד"** (highest single-move score) to the Records tab.
+
+- New stored field `highestMoveScore` in `EMPTY_STATS` ([src/game/account/profileService.js](src/game/account/profileService.js)).
+- `computeLiveGameStatsDelta` walks the player's own `moveHistory` entries, takes the max `score`, and emits `highestMoveScore: { max: ... }` so the bump transaction keeps the running all-time best.
+- Surfaced as `stats.highestMoveScore` in `deriveStatsView`, painted into `#st-fun-bestmove` on the Records tab.
+- Tests: added assertions in [profileService.test.js](src/game/account/profileService.test.js) (`d.highestMoveScore === { max: 40 }` for the existing live-stats test) and [statsScreen.test.js](src/ui/screens/statsScreen.test.js) (rendered `92`).
+
+---
+
+## Profile Cleanup + Achievements Nav Repurpose (May 2026)
+
+**Branch:** `setup-md-files-and-update`
+
+**Summary:** With the persistent topbar now providing the home button on every screen, redundant navigation in the profile screen could be removed. Also repurposed the bottom-nav "הישגים" (achievements) button to navigate to the avatar gallery instead of opening the champions/ratings overlay.
+
+**Changes:**
+
+- `partials/screens/profile-screen.html`
+  - Removed the "← חזרה לתפריט" button (replaced by the topbar's home button).
+  - Removed the "🎨 אוסף אווטארים" button (now reachable via the bottom-nav "הישגים" button; the avatar emoji at the top of the profile is still clickable too).
+
+- `partials/screens/home.html`
+  - Bottom-nav trophy button: `onclick="openChampions()"` → `onclick="showAvatarGallery()"`. Label "הישגים" and icon 🏆 kept. `showAvatarGallery()` is the existing global that emits `PROFILE_INTENT.OPEN_AVATARS` → navigates to `#sav-gallery`.
+
+- `src/ui/screens/menuScreen.js`
+  - Removed the `openChampions()` selector entry from `SCREEN_BUTTONS` (no button uses that onclick anymore).
+  - Removed `MENU_INTENT.OPEN_CHAMPIONS` from the intent enum.
+
+- `src/main.js`
+  - Removed the `bus.on(MENU_INTENT.OPEN_CHAMPIONS, …)` handler (dead — no emitter remains). Champions screen can still be opened by the existing `CHAMPS_OPEN` flow from other call sites (e.g. end-of-game `bus.emit(CHAMPS_OPEN, {})` at main.js:460).
+
+- `src/ui/screens/menuScreen.test.js`
+  - Removed the `champions` mock button and its click + `OPEN_CHAMPIONS` assertion from the per-button intent test.
+
+**Files changed:**
+- `partials/screens/profile-screen.html`
+- `partials/screens/home.html`
+- `src/ui/screens/menuScreen.js`
+- `src/ui/screens/menuScreen.test.js`
+- `src/main.js`
+
+---
+
+## All-Screens Topbar Clearance Audit (May 2026)
+
+**Branch:** `setup-md-files-and-update`
+
+**Summary:** Audited every screen partial to confirm the persistent top bar doesn't cover content. The existing `.screen:not(#sh):not(#sg) { padding-top: var(--em-topbar-h) }` rule wins via specificity on every screen (verified `.screen:not(#sh):not(#sg)` = `(0,2,1,0)` beats `#ss { padding: 18px }` at `(0,1,0,0)`), but one screen used an inline `max-height: 92vh` that did not subtract the topbar height. Added a global belt-and-suspenders cap.
+
+**Per-screen verification:**
+
+| Screen | Container | Topbar-aware? |
+|---|---|---|
+| `#sh` home | `.em-home` `margin-top: var(--em-topbar-h)` | ✓ explicit |
+| `#sg` game | topbar hidden by `screenTransitions.js` | ✓ N/A |
+| `#ss` setup | `.sbox` centered; global padding-top wins over `#ss { padding: 18px }` (specificity) | ✓ |
+| `#so` online lobby | `.online-wrap` centered | ✓ global rule |
+| `#scoin` coin toss | `.coin-wrap` centered | ✓ global rule |
+| `#sprofile` profile | `.sbox` centered | ✓ global + max-height cap |
+| `#sfriends` friends | `.sbox` with **inline `max-height: 92vh`** | ✗ FIXED |
+| `#sstats` stats | `.stats-wrap` `height: 100%` of content area | ✓ global rule |
+| `#sauth-signup` sign-up | `.sbox` centered | ✓ global + max-height cap |
+| `#sauth-login` log-in | `.sbox` centered | ✓ global + max-height cap |
+| `#sav-gallery` avatar gallery | inner `height: 100%` fills content area | ✓ global rule |
+| `#schamps` | stale ID, not in DOM (champions is `.ov` overlay) | ✓ N/A |
+
+**Changes:**
+- `partials/screens/friends-screen.html` — replaced inline `max-height: 92vh` with `calc(100svh - var(--em-topbar-h) - 16px)` so the box always fits between the topbar and the bottom edge.
+- `menu-electric.css` — added a defensive rule capping any direct-child `.sbox` of a non-home, non-game `.screen` to `calc(100svh - var(--em-topbar-h) - 16px)` so future inline `max-height: NNvh` values can't overflow the topbar.
+
+---
+
+## Topbar + Bottom Nav Proportional Sizing (May 2026)
+
+**Branch:** `setup-md-files-and-update`
+
+**Summary:** The top bar (`.em-topbar`) and bottom navigation (`.em-bottom-nav`) had hardcoded values and clamps capped at phone sizes (icon buttons at 33px max, avatar at 50px, nav icon at 28px, badge fully hardcoded at 13×13×7px). On tablets/desktop these elements stayed phone-sized while the rest of the home screen scaled up — visually inconsistent.
+
+**Fix:** Same `clamp(min, min(vw, svh), max)` system as the platforms and logo. Each bar declares one base unit (icon-button size for the topbar, icon size for the nav) and derives everything else from it (label fonts, padding, gaps, badge, avatar emoji size, ELO badge, profile name max-width). Also fixed a stale duplicate `.em-home .hlogo img { max-width: 525px !important; }` rule that was overriding the proportional logo cap.
+
+**Topbar custom properties on `#global-topbar`:**
+```
+--topbar-btn:    clamp(28px, min(7.5vw, 4.5svh), 60px)
+--topbar-font:   --topbar-btn × 0.45
+--topbar-gap:    --topbar-btn × 0.14
+--topbar-avatar: clamp(42px, min(11vw, 6.6svh), 88px)
+--topbar-avatar-em: --topbar-avatar × 0.50
+--topbar-name:   clamp(12px, min(3.2vw, 2svh), 22px)
+--topbar-name-max: --topbar-avatar × 2.4
+--topbar-elo:    --topbar-btn × 0.32
+--topbar-badge:  --topbar-btn × 0.40
+```
+
+**Bottom nav custom properties on `.em-bottom-nav`:**
+```
+--nav-icon:   clamp(22px, min(6vw, 3.6svh), 44px)
+--nav-label:  --nav-icon × 0.40
+--nav-pad-y:  --nav-icon × 0.42
+--nav-gap:    --nav-icon × 0.12
+```
+
+**Resulting topbar button / nav icon sizes:**
+
+| Viewport | Topbar btn | Avatar | Nav icon |
+|---|---|---|---|
+| iPhone SE 375×667 | 28px | 42px | 22.5px |
+| iPhone XR 414×896 | 31px | 46px | 25px |
+| iPad Air 820×1180 | 53px | 78px | 42.5px |
+| Surface Pro 7 912×1368 | 60px (cap) | 88px (cap) | 44px (cap) |
+| Nest Hub 1024×600 | 27→28px (min) | 40→42px (min) | 22px (min) |
+| Desktop 1920×1080 | 49px | 71px | 39px |
+
+**Also updated:**
+- `:root --em-topbar-h` calc now uses the new button formula so screens still offset correctly below the fixed bar.
+- Removed the `.em-nav-icon` and `.em-bottom-nav padding` overrides from `@media (max-height: 700px)` — the `svh` term in the new formula handles short heights inherently.
+- Removed the stale `.em-home .hlogo img { max-width: 525px !important; }` rule (duplicate of the proportional rule declared earlier).
+
+**Files changed:**
+- `menu-electric.css` — topbar and bottom-nav refactored to use custom-property scale; stale logo duplicate removed; `:root` topbar-height calc updated.
+
+---
+
+## Home Screen Tablet Sizing — Raise Upper Caps (May 2026)
+
+**Branch:** `setup-md-files-and-update`
+
+**Summary:** The proportional `min(vw, svh)` formulas on `.em-platforms` were correct, but the upper clamp values (`210px` online, `140px` secondary, `460px` logo) were tuned for phones and kicked in too early on tablets — iPad Air 820×1180 and Surface Pro 7 912×1368 hit the cap and stopped scaling, making the circles look small relative to the viewport.
+
+**Fix:** Raised the upper bounds. The proportional formula now keeps scaling through tablet viewports and only clamps on 4K+ displays.
+
+| | Lower bound | Upper bound (was → now) |
+|---|---|---|
+| `--circle-online` | 140px | 210 → **420** |
+| `--circle-secondary` | 94px | 140 → **280** |
+| Logo `max-width` | 200px | 460 → **720** |
+
+**Resulting sizes:**
+
+| Viewport | Online circle | Secondary | Logo |
+|---|---|---|---|
+| iPad Air 820×1180 | 330 (was 210) | 224 (was 140) | 531 (was 460) |
+| Surface Pro 7 912×1368 | 383 (was 210) | 260 (was 140) | 615 (was 460) |
+| Desktop 1920×1080 | 302 | 205 | 486 |
+| 4K 3840×2160 | 420 (clamp cap) | 280 (clamp cap) | 720 (clamp cap) |
+| iPhone XR 414×896 | 199 (unchanged) | 132 (unchanged) | 339 (unchanged) |
+| Nest Hub 1024×600 | 168 (unchanged, svh-limited) | 114 (unchanged) | 270 (unchanged) |
+
+**Files changed:**
+- `menu-electric.css` — raised the `clamp()` upper bounds on `--circle-online`, `--circle-secondary`, and `.em-home .hlogo img max-width`.
+
+---
+
+## Home Logo Proportional Sizing (May 2026)
+
+**Branch:** `setup-md-files-and-update`
+
+**Summary:** Extended the home screen's proportional size system to cover the "בוסט" logo. Previously the logo width was set by three stacked breakpoint clamps in `styles.css` (`base`, `min-width:600`, `min-width:900`) plus a short-display override in `menu-electric.css` that caps it to `clamp(210px, 54vw, 278px)` at `max-height:700px` — leaving iPhone SE 375×667 with a noticeably smaller logo than iPhone XR 414×896.
+
+**Fix:** Added a single proportional rule in `.em-home .hlogo img`:
+
+```css
+max-width: clamp(200px, min(82vw, 45svh), 460px) !important;
+```
+
+`min(82vw, 45svh)` lets the smaller viewport dimension constrain the size. Phones (width-limited) hit the `82vw` term and get a big logo (~80% viewport width). Short landscape displays (Nest Hub 1024×600) hit the `45svh` term and the logo stays at ~15% viewport height (3:1 aspect → width ≈ 45svh).
+
+**Resulting widths:**
+- iPhone SE 375×667: min(307, 300) = **300px** (was 210px capped)
+- iPhone XR 414×896: min(339, 403) = **339px** (unchanged)
+- Nest Hub 1024×600: min(839, 270) = **270px** (was 278px capped)
+- iPad portrait 768×1024: min(630, 461) = **461px** clamped to 460
+- Desktop 1440×900: min(1181, 405) = **405px**
+
+**Files changed:**
+- `menu-electric.css` — added `.em-home .hlogo img` rule; removed the now-redundant logo cap from the `@media (max-height: 700px)` block.
+
+---
+
+## Home Screen Proportional Size Scale (May 2026)
+
+**Branch:** `setup-md-files-and-update`
+
+**Summary:** Replaced the home screen's per-breakpoint hardcoded `clamp(NN, Xvw, NN)px` values for circles, icons, and fonts with a single proportional size system. Six CSS custom properties on `.em-platforms` derive every dimension from one base — `clamp(140px, min(48vw, 28svh), 210px)` for the online circle, `clamp(94px, min(32vw, 19svh), 140px)` for secondaries — so the three game-mode circles, their icons, and their text scale together across phones, tablets, and short displays.
+
+**Why min(vw, svh):** On phones (width-limited) the `vw` term constrains size; on short landscape displays like Nest Hub (1024×600, height-limited) the `svh` term constrains size. Same proportions everywhere, no per-device tuning.
+
+**Derived ratios (from a single circle base):**
+- Icon = circle × 0.45 (online) / × 0.42 (secondary)
+- Title font = circle × 0.082 (online) / × 0.102 (secondary)
+- Subtitle font = circle × 0.052 (online) / × 0.078 (secondary)
+- Internal flex gap = circle × 0.045
+- Text container max-width = 70% (geometrically fits inside the narrowing bottom curve at the centered text-block's y-position for both online and secondary circles)
+
+**Key changes (`menu-electric.css`):**
+- Added six size custom properties (`--circle-online`, `--circle-secondary`, `--icon-*`, `--title-*`, `--sub-*`, `--gap-*`) on `.em-platforms`.
+- Refactored `.em-circle-btn`, `.em-circle-btn--online`, `.em-circle-icon`, `#home-globe`, `.em-circle-title`, `.em-circle-sub`, `.em-platform-col` to read from these vars.
+- Removed the hardcoded `@media (max-height: 700px)` circle/icon/font overrides (they are now redundant — `min(vw, svh)` handles the short-height case proportionally). Kept the chrome-only adjustments (logo size cap, nav spacing).
+- Removed the `@media (min-width: 400px)` title font bump for the same reason.
+
+**Files changed:**
+- `menu-electric.css` — `.em-platforms` size vars added; circle/icon/font rules refactored; redundant media queries deleted.
+
+---
+
+## Short-Screen Home Layout Fix — Online Subtitle + Size Contrast (May 2026)
+
+**Branch:** `setup-md-files-and-update`
+
+**Summary:** On devices with viewport height ≤ 700px (iPhone SE 375×667, Nest Hub 1024×600), the home screen's `@media (max-height: 700px)` rule hid all `.em-circle-sub` subtitles and left `.em-platform-col` at its base width (120-140px) while shrinking secondary buttons to 100-118px, leaving an empty halo that made the secondary row read as visually wider than the online circle. (Superseded by the proportional scale refactor above.)
+
+---
+
 ## Home Icon + Two-Player SVG Update (May 2026)
 
 **Branch:** `claude/icon-button-emoji-updates-UfFOM`

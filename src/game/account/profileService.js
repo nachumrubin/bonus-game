@@ -28,6 +28,7 @@ export const RATING_START   = 800;
 export const EMPTY_STATS = Object.freeze({
   gamesPlayed: 0, gamesWon: 0, gamesLost: 0, gamesDraw: 0,
   highScore: 0, totalScore: 0, currentStreak: 0, longestStreak: 0,
+  highestMoveScore: 0,
   bonusesTriggered: 0, wordsPlayed: 0,
   totalMoves: 0, totalTilesPlayed: 0, totalMoveTimeMs: 0,
   comebackWins: 0, lastMoveWins: 0, closeWins: 0,
@@ -232,6 +233,8 @@ export function computeLiveGameStatsDelta({
   const currentStreak = Number(currentStats.currentStreak) || 0;
   const longestStreak = Number(currentStats.longestStreak) || 0;
   const highScore = Number(currentStats.highScore) || 0;
+  const prevHighestMoveScore = Number(currentStats.highestMoveScore) || 0;
+  const bestMoveScore = myMoves.reduce((max, m) => Math.max(max, Number(m?.score) || 0), 0);
   const newStreak = result === 'win' ? currentStreak + 1 : 0;
   const gameDurationMs = gameDurationFromMoves(moves);
   const fastestWinMs = result === 'win' && gameDurationMs > 0
@@ -256,6 +259,7 @@ export function computeLiveGameStatsDelta({
     currentStreak: { set: newStreak },
     longestStreak: { max: Math.max(longestStreak, newStreak) },
     highScore: { max: Math.max(highScore, myScore) },
+    highestMoveScore: { max: Math.max(prevHighestMoveScore, bestMoveScore) },
     fastestWinMs: { set: fastestWinMs },
     longestWord: { set: wordStats.longestWord },
     longestWordLength: { set: wordStats.longestWordLength },

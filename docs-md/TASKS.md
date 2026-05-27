@@ -11,6 +11,22 @@
 - ✅ Electric Floating Platforms Phase 2 visual polish — premium platform architecture, double-path SVG lightning, atmospheric background, animations
 - ✅ Electric Floating Platforms Stage 3 depth pass — floating illusion via offset shadow, curved organic lightning, particle field, compressed layout, blue ELO badge, enlarged online icon
 - ✅ Electric Floating Platforms Stage 4 gap-report pass — viewport-fit=cover, near-black background, 3D slab bottom face, icon depth with specular highlight, logo glow, nav 28px icons + active pill, lightning pulse + particle drift animations
+- ✅ Stats screen simplification — cut ~10 low-value stats, collapsed 5 tabs to 3 (תקדמות / שיאים / יריבים ובוסטים). UI-only; storage unchanged.
+
+---
+
+## Stats screen — follow-up opportunities
+
+Surfaced during the May 2026 stats simplification audit. Each is a UI-visible add that requires backing data work.
+
+- [ ] **Bingo count** — biggest gap. Tally `BINGO_BONUS` triggers per game and surface in Records tab.
+- [ ] **Highest single-word score** — derive from move history, store on profile, surface in Records.
+- [ ] **Unique words discovered (vocabulary size)** — count of `wordCounts{}` keys; surface in Records.
+- [ ] **Win rate by first/second to move** — already trackable from move metadata.
+- [ ] **Hour-of-day stats / power hour** — extend the existing `weekdayStats` model.
+- [ ] **Earned titles** ("Comeback King", "Bingo Hunter", etc.) — turn raw counters into unlockable identifiers.
+- [ ] **Move timing** — `totalMoveTimeMs` is hardcoded to 0 in `profileService.js:251`. Either wire it up (per-move timestamps in the event stream) or remove the field entirely.
+- [ ] **Storage cleanup** — once the new layout settles, remove orphan fields (`boostImpactWins`, `totalMoveTimeMs`, etc.) from `EMPTY_STATS` and add a one-time cleanup migration.
 
 ---
 

@@ -85,6 +85,7 @@ test('computeLiveGameStatsDelta: derives live aggregate and rich stats', () => {
   assert.equal(d.lastMoveWins, 1);
   assert.deepEqual(d.currentStreak, { set: 3 });
   assert.deepEqual(d.highScore, { max: 70 });
+  assert.deepEqual(d.highestMoveScore, { max: 40 });
   assert.equal(d.longestWord.set, 'שלום');
   assert.equal(d.boostUsage.set.B9, 1);
   assert.equal(d.recentGames.set.length, 1);
