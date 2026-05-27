@@ -754,3 +754,22 @@
   .em-elo-badge   { display: none !important; }
 }
 
+
+
+/* ─ Friends list — online-presence dot ─────────────────── */
+.fr-online-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.15);
+  flex-shrink: 0;
+}
+.fr-online-dot--on {
+  background: #1ed760;
+  animation: fr-dot-pulse 1.4s ease-in-out infinite;
+}
+@keyframes fr-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .3; }
+}

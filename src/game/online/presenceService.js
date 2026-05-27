@@ -61,6 +61,13 @@ export async function startPresence(db, {
   };
 }
 
+// One-shot read of a user's presence. Returns { connected, lastSeen } or null.
+export async function readPresenceOnce(db, uid) {
+  if (!uid) return null;
+  const snap = await presenceRef(db, uid).get();
+  return snap?.val ? snap.val() : null;
+}
+
 // Subscribe to a partner's presence. cb is fired with { connected, lastSeen }
 // each time it changes. Returns an unsubscribe.
 export function watchPresence(db, partnerUid, cb) {
