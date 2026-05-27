@@ -10,6 +10,8 @@ import { BACK_INTENT } from '../screens/backConfirmScreen.js';
 import { SETTINGS_CHANGED } from '../screens/settingsScreen.js';
 import { RESIGN_INTENT, RESIGN_OPEN } from '../screens/resignConfirmScreen.js';
 import { createGameFlowController } from './gameFlowController.js';
+import { LOCAL_SAVED_GAME_KEY, loadLocalGame } from '../../game/sessions/localSaveService.js';
+import { createInitialState } from '../../game/core/gameEngine.js';
 
 function makeEl() {
   const listeners = [];
@@ -143,6 +145,82 @@ test('pause and settings buttons emit overlay-open events', () => {
   settings.click();
   assert.equal(pauseOpened, 1);
   assert.equal(settingsOpened, 1);
+});
+
+function makeStorage() {
+  const store = new Map();
+  return {
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => { store.set(k, String(v)); },
+    removeItem: (k) => { store.delete(k); },
+    _has: (k) => store.has(k),
+  };
+}
+
+test('PAUSE_INTENT.SAVE_AND_EXIT writes the engine state to localStorage for offline games', () => {
+  bus._reset();
+  const active = makeActiveGame();
+  // Replace the default state stub with a real engine state so the save
+  // service accepts it.
+  active.session.state = createInitialState({
+    mode: 'offline-2p',
+    tileBagSeed: 'pf-test',
+    players: { 0: { uid: 'a', displayName: 'A' }, 1: { uid: 'b', displayName: 'B' } },
+  });
+  active.mode = 'offline-2p';
+  const storage = makeStorage();
+  const screens = [];
+  createGameFlowController({
+    bus,
+    root: makeRoot(),
+    activeGameRef: () => active,
+    showScreen: (id) => screens.push(id),
+    storage,
+  });
+  bus.emit(PAUSE_INTENT.SAVE_AND_EXIT, {});
+  assert.equal(active.ended, 1);
+  assert.deepEqual(screens, ['sh']);
+  const saved = loadLocalGame(storage);
+  assert.ok(saved, 'a local save record exists');
+  assert.equal(saved.mode, 'offline-2p');
+  assert.equal(saved.bot, false);
+  assert.equal(saved.state.schemaVersion, 2);
+});
+
+test('PAUSE_INTENT.SAVE_AND_EXIT for vs-Bot saves bot=true and difficulty', () => {
+  bus._reset();
+  const active = makeActiveGame();
+  active.session.state = createInitialState({
+    mode: 'offline-solo',
+    tileBagSeed: 'pf-bot',
+    players: { 0: { uid: 'a', displayName: 'A' }, 1: { uid: 'bot', displayName: 'Bot' } },
+  });
+  active.mode = 'offline-solo';
+  active.bot = true;
+  active.difficulty = 2;
+  const storage = makeStorage();
+  createGameFlowController({
+    bus,
+    root: makeRoot(),
+    activeGameRef: () => active,
+    showScreen: () => {},
+    storage,
+  });
+  bus.emit(PAUSE_INTENT.SAVE_AND_EXIT, {});
+  const saved = loadLocalGame(storage);
+  assert.ok(saved);
+  assert.equal(saved.bot, true);
+  assert.equal(saved.difficulty, 2);
+});
+
+test('GAME_COMPLETED clears the local save for offline games', () => {
+  bus._reset();
+  const active = makeActiveGame();
+  const storage = makeStorage();
+  storage.setItem(LOCAL_SAVED_GAME_KEY, JSON.stringify({ version: 1, savedAt: 0, mode: 'offline-2p', state: {} }));
+  createGameFlowController({ bus, root: makeRoot(), activeGameRef: () => active, storage });
+  bus.emit(EV.GAME_COMPLETED, {});
+  assert.equal(storage._has(LOCAL_SAVED_GAME_KEY), false);
 });
 
 test('end home and back leave dispose active game and route home', () => {

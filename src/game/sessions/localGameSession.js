@@ -30,22 +30,35 @@ import { modeDescriptor } from './modes.js';
 
 /**
  * Create an offline/local session wrapper around the core engine.
- * @param {{ bus: LocalGameSession['bus'], mode?: string, tileBagSeed: string, players: Record<0 | 1, SessionPlayer>, startingSlot?: 0 | 1, settings?: Record<string, any> }} options
+ *
+ * Pass `initialState` to restore a previously saved game; in that case the
+ * other state-shaping options (tileBagSeed, players, startingSlot, settings)
+ * are ignored and `mode` defaults to `initialState.mode`.
+ *
+ * @param {{ bus: LocalGameSession['bus'], mode?: string, tileBagSeed?: string, players?: Record<0 | 1, SessionPlayer>, startingSlot?: 0 | 1, settings?: Record<string, any>, initialState?: import('../core/gameEngine.js').GameState }} options
  * @returns {LocalGameSession}
  */
 export function createLocalGameSession({
   bus,
-  mode = 'offline-2p',
+  mode,
   tileBagSeed,
   players,
   startingSlot = 0,
   settings = {},
+  initialState = null,
 }) {
   if (!bus) throw new Error('createLocalGameSession: bus is required');
-  if (!tileBagSeed) throw new Error('createLocalGameSession: tileBagSeed is required');
-  if (!players?.[0] || !players?.[1]) throw new Error('createLocalGameSession: players are required');
 
-  const state = createInitialState({ mode, tileBagSeed, players, startingSlot, settings });
+  let state;
+  if (initialState) {
+    state = initialState;
+    mode = mode ?? state.mode ?? 'offline-2p';
+  } else {
+    if (!tileBagSeed) throw new Error('createLocalGameSession: tileBagSeed is required');
+    if (!players?.[0] || !players?.[1]) throw new Error('createLocalGameSession: players are required');
+    mode = mode ?? 'offline-2p';
+    state = createInitialState({ mode, tileBagSeed, players, startingSlot, settings });
+  }
   const engine = createEngine({ state, bus });
   const descriptor = modeDescriptor(mode);
 

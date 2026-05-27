@@ -15,6 +15,8 @@ import {
   uiPreferencePatchFromSettings,
 } from '../../game/settings/settingsCompat.js';
 import * as audioService from '../audioService.js';
+import { saveLocalGame, clearLocalGame } from '../../game/sessions/localSaveService.js';
+import { MENU_REFRESH } from '../screens/menuScreen.js';
 
 export function createGameFlowController({
   bus,
@@ -23,6 +25,7 @@ export function createGameFlowController({
   startGame = () => {},
   showScreen = () => {},
   enterCoin = () => {},
+  storage = globalThis.localStorage ?? null,
 } = {}) {
   if (!bus) throw new Error('createGameFlowController: bus required');
 
@@ -45,12 +48,17 @@ export function createGameFlowController({
     const ag = activeGameRef();
     const session = ag?.session;
     if (!session?.state) return;
+    // A finished game can't be resumed. Clear the saved-game slot if this
+    // active game was resumed from it (or if this offline game just ended
+    // — leaves no stale offline save behind).
+    if (!ag.online && storage) clearLocalGame(storage);
     bus.emit('overlay/end/open', {
       winnerSlot: winnerSlot(session.state),
       scores: { ...session.state.scores },
       players: session.state.players,
       abandonedBy: session.state.abandonedBy,
     });
+    bus.emit(MENU_REFRESH, { hasSavedGame: false });
   }));
 
   cleanups.push(bus.on(END_INTENT.GO_HOME, () => {
@@ -86,14 +94,34 @@ export function createGameFlowController({
       ag.session?.dispatch?.({ type: CMD.RESIGN_GAME, payload: { slot: ag.session.mySlot } });
       return;
     }
+    // Offline 2P / vs-Bot: serialize the engine state to localStorage so
+    // the home-screen "המשך משחק" button can rebuild the session later.
+    const state = ag?.session?.state;
+    let saved = false;
+    if (state && storage) {
+      saved = saveLocalGame(storage, {
+        mode: state.mode,
+        bot: ag.mode === 'offline-solo' || !!ag.bot || state.mode === 'offline-solo',
+        difficulty: ag.difficulty,
+        state,
+      });
+    }
     endActiveGame();
     showScreen('sh');
+    if (saved) bus.emit(MENU_REFRESH, { hasSavedGame: true });
   }));
   cleanups.push(bus.on(PAUSE_INTENT.QUIT_NO_SAVE, () => {
     const ag = activeGameRef();
     if (ag?.online && !ag?.isAsync) {
       bus.emit(RESIGN_OPEN, { slot: ag.session?.mySlot ?? ag.session?.state?.currentTurnSlot });
       return;
+    }
+    // Discard any existing saved offline game — the user explicitly asked
+    // to quit without saving, so any prior save from THIS resumed slot
+    // would be stale.
+    if (ag?.resumedFromLocalSave && storage) {
+      clearLocalGame(storage);
+      bus.emit(MENU_REFRESH, { hasSavedGame: false });
     }
     endActiveGame();
     showScreen('sh');
@@ -113,6 +141,12 @@ export function createGameFlowController({
       ag.session?.dispatch?.({ type: CMD.RESIGN_GAME, payload: { slot: ag.session.mySlot } });
       hideOverlay('ov-back-confirm');
       return;
+    }
+    // Offline "צא בלי לשמור" abandons the in-progress game. If it was
+    // resumed from a saved slot, drop the save so it doesn't reappear.
+    if (ag?.resumedFromLocalSave && storage) {
+      clearLocalGame(storage);
+      bus.emit(MENU_REFRESH, { hasSavedGame: false });
     }
     endActiveGame();
     showScreen('sh');

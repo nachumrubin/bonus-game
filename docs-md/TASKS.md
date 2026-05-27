@@ -7,6 +7,7 @@
 
 ## Completed (May 2026)
 
+- ✅ Offline save/resume for 2P + vs-Bot — `pause → שמור וצא לתפריט` and back-button `השהה ושמור` now persist the full engine state to localStorage via `localSaveService`; home `המשך משחק` falls back to the local save when no online async session exists. Cleared on game completion.
 - ✅ Notifications bell inbox — bell badge shows live count of pending game invites + friend requests; clicking opens `#snotif` inbox with accept/reject per item.
 - ✅ Waiting room async/live invite behavior — async direct invite closes waiting overlay after 1.5 s; live direct invite shows 5-min countdown, cancels pending room + invite on Firebase on expiry.
 - ✅ Notification banner + invite UX — blocking invite popups replaced with slide-down banner from topbar; banner suppressed on app open; cancel in waiting room cancels live invite too.

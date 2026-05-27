@@ -7,6 +7,7 @@
 //
 import { $, on } from '../domHelpers.js';
 import { startGlobe } from '../globeRenderer.js';
+import { hasLocalSavedGame } from '../../game/sessions/localSaveService.js';
 
 export const MENU_INTENT = Object.freeze({
   OPEN_PROFILE:       'menu/openProfile',
@@ -99,7 +100,11 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
   // saved-session globals.
   function render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar } = {}) {
     const resumeBtn = $('#btn-resume-home', menuRoot);
-    if (resumeBtn) resumeBtn.style.display = hasSavedGame ? '' : 'none';
+    // OR in the local-save status so a saved offline game keeps the
+    // resume button visible even when MENU_REFRESH callers (which only
+    // know about async-online sessions) pass hasSavedGame: false.
+    const showResume = !!hasSavedGame || hasLocalSavedGame(globalThis.localStorage);
+    if (resumeBtn) resumeBtn.style.display = showResume ? '' : 'none';
 
     // Display elements are in the global topbar
     const nameLabel = $('#home-user-label', topbarRoot);
@@ -160,7 +165,8 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
   // state. If we mount too early, the legacy code's later mutations will
   // re-apply directly to the DOM.
   render({
-    hasSavedGame:    !!(globalThis.savedSession || globalThis._lastSavedSessionRef),
+    hasSavedGame:    !!(globalThis.savedSession || globalThis._lastSavedSessionRef)
+                      || hasLocalSavedGame(globalThis.localStorage),
     isAuthed:        !!(globalThis.__spine?.currentUser && !globalThis.__spine.currentUser.isAnonymous),
     displayName:     globalThis.pNames?.[0] ?? null,
     hasOnlineUnread: false,
