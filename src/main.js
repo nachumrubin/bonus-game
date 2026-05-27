@@ -1426,6 +1426,7 @@ async function boot() {
           for (const a of newly) bus.emit(AV_UNLOCK_OPEN, { avatar: a });
         }
         lastProfile = profile;
+        globalThis.__spine.currentProfile = profile;
         const fbUser = activeFbCurrentUser;
         const _dn = profile?.displayName ?? fbUser?.displayName;
         if (_dn) settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: _dn });
@@ -2813,7 +2814,7 @@ function installCutoverGlobals() {
     try {
       const { inviteId, expiresAt: inviteExpiresAt } = await inviteService.sendInvite(fbDb, {
         fromUid:    fbUser.uid,
-        fromName:   fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? globalThis.pNames?.[0] ?? 'שחקן',
+        fromName:   globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? globalThis.pNames?.[0] ?? 'שחקן',
         fromAvatar: fbUser.photoURL ?? null,
         toUid,
         mode,
