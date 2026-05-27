@@ -649,15 +649,11 @@ async function boot() {
       }
     }
 
-    bus.on(SETUP_INTENT.PLAY_CLICKED, ({ mode, p1Name, p2Name, difficulty }) => {
+    bus.on(SETUP_INTENT.PLAY_CLICKED, ({ mode, p1Name, p2Name, difficulty, botTime = 40 }) => {
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: p1Name });
-      // Coin toss decides who opens. Bot games show 'המחשב' on slot 1; 2P
-      // shows the names the user entered. After the player clicks "כניסה
-      // למשחק" on the coin screen, COIN_INTENT.ENTER fires and we boot.
       const isBot = mode === 'bot';
       const startingSlot = Math.random() < 0.5 ? 0 : 1;
       const display2 = isBot ? 'המחשב' : p2Name;
-      // One-shot subscription so we don't accumulate listeners across games.
       const offEnter = bus.on(COIN_INTENT.ENTER, () => {
         offEnter();
         startGameViaSpine({
@@ -666,6 +662,7 @@ async function boot() {
           difficulty,
           p1Name, p2Name,
           startingSlot,
+          settings: { timelimit: true, botTime },
         });
       });
       showLegacyScreen('scoin');
@@ -806,7 +803,7 @@ async function boot() {
           settings: {
             ...settingsCompat.settingsFromLegacyGlobals(globalThis),
             timelimit: filters.timelimit,
-            botTime: filters.botTime ?? 20,
+            botTime: filters.botTime ?? 40,
           },
         });
       } catch (e) {
