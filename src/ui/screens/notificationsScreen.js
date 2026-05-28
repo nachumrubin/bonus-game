@@ -32,8 +32,17 @@ function escapeHtml(s) {
     .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
+const AVATAR_ID_TO_EMOJI = {
+  crown:'👑', star:'⭐', fire:'🔥', diamond:'💎', shark:'🦈',
+  dragon:'🐉', tiger:'🐯', alien:'👾', wizard:'🧙', robot:'🤖',
+  rocket:'🚀', knight:'🛡️', ninja:'🥷', genius:'🧠', vampire:'🧛',
+};
+function resolveAvatar(raw, fallback) {
+  return AVATAR_ID_TO_EMOJI[raw] ?? raw ?? fallback;
+}
+
 function buildInviteHtml(invite) {
-  const avatar = escapeHtml(invite.fromAvatar || '🎮');
+  const avatar = escapeHtml(resolveAvatar(invite.fromAvatar, '🎮'));
   const name   = escapeHtml(invite.fromName ?? 'שחקן');
   const mode   = escapeHtml(MODE_LABEL[invite.mode] ?? 'משחק');
   const id     = escapeHtml(invite.inviteId);
@@ -51,7 +60,7 @@ function buildInviteHtml(invite) {
 }
 
 function buildFriendRequestHtml(req) {
-  const avatar = escapeHtml(req.fromAvatar || '👤');
+  const avatar = escapeHtml(resolveAvatar(req.fromAvatar, '👤'));
   const name   = escapeHtml(req.fromName ?? req.fromUid ?? 'שחקן');
   const uid    = escapeHtml(req.fromUid);
   return (
