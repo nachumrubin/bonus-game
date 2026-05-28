@@ -2,6 +2,38 @@
 
 ---
 
+## Hebrew In-Game Reaction System (May 2026)
+
+**Branch:** `claude/boost-hebrew-reactions-sUK6k`
+
+**Summary:** Adds a child-safe emoji + preset Hebrew message reaction system for online games. Players can send predefined reactions that appear as animated speech bubbles near the opponent's score card. No free-text input — only whitelisted IDs are accepted.
+
+**New files:**
+- `src/reactions/reactionsConfig.js` — static REACTIONS config (12 emojis, 15 Hebrew messages) + `validateReactionPayload()` + `getReactionDisplay()`
+- `src/reactions/reactionService.js` — Firebase write (`sendReaction`), cooldown tracking, mute preference (localStorage key `spine.muteReactions`)
+- `src/reactions/reactionController.js` — UI controller: panel, bubbles, button wiring; `mountReactionController({ bus, db, roomId, mySlot, storage })`
+
+**Modified files:**
+- `src/events/eventTypes.js` — added `EV.REACTION_RECEIVED`
+- `src/game/online/schema.js` — added `FIELD.liveReaction`
+- `src/game/online/roomService.js` — added `setLiveReaction(db, roomId, payload)`
+- `src/game/sessions/onlineGameSession.js` — watches `liveReaction` in room snapshot; emits `EV.REACTION_RECEIVED`; tracks `sessionStartTs` to suppress stale reactions on reconnect
+- `firebase.database.rules.json` — added `liveReaction` write rule (same as `liveBonus`/`livePreview`)
+- `partials/screens/game.html` — added reaction buttons (`#rxn-btn-slot0`, `#rxn-btn-slot1`) inside player cards and `#rxn-panel` container below info strip
+- `styles.css` — added reaction UI styles (panel, buttons, bubbles, animations)
+- `src/main.js` — mounts `reactionController` in `startOnlineGameViaSpine`; disposed on `end()`
+
+**Architecture:**
+- Reactions use the `liveReaction` field (not a versioned transaction) — same pattern as `livePreview`/`liveBonus`
+- Firebase shape: `{ type, id, senderSlot, ts }` — no raw text
+- Anti-replay: reactions with `ts <= sessionStartTs` are ignored on reconnect
+- Cooldown: 5 s client-side; per-session state
+- Mute: localStorage toggle; local-only; doesn't affect sender
+
+**Does NOT change:** scoring, turns, timer, board state, dictionary, game logic, or any game engine invariant.
+
+---
+
 ## Achievements Expansion: 9 New Cards (May 2026)
 
 **Branch:** `fix-save-game`

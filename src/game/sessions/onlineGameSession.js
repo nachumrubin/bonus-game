@@ -70,9 +70,13 @@ export async function createOnlineGameSession({
 
   // Track expected version for the next outgoing transaction.
   let expectedVersion = room.version;
-  let lastLivePreviewSig = JSON.stringify(room.livePreview ?? null);
-  let lastSettingsSig = JSON.stringify(room.settings ?? {});
-  let lastLiveBonusSig = JSON.stringify(room.liveBonus ?? null);
+  let lastLivePreviewSig  = JSON.stringify(room.livePreview  ?? null);
+  let lastSettingsSig     = JSON.stringify(room.settings    ?? {});
+  let lastLiveBonusSig    = JSON.stringify(room.liveBonus   ?? null);
+  // Reactions: track by ts to prevent replaying on reconnect.
+  // Any reaction with ts <= sessionStartTs is treated as stale.
+  const sessionStartTs    = Date.now();
+  let lastReactionTs      = (room.liveReaction?.ts ?? 0);
 
   // Track the `ts` of the most recently observed `lastMove`. State-only
   // snapshots (timeout watchdog rotations, settings/preview writes) preserve
@@ -249,6 +253,15 @@ export async function createOnlineGameSession({
       lastLiveBonusSig = liveBonusSig;
       state.liveBonus = incoming.liveBonus ?? null;
       bus.emit(EV.LIVE_BONUS_CHANGED, { liveBonus: state.liveBonus });
+    }
+    // liveReaction: emoji/message sent by either player. Only emit for
+    // reactions that arrived after this session started (anti-replay on
+    // reconnect). Track by ts to avoid double-firing on the same reaction.
+    const incomingReaction = incoming.liveReaction ?? null;
+    const incomingReactionTs = incomingReaction?.ts ?? 0;
+    if (incomingReaction && incomingReactionTs > sessionStartTs && incomingReactionTs > lastReactionTs) {
+      lastReactionTs = incomingReactionTs;
+      bus.emit(EV.REACTION_RECEIVED, { reaction: incomingReaction });
     }
     if (incoming.version <= lastAppliedVersion) {
       applyTerminalStatusIfNeeded(incoming);

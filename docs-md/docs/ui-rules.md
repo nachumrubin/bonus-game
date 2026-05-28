@@ -83,6 +83,11 @@ Critical element IDs referenced by game logic (must not be renamed):
 #ov-bonus              — bonus mini-game overlay (checked by animation poller)
 #ov-bonus-intro        — bonus intro overlay (checked by animation poller)
 .bonus-award-positioner — bonus award container (checked by animation poller)
+
+Reaction system (online games only):
+#rxn-btn-slot0         — reaction trigger button inside #is-sb1 (shown for mySlot=0)
+#rxn-btn-slot1         — reaction trigger button inside #is-sb2 (shown for mySlot=1)
+#rxn-panel             — reaction panel container (filled+positioned by reactionController)
 ```
 
 ### Stats Screen (3-tab layout, May 2026 simplification)

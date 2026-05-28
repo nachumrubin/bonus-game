@@ -76,6 +76,13 @@ The primary game document. Created by `roomService.createRoom()` / `inviteServic
     updatedAt: number
   },
 
+  liveReaction: {            // emoji/message reaction (broadcast, no version bump)
+    type: 'emoji' | 'message',
+    id: string,              // whitelisted id from REACTIONS config
+    senderSlot: 0 | 1,
+    ts: number               // epoch ms — used for anti-replay on reconnect
+  } | null,
+
   players: {
     "0": SpinePlayer,
     "1": SpinePlayer

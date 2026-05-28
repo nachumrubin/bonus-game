@@ -7,6 +7,8 @@
 
 ## Completed (May 2026)
 
+- ✅ In-game reaction system — child-safe emoji + Hebrew preset message reactions for online games. Reaction panel opens from player card, sends to Firebase `liveReaction` field, shows animated speech bubbles. 5-second cooldown, local mute toggle. No free-text, no gameplay impact.
+
 - ✅ Offline save/resume for 2P + vs-Bot — `pause → שמור וצא לתפריט` and back-button `השהה ושמור` now persist the full engine state to localStorage via `localSaveService`; home `המשך משחק` falls back to the local save when no online async session exists. Cleared on game completion.
 - ✅ Notifications bell inbox — bell badge shows live count of pending game invites + friend requests; clicking opens `#snotif` inbox with accept/reject per item.
 - ✅ Waiting room async/live invite behavior — async direct invite closes waiting overlay after 1.5 s; live direct invite shows 5-min countdown, cancels pending room + invite on Firebase on expiry.

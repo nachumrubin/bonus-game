@@ -103,6 +103,7 @@ import { mountResignConfirmScreen, RESIGN_INTENT, RESIGN_OPEN, RESIGN_CLOSE } fr
 
 import * as notificationService from './notifications/notificationService.js';
 import * as inAppNotificationService from './notifications/inAppNotificationService.js';
+import { mountReactionController } from './reactions/reactionController.js';
 
 const params = new URLSearchParams(globalThis.location?.search ?? '');
 let activeFbDb = null;
@@ -2521,6 +2522,13 @@ async function boot() {
     });
     session.start();
     const bonusFlow = attachBonusFlow(session);
+    const reactionCtrl = mountReactionController({
+      bus,
+      db,
+      roomId: room.roomId,
+      mySlot,
+      storage: globalThis.localStorage ?? null,
+    });
     // Async modes show the "home" button (back to menu without resigning);
     // live modes hide it (the pause button is shown by the game screen
     // instead). Both spine modes and friend-* modes follow the same rule.
@@ -2542,13 +2550,14 @@ async function boot() {
       }
     }
     globalThis.__spine.activeGame = {
-      session, controller, animationController, screen, bonusFlow, timeoutWatchdog, online: true, isAsync, mySlot,
+      session, controller, animationController, screen, bonusFlow, timeoutWatchdog, reactionCtrl, online: true, isAsync, mySlot,
       end() {
         screen.unmount();
         animationController.dispose();
         controller.dispose();
         bonusFlow.dispose();
         timeoutWatchdog?.dispose?.();
+        reactionCtrl?.dispose?.();
         session.dispose();
         updatePresenceRoom(null);
         bus.emit(AH_HIDE, {});
