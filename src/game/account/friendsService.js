@@ -47,13 +47,14 @@ export async function acceptFriendRequest(db, { fromUid, toUid, fromProfile, toP
   if (!fromUid || !toUid) return { ok: false, reason: 'missing-uid' };
   // Verify the request exists
   const reqSnap = await requestRef(db, toUid, fromUid).get();
-  if (!(reqSnap?.val ? reqSnap.val() : null)) return { ok: false, reason: 'no-request' };
+  const reqData = reqSnap?.val ? reqSnap.val() : null;
+  if (!reqData) return { ok: false, reason: 'no-request' };
 
   await Promise.all([
     friendRef(db, toUid,   fromUid).set({
       uid: fromUid,
-      name:   fromProfile?.displayName  ?? '',
-      avatar: fromProfile?.equippedAvatar ?? null,
+      name:   fromProfile?.displayName    ?? reqData.fromName   ?? '',
+      avatar: fromProfile?.equippedAvatar ?? reqData.fromAvatar ?? null,
       addedAt: serverTimestamp,
     }),
     friendRef(db, fromUid, toUid).set({
