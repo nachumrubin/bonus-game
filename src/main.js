@@ -1659,7 +1659,7 @@ async function boot() {
       const r = await friendsService.sendFriendRequest(fbDb, {
         fromUid: fbUser.uid, toUid: targetUid,
         fromName: lastProfile?.displayName ?? '',
-        fromAvatar: lastProfile?.equippedAvatar ?? null,
+        fromAvatar: avatarEmoji(lastProfile?.equippedAvatar) ?? null,
       });
       if (r.ok) bus.emit(FRIENDS_RENDER, { addStatus: 'בקשה נשלחה' });
       else if (r.reason === 'self') bus.emit(FRIENDS_RENDER, { addStatus: 'אי אפשר להוסיף את עצמך' });
@@ -1671,8 +1671,7 @@ async function boot() {
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !fromUid) return;
-      // Read the requester's profile so we record their name/avatar.
-      const fromProfile = await profileService.readProfile(fbDb, fromUid);
+      const fromProfile = await profileService.readProfile(fbDb, fromUid).catch(() => null);
       await friendsService.acceptFriendRequest(fbDb, {
         fromUid, toUid: fbUser.uid, fromProfile, toProfile: lastProfile,
       });
@@ -1831,7 +1830,7 @@ async function boot() {
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !fromUid) return;
-      const fromProfile = await profileService.readProfile(fbDb, fromUid);
+      const fromProfile = await profileService.readProfile(fbDb, fromUid).catch(() => null);
       await friendsService.acceptFriendRequest(fbDb, {
         fromUid, toUid: fbUser.uid, fromProfile, toProfile: lastProfile,
       });
