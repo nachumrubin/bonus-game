@@ -465,6 +465,76 @@ test('live preview renders opponent ghost tiles', () => {
   assert.match(elements.get('c5_6').innerHTML, /׳˜/);
 });
 
+test('clicking an empty cell with nothing selected quick-places a lock with the smallest available duration', () => {
+  const { session, controller } = fresh();
+  // Default LEGACY_LOCK_INVENTORY = [3, 3, 5]; expect a 3-turn lock to land.
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+
+  const lock = session.state.lockedCells.find(l => l.r === 4 && l.c === 4);
+  assert.ok(lock, 'a lock should have been placed at (4,4)');
+  assert.equal(lock.remainingTurns, 3, 'smallest available duration is used');
+  // One 3-turn lock consumed → inventory should still have one 3 and one 5.
+  const inv = session.state.lockInventory[0].slice().sort((a, b) => a - b);
+  assert.deepEqual(inv, [3, 5]);
+});
+
+test('clicking an empty cell with no locks available is a no-op', () => {
+  const { session, controller } = fresh();
+  session.state.lockInventory[0] = [];
+  controller.view.lockInventory = { 0: [], 1: [...session.state.lockInventory[1]] };
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+
+  assert.equal(session.state.lockedCells.length, 0);
+});
+
+test('clicking an empty cell with a rack tile selected still places the tile (lock quick-place gated on no-selection)', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  // Select rack slot 0 (an 'א' tile from fresh()'s rack seeding).
+  const rackTile = { classList: { contains: () => false }, closest: () => rackTile };
+  Object.defineProperty(elements.get('brack'), 'children', { value: [rackTile], configurable: true });
+  elements.get('brack').fireClick(rackTile);
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+
+  assert.equal(controller.view.placed.length, 1);
+  assert.equal(controller.view.placed[0].letter, 'א');
+  assert.equal(session.state.lockedCells.length, 0, 'no lock should be placed when a rack tile was selected');
+});
+
+test('live preview renders opponent ghost tile on a perimeter bonus square', () => {
+  const { session } = fresh();
+  const controller = createGameController({ bus, session, mySlot: 0 });
+  const { root, elements } = makeGameDom();
+  // ensureBsqTileWrap reads root.ownerDocument when creating its child div.
+  // Wire it to the test root so the createElement path resolves to our stub.
+  root.ownerDocument = root;
+  mountGameScreen({ controller, root, bus });
+
+  // BDEFS[0] = { side: 'top', br: -1, bc: 1 } — opponent places a tile there.
+  session.state.livePreview = {
+    slot: 1,
+    tiles: [{ r: -1, c: 1, letter: 'ק', val: 5, isJoker: false }],
+  };
+  bus.emit(EV.LIVE_PREVIEW_CHANGED, { livePreview: session.state.livePreview });
+
+  const bsq = elements.get('bsq-0');
+  assert.ok(bsq.classList.contains('spine-live-preview'),
+    'bonus square shows the .spine-live-preview class for opponent preview');
+  // The tile letter is rendered inside a .bsq-tile-wrap child appended by
+  // ensureBsqTileWrap. Find it and verify the letter appears in its innerHTML.
+  const wrap = bsq.children?.find?.(c => c?.id === 'div');
+  assert.ok(wrap, 'a tile-wrap child was appended to the bonus square');
+  assert.match(wrap.innerHTML, /ק/);
+});
+
 test('animation renderer lights word tiles, floats score, and flashes score panel', async () => {
   const { controller } = fresh();
   const animationController = createAnimationController({ bus, mySlot: null });

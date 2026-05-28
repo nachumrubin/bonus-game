@@ -16,6 +16,18 @@ test('SPINE_AVATARS contains the expected ids', () => {
   assert.ok(ids.includes('alien'));
 });
 
+test('ACHIEVEMENTS includes the May 2026 expansion (fox, bulb, handshake, shield, bolt, trophy, books, hero, target)', () => {
+  const ids = new Set(ACHIEVEMENTS.map(a => a.id));
+  const required = ['clean_winner', 'word_genius', 'social', 'undefeated', 'lightning', 'untouchable', 'dictionary', 'superhuman', 'the_one'];
+  for (const id of required) {
+    assert.ok(ids.has(id), `missing achievement: ${id}`);
+  }
+  // word_genius unlocks against the existing highestMoveScore stat at 100.
+  const wg = ACHIEVEMENTS.find(a => a.id === 'word_genius');
+  assert.equal(wg.condition.stat, 'highestMoveScore');
+  assert.equal(wg.condition.min, 100);
+});
+
 test('ACHIEVEMENTS covers all non-free avatars', () => {
   const rewardIds = new Set(ACHIEVEMENTS.map(a => a.rewardAvatarId));
   const nonFree = SPINE_AVATARS.filter(a => a.rarity !== 'free');
@@ -117,7 +129,7 @@ test('AvatarPicker: AV_RENDER paints all avatars + count', () => {
   for (const a of SPINE_AVATARS) {
     assert.match(grid.innerHTML, new RegExp(`data-av-id="${a.id}"`));
   }
-  assert.match(count.textContent, /\/10/); // 10 avatars total
+  assert.match(count.textContent, new RegExp(`/${SPINE_AVATARS.length}`));
 });
 
 test('AvatarPicker: clicking unlocked emits SELECT + EQUIP', () => {

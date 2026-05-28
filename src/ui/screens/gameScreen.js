@@ -422,7 +422,21 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       renderLockInventory(controller.view);
       return;
     }
-    if (selectedRackIndex == null) return;
+    if (selectedRackIndex == null) {
+      // Empty on-grid cell + nothing selected → quick-place a lock using the
+      // smallest available duration from the player's inventory. This makes
+      // locks accessible without first tapping the lock-inventory picker.
+      // Perimeter bonus squares (off-grid) are skipped — the engine's
+      // PLACE_LOCK only accepts 0..9 × 0..9 coordinates.
+      if (r < 0 || r > 9 || c < 0 || c > 9) return;
+      if (isCellBlockedForPlacement(controller.view, r, c)) return;
+      const inventory = lockInventoryForView(controller.view);
+      if (!inventory.length) return;
+      const duration = Math.min(...inventory);
+      controller.placeLock?.({ r, c, duration });
+      renderLockInventory(controller.view);
+      return;
+    }
     const rackTile = controller.displayRackTile?.(selectedRackIndex);
     const letter = rackTile?.letter;
     if (!letter) return;
@@ -833,7 +847,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const { br, bc } = BDEFS[i];
       const placedHere = v.placed?.find(p => p.r === br && p.c === bc);
       const committed = boardTileAt(v, br, bc);
-      bsq.classList?.remove('bsq-tile-host', 'np', 'selected-placed');
+      const opponentPreviewTile = (!placedHere && !committed && isOpponentPreview(v, br, bc))
+        ? previewTileAt(v, br, bc)
+        : null;
+      bsq.classList?.remove('bsq-tile-host', 'np', 'selected-placed', 'spine-live-preview');
       const iconEl = bsq.querySelector?.('.bsq-ic, .bsq-tile-wrap');
       const tileTarget = bsq.querySelector?.('.bsq-tile-wrap');
       if (committed) {
@@ -845,6 +862,12 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         if (selectedPlacedCoord && selectedPlacedCoord.r === br && selectedPlacedCoord.c === bc) {
           bsq.classList?.add('selected-placed');
         }
+      } else if (opponentPreviewTile) {
+        // The opponent placed a tile on this perimeter bonus square but hasn't
+        // committed yet. Render the preview tile so it matches the in-grid
+        // live-preview behavior (same `.spine-live-preview` styling).
+        bsq.classList?.add('bsq-tile-host', 'np', 'spine-live-preview');
+        ensureBsqTileWrap(bsq).innerHTML = tileHTML(opponentPreviewTile, /*isPlaced=*/true);
       } else if (tileTarget) {
         tileTarget.remove();
       }
