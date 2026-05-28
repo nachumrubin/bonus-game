@@ -55,6 +55,7 @@ export const FIELD = Object.freeze({
   settings:           'settings',
   livePreview:        'livePreview',
   liveBonus:          'liveBonus',
+  liveReaction:       'liveReaction',
 });
 
 export const STATUS = Object.freeze({

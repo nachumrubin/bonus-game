@@ -39,6 +39,7 @@
         <div class="is-val" style="color:var(--p1)" id="is-sv1">0</div>
         <div class="is-pclbl">נקודות</div>
         <div class="is-pclocks" id="is-locks-1"></div>
+        <button class="rxn-btn" id="rxn-btn-slot0" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
       </div>
       <!-- P2 score card -->
       <div class="is-cell is-pcard" id="is-sb2">
@@ -47,8 +48,11 @@
         <div class="is-val" style="color:var(--p2)" id="is-sv2">0</div>
         <div class="is-pclbl">נקודות</div>
         <div class="is-pclocks" id="is-locks-2"></div>
+        <button class="rxn-btn" id="rxn-btn-slot1" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
       </div>
     </div>
+    <!-- Reaction panel (filled by reactionController) -->
+    <div id="rxn-panel" class="rxn-panel" dir="rtl" aria-hidden="true" style="display:none"></div>
     <!-- main game area -->
     <div class="game-area">
       <!-- left panel: scores + P1 waiting tiles -->

@@ -303,6 +303,26 @@ export async function setLivePreview(db, roomId, { slot, tiles = [] } = {}) {
 
 // Two consecutive missed turns by the same player force a forfeit. The
 // loser is the player who failed to move twice in a row.
+// Write a reaction payload to the room's liveReaction field.
+// Not version-guarded — same pattern as livePreview / liveBonus.
+// Only valid type/id combinations are accepted; senderSlot is clamped to 0|1.
+export async function setLiveReaction(db, roomId, payload) {
+  if (!db) throw new Error('setLiveReaction: db required');
+  if (!roomId) throw new Error('setLiveReaction: roomId required');
+  if (payload == null) {
+    await db.ref(`${PATH.rooms}/${roomId}/${FIELD.liveReaction}`).set(null);
+    return;
+  }
+  const senderSlot = payload.senderSlot === 1 ? 1 : 0;
+  const clean = {
+    type:       String(payload.type),
+    id:         String(payload.id),
+    senderSlot,
+    ts:         Number(payload.ts) || Date.now(),
+  };
+  await db.ref(`${PATH.rooms}/${roomId}/${FIELD.liveReaction}`).set(clean);
+}
+
 export const MISSED_TURNS_FORFEIT_THRESHOLD = 2;
 
 export function computeExpiredOnlineTurnState(state, nowMs, limitMs) {

@@ -293,6 +293,7 @@ Source: `firebase.database.rules.json`
 | Path | Read | Write |
 |------|------|-------|
 | `/rooms` | public | auth + schema v2 + version increment + turn logic |
+| `/rooms/{roomId}/liveReaction` | (inherits rooms) | auth + room participant (no version bump, like liveBonus) |
 | `/pendingRooms` | public | auth + new entry with matching hostUid |
 | `/invites/{toUid}` | recipient only | auth + from/to match |
 | `/inviteAcks/{fromUid}` | sender only | auth + inviter or invitee |
