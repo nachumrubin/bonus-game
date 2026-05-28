@@ -396,6 +396,35 @@ async function boot() {
     }
   }
 
+  // Resolve the current user's best-available displayName.
+  //
+  // Source priority:
+  //   1. The watched profile (`__spine.currentProfile.displayName`) — this is
+  //      the canonical edit target on the profile screen.
+  //   2. Firebase auth (`fbUser.displayName`) — set automatically by Google
+  //      sign-in, often null for email/password signups.
+  //   3. Legacy global (`currentUserProfile.displayName`).
+  //   4. A one-shot Firebase read of `/users/{uid}/profile` — handles the
+  //      race where the profile watch hasn't fired yet.
+  //
+  // Returns null if every source is empty so the caller can decide whether to
+  // fall back to a generic placeholder.
+  async function resolveMyDisplayName() {
+    const fbUser = activeFbCurrentUser;
+    const spineName = globalThis.__spine?.currentProfile?.displayName;
+    if (spineName) return String(spineName);
+    if (fbUser?.displayName) return String(fbUser.displayName);
+    const legacyName = globalThis.currentUserProfile?.displayName;
+    if (legacyName) return String(legacyName);
+    if (activeFbDb && fbUser?.uid) {
+      try {
+        const profile = await profileService.readProfile(activeFbDb, fbUser.uid);
+        if (profile?.displayName) return String(profile.displayName);
+      } catch (e) { console.warn('[spine] resolveMyDisplayName read', e); }
+    }
+    return null;
+  }
+
   function saveCurrentOnlineSession() {
     const ag = globalThis.__spine?.activeGame;
     const uid = activeFbCurrentUser?.uid;
@@ -710,8 +739,9 @@ async function boot() {
 
       const profile = lastProfile ?? globalThis.currentUserProfile ?? {};
       const rating = (profile.rating != null) ? profile.rating : 1000;
+      const resolvedName = await resolveMyDisplayName();
       const displayName =
-        filters?.name ?? fbUser.displayName ?? profile.displayName ?? 'שחקן';
+        filters?.name ?? resolvedName ?? 'שחקן';
       if (displayName) settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: displayName });
 
       // Hide search form, show partner-search overlay with slot animation.
@@ -801,9 +831,10 @@ async function boot() {
       await teardownPending();
 
       const profile = lastProfile ?? globalThis.currentUserProfile ?? {};
+      const resolvedHostName = await resolveMyDisplayName();
       const hostProfile = {
-        displayName: filters?.name ?? fbUser.displayName ?? profile.displayName ?? 'שחקן 1',
-        avatar:      fbUser.photoURL ?? profile.avatar ?? null,
+        displayName: filters?.name ?? resolvedHostName ?? 'שחקן 1',
+        avatar:      globalThis.__spine?.currentProfile?.avatar ?? fbUser.photoURL ?? profile.avatar ?? null,
         rating:     (profile.rating != null) ? profile.rating : 1000,
       };
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: hostProfile.displayName });
@@ -951,9 +982,10 @@ async function boot() {
         return;
       }
       const profile = lastProfile ?? globalThis.currentUserProfile ?? {};
+      const resolvedGuestName = await resolveMyDisplayName();
       const guestProfile = {
-        displayName: name ?? fbUser.displayName ?? profile.displayName ?? 'שחקן 2',
-        avatar:      fbUser.photoURL ?? profile.avatar ?? null,
+        displayName: name ?? resolvedGuestName ?? 'שחקן 2',
+        avatar:      globalThis.__spine?.currentProfile?.avatar ?? fbUser.photoURL ?? profile.avatar ?? null,
         rating:     (profile.rating != null) ? profile.rating : 1000,
       };
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: guestProfile.displayName });
@@ -1104,9 +1136,10 @@ async function boot() {
         bus.emit(II_CLOSE, {});
         return;
       }
+      const resolvedName = await resolveMyDisplayName();
       const accepterProfile = {
-        displayName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן 2',
-        avatar: fbUser.photoURL ?? globalThis.currentUserProfile?.avatar ?? null,
+        displayName: resolvedName ?? 'שחקן 2',
+        avatar: globalThis.__spine?.currentProfile?.avatar ?? fbUser.photoURL ?? globalThis.currentUserProfile?.avatar ?? null,
       };
       try {
         const result = await inviteService.acceptInvite(fbDb, {
@@ -1751,9 +1784,10 @@ async function boot() {
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !invite?.inviteId) return;
+      const resolvedName = await resolveMyDisplayName();
       const accepterProfile = {
-        displayName: fbUser.displayName ?? globalThis.currentUserProfile?.displayName ?? 'שחקן',
-        avatar: fbUser.photoURL ?? globalThis.currentUserProfile?.avatar ?? null,
+        displayName: resolvedName ?? 'שחקן 2',
+        avatar: globalThis.__spine?.currentProfile?.avatar ?? fbUser.photoURL ?? globalThis.currentUserProfile?.avatar ?? null,
       };
       try {
         const result = await inviteService.acceptInvite(fbDb, {

@@ -2,6 +2,82 @@
 
 ---
 
+## Achievements Expansion: 9 New Cards (May 2026)
+
+**Branch:** `fix-save-game`
+
+**Summary:** Added 9 new achievement cards to the achievements screen, each backed by a new avatar reward.
+
+| # | Title (HE) | Description | Stat | Min | Avatar | Tier |
+|---|---|---|---|---|---|---|
+| 1 | שועל ותיק | Win without using a single special tile | `cleanWins` | 1 | 🦊 שועל | silver |
+| 2 | גאון מילים | Score 100+ in one move | `highestMoveScore` | 100 | 💡 נורה | silver |
+| 3 | חבר של כולם | Reach 20 friends | `friendsCount` | 20 | 🤝 חברים | silver |
+| 4 | בלתי מנוצח | Win streak of 15 | `longestStreak` | 15 | 🛡️ מגן | gold |
+| 5 | ברק חי | Play a game under 3 sec avg per move | `fastGamePlayed` | 1 | ⚡ ברק | gold |
+| 6 | בלתי נתפס | Win 25 games in a row | `longestStreak` | 25 | 🏆 גביע | legend |
+| 7 | מילון מהלך | Use 1,000 unique words | `uniqueWordsCount` | 1,000 | 📚 ספרים | legend |
+| 8 | על-אנושי | A full week without a loss | `noLossWeekStreaks` | 1 | 🦸 גיבור-על | legend |
+| 9 | האחד | Beat the #1 player | `beatNumberOne` | 1 | 🎯 מטרה | legend |
+
+**Stat wiring status:**
+- `highestMoveScore` (#2) is already tracked by `profileService.computeStatsDelta` — this achievement starts unlocking immediately for any player who has ever scored ≥100 in a single move.
+- `longestStreak` (#4, #6) is already tracked.
+- `cleanWins`, `friendsCount`, `fastGamePlayed`, `uniqueWordsCount`, `noLossWeekStreaks`, `beatNumberOne` are new stat names that will display as 0/N progress until separate work wires them up.
+
+**Tests added:**
+- `src/ui/screens/avatarScreens.test.js` — new test pins all 9 new achievement ids and verifies `word_genius` is wired to `highestMoveScore` min 100. The existing "AV_RENDER paints all avatars + count" test was generalized from a hard-coded `/10` to `/${SPINE_AVATARS.length}` so it tracks future expansions.
+
+**Files modified:**
+- `src/ui/screens/avatarScreens.js` — `SPINE_AVATARS` (10 → 19) and `ACHIEVEMENTS` (8 → 17)
+- `src/ui/screens/avatarScreens.test.js`
+
+---
+
+## Quick-Place Lock on Empty Cell (May 2026)
+
+**Branch:** `fix-save-game`
+
+**Summary:** Clicking an empty on-grid cell with no rack tile / lock duration selected now quick-places a lock at that cell using the smallest available lock duration from the player's inventory. Previously this click was a no-op; players had to tap the lock-inventory picker first.
+
+**Behavior:**
+- Empty cell (0..9 × 0..9), no rack-tile and no lock-duration selected, no committed tile, not already locked → dispatch `PLACE_LOCK` with `duration = min(player's lockInventory)`.
+- Perimeter bonus squares (`r=-1`, `r=10`, `c=-1`, `c=10`) are skipped (engine rejects off-grid locks).
+- No-op if the player has no locks remaining.
+- Existing flows (lock-duration explicitly selected via inventory picker, rack-tile selected, placed-tile selected for move) are unchanged.
+
+**Files modified:**
+- `src/ui/screens/gameScreen.js` — `onCellClick` quick-place branch
+- `src/ui/screens/gameScreen.test.js` — three new tests (places lock with smallest duration; no-op with empty inventory; rack selection still places tile)
+
+---
+
+## Online Bug Fixes: Display Name + Bonus-Square Live Preview (May 2026)
+
+**Branch:** `fix-save-game`
+
+**Summary:** Two online-play bugs reported by the user.
+
+**Bug A — invited player shown as "שחקן" instead of their display name.** Two invite-accept handlers and two queue-join handlers fell back to a generic fallback when `fbUser.displayName` was empty (common for email/password signups whose Firebase auth profile carries no displayName; the canonical name lives in `/users/{uid}/profile/displayName`).
+
+**Fix:** Added `resolveMyDisplayName()` helper in [src/main.js](src/main.js) that resolves the current user's display name in priority order: watched profile (`__spine.currentProfile.displayName`) → Firebase auth → legacy global → one-shot Firebase read of the profile node. Used in `II_INTENT.ACCEPT` (popup accept), `NOTIF_INTENT.ACCEPT_INVITE` (inbox accept), `MM_INTENT.SEARCH` (matchmaking queue), `CR_INTENT.CONFIRM` (create-room host), and `JC_INTENT.CONFIRM` (join-by-code guest). Avatar fallback was also extended to prefer the watched profile's avatar.
+
+**Bug B — opponent's pending tile on a perimeter bonus square wasn't visible until commit.** `gameScreen.js` `renderBoard` renders the live preview inside the 0..9 grid via `isOpponentPreview`, but the perimeter bonus squares (`r=-1`, `r=10`, `c=-1`, `c=10`) are rendered by a separate loop over `BDEFS` that only checked the local user's `view.placed` and the committed `view._bonusBoard` — it ignored the opponent's `view._livePreview` tiles entirely.
+
+**Fix:** Extended the BDEFS loop in [src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js) to also check `isOpponentPreview(view, br, bc)` when neither a local pending tile nor a committed tile occupies the square; the opponent's preview tile is rendered into the `.bsq-tile-wrap` with the same `.spine-live-preview` styling the in-grid path uses.
+
+**Tests added:**
+- `src/ui/screens/gameScreen.test.js` — new test `live preview renders opponent ghost tile on a perimeter bonus square` verifies an opponent's `livePreview` tile at `(r=-1, c=1)` appears on `#bsq-0` with the `.spine-live-preview` class and the letter visible in the tile wrap.
+
+**Multiplier (×2/×4) report — confirmed as not a bug.** User asked whether B7 (×2) should multiply the opponent's score instead of the landing player's own next move. Confirmed in conversation that current "multiplies my own NEXT move" semantics is the intended behavior; no code change.
+
+**Files modified:**
+- `src/main.js`
+- `src/ui/screens/gameScreen.js`
+- `src/ui/screens/gameScreen.test.js`
+
+---
+
 ## Offline Save / Resume for 2P + vs-Bot (May 2026)
 
 **Branch:** `fix-save-game`
