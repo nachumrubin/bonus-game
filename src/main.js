@@ -705,7 +705,7 @@ async function boot() {
           difficulty,
           p1Name, p2Name,
           startingSlot,
-          settings: { timelimit: true, botTime, showBothRacks },
+          settings: { timelimit: botTime > 0, botTime, showBothRacks },
         });
       });
       showLegacyScreen('scoin');
@@ -1493,6 +1493,9 @@ async function boot() {
     let activeProfileWatch = null;
     let activeRequestsWatch = null;
     let activeFriendsWatch = null;
+    let activePresenceUnsubs = new Map();
+    let presenceCache = new Map();
+    let ratingCache   = new Map();
     let lastProfile = null;
     let lastFriends = [];
     let lastRequests = [];
@@ -1504,6 +1507,10 @@ async function boot() {
       try { activeProfileWatch?.();  } catch {}
       try { activeRequestsWatch?.(); } catch {}
       try { activeFriendsWatch?.();  } catch {}
+      for (const unsub of activePresenceUnsubs.values()) try { unsub(); } catch {}
+      activePresenceUnsubs.clear();
+      presenceCache.clear();
+      ratingCache.clear();
 
       activeProfileWatch = profileService.watchProfile(fbDb, uid, (profile) => {
         const prev = lastProfile;
@@ -1552,26 +1559,46 @@ async function boot() {
         bus.emit(NOTIF_RENDER, { friendRequests: reqs });
         refreshBadgeCount();
       });
-      activeFriendsWatch = friendsService.watchFriends(fbDb, uid, async (friends) => {
+      function emitEnrichedFriends() {
+        const list = lastFriends.map(f => ({
+          ...f,
+          connected: !!presenceCache.get(f.uid)?.connected,
+          lastSeen:  presenceCache.get(f.uid)?.lastSeen ?? f.addedAt ?? 0,
+          rating:    ratingCache.get(f.uid) ?? null,
+        }));
+        list.sort((a, b) => (b.lastSeen ?? 0) - (a.lastSeen ?? 0));
+        bus.emit(FRIENDS_RENDER, { friends: list });
+      }
+
+      activeFriendsWatch = friendsService.watchFriends(fbDb, uid, (friends) => {
         lastFriends = friends;
-        try {
-          const enriched = await Promise.all(friends.map(async (f) => {
-            const [presence, rating] = await Promise.all([
-              presenceService.readPresenceOnce(fbDb, f.uid).catch(() => null),
-              ratingService.readRating(fbDb, f.uid).catch(() => null),
-            ]);
-            return {
-              ...f,
-              connected: !!presence?.connected,
-              lastSeen: presence?.lastSeen ?? f.addedAt ?? 0,
-              rating: rating ?? null,
-            };
-          }));
-          enriched.sort((a, b) => (b.lastSeen ?? 0) - (a.lastSeen ?? 0));
-          bus.emit(FRIENDS_RENDER, { friends: enriched });
-        } catch {
-          bus.emit(FRIENDS_RENDER, { friends });
+
+        // Remove presence watchers for friends no longer in the list
+        const newUids = new Set(friends.map(f => f.uid));
+        for (const [fuid, unsub] of activePresenceUnsubs) {
+          if (!newUids.has(fuid)) {
+            try { unsub(); } catch {}
+            activePresenceUnsubs.delete(fuid);
+            presenceCache.delete(fuid);
+            ratingCache.delete(fuid);
+          }
         }
+
+        // Add live presence watcher + one-time rating load for new friends
+        for (const f of friends) {
+          if (!activePresenceUnsubs.has(f.uid)) {
+            const unsub = presenceService.watchPresence(fbDb, f.uid, (pres) => {
+              presenceCache.set(f.uid, pres);
+              emitEnrichedFriends();
+            });
+            activePresenceUnsubs.set(f.uid, unsub);
+            ratingService.readRating(fbDb, f.uid)
+              .then(rating => { ratingCache.set(f.uid, rating ?? null); emitEnrichedFriends(); })
+              .catch(() => {});
+          }
+        }
+
+        emitEnrichedFriends();
       });
     }
     globalThis.__spine.bootAccount = bootProfileFor;

@@ -34,6 +34,15 @@ function escapeHtml(s) {
     .replaceAll('"','&quot;').replaceAll('\'','&#39;');
 }
 
+const AVATAR_ID_TO_EMOJI = {
+  crown:'👑', star:'⭐', fire:'🔥', diamond:'💎', shark:'🦈',
+  dragon:'🐉', tiger:'🐯', alien:'👾', wizard:'🧙', robot:'🤖',
+  rocket:'🚀', knight:'🛡️', ninja:'🥷', genius:'🧠', vampire:'🧛',
+};
+function resolveAvatar(raw, fallback) {
+  return AVATAR_ID_TO_EMOJI[raw] ?? raw ?? fallback;
+}
+
 export function buildRequestsHtml(requests = []) {
   if (!requests.length) return '';
   return requests.map(r =>
@@ -71,7 +80,7 @@ export function buildFriendsListHtml(friends = []) {
     const ratingStr = f.rating != null ? String(f.rating) : '—';
     const dotClass  = online ? 'fr-online-dot fr-online-dot--on' : 'fr-online-dot';
     return `<div data-fr-row="${escapeHtml(f.uid)}" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.06);">`
-      + `<div style="font-size:20px;line-height:1;">${escapeHtml(f.avatar ?? '👤')}</div>`
+      + `<div style="font-size:20px;line-height:1;">${escapeHtml(resolveAvatar(f.avatar, '👤'))}</div>`
       + `<div style="flex:1;min-width:0;">`
       +   `<div style="font-size:12px;color:#fff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(f.name ?? '?')}</div>`
       +   `<div style="font-size:10px;color:rgba(255,255,255,.45);">⭐ ${escapeHtml(ratingStr)}</div>`

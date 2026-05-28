@@ -83,6 +83,7 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
     { speed: 20, el: setup.querySelector?.('#ss-spd-20') },
     { speed: 40, el: setup.querySelector?.('#ss-spd-40') },
     { speed: 60, el: setup.querySelector?.('#ss-spd-60') },
+    { speed: 0,  el: setup.querySelector?.('#ss-spd-0')  },
   ];
   for (const def of speedDefs) {
     if (!def.el) continue;
@@ -144,7 +145,7 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
   cleanups.push(bus.on(SETUP_OPEN, ({ mode: nextMode = 'vs', initialDifficulty = 1, initialBotTime = 40 } = {}) => {
     mode = nextMode;
     difficulty = initialDifficulty;
-    botTime = [20, 40, 60].includes(initialBotTime) ? initialBotTime : 40;
+    botTime = [20, 40, 60, 0].includes(initialBotTime) ? initialBotTime : 40;
     for (const d of speedDefs) {
       if (d.el) (d.speed === botTime ? d.el.classList?.add('a') : d.el.classList?.remove('a'));
     }
