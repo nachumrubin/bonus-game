@@ -550,6 +550,7 @@ async function boot() {
   });
 
   bus.on(SETTINGS_CHANGED, (changes = {}) => {
+    if ('music' in changes) syncMusicTopbarIcon();
     const ag = globalThis.__spine?.activeGame;
     if (!ag?.online || !activeFbDb) return;
     const next = settingsCompat.normalizeGameSettings({ ...(ag.session.state.settings ?? {}), ...changes });
@@ -2011,6 +2012,10 @@ async function boot() {
       try { activeProfileWatch?.();  activeProfileWatch  = null; } catch {}
       try { activeRequestsWatch?.(); activeRequestsWatch = null; } catch {}
       try { activeFriendsWatch?.();  activeFriendsWatch  = null; } catch {}
+      for (const unsub of activePresenceUnsubs.values()) try { unsub(); } catch {}
+      activePresenceUnsubs.clear();
+      presenceCache.clear();
+      ratingCache.clear();
       bus.emit(MENU_REFRESH, { isAuthed: false, displayName: '' });
       // Route back to the main menu — leaving the player on the profile
       // overlay after they've signed out is confusing (the avatar / name
