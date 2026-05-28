@@ -550,6 +550,7 @@ async function boot() {
   });
 
   bus.on(SETTINGS_CHANGED, (changes = {}) => {
+    if ('music' in changes) syncMusicTopbarIcon();
     const ag = globalThis.__spine?.activeGame;
     if (!ag?.online || !activeFbDb) return;
     const next = settingsCompat.normalizeGameSettings({ ...(ag.session.state.settings ?? {}), ...changes });
