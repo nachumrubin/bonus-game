@@ -670,6 +670,7 @@
 }
 
 .em-nav-icon  { font-size: var(--nav-icon);  line-height: 1; display: block; }
+.em-nav-icon svg { width: 1em; height: 1em; display: block; }
 .em-nav-label { font-size: var(--nav-label); font-weight: 700; line-height: 1; white-space: nowrap; }
 
 /* ─ Animations ───────────────────────────────────────── */
