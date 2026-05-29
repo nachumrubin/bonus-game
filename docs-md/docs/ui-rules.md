@@ -87,7 +87,8 @@ Critical element IDs referenced by game logic (must not be renamed):
 Reaction system (online games only):
 #rxn-btn-slot0         — reaction trigger button inside #is-sb1 (shown for mySlot=0)
 #rxn-btn-slot1         — reaction trigger button inside #is-sb2 (shown for mySlot=1)
-#rxn-panel             — reaction panel container (filled+positioned by reactionController)
+#rxn-overlay           — full-screen backdrop wrapping the reaction modal (click → close)
+#rxn-panel             — reaction modal panel (centered child of #rxn-overlay, filled by reactionController)
 ```
 
 ### Stats Screen (3-tab layout, May 2026 simplification)

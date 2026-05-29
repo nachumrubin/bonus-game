@@ -7,6 +7,10 @@
 
 ## Completed (May 2026)
 
+- ✅ Online end-game suite — ELO `permission_denied` fixed by per-client write model (each side writes only its own profile + leaderboard entry; opponent's rating read from publicly-readable `globalRatings`); ELO now skipped for 0-move games; `currentUserProfile` undefined-global ReferenceError fixed in avatar-unlock overlay; matchmaking/friend-invite avatar field corrected (`profile.avatar` → `profile.equippedAvatar`) so opponents render with their actual emoji instead of the 👑 default.
+
+- ✅ Matchmaking pair-claim race fix — `tryPair` now claims the queue pair via a single RTDB transaction on `/matchmakingQueue/{mode}` instead of multi-path update + verify. Eliminates the bug where two simultaneous matchmakers each created their own room and the coin-toss showed each player as the starting one.
+
 - ✅ In-game reaction system — child-safe emoji + Hebrew preset message reactions for online games. Reaction panel opens from player card, sends to Firebase `liveReaction` field, shows animated speech bubbles. 5-second cooldown, local mute toggle. No free-text, no gameplay impact.
 
 - ✅ Offline save/resume for 2P + vs-Bot — `pause → שמור וצא לתפריט` and back-button `השהה ושמור` now persist the full engine state to localStorage via `localSaveService`; home `המשך משחק` falls back to the local save when no online async session exists. Cleared on game completion.

@@ -100,11 +100,20 @@ export async function upsertRatingLeaderboardEntry(db, {
   });
 }
 
-// Read both players' profiles, compute new ratings for the slot=mySlot
-// player AND the opponent, and write them back. Returns
-// { myBefore, myAfter, oppBefore, oppAfter, delta }.
+// Apply the Elo change for the local player after a finished game.
 //
-// Result is from `mySlot`'s perspective (`win` means mySlot won).
+// IMPORTANT: each client only writes its OWN profile + its OWN globalRatings
+// leaderboard entry. The Firebase rules only allow a user to read/write
+// `/users/$uid/profile` when `$uid === auth.uid`, so the old "read both
+// profiles, write both profiles" implementation hit permission_denied on
+// every online finish. The opponent's CURRENT rating is now read from
+// `/globalRatings/$oppUid` (publicly readable), and the opponent's client
+// runs the symmetric write on its own side. Both updates converge on the
+// correct pair because each side uses the OTHER's pre-game rating.
+//
+// `result` is from `mySlot`'s perspective (`win` = mySlot won).
+// Returns { ok, myBefore, myAfter, oppBefore, oppAfter, delta } — oppAfter
+// is computed for the UI animation, but it is NOT persisted by this client.
 export async function applyEloForFinishedGame(db, {
   myUid, oppUid, result, k = DEFAULT_K, now = Date.now(),
 } = {}) {
@@ -113,25 +122,23 @@ export async function applyEloForFinishedGame(db, {
   const score = scoreFromResult(result);
   if (score == null)             return { ok: false, reason: 'bad-result' };
 
-  const [mySnap, oppSnap] = await Promise.all([
+  const [mySnap, oppRatingSnap] = await Promise.all([
     profileRef(db, myUid).get(),
-    profileRef(db, oppUid).get(),
+    ratingRef(db, oppUid).get(),
   ]);
-  const my  = mySnap?.val  ? mySnap.val()  : null;
-  const opp = oppSnap?.val ? oppSnap.val() : null;
-  if (!my || !opp) return { ok: false, reason: 'no-profile' };
+  const my = mySnap?.val ? mySnap.val() : null;
+  if (!my) return { ok: false, reason: 'no-profile' };
 
-  const myBefore  = my.rating  ?? RATING_START;
-  const oppBefore = opp.rating ?? RATING_START;
+  const oppEntry  = oppRatingSnap?.val ? oppRatingSnap.val() : null;
+  const myBefore  = my.rating ?? RATING_START;
+  const oppBefore = (oppEntry?.rating != null) ? Number(oppEntry.rating) : RATING_START;
 
-  const myAfter  = applyDelta(myBefore,  oppBefore, score,        k);
-  const oppAfter = applyDelta(oppBefore, myBefore,  1 - score,    k);
+  const myAfter  = applyDelta(myBefore,  oppBefore, score,     k);
+  const oppAfter = applyDelta(oppBefore, myBefore,  1 - score, k); // for UI only — not written
 
   await Promise.all([
     profileRef(db, myUid).update({ rating: myAfter, lastRatedAt: now }),
-    profileRef(db, oppUid).update({ rating: oppAfter, lastRatedAt: now }),
     upsertRatingLeaderboardEntry(db, { uid: myUid, profile: my, rating: myAfter, updatedAt: now }),
-    upsertRatingLeaderboardEntry(db, { uid: oppUid, profile: opp, rating: oppAfter, updatedAt: now }),
   ]);
 
   bus.emit(RATING_EVT.CHANGED, { myUid, oppUid, myBefore, myAfter, oppBefore, oppAfter });

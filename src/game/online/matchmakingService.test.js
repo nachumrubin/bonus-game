@@ -178,6 +178,39 @@ test('tryPair: prefers a compatible partner over an incompatible older one', asy
   assert.equal(r.partnerUid, 'compat-newer');
 });
 
+test('tryPair: simultaneous race — only one client claims the pair', async () => {
+  // Regression: previously both clients could "win" tryPair simultaneously,
+  // each creating its own room. Both players ended up in different rooms
+  // and the coin-toss showed each of them as the starting player on their
+  // own client. The transactional claim must guarantee a single winner.
+  const db = makeMockDb();
+  await joinQueue(db, {
+    uid: 'alice', mode: 'random-live',
+    profile: { displayName: 'Alice' }, settings: {}, serverTimestamp: 100,
+  });
+  await joinQueue(db, {
+    uid: 'bob', mode: 'random-live',
+    profile: { displayName: 'Bob' }, settings: {}, serverTimestamp: 200,
+  });
+
+  let createCount = 0;
+  const make = (uid) => tryPair(db, {
+    uid, mode: 'random-live',
+    createRoomFromPair: async (mine, theirs) => {
+      createCount += 1;
+      return { roomId: `r-${mine.uid}-${theirs.uid}`, room: {} };
+    },
+  });
+  const [a, b] = await Promise.all([make('alice'), make('bob')]);
+
+  const winners = [a, b].filter(r => r.matched);
+  assert.equal(winners.length, 1, 'exactly one client must win the pairing race');
+  assert.equal(createCount, 1, 'createRoomFromPair must run exactly once');
+  // Both queue entries removed.
+  assert.equal(db._data.matchmakingQueue['random-live']?.alice ?? null, null);
+  assert.equal(db._data.matchmakingQueue['random-live']?.bob ?? null, null);
+});
+
 test('tryPair picks the oldest waiting partner', async () => {
   const db = makeMockDb();
   await joinQueue(db, {

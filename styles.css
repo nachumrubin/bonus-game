@@ -2112,28 +2112,45 @@ button[aria-disabled="true"] {
   filter: saturate(0.5);
 }
 
-/* ── Reaction panel (fixed, above trigger button) ── */
-.rxn-panel {
+/* ── Reaction overlay backdrop (full-screen, dims the game) ── */
+.rxn-overlay {
   position: fixed;
+  inset: 0;
   z-index: 8500;
-  background: linear-gradient(160deg, rgba(6,18,58,.97), rgba(2,10,36,.99));
-  border: 1px solid rgba(0,169,200,.45);
-  border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06) inset;
-  padding: 10px 10px 8px;
-  direction: rtl;
-  max-height: 70svh;
+  background: rgba(2, 8, 24, .55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity .18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.rxn-overlay.rxn-overlay-visible {
+  opacity: 1;
+}
+
+/* ── Reaction panel (centered modal inside the overlay) ── */
+.rxn-panel {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  max-height: min(80svh, 560px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  opacity: 0;
-  transform: translateY(8px) scale(.97);
-  transition: opacity .18s ease, transform .18s cubic-bezier(.2,.9,.3,1);
-  pointer-events: none;
+  background: linear-gradient(160deg, rgba(6,18,58,.98), rgba(2,10,36,.99));
+  border: 1px solid rgba(0,169,200,.5);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.06) inset;
+  padding: 14px 14px 12px;
+  direction: rtl;
+  transform: scale(.94);
+  transition: transform .18s cubic-bezier(.2,.9,.3,1);
 }
-.rxn-panel.rxn-panel-visible {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
+.rxn-overlay.rxn-overlay-visible .rxn-panel {
+  transform: scale(1);
 }
 
 /* ── Panel header ── */
@@ -2141,14 +2158,14 @@ button[aria-disabled="true"] {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   gap: 6px;
 }
 .rxn-panel-title {
   font-family: 'Heebo', system-ui, sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
-  color: rgba(255,255,255,.55);
+  color: rgba(255,255,255,.85);
   letter-spacing: .5px;
 }
 .rxn-mute-btn {
@@ -2159,31 +2176,48 @@ button[aria-disabled="true"] {
   border: 1px solid rgba(255,255,255,.18);
   border-radius: 6px;
   color: rgba(255,255,255,.7);
-  padding: 2px 7px;
+  padding: 3px 8px;
   cursor: pointer;
   white-space: nowrap;
   transition: background .1s;
 }
 .rxn-mute-btn:active { background: rgba(255,255,255,.18); }
-
-/* ── Emoji grid ── */
-.rxn-emoji-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
-  justify-content: flex-start;
-}
-.rxn-emoji-item {
-  width: 36px;
-  height: 36px;
+.rxn-close-btn {
+  font-family: 'Heebo', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 50%;
+  color: rgba(255,255,255,.8);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  -webkit-tap-highlight-color: transparent;
+}
+.rxn-close-btn:active { background: rgba(255,255,255,.18); }
+
+/* ── Emoji grid (fixed 4 columns so cells fit nicely on narrow phones) ── */
+.rxn-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.rxn-emoji-item {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
   background: rgba(255,255,255,.07);
   border: 1px solid rgba(255,255,255,.14);
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   transition: background .1s, transform .1s;
   -webkit-tap-highlight-color: transparent;
@@ -2202,29 +2236,28 @@ button[aria-disabled="true"] {
 .rxn-msg-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   border-top: 1px solid rgba(255,255,255,.1);
-  padding-top: 8px;
+  padding-top: 10px;
 }
 .rxn-msg-item {
   width: 100%;
   text-align: right;
   font-family: 'Heebo', system-ui, sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.1);
-  border-radius: 7px;
-  color: rgba(255,255,255,.88);
-  padding: 6px 10px;
+  border-radius: 8px;
+  color: rgba(255,255,255,.92);
+  padding: 8px 12px;
   cursor: pointer;
-  line-height: 1.4;
+  line-height: 1.35;
   transition: background .1s;
   -webkit-tap-highlight-color: transparent;
   direction: rtl;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 .rxn-msg-item:hover  { background: rgba(255,255,255,.13); }
 .rxn-msg-item:active { background: rgba(255,255,255,.2); }
@@ -2234,48 +2267,72 @@ button[aria-disabled="true"] {
   pointer-events: none;
 }
 
-/* ── Reaction speech bubble ── */
+/* ── Reaction speech bubble ──
+   Anchor wrapper owns position (transform set inline by JS).
+   Inner .rxn-bubble owns visuals + open/close animation.
+   High-contrast cream-on-navy palette stands out against the dark game bg. */
+.rxn-bubble-anchor {
+  /* positioning only — see reactionController.showReactionBubble */
+}
 .rxn-bubble {
+  position: relative;
   font-family: 'Heebo', system-ui, sans-serif;
   font-size: 13px;
-  font-weight: 700;
-  background: linear-gradient(135deg, rgba(10,30,80,.95), rgba(4,18,52,.98));
-  border: 1.5px solid rgba(0,180,220,.5);
-  border-radius: 12px;
-  padding: 5px 10px;
-  color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
-  box-shadow: 0 4px 16px rgba(0,0,0,.45), 0 0 12px rgba(0,200,255,.12);
+  font-weight: 800;
+  background: linear-gradient(180deg, #fff8e0 0%, #ffe79c 100%);
+  border: 2px solid #1a2d5a;
+  border-radius: 14px;
+  padding: 7px 12px;
+  color: #0f1d3d;
+  word-break: break-word;
+  box-shadow: 0 6px 18px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.4) inset;
   text-align: center;
   direction: rtl;
-  /* initial hidden state */
+  transform-origin: center center;
   opacity: 0;
-  transform: translate(-50%,-100%) scale(.8) translateY(6px);
+  transform: scale(.7);
   transition: opacity .22s ease, transform .22s cubic-bezier(.2,.9,.3,1);
 }
-/* Bubble tail */
-.rxn-bubble::after {
-  content: '';
-  position: absolute;
-  bottom: -7px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 7px solid transparent;
-  border-right: 7px solid transparent;
-  border-top: 7px solid rgba(0,180,220,.5);
-}
-.rxn-bubble-in {
-  opacity: 1;
-  transform: translate(-50%,-100%) scale(1) translateY(0);
-}
+.rxn-bubble-in  { opacity: 1; transform: scale(1); }
 .rxn-bubble-out {
   opacity: 0;
-  transform: translate(-50%,-100%) scale(.85) translateY(-4px);
+  transform: scale(.85);
   transition: opacity .4s ease, transform .4s ease;
+}
+
+/* Tail variants — anchored on the edge of the bubble closest to the avatar */
+.rxn-bubble-right::before,
+.rxn-bubble-right::after,
+.rxn-bubble-left::before,
+.rxn-bubble-left::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+}
+/* P1 (right side): tail on the bubble's RIGHT edge, pointing → at the avatar */
+.rxn-bubble-right::before {                 /* outer (border color) */
+  right: -11px;
+  transform: translateY(-50%);
+  border-left: 11px solid #1a2d5a;
+}
+.rxn-bubble-right::after {                  /* inner (fill color) */
+  right: -7px;
+  transform: translateY(-50%);
+  border-left: 9px solid #ffe79c;
+}
+/* P2 (left side): tail on the bubble's LEFT edge, pointing ← at the avatar */
+.rxn-bubble-left::before {
+  left: -11px;
+  transform: translateY(-50%);
+  border-right: 11px solid #1a2d5a;
+}
+.rxn-bubble-left::after {
+  left: -7px;
+  transform: translateY(-50%);
+  border-right: 9px solid #ffe79c;
 }
 

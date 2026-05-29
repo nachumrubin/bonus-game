@@ -92,6 +92,15 @@ test('avatarEmoji: known + fallback', () => {
   assert.equal(avatarEmoji('mystery'), '👑');
 });
 
+test('avatarEmoji: pass-through for already-resolved emoji values', () => {
+  // Some legacy paths (room players, queue entries, invites) store the raw
+  // emoji character instead of the id — both should render the same icon.
+  assert.equal(avatarEmoji('💎'), '💎');
+  assert.equal(avatarEmoji('🐉'), '🐉');
+  assert.equal(avatarEmoji(null), '👑');
+  assert.equal(avatarEmoji(undefined), '👑');
+});
+
 test('deriveStats: empty profile → all zeros', () => {
   assert.deepEqual(deriveStats({}), {
     gamesPlayed: 0, gamesWon: 0, winRate: 0,

@@ -43,8 +43,8 @@ export function mountReactionController({
 
   // ── DOM refs ────────────────────────────────────────────────────────────────
 
-  const btn   = root.getElementById('rxn-open-btn');
-  const panel = root.getElementById('rxn-panel');
+  const overlay = root.getElementById('rxn-overlay');
+  const panel   = root.getElementById('rxn-panel');
 
   // Show only the local player's reaction button
   const slot0Btn = root.getElementById('rxn-btn-slot0');
@@ -54,7 +54,7 @@ export function mountReactionController({
 
   const openBtn = mySlot === 0 ? slot0Btn : slot1Btn;
 
-  if (!openBtn || !panel) return { dispose: () => {} };
+  if (!openBtn || !panel || !overlay) return { dispose: () => {} };
 
   // ── Build panel content ─────────────────────────────────────────────────────
 
@@ -65,54 +65,27 @@ export function mountReactionController({
   function openReactionPanel() {
     if (panelOpen) return;
     panelOpen = true;
-    panel.style.display = 'block';
-    panel.removeAttribute('aria-hidden');
-    positionPanel();
-    requestAnimationFrame(() => panel.classList.add('rxn-panel-visible'));
-    // Click-outside listener
-    setTimeout(() => {
-      root.addEventListener('click', handleOutsideClick, { once: true, capture: true });
-      root.addEventListener('touchstart', handleOutsideClick, { once: true, capture: true });
-    }, 50);
+    overlay.style.display = 'flex';
+    overlay.removeAttribute('aria-hidden');
+    requestAnimationFrame(() => overlay.classList.add('rxn-overlay-visible'));
   }
 
   function closeReactionPanel() {
     if (!panelOpen) return;
     panelOpen = false;
-    panel.classList.remove('rxn-panel-visible');
-    panel.setAttribute('aria-hidden', 'true');
-    root.removeEventListener('click', handleOutsideClick, true);
-    root.removeEventListener('touchstart', handleOutsideClick, true);
+    overlay.classList.remove('rxn-overlay-visible');
+    overlay.setAttribute('aria-hidden', 'true');
     setTimeout(() => {
-      if (!panelOpen) panel.style.display = 'none';
-    }, 180);
+      if (!panelOpen) overlay.style.display = 'none';
+    }, 200);
   }
 
-  function handleOutsideClick(e) {
-    if (panel.contains(e.target) || openBtn.contains(e.target)) {
-      // Re-register since we used `once`
-      setTimeout(() => {
-        root.addEventListener('click', handleOutsideClick, { once: true, capture: true });
-        root.addEventListener('touchstart', handleOutsideClick, { once: true, capture: true });
-      }, 50);
-      return;
-    }
-    closeReactionPanel();
+  // Click on the backdrop (anywhere outside the panel) closes the overlay.
+  function onOverlayClick(e) {
+    if (e.target === overlay) closeReactionPanel();
   }
-
-  function positionPanel() {
-    const rect = openBtn.getBoundingClientRect();
-    // Position above the button, horizontally centered on it
-    const panelW = Math.min(root.documentElement?.clientWidth ?? 320, 300);
-    let left = rect.left + rect.width / 2 - panelW / 2;
-    // Clamp to viewport
-    const margin = 6;
-    left = Math.max(margin, Math.min(left, (root.documentElement?.clientWidth ?? 320) - panelW - margin));
-    panel.style.left   = `${left}px`;
-    panel.style.bottom = `${(root.documentElement?.clientHeight ?? 600) - rect.top + 6}px`;
-    panel.style.width  = `${panelW}px`;
-    panel.style.top    = 'auto';
-  }
+  overlay.addEventListener('click', onOverlayClick);
+  cleanups.push(() => overlay.removeEventListener('click', onOverlayClick));
 
   // ── Button interaction ──────────────────────────────────────────────────────
 
@@ -170,6 +143,14 @@ export function mountReactionController({
   panel.addEventListener('click', onMuteToggle);
   cleanups.push(() => panel.removeEventListener('click', onMuteToggle));
 
+  // ── Close button (×) ───────────────────────────────────────────────────────
+
+  function onCloseClick(e) {
+    if (e.target.closest('#rxn-close-btn')) closeReactionPanel();
+  }
+  panel.addEventListener('click', onCloseClick);
+  cleanups.push(() => panel.removeEventListener('click', onCloseClick));
+
   // ── Receive opponent reactions ───────────────────────────────────────────────
 
   const unsubReaction = bus.on(EV.REACTION_RECEIVED, ({ reaction }) => {
@@ -225,6 +206,7 @@ export function mountReactionController({
       <div class="rxn-panel-header">
         <span class="rxn-panel-title">תגובות</span>
         <button class="rxn-mute-btn" id="rxn-mute-btn" type="button">${muteLabel}</button>
+        <button class="rxn-close-btn" id="rxn-close-btn" type="button" aria-label="סגור">×</button>
       </div>
       <div class="rxn-emoji-grid">${emojiItems}</div>
       <div class="rxn-msg-list">${msgItems}</div>
@@ -244,8 +226,9 @@ export function mountReactionController({
     }
     cleanups.length = 0;
     if (cooldownTimer) { clearInterval(cooldownTimer); cooldownTimer = null; }
-    // Hide panel and clean up DOM
-    panel.style.display = 'none';
+    // Hide overlay and clean up DOM
+    overlay.style.display = 'none';
+    overlay.classList.remove('rxn-overlay-visible');
     panel.innerHTML = '';
     if (slot0Btn) slot0Btn.style.display = 'none';
     if (slot1Btn) slot1Btn.style.display = 'none';
@@ -260,51 +243,104 @@ export function mountReactionController({
 // ── Shared bubble renderer ───────────────────────────────────────────────────
 
 /**
- * Show a reaction bubble near a player's score card.
- * @param {0|1} slot - which player's card to show near
+ * Show a reaction speech bubble emerging from a player's avatar.
+ *
+ * P1 (slot 0) sits in the right card under RTL layout, so its bubble appears
+ * to the LEFT of the avatar with the tail on the bubble's right edge pointing
+ * back at the avatar. P2 mirrors. Anchoring on the avatar (not the whole
+ * card) and placing the bubble sideways — instead of above the card — keeps
+ * it out of the turn-timer / status bar above the score row.
+ *
+ * @param {0|1} slot - which player's avatar to anchor on
  * @param {string} displayValue - emoji or Hebrew text to display
  * @param {Document} doc
  */
 export function showReactionBubble(slot, displayValue, doc = globalThis.document) {
-  // Find the player card to anchor the bubble
-  const cardId = slot === 0 ? 'is-sb1' : 'is-sb2';
-  const card = doc.getElementById(cardId);
-  if (!card) return;
+  // Anchor to the avatar (the "mouth" of the speech bubble), falling back to
+  // the whole score card if the avatar element isn't in the DOM for any reason.
+  const avatarId = slot === 0 ? 'is-av1' : 'is-av2';
+  const cardId   = slot === 0 ? 'is-sb1' : 'is-sb2';
+  const anchor = doc.getElementById(avatarId) ?? doc.getElementById(cardId);
+  if (!anchor) return;
 
-  const rect = card.getBoundingClientRect();
+  const rect = anchor.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) return;
 
+  // Two-element structure: outer = positioning (transform owned by JS),
+  // inner = visual styling + open/close animation (transform owned by CSS).
+  // Keeping them on different nodes avoids the two transforms fighting.
+  const anchorEl = doc.createElement('div');
+  anchorEl.className = 'rxn-bubble-anchor';
+
   const bubble = doc.createElement('div');
-  bubble.className = 'rxn-bubble';
+  // slot 0 → P1 (right side in RTL): tail on bubble's right pointing at avatar.
+  // slot 1 → P2 (left side): tail on bubble's left.
+  bubble.className = `rxn-bubble rxn-bubble-${slot === 0 ? 'right' : 'left'}`;
   bubble.dir = 'rtl';
   bubble.textContent = displayValue;
+  anchorEl.appendChild(bubble);
 
-  // Position fixed, above the player card, horizontally centered
-  const bw = Math.min(180, rect.width + 30);
-  bubble.style.cssText = [
+  // Sit the bubble vertically centered on the avatar and horizontally adjacent
+  // to it, pointing inward toward the screen center.
+  const viewportW = doc.documentElement?.clientWidth ?? 360;
+  const gap = 10;
+  const safety = 6;
+  const cy  = Math.round(rect.top + rect.height / 2);
+
+  let leftPx;
+  let anchorTransform;
+  if (slot === 0) {
+    // P1 (right side): bubble's right edge sits `gap` px left of the avatar.
+    leftPx          = Math.round(rect.left - gap);
+    anchorTransform = 'translate(-100%,-50%)';
+  } else {
+    // P2 (left side): bubble's left edge sits `gap` px right of the avatar.
+    leftPx          = Math.round(rect.right + gap);
+    anchorTransform = 'translate(0,-50%)';
+  }
+
+  // Width-bound: the bubble shrinks to fit its text but caps at the actual
+  // horizontal space between this avatar and the OTHER player's score card,
+  // so long messages wrap to 2+ lines instead of overflowing into the opposite
+  // card. Hard upper limit at 240px keeps short messages compact.
+  const otherCardId = slot === 0 ? 'is-sb2' : 'is-sb1';
+  const otherRect   = doc.getElementById(otherCardId)?.getBoundingClientRect() ?? null;
+  let maxBw;
+  if (slot === 0) {
+    // Bubble extends LEFT from leftPx. Must stay right of the other card.
+    maxBw = otherRect ? leftPx - otherRect.right - safety : leftPx - safety;
+  } else {
+    // Bubble extends RIGHT from leftPx. Must stay left of the other card.
+    maxBw = otherRect ? otherRect.left - leftPx - safety : (viewportW - leftPx - safety);
+  }
+  maxBw = Math.max(100, Math.min(maxBw, 240));
+
+  anchorEl.style.cssText = [
     'position:fixed',
-    `left:${Math.round(rect.left + rect.width / 2)}px`,
-    `top:${Math.round(rect.top - 4)}px`,
-    `width:${bw}px`,
-    'transform:translate(-50%,-100%)',
+    `left:${leftPx}px`,
+    `top:${cy}px`,
+    `max-width:${maxBw}px`,
+    `transform:${anchorTransform}`,
     'z-index:9999',
     'pointer-events:none',
+    'display:inline-block', // shrink-to-fit width up to max-width
   ].join(';');
 
-  doc.body.appendChild(bubble);
+  doc.body.appendChild(anchorEl);
 
   // Animate in
   requestAnimationFrame(() => {
     requestAnimationFrame(() => bubble.classList.add('rxn-bubble-in'));
   });
 
-  // Fade out after BUBBLE_VISIBLE_MS
+  // Fade out after BUBBLE_VISIBLE_MS — animate the inner bubble, then remove
+  // the outer anchor (which removes the bubble too).
   const fadeTimer = setTimeout(() => {
     bubble.classList.add('rxn-bubble-out');
-    setTimeout(() => { try { bubble.remove(); } catch {} }, BUBBLE_FADE_MS);
+    setTimeout(() => { try { anchorEl.remove(); } catch {} }, BUBBLE_FADE_MS);
   }, BUBBLE_VISIBLE_MS);
 
   // Safety cleanup
-  setTimeout(() => { try { bubble.remove(); } catch {} }, BUBBLE_VISIBLE_MS + BUBBLE_FADE_MS + 200);
+  setTimeout(() => { try { anchorEl.remove(); } catch {} }, BUBBLE_VISIBLE_MS + BUBBLE_FADE_MS + 200);
   void fadeTimer;
 }

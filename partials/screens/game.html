@@ -51,8 +51,10 @@
         <button class="rxn-btn" id="rxn-btn-slot1" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
       </div>
     </div>
-    <!-- Reaction panel (filled by reactionController) -->
-    <div id="rxn-panel" class="rxn-panel" dir="rtl" aria-hidden="true" style="display:none"></div>
+    <!-- Reaction overlay (backdrop + centered modal panel, filled by reactionController) -->
+    <div id="rxn-overlay" class="rxn-overlay" aria-hidden="true" style="display:none">
+      <div id="rxn-panel" class="rxn-panel" dir="rtl" role="dialog" aria-modal="true"></div>
+    </div>
     <!-- main game area -->
     <div class="game-area">
       <!-- left panel: scores + P1 waiting tiles -->
