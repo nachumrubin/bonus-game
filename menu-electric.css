@@ -493,8 +493,9 @@
   flex-shrink: 0;
   position: relative;
 }
-.em-platform-col:first-child { animation: emCardFloat 5.5s ease-in-out 1s   infinite alternate; position: relative; top: -14px; right: -40px; }
-.em-platform-col:last-child  { animation: emCardFloat 5.5s ease-in-out 2.3s  infinite alternate; margin-top: clamp(28px, 6svh, 44px); }
+.em-platform-col--2p  { animation: emCardFloat 5.5s ease-in-out 1s   infinite alternate; position: relative; top: -14px; right: -40px; }
+.em-platform-col--bot { animation: emCardFloat 5.5s ease-in-out 2.3s  infinite alternate; margin-top: clamp(28px, 6svh, 44px); }
+.em-platform-col--resume { animation: emCardFloat 5.5s ease-in-out 0.4s infinite alternate; position: relative; top: -14px; left: -40px; }
 
 /* ─ Circle mode buttons ──────────────────────────────── */
 .em-circle-btn {
@@ -546,6 +547,23 @@
 
 .em-circle-btn:hover  { transform: scale(1.05); }
 .em-circle-btn:active { transform: scale(0.96); }
+
+/* Resume (saved game) — gold tint to match the old rectangular button identity */
+.em-circle-btn--resume {
+  border-color: rgba(255, 210, 60, 0.80);
+  background: radial-gradient(circle at 34% 28%,
+    rgba(255, 230, 140, 0.35) 0%,
+    #3a2d00 14%,
+    #1e1600 32%,
+    #0a0800 80%
+  );
+  box-shadow:
+    0 0 22px rgba(255, 195, 0, 0.45),
+    0 0 48px rgba(200, 140, 0, 0.20),
+    0 10px 26px rgba(0, 0, 0, 0.62),
+    inset 0 2px 8px rgba(255, 220, 100, 0.18),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.40);
+}
 
 /* Icon container — proportional to its parent circle */
 .em-circle-icon {

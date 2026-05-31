@@ -25,10 +25,9 @@ export const SETTINGS_CHANGED = 'settings/changed';
 
 // Each toggle has a (key, yesId, noId) triple matching the legacy DOM.
 const TOGGLES = [
-  { key: 'music',           yesId: 'sett-music-yes',           noId: 'sett-music-no' },
-  { key: 'soundFx',         yesId: 'sett-soundfx-yes',         noId: 'sett-soundfx-no' },
-  { key: 'vibration',       yesId: 'sett-vibration-yes',       noId: 'sett-vibration-no' },
-  { key: 'disableMessages', yesId: 'sett-disablemessages-yes', noId: 'sett-disablemessages-no' },
+  { key: 'music',     yesId: 'sett-music-yes',     noId: 'sett-music-no' },
+  { key: 'soundFx',   yesId: 'sett-soundfx-yes',   noId: 'sett-soundfx-no' },
+  { key: 'vibration', yesId: 'sett-vibration-yes', noId: 'sett-vibration-no' },
 ];
 
 const COUNTERS = [];

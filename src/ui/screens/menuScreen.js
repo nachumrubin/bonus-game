@@ -103,11 +103,13 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
   // saved-session globals.
   function render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar } = {}) {
     const resumeBtn = $('#btn-resume-home', menuRoot);
+    const resumeCol = $('#resume-col', menuRoot);
     // OR in the local-save status so a saved offline game keeps the
     // resume button visible even when MENU_REFRESH callers (which only
     // know about async-online sessions) pass hasSavedGame: false.
     const showResume = !!hasSavedGame || hasLocalSavedGame(globalThis.localStorage);
     if (resumeBtn) resumeBtn.style.display = showResume ? '' : 'none';
+    if (resumeCol) resumeCol.style.display = showResume ? '' : 'none';
 
     // Display elements are in the global topbar
     const nameLabel = $('#home-user-label', topbarRoot);

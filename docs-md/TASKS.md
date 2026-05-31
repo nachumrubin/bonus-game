@@ -7,6 +7,9 @@
 
 ## Completed (May 2026)
 
+- ✅ Game summary UI fixes — ELO delta inconsistency fixed (both clients now read pre-game ratings from `globalRatings` for both players); "ללא הודעות" settings panel removed; rectangular gold resume button replaced with round circle button in the home screen secondary row; `נאצי` added to `EXACT_REJECTS`.
+
+
 - ✅ Pre-launch polish — tutorial intro refreshed (drop ערעור, add bonus-square mention) + new scripted player step that lands 'י' on the row-5 right-edge bonus to demo bonus activation; `#lcd "מהלכים"` move counter removed from game.html + gameScreen.js; privacy policy rewritten for auth/push/friends/ratings/in-game messages; new "ללא הודעות" setting (local-only, gated in reactionController to hide button + ignore incoming bubbles); end-game screen now shows Elo new-rating + signed delta per player via `RATING_EVT.CHANGED`.
 
 - ✅ Scoreless-turn game-over rule unified — threshold 6→4, exchanges and illegal-word forfeits now count toward `passCount`, and a leading player can fire `CMD.CLAIM_STALL_END` (new "🏆 סיים וזכה" topbar button) once `passCount >= 2` to close out a stalled lost-game-drag-out scenario. Pre-launch change, no migration.
