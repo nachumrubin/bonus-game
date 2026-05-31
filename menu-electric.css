@@ -499,10 +499,11 @@
 .em-platform-col--bot { animation: emCardFloat 5.5s ease-in-out 2.3s  infinite alternate; margin-top: clamp(28px, 6svh, 44px); }
 .em-platform-col--resume {
   animation: emCardFloat 5.5s ease-in-out 0.4s infinite alternate;
-  position: relative;
-  top: -14px;
+  position: absolute;
+  top: clamp(4px, 1.5svh, 16px);
+  right: clamp(8px, 2.5vw, 18px);
+  z-index: 3;
   width: var(--circle-resume);
-  align-self: flex-start;
 }
 
 /* ─ Circle mode buttons ──────────────────────────────── */
@@ -551,6 +552,8 @@
   );
   overflow: hidden; /* clip content to circle; box-shadow is unaffected */
   animation: emCirclePulse 4.5s ease-in-out infinite, emCardFloat 6s ease-in-out infinite alternate;
+  /* shift left to leave room for the resume button at top-right */
+  left: calc(-1 * clamp(20px, 6vw, 48px));
 }
 
 .em-circle-btn:hover  { transform: scale(1.05); }

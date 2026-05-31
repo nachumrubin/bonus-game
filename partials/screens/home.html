@@ -10,6 +10,16 @@
     <!-- ─ Floating Platforms ─────────────────────── -->
     <div class="em-platforms">
 
+      <!-- Absolutely positioned resume button — top-right corner, shown only when a saved game exists -->
+      <div class="em-platform-col em-platform-col--resume" id="resume-col" style="display:none">
+        <button class="em-circle-btn em-circle-btn--resume" id="btn-resume-home" onclick="resumeSavedGame()">
+          <div class="em-circle-icon">▶</div>
+          <div class="em-circle-text">
+            <span class="em-circle-title">המשך משחק</span>
+          </div>
+        </button>
+      </div>
+
       <!-- Primary circle: Online -->
       <div class="em-platform-row em-platform-row--primary">
         <button class="em-circle-btn em-circle-btn--online" id="btn-online-lobby" onclick="showOnlineLobby()">
@@ -23,18 +33,8 @@
         </button>
       </div>
 
-      <!-- Secondary circles: Resume (top-right) + 2P + Bot -->
+      <!-- Secondary circles: 2P + Bot -->
       <div class="em-platform-row em-platform-row--secondary">
-
-        <!-- TOP-RIGHT: חזור למשחק שמור (shown only when a saved game exists) -->
-        <div class="em-platform-col em-platform-col--resume" id="resume-col" style="display:none">
-          <button class="em-circle-btn em-circle-btn--resume" id="btn-resume-home" onclick="resumeSavedGame()">
-            <div class="em-circle-icon">▶</div>
-            <div class="em-circle-text">
-              <span class="em-circle-title">המשך משחק</span>
-            </div>
-          </button>
-        </div>
 
         <!-- RIGHT: שני שחקנים -->
         <div class="em-platform-col em-platform-col--2p">
