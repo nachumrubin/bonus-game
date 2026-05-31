@@ -23,7 +23,7 @@ import { registerAllBoosts, _resetAndRegister, BDEFS, BONUS_TYPES } from './game
 
 import { createLocalGameSession } from './game/sessions/localGameSession.js';
 import { attachBotPlayer } from './game/sessions/botGameSession.js';
-import { attachScriptedTutorialBot, seedTutorialRack, TUTORIAL_WORDS } from './game/sessions/tutorialSession.js';
+import { attachScriptedTutorialBot, seedTutorialRack, seedTutorialBonusAssignment, TUTORIAL_WORDS } from './game/sessions/tutorialSession.js';
 import { createOnlineGameSession } from './game/sessions/onlineGameSession.js';
 
 import * as firebaseClient from './game/online/firebaseClient.js';
@@ -52,9 +52,13 @@ import { createGameFlowController } from './ui/controllers/gameFlowController.js
 import { createTurnTimerController } from './ui/controllers/turnTimerController.js';
 import { createDisconnectController } from './ui/controllers/disconnectController.js';
 import { createTutorialController } from './ui/controllers/tutorialController.js';
+import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
 import { showScreen as spineShowScreen } from './ui/screens/screenTransitions.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './ui/screens/menuScreen.js';
+import { mountHelpDropdown } from './ui/screens/helpDropdown.js';
+import { mountGuideScreen } from './ui/screens/guideScreen.js';
+import { mountFaqScreen } from './ui/screens/faqScreen.js';
 import { mountSetupScreen, SETUP_INTENT, SETUP_OPEN } from './ui/screens/setupScreen.js';
 import { mountOnlineLobbyScreen, LOBBY_INTENT } from './ui/screens/onlineLobbyScreen.js';
 import { mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, MM_INTENT, PS_INTENT } from './ui/screens/matchmakingOverlayScreen.js';
@@ -552,16 +556,28 @@ async function boot() {
 
   bus.on(SETTINGS_CHANGED, (changes = {}) => {
     if ('music' in changes) syncMusicTopbarIcon();
+    // disableMessages is a per-player local preference — persist it but never
+    // push it through the room (otherwise one player's mute would clobber
+    // the other's local choice when room.settings syncs back).
+    if ('disableMessages' in changes) {
+      settingsCompat.applyGameSettingsToGlobals(globalThis, { disableMessages: !!changes.disableMessages });
+      settingsCompat.saveGameSettings(globalThis.localStorage, globalThis.gameSettings ?? {});
+    }
     const ag = globalThis.__spine?.activeGame;
     if (!ag?.online || !activeFbDb) return;
-    const next = settingsCompat.normalizeGameSettings({ ...(ag.session.state.settings ?? {}), ...changes });
+    const { disableMessages: _omit, ...roomChanges } = changes;
+    if (Object.keys(roomChanges).length === 0) return;
+    const next = settingsCompat.normalizeGameSettings({ ...(ag.session.state.settings ?? {}), ...roomChanges });
     roomService.setSettings(activeFbDb, ag.session.roomId, next)
       .catch((e) => console.warn('[spine] room settings write', e));
   });
 
   bus.on(EV.ROOM_SETTINGS_CHANGED, ({ settings } = {}) => {
-    settingsCompat.applyGameSettingsToGlobals(globalThis, settings ?? {});
-    settingsCompat.saveGameSettings(globalThis.localStorage, settings ?? {});
+    // Preserve the player's local disableMessages preference across room syncs.
+    const localDisable = !!globalThis.gameSettings?.disableMessages;
+    const merged = { ...(settings ?? {}), disableMessages: localDisable };
+    settingsCompat.applyGameSettingsToGlobals(globalThis, merged);
+    settingsCompat.saveGameSettings(globalThis.localStorage, merged);
     globalThis.__spine?.turnTimerController?.sync?.();
   });
 
@@ -759,7 +775,12 @@ async function boot() {
         mode: filters.spineMode,
         profile: {
           displayName,
-          avatar: fbUser.photoURL ?? profile.avatar ?? null,
+          // Profile avatar lives in `equippedAvatar` (an id like 'diamond').
+          // The previous version read the wrong field (`profile.avatar`) so
+          // the queue always stored null → opponent's matched-modal always
+          // defaulted to 👑. Translate to emoji at the boundary so room/queue
+          // consumers (gameScreen.js, matched modal) render it directly.
+          avatar: avatarEmoji(profile.equippedAvatar ?? profile.avatar) ?? null,
           rating,
         },
         settings: {
@@ -836,7 +857,10 @@ async function boot() {
       const resolvedHostName = await resolveMyDisplayName();
       const hostProfile = {
         displayName: filters?.name ?? resolvedHostName ?? 'שחקן 1',
-        avatar:      globalThis.__spine?.currentProfile?.avatar ?? fbUser.photoURL ?? profile.avatar ?? null,
+        // Profile's avatar choice lives in `equippedAvatar` (an id like
+        // 'diamond'). Translate to an emoji at the boundary so room/queue
+        // consumers can render it raw.
+        avatar:      avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar ?? profile.equippedAvatar ?? profile.avatar) ?? null,
         rating:     (profile.rating != null) ? profile.rating : 1000,
       };
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: hostProfile.displayName });
@@ -987,7 +1011,7 @@ async function boot() {
       const resolvedGuestName = await resolveMyDisplayName();
       const guestProfile = {
         displayName: name ?? resolvedGuestName ?? 'שחקן 2',
-        avatar:      globalThis.__spine?.currentProfile?.avatar ?? fbUser.photoURL ?? profile.avatar ?? null,
+        avatar:      avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar ?? profile.equippedAvatar ?? profile.avatar) ?? null,
         rating:     (profile.rating != null) ? profile.rating : 1000,
       };
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: guestProfile.displayName });
@@ -1141,7 +1165,12 @@ async function boot() {
       const resolvedName = await resolveMyDisplayName();
       const accepterProfile = {
         displayName: resolvedName ?? 'שחקן 2',
-        avatar: globalThis.__spine?.currentProfile?.avatar ?? fbUser.photoURL ?? globalThis.currentUserProfile?.avatar ?? null,
+        avatar: avatarEmoji(
+          globalThis.__spine?.currentProfile?.equippedAvatar
+          ?? lastProfile?.equippedAvatar
+          ?? globalThis.currentUserProfile?.equippedAvatar
+          ?? globalThis.currentUserProfile?.avatar,
+        ) ?? null,
       };
       try {
         const result = await inviteService.acceptInvite(fbDb, {
@@ -1815,7 +1844,12 @@ async function boot() {
       const resolvedName = await resolveMyDisplayName();
       const accepterProfile = {
         displayName: resolvedName ?? 'שחקן 2',
-        avatar: globalThis.__spine?.currentProfile?.avatar ?? fbUser.photoURL ?? globalThis.currentUserProfile?.avatar ?? null,
+        avatar: avatarEmoji(
+          globalThis.__spine?.currentProfile?.equippedAvatar
+          ?? lastProfile?.equippedAvatar
+          ?? globalThis.currentUserProfile?.equippedAvatar
+          ?? globalThis.currentUserProfile?.avatar,
+        ) ?? null,
       };
       try {
         const result = await inviteService.acceptInvite(fbDb, {
@@ -1992,12 +2026,17 @@ async function boot() {
         if (statsDelta) profileService.bumpStats(fbDb, fbUser.uid, statsDelta).catch(() => {});
       }
 
-      // Rating (only when both players have profiles)
-      if (oppUid && oppUid !== fbUser.uid) {
+      // Rating (only when both players have profiles, AND at least one move
+      // was actually played — an instant resign/abandonment with a 0-0 score
+      // shouldn't move anyone's ELO).
+      const movesPlayed = Number(session?.state?.moveHistory?.length ?? 0);
+      if (oppUid && oppUid !== fbUser.uid && movesPlayed > 0) {
         await ratingService.applyEloForFinishedGame(fbDb, {
           myUid: fbUser.uid, oppUid, result,
         }).catch((e) => console.warn('[spine] elo', e));
         refreshChampions('end');
+      } else if (oppUid && oppUid !== fbUser.uid) {
+        console.info('[spine] skipping ELO — no moves were played', { roomId: ag?.session?.state?.roomId, movesPlayed });
       }
     });
 
@@ -2637,10 +2676,14 @@ async function boot() {
       });
     }
 
-    // Bot games: the human is always slot 0, so pin mySlot so the rack and
-    // turn-gating reflect the human's perspective (rack never swaps to bot,
-    // buttons disable while the bot is thinking).
-    const humanSlot = bot ? 0 : null;
+    // Bot games (and tutorial, which uses a scripted bot attached via
+    // beforeStart): the human is always slot 0, so pin mySlot so the rack
+    // and turn-gating reflect the human's perspective (rack never swaps
+    // to bot, buttons disable while the bot is thinking, and gameScreen's
+    // emitLivePreview actually fires — without a pinned slot it bails on
+    // the `mySlot == null` guard, which is why the tutorial's progress
+    // detection silently stopped working).
+    const humanSlot = (bot || mode === 'tutorial') ? 0 : null;
     const controller = createGameController({ bus, session, mySlot: humanSlot });
     const animationController = createAnimationController({ bus, mySlot: humanSlot });
     animationController.setEnabled(settingsCompat.loadUiPreferences(globalThis.localStorage).animationsEnabled);
@@ -2700,6 +2743,7 @@ async function boot() {
       tileBagSeed: 'tutorial-spine',
       beforeStart(session) {
         seedTutorialRack(session.state, 0);
+        seedTutorialBonusAssignment(session.state);
         attachScriptedTutorialBot(session, { slot: 1, thinkingMs: 900 });
       },
     });
@@ -2778,6 +2822,13 @@ async function boot() {
     startTutorialGame: startTutorialViaSpine,
     showScreen: showLegacyScreen,
   });
+  const helpDropdown = mountHelpDropdown({ bus });
+  const guideScreen  = mountGuideScreen({ bus });
+  const faqScreen    = mountFaqScreen({ bus });
+  const claimStallCtl = createClaimStallEndController({
+    bus,
+    activeGameRef: () => globalThis.__spine?.activeGame ?? null,
+  });
   globalThis.__spine.menu = menu;
   globalThis.__spine.setup = setup;
   globalThis.__spine.onlineLobby = onlineLobby;
@@ -2812,6 +2863,10 @@ async function boot() {
   globalThis.__spine.turnTimerController = turnTimer;
   globalThis.__spine.disconnectController = disconnectCtl;
   globalThis.__spine.tutorialController = tutorialCtl;
+  globalThis.__spine.helpDropdown       = helpDropdown;
+  globalThis.__spine.guideScreen        = guideScreen;
+  globalThis.__spine.faqScreen          = faqScreen;
+  globalThis.__spine.claimStallController = claimStallCtl;
 
   console.info('[spine] ready. Try window.__spine.bootOffline2P() or .bootOfflineBot()');
 

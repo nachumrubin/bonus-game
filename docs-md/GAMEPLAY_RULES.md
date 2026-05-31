@@ -114,8 +114,8 @@ Source: `src/game/core/hebrewDictionary.js`
 Source: `src/game/core/gameEngine.js` → `handleConfirmMove()`
 
 - If any word formed is not in the dictionary, the move is rejected as `INVALID_MOVE_REJECTED`
-- After rejection, the `passCount` increments (counts as a pass-like event)
 - After rejection, the UI auto-passes after ~1100ms (handled in `gameController.js`)
+- That auto-pass increments `passCount` (May 2026: previously reset; unified with regular passes so a stalling player can't reset the scoreless-turn counter by attempting bad words)
 - The pass from an illegal-word rejection is transmitted to Firebase for online games (reason: `'illegal-word'`)
 
 ---
@@ -142,9 +142,8 @@ Source: `turnManager.applyPass()`
 
 - Increments `passCount`
 - Advances turn
-- If `passCount >= 6` (`LEGACY_PASS_GAME_OVER_THRESHOLD`): game over
-- Reasons tracked: `'pass'` (voluntary), `'timeout'` (turn timer), `'illegal-word'` (bad word auto-pass)
-- `resetPassCount: true` option resets counter instead (used for certain recovery scenarios)
+- If `passCount >= 4` (`LEGACY_PASS_GAME_OVER_THRESHOLD`): game over
+- Reasons tracked: `'pass'` (voluntary), `'timeout'` (turn timer), `'illegal-word'` (bad word auto-pass) — all three count toward the threshold (May 2026 unification)
 
 ---
 
@@ -155,8 +154,20 @@ Source: `turnManager.applyExchange()`, `applyFreeExchange()`
 - Player selects tiles from rack to return to bag
 - Tiles returned via `.unshift()` + reshuffle
 - New tiles drawn from bag (up to `RACK_SIZE`)
-- `passCount` reset to 0, turn advances
-- `applyFreeExchange()` (triggered by B13 wheel `tile_swap` outcome): same mechanics but **no turn advance**, no pass count change
+- `passCount` **incremented by 1** (May 2026: previously reset; exchanges now count as scoreless turns so a trailing player can't stall a winning opponent indefinitely)
+- Turn advances
+- `applyFreeExchange()` (triggered by B13 wheel `tile_swap` outcome): same mechanics but **no turn advance**, `passCount` left untouched
+
+---
+
+## Claim Stalling Win
+
+Source: `turnManager.canClaimStallEnd()`, `gameEngine.handleClaimStallEnd()`
+
+- Once `passCount >= STALL_CLAIM_THRESHOLD` (=2), the **strictly leading** player may dispatch `CMD.CLAIM_STALL_END` to finish the game immediately with themselves as winner
+- The trailing player and tied scores are both rejected (`INVALID_MOVE_REJECTED`, reason `'claim-stall-end-not-allowed'`)
+- Sets `state.endReason = 'stall-claim'` and `state.claimedBy = slot`, then runs the normal `finishGame()` path so `EV.GAME_COMPLETED` fires and online sessions write terminal status
+- UI: `#btn-claim-stall-end` (game topbar) shown by `claimStallEndController` only when allowed; click opens `#ov-claim-stall-end` confirm overlay
 
 ---
 
@@ -174,10 +185,11 @@ Source: `turnManager.applyResign()`
 
 Source: `turnManager.isGameOver(state)`
 
-1. `passCount >= 6` (two consecutive full-pass cycles = 3 passes each)
+1. `passCount >= 4` (`LEGACY_PASS_GAME_OVER_THRESHOLD`) — any combination of pass, exchange, or illegal-word forfeit counts (May 2026: lowered from 6; exchanges and illegal-word forfeits now count)
 2. Bag empty AND at least one player has an empty rack
 3. Move count hits configured limit (`settings.moveLimitOn` or `settings.movelimit`)
 4. `state.status` already `'completed'`, `'abandoned'`, or `'expired'`
+5. Leading player fires `CMD.CLAIM_STALL_END` after `passCount >= 2` (sets `state.status = 'completed'`, `state.endReason = 'stall-claim'`)
 
 ### Winner Determination
 

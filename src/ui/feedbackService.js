@@ -240,6 +240,11 @@ function playSequence(notes) {
 
 function buzz(pattern) {
   if (!state.vibration) return;
+  // Chrome blocks navigator.vibrate() with an "Intervention" warning until
+  // a user gesture has occurred in the frame. We track that gesture in
+  // state.unlocked (same flag the audio path uses); skip silently before
+  // it flips so background events like timer ticks don't spam the console.
+  if (!state.unlocked) return;
   const nav = globalThis.navigator;
   if (!nav || typeof nav.vibrate !== 'function') return;
   try { nav.vibrate(pattern); } catch {}

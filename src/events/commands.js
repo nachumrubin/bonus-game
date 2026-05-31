@@ -17,4 +17,5 @@ export const CMD = Object.freeze({
   ACTIVATE_BOOST:     'cmd/ACTIVATE_BOOST',
   FINALIZE_BOOST_AWARD: 'cmd/FINALIZE_BOOST_AWARD',
   RESIGN_GAME:        'cmd/RESIGN_GAME',
+  CLAIM_STALL_END:    'cmd/CLAIM_STALL_END',
 });

@@ -11,6 +11,7 @@ export const DEFAULT_GAME_SETTINGS = Object.freeze({
   appealsMax: 0,
   showBothRacks: false,
   showMoveSummary: true,
+  disableMessages: false,
 });
 
 export const DEFAULT_UI_PREFERENCES = Object.freeze({
@@ -33,6 +34,7 @@ export function normalizeGameSettings(input = {}) {
     appealsMax: clampInt(s.appealsMax, 0, 10, DEFAULT_GAME_SETTINGS.appealsMax),
     showBothRacks: !!s.showBothRacks,
     showMoveSummary: s.showMoveSummary !== false,
+    disableMessages: !!s.disableMessages,
   };
 }
 

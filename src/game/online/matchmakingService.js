@@ -72,7 +72,10 @@ export function isCompatible(a, b) {
 // `createRoomFromPair(myEntry, theirEntry)` is a callback that produces the
 // room metadata + roomId from the two queue entries. It runs OUTSIDE the
 // transaction so it can use the full createInitialState pipeline; the
-// transaction's only job is to atomically claim both entries.
+// transaction's only job is to atomically claim both entries — this is
+// what guarantees a single winner when both clients run tryPair at the
+// same instant (without it, both can "win", each builds its own room,
+// and the two players end up in two different rooms with desynced state).
 export async function tryPair(db, { uid, mode, createRoomFromPair }) {
   const all = await queueRef(db, mode).get();
   const entries = all?.val ? all.val() : null;
@@ -88,21 +91,33 @@ export async function tryPair(db, { uid, mode, createRoomFromPair }) {
   if (others.length === 0) return { matched: false };
   const partner = others[0];
 
-  // Atomically claim both entries by removing them in a multi-path update.
-  // If another client has already removed either, the update succeeds but
-  // we'll detect the partial outcome by re-reading.
-  const updates = {
-    [`${PATH.matchmakingQueue}/${mode}/${uid}`]: null,
-    [`${PATH.matchmakingQueue}/${mode}/${partner.uid}`]: null,
-  };
-  await db.ref().update(updates);
+  // Atomically claim the pair via a transaction on a SHARED queue entry —
+  // the one belonging to whichever uid sorts first. Both racing clients
+  // (who picked each other as partner) compute the same path, so their
+  // transactions serialize on the same node: only one sees `current` as
+  // present and returns null to delete it; the other reads null and
+  // aborts. The rules allow this because writing `null` satisfies the
+  // `!newData.exists()` branch of the $uid write rule, no matter who is
+  // authenticated. A transaction on the parent /matchmakingQueue/{mode}
+  // node would be rejected — there is no .write rule at that level.
+  const claimUid = uid < partner.uid ? uid : partner.uid;
+  const otherUid = uid < partner.uid ? partner.uid : uid;
+  const claim = await db.ref(`${PATH.matchmakingQueue}/${mode}/${claimUid}`)
+    .transaction((current) => {
+      if (!current) return; // abort — the other client already claimed
+      return null;          // claim by deleting this entry
+    });
+  if (!claim?.committed) return { matched: false };
 
-  // Verify both were ours to claim — re-read; if either entry has been
-  // re-added (race) or the partner was claimed by someone else, abort.
-  const verify = await queueRef(db, mode).get();
-  const remaining = (verify?.val ? verify.val() : null) ?? {};
-  if (remaining[uid] || remaining[partner.uid]) {
-    return { matched: false };
+  // We own the pair. Best-effort: remove the other entry too so it doesn't
+  // sit as a phantom in the queue. Rules also allow this (newData is null).
+  try {
+    await db.ref(`${PATH.matchmakingQueue}/${mode}/${otherUid}`).remove();
+  } catch (err) {
+    // If this fails the partner's listener will still see activeRoom flip
+    // and proceed; the stale queue entry is recovered by the next tryPair
+    // or the onDisconnect handler in joinQueue.
+    console.warn('[matchmakingService.tryPair] removing partner queue entry failed', err);
   }
 
   const { room, roomId } = await createRoomFromPair(myEntry, partner);

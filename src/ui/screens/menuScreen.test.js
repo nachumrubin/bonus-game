@@ -42,7 +42,7 @@ function makeMenuDom() {
     twoPlayer:  makeButton({ onclick: "startSetup('vs')" }),
     bot:        makeButton({ onclick: "startSetup('bot')" }),
     online:     makeButton({ onclick: 'showOnlineLobby()' }),
-    tutorial:   makeButton({ onclick: 'showTutorialIntro()' }),
+    tutorial:   makeButton({ onclick: 'showTutorialIntro()', id: 'topbar-help-btn' }),
     settings:   makeButton({ onclick: 'openSettings()' }),
     share:      makeButton({ onclick: 'shareGame()',              id: 'btn-share-game' }),
     nameLabel:  makeButton({ id: 'home-user-label' }),
@@ -136,7 +136,7 @@ test('mount: each button maps to its specific intent', () => {
   assert.equal(seen.get(MENU_INTENT.START_2P), 1);
   assert.equal(seen.get(MENU_INTENT.START_VS_BOT), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_ONLINE_LOBBY), 1);
-  assert.equal(seen.get(MENU_INTENT.OPEN_TUTORIAL), 1);
+  assert.equal(seen.get(MENU_INTENT.OPEN_HELP_MENU), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_SETTINGS), 1);
   assert.equal(seen.get(MENU_INTENT.SHARE_GAME), 1);
 });

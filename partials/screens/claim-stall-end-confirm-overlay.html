@@ -1,0 +1,14 @@
+<!-- CLAIM STALL-END confirmation. Shown when the leading player presses the
+     "סיים וזכה" button (only visible after STALL_CLAIM_THRESHOLD scoreless
+     turns). Confirms before dispatching CMD.CLAIM_STALL_END. -->
+<div id="ov-claim-stall-end" class="ov hidden" style="background:rgba(0,0,0,.82);">
+  <div class="ovc" style="text-align:center;">
+    <div style="font-size:32px;margin-bottom:6px;">🏆</div>
+    <div class="ovt">לסיים את המשחק ולזכות?</div>
+    <div class="ovd">המשחק תקוע — אתה מוביל בניקוד וזכותך לסיים אותו עכשיו לפי כלל ההיתקעות. הניצחון יירשם לזכותך.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+      <button class="ovb p" id="claim-stall-yes" style="padding:11px;font-size:13px;">🏆 סיים וזכה</button>
+      <button class="ovb s" id="claim-stall-no"  style="padding:11px;font-size:13px;">המשך לשחק</button>
+    </div>
+  </div>
+</div>

@@ -68,8 +68,8 @@ Critical element IDs referenced by game logic (must not be renamed):
 #is-sn1, #is-sn2       — player name labels (mobile inline)
 #sbar                  — status bar text
 #bag-count-text        — remaining tile count
-#lcd                   — move counter display
 #turn-name             — whose turn label
+#elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
 #sb1, #sb2             — score box containers (.act = active turn)
 #is-sb1, #is-sb2       — mobile score boxes
 #lock-inv-display      — lock inventory buttons
@@ -87,7 +87,15 @@ Critical element IDs referenced by game logic (must not be renamed):
 Reaction system (online games only):
 #rxn-btn-slot0         — reaction trigger button inside #is-sb1 (shown for mySlot=0)
 #rxn-btn-slot1         — reaction trigger button inside #is-sb2 (shown for mySlot=1)
-#rxn-panel             — reaction panel container (filled+positioned by reactionController)
+#rxn-overlay           — full-screen backdrop wrapping the reaction modal (click → close)
+#rxn-panel             — reaction modal panel (centered child of #rxn-overlay, filled by reactionController)
+
+Help dropdown / Guide / FAQ (top-bar `?` button):
+#em-help-dropdown      — anchored dropdown opened by MENU_INTENT.OPEN_HELP_MENU; items emit OPEN_TUTORIAL/OPEN_GUIDE/OPEN_FAQ
+.em-help-dropdown-item — dropdown rows (data-action: tutorial|guide|faq)
+#ov-guide              — game guide overlay (collapsible <details> sections by topic)
+#ov-faq                — FAQ overlay (collapsible <details> Q&As)
+.guide-section         — accordion section (used inside both #ov-guide and #ov-faq)
 ```
 
 ### Stats Screen (3-tab layout, May 2026 simplification)

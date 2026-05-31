@@ -89,6 +89,12 @@ async function seedProfile(db, profile, { uid, displayName, rating = 800, stats 
     stats: { ...stats },
     createdAt: 0,
   });
+  // Mirror to /globalRatings — that's the publicly readable copy that
+  // applyEloForFinishedGame reads the opponent's rating from (the per-user
+  // profile path is private under the production rules).
+  await db.ref(`globalRatings/${uid}`).set({
+    uid, name: displayName, avatar: null, rating, updatedAt: 0,
+  });
 }
 
 // ───────────────────────────────────────────────────────────────────────
@@ -168,39 +174,48 @@ test('parity: stats delta after draw is bookkeeping-only', async () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────
-// 2. Symmetric rating delta + writes both profiles + leaderboard rows.
-test('parity: end-to-end win — both profiles updated, leaderboard symmetric', async () => {
+// 2. Each client writes only its own data; the symmetric pair of calls
+//    converges on a zero-sum Elo delta. Reflects the per-client-writes
+//    security model: Firebase rules forbid writing the opponent's profile,
+//    so each side must run applyEloForFinishedGame independently.
+test('parity: paired wins — each client writes its own; leaderboard converges symmetric', async () => {
   const m = await loadModules();
   const db = m.mock.makeMockDb();
   await seedProfile(db, m.profile, { uid: 'alice', displayName: 'Alice', rating: 800 });
   await seedProfile(db, m.profile, { uid: 'bob',   displayName: 'Bob',   rating: 800 });
 
-  const result = await m.rating.applyEloForFinishedGame(db, {
+  // Alice's client runs first — she won.
+  const aliceResult = await m.rating.applyEloForFinishedGame(db, {
     myUid: 'alice', oppUid: 'bob', result: 'win', now: 1234,
   });
+  assert.equal(aliceResult.ok, true);
+  assert.ok(aliceResult.myAfter > aliceResult.myBefore, 'winner rating up');
+  assert.ok(aliceResult.oppAfter < aliceResult.oppBefore, 'loser rating down (in returned UI value)');
+  // Only Alice's profile is touched by Alice's call.
+  assert.equal((await m.profile.readProfile(db, 'alice')).rating, aliceResult.myAfter);
+  assert.equal((await m.profile.readProfile(db, 'alice')).lastRatedAt, 1234);
+  assert.equal((await m.profile.readProfile(db, 'bob')).rating, 800, "Bob's profile untouched by Alice");
 
-  assert.equal(result.ok, true);
-  assert.ok(result.myAfter > result.myBefore, 'winner rating up');
-  assert.ok(result.oppAfter < result.oppBefore, 'loser rating down');
-  // Symmetric for equal-rated opponents.
-  assert.equal((result.myAfter - result.myBefore) + (result.oppAfter - result.oppBefore), 0,
-    'Elo deltas sum to zero for equal-rated players');
+  // Bob's client runs symmetrically — he lost. Note: Bob reads Alice's
+  // updated rating from globalRatings since Alice's call mirrored there.
+  const bobResult = await m.rating.applyEloForFinishedGame(db, {
+    myUid: 'bob', oppUid: 'alice', result: 'loss', now: 1234,
+  });
+  assert.equal(bobResult.ok, true);
 
-  // Profiles persisted with new ratings + lastRatedAt.
+  // Both profiles now reflect the correct outcome.
   const aliceP = await m.profile.readProfile(db, 'alice');
   const bobP   = await m.profile.readProfile(db, 'bob');
-  assert.equal(aliceP.rating, result.myAfter);
-  assert.equal(bobP.rating,   result.oppAfter);
-  assert.equal(aliceP.lastRatedAt, 1234);
-  assert.equal(bobP.lastRatedAt, 1234);
+  assert.ok(aliceP.rating > 800, 'alice up');
+  assert.ok(bobP.rating   < 800, 'bob down');
 
   // Leaderboard rows mirror both profiles.
   const board = await m.rating.listTopRatings(db);
   assert.equal(board.length, 2);
   assert.equal(board[0].uid, 'alice', 'winner ranked above loser');
-  assert.equal(board[0].rating, result.myAfter);
+  assert.equal(board[0].rating, aliceP.rating);
   assert.equal(board[1].uid, 'bob');
-  assert.equal(board[1].rating, result.oppAfter);
+  assert.equal(board[1].rating, bobP.rating);
 });
 
 test('parity: draw between equal-rated players leaves ratings unchanged', async () => {

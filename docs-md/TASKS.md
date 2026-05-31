@@ -7,6 +7,16 @@
 
 ## Completed (May 2026)
 
+- ✅ Pre-launch polish — tutorial intro refreshed (drop ערעור, add bonus-square mention) + new scripted player step that lands 'י' on the row-5 right-edge bonus to demo bonus activation; `#lcd "מהלכים"` move counter removed from game.html + gameScreen.js; privacy policy rewritten for auth/push/friends/ratings/in-game messages; new "ללא הודעות" setting (local-only, gated in reactionController to hide button + ignore incoming bubbles); end-game screen now shows Elo new-rating + signed delta per player via `RATING_EVT.CHANGED`.
+
+- ✅ Scoreless-turn game-over rule unified — threshold 6→4, exchanges and illegal-word forfeits now count toward `passCount`, and a leading player can fire `CMD.CLAIM_STALL_END` (new "🏆 סיים וזכה" topbar button) once `passCount >= 2` to close out a stalled lost-game-drag-out scenario. Pre-launch change, no migration.
+
+- ✅ In-app help dropdown with Tutorial / Guide / FAQ — top-bar `?` now opens an anchored dropdown; "מדריך" opens a 6-section accordion guide (rules, inflections, screens, modes, ratings, bonuses); "שאלות נפוצות" opens a ~12-item Q&A overlay. Existing tutorial flow preserved (dropdown re-emits `OPEN_TUTORIAL`).
+
+- ✅ Online end-game suite — ELO `permission_denied` fixed by per-client write model (each side writes only its own profile + leaderboard entry; opponent's rating read from publicly-readable `globalRatings`); ELO now skipped for 0-move games; `currentUserProfile` undefined-global ReferenceError fixed in avatar-unlock overlay; matchmaking/friend-invite avatar field corrected (`profile.avatar` → `profile.equippedAvatar`) so opponents render with their actual emoji instead of the 👑 default.
+
+- ✅ Matchmaking pair-claim race fix — `tryPair` now claims the queue pair via a single RTDB transaction on `/matchmakingQueue/{mode}` instead of multi-path update + verify. Eliminates the bug where two simultaneous matchmakers each created their own room and the coin-toss showed each player as the starting one.
+
 - ✅ In-game reaction system — child-safe emoji + Hebrew preset message reactions for online games. Reaction panel opens from player card, sends to Firebase `liveReaction` field, shows animated speech bubbles. 5-second cooldown, local mute toggle. No free-text, no gameplay impact.
 
 - ✅ Offline save/resume for 2P + vs-Bot — `pause → שמור וצא לתפריט` and back-button `השהה ושמור` now persist the full engine state to localStorage via `localSaveService`; home `המשך משחק` falls back to the local save when no online async session exists. Cleared on game completion.

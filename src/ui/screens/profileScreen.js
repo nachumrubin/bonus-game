@@ -35,9 +35,19 @@ const AVATAR_EMOJI = {
   dragon: '🐉', tiger: '🐯', alien: '👾', wizard: '🧙', robot: '🤖',
   rocket: '🚀', knight: '🛡️', ninja: '🥷', genius: '🧠', vampire: '🧛',
 };
+const KNOWN_AVATAR_EMOJIS = new Set(Object.values(AVATAR_EMOJI));
 
-export function avatarEmoji(id) {
-  return AVATAR_EMOJI[id] ?? AVATAR_EMOJI.crown;
+// Resolve an avatar value to its emoji character.
+// Accepts an id ('diamond' → '💎'), an already-resolved emoji ('💎' → '💎'),
+// or null/undefined/unknown (→ '👑'). The pass-through case matters because
+// some legacy code paths (queue entries, invites, room players) store the
+// raw emoji string directly while others store the id — both should render.
+export function avatarEmoji(value) {
+  if (value == null) return AVATAR_EMOJI.crown;
+  if (typeof value !== 'string') return AVATAR_EMOJI.crown;
+  if (AVATAR_EMOJI[value]) return AVATAR_EMOJI[value];
+  if (KNOWN_AVATAR_EMOJIS.has(value)) return value;
+  return AVATAR_EMOJI.crown;
 }
 
 // Pure: derive a derived stats object including winRate.

@@ -7,6 +7,7 @@
 
 import { $, on, setText } from '../domHelpers.js';
 import { EV } from '../../events/eventTypes.js';
+import { RATING_EVT } from '../../game/account/ratingService.js';
 
 export const END_INTENT = Object.freeze({
   REMATCH: 'end/rematch',
@@ -54,7 +55,15 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     overlay.classList?.remove('hidden');
   }));
 
+  // Rating service emits this AFTER the local Elo write finishes, which is
+  // typically a moment after GAME_COMPLETED. Pin the deltas onto the score
+  // cards as they arrive.
+  cleanups.push(bus.on(RATING_EVT.CHANGED, (payload = {}) => {
+    renderEloDeltas(payload);
+  }));
+
   function render({ winnerSlot, scores = { 0: 0, 1: 0 }, players, abandonedBy, abandonReason } = {}) {
+    clearEloDeltas();
     setText($('#es1', overlay), String(scores[0] ?? 0));
     setText($('#es2', overlay), String(scores[1] ?? 0));
     setText($('#en1', overlay), players?.[0]?.displayName ?? 'שחקן 1');
@@ -100,6 +109,35 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
         : 'ניצחת — היריב עזב את המשחק';
     }
     return iLost ? 'פרשת מהמשחק' : 'היריב פרש';
+  }
+
+  function clearEloDeltas() {
+    setText($('#elo-delta-1', overlay), '');
+    setText($('#elo-delta-2', overlay), '');
+    $('#elo-delta-1', overlay)?.classList?.remove('up', 'down');
+    $('#elo-delta-2', overlay)?.classList?.remove('up', 'down');
+  }
+
+  function renderEloDeltas({ myBefore, myAfter, oppBefore, oppAfter } = {}) {
+    const mySlot = globalThis.__spine?.activeGame?.session?.mySlot;
+    if (mySlot !== 0 && mySlot !== 1) return;
+    const oppSlot = mySlot === 0 ? 1 : 0;
+    if (Number.isFinite(myBefore) && Number.isFinite(myAfter)) {
+      paintDelta(mySlot + 1, myAfter - myBefore, myAfter);
+    }
+    if (Number.isFinite(oppBefore) && Number.isFinite(oppAfter)) {
+      paintDelta(oppSlot + 1, oppAfter - oppBefore, oppAfter);
+    }
+  }
+
+  function paintDelta(slotOneBased, delta, newRating) {
+    const el = $(`#elo-delta-${slotOneBased}`, overlay);
+    if (!el) return;
+    el.classList?.remove('up', 'down');
+    if (delta > 0) el.classList?.add('up');
+    else if (delta < 0) el.classList?.add('down');
+    const sign = delta > 0 ? '+' : '';
+    setText(el, `דירוג ${newRating} (${sign}${delta})`);
   }
 
   function unmount() {

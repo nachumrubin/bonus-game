@@ -17,7 +17,6 @@
 //   #is-sn1, #is-sn2    mobile player-name duplicates
 //   #sbar               status bar text
 //   #bag-count-text     remaining-tiles count
-//   #lcd                move counter
 //   #turn-name          right-panel "whose turn" label
 //   #sb1, #sb2          score box containers (`act` class marks active)
 //   #is-sb1, #is-sb2    mobile equivalents
@@ -714,7 +713,6 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
 
   function renderTopBars(v) {
     setText($('#bag-count-text', root), String(v.bagRemaining));
-    setText($('#lcd', root), String(v.turnNumber).padStart(2, '0'));
     const turnName = v.currentTurnSlot === 0 ? 'שחקן 1' : 'שחקן 2';
     setText($('#turn-name', root), turnName);
     renderDirection(v);
@@ -926,7 +924,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         : letter;
       const valDisplay = isJoker ? '' : val;
       const anim = shouldAnimate ? ` anim-in" style="animation:tileDropIn .35s cubic-bezier(.22,.68,0,1.2) both;animation-delay:${i * 35}ms"` : '"';
-      html += `<div class="bt2${sel}${jok}${anim}><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
+      const dataLetter = isJoker ? '?' : letter;
+      html += `<div class="bt2${sel}${jok}${anim} data-rack-letter="${dataLetter}" data-rack-idx="${i}"><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
     }
     brack.innerHTML = html;
   }
@@ -1468,15 +1467,31 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
   }
 
   // Defensive: if rounding / per-word filter dropped some points (e.g. a
-  // bonus that doesn't come from a word's tile values), snap the sum to
-  // the final score after the last merge so the chip lands with the real
-  // total instead of an undercount.
-  setTimeout(() => {
-    if (runningSum !== total) {
-      runningSum = total;
-      updateSumDisplay();
-    }
-  }, mergeEnd + 20);
+  // bonus that doesn't come from a word's tile values), top up the sum to
+  // the final score so the chip lands with the real total instead of an
+  // undercount.
+  //
+  // Two correctness rules learned the hard way (May 2026):
+  //   1. Only schedule the snap if the per-word renders + bonus extra
+  //      would NOT naturally reach `total`. Otherwise the snap races
+  //      against the per-word onLand callbacks (both fire ~380ms in) and
+  //      can run first, after which onLand adds its `ws` on top — the
+  //      chip ends up showing 2× the real score.
+  //   2. When the snap does run, ADD the missing delta rather than
+  //      overwriting `runningSum`. Overwriting also races with onLand and
+  //      double-counts.
+  const expectedFromMerges = (words ?? []).reduce(
+    (a, w) => a + (Number(w.wordScore) || 0),
+    0,
+  ) + extra;
+  if (expectedFromMerges < total) {
+    setTimeout(() => {
+      if (runningSum < total) {
+        runningSum = total;
+        updateSumDisplay();
+      }
+    }, mergeEnd + 20);
+  }
 
   // 4. Hold + fly sum chip into the player's score panel.
   setTimeout(() => {

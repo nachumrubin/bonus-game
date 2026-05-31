@@ -16,7 +16,8 @@ These values are baked into existing game states stored in Firebase. Changing th
 - Letter counts `HD` (`letterDistribution.js`) — never change; affects seeded bag reproducibility
 - `BINGO_BONUS = 50` (`scoringEngine.js`) — never change
 - `LEGACY_LOCK_INVENTORY = [3, 3, 5]` (`turnManager.js`) — never change
-- `LEGACY_PASS_GAME_OVER_THRESHOLD = 6` (`turnManager.js`) — never change
+- `LEGACY_PASS_GAME_OVER_THRESHOLD = 4` (`turnManager.js`) — was lowered from 6 pre-launch (May 2026) together with the new "exchanges count as scoreless" rule and the stalling-claim button; before changing again, weigh impact on stored `passCount` in active games
+- `STALL_CLAIM_THRESHOLD = 2` (`turnManager.js`) — minimum scoreless turns before the leading player can fire `CMD.CLAIM_STALL_END`
 - `schemaVersion: 2` in room documents — bump only with a migration plan
 - Firebase database path constants in `schema.js` — never rename existing paths
 

@@ -129,7 +129,7 @@
 ### `src/ui/screens/`
 See `/partials/screens/` for corresponding HTML templates.
 
-**Menu/Home:** `menuScreen.js`, `asyncHomeButton.js`
+**Menu/Home:** `menuScreen.js`, `asyncHomeButton.js`, `helpDropdown.js`, `guideScreen.js`, `faqScreen.js`
 **Setup & Lobby:** `setupScreen.js`, `createRoomScreen.js`, `joinCodeScreen.js`, `onlineLobbyScreen.js`, `waitingRoomScreen.js`, `incomingInviteScreen.js`, `matchmakingOverlayScreen.js`, `asyncSessionListScreen.js`
 **Gameplay:** `gameScreen.js`, `pauseScreen.js`, `resignConfirmScreen.js`, `backConfirmScreen.js`, `coinTossScreen.js`, `endGameScreen.js`, `disconnectScreen.js`, `bonusIntroScreen.js`, `bonusSpectatorScreen.js`, `boostVetoScreen.js`, `boostBadges.js`
 **User Management:** `authScreens.js`, `profileScreen.js`, `avatarScreens.js`, `friendsScreen.js`, `notificationsScreen.js`, `championsScreen.js`, `statsScreen.js`, `dictionaryScreen.js`, `settingsScreen.js`

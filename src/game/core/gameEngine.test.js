@@ -182,15 +182,52 @@ test('PASS_TURN advances turn and increments passCount', () => {
   assert.equal(state.passCount, 1);
 });
 
-test('six consecutive passes complete the game', () => {
+test('four consecutive passes complete the game (May 2026 threshold)', () => {
   const { state, eng } = freshEngine();
   const events = captureEvents();
   state.scores = { 0: 30, 1: 10 };
-  for (let i = 0; i < 6; i++) eng.dispatch({ type: CMD.PASS_TURN });
+  for (let i = 0; i < 4; i++) eng.dispatch({ type: CMD.PASS_TURN });
   const evt = events.find(e => e.type === EV.GAME_COMPLETED);
   assert.ok(evt);
   assert.equal(evt.payload.winnerSlot, 0);
   assert.equal(state.status, 'completed');
+});
+
+test('CLAIM_STALL_END ends the game with the leader as winner once threshold met', () => {
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.scores = { 0: 50, 1: 10 };
+  state.passCount = 2;
+  state.currentTurnSlot = 0;
+  eng.dispatch({ type: CMD.CLAIM_STALL_END, payload: { slot: 0 } });
+  const evt = events.find(e => e.type === EV.GAME_COMPLETED);
+  assert.ok(evt);
+  assert.equal(evt.payload.winnerSlot, 0);
+  assert.equal(state.status, 'completed');
+  assert.equal(state.endReason, 'stall-claim');
+  assert.equal(state.claimedBy, 0);
+});
+
+test('CLAIM_STALL_END from the trailing player is rejected', () => {
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.scores = { 0: 50, 1: 10 };
+  state.passCount = 2;
+  eng.dispatch({ type: CMD.CLAIM_STALL_END, payload: { slot: 1 } });
+  const rejected = events.find(e => e.type === EV.INVALID_MOVE_REJECTED);
+  assert.ok(rejected);
+  assert.equal(state.status !== 'completed', true);
+});
+
+test('CLAIM_STALL_END before the stall threshold is rejected', () => {
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.scores = { 0: 50, 1: 10 };
+  state.passCount = 1;
+  eng.dispatch({ type: CMD.CLAIM_STALL_END, payload: { slot: 0 } });
+  const rejected = events.find(e => e.type === EV.INVALID_MOVE_REJECTED);
+  assert.ok(rejected);
+  assert.equal(state.status !== 'completed', true);
 });
 
 test('RESIGN_GAME ends with the other slot as winner', () => {

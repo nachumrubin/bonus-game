@@ -102,7 +102,7 @@ function makeGameDom() {
   reg('sb1'); reg('sb2'); reg('is-sb1'); reg('is-sb2');
   reg('scn1'); reg('scn2');
   // Misc
-  reg('sbar'); reg('bag-count-text'); reg('lcd'); reg('turn-name'); reg('bag-display');
+  reg('sbar'); reg('bag-count-text'); reg('turn-name'); reg('bag-display');
   reg('lock-inv-display'); reg('is-locks-1'); reg('is-locks-2');
   // Grid
   const grid = reg('game-grid');
@@ -234,14 +234,13 @@ test('mount: active slot gets the "act" class on its score box', () => {
   assert.ok(!elements.get('sb2').classList.contains('act'));
 });
 
-test('mount: bag count + move counter render', () => {
+test('mount: bag count renders', () => {
   const { session, controller } = fresh();
   const { root, elements } = makeGameDom();
   mountGameScreen({ controller, root });
   // engineState.bag length is whatever is left after drawing 8+8 tiles
   const expected = String(session.state.bag.length);
   assert.equal(elements.get('bag-count-text').textContent, expected);
-  assert.equal(elements.get('lcd').textContent, '01');
 });
 
 test('renderer reacts to MOVE_CONFIRMED — score updates, status bar resets', async () => {

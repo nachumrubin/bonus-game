@@ -16,6 +16,9 @@ export const MENU_INTENT = Object.freeze({
   START_VS_BOT:       'menu/startVsBot',
   OPEN_ONLINE_LOBBY:  'menu/openOnlineLobby',
   OPEN_TUTORIAL:      'menu/openTutorial',
+  OPEN_GUIDE:         'menu/openGuide',
+  OPEN_FAQ:           'menu/openFaq',
+  OPEN_HELP_MENU:     'menu/openHelpMenu',
   OPEN_SETTINGS:      'menu/openSettings',
   SHARE_GAME:         'menu/shareGame',
   OPEN_STATS:         'menu/openStats',
@@ -34,7 +37,7 @@ const TOPBAR_BUTTONS = [
   { sel: 'button[onclick="openNotifications()"]',  intent: MENU_INTENT.OPEN_NOTIFICATIONS },
   { sel: '#topbar-music-btn',                      intent: MENU_INTENT.TOPBAR_MUSIC },
   { sel: 'button[onclick="openSettings()"]',       intent: MENU_INTENT.OPEN_SETTINGS },
-  { sel: 'button[onclick="showTutorialIntro()"]',  intent: MENU_INTENT.OPEN_TUTORIAL },
+  { sel: '#topbar-help-btn',                       intent: MENU_INTENT.OPEN_HELP_MENU },
 ];
 
 // Screen buttons live inside #sh (home screen only).

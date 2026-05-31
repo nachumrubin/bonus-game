@@ -62,14 +62,12 @@ test('intro opens and start/back buttons emit tutorial intents', () => {
 
 test('tip paints text and spotlight classes, then clears them', () => {
   bus._reset();
-  const dim = makeEl();
   const tip = makeEl();
   const label = makeEl(false);
   const text = makeEl(false);
   const target = makeEl(false);
   mountTutorialScreen({
     root: makeRoot({
-      '#tut-dim': dim,
       '#tut-tip': tip,
       '#tut-tip-lbl': label,
       '#tut-tip-txt': text,

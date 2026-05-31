@@ -35,14 +35,14 @@ test('firebase rules include dictionary moderation protections', () => {
   assert.ok(rules.dictionaryApproved, 'dictionaryApproved path should exist');
   assert.equal(
     rules.dictionaryApproved.$word['.write'],
-    'auth != null && auth.token.admin === true',
-    'approved dictionary writes should require admin custom claim'
+    "auth != null && root.child('admins').child(auth.uid).val() === true",
+    'approved dictionary writes should require an entry in /admins/$uid'
   );
 
   assert.ok(rules.dictionaryRejected, 'dictionaryRejected path should exist');
   assert.equal(
     rules.dictionaryRejected.$id['.write'],
-    'auth != null && auth.token.admin === true',
-    'rejected dictionary writes should require admin custom claim'
+    "auth != null && root.child('admins').child(auth.uid).val() === true",
+    'rejected dictionary writes should require an entry in /admins/$uid'
   );
 });

@@ -46,17 +46,22 @@ test('scoreFromResult: maps strings', () => {
   assert.equal(scoreFromResult('xx'),   null);
 });
 
-test('applyEloForFinishedGame: writes new ratings symmetrically', async () => {
+test('applyEloForFinishedGame: writes ONLY the caller\'s profile + leaderboard entry', async () => {
+  // Each client computes its own delta and writes only its own data.
+  // The opponent's CURRENT rating is read from globalRatings (public), not
+  // from /users/{oppUid}/profile (private to the opponent).
   const db = makeMockDb();
-  await db.ref('users/u-me/profile').set({ displayName: 'Me',  rating: 1000 });
-  await db.ref('users/u-op/profile').set({ displayName: 'Opp', rating: 1000 });
+  await db.ref('users/u-me/profile').set({ displayName: 'Me', rating: 1000 });
+  await db.ref('users/u-op/profile').set({ displayName: 'Opp', rating: 1000 }); // unreachable in prod
+  await db.ref('globalRatings/u-op').set({ uid: 'u-op', name: 'Opp', rating: 1000, updatedAt: 0, avatar: null });
+
   const r = await applyEloForFinishedGame(db, { myUid: 'u-me', oppUid: 'u-op', result: 'win', now: 1234 });
   assert.equal(r.ok, true);
   assert.equal(r.myAfter,  1012);
-  assert.equal(r.oppAfter, 988);
-  // Persisted
+  assert.equal(r.oppAfter, 988); // returned for UI; not persisted by this caller
+
+  // My profile + my leaderboard entry are updated.
   assert.equal((await db.ref('users/u-me/profile').get()).val().rating, 1012);
-  assert.equal((await db.ref('users/u-op/profile').get()).val().rating,  988);
   assert.deepEqual((await db.ref('globalRatings/u-me').get()).val(), {
     uid: 'u-me',
     name: 'Me',
@@ -64,7 +69,22 @@ test('applyEloForFinishedGame: writes new ratings symmetrically', async () => {
     rating: 1012,
     updatedAt: 1234,
   });
-  assert.equal((await db.ref('globalRatings/u-op').get()).val().rating, 988);
+  // Opponent's profile + leaderboard entry are NOT touched by this client —
+  // the opponent's own client makes the symmetric write on its side.
+  assert.equal((await db.ref('users/u-op/profile').get()).val().rating, 1000);
+  assert.equal((await db.ref('globalRatings/u-op').get()).val().rating, 1000);
+});
+
+test('applyEloForFinishedGame: opponent without a globalRatings entry defaults to RATING_START', async () => {
+  // First-ever game for the opponent: globalRatings/{oppUid} doesn't exist yet.
+  // The caller should fall back to RATING_START rather than failing.
+  const db = makeMockDb();
+  await db.ref('users/u-me/profile').set({ displayName: 'Me', rating: 1000 });
+  const r = await applyEloForFinishedGame(db, { myUid: 'u-me', oppUid: 'u-op', result: 'win', now: 1 });
+  assert.equal(r.ok, true);
+  assert.equal(r.oppBefore, 800); // RATING_START (see profileService.js)
+  // myBefore=1000, oppBefore=800 → expected ≈ 0.760 → delta ≈ 24 * (1-0.76) ≈ 5.76 → +6
+  assert.equal(r.myAfter, 1006);
 });
 
 test('rankRatings: sorts by rating and limits results', () => {
