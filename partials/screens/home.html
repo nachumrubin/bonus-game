@@ -7,12 +7,6 @@
       <img src="logo_no_mascot.png" alt="בוסט">
     </div>
 
-    <!-- ─ Resume saved game (shown only when a saved game exists) ─ -->
-    <button class="bd bd-gold em-resume-btn" id="btn-resume-home" onclick="resumeSavedGame()" style="display:none">
-      <span class="bd-icon">▶</span>
-      <span class="bd-text"><span class="bd-title">המשך משחק שמור</span></span>
-    </button>
-
     <!-- ─ Floating Platforms ─────────────────────── -->
     <div class="em-platforms">
 
@@ -29,11 +23,21 @@
         </button>
       </div>
 
-      <!-- Secondary circles: 2P (right) + Bot (left) -->
+      <!-- Secondary circles: Resume (top-right) + 2P + Bot -->
       <div class="em-platform-row em-platform-row--secondary">
 
+        <!-- TOP-RIGHT: חזור למשחק שמור (shown only when a saved game exists) -->
+        <div class="em-platform-col em-platform-col--resume" id="resume-col" style="display:none">
+          <button class="em-circle-btn em-circle-btn--resume" id="btn-resume-home" onclick="resumeSavedGame()">
+            <div class="em-circle-icon" style="font-size:calc(var(--icon-secondary)*0.72);line-height:1;">▶</div>
+            <div class="em-circle-text">
+              <span class="em-circle-title">המשך משחק</span>
+            </div>
+          </button>
+        </div>
+
         <!-- RIGHT: שני שחקנים -->
-        <div class="em-platform-col">
+        <div class="em-platform-col em-platform-col--2p">
           <button class="em-circle-btn" onclick="startSetup('vs')">
             <div class="em-circle-icon">
               <!-- Two upper-body silhouettes, bright traces ride directly on each edge -->
@@ -100,7 +104,7 @@
         </div>
 
         <!-- LEFT: נגד המחשב -->
-        <div class="em-platform-col">
+        <div class="em-platform-col em-platform-col--bot">
           <button class="em-circle-btn" onclick="startSetup('bot')">
             <div class="em-circle-icon">
               <!-- Robot icon with antenna electrical pulse -->

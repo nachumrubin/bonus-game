@@ -111,6 +111,13 @@ export async function upsertRatingLeaderboardEntry(db, {
 // runs the symmetric write on its own side. Both updates converge on the
 // correct pair because each side uses the OTHER's pre-game rating.
 //
+// Both pre-game ratings are read from /globalRatings (the publicly readable
+// leaderboard) so that both clients use the SAME source for the opponent's
+// rating. Reading myBefore from the private profile caused a divergence:
+// profile.rating could differ from globalRatings.rating (e.g. if a previous
+// upsertRatingLeaderboardEntry failed), making each client compute a
+// different delta for the same game — one player seeing ±1 and the other ±13.
+//
 // `result` is from `mySlot`'s perspective (`win` = mySlot won).
 // Returns { ok, myBefore, myAfter, oppBefore, oppAfter, delta } — oppAfter
 // is computed for the UI animation, but it is NOT persisted by this client.
@@ -122,15 +129,19 @@ export async function applyEloForFinishedGame(db, {
   const score = scoreFromResult(result);
   if (score == null)             return { ok: false, reason: 'bad-result' };
 
-  const [mySnap, oppRatingSnap] = await Promise.all([
+  const [mySnap, myRatingSnap, oppRatingSnap] = await Promise.all([
     profileRef(db, myUid).get(),
+    ratingRef(db, myUid).get(),
     ratingRef(db, oppUid).get(),
   ]);
   const my = mySnap?.val ? mySnap.val() : null;
   if (!my) return { ok: false, reason: 'no-profile' };
 
+  const myEntry   = myRatingSnap?.val ? myRatingSnap.val() : null;
   const oppEntry  = oppRatingSnap?.val ? oppRatingSnap.val() : null;
-  const myBefore  = my.rating ?? RATING_START;
+  // Prefer globalRatings for myBefore so both clients use the same source
+  // (globalRatings is publicly readable; profile is private).
+  const myBefore  = (myEntry?.rating != null) ? Number(myEntry.rating) : (my.rating ?? RATING_START);
   const oppBefore = (oppEntry?.rating != null) ? Number(oppEntry.rating) : RATING_START;
 
   const myAfter  = applyDelta(myBefore,  oppBefore, score,     k);

@@ -2,6 +2,22 @@
 
 ---
 
+## Game summary UI fixes — May 2026
+
+**Branch:** `claude/game-summary-ui-fixes-qtv8c`
+
+Four fixes to address post-launch issues:
+
+1. **ELO delta inconsistency** (`ratingService.js`) — Both clients now read the pre-game rating from `globalRatings` (the publicly readable source) for *both* players, not just the opponent. Previously `myBefore` came from `users/$uid/profile` which could diverge from `globalRatings` (e.g. if a prior leaderboard upsert failed), causing each side to compute a different delta (e.g. ±1 vs ±13). Now both clients use the same source for both ratings, guaranteeing identical deltas.
+
+2. **Removed "ללא הודעות" toggle** (`settings.html`, `settingsScreen.js`) — The no-messaging panel was removed from the settings overlay. The corresponding `disableMessages` entry was also removed from the `TOGGLES` array in `settingsScreen.js`.
+
+3. **Round resume button on home screen** (`home.html`, `menu-electric.css`, `menuScreen.js`) — The rectangular gold "המשך משחק שמור" button was replaced with a round circle button matching the 2P and Bot style. It occupies the top-right slot of the secondary row (only shown when a saved game exists). CSS selectors were migrated from `:first-child`/`:last-child` to explicit `em-platform-col--2p` / `em-platform-col--bot` / `em-platform-col--resume` classes. `menuScreen.js` now hides the `#resume-col` container (not just the inner button) so the column appears/disappears cleanly.
+
+4. **Blocked word נאצי** (`hebrewDictionary.js`) — Added `נאצי` to `EXACT_REJECTS` so it cannot be played even though it exists in the dictionary.
+
+---
+
 ## Test suite cleanup — 30 failures → 0 (May 2026)
 
 **Branch:** `online-game-fixes`
