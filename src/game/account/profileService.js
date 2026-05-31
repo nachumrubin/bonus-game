@@ -198,6 +198,7 @@ export function computeLiveGameStatsDelta({
   state,
   room,
   mySlot,
+  result: overrideResult = null,
   currentStats = {},
   now = Date.now(),
   botTime = null,
@@ -209,7 +210,12 @@ export function computeLiveGameStatsDelta({
   const scores = state.scores ?? {};
   const myScore = Number(scores?.[mySlot]) || 0;
   const oppScore = Number(scores?.[1 - mySlot]) || 0;
-  const result = myScore > oppScore ? 'win' : myScore < oppScore ? 'loss' : 'draw';
+  // Use the authoritative winnerSlot-based result when the caller supplies it
+  // (ensures history matches ELO direction). Fall back to score comparison only
+  // when no explicit result is provided (offline / test contexts).
+  const result = (overrideResult === 'win' || overrideResult === 'loss' || overrideResult === 'draw')
+    ? overrideResult
+    : (myScore > oppScore ? 'win' : myScore < oppScore ? 'loss' : 'draw');
 
   const moves = Array.isArray(state.moveHistory) ? state.moveHistory : [];
   const myMoves = moves.filter(m => (m?.slot === mySlot) && Array.isArray(m.tiles));

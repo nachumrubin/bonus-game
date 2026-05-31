@@ -2011,7 +2011,9 @@ async function boot() {
       }
       const result = winnerSlot == null ? 'draw' : (winnerSlot === mySlot ? 'win' : 'loss');
 
-      // Stats
+      // Stats — pass the winnerSlot-based result so history always agrees
+      // with the ELO outcome (score-based result can differ on
+      // timeout/abandonment finishes).
       if (!ag.isAsync) {
         const statsDelta = profileService.computeLiveGameStatsDelta({
           state: session?.state,
@@ -2020,6 +2022,7 @@ async function boot() {
             players,
           },
           mySlot,
+          result,
           currentStats: lastProfile?.stats ?? {},
           botTime: session?.state?.settings?.botTime ?? null,
         });
@@ -2033,6 +2036,8 @@ async function boot() {
       if (oppUid && oppUid !== fbUser.uid && movesPlayed > 0) {
         await ratingService.applyEloForFinishedGame(fbDb, {
           myUid: fbUser.uid, oppUid, result,
+          preGameMyRating:  ag.preGameMyRating  ?? null,
+          preGameOppRating: ag.preGameOppRating ?? null,
         }).catch((e) => console.warn('[spine] elo', e));
         refreshChampions('end');
       } else if (oppUid && oppUid !== fbUser.uid) {
@@ -2588,8 +2593,23 @@ async function boot() {
         });
       }
     }
+    // Snapshot both players' globalRatings NOW (before any moves are played).
+    // At game end both clients use these frozen values so deltas are identical
+    // regardless of when each client's write resolves.
+    const _oppUidForRating = room.players?.[1 - mySlot]?.uid ?? null;
+    const _myUidForRating  = room.players?.[mySlot]?.uid ?? null;
+    let preGameMyRating  = null;
+    let preGameOppRating = null;
+    if (_myUidForRating && _oppUidForRating) {
+      [preGameMyRating, preGameOppRating] = await Promise.all([
+        ratingService.readRating(db, _myUidForRating).catch(() => null),
+        ratingService.readRating(db, _oppUidForRating).catch(() => null),
+      ]);
+    }
+
     globalThis.__spine.activeGame = {
       session, controller, animationController, screen, bonusFlow, timeoutWatchdog, reactionCtrl, online: true, isAsync, mySlot,
+      preGameMyRating, preGameOppRating,
       end() {
         screen.unmount();
         animationController.dispose();
