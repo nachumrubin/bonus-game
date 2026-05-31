@@ -17,9 +17,13 @@ function canWriteV2Room({ authUid, players, schemaVersion = 2, dataExists = fals
 
 test('room write rule requires authenticated v2 room participant and current-turn authority', () => {
   const expr = rules().rooms.$roomId['.write'];
+  // The expression is now a disjunction: either the current-turn player
+  // writes (normal path), OR the OPPONENT claims a timed-out turn (watchdog
+  // path — requires turnDeadlineMs to be expired, status=playing,
+  // settings.timelimit=true, and a turn rotation to the claimer's seat).
   assert.equal(
     expr,
-    "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && auth.uid === data.child('players').child(data.child('currentTurnSlot').val()).child('uid').val()))",
+    "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && (((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/0/uid').val()) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/1/uid').val())) || (data.child('status').val() === 'playing' && data.child('settings/timelimit').val() === true && data.child('turnDeadlineMs').val() <= now && newData.child('turnDeadlineMs').val() > now && ((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/1/uid').val() && newData.child('currentTurnSlot').val() === 1) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/0/uid').val() && newData.child('currentTurnSlot').val() === 0))))))",
   );
 
   const players = { 0: { uid: 'a' }, 1: { uid: 'b' } };

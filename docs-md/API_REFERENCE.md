@@ -32,7 +32,8 @@ createEngine(opts: {
 | Command (CMD.*) | Payload |
 |----------------|---------|
 | `CONFIRM_MOVE` | `{ placed: PlacedTile[], swappedTiles?: SwappedTile[] }` |
-| `PASS_TURN` | `{ reason?: string, resetPassCount?: boolean }` |
+| `PASS_TURN` | `{ reason?: string }` (all reasons increment `passCount` as of May 2026) |
+| `CLAIM_STALL_END` | `{ slot?: 0 \| 1 }` — ends the game with `slot` as winner if `canClaimStallEnd(state, slot)` |
 | `EXCHANGE_TILE` | `{ letters: string[] }` |
 | `PLACE_LOCK` | `{ r: number, c: number, duration: number }` |
 | `RESIGN_GAME` | `{}` |
@@ -119,8 +120,9 @@ TURN_END_REASON: { MOVE, PASS, EXCHANGE, TIMEOUT, ILLEGAL, RESIGN }
 isGameOver(state: GameState): boolean
 winnerSlot(state: GameState): 0 | 1 | null
 nextSlot(slot: 0 | 1): 0 | 1
-applyPass(state: GameState, opts: { resetPassCount?: boolean }): void
-applyExchange(state: GameState, letters: string[]): void
+applyPass(state: GameState): void
+applyExchange(state: GameState, letters: string[]): void  // increments passCount
+canClaimStallEnd(state: GameState, slot: 0 | 1): boolean
 applyFreeExchange(state: GameState, letters: string[]): void
 applyResign(state: GameState, slot: 0 | 1): void
 applyMove(state: GameState, placed: PlacedTile[], score: number, opts: {

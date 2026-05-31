@@ -28,6 +28,6 @@ test('החלפת אות overlay uses larger tile dimensions', () => {
   const root = path.join(__dirname, '..', '..');
   const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
-  assert.match(css, /#exch-rack \.bt2\{width:54px;height:64px;\}/);
-  assert.match(css, /#exch-rack \.bt2-l\{font-size:28px;\}/);
+  assert.match(css, /#exch-rack \.bt2\{width:72px;height:72px;flex:none;\}/);
+  assert.match(css, /#exch-rack \.bt2-l\{font-size:30px;\}/);
 });

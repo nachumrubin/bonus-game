@@ -9,7 +9,16 @@ import { drawInto, returnTilesAndShuffle, RACK_SIZE } from './tileBag.js';
 import { setCommittedTile } from './board.js';
 
 export const LEGACY_LOCK_INVENTORY = Object.freeze([3, 3, 5]);
-export const LEGACY_PASS_GAME_OVER_THRESHOLD = 6;
+// Number of consecutive scoreless turns (pass, exchange, or illegal-word
+// forfeit) that ends the game. 4 = two full scoreless rounds (one each side).
+// Lowered from 6 pre-launch (May 2026) so a trailing player can't drag a
+// winning opponent forever via repeated exchanges/passes.
+export const LEGACY_PASS_GAME_OVER_THRESHOLD = 4;
+
+// Number of consecutive scoreless turns after which the LEADING player may
+// claim the win via CMD.CLAIM_STALL_END (rather than waiting out the full
+// threshold). 2 = one full scoreless round.
+export const STALL_CLAIM_THRESHOLD = 2;
 
 export const TURN_END_REASON = Object.freeze({
   MOVE: 'move',
@@ -20,10 +29,11 @@ export const TURN_END_REASON = Object.freeze({
   RESIGN: 'resign',
 });
 
-// Both players passing twice in a row, OR bag empty + a player can't play and
-// passes — legacy game-end heuristic. We use the simpler "two consecutive
-// passes" rule, which covers both cases (if bag empty and a player can't move,
-// they pass; opponent then either moves or also passes).
+// Game-end heuristics:
+//   1. `passCount` reached the threshold — any combination of pass, exchange,
+//      or illegal-word forfeit counts as a scoreless turn.
+//   2. Bag is empty AND at least one rack is empty.
+//   3. State explicitly marked completed / abandoned / expired (resign etc.).
 export function isGameOver(state) {
   if (state.passCount >= LEGACY_PASS_GAME_OVER_THRESHOLD) return true;
   if ((state.bag?.length ?? 0) === 0 && (
@@ -47,6 +57,19 @@ export function winnerSlot(state) {
   return null; // tie
 }
 
+// Whether `slot` may claim the win under the stalling rule. True when the
+// scoreless-turn counter has reached STALL_CLAIM_THRESHOLD, the game is
+// still in progress, and `slot` is strictly ahead in score (ties don't
+// confer a claim — neither side has a unilateral right to end).
+export function canClaimStallEnd(state, slot) {
+  if (slot !== 0 && slot !== 1) return false;
+  if (isGameOver(state)) return false;
+  if ((state.passCount ?? 0) < STALL_CLAIM_THRESHOLD) return false;
+  const mine  = state.scores?.[slot] ?? 0;
+  const their = state.scores?.[slot === 0 ? 1 : 0] ?? 0;
+  return mine > their;
+}
+
 export function nextSlot(slot) {
   return slot === 0 ? 1 : 0;
 }
@@ -54,12 +77,12 @@ export function nextSlot(slot) {
 // Apply a pass. Mutates the state in place (engine owns mutation; this is
 // called from inside the engine's command handler).
 //
-// `resetPassCount: true` skips the increment AND clears the counter — used
-// when the engine treats the "pass" as a forfeit-after-illegal-word, which
-// shouldn't count toward the two-consecutive-passes game-over heuristic.
-export function applyPass(state, { resetPassCount = false } = {}) {
-  if (resetPassCount) state.passCount = 0;
-  else state.passCount += 1;
+// All callers — explicit pass, timeout, illegal-word forfeit — count toward
+// the scoreless-turn game-over threshold. The legacy `resetPassCount` knob
+// was removed when illegal-word forfeits were brought under the same rule
+// (May 2026) so a player can't stall indefinitely with bad-word attempts.
+export function applyPass(state) {
+  state.passCount += 1;
   advanceTurn(state);
 }
 
@@ -67,9 +90,13 @@ export function applyPass(state, { resetPassCount = false } = {}) {
 // `letters` is an array of letter strings (must each be present in the
 // current player's rack). Returns the new tiles drawn (so the engine can
 // emit a SCORE_CHANGED / TURN_CHANGED event with diagnostics).
+//
+// As of May 2026, exchanges count as scoreless turns toward the game-over
+// threshold — otherwise a trailing player could exchange forever to drag
+// out a lost game.
 export function applyExchange(state, letters) {
   exchangeTilesInPlace(state, letters);
-  state.passCount = 0;
+  state.passCount += 1;
   advanceTurn(state);
 }
 

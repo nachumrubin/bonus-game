@@ -159,13 +159,17 @@
 
 ---
 
-## D15: Pass Game-Over Threshold = 6
+## D15: Scoreless-Turn Threshold = 4, Exchanges Count, Leader May Claim Early
 
-**Decision:** Game ends when `passCount >= 6`.
+**Decision:** Game ends when `passCount >= 4`. All scoreless turns count — explicit pass, timeout, illegal-word forfeit, AND tile exchange. A leading player can fire `CMD.CLAIM_STALL_END` once `passCount >= 2` to end the game immediately and win.
 
-**Evidence:** `turnManager.js` → `LEGACY_PASS_GAME_OVER_THRESHOLD = 6`. Named "LEGACY" — extracted from legacy behavior.
+**Evidence:** `turnManager.js` → `LEGACY_PASS_GAME_OVER_THRESHOLD = 4`, `STALL_CLAIM_THRESHOLD = 2`, `canClaimStallEnd()` helper. `gameEngine.handleClaimStallEnd()`. Topbar button `#btn-claim-stall-end` + overlay `#ov-claim-stall-end` + `claimStallEndController`.
 
-**Interpretation:** In standard Scrabble, game ends after two consecutive passes by each player (= 4 passes). Here, 6 passes. The count includes illegal-word passes.
+**Rationale (May 2026 revision):** The original threshold was 6, exchanges reset `passCount`, and illegal-word forfeits also reset it. That combination let a trailing player drag a winning opponent forever by alternating exchanges and bad-word attempts — a real product hole especially in async games (potentially 7-day-per-turn delays). The new rules mirror official Scrabble (six successive *scoreless* turns) but lowered to four for faster resolution since the app skews casual / mobile / short sessions. The claim-end button gives the leader explicit agency rather than forcing them to wait out four scoreless turns.
+
+**Pre-launch change:** App was not in production when this was made, so no live-game migration was needed. The "LEGACY" naming is retained for grep-ability; future tweaks should consider any stored `passCount` values in active rooms.
+
+**Tradeoff:** Tighter rules can occasionally end a game one player thinks is "still going." The claim-end button mitigates by giving the leader an explicit action rather than auto-firing.
 
 ---
 

@@ -4,20 +4,37 @@ import { HV } from '../core/letterDistribution.js';
 
 export const TUTORIAL_WORD = 'שלום';
 export const TUTORIAL_LETTERS = Object.freeze(['ש', 'ל', 'ו', 'מ']);
+// First move: place שלום at row 5, cols 6–9. Shifted one column "left" (RTL,
+// = +1 col) from a centered layout so the second move's 'י' lands ON the
+// right-edge bonus square at (5,10) — BDEFS[10] — and fires the bonus.
 export const TUTORIAL_CELLS = Object.freeze([
-  { r: 5, c: 5 },
   { r: 5, c: 6 },
   { r: 5, c: 7 },
   { r: 5, c: 8 },
+  { r: 5, c: 9 },
 ]);
 
-export const TUTORIAL_WORDS = Object.freeze(['שלום', 'לב', 'אח', 'תמ', 'לבדו']);
+// Second player move: place 'י' AT the row-5 right-edge bonus square (5,10).
+// findBonusActivationIdxs requires p.r === bonus.br && p.c === bonus.bc, so
+// the tile has to be on the bonus square itself, not adjacent to it.
+export const TUTORIAL_BONUS_LETTER = 'י';
+export const TUTORIAL_BONUS_CELL = Object.freeze({ r: 5, c: 10 });
 
+export const TUTORIAL_WORDS = Object.freeze(['שלום', 'שלומי', 'לב', 'תו']);
+
+// Bot moves are scripted around the shifted player word.
+//   Move 1: ב at (6,7) forms "לב" vertically with ל at (5,7).
+//   Move 2: ת at (4,8) forms "תו" vertically with ו at (5,8) — fires AFTER
+//     the player's bonus move, so it has to connect to the post-bonus board
+//     (Row 5: ש ל ו מ י, Row 6: ב). Earlier scripted moves landed on
+//     empty cells not adjacent to any existing tile and the engine rejected
+//     them, leaving the bot stuck on its turn.
+// We deliberately don't queue a third bot move: the tutorial is conceptually
+// over after the player's bonus tile, and any further bot play would have
+// to react to whatever non-scripted moves the player makes next.
 export const TUTORIAL_BOT_MOVES = Object.freeze([
-  [{ r: 6, c: 6, letter: 'ב', val: 2, isJoker: false }, 'לב'],
-  [{ r: 4, c: 4, letter: 'א', val: 1, isJoker: false }, 'אח'],
-  [{ r: 4, c: 8, letter: 'ת', val: 1, isJoker: false }, 'תמ'],
-  [{ r: 8, c: 6, letter: 'ו', val: 1, isJoker: false }, 'לבדו'],
+  [{ r: 6, c: 7, letter: 'ב', val: 2, isJoker: false }, 'לב'],
+  [{ r: 4, c: 8, letter: 'ת', val: 1, isJoker: false }, 'תו'],
 ]);
 
 export function buildTutorialFirstMove() {
@@ -30,15 +47,31 @@ export function buildTutorialFirstMove() {
 export function seedTutorialRack(state, slot = 0) {
   if (!state?.racks?.[slot]) return;
   const rack = state.racks[slot];
-  for (const letter of TUTORIAL_LETTERS) {
+  const seeded = [...TUTORIAL_LETTERS, TUTORIAL_BONUS_LETTER];
+  for (const letter of seeded) {
     const inBag = state.bag.indexOf(letter);
     if (inBag >= 0) state.bag.splice(inBag, 1);
   }
-  const rest = rack.filter(letter => !TUTORIAL_LETTERS.includes(letter));
-  state.racks[slot] = [...TUTORIAL_LETTERS, ...rest].slice(0, 8);
+  const rest = rack.filter(letter => !seeded.includes(letter));
+  state.racks[slot] = [...seeded, ...rest].slice(0, 8);
   while (state.racks[slot].length < 8 && state.bag.length) {
     state.racks[slot].push(state.bag.pop());
   }
+}
+
+// The bonus square the tutorial routes the player onto is BDEFS[10] — the
+// row-5 right-edge slot at (5,10). createInitialState shuffles BONUS_TYPES
+// into bonusAssignment, so without this override the player would land on
+// a random bonus (often תפזורת / word-search, which is a heavy first
+// experience). Pin the tutorial slot to B3 (4-letter unscramble) so the
+// demo is short and deterministic. Real games are unaffected.
+export const TUTORIAL_BONUS_SLOT = 10;
+export const TUTORIAL_BONUS_OVERRIDE = Object.freeze({ type: 'B3', pts: 40, ic: '⚡' });
+
+export function seedTutorialBonusAssignment(state) {
+  if (!Array.isArray(state?.bonusAssignment)) return;
+  if (state.bonusAssignment.length <= TUTORIAL_BONUS_SLOT) return;
+  state.bonusAssignment[TUTORIAL_BONUS_SLOT] = { ...TUTORIAL_BONUS_OVERRIDE };
 }
 
 export function attachScriptedTutorialBot(session, {

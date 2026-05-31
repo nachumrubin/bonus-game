@@ -21,6 +21,7 @@ import { isValid as isWordValid } from './hebrewDictionary.js';
 import {
   applyMove, applyPass, applyExchange, applyFreeExchange, applyResign, applyLock,
   advanceTurn, ensureLockState, isCellLocked, isGameOver, winnerSlot,
+  canClaimStallEnd,
 } from './turnManager.js';
 import { runHook, TRIGGERS } from './boostEngine.js';
 import { BDEFS, BONUS_TYPES } from '../boosts/data.js';
@@ -135,6 +136,7 @@ export function createEngine({ state, bus }) {
       case CMD.EXCHANGE_TILE:return handleExchange(cmd.payload ?? {});
       case CMD.PLACE_LOCK:   return handlePlaceLock(cmd.payload ?? {});
       case CMD.RESIGN_GAME:  return handleResign(cmd.payload ?? {});
+      case CMD.CLAIM_STALL_END: return handleClaimStallEnd(cmd.payload ?? {});
       case CMD.ACTIVATE_BOOST: return handleActivateBoost(cmd.payload ?? {});
       case CMD.FINALIZE_BOOST_AWARD: return handleFinalizeBoostAward(cmd.payload ?? {});
       // PLACE_TILES is purely UI — engine doesn't track in-progress placements
@@ -333,14 +335,13 @@ export function createEngine({ state, bus }) {
 
   function handlePass({ reason = 'pass' } = {}) {
     const slot = state.currentTurnSlot;
-    // Forfeit-after-illegal-word: the player attempted a move, just an
-    // invalid one. We shouldn't count this toward the "two consecutive
-    // passes ends the game" heuristic — otherwise a bot pass after an
-    // illegal-word forfeit ends games well before the move limit.
+    // All scoreless turns (explicit pass, timeout, illegal-word forfeit)
+    // count toward the game-over threshold so a player can't stall by
+    // alternating bad-word attempts and exchanges (May 2026 rule update).
     const forfeitedBoosts = (reason === 'timeout' || reason === 'illegal-word')
       ? forfeitTimeoutBoosts(state, slot)
       : [];
-    applyPass(state, { resetPassCount: reason === 'illegal-word' });
+    applyPass(state);
     for (const boost of forfeitedBoosts) {
       emit(EV.BOOST_ACTIVATED, { ...boost, slot, consumed: true, reason });
     }
@@ -437,6 +438,17 @@ export function createEngine({ state, bus }) {
     const s = (slot === 0 || slot === 1) ? slot : state.currentTurnSlot;
     applyResign(state, s);
     if (reason) state.abandonReason = reason;
+    finishGame();
+  }
+
+  function handleClaimStallEnd({ slot } = {}) {
+    const s = (slot === 0 || slot === 1) ? slot : state.currentTurnSlot;
+    if (!canClaimStallEnd(state, s)) {
+      emit(EV.INVALID_MOVE_REJECTED, { reason: 'claim-stall-end-not-allowed' });
+      return;
+    }
+    state.endReason = 'stall-claim';
+    state.claimedBy = s;
     finishGame();
   }
 

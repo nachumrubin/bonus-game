@@ -2,6 +2,77 @@
 
 ---
 
+## Test suite cleanup — 30 failures → 0 (May 2026)
+
+**Branch:** `online-game-fixes`
+
+The unit suite had 30 failing tests left over from the spine cutover. All were either obsolete or had stale fixtures — no production code was broken. Now 135/135 pass.
+
+- **Deleted 3 legacy-parity test files** that extract functions from `index.html` via `git show HEAD:index.html` and compare against the spine. Every expected legacy function (`isCollinear`, `doRecall`, etc.) has been removed from `index.html` during the cutover, so the parity oracle no longer exists: [tests/unit/engine-parity.test.js](tests/unit/engine-parity.test.js), [engine-parity-pending-recovery.test.js](tests/unit/engine-parity-pending-recovery.test.js), [engine-parity-scoring-animation.test.js](tests/unit/engine-parity-scoring-animation.test.js). The spine has its own coverage in [src/game/core/*.test.js](src/game/core) and [src/ui/controllers/animationController.test.js](src/ui/controllers/animationController.test.js) which all pass; the scoring-animation file specifically asserted the pre-refactor `scoringPointsFloat` / `scoreFlyToPanel` directives that are now rolled into a single `scoreMergeSequence` directive.
+- **Updated [firebase-rules.test.js](tests/unit/firebase-rules.test.js)** — admin check moved from JWT custom claim (`auth.token.admin === true`) to RTDB lookup (`root.child('admins').child(auth.uid).val() === true`). Test now matches the actual rule.
+- **Updated [shailta-keyboard-removal.test.js](tests/unit/shailta-keyboard-removal.test.js)** — `#exch-rack .bt2` tile size bumped from 54×64 to 72×72 (and font 28→30). Test now matches the actual CSS.
+- **Fixed [engine-parity-highrisk.test.js](tests/unit/engine-parity-highrisk.test.js)** — two test-fixture bugs:
+  - `inboundNoRevalidate` test was missing `lastMove.ts` so `onlineGameSession` correctly de-duped it. Added `ts: Date.now()` to match what real session writes carry.
+  - `computeExpiredOnlineTurnState` test used `missedTurns: { 0: 3, 1: 1 }` which triggers the forfeit branch (`MISSED_TURNS_FORFEIT_THRESHOLD = 2`), forcing `turnDeadlineMs` to 0. Changed to `{ 0: 3, 1: 0 }` so the test exercises the normal non-forfeit code path it documents.
+
+---
+
+## Dead `.lcd` CSS removed (May 2026)
+
+Cleanup follow-up to the move-counter removal: dropped 3 `.lcd` rules and an unused `.is-val.lcd-style` rule from [styles.css](styles.css). The `--lcd` CSS variable stays — still used by `.set-num`, `.code-display`, and `#stat-streak` (profile screen).
+
+---
+
+## Pre-launch polish: tutorial refresh, privacy update, no-messages toggle, Elo deltas — May 2026
+
+**Branch:** `online-game-fixes`
+
+Four small UX/copy passes ahead of production:
+
+- **Tutorial refresh** ([partials/screens/tutorial-intro-modal.html](partials/screens/tutorial-intro-modal.html), [src/game/sessions/tutorialSession.js](src/game/sessions/tutorialSession.js), [src/ui/controllers/tutorialController.js](src/ui/controllers/tutorialController.js)):
+  - Removed mention of the retired ערעור (challenge) action from the intro modal; added a mention of משבצות בונוס.
+  - New scripted step: after the bot's first reply, the tutorial prompts the player to extend "שלום" to "שלומי" by placing 'י' at (5, 9), which lands next to the row-5 right-edge bonus and fires its activation. Seeded the bonus letter into the starting rack.
+  - `tutorialController` now tracks player/bot move counts so the tip flow runs first-move → bonus prompt → completion.
+- **Move counter removed** — deleted the `#lcd "מהלכים"` block from [partials/screens/game.html](partials/screens/game.html) and the matching `setText('#lcd', …)` in [src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js); updated [src/ui/screens/gameScreen.test.js](src/ui/screens/gameScreen.test.js).
+- **Privacy policy rewrite** ([privacy-policy.html](privacy-policy.html)) — added sections for the new auth providers (email/Google/Facebook), profile/rating/friends data, OneSignal push, Cloudflare worker, in-game messages/reactions, and a children section. Refreshed "user rights" with the new account-deletion flow.
+- **Settings: "ללא הודעות" toggle** — new `disableMessages` setting in [src/game/settings/settingsCompat.js](src/game/settings/settingsCompat.js); HTML panel in [partials/screens/settings.html](partials/screens/settings.html); wired in [src/ui/screens/settingsScreen.js](src/ui/screens/settingsScreen.js). Gated in [src/reactions/reactionController.js](src/reactions/reactionController.js) — hides the local reaction button, ignores incoming bubbles, and force-closes the panel. `disableMessages` is **local-only** — [src/main.js](src/main.js) strips it from the room settings write so one player's mute can't clobber the other's preference; the room sync handler also preserves the local value across `ROOM_SETTINGS_CHANGED`.
+- **Elo delta on end screen** ([partials/screens/end.html](partials/screens/end.html), [src/ui/screens/endGameScreen.js](src/ui/screens/endGameScreen.js), [styles.css](styles.css)) — each score card now shows the new rating + signed delta (`דירוג 1012 (+12)`), styled green for gain / red for loss. Driven by the existing `RATING_EVT.CHANGED` event emitted by [src/game/account/ratingService.js](src/game/account/ratingService.js) after `applyEloForFinishedGame`.
+
+---
+
+## Scoreless-turn rules tightened + stalling-win claim button — May 2026
+
+**Branch:** `online-game-fixes`
+
+Three coupled engine + UI changes to close the "trailing player drags out a lost game" loophole. The app is pre-launch, so no migration was needed.
+
+- **`LEGACY_PASS_GAME_OVER_THRESHOLD` lowered 6 → 4** in [src/game/core/turnManager.js](src/game/core/turnManager.js) — two full scoreless rounds (one per side) now ends the game.
+- **Exchanges count as scoreless turns.** `applyExchange()` was incrementing-then-resetting (effectively reset to 0); it now `passCount += 1`. Previously a trailing player could exchange forever to keep the game alive.
+- **Illegal-word forfeits count too.** The `resetPassCount: true` knob was removed from `applyPass()` and `gameEngine.handlePass()`; all three reasons (`pass`, `timeout`, `illegal-word`) now share one threshold. Updated the engine-parity recovery test that asserted the old reset behavior.
+- **New `CMD.CLAIM_STALL_END`** + `canClaimStallEnd()` helper + `handleClaimStallEnd()` engine handler. Once `passCount >= STALL_CLAIM_THRESHOLD` (=2) and the player is strictly leading, they can end the game immediately and win.
+- **New UI:** `#btn-claim-stall-end` topbar button on the game screen (hidden until allowed) + `#ov-claim-stall-end` confirm overlay + `claimStallEndController` that watches `EV.TURN_CHANGED` / `EV.MOVE_CONFIRMED` / etc. and toggles visibility. Online sessions already forward `EV.GAME_COMPLETED` to `setStatus()`, so no online-session changes were needed.
+- **Docs:** updated [docs-md/CLAUDE.md](docs-md/CLAUDE.md), [GAMEPLAY_RULES.md](docs-md/GAMEPLAY_RULES.md), [API_REFERENCE.md](docs-md/API_REFERENCE.md). The in-app Guide and FAQ overlays now describe the new rule and the claim button.
+
+---
+
+## In-app help dropdown (Tutorial / Guide / FAQ) — May 2026
+
+**Branch:** `online-game-fixes`
+
+The top-bar `?` button used to open the tutorial intro modal directly. It now opens a small anchored dropdown with three entries:
+
+- **🎓 הדרכה** — re-emits the existing `MENU_INTENT.OPEN_TUTORIAL` (existing flow unchanged).
+- **📖 מדריך** — opens `#ov-guide`, an overlay with a collapsible 6-section game guide (rules + scoring, accepted Hebrew inflections, screens, modes, ratings, bonuses).
+- **❓ שאלות נפוצות** — opens `#ov-faq`, an overlay with ~12 Q&As (rejected words, disconnect handling, async expiry, ratings, push permissions, שאילתא, etc.).
+
+**New files:** `partials/screens/{help-dropdown,guide-screen,faq-screen}.html`, `src/ui/screens/{helpDropdown,guideScreen,faqScreen}.js` + colocated `.test.js` for each.
+
+**Modified:** `src/ui/screens/menuScreen.js` (added `OPEN_HELP_MENU`/`OPEN_GUIDE`/`OPEN_FAQ` intents; the `?` button now emits `OPEN_HELP_MENU` instead of `OPEN_TUTORIAL`), `src/ui/screenPartialManifest.js`, `src/main.js` (wires the three new controllers), `styles.css` (dropdown + guide/FAQ accordion styles, no new CSS variables).
+
+**Does NOT change:** the existing tutorial flow (`tutorialController` still handles `OPEN_TUTORIAL` exactly as before — the dropdown's first item re-emits it).
+
+---
+
 ## Gate `navigator.vibrate` on user-gesture flag (May 2026)
 
 **Branch:** `online-game-fixes`

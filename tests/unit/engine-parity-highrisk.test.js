@@ -168,6 +168,10 @@ test('legacy online.inboundNoRevalidate/listenForMoves: opponent move applies wi
   const seen = capture(bus, events);
   const session = await onlineSession.createOnlineGameSession({ bus, db, room, mySlot: 1 });
 
+  // `ts` is required: onlineGameSession dedupes inbound snapshots by
+  // lastMove.ts (see the lastSeenMoveTs guard in the room watcher) so an
+  // un-stamped move is silently ignored. Real moves always carry Date.now().
+  const moveTs = Date.now();
   await db.ref('rooms/inbound-no-revalidate').update({
     version: 2,
     scores: { 0: 99, 1: 0 },
@@ -180,6 +184,7 @@ test('legacy online.inboundNoRevalidate/listenForMoves: opponent move applies wi
       words: ['זז'],
       wordTiles: [],
       score: 99,
+      ts: moveTs,
     }],
     lastMove: {
       slot: 0,
@@ -187,6 +192,7 @@ test('legacy online.inboundNoRevalidate/listenForMoves: opponent move applies wi
       words: ['זז'],
       wordTiles: [],
       score: 99,
+      ts: moveTs,
     },
   });
 
@@ -357,13 +363,17 @@ test('legacy computeExpiredOnlineTurnState/shouldClaimExpiredOnlineTurn: online 
 
 test('legacy computeExpiredOnlineTurnState/shouldClaimExpiredOnlineTurn: online timeout state patch matches legacy fields', async () => {
   const { roomService } = await loadModules();
+  // missedTurns[1] starts at 0 so the bump to 1 stays under
+  // MISSED_TURNS_FORFEIT_THRESHOLD (=2); the function would otherwise force
+  // turnDeadlineMs back to 0 and flip status to ABANDONED on forfeit, which
+  // is its own code path tested elsewhere.
   const state = {
     turn: 1,
     passCount: 2,
     moveCount: 7,
     turnDeadlineMs: 9_000,
     stateSeq: 4,
-    missedTurns: { 0: 3, 1: 1 },
+    missedTurns: { 0: 3, 1: 0 },
   };
   assert.equal(roomService.shouldClaimExpiredOnlineTurn(state, 0, 10_001, 1_000), true);
   assert.equal(roomService.shouldClaimExpiredOnlineTurn(state, 1, 10_001, 1_000), false);
@@ -374,8 +384,9 @@ test('legacy computeExpiredOnlineTurnState/shouldClaimExpiredOnlineTurn: online 
   assert.equal(next.passCount, 3);
   assert.equal(next.moveCount, 8);
   assert.equal(next.turnDeadlineMs, 50_000);
-  assert.deepEqual(next.missedTurns, { 0: 0, 1: 2 });
+  assert.deepEqual(next.missedTurns, { 0: 0, 1: 1 });
   assert.equal(next.stateSeq, 5);
+  assert.notEqual(next.status, 'abandoned');
 });
 
 test('legacy buildWordSearch: modular word-search builder keeps grid size, word count, and extract/match behavior', async () => {

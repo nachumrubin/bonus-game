@@ -6,6 +6,7 @@
 //   → returns { dispose }
 
 import { EV } from '../events/eventTypes.js';
+import { SETTINGS_CHANGED } from '../ui/screens/settingsScreen.js';
 import { REACTIONS, getReactionDisplay } from './reactionsConfig.js';
 import {
   sendReaction,
@@ -17,6 +18,10 @@ import {
   isReactionMuted,
   setReactionMuted,
 } from './reactionService.js';
+
+function messagesDisabled() {
+  return !!globalThis.gameSettings?.disableMessages;
+}
 
 const BUBBLE_VISIBLE_MS  = 2500;
 const BUBBLE_FADE_MS     = 400;
@@ -56,6 +61,13 @@ export function mountReactionController({
 
   if (!openBtn || !panel || !overlay) return { dispose: () => {} };
 
+  function applyMessagingPreference() {
+    const off = messagesDisabled();
+    if (openBtn) openBtn.style.display = off ? 'none' : '';
+    if (off && panelOpen) closeReactionPanel();
+  }
+  applyMessagingPreference();
+
   // ── Build panel content ─────────────────────────────────────────────────────
 
   panel.innerHTML = buildPanelHTML();
@@ -91,6 +103,7 @@ export function mountReactionController({
 
   function onOpenBtnClick(e) {
     e.stopPropagation();
+    if (messagesDisabled()) return;
     if (panelOpen) { closeReactionPanel(); return; }
     openReactionPanel();
     updatePanelCooldownState();
@@ -158,10 +171,16 @@ export function mountReactionController({
     // Don't show own reactions (already shown immediately on send)
     if (Number(reaction.senderSlot) === mySlot) return;
     if (isReactionMuted(storage)) return;
+    if (messagesDisabled()) return;
     const display = getReactionDisplay(reaction);
     if (display) showReactionBubble(Number(reaction.senderSlot), display, root);
   });
   cleanups.push(unsubReaction);
+
+  const unsubSettings = bus.on(SETTINGS_CHANGED, (changes = {}) => {
+    if ('disableMessages' in changes) applyMessagingPreference();
+  });
+  cleanups.push(unsubSettings);
 
   // ── Cooldown UI ──────────────────────────────────────────────────────────────
 

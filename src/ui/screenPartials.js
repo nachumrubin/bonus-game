@@ -1,4 +1,13 @@
-import { SCREEN_PARTIALS } from './screenPartialManifest.js';
+// Dynamic import so the manifest is fetched with the build-stamp query param,
+// matching how `src/main.js` and `styles.css` are versioned in `index.html`.
+// Without this, the browser keeps the old module in its module map even after
+// a hard reload, and newly added partials never get loaded.
+const buildStamp = globalThis.document
+  ?.querySelector?.('meta[name="version"]')
+  ?.getAttribute?.('content') ?? '';
+const manifestUrl = buildStamp
+  ? `./screenPartialManifest.js?v=${buildStamp}`
+  : './screenPartialManifest.js';
 
 const target = globalThis.document?.getElementById?.('app-shell');
 
@@ -9,6 +18,8 @@ const target = globalThis.document?.getElementById?.('app-shell');
  */
 globalThis.__screenPartialsReady = (async () => {
   if (!target) return;
+
+  const { SCREEN_PARTIALS } = await import(manifestUrl);
 
   const fragments = await Promise.all(
     SCREEN_PARTIALS.map(async (url) => {

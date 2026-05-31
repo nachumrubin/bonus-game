@@ -1,0 +1,107 @@
+<!-- FAQ — short Q&A list, opened from the `?` dropdown.
+     Overlay pattern (same as ov-champs / ov-guide). Each entry is a <details>. -->
+<div id="ov-faq" class="ov hidden" onclick="if(event.target===this)ovClose('ov-faq')">
+  <div class="ovc guide-ovc" dir="rtl">
+    <div class="ovt" style="margin-bottom:12px">❓ שאלות נפוצות</div>
+
+    <div class="guide-body">
+
+      <details class="guide-section">
+        <summary>למה המילה שלי נדחתה?</summary>
+        <div class="guide-section-body">
+          <p>המילה נבדקת מול מילון עברי עם זיהוי הטיות (ריבוי, פעלים, נקבה, תחיליות, כתיב מלא/חסר). אם היא לא קיימת באף אחת מהצורות המוכרות — היא נדחית. גם רשימת כינויי שייכות (אותו, שלי, שלך וכו') נדחית באופן מפורש. אחרי דחייה התור עובר אוטומטית, אז כדאי לוודא לפני אישור. אם לדעתך המילה צריכה להיות מאושרת בכל זאת, ניתן להציע להוסיף אותה למילון דרך חלון הגדרות > ניהול מילון.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך מקבלים בונוס בינגו?</summary>
+        <div class="guide-section-body">
+          <p>הנחת כל 8 האותיות מהמגש במהלך אחד מזכה ב-<strong>+50</strong> נקודות בנוסף לניקוד המילה.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה קורה אם היריב מתנתק?</summary>
+        <div class="guide-section-body">
+          <p>במשחק חי (Live) — תוצג הודעת ניתוק. ליריב יש חלון חסד קצר להתחבר מחדש; אם לא חזר, אפשר לסיים את המשחק. במשחק אסינכרוני — אין משמעות מיידית; התור שלו פתוח עד שהוא יחזור או עד שיעברו 7 ימים והמשחק יסגר.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>אחרי כמה זמן נסגר משחק אסינכרוני?</summary>
+        <div class="guide-section-body">
+          <p>משחק אסינכרוני נסגר אחרי <strong>7 ימים</strong> ללא מהלך. תזכורת push נשלחת לשחקן הממתין אחרי 24 שעות של חוסר פעילות.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך משחק נגמר?</summary>
+        <div class="guide-section-body">
+          <p>המשחק נגמר באחד מארבעה תנאים: (1) 2 סבבים רצופים שבהם אף שחקן לא הניח אות (הפסה / החלפת אותיות / מילה לא תקינה), (2) השק התרוקן ולשחקן אחד אין יותר אותיות במגש, (3) שחקן פרש, (4) השחקן המוביל לוחץ על "🏆 סיים וזכה" אחרי סבב שלם בלי ניקוד.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>אני מוביל אבל היריב לא משחק — מה עושים?</summary>
+        <div class="guide-section-body">
+          <p>כשהיריב מבזבז סבב שלם בלי להניח אות (הפסה, החלפת אותיות או מילים לא תקינות), מופיע בסרגל המשחק כפתור <strong>"🏆 סיים וזכה"</strong>. לחיצה עליו סוגרת את המשחק מיד עם ניצחון לזכותך — לפי כלל ההיתקעות. הכפתור מופיע רק לשחקן המוביל ורק כשהתנאים מתקיימים. הוא נעלם ברגע שמישהו מניח אות.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך עובד הג'וקר?</summary>
+        <div class="guide-section-body">
+          <p>בשק יש 2 ג'וקרים. ג'וקר שווה <strong>0 נקודות</strong> אבל יכול לשמש כל אות שתבחר ברגע ההנחה. אחרי ההנחה הלוח מתייחס אליו כאות לכל דבר.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך עובד הדירוג?</summary>
+        <div class="guide-section-body">
+          <p>הדירוג משתמש בנוסחת Elo. מתחילים מ-800, וכל משחק מקוון משנה את הדירוג ב-עד 24 נקודות (K=24) לפי הפער מהיריב. ניצחון מול שחקן חזק שווה יותר; הפסד למישהו חלש עולה יותר.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה ההבדל בין משחק חי לאסינכרוני?</summary>
+        <div class="guide-section-body">
+          <p><strong>חי (Live):</strong> טיימר חובה לכל תור, שני השחקנים מחוברים במקביל, התראות push רק כשהאפליקציה ברקע.</p>
+          <p><strong>אסינכרוני (Async):</strong> אין טיימר, כל שחקן משחק כשנוח לו, התראה נשלחת בכל מהלך. נסגר אחרי 7 ימים ללא תזוזה.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>אפשר לבטל מהלך אחרי שאישרתי?</summary>
+        <div class="guide-section-body">
+          <p>עד שלוחצים על "שבץ" — אפשר להחזיר אותיות למגש. בלחיצה על "שבץ" המהלך נחתם ולא ניתן לבטל אותו.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>למה לא קיבלתי התראה (push)?</summary>
+        <div class="guide-section-body">
+          <p>התראות דורשות אישור דפדפן. ניתן להפעיל מתוך מסך ההגדרות (⚙️ &lt; "🔔 התראות משחק"). אם דחית את הבקשה בעבר, צריך לאפשר ידנית בהגדרות הדפדפן/האתר.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך מזמינים חבר למשחק?</summary>
+        <div class="guide-section-body">
+          <p>שתי דרכים: <strong>קוד חדר</strong> (תקף 30 דקות, משתפים את הקוד), או <strong>הזמנה ישירה</strong> דרך רשימת החברים (הזמנה למשחק חי תקפה ל-5 דקות, אסינכרונית ל-7 ימים).</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה זה שאילתה?</summary>
+        <div class="guide-section-body">
+          <p>שאילתה מאפשרת לשחקן לבדוק האם מילה מסויימת קיימת במילון. ניתן להשתמש בה ללא הגבלה אבל לקחת בחשבון שהשעון ממשיך לתקתק.</p>
+        </div>
+      </details>
+
+    </div>
+
+    <div class="ovbtns" style="margin-top:14px">
+      <button type="button" class="ovb p" id="faq-close-btn" onclick="ovClose('ov-faq')">סגור</button>
+    </div>
+  </div>
+</div>
