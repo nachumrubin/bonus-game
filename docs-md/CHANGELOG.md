@@ -6,7 +6,7 @@
 
 **Branch:** `claude/game-summary-ui-fixes-qtv8c`
 
-Four fixes to address post-launch issues:
+Five fixes to address post-launch issues:
 
 1. **ELO delta inconsistency** (`ratingService.js`) — Both clients now read the pre-game rating from `globalRatings` (the publicly readable source) for *both* players, not just the opponent. Previously `myBefore` came from `users/$uid/profile` which could diverge from `globalRatings` (e.g. if a prior leaderboard upsert failed), causing each side to compute a different delta (e.g. ±1 vs ±13). Now both clients use the same source for both ratings, guaranteeing identical deltas.
 
@@ -15,6 +15,10 @@ Four fixes to address post-launch issues:
 3. **Round resume button on home screen** (`home.html`, `menu-electric.css`, `menuScreen.js`) — The rectangular gold "המשך משחק שמור" button was replaced with a round circle button matching the 2P and Bot style. It occupies the top-right slot of the secondary row (only shown when a saved game exists). CSS selectors were migrated from `:first-child`/`:last-child` to explicit `em-platform-col--2p` / `em-platform-col--bot` / `em-platform-col--resume` classes. `menuScreen.js` now hides the `#resume-col` container (not just the inner button) so the column appears/disappears cleanly.
 
 4. **Blocked word נאצי** (`hebrewDictionary.js`) — Added `נאצי` to `EXACT_REJECTS` so it cannot be played even though it exists in the dictionary.
+
+5. **ELO direction reversed and draw mis-classification on resignation** (`main.js`) — Two root causes fixed:
+   - The `onlineGameSession` room-watcher path emits `GAME_COMPLETED` with `winnerSlot: null` (no local engine result) but *does* include `abandonedBy`. The handler was ignoring `abandonedBy` and falling back to `'draw'`, so the winning player had ELO deducted and their history entry recorded as a draw. Fix: derive `effectiveWinnerSlot` as `1 - abandonedBy` when `winnerSlot` is null.
+   - Both `gameEngine` and the room watcher can fire `GAME_COMPLETED` for the same game in edge cases, causing stats and ELO to be applied twice. Fix: one-shot guard (`ag._eloApplied`) ignores any fire after the first.
 
 ---
 
