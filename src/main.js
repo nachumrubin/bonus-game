@@ -1994,7 +1994,7 @@ async function boot() {
       refreshChampions('home');
     });
 
-    bus.on(EV.GAME_COMPLETED, async ({ winnerSlot, finalScores } = {}) => {
+    bus.on(EV.GAME_COMPLETED, async ({ winnerSlot, finalScores, abandonedBy } = {}) => {
       const ag = globalThis.__spine?.activeGame;
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
@@ -2009,7 +2009,17 @@ async function boot() {
         refreshChampions('end');
         return;
       }
-      const result = winnerSlot == null ? 'draw' : (winnerSlot === mySlot ? 'win' : 'loss');
+      // Guard against double-fire (onlineGameSession room watcher can emit a
+      // second GAME_COMPLETED after gameEngine already fired one).
+      if (ag._eloApplied) return;
+      ag._eloApplied = true;
+
+      // When winnerSlot is null (emitted by the room watcher path which has no
+      // local engine result), derive the winner from abandonedBy so that
+      // resignations are recorded correctly instead of falling back to 'draw'.
+      const effectiveWinnerSlot = winnerSlot != null ? winnerSlot
+        : (abandonedBy != null ? 1 - abandonedBy : null);
+      const result = effectiveWinnerSlot == null ? 'draw' : (effectiveWinnerSlot === mySlot ? 'win' : 'loss');
 
       // Stats — pass the winnerSlot-based result so history always agrees
       // with the ELO outcome (score-based result can differ on
