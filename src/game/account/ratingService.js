@@ -121,8 +121,15 @@ export async function upsertRatingLeaderboardEntry(db, {
 // `result` is from `mySlot`'s perspective (`win` = mySlot won).
 // Returns { ok, myBefore, myAfter, oppBefore, oppAfter, delta } — oppAfter
 // is computed for the UI animation, but it is NOT persisted by this client.
+//
+// `preGameMyRating` / `preGameOppRating` — optional numeric ratings captured at
+// session start (before the game). When supplied they take priority over the
+// globalRatings reads so that both clients always use the SAME pre-game
+// snapshot regardless of write order at game end.
 export async function applyEloForFinishedGame(db, {
   myUid, oppUid, result, k = DEFAULT_K, now = Date.now(),
+  preGameMyRating  = null,
+  preGameOppRating = null,
 } = {}) {
   if (!myUid || !oppUid)         return { ok: false, reason: 'missing-uid' };
   if (myUid === oppUid)          return { ok: false, reason: 'same-uid' };
@@ -131,18 +138,23 @@ export async function applyEloForFinishedGame(db, {
 
   const [mySnap, myRatingSnap, oppRatingSnap] = await Promise.all([
     profileRef(db, myUid).get(),
-    ratingRef(db, myUid).get(),
-    ratingRef(db, oppUid).get(),
+    // Only read globalRatings as a fallback — pre-game snapshots are preferred.
+    preGameMyRating  != null ? Promise.resolve(null) : ratingRef(db, myUid).get(),
+    preGameOppRating != null ? Promise.resolve(null) : ratingRef(db, oppUid).get(),
   ]);
   const my = mySnap?.val ? mySnap.val() : null;
   if (!my) return { ok: false, reason: 'no-profile' };
 
   const myEntry   = myRatingSnap?.val ? myRatingSnap.val() : null;
   const oppEntry  = oppRatingSnap?.val ? oppRatingSnap.val() : null;
-  // Prefer globalRatings for myBefore so both clients use the same source
-  // (globalRatings is publicly readable; profile is private).
-  const myBefore  = (myEntry?.rating != null) ? Number(myEntry.rating) : (my.rating ?? RATING_START);
-  const oppBefore = (oppEntry?.rating != null) ? Number(oppEntry.rating) : RATING_START;
+  // Pre-game snapshots (taken when the session started) take priority so that
+  // both clients use the same values regardless of when each client's
+  // applyEloForFinishedGame write resolves. Fall back to globalRatings if the
+  // snapshot wasn't captured, then to profile.rating / RATING_START.
+  const myBefore  = (preGameMyRating  != null) ? Number(preGameMyRating)  :
+                    (myEntry?.rating   != null) ? Number(myEntry.rating)   : (my.rating ?? RATING_START);
+  const oppBefore = (preGameOppRating != null) ? Number(preGameOppRating) :
+                    (oppEntry?.rating  != null) ? Number(oppEntry.rating)  : RATING_START;
 
   const myAfter  = applyDelta(myBefore,  oppBefore, score,     k);
   const oppAfter = applyDelta(oppBefore, myBefore,  1 - score, k); // for UI only — not written
