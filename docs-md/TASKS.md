@@ -5,6 +5,12 @@
 
 ---
 
+## Completed (June 2026)
+
+- ✅ Gender address toggle — "באיזה לשון לפנות אליך?" (זכר/נקבה) added to settings screen. Stored in `uiPreferences` (localStorage only, never pushed to Firebase). The reminder push notification body (`"אתה לא משחק"` / `"את לא משחקת"`) now uses the correct gender form. Infrastructure in place (`VALUE_SELECTS` in `settingsScreen.js`) for future additions of gender-specific phrasing.
+
+---
+
 ## Completed (May 2026)
 
 - ✅ Game summary UI fixes — ELO delta inconsistency fixed (both clients now read pre-game ratings from `globalRatings` for both players); "ללא הודעות" settings panel removed; rectangular gold resume button replaced with round circle button in the home screen secondary row; `נאצי` added to `EXACT_REJECTS`.

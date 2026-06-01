@@ -73,11 +73,24 @@ test('UI preferences support animation skip, music, and last display name', () =
     soundFx: true,    // default applied by normalizer when not provided
     vibration: true,  // default applied by normalizer when not provided
     lastDisplayName: 'Alice',
+    gender: 'זכר',   // default applied by normalizer when not provided
   });
   assert.equal(loadUiPreferences(s).animationsEnabled, false);
   const next = mergeUiPreferences(s, { music: true });
   assert.equal(next.music, true);
   assert.equal(next.animationsEnabled, false);
+});
+
+test('UI preferences: gender persists and normalizes', () => {
+  const s = storage();
+  saveUiPreferences(s, { gender: 'נקבה' });
+  assert.equal(loadUiPreferences(s).gender, 'נקבה');
+
+  saveUiPreferences(s, { gender: 'זכר' });
+  assert.equal(loadUiPreferences(s).gender, 'זכר');
+
+  saveUiPreferences(s, { gender: 'invalid-value' });
+  assert.equal(loadUiPreferences(s).gender, 'זכר', 'unknown values fall back to זכר');
 });
 
 test('uiPreferencePatchFromSettings extracts only preference-backed keys', () => {

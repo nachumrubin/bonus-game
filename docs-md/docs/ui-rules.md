@@ -122,6 +122,17 @@ Legacy hidden compat: #st-streak, #st-words, #stats-wr-pct, #stats-donut-arc
 
 Removed in May 2026 simplification (do not re-add without product reason): `#st-avgword`, `#st-pts-tile`, `#st-move-time`, `#st-pts-move`, `#st-vs-stronger-w`, `#st-vs-weaker-w`, `#st-boost-impact-wins`, `#st-boost-impact-best`, `#st-boost-combo`, `#st-fun-luck`, `#st-fun-fastest`, `#st-perf-tier-badge`, `#st-hero-rank`, `#st-wr-pct-lbl`, `#st-streak-lbl`, `#st-best-streak`, `#st-bonuses`. The stats-screen topbar (`.stats-topbar`) and time filter (`.stats-tfseg`) are also removed — navigation lives on the persistent app top bar; cards reflect cumulative totals only.
 
+### Settings Screen — Gender Toggle IDs
+
+```
+#sett-gender-zachar   — gender selector pill for זכר (masculine)
+#sett-gender-nekeiva  — gender selector pill for נקבה (feminine)
+```
+
+Both IDs are wired by `settingsScreen.js` via `VALUE_SELECTS`. The active pill carries `active-yes`; the inactive pill has no active class. Do not add `onclick` attributes — they are removed and re-wired by the screen controller.
+
+---
+
 ### Button Selectors (legacy onclick removal)
 Some buttons are targeted by their `onclick` attribute value:
 
