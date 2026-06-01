@@ -25,7 +25,7 @@
 // the existing CSS keyframes and layout rules apply unchanged.
 
 import { $, on, setText, setClass } from '../domHelpers.js';
-import { g } from '../genderText.js';
+import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
 import { BDEFS } from '../../game/boosts/data.js';
@@ -255,6 +255,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   exchangeCancel?.removeAttribute('onclick');
   btnDirH?.removeAttribute('onclick');
   btnDirV?.removeAttribute('onclick');
+  // Ensure btn-play / btn-recall (data-gm-html) show the right gender on mount.
+  applyGenderToRoot(root, getGender());
   cleanups.push(on(btnPlay, 'click', (e) => { e.preventDefault?.(); controller.confirmMove(); }));
   cleanups.push(on(btnRecall, 'click', (e) => {
     e.preventDefault?.();
