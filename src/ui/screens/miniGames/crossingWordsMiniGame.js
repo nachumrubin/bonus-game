@@ -28,6 +28,7 @@
 
 import { startBonusTimer } from './bonusTimer.js';
 import { isValid as isHebrewWordValid } from '../../../game/core/hebrewDictionary.js';
+import { g, getGender } from '../../genderText.js';
 
 const BLOCKED_SHARED = new Set(['א', 'ה', 'ו', 'י']);
 const DEFAULT_DURATION_MS = 20_000;
@@ -264,7 +265,7 @@ export function mountCrossingWordsMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
         bchal.innerHTML = renderResult(result);
-        bok.textContent = 'המשך ▶';
+        bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
     };

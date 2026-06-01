@@ -10,6 +10,7 @@
 
 import { $, on, setText } from '../domHelpers.js';
 import { BONUS_TILE_DEFS } from '../../game/boosts/bonusTileDefs.js';
+import { g, getGender } from '../genderText.js';
 
 export const BI_INTENT = Object.freeze({
   START: 'bonusIntro/start',
@@ -35,21 +36,24 @@ const TITLE_BY_TYPE = {
 // BI_OPEN handler picks up `🎡` from `info.title.split(' ')[0]`.
 const ICON_HTML_BY_TYPE = {};
 
-const DESC_BY_TYPE = {
-  B1:  'פתור את האנגרמה בזמן וקבל עד 100 נקודות',
-  B3:  'פתור את האנגרמה בזמן וקבל עד 40 נקודות',
-  B8:  'פתור את התשבץ ב-60 שניות',
-  B10: 'בנה מילים מצטלבות וקבל בונוס על כל אחת',
-  B11: 'מצא את כל המילים בתפזורת',
-  B12: 'בנה מילים על הכוורת',
-  B13: 'סובב את הגלגל וקבל פרס',
-};
+function descByType(bonusType) {
+  const key = {
+    B1:  'descB1',
+    B3:  'descB3',
+    B8:  'descB8',
+    B10: 'descB10',
+    B11: 'descB11',
+    B12: 'descB12',
+    B13: 'descB13',
+  }[bonusType];
+  return key ? g(key, getGender()) : 'משחקון בוסט';
+}
 
 export function describeBonus(bonusType) {
   const def = BONUS_TILE_DEFS[bonusType];
   return {
     title:    TITLE_BY_TYPE[bonusType] ?? '⚡ בוסט!',
-    desc:     DESC_BY_TYPE[bonusType]  ?? 'משחקון בוסט',
+    desc:     descByType(bonusType),
     iconHtml: ICON_HTML_BY_TYPE[bonusType] ?? null,
     pts:      def?.tilePts ?? 0,
   };

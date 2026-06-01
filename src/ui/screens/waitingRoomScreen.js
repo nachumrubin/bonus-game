@@ -7,6 +7,7 @@
 // and will be migrated in slice 2d.
 
 import { $, on, setText } from '../domHelpers.js';
+import { g, getGender } from '../genderText.js';
 
 export const WR_INTENT = Object.freeze({
   CANCEL:              'waitingRoom/cancel',
@@ -149,8 +150,9 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
 
 // Helper for callers that don't have a bus context handy: build the
 // WhatsApp share URL the legacy app uses.
-export function buildWhatsAppShareUrl(code) {
+export function buildWhatsAppShareUrl(code, gender) {
+  const come = g('shareGameMsg', gender ?? getGender());
   const msg =
-    `!הי, בוא נשחק בוסט ביחד\nהקוד שלי: *${code}*\nפתח את המשחק ולחץ "הצטרף לפי קוד"`;
+    `!הי, ${come} בוסט ביחד\nהקוד שלי: *${code}*\nפתח את המשחק ולחץ "הצטרף לפי קוד"`;
   return 'https://wa.me/?text=' + encodeURIComponent(msg);
 }

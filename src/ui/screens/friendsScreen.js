@@ -12,6 +12,7 @@
 // presentational + intent-emitting.
 
 import { $, on, setText } from '../domHelpers.js';
+import { g, getGender } from '../genderText.js';
 
 export const FRIENDS_INTENT = Object.freeze({
   COPY_MY_ID:     'friendsUi/copyMyId',
@@ -124,7 +125,7 @@ function buildDetailActiveGamesHtml(activeGames, myUid) {
   if (!activeGames.length) {
     return `<button data-fd-invite="1" style="width:100%;padding:8px;border:none;border-radius:8px;`
       + `background:#1ed760;color:#000;font-family:Heebo,sans-serif;font-size:12px;font-weight:900;cursor:pointer;">`
-      + `✉️ הזמן למשחק</button>`;
+      + `${g('inviteToGame', getGender())}</button>`;
   }
   return activeGames.map(({ roomId, room }) => {
     const mySlot = room.players?.[0]?.uid === myUid ? 0 : 1;

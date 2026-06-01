@@ -2,126 +2,78 @@
 
 ---
 
-## Guide screenshots — June 2026
+## Gender address toggle — Phase 2 extended — June 2026
 
-The in-app מדריך is text-only; new players have to map verbal descriptions ("the lock inventory in the right panel") onto the actual UI. Added inline screenshots to anchor each section to what it describes.
+### What changed (Phase 2 extension — additional screens)
 
-- **Capture spec** ([tests/e2e/capture-guide-screenshots.spec.js](../tests/e2e/capture-guide-screenshots.spec.js)) — Playwright spec that boots the spine, drives it through 6 canonical states (home, mid-game board, exchange overlay, שאילתה overlay, signup screen, stats screen) at a 412×820 viewport, and writes PNGs to `images/guide/`. Single worker so screens that share `localStorage` (settings, profile) don't race. The bootSpine wait condition was updated from the old `#sh .hbtns` selector to `#sh .em-circle-btn` to match the current home layout.
-- **NPM script** — `npm run guide:screenshots` re-runs the capture (refresh after UI changes).
-- **Guide HTML** ([partials/screens/guide-screen.html](../partials/screens/guide-screen.html)) — `<figure class="guide-shot">` blocks added under the rules, screens, and a new "פעולות מיוחדות בתור" section that covers exchange + שאילתה + lock + joker mechanics.
-- **CSS** ([styles.css](../styles.css)) — `.guide-shot { max-width: 220px; ... } .guide-shot img { border-radius: 8px; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 4px 14px rgba(0,0,0,.45); }` plus a small dim caption. The 220px cap keeps screenshots aligned with the body text instead of dominating the overlay.
-
----
-
-## Pending lock + easy-bot vocab cap — June 2026
-
-Two unrelated changes:
-
-1. **Lock placement is now staged, not immediately committed** ([gameController.js](../src/ui/controllers/gameController.js), [gameScreen.js](../src/ui/screens/gameScreen.js), [styles.css](../styles.css)) — previously, clicking a cell to place a lock dispatched `CMD.PLACE_LOCK` directly, which atomically consumed the inventory item and advanced the turn. The player had no way to change their mind. The UI now stages the lock as `view.pendingLock = { r, c, duration }` (analogous to `view.placed` for tiles). The engine's `CMD.PLACE_LOCK` only fires when the player presses שבץ via `confirmMove()`. Cancellation paths: tap the same cell again → `recallLock()`; press בטל → `recallAll()` clears it; `TURN_CHANGED` from any external source → cleared. Pending locks and pending tiles are mutually exclusive in the UI (a turn can hold one OR the other, since both are turn-consuming) — `placeTile` rejects with `'pending-lock-active'` if a lock is staged, and `setPendingLock` rejects with `'pending-tiles-active'` if tiles are placed. `renderBoard` shows the staged lock with the same lock icon plus `.pending-lock` (60% opacity + dashed gold outline) so the visual reads "I'm here but not committed yet".
-   - 6 new tests in [gameController.test.js](../src/ui/controllers/gameController.test.js) cover staging, recall, recallAll-includes-lock, confirmMove-with-lock, and both mutual-exclusion rejections. The existing direct `placeLock()` method is preserved for the engine-level test path that calls it.
-
-2. **EASY bot uses a 7000-word vocabulary** ([main.js](../src/main.js)) — the dictionary file ([data/dictionary.base.txt](../data/dictionary.base.txt)) is sorted by Hebrew word frequency (most common first — את, של, לא, על, …). The bot's word list previously took every entry in the 2–6 letter range regardless of difficulty, so EASY's only real difference from MEDIUM was move-selection randomness — not vocabulary. The bot now slices `fullList.slice(0, 7000)` when `difficulty === 0`, restricting EASY to the most common ~7000 short words. MEDIUM/HARD see the full ~40k vocabulary as before. This is what makes the difficulty levels actually feel different.
+- **`src/ui/genderText.js`** — `applyGenderToRoot` now also handles `data-gm-placeholder` / `data-gf-placeholder` attributes, updating `input.placeholder`.
+- **`partials/screens/setup.html`** — play button "▶ שחק!" tagged with `data-gm`/`data-gf` ("▶ שחקי!").
+- **`partials/screens/settings.html`** — "בדוק ✓" button, "📨 שלח הצעה" button, `#settings-shin` and `#dict-word-input` inputs tagged for gender.
+- **`partials/screens/online-lobby.html`** — subtitle and all three option-card descriptions tagged with `data-gm`/`data-gf`.
 
 ---
 
-## Tutorial polish — query-close advance, smart tip positioning, joker copy — June 2026
+## Gender address toggle ("באיזה לשון לפנות אליך?") — Phase 2 — June 2026
 
-Three follow-up fixes to the extended tutorial:
+**Branch:** `claude/gender-toggle-feature-iNBBE`
 
-1. **שאילתה step advances on overlay close, not button click** ([dictionaryScreen.js](../src/ui/screens/dictionaryScreen.js), [tutorialController.js](../src/ui/controllers/tutorialController.js)) — the step was wired to `DICT_INTENT.OPEN_QUERY`, so the moment the player tapped the שאילתה button the tutorial advanced even before they'd actually looked up a word. Added a new `DICT_INTENT.CLOSE_QUERY` emitted when the overlay's סגר button is clicked, and the tutorial now listens for that instead. The player has to actually use the feature and dismiss the overlay before the tutorial moves on.
+Phase 2 extends the gender preference system to all visible Hebrew imperative strings across the game UI.
 
-2. **Tip box no longer covers what it's pointing at** ([tutorialScreen.js](../src/ui/screens/tutorialScreen.js), [styles.css](../styles.css)) — `showTip` now picks a viewport anchor (`top-right`, `top-left`, `bottom-right`, `bottom-left`) based on the bounding rect of the first highlighted target: target on the top third of the viewport → tip anchored to the bottom; on the bottom third → tip anchored to the top; on either side → tip anchored to the opposite side. CSS adds `.tut-anchor-*` classes with explicit top/right/bottom/left offsets and a 250ms transition so the tip slides into place. The repositioning runs again on resize and on every scheduled paint (because rack tiles render late). A tip can still force a specific anchor via `position: 'bottom-center'`-style override on the payload.
+### What changed (Phase 2)
 
-3. **Joker tip uses "ג׳וקר 🃏" instead of literal `"?"`** ([tutorialController.js](../src/ui/controllers/tutorialController.js)) — the on-rack joker glyph in this build is a 🃏 sprite, not the character `?`. Label and body now say "ג׳וקר 🃏" / "אריח ג׳וקר 🃏" so the prompt matches what the player actually sees on their rack.
+1. **`src/ui/genderText.js`** (new) — Central utility: `GS` lookup table of M/F pairs, `getGender()`, `isFem()`, `g(key, gender)`, `applyGenderToRoot(root, gender)`. Handles `data-gm`/`data-gf` (textContent) and `data-gm-html`/`data-gf-html` (innerHTML).
 
-**Tests:** updated [tutorialController.test.js](../src/ui/controllers/tutorialController.test.js) to assert that `OPEN_QUERY` does NOT advance and `CLOSE_QUERY` does. 8/8 tutorial-controller, 2/2 tutorial-screen, 16/16 dictionary-screen, and 135/135 main unit suite all green.
+2. **HTML partials** — Added `data-gm`/`data-gf` attributes to all HTML elements with gendered imperative text:
+   - `game.html`: sbar hint, btn-recall, btn-play
+   - `bonus-intro-shown-before-every-interactive-boost-mini-game.html`: start button
+   - `joker-picker.html`: overlay title
+   - `exchange.html`: overlay description
+   - `pause-overlay.html`: resume button
+   - `back-confirm-overlay.html`: stay / continue-play buttons
+   - `claim-stall-end-confirm-overlay.html`: description, continue-play button
+   - `avatar-unlock-overlay.html`: continue button
+   - `stats-screen.html`: favorite-boost description
 
----
+3. **`src/ui/screens/pauseScreen.js`** / **`backConfirmScreen.js`** — Import `applyGenderToRoot, getGender`; call on mount, on open event, and on `SETTINGS_CHANGED`.
 
-## Tutorial — extended advanced demos (linear & enforced) — June 2026
+4. **`src/ui/controllers/claimStallEndController.js`** — `openConfirm()` calls `applyGenderToRoot` on the overlay; SETTINGS_CHANGED listener applies gender live.
 
-The tutorial used to end right after the bonus-square demo (P1, B1, P2, B2 → home). Player asked for six additional features to be taught: שאילתה, pre-finalization recall (single-tap move, double-tap return, בטל), החלפת אות, lock placement, joker, and replacing one already-committed tile alongside a new placement.
+5. **`src/ui/screens/bonusIntroScreen.js`** — `DESC_BY_TYPE` static object replaced by `descByType()` function that calls `g()` at render time.
 
-**Architecture:**
-- Split the tutorial state machine into two **phases** in [tutorialController.js](../src/ui/controllers/tutorialController.js): `'core'` (the existing four-step bonus demo) and `'extras'` (the new linear flow). When the core's `botMoves === 2` lands, the controller transitions to `'extras'` and walks through `EXTRA_STEP_ORDER = ['shailta', 'recall', 'exchange', 'lock', 'joker', 'tileSwap']`. Each step is enforced — it waits for its specific action and won't advance until either the action fires or the player taps "דלג על שלב זה".
-- Each step has an auto-detection hook:
-  - `shailta` → `DICT_INTENT.OPEN_QUERY` from [dictionaryScreen.js](../src/ui/screens/dictionaryScreen.js)
-  - `recall` → `GAME_SCREEN_INTENT.LIVE_PREVIEW_CHANGED` transitioning from ≥1 pending tile back to 0 (covers both בטל and per-tile double-tap)
-  - `exchange` → `EV.TILES_EXCHANGED`
-  - `lock` → `EV.LOCK_PLACED`
-  - `joker` → `EV.MOVE_CONFIRMED` where `placed.some(p => p.isJoker)`
-  - `tileSwap` → `EV.MOVE_CONFIRMED` where `swappedTiles.length > 0`
-- The bot needs to hand control straight back during the extras phase since exchange/lock/joker/tile-swap all consume a turn. [tutorialSession.js](../src/game/sessions/tutorialSession.js) `attachScriptedTutorialBot` was modified so that once `nextMove >= moves.length`, the bot dispatches `CMD.PASS_TURN` instead of stalling. This keeps the player's turns coming.
-- The joker step needs a `'?'` in the rack and the tile-swap step is easier with a few extra spare letters, so `seedTutorialRack` now also seeds `TUTORIAL_EXTRA_LETTERS = ['?', 'א', 'ב']`.
+6. **`src/ui/screens/gameScreen.js`** — Imports `g`; all four `#sbar` status strings now use `g('key')`; four `invalidReasonText` cases use `g()`; SETTINGS_CHANGED listener calls `renderStatus` on gender change.
 
-**UI:**
-- New `TUTORIAL_INTENT.SKIP_STEP` ([tutorialScreen.js](../src/ui/screens/tutorialScreen.js)). Each extra tip carries `showSkip: true` so [tutorial-overlay-elements.html](../partials/screens/tutorial-overlay-elements.html) reveals the "דלג על שלב זה" link; tapping it advances `extraIdx` and emits the next tip.
-- After every extra step, the final tip ("סיימת את ההדרכה — חוזרים לתפריט הראשי…") auto-closes after 3s and calls `showScreen('sh')` — same exit pattern as before.
+7. **Mini-game screens** — All seven mini-games import `g, getGender` and use `g()` for their imperative text (status lines, finish/continue buttons, titles):
+   - `crosswordMiniGame.js`, `fillMiddleMiniGame.js`, `wheelMiniGame.js`, `unscrambleMiniGame.js`, `crossingWordsMiniGame.js`, `honeycombMiniGame.js`, `wordSearchMiniGame.js`
 
-**Tests** ([tutorialController.test.js](../src/ui/controllers/tutorialController.test.js)) — added five new cases covering: transition from core into extras, full skip-all-the-way-through exit path, OPEN_QUERY auto-advance, TILES_EXCHANGED auto-advance, and joker placement only advancing when `isJoker` is set. 8/8 tutorial-controller tests pass; 135/135 main unit suite remains green.
+8. **`src/ui/screens/friendsScreen.js`** — Invite button text uses `g('inviteToGame', getGender())`.
 
----
+9. **`src/ui/screens/waitingRoomScreen.js`** — `buildWhatsAppShareUrl(code, gender)` now accepts an optional gender param; message uses `g('shareGameMsg', gender)`.
 
-## Tutorial end-of-flow fix — May 2026
-
-**Bug:** After the bot's second scripted move in the tutorial, the user was stuck on a half-played board with no further guidance.
-
-**Root cause** ([tutorialController.js](../src/ui/controllers/tutorialController.js)) — when `playerMoves === 2` the controller emitted a tip claiming "סיימת את ההדרכה" with a 4-second auto-close, but [tutorialSession.js:35-38](../src/game/sessions/tutorialSession.js#L35-L38) actually queues two bot moves, so a final bot move (`ת` → "תו") fires ~700ms later. The "tutorial finished" message therefore played mid-tutorial, auto-closed, and then the player was returned to a normal game state with no exit path — the bot had no more scripted moves but the game wasn't over.
-
-**Fix:**
-- Renamed the `playerMoves === 2` tip key from `completion` → `celebrate`, dropped the "סיימת את ההדרכה" line, and trimmed the auto-close to 3000ms — it now just celebrates the bonus.
-- Added a `botMoves === 2` branch that emits a new `exit` tip ("סיימת את ההדרכה — חוזרים לתפריט הראשי…") and schedules `showScreen('sh')` after 3000ms so the player is automatically returned to the home menu.
-- The scheduled exit timer is tracked in `exitTimer` and cancelled by `resetState()` / `dispose()` so a user who manually backs out (`TUTORIAL_INTENT.BACK`/`SKIP`) doesn't get a stale auto-navigation later.
-- Test [tutorialController.test.js](../src/ui/controllers/tutorialController.test.js) added: drives the full P1→B1→P2→B2 sequence and asserts the exit tip fires and `showScreen('sh')` runs after the auto-close window.
+10. **`src/main.js`** — Imports `applyGenderToRoot`; the `SETTINGS_CHANGED` gender handler now calls `applyGenderToRoot(globalThis.document, changes.gender)` to update all live `data-gm`/`data-gf` elements in one pass.
 
 ---
 
-## Auth screens + friend overlay polish — May 2026
+## Gender address toggle ("באיזה לשון לפנות אליך?") — Phase 1 — June 2026
 
-Four fixes:
+**Branch:** `claude/gender-toggle-feature-iNBBE`
 
-1. **Friend-detail avatar shows the icon, not the raw id** ([friendsScreen.js](../src/ui/screens/friendsScreen.js)) — `displayFriendDetail` was setting `#fd-avatar.textContent = friend.avatar`, which renders the literal string `"crown"` when the profile stores the id rather than the emoji. The friends *list* already calls `resolveAvatar(...)` to map ids → emojis (`crown` → 👑, `diamond` → 💎, etc.). The detail overlay now uses the same helper.
+Adds a persistent gender preference so all address to the user uses the correct Hebrew gender form.
 
-2. **Password confirmation on signup** ([sign-up-screen.html](../partials/screens/sign-up-screen.html), [authScreens.js](../src/ui/screens/authScreens.js)) — Added `#su-pass-confirm` with autocomplete `new-password`. `validateSignupForm` accepts an optional `passwordConfirm` and returns reason `pass-mismatch` (`'הסיסמאות אינן תואמות'`) when supplied and not equal. The confirm check is gated on the argument being defined so test fixtures and any other callers that don't collect a confirm keep working.
+### What changed (Phase 1)
 
-3. **Show/hide password toggle on login + signup** ([log-in-screen.html](../partials/screens/log-in-screen.html), [sign-up-screen.html](../partials/screens/sign-up-screen.html), [styles.css](../styles.css), [authScreens.js](../src/ui/screens/authScreens.js)) — Each password input is wrapped in `.pw-wrap` with an absolutely-positioned `.pw-toggle` 👁/🙈 button. The toggle uses `data-pw-target="<input id>"` so a single delegated handler in `mountAuthScreens` covers all three fields (login pass + signup pass + signup confirm). Clicking flips `input.type` between `password` and `text`, updates the icon, and swaps the `aria-label` between "הצג סיסמה"/"הסתר סיסמה". `.pw-input` gets `padding-right:36px` so the typed text never disappears under the icon.
+1. **`src/game/settings/settingsCompat.js`** — Added `gender: 'זכר'` to `DEFAULT_UI_PREFERENCES`. `normalizeUiPreferences` now normalises the field: `'נקבה'` persists; any other value (including missing) falls back to `'זכר'`.
 
-4. **Notification opt-in checkbox on signup** ([sign-up-screen.html](../partials/screens/sign-up-screen.html), [authScreens.js](../src/ui/screens/authScreens.js), [main.js](../src/main.js)) — Added `#su-notify` (checked by default). The validator carries `wantsNotifications` through the `SIGN_UP` payload (defaults to `true`). `bus.on(AUTH_INTENT.SIGN_UP)` stamps it onto the initial profile as `profile.wantsNotifications`. `bootCrossCuttingFor` reads `users/{uid}/profile/wantsNotifications` before calling `notificationService.boot/loginUser` — a stored `false` skips push setup entirely; missing/legacy values default to opted-in so existing accounts behave as before.
+2. **`partials/screens/settings.html`** — New panel "באיזה לשון לפנות אליך?" with זכר / נקבה pills, placed below the vibration panel. Uses the same `.set-panel` / `.set-yesno` / `.set-yn` structure; wired entirely through `settingsScreen.js` (no `onclick` attributes).
 
----
+3. **`src/ui/screens/settingsScreen.js`** — Added a `VALUE_SELECTS` array for value-based (non-boolean) option groups; initial entry is the gender selector. `mountSettingsScreen` now accepts an optional `getUiPrefs` getter so the overlay can reflect the current gender when it opens. `refreshControls` and the `SETTINGS_CHANGED` listener both handle `VALUE_SELECTS`. Clicking a gender option emits `SETTINGS_CHANGED: { gender: 'זכר' | 'נקבה' }`.
 
-## Local emulator path for the running app — May 2026
+4. **`src/notifications/pushPayloadBuilder.js`** — `defaultBody` for `KIND.REMINDER` now checks `ctx.gender`: `'נקבה'` → `"את לא משחקת כבר X שעות"`, default → `"אתה לא משחק כבר X שעות"`.
 
-The app could already be tested against the Firebase emulator from the `test:emulator` script, but **the running app itself** had no way to point at a local DB — every run hit production at `boost-8ef11`. Added a self-contained emulator path so manual testing no longer touches the live project.
+5. **`src/notifications/notificationService.js`** — `pushReminder` accepts an optional `gender` field and forwards it through `ctx`.
 
-- **Client wiring** ([firebaseClient.js](../src/game/online/firebaseClient.js)) — `configure()` now detects emulator mode from `APP_CONFIG.useEmulator` or a `?emu=1` URL flag. When set, `ensureApp()` calls `db.useEmulator('localhost', 9000)` and `auth.useEmulator('http://localhost:9099', { disableWarnings: true })` after init. Exposed `isUsingEmulator()` for callers that want to skip side-effectful integrations (push, analytics) in emulator mode.
-- **Emulator config** ([firebase.json](../firebase.json)) — Added `auth` (9099), `hosting` (5000), and `ui` (4000) emulators alongside the existing `database` (9000).
-- **NPM scripts** ([package.json](../package.json)) — `npm run emu` starts database+auth+hosting+UI emulators with `--import=.emulator-data --export-on-exit=.emulator-data` so seeded users and games persist across restarts. `npm run emu:fresh` is the no-persistence variant.
-- **`.emulator-data/`** is gitignored.
+6. **`src/main.js`** — (a) passes `getUiPrefs` to `mountSettingsScreen`; (b) the `SETTINGS_CHANGED` handler saves gender to `uiPreferences` via `mergeUiPreferences` and excludes it from Firebase room-settings syncs; (c) `pushReminder` calls now include `gender` read from `loadUiPreferences`.
 
-**Usage:**
-
-```
-npm run emu                         # starts emulators (data persists in .emulator-data/)
-# then in another shell:
-npx http-server -p 8080 .           # or any static server, OR use the emulator's hosting at http://localhost:5000
-# Open the app with ?emu=1
-http://localhost:8080/index.html?emu=1
-```
-
-Emulator UI: <http://localhost:4000>. Auth emulator accepts any email/password (signup creates the user instantly with no verification).
-
----
-
-## Friend-detail score order + resume button overflow — May 2026
-
-Two small UI fixes:
-
-1. **Friend recent-games row reads "mine : theirs ✓" with the user's score in gold** ([friendsScreen.js](../src/ui/screens/friendsScreen.js)) — `buildDetailRecentHtml` previously relied on a bold-white vs. 60%-white opacity contrast at 11px to mark the user's score, which is easy to misread (especially when the user's actual score is the smaller number, e.g. after a forfeit/timeout win). The row now locks `direction:ltr` so the visual order is deterministic ("mine : theirs ✓" left-to-right) and paints the user's score in the gold accent (`var(--by, #f5c518)`) — unambiguous regardless of which number happens to be higher.
-
-2. **Friend-detail "Permission denied" when opening a friend's profile** ([main.js](../src/main.js)) — `FRIENDS_INTENT.OPEN_DETAIL` was reading both `users/${myUid}/activeRoom` and `users/${friendUid}/activeRoom` in parallel to find shared live games. The rules file pins `users/$uid/.read` to `$uid === auth.uid`, so the friend-side read always failed and the whole `Promise.all` rejected (logging `[spine] OPEN_DETAIL: active rooms fetch failed Error: Permission denied`). Rewrote to read only **my** `activeRoom`, then load the room (rooms are world-readable) and check whether the friend appears in `room.players`. Same end result, no cross-user reads.
-
-3. **"המשך משחק" resume button no longer overflows the circle** ([menu-electric.css](../menu-electric.css)) — `.em-circle-title` is `white-space: nowrap`, and the resume circle is half the size of the secondary circles. At smaller viewports the 9-character title couldn't fit. Added `white-space: normal` and `line-height: 1.05` for `.em-circle-btn--resume .em-circle-title` so it can wrap to two lines, plus bumped its `.em-circle-text` `max-width` from the default 78% to 86%.
+7. **`src/game/settings/settingsCompat.test.js`** — Updated UI preferences snapshot test to include `gender: 'זכר'`; added dedicated gender normalisation test.
 
 ---
 

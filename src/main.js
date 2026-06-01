@@ -42,6 +42,7 @@ import * as friendsService from './game/account/friendsService.js';
 import * as ratingService from './game/account/ratingService.js?v=20260513111500';
 import * as dictionaryService from './game/account/dictionaryService.js';
 import * as settingsCompat from './game/settings/settingsCompat.js';
+import { applyGenderToRoot, getGender } from './ui/genderText.js';
 import * as audioService from './ui/audioService.js';
 import * as feedbackService from './ui/feedbackService.js';
 import { startMatchmaking } from './game/online/spineMatchmaking.js';
@@ -153,6 +154,11 @@ async function boot() {
   }
 
   console.info('[spine] booting…');
+
+  // Stamp all data-gm/data-gf elements to the gender stored in localStorage.
+  // Without this, elements default to the masculine text baked into HTML and
+  // would only update after the user opens settings and changes the toggle.
+  applyGenderToRoot(globalThis.document, getGender());
 
   installCutoverGlobals();
 
@@ -577,9 +583,14 @@ async function boot() {
       settingsCompat.applyGameSettingsToGlobals(globalThis, { disableMessages: !!changes.disableMessages });
       settingsCompat.saveGameSettings(globalThis.localStorage, globalThis.gameSettings ?? {});
     }
+    // gender is a UI preference stored locally; never propagate to room settings.
+    if ('gender' in changes) {
+      settingsCompat.mergeUiPreferences(globalThis.localStorage, { gender: changes.gender });
+      applyGenderToRoot(globalThis.document, changes.gender);
+    }
     const ag = globalThis.__spine?.activeGame;
     if (!ag?.online || !activeFbDb) return;
-    const { disableMessages: _omit, ...roomChanges } = changes;
+    const { disableMessages: _omit, gender: _omitGender, ...roomChanges } = changes;
     if (Object.keys(roomChanges).length === 0) return;
     const next = settingsCompat.normalizeGameSettings({ ...(ag.session.state.settings ?? {}), ...roomChanges });
     roomService.setSettings(activeFbDb, ag.session.roomId, next)
@@ -1280,6 +1291,7 @@ async function boot() {
                 opponentName: ctx?.opponentName ?? 'יריב',
                 roomId: ctx?.roomId,
                 hoursIdle: ctx?.hoursIdle,
+                gender: settingsCompat.loadUiPreferences(globalThis.localStorage).gender,
               });
             }
             catch (e) { console.warn('[spine] reminder send', e); }
@@ -2853,6 +2865,7 @@ async function boot() {
   const settings      = mountSettingsScreen({
     bus,
     getSettings: () => settingsCompat.settingsFromLegacyGlobals(globalThis, globalThis.__spine?.activeGame?.session?.state?.settings ?? {}),
+    getUiPrefs:  () => settingsCompat.loadUiPreferences(globalThis.localStorage),
   });
   const disconnect    = mountDisconnectScreen({ bus });
   const resignConfirm = mountResignConfirmScreen({ bus });

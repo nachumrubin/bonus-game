@@ -51,6 +51,7 @@ const FOUND_COLORS = [
 ];
 
 import { startBonusTimer } from './bonusTimer.js';
+import { g, getGender } from '../../genderText.js';
 
 const DEFAULT_SIZE = 10;
 const DEFAULT_DURATION_MS = 60_000;
@@ -366,7 +367,7 @@ export function mountWordSearchMiniGame({
           </div>
           <div style="font-size:14px;color:var(--by);font-weight:700">+${result.earnedPts} נקודות</div>
         </div>`;
-        bok.textContent = 'המשך ▶';
+        bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
     };

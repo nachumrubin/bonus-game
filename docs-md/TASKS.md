@@ -5,6 +5,13 @@
 
 ---
 
+## Completed (June 2026)
+
+- ✅ Gender address toggle Phase 2 — All Hebrew imperative strings (game controls, mini-game instructions, overlay buttons, friends/share text) now render in the correct gender form. Central utility `src/ui/genderText.js` with `g()`, `applyGenderToRoot()`. Live updates via `SETTINGS_CHANGED` bus event propagate to all mounted screens in one call.
+- ✅ Gender address toggle Phase 1 — "באיזה לשון לפנות אליך?" (זכר/נקבה) added to settings screen. Stored in `uiPreferences` (localStorage only, never pushed to Firebase). The reminder push notification body (`"אתה לא משחק"` / `"את לא משחקת"`) now uses the correct gender form. Infrastructure in place (`VALUE_SELECTS` in `settingsScreen.js`).
+
+---
+
 ## Completed (May 2026)
 
 - ✅ Game summary UI fixes — ELO delta inconsistency fixed (both clients now read pre-game ratings from `globalRatings` for both players); "ללא הודעות" settings panel removed; rectangular gold resume button replaced with round circle button in the home screen secondary row; `נאצי` added to `EXACT_REJECTS`.

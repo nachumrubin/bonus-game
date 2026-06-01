@@ -23,6 +23,7 @@
 //   CW_INTENT.RESULT
 
 import { startBonusTimer } from './bonusTimer.js';
+import { g, getGender } from '../../genderText.js';
 
 const DEFAULT_DURATION_MS = 60_000;
 const DEFAULT_POOL_SIZE   = 20;
@@ -360,7 +361,7 @@ export function mountCrosswordMiniGame({
     wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;';
     statusLine = doc.createElement('div');
     statusLine.style.cssText = 'font-size:11px;color:rgba(255,255,255,.8);text-align:center;min-height:18px;font-weight:700;';
-    statusLine.textContent = 'בחר אות מהמגש ולחץ על משבצת';
+    statusLine.textContent = g('chooseLetterBoard', getGender());
     wrap.appendChild(statusLine);
 
     gridEl = buildGrid();
@@ -392,7 +393,7 @@ export function mountCrosswordMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
         bchal.innerHTML = renderResult(result);
-        bok.textContent = 'המשך ▶';
+        bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
     };
@@ -447,7 +448,7 @@ export function mountCrosswordMiniGame({
 
     statusLine = doc.createElement('div');
     statusLine.style.cssText = 'font-size:11px;color:rgba(255,255,255,.8);text-align:center;min-height:18px;font-weight:700;margin-bottom:6px;';
-    statusLine.textContent = 'בחר אות מהמגש ולחץ על משבצת';
+    statusLine.textContent = g('chooseLetterBoard', getGender());
     card.appendChild(statusLine);
 
     gridEl = buildGrid();

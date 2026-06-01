@@ -673,7 +673,7 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .ps-slot-card.ps-found{border-color:#4aff7a;box-shadow:0 0 20px rgba(74,255,122,.3);transition:border-color .3s,box-shadow .3s;}
 
 /* ── SETTINGS OVERLAY ── */
-#ov-settings .ovc{border-radius:14px;}
+#ov-settings .ovc{border-radius:14px;overflow-x:hidden;}
 .settings-panels{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;}
 .set-panel{background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 12px;flex:1;min-width:140px;display:flex;flex-direction:column;gap:8px;align-items:center;}
 .set-panel-title{font-size:12px;font-weight:700;color:var(--by);text-align:center;position:relative;display:flex;align-items:center;justify-content:center;gap:5px;}
