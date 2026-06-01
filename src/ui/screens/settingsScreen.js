@@ -13,6 +13,7 @@
 
 import { $, on, setText } from '../domHelpers.js';
 import { normalizeGameSettings } from '../../game/settings/settingsCompat.js';
+import { applyGenderToRoot } from '../genderText.js';
 
 export const SETTINGS_INTENT = Object.freeze({
   TOGGLE:  'settings/toggle',
@@ -153,7 +154,9 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
   }
 
   cleanups.push(bus.on(SETTINGS_OPEN, () => {
-    refreshControls(normalizeGameSettings(getSettings?.() ?? {}), getUiPrefs?.() ?? {});
+    const uiPrefs = getUiPrefs?.() ?? {};
+    refreshControls(normalizeGameSettings(getSettings?.() ?? {}), uiPrefs);
+    applyGenderToRoot(overlay, uiPrefs.gender);
     overlay.classList?.remove('hidden');
   }));
 
@@ -187,6 +190,7 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
         }
       }
     }
+    if ('gender' in changes) applyGenderToRoot(overlay, changes.gender);
   }));
 
   function refreshControls(settings, uiPrefs = {}) {
