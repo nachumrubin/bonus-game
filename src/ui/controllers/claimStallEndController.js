@@ -10,6 +10,8 @@ import { $, on } from '../domHelpers.js';
 import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
 import { canClaimStallEnd } from '../../game/core/turnManager.js';
+import { applyGenderToRoot, getGender } from '../genderText.js';
+import { SETTINGS_CHANGED } from '../screens/settingsScreen.js';
 
 export function createClaimStallEndController({
   root = globalThis.document,
@@ -56,7 +58,9 @@ export function createClaimStallEndController({
 
   function openConfirm() {
     const overlay = $('#ov-claim-stall-end', root);
-    if (overlay) overlay.classList?.remove('hidden');
+    if (!overlay) return;
+    applyGenderToRoot(overlay, getGender());
+    overlay.classList?.remove('hidden');
   }
   function closeConfirm() {
     const overlay = $('#ov-claim-stall-end', root);
@@ -99,6 +103,13 @@ export function createClaimStallEndController({
       closeConfirm();
     }));
   }
+
+  cleanups.push(bus.on(SETTINGS_CHANGED, (changes = {}) => {
+    if ('gender' in changes) {
+      const overlay = $('#ov-claim-stall-end', root);
+      if (overlay) applyGenderToRoot(overlay, changes.gender);
+    }
+  }));
 
   // Recompute visibility on any state-changing event.
   const refreshOn = [

@@ -2,6 +2,8 @@
 // press during a game: keep playing, pause + save, or leave without saving.
 
 import { $, on } from '../domHelpers.js';
+import { applyGenderToRoot, getGender } from '../genderText.js';
+import { SETTINGS_CHANGED } from './settingsScreen.js';
 
 export const BACK_INTENT = Object.freeze({
   STAY:           'back/stay',
@@ -19,6 +21,7 @@ export function mountBackConfirmScreen({ root = globalThis.document, bus } = {})
     return { unmount() {} };
   }
 
+  applyGenderToRoot(overlay, getGender());
   const cleanups = [];
 
   const buttons = [
@@ -39,7 +42,12 @@ export function mountBackConfirmScreen({ root = globalThis.document, bus } = {})
   }
 
   cleanups.push(bus.on(BACK_OPEN, () => {
+    applyGenderToRoot(overlay, getGender());
     overlay.classList?.remove('hidden');
+  }));
+
+  cleanups.push(bus.on(SETTINGS_CHANGED, (changes = {}) => {
+    if ('gender' in changes) applyGenderToRoot(overlay, changes.gender);
   }));
 
   function unmount() {

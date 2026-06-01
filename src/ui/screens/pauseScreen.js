@@ -3,6 +3,8 @@
 // Three actions: resume, save-and-exit, quit-without-save.
 
 import { $, on, setText } from '../domHelpers.js';
+import { applyGenderToRoot, getGender } from '../genderText.js';
+import { SETTINGS_CHANGED } from './settingsScreen.js';
 
 export const PAUSE_INTENT = Object.freeze({
   RESUME:        'pause/resume',
@@ -20,6 +22,7 @@ export function mountPauseScreen({ root = globalThis.document, bus } = {}) {
     return { unmount() {} };
   }
 
+  applyGenderToRoot(overlay, getGender());
   const cleanups = [];
 
   const buttons = [
@@ -41,7 +44,12 @@ export function mountPauseScreen({ root = globalThis.document, bus } = {}) {
 
   cleanups.push(bus.on(PAUSE_OPEN, ({ playerName } = {}) => {
     if (playerName) setText($('#pause-player-name', overlay), playerName);
+    applyGenderToRoot(overlay, getGender());
     overlay.classList?.remove('hidden');
+  }));
+
+  cleanups.push(bus.on(SETTINGS_CHANGED, (changes = {}) => {
+    if ('gender' in changes) applyGenderToRoot(overlay, changes.gender);
   }));
 
   function unmount() {

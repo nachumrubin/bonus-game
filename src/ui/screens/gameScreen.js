@@ -25,6 +25,8 @@
 // the existing CSS keyframes and layout rules apply unchanged.
 
 import { $, on, setText, setClass } from '../domHelpers.js';
+import { g } from '../genderText.js';
+import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
 import { BDEFS } from '../../game/boosts/data.js';
 import { EV } from '../../events/eventTypes.js';
@@ -267,6 +269,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     cleanups.push(bus.on(GAME_SCREEN_INTENT.OPEN_EXCHANGE, ({ freeSwap = false } = {}) => {
       openExchangeOverlay({ freeSwap });
     }));
+    cleanups.push(bus.on(SETTINGS_CHANGED, (changes = {}) => {
+      if ('gender' in changes) renderStatus(controller.view);
+    }));
   }
   cleanups.push(on(exchangeCancel, 'click', (e) => { e.preventDefault?.(); closeExchangeOverlay(); }));
   cleanups.push(on(btnDirH, 'click', (e) => { e.preventDefault?.(); controller.setPlacementDirection?.('H'); }));
@@ -481,7 +486,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   function openExchangeOverlay({ freeSwap = false } = {}) {
     if (!exchangeOverlay || !exchangeRack) return;
     if (controller.view.placed?.length) {
-      setText($('#sbar', root), 'בטל את האותיות שעל הלוח לפני החלפה');
+      setText($('#sbar', root), g('cancelBeforeSwap'));
       return;
     }
     exchangeIsFreeSwap = !!freeSwap;
@@ -533,7 +538,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       e.preventDefault?.();
       const letters = [...selected].sort((a, b) => a - b).map(i => rack[i]).filter(Boolean);
       if (!letters.length) {
-        setText($('#sbar', root), 'בחר לפחות אות אחת להחלפה');
+        setText($('#sbar', root), g('chooseToSwap'));
         return;
       }
       controller.exchangeTiles(letters, { freeSwap: exchangeIsFreeSwap });
@@ -705,9 +710,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const winner = v.scores[0] > v.scores[1] ? 0 : v.scores[1] > v.scores[0] ? 1 : null;
       setText($('#sbar', root), winner == null ? 'תיקו!' : `שחקן ${winner + 1} ניצח!`);
     } else if (v.placed?.length) {
-      setText($('#sbar', root), 'לחץ "שבץ ✓" לאישור או "בטל ↩" לחזרה');
+      setText($('#sbar', root), g('pressConfirm'));
     } else {
-      setText($('#sbar', root), 'בחר אות מהמגש ולחץ על משבצת');
+      setText($('#sbar', root), g('chooseLetterBoard'));
     }
   }
 
@@ -1719,7 +1724,7 @@ function ownerDocumentOf(root) {
 
 function invalidReasonText(reason) {
   switch (reason) {
-    case 'empty-move':              return 'שבץ לפחות אות אחת!';
+    case 'empty-move':              return g('placeOneTile');
     case 'not-collinear':           return 'האותיות חייבות להיות בכיוון אחד בלבד!';
     case 'has-gaps':                return 'אין להשאיר פערים בין האותיות!';
     case 'first-move-on-bonus':     return 'המילה הראשונה לא יכולה להניח אות על משבצת בוסט!';
@@ -1731,16 +1736,16 @@ function invalidReasonText(reason) {
     case 'lock-cell-occupied':      return 'אי אפשר לנעול משבצת תפוסה';
     case 'lock-cell-already-locked': return 'המשבצת כבר נעולה';
     case 'lock-not-owned':          return 'הנעילה הזו כבר נוצלה';
-    case 'lock-out-of-bounds':      return 'בחר משבצת על הלוח';
+    case 'lock-out-of-bounds':      return g('chooseSquare');
     case 'lock-invalid-duration':
     case 'lock-invalid':            return 'אי אפשר להציב נעילה כרגע';
     case 'exchange-bag-empty':      return 'אין מספיק אותיות בשק להחלפה';
     case 'free-swap-unavailable':   return 'החלפה חינם לא זמינה כרגע';
     case 'exchange-invalid':        return 'החלפה לא תקינה';
-    case 'swap-needs-placement':    return 'אי אפשר להחליף אות בלי לשבץ אותיות חדשות';
+    case 'swap-needs-placement':    return g('noSwapWithoutPlace');
     case 'swap-on-locked':          return 'אי אפשר להחליף אות במשבצת נעולה';
     case 'swap-no-tile':            return 'במשבצת אין אות להחלפה';
-    case 'turn-already-passed':     return 'התור עבר בזמן שניסית לשבץ — האותיות הוחזרו';
+    case 'turn-already-passed':     return g('turnPassedDuringPlace');
     default:                        return reason;
   }
 }

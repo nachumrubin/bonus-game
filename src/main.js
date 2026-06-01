@@ -42,6 +42,7 @@ import * as friendsService from './game/account/friendsService.js';
 import * as ratingService from './game/account/ratingService.js?v=20260513111500';
 import * as dictionaryService from './game/account/dictionaryService.js';
 import * as settingsCompat from './game/settings/settingsCompat.js';
+import { applyGenderToRoot } from './ui/genderText.js';
 import * as audioService from './ui/audioService.js';
 import * as feedbackService from './ui/feedbackService.js';
 import { startMatchmaking } from './game/online/spineMatchmaking.js';
@@ -566,6 +567,7 @@ async function boot() {
     // gender is a UI preference stored locally; never propagate to room settings.
     if ('gender' in changes) {
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { gender: changes.gender });
+      applyGenderToRoot(globalThis.document, changes.gender);
     }
     const ag = globalThis.__spine?.activeGame;
     if (!ag?.online || !activeFbDb) return;

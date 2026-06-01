@@ -31,6 +31,7 @@
 //   HC_INTENT.RESULT
 
 import { startBonusTimer } from './bonusTimer.js';
+import { g, getGender } from '../../genderText.js';
 
 const DEFAULT_DURATION_MS = 40_000;
 
@@ -381,7 +382,7 @@ export function mountHoneycombMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleFinish);
         bchal.innerHTML = renderResult(result);
-        bok.textContent = 'המשך ▶';
+        bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
     };
