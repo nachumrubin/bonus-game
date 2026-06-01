@@ -40,9 +40,26 @@ test('validateLoginForm: rejects bad email / no pass', () => {
 });
 
 test('AUTH_ERROR_HE has Hebrew messages for each reason', () => {
-  for (const k of ['no-name','name-too-long','bad-email','pass-too-short','pass-weak','no-pass']) {
+  for (const k of ['no-name','name-too-long','bad-email','pass-too-short','pass-weak','pass-mismatch','no-pass']) {
     assert.ok(AUTH_ERROR_HE[k]?.length > 0);
   }
+});
+
+test('validateSignupForm: passwordConfirm mismatch is rejected', () => {
+  const r = validateSignupForm({ name: 'X', email: 'x@y.com', password: 'Pass1234', passwordConfirm: 'Pass1235' });
+  assert.equal(r.reason, 'pass-mismatch');
+});
+
+test('validateSignupForm: matching passwordConfirm passes and payload carries wantsNotifications', () => {
+  const r = validateSignupForm({ name: 'X', email: 'x@y.com', password: 'Pass1234', passwordConfirm: 'Pass1234', wantsNotifications: false });
+  assert.equal(r.ok, true);
+  assert.equal(r.payload.wantsNotifications, false);
+});
+
+test('validateSignupForm: wantsNotifications defaults to true when omitted', () => {
+  const r = validateSignupForm({ name: 'X', email: 'x@y.com', password: 'Pass1234' });
+  assert.equal(r.ok, true);
+  assert.equal(r.payload.wantsNotifications, true);
 });
 
 function makeBtn({ onclick } = {}) {
@@ -57,15 +74,24 @@ function makeBtn({ onclick } = {}) {
 }
 
 function makeInput(value = '') { return { value }; }
+function makeCheckbox(checked = true) { return { checked, type: 'checkbox' }; }
 function makeLabel() { return { textContent: '', style: { color: '' } }; }
 
-function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass = '' } = {}) {
+function makeRoot({
+  name = '', email = '', password = '', passwordConfirm,
+  notifyChecked = true, liEmail = '', liPass = '',
+} = {}) {
+  // Default the confirm field to mirror the password so existing tests stay
+  // valid; explicit callers can override.
+  const confirmValue = passwordConfirm === undefined ? password : passwordConfirm;
   const els = {
-    suSubmit: makeBtn(),
-    suError:  makeLabel(),
-    suName:   makeInput(name),
-    suEmail:  makeInput(email),
-    suPass:   makeInput(password),
+    suSubmit:      makeBtn(),
+    suError:       makeLabel(),
+    suName:        makeInput(name),
+    suEmail:       makeInput(email),
+    suPass:        makeInput(password),
+    suPassConfirm: makeInput(confirmValue),
+    suNotify:      makeCheckbox(notifyChecked),
     liSubmit: makeBtn(),
     liError:  makeLabel(),
     liEmail:  makeInput(liEmail),
@@ -79,16 +105,18 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
   const root = {
     querySelector(sel) {
       switch (sel) {
-        case '#su-submit-btn':   return els.suSubmit;
-        case '#su-error':        return els.suError;
-        case '#su-name':         return els.suName;
-        case '#su-email':        return els.suEmail;
-        case '#su-pass':         return els.suPass;
-        case '#li-submit-btn':   return els.liSubmit;
-        case '#li-error':        return els.liError;
-        case '#li-email':        return els.liEmail;
-        case '#li-pass':         return els.liPass;
-        case '#li-forgot-btn':   return els.liForgot;
+        case '#su-submit-btn':    return els.suSubmit;
+        case '#su-error':         return els.suError;
+        case '#su-name':          return els.suName;
+        case '#su-email':         return els.suEmail;
+        case '#su-pass':          return els.suPass;
+        case '#su-pass-confirm':  return els.suPassConfirm;
+        case '#su-notify':        return els.suNotify;
+        case '#li-submit-btn':    return els.liSubmit;
+        case '#li-error':         return els.liError;
+        case '#li-email':         return els.liEmail;
+        case '#li-pass':          return els.liPass;
+        case '#li-forgot-btn':    return els.liForgot;
         case "button[onclick=\"showSc('sauth-login')\"]":  return els.goLogin;
         case "button[onclick=\"showSc('sauth-signup')\"]": return els.goSignup;
         case '#ov-guest-upgrade': return els.upgradeOverlay;
@@ -97,6 +125,7 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
     },
     querySelectorAll(sel) {
       if (sel === 'button[onclick="continueAsGuest()"]') return [els.guest];
+      if (sel === '.pw-toggle') return [];
       return [];
     },
   };

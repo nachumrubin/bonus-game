@@ -336,6 +336,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   }
 
   function onCellClick(r, c) {
+    // Pending lock at this cell → clicking it again cancels.
+    const pendingLock = controller.view.pendingLock;
+    if (pendingLock && pendingLock.r === r && pendingLock.c === c) {
+      controller.recallLock?.();
+      selectedLockDuration = null;
+      renderLockInventory(controller.view);
+      return;
+    }
     const existing = controller.view.placed.find(p => p.r === r && p.c === c);
     if (existing) {
       // Two-step interaction with placed-this-turn tiles:
@@ -416,23 +424,27 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return;
     }
     if (selectedLockDuration != null) {
-      controller.placeLock?.({ r, c, duration: selectedLockDuration });
+      // Stage a pending lock rather than dispatching PLACE_LOCK directly.
+      // The player can still cancel via בטל or by re-clicking the cell;
+      // the lock only commits when they press שבץ.
+      controller.setPendingLock?.({ r, c, duration: selectedLockDuration });
       selectedLockDuration = null;
+      renderBoard(controller.view);
       renderLockInventory(controller.view);
       return;
     }
     if (selectedRackIndex == null) {
-      // Empty on-grid cell + nothing selected → quick-place a lock using the
-      // smallest available duration from the player's inventory. This makes
-      // locks accessible without first tapping the lock-inventory picker.
-      // Perimeter bonus squares (off-grid) are skipped — the engine's
-      // PLACE_LOCK only accepts 0..9 × 0..9 coordinates.
+      // Empty on-grid cell + nothing selected → quick-stage a pending lock
+      // using the smallest available duration from the player's inventory.
+      // Perimeter bonus squares (off-grid) are skipped — engine PLACE_LOCK
+      // only accepts 0..9 × 0..9 coordinates.
       if (r < 0 || r > 9 || c < 0 || c > 9) return;
       if (isCellBlockedForPlacement(controller.view, r, c)) return;
       const inventory = lockInventoryForView(controller.view);
       if (!inventory.length) return;
       const duration = Math.min(...inventory);
-      controller.placeLock?.({ r, c, duration });
+      controller.setPendingLock?.({ r, c, duration });
+      renderBoard(controller.view);
       renderLockInventory(controller.view);
       return;
     }
@@ -795,12 +807,19 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       for (let c = 0; c < 10; c++) {
         const cell = $(`#c${r}_${c}`, root);
         if (!cell) continue;
-        cell.classList?.remove('np', 'lk', 'ht', 'last-move', 'spine-live-preview', 'spine-lock-cell', 'locked-cell', 'selected-placed', 'swap-pending');
+        cell.classList?.remove('np', 'lk', 'ht', 'last-move', 'spine-live-preview', 'spine-lock-cell', 'locked-cell', 'selected-placed', 'swap-pending', 'pending-lock');
         const placedHere = v.placed?.find(p => p.r === r && p.c === c);
         const swapHere = v.swappedTiles?.find(s => s.r === r && s.c === c);
         const committed = boardTileAt(v, r, c);
         const lockedHere = lockAt(v, r, c);
-        if (swapHere) {
+        const pendingLockHere = v.pendingLock && v.pendingLock.r === r && v.pendingLock.c === c
+          ? v.pendingLock : null;
+        if (pendingLockHere) {
+          // Render with the same lock visuals but flag as pending so CSS
+          // can dim/dashed-border it, signalling "not committed yet".
+          cell.innerHTML = lockHTML({ r, c, duration: pendingLockHere.duration, slot: v.currentTurnSlot, remainingTurns: pendingLockHere.duration });
+          cell.classList?.add('spine-lock-cell', 'pending-lock', 'np');
+        } else if (swapHere) {
           // Render the NEW letter that's pending replacement. Mark with
           // .swap-pending so the user sees a swap is in progress; clicking
           // the cell again cancels.

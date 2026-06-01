@@ -40,13 +40,32 @@ export function startGlobe(canvas) {
   if (!canvas?.getContext) return () => {};
 
   const DPR  = Math.min(globalThis.devicePixelRatio ?? 1, 2);
-  const S    = 40;
-  canvas.width  = S * DPR;
-  canvas.height = S * DPR;
   const ctx  = canvas.getContext('2d');
-  ctx.scale(DPR, DPR);
-  const R    = S / 2;
-  const cx   = R, cy = R;
+
+  // Canvas CSS size is set by .home-globe / .em-circle-icon and varies with
+  // viewport. The bitmap must be sized to that CSS size × DPR or the browser
+  // up-scales a fixed-size bitmap and the globe looks blurry on large
+  // screens. Re-measure on resize and on the first few rAF frames (the
+  // canvas may be 0×0 at mount when the parent hasn't laid out yet).
+  let S = 40, R = 20, cx = 20, cy = 20;
+  function resize() {
+    const rect = canvas.getBoundingClientRect?.();
+    const cssSize = Math.max(40, Math.round(rect?.width || rect?.height || 40));
+    if (cssSize === S) return false;
+    S  = cssSize;
+    R  = S / 2;
+    cx = R; cy = R;
+    canvas.width  = S * DPR;
+    canvas.height = S * DPR;
+    // Each .setTransform call wipes prior scaling, so re-apply DPR after
+    // resizing. Using setTransform instead of scale() makes this idempotent
+    // across multiple resize() calls.
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    return true;
+  }
+  resize();
+  const win = canvas.ownerDocument?.defaultView ?? globalThis.window;
+  win?.addEventListener?.('resize', resize);
 
   let lonOff = -30;
   let rafId;
@@ -73,6 +92,9 @@ export function startGlobe(canvas) {
   }
 
   function frame() {
+    // Pick up a late-arriving layout: if the canvas now has a real CSS size
+    // that differs from what we sized the bitmap to, resize+continue.
+    resize();
     ctx.clearRect(0, 0, S, S);
 
     const oceanGrad = ctx.createRadialGradient(cx + R * 0.2, cy - R * 0.25, 0, cx, cy, R);
@@ -136,5 +158,8 @@ export function startGlobe(canvas) {
   }
 
   frame();
-  return () => { if (rafId) cancelAnimationFrame(rafId); };
+  return () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    win?.removeEventListener?.('resize', resize);
+  };
 }

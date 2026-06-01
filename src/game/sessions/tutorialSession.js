@@ -44,10 +44,15 @@ export function buildTutorialFirstMove() {
   });
 }
 
+// Letters the player practises during the extended tutorial (after the
+// bonus demo). The joker '?' powers the joker step; 'א' and 'ב' are easy
+// fillers used for the lock + replace-tile demos.
+export const TUTORIAL_EXTRA_LETTERS = Object.freeze(['?', 'א', 'ב']);
+
 export function seedTutorialRack(state, slot = 0) {
   if (!state?.racks?.[slot]) return;
   const rack = state.racks[slot];
-  const seeded = [...TUTORIAL_LETTERS, TUTORIAL_BONUS_LETTER];
+  const seeded = [...TUTORIAL_LETTERS, TUTORIAL_BONUS_LETTER, ...TUTORIAL_EXTRA_LETTERS];
   for (const letter of seeded) {
     const inBag = state.bag.indexOf(letter);
     if (inBag >= 0) state.bag.splice(inBag, 1);
@@ -90,14 +95,21 @@ export function attachScriptedTutorialBot(session, {
   function maybeAct(currentSlot) {
     if (currentSlot !== slot || pending) return;
     if (state.status !== 'playing') return;
-    if (nextMove >= moves.length) return;
     pending = true;
     scheduler(() => {
       pending = false;
       if (state.currentTurnSlot !== slot || state.status !== 'playing') return;
-      const placed = normalizeScriptedMove(moves[nextMove]);
-      ensureRackLetters(state, slot, placed);
-      engine.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed } });
+      if (nextMove < moves.length) {
+        const placed = normalizeScriptedMove(moves[nextMove]);
+        ensureRackLetters(state, slot, placed);
+        engine.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed } });
+      } else {
+        // No more scripted moves. The extended tutorial's later steps
+        // (exchange, lock, joker, tile-replace) all end the player's turn,
+        // so the bot has to hand control straight back instead of stalling
+        // on an idle turn. PASS_TURN advances the turn cleanly.
+        engine.dispatch({ type: CMD.PASS_TURN });
+      }
     }, thinkingMs);
   }
 

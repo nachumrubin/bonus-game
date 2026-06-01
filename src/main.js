@@ -310,8 +310,22 @@ async function boot() {
     if (!uid) return;
     const db = activeFbDb;
     try {
-      const pushReady = await notificationService.boot({ uid });
-      if (pushReady) await notificationService.loginUser(uid);
+      // Respect the user's signup-time notifications preference. Missing field
+      // (legacy / guest profiles) defaults to opted-in.
+      let wantsNotifications = true;
+      if (db) {
+        try {
+          const snap = await db.ref(`users/${uid}/profile/wantsNotifications`).get();
+          const v = snap?.val?.();
+          if (v === false) wantsNotifications = false;
+        } catch {}
+      }
+      if (wantsNotifications) {
+        const pushReady = await notificationService.boot({ uid });
+        if (pushReady) await notificationService.loginUser(uid);
+      } else {
+        console.info('[spine] skipping push setup — user opted out at signup');
+      }
     } catch (e) {
       console.warn('[spine] notification boot', e);
     }
@@ -1762,18 +1776,20 @@ async function boot() {
         .filter(g => g.opponentUid === friendUid)
         .slice(0, 5);
 
-      // Find shared active rooms
+      // Find shared active rooms.
+      // Rooms are world-readable, but `users/{friendUid}/...` is not — so we
+      // only read MY activeRoom + asyncRooms index and check whether the
+      // friend appears in those rooms' player lists.
       const activeGames = [];
       try {
-        const [myRoomId, friendRoomId] = await Promise.all([
-          fbDb.ref(`users/${myUid}/activeRoom`).get().then(s => s?.val?.() ?? null),
-          fbDb.ref(`users/${friendUid}/activeRoom`).get().then(s => s?.val?.() ?? null),
-        ]);
-        // Live game: both share the same active room
-        if (myRoomId && myRoomId === friendRoomId) {
+        const myRoomId = await fbDb.ref(`users/${myUid}/activeRoom`).get()
+          .then(s => s?.val?.() ?? null);
+        // Live game: my active room contains the friend as a player
+        if (myRoomId) {
           const room = await roomService.readRoom(fbDb, myRoomId);
           if (room && room.status === 'playing') {
-            activeGames.push({ roomId: myRoomId, room });
+            const uids = Object.values(room.players ?? {}).map(p => p.uid);
+            if (uids.includes(friendUid)) activeGames.push({ roomId: myRoomId, room });
           }
         }
         // Async games: scan my async index for rooms containing this friend
@@ -1907,7 +1923,7 @@ async function boot() {
     });
 
     // ── Auth intents (Firebase compat SDK) ──
-    bus.on(AUTH_INTENT.SIGN_UP, async ({ name, email, password }) => {
+    bus.on(AUTH_INTENT.SIGN_UP, async ({ name, email, password, wantsNotifications }) => {
       try { await ensureFirebaseGlobals(); } catch {}
       const fbAuth = activeFbAuth;
       const fbDb   = activeFbDb;
@@ -1923,6 +1939,7 @@ async function boot() {
         await profileService.claimUsername(fbDb, { uid, newName: name });
         const userId = profileService.generateUserId();
         const initial = profileService.buildInitialProfile({ displayName: name, userId });
+        initial.wantsNotifications = wantsNotifications !== false;
         await profileService.updateProfile(fbDb, uid, initial);
         await ratingService.upsertRatingLeaderboardEntry(fbDb, { uid, profile: initial, rating: initial.rating });
         await fbDb.ref(`userIds/${userId}`).set(uid);
@@ -2698,7 +2715,16 @@ async function boot() {
     }
 
     if (bot) {
-      const wordList = [...hebrewDictionary.DICT].filter(w => w.length >= 2 && w.length <= 6);
+      // Dictionary file is sorted by Hebrew word frequency (common words
+      // first), so slicing the first N entries yields a vocabulary the
+      // bot will actually choose from on EASY — capping at 7000 keeps
+      // the easy bot using only common, short words so it's noticeably
+      // easier than MEDIUM/HARD which see the full vocabulary.
+      const EASY_VOCAB_CAP = 7000;
+      const fullList = [...hebrewDictionary.DICT].filter(w => w.length >= 2 && w.length <= 6);
+      const wordList = (difficulty === 0)
+        ? fullList.slice(0, EASY_VOCAB_CAP)
+        : fullList;
       attachBotPlayer(session, {
         slot: 1, wordList,
         isWordValid: (w) => hebrewDictionary.isValid(w),
@@ -3007,10 +3033,14 @@ function installCutoverGlobals() {
   };
   globalThis._statsShare = globalThis._statsShare ?? function _statsShare() {};
   globalThis.signUpUser = globalThis.signUpUser ?? function signUpUser() {
+    const doc = globalThis.document;
+    const notifyEl = doc?.getElementById?.('su-notify');
     bus.emit(AUTH_INTENT.SIGN_UP, {
-      name: globalThis.document?.getElementById?.('su-name')?.value ?? '',
-      email: globalThis.document?.getElementById?.('su-email')?.value ?? '',
-      password: globalThis.document?.getElementById?.('su-pass')?.value ?? '',
+      name: doc?.getElementById?.('su-name')?.value ?? '',
+      email: doc?.getElementById?.('su-email')?.value ?? '',
+      password: doc?.getElementById?.('su-pass')?.value ?? '',
+      passwordConfirm: doc?.getElementById?.('su-pass-confirm')?.value ?? '',
+      wantsNotifications: notifyEl ? !!notifyEl.checked : true,
     });
   };
   globalThis.loginUser = globalThis.loginUser ?? function loginUser() {

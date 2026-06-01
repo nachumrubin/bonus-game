@@ -107,10 +107,15 @@ function buildDetailRecentHtml(games) {
   }
   return games.map(g => {
     const icon = g.result === 'win' ? '✅' : g.result === 'loss' ? '❌' : '🤝';
-    return `<div style="display:flex;gap:8px;padding:3px 0;font-size:11px;">`
-      + `<span>${icon}</span><span style="color:#fff;font-weight:700;">${g.score}</span>`
-      + `<span style="color:rgba(255,255,255,.4);">:</span>`
+    // direction:ltr locks the visual order so it always reads
+    // "mine : theirs ✓" left-to-right regardless of the parent's RTL flow.
+    // Gold (var(--by)) on the user's score makes "mine" unambiguous even
+    // when their score is the lower number (e.g. a forfeit/timeout win).
+    return `<div style="display:flex;gap:8px;padding:3px 0;font-size:12px;direction:ltr;justify-content:flex-end;align-items:baseline;">`
+      + `<span style="color:var(--by,#f5c518);font-weight:900;">${g.score}</span>`
+      + `<span style="color:rgba(255,255,255,.35);">:</span>`
       + `<span style="color:rgba(255,255,255,.6);">${g.opponentScore}</span>`
+      + `<span>${icon}</span>`
       + `</div>`;
   }).join('');
 }
@@ -249,7 +254,7 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     const statsEl   = $('#fd-stats', root);
     const recentEl  = $('#fd-recent', root);
 
-    if (avatarEl)  avatarEl.textContent  = friend.avatar ?? '👤';
+    if (avatarEl)  avatarEl.textContent  = resolveAvatar(friend.avatar, '👤');
     if (nameEl)    nameEl.textContent    = friend.name ?? '?';
     if (ratingEl)  ratingEl.textContent  = friend.rating != null ? `⭐ ${friend.rating}` : '';
     if (statsEl)   statsEl.innerHTML     = buildDetailStatsHtml(rivalEntry);

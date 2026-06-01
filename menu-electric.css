@@ -586,7 +586,11 @@
 }
 .em-circle-btn--resume .em-circle-title {
   font-size: calc(var(--circle-resume) * 0.14);
+  /* Allow "המשך משחק" to wrap to two lines inside the smaller circle. */
+  white-space: normal;
+  line-height: 1.05;
 }
+.em-circle-btn--resume .em-circle-text { max-width: 86%; }
 
 /* Icon container — proportional to its parent circle */
 .em-circle-icon {
@@ -668,21 +672,40 @@
   --nav-pad-y: calc(var(--nav-icon) * 0.42);
   --nav-gap:   calc(var(--nav-icon) * 0.12);
 
+  /* The bar itself stays at 100% of .hc (max 480px). A ::before pseudo
+     paints the dark background across the FULL viewport behind the bar,
+     so the icons stay centered in the 480px column while the band visually
+     spans edge to edge — mirroring the fixed topbar. */
   width: 100%;
+  position: relative;
   display: flex;
   flex-direction: row;
   justify-content: space-around;
   align-items: center;
-  background: rgba(0, 2, 13, 0.97);
+  background: transparent;
   border-top: none;
-  /* Fade from transparent at top → near-black = blends into background */
-  -webkit-mask: linear-gradient(to bottom, transparent 0%, black 18%);
-          mask: linear-gradient(to bottom, transparent 0%, black 18%);
   padding: var(--nav-pad-y) 4px;
   padding-bottom: max(var(--nav-pad-y), env(safe-area-inset-bottom));
   flex-shrink: 0;
-  position: relative;
   z-index: 5;
+}
+.em-bottom-nav::before {
+  content: '';
+  position: absolute;
+  /* DO NOT use `inset: 0` — that sets `right: 0`, and in RTL mode the
+     browser honors right+width and ignores `left: 50%`, so the band ends
+     up extending leftward only and stops at the nav's right edge.
+     Pin top/bottom only, then explicitly anchor the horizontal range. */
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  right: auto;
+  margin-left: -50vw;
+  width: 100vw;
+  background: rgba(0, 2, 13, 0.97);
+  border-top: 1px solid rgba(0, 185, 255, 0.18);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .em-nav-item {

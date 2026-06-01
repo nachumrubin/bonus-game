@@ -37,6 +37,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     lastInvalidReason: null,
     placed: [],          // tiles the human has placed but not confirmed
     swappedTiles: [],    // pending tile swaps (committed tile ⇄ rack tile)
+    pendingLock: null,   // { r, c, duration } the player picked but hasn't confirmed
     placementDirection: 'H',
     lockedCells: [],
     lockInventory: { 0: [], 1: [] },
@@ -95,6 +96,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     view.lastInvalidReason = null;
     view.placed = [];
     view.swappedTiles = [];
+    view.pendingLock = null;
     _onChange();
   }));
   subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra }) => {
@@ -126,6 +128,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     // until the player's next turn).
     view.placed = [];
     view.swappedTiles = [];
+    view.pendingLock = null;
     _onChange();
   }));
   subs.push(bus.on(EV.INVALID_MOVE_REJECTED, ({ reason }) => {
@@ -148,7 +151,7 @@ export function createGameController({ bus, session, mySlot = null }) {
   subs.push(bus.on(EV.TILES_EXCHANGED, () => { syncFromState(); _onChange(); }));
   subs.push(bus.on(EV.BOOST_ACTIVATED, () => { syncFromState(); _onChange(); }));
   subs.push(bus.on(EV.LIVE_PREVIEW_CHANGED, () => { syncFromState(); _onChange(); }));
-  subs.push(bus.on(EV.LOCK_PLACED, () => { syncFromState(); view.lastInvalidReason = null; view.placed = []; _onChange(); }));
+  subs.push(bus.on(EV.LOCK_PLACED, () => { syncFromState(); view.lastInvalidReason = null; view.placed = []; view.pendingLock = null; _onChange(); }));
   subs.push(bus.on(EV.LOCKS_CHANGED, () => { syncFromState(); _onChange(); }));
 
   // Listeners that the renderer registers to know when to re-paint.
@@ -158,6 +161,13 @@ export function createGameController({ bus, session, mySlot = null }) {
 
   // Mutators for tentative placement state (only the human's UI uses these).
   function placeTile({ r, c, letter, val, isJoker = false, rackIndex = null }) {
+    if (view.pendingLock) {
+      // Can't place tiles and a lock in the same turn — pendingLock
+      // already claims the turn-consuming action.
+      view.lastInvalidReason = 'pending-lock-active';
+      _onChange();
+      return false;
+    }
     if (isLockedCell(r, c) || boardTileAt(r, c)) {
       view.lastInvalidReason = isLockedCell(r, c) ? 'cell-locked' : 'cell-occupied';
       _onChange();
@@ -175,6 +185,35 @@ export function createGameController({ bus, session, mySlot = null }) {
   function recallAll() {
     view.placed = [];
     view.swappedTiles = [];
+    view.pendingLock = null;
+    _onChange();
+  }
+  // Stage a pending lock. The lock is NOT applied to engine state until
+  // confirmMove() runs — matching how pending tile placements work, so the
+  // player can change their mind with בטל or by tapping the cell again.
+  function setPendingLock({ r, c, duration } = {}) {
+    if (view.placed.length > 0 || view.swappedTiles.length > 0) {
+      view.lastInvalidReason = 'pending-tiles-active';
+      _onChange();
+      return false;
+    }
+    if (isLockedCell(r, c) || boardTileAt(r, c)) {
+      view.lastInvalidReason = isLockedCell(r, c) ? 'cell-locked' : 'cell-occupied';
+      _onChange();
+      return false;
+    }
+    if (!(view.lockInventory?.[view.currentTurnSlot] ?? []).includes(duration)) {
+      view.lastInvalidReason = 'lock-unavailable';
+      _onChange();
+      return false;
+    }
+    view.pendingLock = { r, c, duration };
+    view.lastInvalidReason = null;
+    _onChange();
+    return true;
+  }
+  function recallLock() {
+    view.pendingLock = null;
     _onChange();
   }
   // Swap a committed board tile with a rack tile. Adds a pending entry to
@@ -216,7 +255,7 @@ export function createGameController({ bus, session, mySlot = null }) {
 
   // Command dispatchers. UI buttons call these.
   function confirmMove() {
-    if (!view.placed.length) return false;
+    if (!view.placed.length && !view.pendingLock) return false;
     // Race guard: if the timer auto-passed us (or the engine otherwise
     // advanced the turn) between the moment the player tapped "שבץ" and
     // this dispatch, the engine would happily apply the tiles as the
@@ -225,9 +264,22 @@ export function createGameController({ bus, session, mySlot = null }) {
     if (mySlot != null && view.currentTurnSlot !== mySlot) {
       view.placed = [];
       view.swappedTiles = [];
+      view.pendingLock = null;
       view.lastInvalidReason = 'turn-already-passed';
       _onChange();
       return false;
+    }
+    // Pending lock takes priority — lock placement is its own complete
+    // turn action (engine advances the turn from PLACE_LOCK), and we've
+    // already enforced that pendingLock and placed tiles are mutually
+    // exclusive in their respective setters.
+    if (view.pendingLock) {
+      const { r, c, duration } = view.pendingLock;
+      // Clear the staged value before dispatch so a synchronous LOCK_PLACED
+      // listener (e.g. tutorial advance) sees a clean view.
+      view.pendingLock = null;
+      session.dispatch({ type: CMD.PLACE_LOCK, payload: { r, c, duration } });
+      return true;
     }
     session.dispatch({
       type: CMD.CONFIRM_MOVE,
@@ -306,6 +358,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     onChange,
     placeTile, recallTile, recallAll, setPlacementDirection,
     swapBoardTile, unswapBoardTile,
+    setPendingLock, recallLock,
     displayRackTile,
     confirmMove, passTurn, exchangeTiles, resign, placeLock,
     finalizeBoostAward,

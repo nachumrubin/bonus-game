@@ -273,6 +273,16 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
   background:linear-gradient(145deg,#355b75,#20384d)!important;
   box-shadow:inset 0 0 0 2px rgba(232,200,64,.5), inset 0 8px 16px rgba(0,0,0,.24)!important;
 }
+/* Pending lock: same shape but dimmed + dashed gold border, signalling
+   "you placed me but I'm not committed yet". Clears when שבץ confirms or
+   בטל recalls. cursor:pointer because the cell is still clickable to cancel. */
+.cell.pending-lock{
+  opacity:0.65;
+  cursor:pointer!important;
+  box-shadow:inset 0 0 0 2px rgba(232,200,64,.95), inset 0 8px 16px rgba(0,0,0,.24)!important;
+  outline:2px dashed rgba(255,230,120,.8);
+  outline-offset:-4px;
+}
 .spine-lock-badge{
   position:relative;
   width:100%;
@@ -562,6 +572,17 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .rq{background:rgba(0,0,0,.22);border-right:3px solid var(--by);padding:8px 10px;border-radius:3px;font-size:15px;color:#fff;margin-bottom:9px;line-height:1.8;letter-spacing:4px;}
 .ri{width:100%;padding:8px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);border-radius:4px;color:#fff;font-size:14px;font-family:'Heebo',sans-serif;direction:rtl;outline:none;margin-bottom:8px;}
 .ri:focus{border-color:var(--by);}
+/* Password field + show/hide toggle. The wrapper keeps the input + eye
+   button on the same row; the input is `.pw-input` and reserves space on
+   the right for the toggle so text never disappears behind the icon. */
+.pw-wrap{position:relative;display:block;margin-bottom:8px;}
+.pw-wrap .pw-input{margin-bottom:0;padding-right:36px;}
+.pw-toggle{position:absolute;top:50%;right:6px;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.55);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;font-family:inherit;}
+.pw-toggle:hover{color:#fff;}
+.pw-toggle.pw-shown{color:var(--by,#f5c518);}
+/* Signup notifications checkbox row */
+.su-checkbox-row{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.8);cursor:pointer;padding:4px 2px;line-height:1.4;}
+.su-checkbox-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--by,#f5c518);flex-shrink:0;}
 .urow{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:7px;}
 .ut{width:36px;height:40px;background:var(--tile);border:2px solid var(--tborder);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;color:#111;cursor:pointer;box-shadow:0 2px 0 var(--tshadow);}
 .ut.sl{background:rgba(255,255,255,.04);border:2px dashed rgba(255,255,255,.18);color:transparent;box-shadow:none;}
@@ -883,11 +904,22 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
    clone, so the actual UI control gets the visual emphasis. */
 .tut-pulse{position:relative;z-index:8100;filter:brightness(1.35) saturate(1.2) drop-shadow(0 0 8px rgba(255,215,0,.85));animation:tutPulse 1.05s ease-in-out infinite;}
 @keyframes tutPulse{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-4px) scale(1.06);}}
-#tut-tip{position:fixed;z-index:8200;background:#fff;color:#1a1a1a;border-radius:14px;padding:16px 18px;max-width:270px;font-size:14px;line-height:1.5;box-shadow:0 4px 24px rgba(0,0,0,.4);direction:rtl;}
+#tut-tip{position:fixed;z-index:8200;background:#fff;color:#1a1a1a;border-radius:14px;padding:16px 18px;max-width:270px;font-size:14px;line-height:1.5;box-shadow:0 4px 24px rgba(0,0,0,.4);direction:rtl;transition:top .25s ease,bottom .25s ease,left .25s ease,right .25s ease;}
 #tut-tip.hidden{display:none;}
+/* Anchor variants — picked at runtime by tutorialScreen based on where the
+   highlighted element sits, so the tip never covers the area it's pointing
+   to. Only ONE of top/bottom and ONE of left/right is set per variant. */
+#tut-tip.tut-anchor-top-right    { top:12px;    right:12px;   left:auto;   bottom:auto; }
+#tut-tip.tut-anchor-top-left     { top:12px;    left:12px;    right:auto;  bottom:auto; }
+#tut-tip.tut-anchor-bottom-right { bottom:12px; right:12px;   left:auto;   top:auto; }
+#tut-tip.tut-anchor-bottom-left  { bottom:12px; left:12px;    right:auto;  top:auto; }
+#tut-tip.tut-anchor-top-center   { top:12px;    left:50%;     right:auto;  bottom:auto; transform:translateX(-50%); }
+#tut-tip.tut-anchor-bottom-center{ bottom:12px; left:50%;     right:auto;  top:auto;    transform:translateX(-50%); }
 #tut-tip-lbl{font-size:11px;color:#888;margin-bottom:4px;}
 #tut-tip-next{background:#2d6080;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:14px;cursor:pointer;font-family:inherit;}
-#tut-tip-skip{background:transparent;color:#999;border:1px solid #ddd;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:inherit;}
+#tut-tip-skip{display:block;margin-top:10px;background:transparent;color:#999;border:1px solid #ddd;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;}
+#tut-tip-skip.hidden{display:none;}
+#tut-tip-skip:hover{color:#555;border-color:#bbb;}
 #tut-intro{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;}
 #tut-intro.hidden{display:none;}
 #tut-intro-box{background:#fff;border-radius:18px;padding:28px 24px;max-width:320px;width:88%;direction:rtl;box-shadow:0 8px 40px rgba(0,0,0,.5);}
@@ -2419,6 +2451,30 @@ button[aria-disabled="true"] {
   border-radius: 3px;
   font-family: 'Heebo', sans-serif;
   font-size: 12px;
+}
+/* Screenshots embedded in guide sections. Cap width so even tall captures
+   stay aligned with the body text, and add a thin border so they read as
+   reference media rather than UI. */
+.guide-shot {
+  margin: 12px auto;
+  padding: 0;
+  text-align: center;
+  max-width: 220px;
+}
+.guide-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  background: #02050d;
+}
+.guide-shot figcaption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  line-height: 1.4;
 }
 
 /* ── Claim-stall-end attention pulse ──

@@ -8,13 +8,19 @@
     "test:emulator": "firebase emulators:exec --project demo-bonus-game --only database \"node --test --test-concurrency=1 tests/emulator/*.test.mjs\"",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
+    "guide:screenshots": "playwright test tests/e2e/capture-guide-screenshots.spec.js --workers=1",
     "dict:add": "node scripts/add-dictionary-words.js",
-    "dict:export": "node scripts/export-dictionary-file.js"
+    "dict:export": "node scripts/export-dictionary-file.js",
+    "user:delete": "node scripts/delete-user.js",
+    "dev": "node scripts/dev.js",
+    "emu": "firebase emulators:start --project demo-bonus-game --only database,auth,hosting,ui --import=.emulator-data --export-on-exit=.emulator-data",
+    "emu:fresh": "firebase emulators:start --project demo-bonus-game --only database,auth,hosting,ui"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",
     "@playwright/test": "^1.60.0",
     "firebase": "^12.13.0",
+    "firebase-admin": "^13.10.0",
     "firebase-tools": "^15.18.0"
   }
 }

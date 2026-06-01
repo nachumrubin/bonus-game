@@ -1,10 +1,14 @@
 import { $, $$, on, setText } from '../domHelpers.js';
 
 export const TUTORIAL_INTENT = Object.freeze({
-  START: 'tutorial/start',
-  BACK: 'tutorial/back',
-  NEXT: 'tutorial/next',
-  SKIP: 'tutorial/skip',
+  START:     'tutorial/start',
+  BACK:      'tutorial/back',
+  NEXT:      'tutorial/next',
+  SKIP:      'tutorial/skip',
+  // Emitted when the player taps the per-step "דלג על שלב זה" link inside a
+  // tip. Advances the linear tutorial to the next demo step without forcing
+  // the player to perform the current step's action.
+  SKIP_STEP: 'tutorial/skipStep',
 });
 
 export const TUTORIAL_OPEN = 'tutorial/open';
@@ -14,9 +18,11 @@ export const TUTORIAL_CLEAR = 'tutorial/clear';
 
 // Selector substrings for targets that should pulse IN PLACE rather than
 // being mirrored by a body-level spotlight clone. These elements (rack
-// tiles, action buttons) are visually small, live outside any z-index trap,
-// and look better with a brightness + scale pulse than with a halo outline.
-const INPLACE_PULSE_CLASSES = ['bt2', 'bplay'];
+// tiles, action buttons, top-bar buttons) are visually small, live outside
+// any z-index trap, and look better with a brightness + scale pulse than
+// with a halo outline. `tb` covers the שאילתה/החלפת אות/הגדרות top-bar
+// buttons whose parent toolbar clips the .tut-lit box-shadow halo.
+const INPLACE_PULSE_CLASSES = ['bt2', 'bplay', 'tb'];
 
 export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountTutorialScreen: bus required');
@@ -25,6 +31,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   const tip = $('#tut-tip', root);
   const tipLabel = $('#tut-tip-lbl', root);
   const tipText = $('#tut-tip-txt', root);
+  const tipSkip = $('#tut-tip-skip', root);
   const start = $('#tut-intro-go', root);
   const back = $('#tut-intro-back', root);
   const cleanups = [];
@@ -33,11 +40,13 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   const spotlights = new Set();
   let currentSelectors = [];
   let currentTargets = [];
+  let allHighlightedTargets = [];
   let resizeAttached = false;
   let repaintTimers = [];
   let repaintRafs = [];
   let autoCloseTimer = null;
   let rackObserver = null;
+  let lastForcedPosition = null;
 
   takeOver(start, () => {
     intro?.classList?.add('hidden');
@@ -47,6 +56,12 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     intro?.classList?.add('hidden');
     bus.emit(TUTORIAL_INTENT.BACK, {});
   });
+  if (tipSkip) {
+    cleanups.push(on(tipSkip, 'click', (e) => {
+      e?.preventDefault?.();
+      bus.emit(TUTORIAL_INTENT.SKIP_STEP, {});
+    }));
+  }
 
   cleanups.push(bus.on(TUTORIAL_OPEN, () => intro?.classList?.remove('hidden')));
   cleanups.push(bus.on(TUTORIAL_CLOSE, () => intro?.classList?.add('hidden')));
@@ -62,16 +77,19 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
-  function showTip({ label = '', text = '', selectors = [], selector = null, autoCloseMs = 0 } = {}) {
+  function showTip({ label = '', text = '', selectors = [], selector = null, autoCloseMs = 0, showSkip = false, position = null } = {}) {
     clearHighlights();
     cancelAutoClose();
     setText(tipLabel, label);
     setText(tipText, text);
+    if (tipSkip) tipSkip.classList?.[showSkip ? 'remove' : 'add']?.('hidden');
     const list = Array.isArray(selectors) ? selectors.slice() : [];
     if (selector) list.push(selector);
     currentSelectors = list;
+    lastForcedPosition = position;
     applyHighlights();
     tip?.classList?.remove('hidden');
+    repositionTip(position);
     // Board cells, rack tiles, and bonus squares may not exist in the DOM
     // at the moment the tip fires (rack is re-rendered as a side effect of
     // selection/placement, not from GAME_STARTED directly). Re-resolve
@@ -89,6 +107,38 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     }
   }
 
+  // Place the tip in the viewport quadrant farthest from the first
+  // highlighted target so it doesn't obscure what it's pointing at. If
+  // `forced` is supplied (e.g. 'bottom-center'), use it verbatim instead.
+  function repositionTip(forced) {
+    if (!tip) return;
+    for (const cls of ['tut-anchor-top-right','tut-anchor-top-left','tut-anchor-bottom-right','tut-anchor-bottom-left','tut-anchor-top-center','tut-anchor-bottom-center']) {
+      tip.classList?.remove(cls);
+    }
+    const anchor = forced || pickAnchorForTargets(allHighlightedTargets);
+    tip.classList?.add(`tut-anchor-${anchor}`);
+  }
+
+  function pickAnchorForTargets(targets) {
+    const win = root.defaultView ?? globalThis.window;
+    const vw = win?.innerWidth ?? 1024;
+    const vh = win?.innerHeight ?? 768;
+    // No anchor target → default to top-right (the original behavior).
+    const first = targets?.find?.((el) => el?.getBoundingClientRect);
+    if (!first) return 'top-right';
+    const rect = first.getBoundingClientRect();
+    if (!rect || (rect.width === 0 && rect.height === 0)) return 'top-right';
+    const cx = (rect.left + rect.right) / 2;
+    const cy = (rect.top + rect.bottom) / 2;
+    const onLeftHalf = cx < vw / 2;
+    // Vertical bands: top third / middle / bottom third. Centered horizontal
+    // anchors work better for the middle band so the tip doesn't slam against
+    // a side panel.
+    if (cy < vh / 3)        return onLeftHalf ? 'bottom-right' : 'bottom-left';
+    if (cy > (2 * vh) / 3)  return onLeftHalf ? 'top-right'    : 'top-left';
+    return onLeftHalf ? 'top-right' : 'top-left';
+  }
+
   function isInPlaceTarget(el) {
     const cl = el?.classList;
     if (!cl) return false;
@@ -97,7 +147,8 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   }
 
   function applyHighlights() {
-    const targets = [];
+    const spotlightTargets = [];
+    const allTargets = [];
     for (const sel of currentSelectors) {
       for (const el of resolveSelector(sel)) {
         if (isInPlaceTarget(el)) {
@@ -105,16 +156,23 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
             el.classList.add('tut-pulse');
             pulseLit.add(el);
           }
+          if (!allTargets.includes(el)) allTargets.push(el);
           continue;
         }
         if (!lit.has(el)) {
           el.classList?.add('tut-lit');
           lit.add(el);
         }
-        if (!targets.includes(el)) targets.push(el);
+        if (!spotlightTargets.includes(el)) spotlightTargets.push(el);
+        if (!allTargets.includes(el)) allTargets.push(el);
       }
     }
-    currentTargets = targets;
+    // currentTargets feeds the spotlight overlay (non-pulse only — pulse
+    // targets paint themselves via .tut-pulse). allHighlightedTargets feeds
+    // pickAnchorForTargets so the tip can position itself relative to a
+    // pulsing toolbar button even when no spotlight clone is drawn.
+    currentTargets = spotlightTargets;
+    allHighlightedTargets = allTargets;
   }
 
   function resolveSelector(sel) {
@@ -138,7 +196,10 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     cancelScheduledPaints();
     const win = root.defaultView ?? globalThis.window;
     const raf = win?.requestAnimationFrame?.bind(win) ?? ((cb) => setTimeout(cb, 16));
-    const refresh = () => { applyHighlights(); paintSpotlights(currentTargets); };
+    // Re-resolve highlights AND re-pick the tip anchor on each pass — the
+    // target element may not exist on the first paint (rack tiles render
+    // after GAME_STARTED), and its final position decides the anchor.
+    const refresh = () => { applyHighlights(); paintSpotlights(currentTargets); repositionTip(lastForcedPosition); };
     repaintRafs.push(raf(refresh));
     repaintTimers.push(setTimeout(refresh, 150));
     repaintTimers.push(setTimeout(refresh, 400));
@@ -211,6 +272,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
 
   function onResize() {
     if (currentTargets.length) paintSpotlights(currentTargets);
+    repositionTip(lastForcedPosition);
   }
 
   function attachResize() {
@@ -254,6 +316,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     cancelAutoClose();
     clearHighlights();
     tip?.classList?.add('hidden');
+    lastForcedPosition = null;
     detachResize();
     detachRackObserver();
   }
@@ -269,6 +332,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     cancelScheduledPaints();
     currentSelectors = [];
     currentTargets = [];
+    allHighlightedTargets = [];
     for (const el of lit) el.classList?.remove('tut-lit');
     lit.clear();
     for (const el of pulseLit) el.classList?.remove('tut-pulse');

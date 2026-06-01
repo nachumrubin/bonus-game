@@ -122,6 +122,63 @@ test('placeTile refuses locked cells in the tentative UI', () => {
   assert.equal(controller.view.lastInvalidReason, 'cell-locked');
 });
 
+test('setPendingLock stages a lock without ending the turn', () => {
+  const { session, controller } = fresh();
+  const ok = controller.setPendingLock({ r: 4, c: 4, duration: 3 });
+  assert.equal(ok, true);
+  assert.deepEqual(controller.view.pendingLock, { r: 4, c: 4, duration: 3 });
+  // Engine state must be untouched: turn still on slot 0, inventory not consumed.
+  assert.equal(session.state.currentTurnSlot, 0);
+  assert.deepEqual(controller.view.lockInventory[0], [3, 3, 5]);
+  assert.equal(controller.view.lockedCells.length, 0);
+});
+
+test('recallLock clears the pending lock', () => {
+  const { controller } = fresh();
+  controller.setPendingLock({ r: 4, c: 4, duration: 3 });
+  controller.recallLock();
+  assert.equal(controller.view.pendingLock, null);
+});
+
+test('recallAll clears pendingLock alongside placed tiles', () => {
+  const { controller } = fresh();
+  controller.setPendingLock({ r: 4, c: 4, duration: 3 });
+  controller.recallAll();
+  assert.equal(controller.view.pendingLock, null);
+});
+
+test('confirmMove with a pendingLock dispatches PLACE_LOCK and advances the turn', () => {
+  const { session, controller } = fresh();
+  controller.setPendingLock({ r: 4, c: 4, duration: 3 });
+  const ok = controller.confirmMove();
+  assert.equal(ok, true);
+  assert.equal(controller.view.pendingLock, null);
+  // Engine consumed the lock + advanced.
+  assert.equal(session.state.currentTurnSlot, 1);
+  assert.deepEqual(controller.view.lockInventory[0], [3, 5]);
+  assert.equal(controller.view.lockedCells.length, 1);
+  assert.equal(controller.view.lockedCells[0].r, 4);
+  assert.equal(controller.view.lockedCells[0].c, 4);
+});
+
+test('setPendingLock refuses while pending tiles are placed', () => {
+  const { controller } = fresh();
+  controller.placeTile({ r: 4, c: 5, letter: 'ג', val: 3 });
+  const ok = controller.setPendingLock({ r: 4, c: 4, duration: 3 });
+  assert.equal(ok, false);
+  assert.equal(controller.view.pendingLock, null);
+  assert.equal(controller.view.lastInvalidReason, 'pending-tiles-active');
+});
+
+test('placeTile refuses while a pendingLock is staged', () => {
+  const { controller } = fresh();
+  controller.setPendingLock({ r: 4, c: 4, duration: 3 });
+  const placed = controller.placeTile({ r: 5, c: 5, letter: 'ג', val: 3 });
+  assert.equal(placed, false);
+  assert.equal(controller.view.placed.length, 0);
+  assert.equal(controller.view.lastInvalidReason, 'pending-lock-active');
+});
+
 test('resign ends the game', () => {
   const { session, controller } = fresh();
   controller.resign();
