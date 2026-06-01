@@ -65,9 +65,10 @@ export function g(key, gender) {
   return isFem(gender) ? pair[1] : pair[0];
 }
 
-// Updates all elements with [data-gm] or [data-gm-html] in root.
-//   data-gm / data-gf      → updates textContent
-//   data-gm-html / data-gf-html → updates innerHTML
+// Updates all elements with [data-gm], [data-gm-html], or [data-gm-placeholder] in root.
+//   data-gm / data-gf                    → updates textContent
+//   data-gm-html / data-gf-html          → updates innerHTML
+//   data-gm-placeholder / data-gf-placeholder → updates input.placeholder
 export function applyGenderToRoot(root, gender) {
   const fem = isFem(gender);
   for (const el of root?.querySelectorAll?.('[data-gm]') ?? []) {
@@ -75,5 +76,8 @@ export function applyGenderToRoot(root, gender) {
   }
   for (const el of root?.querySelectorAll?.('[data-gm-html]') ?? []) {
     el.innerHTML = fem ? (el.dataset.gfHtml ?? el.dataset.gmHtml) : el.dataset.gmHtml;
+  }
+  for (const el of root?.querySelectorAll?.('[data-gm-placeholder]') ?? []) {
+    el.placeholder = fem ? (el.dataset.gfPlaceholder ?? el.dataset.gmPlaceholder) : el.dataset.gmPlaceholder;
   }
 }

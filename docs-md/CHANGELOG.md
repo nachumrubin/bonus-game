@@ -2,6 +2,17 @@
 
 ---
 
+## Gender address toggle — Phase 2 extended — June 2026
+
+### What changed (Phase 2 extension — additional screens)
+
+- **`src/ui/genderText.js`** — `applyGenderToRoot` now also handles `data-gm-placeholder` / `data-gf-placeholder` attributes, updating `input.placeholder`.
+- **`partials/screens/setup.html`** — play button "▶ שחק!" tagged with `data-gm`/`data-gf` ("▶ שחקי!").
+- **`partials/screens/settings.html`** — "בדוק ✓" button, "📨 שלח הצעה" button, `#settings-shin` and `#dict-word-input` inputs tagged for gender.
+- **`partials/screens/online-lobby.html`** — subtitle and all three option-card descriptions tagged with `data-gm`/`data-gf`.
+
+---
+
 ## Gender address toggle ("באיזה לשון לפנות אליך?") — Phase 2 — June 2026
 
 **Branch:** `claude/gender-toggle-feature-iNBBE`
