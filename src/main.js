@@ -42,7 +42,7 @@ import * as friendsService from './game/account/friendsService.js';
 import * as ratingService from './game/account/ratingService.js?v=20260513111500';
 import * as dictionaryService from './game/account/dictionaryService.js';
 import * as settingsCompat from './game/settings/settingsCompat.js';
-import { applyGenderToRoot } from './ui/genderText.js';
+import { applyGenderToRoot, getGender } from './ui/genderText.js';
 import * as audioService from './ui/audioService.js';
 import * as feedbackService from './ui/feedbackService.js';
 import { startMatchmaking } from './game/online/spineMatchmaking.js';
@@ -154,6 +154,11 @@ async function boot() {
   }
 
   console.info('[spine] booting…');
+
+  // Stamp all data-gm/data-gf elements to the gender stored in localStorage.
+  // Without this, elements default to the masculine text baked into HTML and
+  // would only update after the user opens settings and changes the toggle.
+  applyGenderToRoot(globalThis.document, getGender());
 
   installCutoverGlobals();
 
