@@ -9,6 +9,7 @@
 // to favor cheap outcomes if balance tweaks are needed in the future.
 
 import { WHEEL_OUTCOMES } from '../../../game/boosts/bonusTileDefs.js';
+import { g, getGender } from '../../genderText.js';
 
 export const WHEEL_INTENT = Object.freeze({
   RESULT: 'wheel/result',
@@ -162,7 +163,7 @@ export function mountWheelMiniGame({
     <div style="background:#0d2068;border-radius:14px;padding:24px;max-width:320px;color:#fff;text-align:center;">
       <div style="font-size:30px;margin-bottom:6px;line-height:1;">🎡</div>
       <div style="font-size:18px;font-weight:900;color:#ffe870;margin-bottom:4px;">גלגל המזל!</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:12px;">לחץ על הגלגל להסתובב</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:12px;" id="spine-wheel-press-hint"></div>
       <div style="position:relative;width:240px;height:240px;margin:0 auto 14px;">
         <div data-wheel="dial" style="position:absolute;inset:0;border-radius:50%;overflow:hidden;
              background:conic-gradient(${conicStops});
@@ -181,15 +182,18 @@ export function mountWheelMiniGame({
              border-top:20px solid #ffe870;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));"></div>
       </div>
       <div data-wheel="result" style="font-size:14px;font-weight:900;color:#ffe870;min-height:18px;margin-bottom:14px;"></div>
-      <button data-wheel="spin" style="background:#e8c840;border:none;border-radius:8px;padding:10px 20px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;">סובב</button>
+      <button data-wheel="spin" style="background:#e8c840;border:none;border-radius:8px;padding:10px 20px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;"></button>
     </div>`;
 
   doc.body?.appendChild(host);
 
-  const spinBtn = host.querySelector('[data-wheel="spin"]');
-  const dial    = host.querySelector('[data-wheel="dial"]');
-  const hub     = host.querySelector('[data-wheel="hub"]');
-  const out     = host.querySelector('[data-wheel="result"]');
+  const spinBtn  = host.querySelector('[data-wheel="spin"]');
+  const dial     = host.querySelector('[data-wheel="dial"]');
+  const hub      = host.querySelector('[data-wheel="hub"]');
+  const out      = host.querySelector('[data-wheel="result"]');
+  const pressHint = host.querySelector('#spine-wheel-press-hint');
+  if (spinBtn)   spinBtn.textContent   = g('spinBtn', getGender());
+  if (pressHint) pressHint.textContent = g('pressWheel', getGender());
   let spinning = false;
 
   function doSpin() {

@@ -24,6 +24,7 @@
 //   FM_INTENT.RESULT
 
 import { startBonusTimer } from './bonusTimer.js';
+import { g, getGender } from '../../genderText.js';
 
 const DEFAULT_DURATION_MS = 40_000;
 const DEFAULT_PTS = 100;
@@ -239,7 +240,7 @@ export function mountFillMiddleMiniGame({
 
   function attachLegacy() {
     bovic.textContent = '⚡';
-    bovt.textContent  = 'בוסט 100 — מלא את החסר';
+    bovt.textContent  = g('fillMissingTitle', getGender());
     bovd.textContent  = `המילה מתחילה ב-"${first}" ומסתיימת ב-"${last}" — סדר את ${n} האותיות למילה (${Math.floor(durationMs/1000)} שניות!)`;
     bchal.innerHTML = '';
 
@@ -257,7 +258,7 @@ export function mountFillMiddleMiniGame({
     const handleSubmit = (e) => {
       e?.preventDefault?.();
       if (typed.includes(null)) {
-        flashStatus('מלא את כל המשבצות קודם!');
+        flashStatus(g('fillAllSquares', getGender()));
         return;
       }
       const attempt = assemble();
@@ -273,7 +274,7 @@ export function mountFillMiddleMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
         bchal.innerHTML = renderResult(result);
-        bok.textContent = 'המשך ▶';
+        bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
     };
@@ -288,7 +289,7 @@ export function mountFillMiddleMiniGame({
 
     const title = doc.createElement('div');
     title.style.cssText = 'font-size:16px;font-weight:900;margin-bottom:4px;';
-    title.textContent = '⚡ מלא את החסר';
+    title.textContent = '⚡ ' + g('fillMissing', getGender());
     card.appendChild(title);
 
     const sub = doc.createElement('div');

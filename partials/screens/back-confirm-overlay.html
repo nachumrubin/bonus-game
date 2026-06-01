@@ -5,7 +5,7 @@
     <div class="ovt">לצאת מהמשחק?</div>
     <div class="ovd">ההתקדמות לא תישמר אלא אם תבחר להשהות</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
-      <button class="ovb p" style="padding:11px;font-size:13px;" onclick="backConfirmStay()">← המשך לשחק</button>
+      <button class="ovb p" style="padding:11px;font-size:13px;" onclick="backConfirmStay()" data-gm="← המשך לשחק" data-gf="← המשיכי לשחק">← המשך לשחק</button>
       <button class="ovb s" style="padding:10px;font-size:13px;" onclick="pauseGame();backConfirmStay()">⏸ השהה ושמור</button>
       <button class="ovb s" style="padding:10px;font-size:13px;color:#ff8e8e;" onclick="backConfirmLeave()">🚪 צא בלי לשמור</button>
     </div>
@@ -19,7 +19,7 @@
     <div class="ovd" id="resign-confirm-msg">היריב יקבל ניצחון מיידי.</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
       <button class="ovb s" id="resign-confirm-yes" style="padding:11px;font-size:13px;color:#ff8e8e;">פרוש</button>
-      <button class="ovb p" id="resign-confirm-no" style="padding:11px;font-size:13px;">המשך לשחק</button>
+      <button class="ovb p" id="resign-confirm-no" style="padding:11px;font-size:13px;" data-gm="המשך לשחק" data-gf="המשיכי לשחק">המשך לשחק</button>
     </div>
   </div>
 </div>

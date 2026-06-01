@@ -12,6 +12,7 @@
 // and degrades gracefully when there's no document (returns a stub).
 
 import { CMD } from '../../../events/commands.js';
+import { g, getGender } from '../../genderText.js';
 
 export const UNS_INTENT = Object.freeze({
   RESULT: 'unscramble/result',
@@ -124,7 +125,7 @@ export function mountUnscrambleMiniGame({
     host.innerHTML = `
       <div style="background:#0d2068;border-radius:14px;padding:24px;max-width:340px;width:100%;color:#fff;text-align:center;">
         <div style="font-size:44px;margin-bottom:6px;">⚡</div>
-        <div style="font-size:18px;font-weight:900;margin-bottom:4px;">בנה את המילה</div>
+        <div style="font-size:18px;font-weight:900;margin-bottom:4px;" data-uns="build-title"></div>
         <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:8px;">
           <span data-uns="timer">${Math.floor(cfg.durationMs/1000)}</span> שניות · עד ${cfg.earnedPts} נקודות
         </div>
@@ -138,6 +139,8 @@ export function mountUnscrambleMiniGame({
           <button data-uns="give-up" style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;color:#fff;padding:8px;">דלג</button>
         </div>
       </div>`;
+    const buildTitle = host.querySelector('[data-uns="build-title"]');
+    if (buildTitle) buildTitle.textContent = g('buildWord', getGender());
     paintAnswer();
     paintBank();
     // Kick off the progress-bar shrink after a frame so the transition fires.
@@ -214,9 +217,11 @@ export function mountUnscrambleMiniGame({
         ${ok}
         <div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px;">המילה הנכונה היא:</div>
         <div style="font-size:30px;font-weight:900;color:#e8c840;letter-spacing:2px;margin-bottom:16px;">${puzzle.word}</div>
-        <button data-uns="continue" style="width:100%;background:#e8c840;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:900;color:#000;padding:10px;">המשך ▶</button>
+        <button data-uns="continue" style="width:100%;background:#e8c840;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:900;color:#000;padding:10px;"></button>
       </div>`;
-    host.querySelector('[data-uns="continue"]')?.addEventListener('click', () => {
+    const contBtn = host.querySelector('[data-uns="continue"]');
+    if (contBtn) contBtn.textContent = g('continueMiniGame', getGender());
+    contBtn?.addEventListener('click', () => {
       try { host.remove(); } catch { /* swallow */ }
     });
   }

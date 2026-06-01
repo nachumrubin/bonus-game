@@ -2,13 +2,53 @@
 
 ---
 
-## Gender address toggle ("באיזה לשון לפנות אליך?") — June 2026
+## Gender address toggle ("באיזה לשון לפנות אליך?") — Phase 2 — June 2026
+
+**Branch:** `claude/gender-toggle-feature-iNBBE`
+
+Phase 2 extends the gender preference system to all visible Hebrew imperative strings across the game UI.
+
+### What changed (Phase 2)
+
+1. **`src/ui/genderText.js`** (new) — Central utility: `GS` lookup table of M/F pairs, `getGender()`, `isFem()`, `g(key, gender)`, `applyGenderToRoot(root, gender)`. Handles `data-gm`/`data-gf` (textContent) and `data-gm-html`/`data-gf-html` (innerHTML).
+
+2. **HTML partials** — Added `data-gm`/`data-gf` attributes to all HTML elements with gendered imperative text:
+   - `game.html`: sbar hint, btn-recall, btn-play
+   - `bonus-intro-shown-before-every-interactive-boost-mini-game.html`: start button
+   - `joker-picker.html`: overlay title
+   - `exchange.html`: overlay description
+   - `pause-overlay.html`: resume button
+   - `back-confirm-overlay.html`: stay / continue-play buttons
+   - `claim-stall-end-confirm-overlay.html`: description, continue-play button
+   - `avatar-unlock-overlay.html`: continue button
+   - `stats-screen.html`: favorite-boost description
+
+3. **`src/ui/screens/pauseScreen.js`** / **`backConfirmScreen.js`** — Import `applyGenderToRoot, getGender`; call on mount, on open event, and on `SETTINGS_CHANGED`.
+
+4. **`src/ui/controllers/claimStallEndController.js`** — `openConfirm()` calls `applyGenderToRoot` on the overlay; SETTINGS_CHANGED listener applies gender live.
+
+5. **`src/ui/screens/bonusIntroScreen.js`** — `DESC_BY_TYPE` static object replaced by `descByType()` function that calls `g()` at render time.
+
+6. **`src/ui/screens/gameScreen.js`** — Imports `g`; all four `#sbar` status strings now use `g('key')`; four `invalidReasonText` cases use `g()`; SETTINGS_CHANGED listener calls `renderStatus` on gender change.
+
+7. **Mini-game screens** — All seven mini-games import `g, getGender` and use `g()` for their imperative text (status lines, finish/continue buttons, titles):
+   - `crosswordMiniGame.js`, `fillMiddleMiniGame.js`, `wheelMiniGame.js`, `unscrambleMiniGame.js`, `crossingWordsMiniGame.js`, `honeycombMiniGame.js`, `wordSearchMiniGame.js`
+
+8. **`src/ui/screens/friendsScreen.js`** — Invite button text uses `g('inviteToGame', getGender())`.
+
+9. **`src/ui/screens/waitingRoomScreen.js`** — `buildWhatsAppShareUrl(code, gender)` now accepts an optional gender param; message uses `g('shareGameMsg', gender)`.
+
+10. **`src/main.js`** — Imports `applyGenderToRoot`; the `SETTINGS_CHANGED` gender handler now calls `applyGenderToRoot(globalThis.document, changes.gender)` to update all live `data-gm`/`data-gf` elements in one pass.
+
+---
+
+## Gender address toggle ("באיזה לשון לפנות אליך?") — Phase 1 — June 2026
 
 **Branch:** `claude/gender-toggle-feature-iNBBE`
 
 Adds a persistent gender preference so all address to the user uses the correct Hebrew gender form.
 
-### What changed
+### What changed (Phase 1)
 
 1. **`src/game/settings/settingsCompat.js`** — Added `gender: 'זכר'` to `DEFAULT_UI_PREFERENCES`. `normalizeUiPreferences` now normalises the field: `'נקבה'` persists; any other value (including missing) falls back to `'זכר'`.
 
@@ -23,10 +63,6 @@ Adds a persistent gender preference so all address to the user uses the correct 
 6. **`src/main.js`** — (a) passes `getUiPrefs` to `mountSettingsScreen`; (b) the `SETTINGS_CHANGED` handler saves gender to `uiPreferences` via `mergeUiPreferences` and excludes it from Firebase room-settings syncs; (c) `pushReminder` calls now include `gender` read from `loadUiPreferences`.
 
 7. **`src/game/settings/settingsCompat.test.js`** — Updated UI preferences snapshot test to include `gender: 'זכר'`; added dedicated gender normalisation test.
-
-### Why these files only
-
-Most "second-person" Hebrew phrases in the codebase (`ניצחת`, `הפסדת`, `עזבת`, `פרשת`, `תורך`, `שמחכים לך`) are spelled identically for masculine and feminine in unvocalized Hebrew. The reminder body (`"אתה לא משחק"`) is the only phrase where the written forms visually diverge — it uses a pronoun (`אתה`/`את`) and a gendered present-tense verb (`משחק`/`משחקת`). All other UI messages were left unchanged.
 
 ---
 
