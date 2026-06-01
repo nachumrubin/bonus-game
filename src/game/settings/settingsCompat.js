@@ -20,6 +20,7 @@ export const DEFAULT_UI_PREFERENCES = Object.freeze({
   soundFx: true,
   vibration: true,
   lastDisplayName: '',
+  gender: 'זכר',
 });
 
 export function normalizeGameSettings(input = {}) {
@@ -96,6 +97,7 @@ export function normalizeUiPreferences(input = {}) {
     soundFx: raw.soundFx != null ? !!raw.soundFx : DEFAULT_UI_PREFERENCES.soundFx,
     vibration: raw.vibration != null ? !!raw.vibration : DEFAULT_UI_PREFERENCES.vibration,
     lastDisplayName: String(raw.lastDisplayName ?? raw.displayName ?? '').trim().slice(0, 40),
+    gender: raw.gender === 'נקבה' ? 'נקבה' : 'זכר',
   };
 }
 

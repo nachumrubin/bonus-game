@@ -2,6 +2,34 @@
 
 ---
 
+## Gender address toggle ("באיזה לשון לפנות אליך?") — June 2026
+
+**Branch:** `claude/gender-toggle-feature-iNBBE`
+
+Adds a persistent gender preference so all address to the user uses the correct Hebrew gender form.
+
+### What changed
+
+1. **`src/game/settings/settingsCompat.js`** — Added `gender: 'זכר'` to `DEFAULT_UI_PREFERENCES`. `normalizeUiPreferences` now normalises the field: `'נקבה'` persists; any other value (including missing) falls back to `'זכר'`.
+
+2. **`partials/screens/settings.html`** — New panel "באיזה לשון לפנות אליך?" with זכר / נקבה pills, placed below the vibration panel. Uses the same `.set-panel` / `.set-yesno` / `.set-yn` structure; wired entirely through `settingsScreen.js` (no `onclick` attributes).
+
+3. **`src/ui/screens/settingsScreen.js`** — Added a `VALUE_SELECTS` array for value-based (non-boolean) option groups; initial entry is the gender selector. `mountSettingsScreen` now accepts an optional `getUiPrefs` getter so the overlay can reflect the current gender when it opens. `refreshControls` and the `SETTINGS_CHANGED` listener both handle `VALUE_SELECTS`. Clicking a gender option emits `SETTINGS_CHANGED: { gender: 'זכר' | 'נקבה' }`.
+
+4. **`src/notifications/pushPayloadBuilder.js`** — `defaultBody` for `KIND.REMINDER` now checks `ctx.gender`: `'נקבה'` → `"את לא משחקת כבר X שעות"`, default → `"אתה לא משחק כבר X שעות"`.
+
+5. **`src/notifications/notificationService.js`** — `pushReminder` accepts an optional `gender` field and forwards it through `ctx`.
+
+6. **`src/main.js`** — (a) passes `getUiPrefs` to `mountSettingsScreen`; (b) the `SETTINGS_CHANGED` handler saves gender to `uiPreferences` via `mergeUiPreferences` and excludes it from Firebase room-settings syncs; (c) `pushReminder` calls now include `gender` read from `loadUiPreferences`.
+
+7. **`src/game/settings/settingsCompat.test.js`** — Updated UI preferences snapshot test to include `gender: 'זכר'`; added dedicated gender normalisation test.
+
+### Why these files only
+
+Most "second-person" Hebrew phrases in the codebase (`ניצחת`, `הפסדת`, `עזבת`, `פרשת`, `תורך`, `שמחכים לך`) are spelled identically for masculine and feminine in unvocalized Hebrew. The reminder body (`"אתה לא משחק"`) is the only phrase where the written forms visually diverge — it uses a pronoun (`אתה`/`את`) and a gendered present-tense verb (`משחק`/`משחקת`). All other UI messages were left unchanged.
+
+---
+
 ## Game summary UI fixes — May 2026
 
 **Branch:** `claude/game-summary-ui-fixes-qtv8c`

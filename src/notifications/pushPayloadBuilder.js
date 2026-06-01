@@ -36,7 +36,9 @@ function defaultBody(kind, ctx) {
     case KIND.INVITE_ACCEPTED:  return `${ctx.opponentName ?? 'יריב'} קיבל את ההזמנה`;
     case KIND.INVITE_REJECTED:  return `${ctx.opponentName ?? 'יריב'} דחה את ההזמנה`;
     case KIND.TURN:             return `${ctx.opponentName ?? 'היריב'} סיים מהלך. עכשיו תורך.`;
-    case KIND.REMINDER:         return `אתה לא משחק כבר ${ctx.hoursIdle ?? 24} שעות`;
+    case KIND.REMINDER:         return ctx.gender === 'נקבה'
+      ? `את לא משחקת כבר ${ctx.hoursIdle ?? 24} שעות`
+      : `אתה לא משחק כבר ${ctx.hoursIdle ?? 24} שעות`;
     case KIND.COMPLETED:        return ctx.didWin ? 'ניצחת! 🏆' : 'המשחק הסתיים';
     case KIND.EXPIRED:          return 'המשחק פג תוקף עקב חוסר פעילות';
     case KIND.FRIEND_REQUEST:   return `${ctx.fromName ?? 'משתמש'} שלח לך בקשת חברות`;

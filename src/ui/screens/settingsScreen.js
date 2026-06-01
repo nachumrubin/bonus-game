@@ -30,9 +30,21 @@ const TOGGLES = [
   { key: 'vibration', yesId: 'sett-vibration-yes', noId: 'sett-vibration-no' },
 ];
 
+// Value-select controls: one of N string values. Each option has an id.
+// The active option gets `active-yes`; others lose it.
+const VALUE_SELECTS = [
+  {
+    key: 'gender',
+    options: [
+      { value: 'זכר',   id: 'sett-gender-zachar' },
+      { value: 'נקבה', id: 'sett-gender-nekeiva' },
+    ],
+  },
+];
+
 const COUNTERS = [];
 
-export function mountSettingsScreen({ root = globalThis.document, bus, getSettings = () => globalThis.gameSettings } = {}) {
+export function mountSettingsScreen({ root = globalThis.document, bus, getSettings = () => globalThis.gameSettings, getUiPrefs = () => ({}) } = {}) {
   if (!bus) throw new Error('mountSettingsScreen: bus required');
   const overlay = $('#ov-settings', root);
   if (!overlay) {
@@ -70,6 +82,31 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
     if (no?.classList)  (value ? no.classList.remove('active-no') : no.classList.add('active-no'));
     bus.emit(SETTINGS_INTENT.TOGGLE, { key: tog.key, value });
     bus.emit(SETTINGS_CHANGED, { [tog.key]: value });
+  }
+
+  // ─── Value-selects (e.g. gender: 'זכר' | 'נקבה') ───────
+  for (const sel of VALUE_SELECTS) {
+    for (const opt of sel.options) {
+      const el = $(`#${opt.id}`, overlay);
+      if (el) {
+        cleanups.push(on(el, 'click', (e) => {
+          e.preventDefault?.();
+          selectSetting(sel, opt.value);
+        }));
+      }
+    }
+  }
+
+  function selectSetting(sel, value) {
+    for (const opt of sel.options) {
+      const el = $(`#${opt.id}`, overlay);
+      if (el?.classList) {
+        if (opt.value === value) el.classList.add('active-yes');
+        else el.classList.remove('active-yes');
+      }
+    }
+    bus.emit(SETTINGS_INTENT.TOGGLE, { key: sel.key, value });
+    bus.emit(SETTINGS_CHANGED, { [sel.key]: value });
   }
 
   // ─── Counters ───────────────────────────────────────────
@@ -116,7 +153,7 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
   }
 
   cleanups.push(bus.on(SETTINGS_OPEN, () => {
-    refreshControls(normalizeGameSettings(getSettings?.() ?? {}));
+    refreshControls(normalizeGameSettings(getSettings?.() ?? {}), getUiPrefs?.() ?? {});
     overlay.classList?.remove('hidden');
   }));
 
@@ -139,9 +176,20 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
       if (!Object.prototype.hasOwnProperty.call(changes, ctr.key)) continue;
       setText($(`#${ctr.displayId}`, overlay), String(merged[ctr.key]).padStart(2, '0'));
     }
+    for (const sel of VALUE_SELECTS) {
+      if (!Object.prototype.hasOwnProperty.call(changes, sel.key)) continue;
+      const value = changes[sel.key];
+      for (const opt of sel.options) {
+        const el = $(`#${opt.id}`, overlay);
+        if (el?.classList) {
+          if (opt.value === value) el.classList.add('active-yes');
+          else el.classList.remove('active-yes');
+        }
+      }
+    }
   }));
 
-  function refreshControls(settings) {
+  function refreshControls(settings, uiPrefs = {}) {
     for (const tog of TOGGLES) {
       const value = !!settings[tog.key];
       const yes = $(`#${tog.yesId}`, overlay);
@@ -151,6 +199,16 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
     }
     for (const ctr of COUNTERS) {
       setText($(`#${ctr.displayId}`, overlay), String(settings[ctr.key]).padStart(2, '0'));
+    }
+    for (const sel of VALUE_SELECTS) {
+      const value = uiPrefs[sel.key] ?? sel.options[0].value;
+      for (const opt of sel.options) {
+        const el = $(`#${opt.id}`, overlay);
+        if (el?.classList) {
+          if (opt.value === value) el.classList.add('active-yes');
+          else el.classList.remove('active-yes');
+        }
+      }
     }
   }
 

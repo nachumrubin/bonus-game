@@ -190,10 +190,10 @@ export async function pushFriendAccepted({ recipientUid, accepterName }) {
   });
 }
 
-export async function pushReminder({ recipientUid, opponentName, roomId, hoursIdle }) {
+export async function pushReminder({ recipientUid, opponentName, roomId, hoursIdle, gender }) {
   await sendPush(KIND.REMINDER, {
     externalIds: [recipientUid],
-    ctx: { roomId, opponentName, hoursIdle },
+    ctx: { roomId, opponentName, hoursIdle, gender },
   });
 }
 
