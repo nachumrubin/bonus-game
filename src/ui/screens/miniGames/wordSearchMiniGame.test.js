@@ -174,3 +174,21 @@ test('throws if bus is missing or words option is not an array', () => {
   assert.throws(() => mountWordSearchMiniGame({}), /bus required/);
   assert.throws(() => mountWordSearchMiniGame({ bus, words: 'oops' }), /words/);
 });
+
+test('placeWords: sofit letters in input words are normalised to base forms in grid and p.word', () => {
+  // 'שלום' ends with ם (mem sofit), 'מלך' ends with ך (kaf sofit).
+  // Both should appear on the grid and in p.word with base-form letters (מ / כ).
+  const sofitWords = ['שלום', 'מלך', 'בית'];
+  const { grid, placements } = placeWords(sofitWords, { size: 8, rng: rngSeed(42) });
+  const SOFIT = new Set(['ך', 'ם', 'ן', 'ף', 'ץ']);
+  for (const row of grid) {
+    for (const ch of row) {
+      assert.ok(!SOFIT.has(ch), `grid cell should not contain sofit letter, got ${ch}`);
+    }
+  }
+  for (const p of placements) {
+    for (const ch of p.word) {
+      assert.ok(!SOFIT.has(ch), `p.word should not contain sofit letter, got ${ch} in "${p.word}"`);
+    }
+  }
+});

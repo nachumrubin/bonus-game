@@ -28,6 +28,10 @@
 
 const HEBREW_LETTERS = 'אבגדהוזחטיכלמנסעפצקרשת'.split('');
 
+// Map final-form letters to their base forms so grid tiles never show sofit chars.
+const SOFIT_TO_BASE = {'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'};
+function normWord(w) { return [...w].map(ch => SOFIT_TO_BASE[ch] ?? ch).join(''); }
+
 const ALL_DIRECTIONS = [
   [0, 1], [0, -1],            // horizontal
   [1, 0], [-1, 0],            // vertical
@@ -39,7 +43,7 @@ const ALL_DIRECTIONS = [
 // forms (ך / ם / ן / ף / ץ) so reverse-direction matches don't introduce
 // invalid Hebrew.
 export const HEBREW_WORD_POOL = Object.freeze([
-  'ילד','ספר','בית','כלב','שיר','חלב','לחם','גשר','רגל','ראש',
+  'ילד','ספר','בית','כלב','שיר','חלב','לחמ','גשר','רגל','ראש',
   'דגל','שדה','ריח','דבש','רכב','חצר','שבת','ורד','לבד','שחר',
   'יחד','סוד','דבר','חבר','כלי','גדול','ארנב','כביש','מגדל','שורש',
 ]);
@@ -98,8 +102,10 @@ export function placeWords(words, {
   const placements = [];
 
   // Shuffle then truncate (legacy: const wordList = [...POOL].sort(...).slice(0, 10)).
+  // normWord strips sofit letters (ם→מ etc.) so grid tiles never show final forms.
   const shuffled = words
     .filter(w => typeof w === 'string' && w.length >= 2 && w.length <= size)
+    .map(normWord)
     .slice()
     .sort(() => rng() - 0.5);
   const wordList = shuffled.slice(0, maxWords);

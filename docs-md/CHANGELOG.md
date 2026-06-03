@@ -2,6 +2,30 @@
 
 ---
 
+## Bug fix: sofit (final-form) letters on board tiles and תפזורת grid — June 2026
+
+### Problem
+
+Hebrew final-form letters (ם ן ף ך ץ) were appearing on board tiles and word-search grid cells in two separate code paths:
+
+1. **Bot joker placement** — the bot's word list was built directly from `hebrewDictionary.DICT` without normalising final forms. Words like `שלום` (ending in ם, mem sofit) couldn't be matched against the rack tiles (which use regular מ), so the bot would needlessly consume a joker and assign it `letter: 'ם'`. The joker tile then appeared on the board with the final-form character.
+
+2. **תפזורת word search** — `HEBREW_WORD_POOL` contained `'לחם'` with a real mem sofit (U+05DD) at the end — a copy-paste error that slipped past the "no final forms" comment. Additionally, `placeWords()` placed word letters verbatim without normalising, meaning any caller passing words with sofit chars would produce grid tiles that display the final form.
+
+### Fix
+
+- **`src/main.js`** — normalise and deduplicate the bot word list with `hebrewDictionary.norm()` before passing it to `attachBotPlayer`. The bot now only tries to place words in base-letter form, so rack matching is always correct and jokers are never assigned sofit letters.
+
+- **`src/ui/screens/miniGames/wordSearchMiniGame.js`** — added `SOFIT_TO_BASE` map and `normWord()` helper. `placeWords()` now maps every incoming word through `normWord()` before placing it, so grid tiles and `p.word` (used for chip display and matching) are always in base-letter form. Also corrected `'לחם'` in `HEBREW_WORD_POOL` from ם (U+05DD) to מ (U+05DE).
+
+- **`src/ui/screens/miniGames/wordSearchMiniGame.test.js`** — added regression test: passes words with sofit letters (`'שלום'`, `'מלך'`) and asserts no final-form character appears in the grid or `p.word` of any placement.
+
+### Verification
+
+- 175/175 unit tests pass; 20/20 word-search tests pass (including new regression test).
+
+---
+
 ## UX: reversible lock placement + new-tile glow after exchange — June 2026
 
 ### Reversible lock placement
