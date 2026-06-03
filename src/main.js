@@ -2712,7 +2712,11 @@ async function boot() {
     }
 
     if (bot) {
-      const wordList = [...hebrewDictionary.DICT].filter(w => w.length >= 2 && w.length <= 6);
+      const wordList = [...new Set(
+        [...hebrewDictionary.DICT]
+          .filter(w => w.length >= 2 && w.length <= 6)
+          .map(w => hebrewDictionary.norm(w)),
+      )];
       attachBotPlayer(session, {
         slot: 1, wordList,
         isWordValid: (w) => hebrewDictionary.isValid(w),
