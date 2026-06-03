@@ -2094,7 +2094,21 @@ async function boot() {
 
   console.info('[spine] account route active');
 
+  // Navigation stack for the back-button handler registered further below.
+  // Tracks which screens have been visited so the native back gesture can
+  // navigate to the preceding screen (or open the quit overlay when in-game).
+  let _scStack = ['sh'];
+  let _scBack  = false;   // true while showLegacyScreen is being called from
+                           // the popstate handler to avoid a re-push
+
   function showLegacyScreen(id) {
+    if (!_scBack) {
+      if (id === 'sh') {
+        _scStack = ['sh'];    // going home resets depth (e.g. after game ends)
+      } else {
+        _scStack.push(id);
+      }
+    }
     const showSc = globalThis.showSc;
     if (typeof showSc === 'function') {
       try { showSc(id); return; } catch { /* swallow */ }
@@ -2940,6 +2954,42 @@ async function boot() {
     // when something later calls showScreen('sh'). Trigger it once here so
     // the buttons cascade in on initial load too.
     spineShowScreen('sh', { doc: globalThis.document });
+  }
+
+  // Native back-button (browser ← / Android back gesture) interception.
+  //
+  // Strategy: park a sentinel history entry on top of whatever the browser
+  // has so that the first back-press fires a `popstate` event rather than
+  // unloading the page.  Re-push the sentinel after each press so subsequent
+  // presses are caught too.
+  //
+  // Behaviour:
+  //   • Game screen ('sg'): intercept → show the quit overlay (same as סיום).
+  //   • Any other screen: pop the navigation stack and show the previous screen.
+  if (globalThis.history?.pushState && !globalThis.__spineBackWired) {
+    globalThis.__spineBackWired = true;
+    globalThis.history.pushState({ spineBack: true }, '');
+
+    globalThis.addEventListener('popstate', (e) => {
+      if (!e.state?.spineBack) return;
+      const currentScreen = _scStack[_scStack.length - 1] ?? 'sh';
+      if (currentScreen === 'sg') {
+        // Keep the sentinel in history so the next back-press is also caught.
+        globalThis.history.pushState({ spineBack: true }, '');
+        bus.emit(BACK_OPEN, {});
+      } else {
+        _scStack.pop();
+        const prev = _scStack[_scStack.length - 1] ?? 'sh';
+        // Re-push sentinel before navigating so it's always on top.
+        globalThis.history.pushState({ spineBack: true }, '');
+        _scBack = true;
+        try {
+          showLegacyScreen(prev);
+        } finally {
+          _scBack = false;
+        }
+      }
+    });
   }
 }
 

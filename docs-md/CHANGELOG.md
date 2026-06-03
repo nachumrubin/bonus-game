@@ -2,6 +2,24 @@
 
 ---
 
+## Feature: native back-button support — June 2026
+
+The Android/browser "back" (`<`) button is now intercepted and handled inside the app rather than navigating in browser history.
+
+**Behaviour:**
+- **In the game screen**: back opens the quit overlay (identical to tapping "סיום").
+- **Any other screen**: back navigates to the previously shown screen (uses an in-memory navigation stack that is maintained across all `showLegacyScreen` calls; going home resets the stack).
+
+**Implementation (src/main.js):**
+- `showLegacyScreen` now maintains `_scStack` — a running array of screen IDs visited in order. Calling `showLegacyScreen('sh')` resets the stack to `['sh']` so stale game-session depth is cleared after each game ends.
+- A `popstate` listener is registered once (guarded by `__spineBackWired`) by parking a `{ spineBack: true }` sentinel entry in the browser History API. On every back-press the sentinel is re-pushed so subsequent presses are also caught, then:
+  - screen is `'sg'` → `bus.emit(BACK_OPEN)` (opens quit overlay).
+  - any other screen → pop the stack, call `showLegacyScreen(prev)` with `_scBack = true` so the pop-navigation doesn't itself push onto the stack.
+
+**Verification:** 175/175 unit tests pass.
+
+---
+
 ## Bug fix: sofit (final-form) letters on board tiles and תפזורת grid — June 2026
 
 ### Problem
