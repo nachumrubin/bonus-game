@@ -87,10 +87,16 @@ export function createTimeoutWatchdog({
   // and other boost types (extra_turn, etc.) are preserved.
   function applyPatchToRoom(room, patch) {
     const timedOutSlot = patch.turn === 0 ? 1 : 0;
+    // Default to [] when the room doesn't have activeBoosts — Firebase
+    // serializes empty arrays as missing on roundtrip, so room.activeBoosts
+    // can be undefined for a fresh room with no boosts. Without this
+    // fallback the transaction write fails ("Data returned contains
+    // undefined in property activeBoosts"). Surfaced by the simulator's
+    // watchdog scenario seeding rooms with no boosts.
     const nextActiveBoosts = Array.isArray(room.activeBoosts)
       ? room.activeBoosts.filter(b =>
           !(b?.slot === timedOutSlot && b?.boostId === 'multiply_next_turns'))
-      : room.activeBoosts;
+      : [];
     const out = {
       ...room,
       currentTurnSlot: patch.currentTurnSlot,

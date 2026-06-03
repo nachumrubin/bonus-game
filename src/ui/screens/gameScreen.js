@@ -67,6 +67,12 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   let animateNextRackRender = false;
   let lastOwnPreviewSignature = '';
   let selectedLockDuration = null;
+  // Rack indices that received a freshly-drawn tile from the bag on the
+  // most recent EXCHANGE. Drives the .bt2-just-arrived class so the user
+  // can see which tiles are new. Cleared 2s after the exchange — the
+  // timeout is tracked so a second exchange resets it cleanly.
+  let recentlyArrivedRackIdxs = new Set();
+  let recentlyArrivedClearTimer = null;
   // (r, c) of a pending tile currently highlighted on the board. Click-to-
   // select / click-again-to-recall semantics. Cleared on confirm, recall-all,
   // exchange, or any other action that empties view.placed.
@@ -274,6 +280,33 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     cleanups.push(bus.on(SETTINGS_CHANGED, (changes = {}) => {
       if ('gender' in changes) renderStatus(controller.view);
     }));
+    // Highlight the freshly-drawn tiles after an exchange so the user can
+    // see which ones are new. tileBag.drawInto appends to the end of the
+    // rack, so the new tiles are at the LAST `count` indices in the
+    // post-exchange rack. We only highlight on exchanges by the local
+    // player (mySlot match) — an opponent's exchange in online doesn't
+    // even show on our rack. In hot-seat 2P both players use the same
+    // rack render, so we accept any local-side exchange.
+    cleanups.push(bus.on(EV.TILES_EXCHANGED, ({ count, slot } = {}) => {
+      const mySlot = controller.view?.mySlot;
+      const showingSlot = mySlot != null ? mySlot : controller.view?.currentTurnSlot;
+      if (Number(slot) !== Number(showingSlot)) return;
+      const drawn = Math.max(0, Number(count) || 0);
+      if (!drawn) return;
+      const rackLen = (controller.view?.rackForMe ?? []).length;
+      const startIdx = Math.max(0, rackLen - drawn);
+      recentlyArrivedRackIdxs = new Set();
+      for (let i = startIdx; i < rackLen; i++) recentlyArrivedRackIdxs.add(i);
+      if (recentlyArrivedClearTimer) clearTimeout(recentlyArrivedClearTimer);
+      recentlyArrivedClearTimer = setTimeout(() => {
+        recentlyArrivedRackIdxs = new Set();
+        recentlyArrivedClearTimer = null;
+        try { renderRack(controller.view); } catch { /* swallow */ }
+      }, 2000);
+      // Render now so the class lands on the first repaint, not after the
+      // cascade-in finishes 280ms later.
+      try { renderRack(controller.view); } catch { /* swallow */ }
+    }));
   }
   cleanups.push(on(exchangeCancel, 'click', (e) => { e.preventDefault?.(); closeExchangeOverlay(); }));
   cleanups.push(on(btnDirH, 'click', (e) => { e.preventDefault?.(); controller.setPlacementDirection?.('H'); }));
@@ -423,9 +456,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return;
     }
     if (selectedLockDuration != null) {
-      controller.placeLock?.({ r, c, duration: selectedLockDuration });
+      // Pending-lock placement: shows a preview on the cell. The actual
+      // PLACE_LOCK dispatch waits for the user to tap שבץ (handled by
+      // controller.confirmMove). Tap-again-to-toggle is built into
+      // setPendingLock so misclicks are reversible without going to בטל.
+      controller.setPendingLock?.({ r, c, duration: selectedLockDuration });
       selectedLockDuration = null;
       renderLockInventory(controller.view);
+      renderBoard(controller.view);
       return;
     }
     if (selectedRackIndex == null) {
@@ -433,14 +471,16 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       // smallest available duration from the player's inventory. This makes
       // locks accessible without first tapping the lock-inventory picker.
       // Perimeter bonus squares (off-grid) are skipped — the engine's
-      // PLACE_LOCK only accepts 0..9 × 0..9 coordinates.
+      // PLACE_LOCK only accepts 0..9 × 0..9 coordinates. Same pending-then-
+      // confirm flow as the explicit-duration path above.
       if (r < 0 || r > 9 || c < 0 || c > 9) return;
       if (isCellBlockedForPlacement(controller.view, r, c)) return;
       const inventory = lockInventoryForView(controller.view);
       if (!inventory.length) return;
       const duration = Math.min(...inventory);
-      controller.placeLock?.({ r, c, duration });
+      controller.setPendingLock?.({ r, c, duration });
       renderLockInventory(controller.view);
+      renderBoard(controller.view);
       return;
     }
     const rackTile = controller.displayRackTile?.(selectedRackIndex);
@@ -802,7 +842,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       for (let c = 0; c < 10; c++) {
         const cell = $(`#c${r}_${c}`, root);
         if (!cell) continue;
-        cell.classList?.remove('np', 'lk', 'ht', 'last-move', 'spine-live-preview', 'spine-lock-cell', 'locked-cell', 'selected-placed', 'swap-pending');
+        cell.classList?.remove('np', 'lk', 'ht', 'last-move', 'spine-live-preview', 'spine-lock-cell', 'spine-pending-lock-cell', 'locked-cell', 'selected-placed', 'swap-pending');
         const placedHere = v.placed?.find(p => p.r === r && p.c === c);
         const swapHere = v.swappedTiles?.find(s => s.r === r && s.c === c);
         const committed = boardTileAt(v, r, c);
@@ -830,6 +870,12 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         } else if (lockedHere) {
           cell.innerHTML = lockHTML(lockedHere);
           cell.classList?.add('spine-lock-cell', 'locked-cell');
+        } else if (v.pendingLock && v.pendingLock.r === r && v.pendingLock.c === c) {
+          // Tentative lock — same icon as a committed lock but with a
+          // .pending modifier so CSS can dim/animate it to signal "this is
+          // not yet confirmed". Tap again to remove, or tap שבץ to commit.
+          cell.innerHTML = lockHTML({ remainingTurns: v.pendingLock.duration });
+          cell.classList?.add('spine-lock-cell', 'spine-pending-lock-cell');
         } else {
           cell.innerHTML = '';
         }
@@ -926,13 +972,17 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const { letter, isJoker, val } = tile;
       const sel = (i === selectedRackIndex) ? ' sel' : '';
       const jok = isJoker ? ' jok' : '';
+      // Freshly-drawn tile from the most recent exchange — apply the
+      // glow class so the user can see what's new. Cleared after 2s by
+      // the EV.TILES_EXCHANGED subscriber.
+      const arrived = recentlyArrivedRackIdxs.has(i) ? ' bt2-just-arrived' : '';
       const display = isJoker
         ? `<span class="jok-sym"><img class="jok-img" src="jocker.PNG" alt=""></span>`
         : letter;
       const valDisplay = isJoker ? '' : val;
       const anim = shouldAnimate ? ` anim-in" style="animation:tileDropIn .35s cubic-bezier(.22,.68,0,1.2) both;animation-delay:${i * 35}ms"` : '"';
       const dataLetter = isJoker ? '?' : letter;
-      html += `<div class="bt2${sel}${jok}${anim} data-rack-letter="${dataLetter}" data-rack-idx="${i}"><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
+      html += `<div class="bt2${sel}${jok}${arrived}${anim} data-rack-letter="${dataLetter}" data-rack-idx="${i}"><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
     }
     brack.innerHTML = html;
   }

@@ -83,6 +83,11 @@ Critical element IDs referenced by game logic (must not be renamed):
 #ov-bonus              — bonus mini-game overlay (checked by animation poller)
 #ov-bonus-intro        — bonus intro overlay (checked by animation poller)
 .bonus-award-positioner — bonus award container (checked by animation poller)
+#net-status            — live connectivity indicator (wifi icon) in the game top-bar.
+                          Toggled by connectivityIndicator.js. Classes:
+                          .is-visible (online-mode game in progress),
+                          .is-online (green, connected),
+                          .is-offline (red + blink, WebSocket down).
 
 Reaction system (online games only):
 #rxn-btn-slot0         — reaction trigger button inside #is-sb1 (shown for mySlot=0)

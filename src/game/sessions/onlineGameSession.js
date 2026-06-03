@@ -20,6 +20,7 @@ import { EV } from '../../events/eventTypes.js';
 import { createEngine } from '../core/gameEngine.js';
 import {
   engineStateFromRoom,
+  readRoom,
   watchRoom,
   commitTransaction,
   leaveRoom,
@@ -29,6 +30,7 @@ import {
   turnLimitMsFromSettings,
 } from '../online/roomService.js';
 import { setCommittedTile } from '../core/board.js';
+import { deserializeBoard } from '../online/schema.js';
 import { modeDescriptor } from './modes.js';
 
 /**
@@ -112,6 +114,57 @@ export async function createOnlineGameSession({
     if (newVersion > lastAppliedVersion) lastAppliedVersion = newVersion;
   }
 
+  // Re-read the authoritative room and rebuild local state. Called on
+  // SYNC_REJECTED — the dispatch path optimistically mutated state.board /
+  // state.scores / state.racks / state.bag etc, but the commit lost the
+  // version race (watchdog claimed, opponent moved first, rule rejected,
+  // etc). Without this, the optimistic mutation lives on the active player's
+  // screen ("ghost move") while the server doesn't have it.
+  //
+  // The watcher's resync block handles the case where a NEW snapshot
+  // arrives, but after a failed commit there often isn't one — the room is
+  // already at its latest version and our watcher's lastAppliedVersion is
+  // up-to-date. We have to pull explicitly. Surfaced by the simulator's
+  // e2e forced-deadline-loss scenario.
+  async function forceResync(reason) {
+    let incoming = null;
+    try { incoming = await readRoom(db, room.roomId); } catch { /* swallow */ }
+    if (!incoming) return;
+    // Replace engine state with the freshly-read authoritative state. We
+    // use engineStateFromRoom so every field is rebuilt — board, racks,
+    // scores, bag, currentTurnSlot, turnNumber, status, passCount, ... —
+    // anything the failed dispatch may have mutated optimistically.
+    const fresh = engineStateFromRoom(incoming);
+    state.scores = fresh.scores;
+    state.bag = fresh.bag;
+    state.racks = fresh.racks;
+    state.board = fresh.board;
+    state.bonusBoard = fresh.bonusBoard;
+    state.moveHistory = fresh.moveHistory;
+    state.activeBoosts = fresh.activeBoosts;
+    state.lockedCells = fresh.lockedCells;
+    state.lockInventory = fresh.lockInventory;
+    state.bonusAssignment = fresh.bonusAssignment;
+    state.bonusSqUsed = fresh.bonusSqUsed;
+    state.pendingBonuses = fresh.pendingBonuses;
+    state.currentTurnSlot = fresh.currentTurnSlot;
+    state.turnNumber = fresh.turnNumber;
+    state.firstMove = fresh.firstMove;
+    state.passCount = fresh.passCount;
+    state.status = fresh.status;
+    state.turnDeadlineMs = fresh.turnDeadlineMs;
+    state.missedTurns = fresh.missedTurns;
+    // Realign cursors so the next watcher snapshot doesn't double-apply.
+    const v = Number(incoming.version);
+    if (v > lastAppliedVersion) lastAppliedVersion = v;
+    if (v > expectedVersion) expectedVersion = v;
+    bus.emit(EV.TURN_CHANGED, {
+      currentTurnSlot: state.currentTurnSlot,
+      turnNumber: state.turnNumber,
+      reason: `force-resync:${reason ?? 'sync-rejected'}`,
+    });
+  }
+
   // ─── Outbound: when the engine confirms a local move, push it to Firebase.
   subs.push(bus.on(EV.MOVE_CONFIRMED, async ({ slot, scoringDeferred }) => {
     if (slot !== mySlot) return; // we only commit our own moves
@@ -127,6 +180,7 @@ export async function createOnlineGameSession({
       // Stale: re-read and resync. Engine state will be overwritten on the
       // next watchRoom snapshot.
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
+      forceResync('stale-version').catch(() => { /* swallow */ });
     }
   }));
 
@@ -144,6 +198,7 @@ export async function createOnlineGameSession({
       // Stale: re-read and resync. Engine state will be overwritten on the
       // next watchRoom snapshot.
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
+      forceResync('stale-version').catch(() => { /* swallow */ });
     }
   }));
 
@@ -162,6 +217,7 @@ export async function createOnlineGameSession({
       advanceVersionCursor(result);
     } else {
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
+      forceResync('stale-version').catch(() => { /* swallow */ });
     }
   }));
 
@@ -188,6 +244,7 @@ export async function createOnlineGameSession({
       advanceVersionCursor(result);
     } else {
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
+      forceResync('stale-version').catch(() => { /* swallow */ });
     }
   }));
 
@@ -210,6 +267,7 @@ export async function createOnlineGameSession({
       advanceVersionCursor(result);
     } else {
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
+      forceResync('stale-version').catch(() => { /* swallow */ });
     }
   }));
 
@@ -313,6 +371,17 @@ export async function createOnlineGameSession({
     state.turnNumber = incoming.turnNumber;
     state.moveHistory = [...(incoming.moveHistory ?? [])];
     state.activeBoosts = [...(incoming.activeBoosts ?? [])];
+    // Rebuild board from authoritative server snapshot. Without this, a
+    // version advance that wasn't our own placement echo (e.g., the
+    // opponent's watchdog claimed our turn after our commit raced and
+    // lost) leaves any locally-applied-but-server-rejected tiles still
+    // sitting in state.board — the active player sees their word on the
+    // board while server + opponent don't. Surfaced by the simulator's
+    // e2e forced-deadline-loss scenario. applyOpponentMove above also
+    // touches state.board for placement moves; that's idempotent now
+    // since `incoming.board` contains the same tiles, so the redundant
+    // setCommittedTile calls are harmless.
+    state.board = deserializeBoard(incoming.board);
     state.bonusBoard = deserializeBonusBoardLocal(incoming.bonusBoard);
     state.bonusAssignment = [...(incoming.bonusAssignment ?? state.bonusAssignment ?? [])];
     state.bonusSqUsed = { ...(incoming.bonusSqUsed ?? state.bonusSqUsed ?? {}) };
@@ -326,6 +395,14 @@ export async function createOnlineGameSession({
     state.livePreview = incoming.livePreview ?? null;
     state.turnDeadlineMs = incoming.turnDeadlineMs ?? null;
     state.missedTurns = incoming.missedTurns ?? { 0: 0, 1: 0 };
+    // Without this, each client's passCount only counts its own consecutive
+    // scoreless turns; opponent passes/exchanges never reach the local
+    // counter, so isGameOver(passCount >= 4) and canClaimStallEnd both gate
+    // on stale information. The room schema already exposes _passCount —
+    // engineStateFromRoom reads it on reconnect, and the timeout watchdog
+    // writes it on forfeit. The main commit path (commitCurrentState above)
+    // and this resync are the two missing sites.
+    state.passCount = incoming._passCount ?? state.passCount ?? 0;
     state.firstMove = state.moveHistory.length === 0;
     state.status = incoming.status;
 
@@ -420,7 +497,21 @@ export async function createOnlineGameSession({
     start, dispatch, dispose, markReady,
   };
 
-  function commitCurrentState({ lastMove = null } = {}) {
+  // Wrapper around commitTransaction that converts thrown rejections (e.g.
+  // Firebase rule "permission_denied" — what happens when a stale write
+  // hits the turn-check after the watchdog already claimed our turn) into
+  // { committed: false } so the calling handlers can route through the
+  // SYNC_REJECTED + forceResync recovery path instead of leaking an
+  // unhandled rejection out of the bus subscriber. Surfaced by the
+  // simulator's e2e forced-deadline-loss scenario.
+  async function commitCurrentState({ lastMove = null } = {}) {
+    try {
+      return await rawCommitCurrentState({ lastMove });
+    } catch (err) {
+      return { committed: false, room: null, error: err };
+    }
+  }
+  function rawCommitCurrentState({ lastMove = null } = {}) {
     return commitTransaction(db, room.roomId, expectedVersion, (currentRoom) => {
       const settings = { ...(state.settings ?? currentRoom.settings ?? {}) };
       const turnChanged = Number(currentRoom.currentTurnSlot ?? 0) !== Number(state.currentTurnSlot ?? 0);
@@ -464,6 +555,7 @@ export async function createOnlineGameSession({
           1: [...(state.lockInventory?.[1] ?? [])],
         },
         missedTurns,
+        _passCount: state.passCount ?? 0,
         turnDeadlineMs,
         settings,
         lastMove,

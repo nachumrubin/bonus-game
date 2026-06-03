@@ -1,3 +1,5 @@
 config.js
 .firebase/
 functions/.env.local
+.simulator-data/
+.emulator-data/

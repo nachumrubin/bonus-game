@@ -21,8 +21,21 @@ export function createDisconnectController({
   let watchedUid = null;
   let lastPresence = null;
 
-  // Accumulating disconnect state — persists across Firebase callbacks and poll ticks.
-  // totalDisconnectedMs accumulates across reconnect/disconnect cycles; does not reset on reconnect.
+  // Disconnect state — persists across Firebase callbacks and poll ticks.
+  // Semantics: ONLY a CONTINUOUS offline period > graceMs triggers the
+  // overlay. The previous implementation accumulated across reconnect /
+  // disconnect cycles without resetting on reconnect, so brief WebSocket
+  // blips (extremely common: every mobile network switch, background-tab
+  // throttle, slow Wi-Fi, brief Firebase WebSocket drop) added up over
+  // a long game and falsely triggered the overlay even though the
+  // opponent was "online from their own perspective" the whole time
+  // (bug #2 surfaced by the simulator's presence-flicker scenario).
+  //
+  // The accumulator is kept (still summing during a single offline span
+  // for the elapsed calculation) but it is RESET to 0 on every online
+  // transition before any overlay opens. If the overlay is already open
+  // we do NOT reset — the countdown should keep its current position so
+  // a flicker right at the deadline doesn't grant a free extra grace.
   let disconnectOpen = false;
   let totalDisconnectedMs = 0;
   let disconnectStart = null;
@@ -68,9 +81,18 @@ export function createDisconnectController({
       const online = isPresenceOnline(presence, ts, graceMs);
 
       if (online) {
-        // Opponent came back online — accumulate this disconnect period.
+        // Opponent came back online. Sum the just-ended offline span only
+        // if the overlay is already open (where the countdown depends on
+        // historical accumulated time). Otherwise — the overlay hasn't
+        // opened yet — RESET totalDisconnectedMs. This enforces strict
+        // continuous-offline semantics: brief flickers that never
+        // crossed graceMs in a single span do not stack up.
         if (disconnectStart !== null) {
-          totalDisconnectedMs += ts - disconnectStart;
+          if (disconnectOpen) {
+            totalDisconnectedMs += ts - disconnectStart;
+          } else {
+            totalDisconnectedMs = 0;
+          }
           disconnectStart = null;
         }
         if (disconnectOpen) {

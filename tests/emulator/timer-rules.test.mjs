@@ -284,3 +284,76 @@ test('timer: current-turn player commit can rotate deadline and reset their miss
     assert.deepEqual(missedArray(room.missedTurns), [0, 0]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// Forfeit via watchdog: second consecutive missed turn must be allowed to
+// transition the room to status='abandoned' even though the patch sets
+// turnDeadlineMs=0 (the watchdog branch of the rule was previously
+// requiring newData.turnDeadlineMs > now, which silently blocked the
+// forfeit write in production — surfaced by the simulator's watchdog
+// scenario).
+// ─────────────────────────────────────────────────────────────────────────
+
+test('timer: opponent watchdog CAN forfeit (deadline=0 + status=abandoned) under rules', async () => {
+  await withTestEnv(async (env) => {
+    // Seed: bob (slot 1) is currentTurn, missedTurns[1]=1 already from a
+    // prior claim, deadline expired. Host (slot 0) ticks — second miss for
+    // bob → forfeit.
+    await seedWithoutRules(env, async (db) => {
+      await db.ref('rooms/timer-room').set(roomDoc({
+        missedTurns: { 0: 0, 1: 1 },
+      }));
+    });
+    const host = makeUserApp(env, HOST_UID);
+    const now = Date.now();
+    const watchdog = createTimeoutWatchdog({
+      db: host.db,
+      roomId: 'timer-room',
+      mySlot: 0,
+      limitMs: 20_000,
+      graceMs: 0,
+      setIntervalFn: null,
+      now: () => now,
+    });
+    const result = await assertSucceeds(watchdog.tick());
+    assert.equal(result.committed, true, 'forfeit transaction must commit (rule was rejecting it)');
+    const room = await readAs(host, 'rooms/timer-room');
+    assert.equal(room.status, 'abandoned', 'room must transition to abandoned');
+    assert.equal(room.abandonedBy, 1, 'abandonedBy must be the slot that timed out twice');
+    assert.equal(room.turnDeadlineMs, 0, 'deadline must be cleared on forfeit');
+    assert.deepEqual(missedArray(room.missedTurns), [0, 2], 'missedTurns must reflect the second miss');
+    assert.equal(room.version, 2, 'version bumped exactly once');
+    watchdog.dispose();
+  });
+});
+
+test('timer: opponent CANNOT write turnDeadlineMs=0 without flipping status to abandoned', async () => {
+  // Defensive: the relaxed rule must ONLY allow deadline=0 in tandem with
+  // status='abandoned'. An opponent who tries to zero out the deadline
+  // mid-game (so the active player can never time out again) must still
+  // be rejected.
+  await withTestEnv(async (env) => {
+    await seedWithoutRules(env, async (db) => {
+      await db.ref('rooms/timer-room').set(roomDoc());
+    });
+    const host = makeUserApp(env, HOST_UID);
+    // Host is the OPPONENT (data.currentTurnSlot=1). Try the watchdog
+    // branch but set deadline=0 while keeping status='playing'.
+    const malicious = {
+      ...roomDoc(),
+      version: 2,
+      currentTurnSlot: 0,
+      turnDeadlineMs: 0,            // would bypass watchdog forever
+      // status stays 'playing'
+    };
+    // Use assertFails for the negative case — `.set` returns the rejection.
+    let rejected = false;
+    try {
+      await host.ref('rooms/timer-room').set(malicious);
+    } catch {
+      rejected = true;
+    }
+    assert.equal(rejected, true,
+      'rule must reject deadline=0 when status is still playing');
+  });
+});

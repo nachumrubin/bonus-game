@@ -41,6 +41,13 @@ export function createGameController({ bus, session, mySlot = null }) {
     lockedCells: [],
     lockInventory: { 0: [], 1: [] },
     activeBoosts: [],
+    // Tentative lock placement awaiting the player's Confirm tap. Same
+    // pending-until-שבץ semantics as `placed` tiles: shown on the board with
+    // a "preview" style, removable by tapping again or via the Recall (בטל)
+    // button, only dispatched to the engine via CMD.PLACE_LOCK when the user
+    // confirms the move. Mutex with `placed` — locking and tile-placement
+    // are alternative move types in a single turn.
+    pendingLock: null,   // { r, c, duration } | null
   };
 
   function syncFromState() {
@@ -95,6 +102,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     view.lastInvalidReason = null;
     view.placed = [];
     view.swappedTiles = [];
+    view.pendingLock = null;
     _onChange();
   }));
   subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra }) => {
@@ -126,6 +134,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     // until the player's next turn).
     view.placed = [];
     view.swappedTiles = [];
+    view.pendingLock = null;
     _onChange();
   }));
   subs.push(bus.on(EV.INVALID_MOVE_REJECTED, ({ reason }) => {
@@ -148,7 +157,7 @@ export function createGameController({ bus, session, mySlot = null }) {
   subs.push(bus.on(EV.TILES_EXCHANGED, () => { syncFromState(); _onChange(); }));
   subs.push(bus.on(EV.BOOST_ACTIVATED, () => { syncFromState(); _onChange(); }));
   subs.push(bus.on(EV.LIVE_PREVIEW_CHANGED, () => { syncFromState(); _onChange(); }));
-  subs.push(bus.on(EV.LOCK_PLACED, () => { syncFromState(); view.lastInvalidReason = null; view.placed = []; _onChange(); }));
+  subs.push(bus.on(EV.LOCK_PLACED, () => { syncFromState(); view.lastInvalidReason = null; view.placed = []; view.pendingLock = null; _onChange(); }));
   subs.push(bus.on(EV.LOCKS_CHANGED, () => { syncFromState(); _onChange(); }));
 
   // Listeners that the renderer registers to know when to re-paint.
@@ -170,11 +179,56 @@ export function createGameController({ bus, session, mySlot = null }) {
   function recallTile(r, c) {
     view.placed = view.placed.filter(p => !(p.r === r && p.c === c));
     view.swappedTiles = view.swappedTiles.filter(s => !(s.r === r && s.c === c));
+    // Same cell could be holding a pending lock — clear that too.
+    if (view.pendingLock && view.pendingLock.r === r && view.pendingLock.c === c) {
+      view.pendingLock = null;
+    }
     _onChange();
   }
   function recallAll() {
     view.placed = [];
     view.swappedTiles = [];
+    view.pendingLock = null;
+    _onChange();
+  }
+
+  // Tentative lock placement (pending-until-Confirm). Mirrors placeTile's UX:
+  // visual preview only, no engine dispatch yet. Tapping the SAME cell again
+  // toggles the pending lock off, so misclicks are reversible without going
+  // to the Recall button.
+  function setPendingLock({ r, c, duration }) {
+    if (!Number.isInteger(r) || !Number.isInteger(c)) return false;
+    if (r < 0 || r > 9 || c < 0 || c > 9) return false;
+    if (isLockedCell(r, c) || boardTileAt(r, c)) {
+      view.lastInvalidReason = isLockedCell(r, c) ? 'lock-cell-already-locked' : 'lock-cell-occupied';
+      _onChange();
+      return false;
+    }
+    const inventory = [...(view.lockInventory?.[mySlot ?? view.currentTurnSlot] ?? [])].filter(n => Number.isInteger(Number(n)) && Number(n) > 0);
+    const chosen = Number(duration);
+    if (!inventory.includes(chosen)) {
+      view.lastInvalidReason = 'lock-unavailable';
+      _onChange();
+      return false;
+    }
+    // Tapping the same cell again removes the pending lock — same UX as
+    // tapping a placed tile to recall it. Duration mismatch doesn't matter:
+    // the user expects "tap to clear" regardless of which duration is
+    // currently smallest in the inventory.
+    if (view.pendingLock
+        && view.pendingLock.r === r
+        && view.pendingLock.c === c) {
+      view.pendingLock = null;
+      _onChange();
+      return true;
+    }
+    view.pendingLock = { r, c, duration: chosen };
+    _onChange();
+    return true;
+  }
+  function clearPendingLock() {
+    if (!view.pendingLock) return;
+    view.pendingLock = null;
     _onChange();
   }
   // Swap a committed board tile with a rack tile. Adds a pending entry to
@@ -216,6 +270,26 @@ export function createGameController({ bus, session, mySlot = null }) {
 
   // Command dispatchers. UI buttons call these.
   function confirmMove() {
+    // Pending lock takes the same Confirm path as a tile placement — when
+    // the player tapped an empty cell with no rack tile selected, the lock
+    // sat in view.pendingLock as a preview; שבץ commits it. Tile placement
+    // and lock placement are mutually exclusive in a turn (engine doesn't
+    // combine them); we treat pendingLock and `placed` as alternative
+    // commit paths.
+    if (view.pendingLock && !view.placed.length) {
+      if (mySlot != null && view.currentTurnSlot !== mySlot) {
+        view.pendingLock = null;
+        view.lastInvalidReason = 'turn-already-passed';
+        _onChange();
+        return false;
+      }
+      const pl = view.pendingLock;
+      session.dispatch({ type: CMD.PLACE_LOCK, payload: { r: pl.r, c: pl.c, duration: pl.duration } });
+      // pendingLock is cleared by the EV.LOCK_PLACED subscriber if the
+      // engine accepted it; INVALID_MOVE_REJECTED leaves it sitting so
+      // the user can see what failed and either move or recall it.
+      return true;
+    }
     if (!view.placed.length) return false;
     // Race guard: if the timer auto-passed us (or the engine otherwise
     // advanced the turn) between the moment the player tapped "שבץ" and
@@ -307,7 +381,12 @@ export function createGameController({ bus, session, mySlot = null }) {
     placeTile, recallTile, recallAll, setPlacementDirection,
     swapBoardTile, unswapBoardTile,
     displayRackTile,
-    confirmMove, passTurn, exchangeTiles, resign, placeLock,
+    confirmMove, passTurn, exchangeTiles, resign,
+    setPendingLock, clearPendingLock,
+    // Legacy direct-dispatch lock — kept for back-compat with anything that
+    // hasn't migrated to the pending-then-confirm flow (the gameScreen UI
+    // uses setPendingLock now). Bypasses the preview state.
+    placeLock,
     finalizeBoostAward,
     dispose,
   };

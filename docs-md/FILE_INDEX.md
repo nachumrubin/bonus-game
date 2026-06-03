@@ -242,6 +242,23 @@ See `/partials/screens/` for corresponding HTML templates.
 | `export-dictionary-file.js` | Extract embedded dictionary from legacy `index.html` to `data/dictionary.base.txt`. |
 | `add-dictionary-words.js` | Bulk import words to dictionary. |
 | `engine-parity-inventory.js` | Analyze engine feature coverage. |
+| `simulator/launch.mjs` | Wrapper that runs `firebase emulators:exec --only database` then invokes `runSimulator.mjs` with forwarded CLI args (`npm run sim -- --games N`). |
+| `simulator/runSimulator.mjs` | Online-game simulator CLI entry. Loads dictionary, boots emulator env, runs N bot-vs-bot games with bounded concurrency, writes summary. |
+| `simulator/emulatorClient.mjs` | Boots `@firebase/rules-unit-testing` env against the local emulator. Refuses to run unless `FIREBASE_DATABASE_EMULATOR_HOST` is localhost. |
+| `simulator/gameRunner.mjs` | Single-game lifecycle: creates room via host's authed context, wires two `createOnlineGameSession` instances on a per-game bus, ticks bot → dispatch → await commit → invariants until terminal. |
+| `simulator/invariants.mjs` | Per-tick assertions on the Firebase room snapshot (schemaVersion, version monotonicity, bag parity, turn-slot bounds, liveBonus gate, missed-turns ceiling, pass-count ceiling, terminal-shape sanity). |
+| `simulator/crashCollector.mjs` | Dedup by stack/detail fingerprint, writes one JSON per unique crash class to `.simulator-data/crashes/{runId}/`. |
+| `simulator/bots/randomBot.mjs` | Random-legal-move picker; validates via canonical `validateMove` + `isValid`, falls back to exchange/pass. |
+| `simulator/bots/replayBot.mjs` | Walks a recorded `moveHistory` JSON and re-dispatches commands; engine refusal becomes a `replay-divergence` crash class. |
+| `simulator/bots/fuzzBot.mjs` | Phase 2 adversarial bot. Wraps `randomBot` and substitutes malformed / out-of-turn / stale commands with probability `--fuzz-rate` (default 0.3). Enabled via `--bot fuzz`. |
+| `simulator/scenarios/matchmaking.mjs` | Phase 2 scenario. N authed players concurrently join `/matchmakingQueue/{mode}` and call `tryPair()`; verifies no self-pair, no double-booking, no missing rooms, no queue residue. Enabled via `--scenario matchmaking`. |
+| `simulator/scenarios/watchdog.mjs` | Phase 3 scenario. Exercises `timeoutWatchdog` with injected clock — single-timeout (turn flip + missedTurns bump), liveBonus gate (must no-op), double-claim race (only one commits, active-side never self-claims). Enabled via `--scenario watchdog`. |
+| `simulator/scenarios/reconnect.mjs` | Phase 4 scenario. Stresses the dispose / re-create lifecycle of `onlineGameSession`: reconnect-during-opponent-turn, reconnect-on-own-turn, and no-ghost-events-after-dispose (verifies the watcher is actually torn down). Verifies version cursor and cache pre-warm work correctly on the new session. Enabled via `--scenario reconnect`. |
+| `simulator/scenarios/e2eFullStack.mjs` | Phase 5 scenario. Headless full-stack E2E with two clients each running real `timeoutWatchdog` + `presenceService` + `disconnectController` against the local emulator on real wall-clock timers. Five sub-scenarios: deadline-race (jittered commit vs watchdog), deadline-race-forced-loss (deterministic ghost-move repro — caught bug #1), presence-false-positive, presence-grace-correctness, and presence-flicker (caught bug #2). Enabled via `--scenario e2e`. |
+| `simulator/exportProdHistories.mjs` | One-shot Node script that reads completed/abandoned live games from prod Firebase (no auth — `/rooms` has `.read: true`), anonymizes uids/displayNames, and writes a JSON the simulator's `--replay` mode can consume. |
+| `simulator/replayDivergence.mjs` | Per-move and final-state divergence detector used by replay runs: catches engine-rejection of prod-accepted moves, per-move score/word mismatches, final-state drift (scores / status / board / bonusBoard), and replay-incomplete (terminated early). |
+| `src/game/online/connectivityService.js` | Local-client connectivity monitor. `startConnectivityMonitor({db, bus})` subscribes to Firebase RTDB's `.info/connected` and emits `NET_STATUS_CHANGED` on every transition (dedupes same-state events). |
+| `src/ui/controllers/connectivityIndicator.js` | UI controller for the wifi-icon in the game top bar. Subscribes to `NET_STATUS_CHANGED` + game start/end events; toggles `is-visible`/`is-online`/`is-offline` classes on `#net-status`. Only shown during online-mode games. |
 
 ---
 
