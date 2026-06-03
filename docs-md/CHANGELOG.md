@@ -2,6 +2,327 @@
 
 ---
 
+## UX: reversible lock placement + new-tile glow after exchange — June 2026
+
+### Reversible lock placement
+
+Previously, clicking an empty cell with no rack tile selected immediately dispatched `CMD.PLACE_LOCK` — the lock was final, no way to undo a misclick (you'd burn a lock from inventory). Now lock placement matches the placed-tile UX: clicking a cell shows a **pending lock preview** that only commits when the player taps שבץ.
+
+- **[src/ui/controllers/gameController.js](src/ui/controllers/gameController.js)** — new `view.pendingLock` field plus `setPendingLock({r,c,duration})` / `clearPendingLock()` methods. `confirmMove()` routes through `CMD.PLACE_LOCK` when there's a pending lock (mutex with `placed` tiles — locking and tile-placement remain alternative move types per turn). `recallAll()` and the engine-event subscribers (LOCK_PLACED / TURN_CHANGED / MOVE_CONFIRMED) clear `pendingLock` alongside `placed`. Tapping the same cell again toggles the pending lock off, so misclicks are reversible without going to the בטל button. `placeLock()` is kept exported for back-compat (legacy direct dispatch).
+- **[src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js)** — both cell-click branches that previously called `controller.placeLock` now call `controller.setPendingLock`. The `renderBoard` cell loop has a new branch for `view.pendingLock` cells that renders the lock icon with a `spine-pending-lock-cell` class.
+- **[styles.css](styles.css)** — `.cell.spine-pending-lock-cell` style: dimmer background, brighter accent border, pulsing animation (`@keyframes pendingLockPulse`) so the player can see it's not yet committed.
+
+### New-tile glow on exchange
+
+After tapping החלפת אות → confirm, the player saw a refreshed rack with no clear indication which tiles were new. Now the freshly-drawn tiles glow green for 2 seconds.
+
+- **[src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js)** — new bus subscription to `EV.TILES_EXCHANGED`. When it fires for the local player's slot, the last `count` rack indices are marked as recently-arrived (this matches `tileBag.drawInto`'s append-to-end behavior). The renderer adds `.bt2-just-arrived` to those tile elements; a 2-second `setTimeout` clears the set and re-renders.
+- **[styles.css](styles.css)** — `.bt2.bt2-just-arrived` style + `@keyframes rackTileArrived`: 2-second fading green glow + brighter border.
+
+### Verification
+
+- 175/175 unit tests pass (no regressions).
+- Build re-stamped (`20260603020830`) so SW cache busts on next reload.
+
+---
+
+## Bug #2 real root cause — presenceService restore-on-reconnect — June 2026
+
+The earlier "strict continuous-offline semantics" fix in `disconnectController` was correct but insufficient — the user reproduced bug #2 live in the browser with both clients running on the local emulator, no actual flickers visible. Adding diagnostic logging to `disconnectController` revealed: P2's `/presence/{uid}.connected` was stuck at **false the entire session** while `lastSeen` was being updated every ~10s. P1 wasn't misreading anything — the server actually had P2 at `connected:false`.
+
+### Root cause
+
+Classic Firebase-presence pattern bug in [src/game/online/presenceService.js](src/game/online/presenceService.js):
+
+1. `startPresence()` writes `{connected:true, lastSeen, ...}` AND arms `onDisconnect().update({connected:false,...})`
+2. Any transient WebSocket drop (auth-token refresh failure, mobile network switch, brief connectivity hiccup) causes the **server** to fire the armed `onDisconnect` handler → `/presence/{uid}.connected` becomes `false`
+3. The SDK reconnects; the session has no awareness
+4. The heartbeat at +10s writes only `r.update({lastSeen: ...})` — it **never re-affirms `connected:true`**
+5. Server-side `connected` stays false forever (or until session.stop)
+6. From the opponent's view, `isPresenceOnline` returns `false` authoritatively → grace timer → overlay → AUTO_WIN
+
+The live trigger in the user's emulator setup was a `securetoken 400` from the auth emulator dropping the SDK's WebSocket. In production any transient connectivity blip would do it.
+
+### Fix
+
+Two-part, both in `startPresence()`:
+
+1. **`.info/connected` watcher** — subscribe to Firebase's special connection-status path. On every transition to `true`, re-set the full presence record (`{connected:true, lastSeen, currentRoom, backgrounded}`) AND re-arm `onDisconnect`. Heals immediately on every reconnect.
+2. **Heartbeat reaffirms `connected:true`** — `r.update({lastSeen, connected:true})` every 10s instead of just `lastSeen`. Belt-and-braces: even if (1) misses a reconnect, the next heartbeat self-heals within `HEARTBEAT_MS`. Same applies to the `visibilitychange` handler.
+
+`stop()` correctly unsubscribes the `.info/connected` watcher.
+
+### Verification
+
+- 3 new tests in [tests/unit/presence-restore-on-reconnect.test.js](tests/unit/presence-restore-on-reconnect.test.js) — startup affirms, reconnect after simulated `onDisconnect`-induced false restores, stop unsubscribes watcher.
+- 175/175 unit tests pass total (up from 172).
+- User to verify in their live two-browser emulator setup; diagnostic logging removed from `disconnectController.js` once root cause was confirmed.
+
+### Note on the earlier "strict continuous-offline" fix
+
+The `disconnectController` change from the next entry is still correct and shipped — it's a separate, independent guard against the *different* flicker mechanism (rapid actual presence flickers). The two fixes are complementary: `presenceService` prevents the stuck-false state in the first place; `disconnectController` handles the case where presence does briefly flicker for real reasons.
+
+---
+
+## Firebase emulator wired for browser playtesting — June 2026
+
+Restored emulator support that lived only on the unmerged `online-game-fixes` branch (commit 29d6ef03) so two browser sessions can play each other locally without touching production Firebase.
+
+- [src/game/online/firebaseClient.js](src/game/online/firebaseClient.js): `?emu=1` (or `APP_CONFIG.useEmulator`) → calls `db.useEmulator('localhost', 9000)` and `auth.useEmulator('http://localhost:9099')` right after `initializeApp`. New `isUsingEmulator()` helper exported for diagnostics.
+- [firebase.json](firebase.json): added `auth` (9099), `hosting` (5000), and emulator UI (4000) alongside the existing `database` (9000).
+- [package.json](package.json): new `npm run emu` script — `firebase emulators:start --project demo-bonus-game --only auth,database,hosting`.
+
+**Usage:** `npm run emu`, then open `http://localhost:5000/?emu=1` in two different browser profiles (or normal + incognito). Each gets its own anonymous UID, lobby / matchmaking / create-room / join-by-code all work against the local DB. Emulator UI is at `http://localhost:4000` for inspecting RTDB state.
+
+---
+
+## Phase 5 — two production bug fixes + live connectivity indicator — June 2026
+
+The headless full-stack E2E scenario ([scripts/simulator/scenarios/e2eFullStack.mjs](scripts/simulator/scenarios/e2eFullStack.mjs)) caught both production bugs the user knew existed.
+
+### Bug #1 — ghost move after failed commit (FIXED)
+
+**Symptom:** Player 1 places a word at the last second; from P1's screen the word appears on the board, but P2 never sees it and the server doesn't have it. Reproduced deterministically by `runDeadlineRaceForcedLoss` — `5/5 runs surfaced "ghost-move-on-loser-A"`.
+
+**Root cause:** in [src/game/sessions/onlineGameSession.js](src/game/sessions/onlineGameSession.js), when `commitTransaction` returned `{committed: false}` (stale version, watchdog claimed first) OR threw `permission_denied` (rule rejected after the watchdog had already flipped `currentTurnSlot`), the SYNC_REJECTED handler only emitted an event. The local engine had already optimistically mutated `state.board` / `state.scores` / `state.racks` via `applyMove`, but nothing rolled them back. The watcher's resync block also didn't touch `state.board` for non-placement room updates (a watchdog claim has no `lastMove.type === 'place'`).
+
+**Fix:** added `forceResync()` in `createOnlineGameSession` — re-reads the authoritative room and rebuilds engine state via `engineStateFromRoom`. Wired into every SYNC_REJECTED site. Also wrapped `commitCurrentState` in a try/catch so Firebase rejections (permission_denied) become `{committed: false}` instead of leaking out as unhandled rejections from the bus subscriber.
+
+Tests: [tests/unit/online-ghost-move-rollback.test.js](tests/unit/online-ghost-move-rollback.test.js) — stubs the next .transaction() to fail and verifies session.state.board has no ghost tiles after settling.
+
+### Bug #2 — false-positive disconnect overlay (FIXED)
+
+**Symptom:** Regular game. P1 sees the disconnect-countdown overlay for P2 even though P2 is actively connected from their own perspective. When countdown hits 0, P1 sees game-end; P2 sees it only at the end of their turn. Reproduced by `runPresenceFlicker` — 8 brief 500ms presence blips of P2 produced 3 false-positive DISCONNECT_OPEN events on P1.
+
+**Root cause:** [src/ui/controllers/disconnectController.js](src/ui/controllers/disconnectController.js) `totalDisconnectedMs` accumulated across reconnect/disconnect cycles without resetting on reconnect. Brief WebSocket blips (extremely common: mobile network switch, background-tab throttle, slow Wi-Fi, brief Firebase WebSocket drop) summed up over a long game and crossed `graceMs` even with the opponent continuously online.
+
+**Fix:** strict continuous-offline semantics. On every online transition that happens BEFORE the overlay has opened, reset `totalDisconnectedMs = 0`. If the overlay is already open, keep accumulating (so a flicker right at the deadline can't grant a free extra grace period). Tests in [tests/unit/disconnect-flicker.test.js](tests/unit/disconnect-flicker.test.js) cover the flicker case, the continuous-offline sanity case, and the overlay-already-open accumulation case.
+
+### New feature — live connectivity indicator (wifi icon)
+
+User noted that the player WITH the connectivity issue had no way to know in real time. Added a wifi icon in the game-screen top bar that goes red+blinking when the local Firebase WebSocket drops:
+
+- **[src/game/online/connectivityService.js](src/game/online/connectivityService.js)** — `startConnectivityMonitor({db, bus})` subscribes to Firebase's special `.info/connected` path. Emits `NET_STATUS_CHANGED` on transitions, dedupes same-state events.
+- **[src/ui/controllers/connectivityIndicator.js](src/ui/controllers/connectivityIndicator.js)** — UI controller. Shows the icon only during online-mode games (gated on `modeDescriptor(...).online`). Toggles `.is-online` (green) / `.is-offline` (red + 0.6s blink) on the DOM element.
+- **DOM:** `#net-status` element added to the game `.tbar` in [partials/screens/game.html](partials/screens/game.html). Inline SVG wifi-arcs icon; `currentColor` makes the CSS control the fill.
+- **CSS:** `.net-status`, `.net-status.is-online`, `.net-status.is-offline`, `@keyframes netBlink` added to [styles.css](styles.css) near `.music-btn`.
+- **Wiring:** in [src/main.js](src/main.js), `startConnectivityMonitor` and `createConnectivityIndicator` are mounted next to the other controllers. Exposed on `globalThis.__spine.connectivityMonitor` / `.connectivityIndicator` for debugging.
+
+Tests: [tests/unit/connectivity-indicator.test.js](tests/unit/connectivity-indicator.test.js) — 6 cases covering service dedup, indicator visibility gating by mode, online/offline class transitions, and the pre-GAME_STARTED no-op case.
+
+### Verification
+
+- `npm run test:unit`: 172/172 pass (was 163)
+- `npm run test:emulator`: 46/46 pass
+- `npm run sim -- --scenario e2e --mm-batches 3`: 15/15 sub-scenario runs clean (5 sub-scenarios × 3 batches), including the previously-failing forced-deadline-loss and flicker scenarios
+- `node scripts/stamp-build.js` run (game.html partial changed)
+
+---
+
+## Phase 4 simulator: reconnect scenario — June 2026
+
+Adds `--scenario reconnect` mode in [scripts/simulator/scenarios/reconnect.mjs](scripts/simulator/scenarios/reconnect.mjs). Stresses the dispose / re-create lifecycle of `onlineGameSession` against real Firebase rules + transactions. Three sub-scenarios per batch:
+
+1. **reconnect-during-opponent-turn** — slot 0 disposes while it's NOT their turn, opponent makes a move in their absence, slot 0 reconnects, plays. Verifies the reconnected session reads the LATEST authoritative state and the first post-reconnect commit lands cleanly (cache pre-warm + version cursor advance).
+2. **reconnect-on-own-turn** — slot 0 disposes mid-think on their own turn (production analogue: tab refresh while you have the move), reconnects, plays. Verifies `currentTurnSlot=mySlot` is preserved across the cycle and the new session can commit.
+3. **no-ghost-events-after-dispose** — slot 0 disposes, then bob plays. Asserts the disposed session emits ZERO bus events afterward (proves `dispose()` actually tears down the watcher; if it didn't, the still-mounted watchRoom callback would re-emit OPPONENT_MOVED/TURN_CHANGED on the dead bus, leaking subscribers in production).
+
+All three apply the standard bag-parity / version-monotonic / liveBonus-gate invariants after each round-trip.
+
+### Verification
+
+- Smoke (3 batches × 3 sub-scenarios = 9 runs): 0 crashes
+- Stress (15 batches × 3 = 45 runs): 0 crashes
+- Full Phase 4 regression sweep: 162 unit tests pass, 46 emulator tests pass, all 5 sim modes pass 0 crashes
+
+### Scope notes
+
+Two follow-ups deferred to Phase 5 (logged in TASKS.md):
+- **Deferred-score split-write scenario** — needs deterministic bonus-square triggering (bonuses sit at off-grid edges; the random bot doesn't reliably hit them). Either inject a scripted-move bot or seed `state.pendingScoreCommit` directly.
+- **Admin-SDK prod-history exporter** for `--replay` mode — needs prod creds.
+
+No engine bugs surfaced by reconnect this round — the session's existing watcher-teardown, version cursor anchoring (line 109 of onlineGameSession.js), and `sessionStartTs` reaction anti-replay all hold up under stress.
+
+---
+
+## Engine fix 6: handleConfirmMove rejects placement on occupied cells — June 2026
+
+While verifying the exchange-atomic fix, the fuzz bot kept finding bag-parity violations of `-1` tiles per game. Root cause was a separate engine-defense gap: `setCommittedTile()` (called by `applyMove`) **silently overwrote any tile already at the target position**, and `validateMove()` never checked whether the target cell was occupied. So a `CONFIRM_MOVE` that placed a tile on an already-committed cell would: overwrite the existing tile, remove the new letter from the rack, and refill the rack from the bag — the overwritten tile vanished (not on board, not in any rack, not in the bag), net **-1 tile per overwrite**.
+
+Fix in [src/game/core/gameEngine.js handleConfirmMove](src/game/core/gameEngine.js): pre-check via `getCommittedTile` and reject with reason `placed-on-occupied-cell` before swap pre-mutation, applyMove, or any other state change. Placed in `handleConfirmMove` (not `validateMove`) because the swap path expects target cells to be occupied — that path has its own separate `swap-no-tile` / `swap-on-locked` checks that handle the swap case. Test: [tests/unit/engine-placed-not-in-rack.test.js](tests/unit/engine-placed-not-in-rack.test.js) — "cell defense" case proves the check fires and produces zero state mutation.
+
+This closes the LAST class of bag-parity violation the fuzz bot was finding. 30-game fuzz sweep at 40% adversarial rate now completes 30/30 with zero crashes.
+
+### Simulator detector refinement (same PR)
+
+Made the runner's `commit-livelock` and `hang` detectors smarter: they subscribe to `INVALID_MOVE_REJECTED` on the per-game buses and reset their counters when the engine correctly rejects a bad command. Previously the detectors fired on ANY no-version-bump tick, mis-classifying healthy engine-defense rejections as livelocks/hangs. Now both detectors fire only when the engine ACCEPTED the command but progress still stalled — which would indicate a real Firebase / rule / commit-path bug.
+
+---
+
+## Engine fix 5: applyExchange now validates rack atomically — June 2026
+
+While running the full-mode regression after the watchdog rule fix, the fuzz bot surfaced another partial-mutation bug in the SAME family as Phase 3's `handleConfirmMove` fix — but in the EXCHANGE path:
+
+`turnManager.exchangeTilesInPlace` removed letters from the rack one-by-one and threw mid-loop if a letter wasn't in the rack. The `handleExchange` caller caught the throw and emitted `INVALID_MOVE_REJECTED` — but the rack mutation that already happened was NOT rolled back. A multi-letter exchange where letter[N] is missing left letters[0..N-1] gone from the rack, never returned to the bag → net **-1 tile per missing letter**, breaking bag-parity conservation.
+
+Fix in [src/game/core/turnManager.js exchangeTilesInPlace](src/game/core/turnManager.js): pre-validate every letter against a rack *copy* before performing any mutation. If all letters are present, only then splice them out of the real rack. Tests in [tests/unit/engine-placed-not-in-rack.test.js](tests/unit/engine-placed-not-in-rack.test.js): mixed-valid-and-bogus exchange must reject atomically (no partial state change); legitimate multi-letter exchange still works.
+
+Production impact in theory: a UI bug or a stale rack state on submit could lose tiles. The simulator's fuzz bot was the first thing to actually exercise this edge.
+
+---
+
+## Watchdog forfeit rule fix (production bug closed) — June 2026
+
+Closes the production bug surfaced (but not fixed) in Phase 3: the watchdog could detect two consecutive missed turns by the same player but its forfeit write was **silently rejected by Firebase rules**, so rooms stayed in `status='playing'` forever instead of transitioning to `abandoned`.
+
+### What changed
+
+[firebase.database.rules.json](firebase.database.rules.json) — the `/rooms/$roomId` opponent-watchdog branch previously required `newData.turnDeadlineMs > now`. That blocked the forfeit write since `computeExpiredOnlineTurnState` sets `turnDeadlineMs=0` when promoting to `abandoned`. Relaxed to:
+
+```
+newData.turnDeadlineMs > now ||
+(newData.status === 'abandoned' && newData.turnDeadlineMs === 0)
+```
+
+All other watchdog constraints unchanged (auth = opponent, version+1, data was playing with timelimit=true and expired deadline, slot flip). The relaxation only permits the exact shape produced by the forfeit code path. Two new emulator tests in [tests/emulator/timer-rules.test.mjs](tests/emulator/timer-rules.test.mjs):
+
+1. **opponent watchdog CAN forfeit** — proves the rule now accepts the forfeit transaction; room ends with `status='abandoned'`, `abandonedBy=<slot>`, `turnDeadlineMs=0`, `missedTurns[slot]=2`.
+2. **opponent CANNOT write turnDeadlineMs=0 without flipping status to abandoned** — defensive: confirms the relaxation is gated on the abandoned transition. An opponent trying to zero the deadline mid-game (to bypass the watchdog forever) is still rejected.
+
+### Verification
+
+- `npm run test:emulator`: 46/46 pass (44 existing + 2 new)
+- `npm run sim -- --scenario watchdog`: 12/12 sub-scenarios pass (was 9/12 with forfeit disabled)
+- Full all-modes sweep: zero crashes
+
+---
+
+## Phase 3 simulator (watchdog scenario) + 2 more engine fixes — June 2026
+
+### Engine fix 3: `handleConfirmMove` defends against placements not in the rack
+
+`turnManager.applyMove` calls `setCommittedTile()` for every placed tile but only does `rack.splice()` *if the letter is found in the rack* — silently no-ops otherwise. A `CONFIRM_MOVE` payload with a letter not in the active player's rack that still passed geometric validation and formed a valid Hebrew word with adjacent tiles would add a tile to the board without removing one from the rack — net +1 tile, breaking bag-parity conservation. Production UI never sends such payloads, but the engine should defend regardless (security rules don't catch it either).
+
+Fix in [src/game/core/gameEngine.js handleConfirmMove](src/game/core/gameEngine.js): added an explicit precondition that simulates the rack mutations for both `placed` and `swappedTiles` against a copy of the rack; rejects with reason `placed-not-in-rack` if any letter isn't present, BEFORE any state mutation. Joker tiles correctly look up `'?'` regardless of the assigned visible letter. Test: [tests/unit/engine-placed-not-in-rack.test.js](tests/unit/engine-placed-not-in-rack.test.js) — 4 cases covering legit play, bad placement, bad swap, joker.
+
+### Engine fix 4: `timeoutWatchdog.applyPatchToRoom` defaults activeBoosts to `[]`
+
+When a room has no boosts, `activeBoosts: []` is written at creation but Firebase serializes empty arrays as missing on roundtrip. The watchdog's `applyPatchToRoom` did `Array.isArray(room.activeBoosts) ? filter(...) : room.activeBoosts` — falling back to `undefined`, which Firebase then rejects ("Data returned contains undefined in property activeBoosts"). Fixed by falling back to `[]` instead. Surfaced by the new watchdog simulator scenario.
+
+### New scenario: `--scenario watchdog`
+
+[scripts/simulator/scenarios/watchdog.mjs](scripts/simulator/scenarios/watchdog.mjs) — exercises the live-online timeout watchdog using injected clock (no wall-clock waits). Three sub-scenarios run per batch:
+
+1. **single-timeout** — active player idles, opponent's watchdog ticks once, verifies turn flipped, `missedTurns[active]=1`, status stays `playing`, version bumped.
+2. **gated-by-livebonus** — same setup but `liveBonus.active=true`; watchdog must no-op and leave version unchanged.
+3. **double-claim-race** — both opponents (split-brain) tick simultaneously; verifies only one claim commits, and a watchdog on the ACTIVE slot never self-claims.
+
+Took advantage of `timeoutWatchdog`'s well-designed seams: `now`, `setIntervalFn`/`clearIntervalFn`, exposed `tick()`. Single-process tests can drive the watchdog deterministically without waiting for real timeouts.
+
+### Real bug found, NOT fixed in this PR: watchdog forfeit blocked by Firebase rules
+
+The simulator's planned `forfeit-after-two` sub-scenario surfaced a production bug worth its own task: when the watchdog claims a second consecutive missed turn for a slot, `computeExpiredOnlineTurnState` (in [roomService.js](src/game/online/roomService.js)) sets `base.turnDeadlineMs = 0`. But the `/rooms/$roomId` security rule's opponent-watchdog branch requires `newData.turnDeadlineMs > now` — so the forfeit transaction is **rejected by rules**, and the room never transitions to `status='abandoned'`. The mock-Firebase unit test ([engine-parity-live-watchdog.test.js](tests/unit/engine-parity-live-watchdog.test.js)) misses this because mocks don't enforce rules. The sub-scenario is currently disabled in the simulator with a pointer to the TASKS.md entry; re-enable once fixed (either relax the rule or have the watchdog write the forfeit via a separate non-version-bumping path).
+
+### Sweep results
+
+- `npm run test:unit`: 159/159 pass
+- `npm run sim` (normal, 40 games): 0 crashes
+- `npm run sim -- --bot fuzz` (20 games): 0 crashes (the fuzz bot was finding the rack-defense gap that's now fixed)
+- `npm run sim -- --scenario matchmaking --mm-batches 10 --mm-players 8`: 0 crashes
+- `npm run sim -- --scenario watchdog --mm-batches 3`: 0 crashes
+
+---
+
+## Engine fixes surfaced by simulator (passCount sync + exchange game-over) — June 2026
+
+Two real engine bugs caught by the simulator and fixed:
+
+### Fix 1: passCount now syncs between online clients
+
+`onlineGameSession.commitCurrentState()` did not include `_passCount` in the patch, and the watcher's resync did not copy it back. Each client tracked only its OWN consecutive scoreless turns, so:
+- `isGameOver(state)` (threshold 4 consecutive scoreless turns) gated on stale per-client info — games could run indefinitely as long as each side occasionally placed a word.
+- `canClaimStallEnd()` (threshold 2) only let a player claim once THEY personally skipped 2 turns — bizarre UX.
+
+The schema already exposed `_passCount`: `engineStateFromRoom` reads it on reconnect and the timeout watchdog writes it on forfeit. The main commit path and the watcher resync were the two missing sites. Two-line fix in [src/game/sessions/onlineGameSession.js](src/game/sessions/onlineGameSession.js): add `_passCount: state.passCount ?? 0` to the patch and `state.passCount = incoming._passCount ?? state.passCount ?? 0` to the resync. Backwards-compatible: existing rooms with no `_passCount` field treat it as 0 on first observation. Test: [tests/unit/online-passcount-sync.test.js](tests/unit/online-passcount-sync.test.js).
+
+### Fix 2: handleExchange now checks isGameOver
+
+`handleExchange` increments `state.passCount` (per May 2026 rule: "exchanges count as scoreless turns toward game-over") but never called `isGameOver()` afterward. Only `handlePass` and `handleConfirmMove` had the check. So four consecutive exchanges could push `passCount` past the threshold without ending the game. Fix in [src/game/core/gameEngine.js handleExchange](src/game/core/gameEngine.js): add `if (isGameOver(state)) { finishGame(); return; }` after `applyTurnStartEffects`, mirroring `handlePass`. Test in the same file.
+
+After both fixes: 60-game sim sweep completes 60/60, avg 37.6 ticks/game (down from 65 — games end when they should).
+
+---
+
+## Online simulator — Phase 2 (matchmaking scenario + adversarial fuzz bot) — June 2026
+
+Adds two new scenarios on top of the Phase 1 normal-play simulator.
+
+### `--bot fuzz` — adversarial bot wrapper
+
+[scripts/simulator/bots/fuzzBot.mjs](scripts/simulator/bots/fuzzBot.mjs) — wraps `randomBot` and, with probability `--fuzz-rate` (default 0.3), substitutes an adversarial command from 14 categories: malformed `CONFIRM_MOVE` (empty/off-grid/non-collinear/bad letter), `EXCHANGE_TILE` with letters not in rack or oversized count, `PLACE_LOCK` with off-grid coords / bad duration / occupied cell, `FINALIZE_BOOST_AWARD` without pending bonus, `CLAIM_STALL_END` when not leading. The runner's existing try/catch + invariants catch any throw / corruption / rule rejection. Smoke run found a real engine-defense gap: `applyMove` in [turnManager.js:138-154](src/game/core/turnManager.js#L138-L154) commits placed tiles to the board unconditionally but only removes from rack *if found* — so a placement of a letter not in the rack adds a tile out of nowhere (bag-parity violation). Logged for follow-up.
+
+### `--scenario matchmaking` — concurrent-claim race scenario
+
+[scripts/simulator/scenarios/matchmaking.mjs](scripts/simulator/scenarios/matchmaking.mjs) — spins up N authed "players" per batch (default 10), all join `/matchmakingQueue/{mode}` simultaneously, then all call `tryPair()` concurrently. Verifies topology invariants: no self-pair, no double-booked player, no missing rooms, no queue residue after pairing. 20-batch × 8-player stress test runs clean (the matchmaking pair-claim race fix from May 2026 holds). Each batch uses its own sub-mode key (`{baseMode}-{batchSeed}`) so concurrent batches don't cross-contaminate queues.
+
+### Build notes (matchmaking)
+
+Hit another Firebase compat-SDK quirk: `.get()` and `.once('value')` do **not** warm the cache that `.transaction()` consults. Only an *active* `.on('value')` subscription does. In production the browser tab subscribes for matchmaking-queue updates so this is implicit; in the simulator we subscribe explicitly per-db before the race and detach after. This is the third cache-related trap solved (after Phase 1's `commitTransaction` cache pre-warm and the per-session-bus topology fix).
+
+### CLI flags added
+
+- `--scenario normal | matchmaking` (default normal)
+- `--bot random | fuzz` (default random)
+- `--fuzz-rate F` (0..1, default 0.3)
+- `--mm-players N` (default 10)
+- `--mm-batches N` (default 5)
+
+See `node scripts/simulator/runSimulator.mjs --help` for the full reference.
+
+---
+
+## Online game simulator — June 2026
+
+### What changed
+
+New developer tool (`npm run sim`) that runs N concurrent online games against the local Firebase Realtime Database emulator using random-move bots, then writes structured JSON crash reports for any invariant violations, engine throws, transaction livelocks, or hangs detected.
+
+- **`scripts/simulator/runSimulator.mjs`** — CLI entry. Accepts `--games N --concurrency M --seed STR --replay PATH --mode MODE --verbose`.
+- **`scripts/simulator/launch.mjs`** — wrapper that invokes `firebase emulators:exec --only database` so `npm run sim -- --games N` forwards args correctly.
+- **`scripts/simulator/emulatorClient.mjs`** — boots `@firebase/rules-unit-testing` env against the local emulator. Refuses to run unless `FIREBASE_DATABASE_EMULATOR_HOST` points at localhost.
+- **`scripts/simulator/gameRunner.mjs`** — single-game lifecycle: creates room via host's authed context, wires two `createOnlineGameSession` instances on a per-game bus, ticks bot → dispatch → await commit → invariants until terminal status.
+- **`scripts/simulator/bots/randomBot.mjs`** — picks random legal placements (validated through canonical `validateMove` + `isValid`), falls back to exchange/pass.
+- **`scripts/simulator/bots/replayBot.mjs`** — replays a recorded `moveHistory` JSON; engine refusal becomes a `replay-divergence` crash class.
+- **`scripts/simulator/invariants.mjs`** — per-tick checks on the Firebase room snapshot: schemaVersion, version monotonicity, bag parity, turn-slot bounds, liveBonus gate, missed-turns ceiling, pass-count ceiling, terminal-shape sanity.
+- **`scripts/simulator/crashCollector.mjs`** — dedup by stack/detail fingerprint, writes one JSON per unique crash class to `.simulator-data/crashes/{runId}/`.
+- **`tests/unit/simulator-invariants.test.js`** — invariant unit tests.
+- **`tests/unit/simulator-randomBot.test.js`** — bot fallback / payload-shape unit tests.
+- **`package.json`** — adds `"sim"` script.
+- **`.gitignore`** — adds `.simulator-data/` and `.emulator-data/`.
+
+### Why
+
+`docs-md/GAP_REPORT.md` lists ~9 fragile areas in the online flow (transaction races, watchdog vs `liveBonus` gating, deferred-score split writes, invite-accept races, bag divergence on exchanges, double-timeout forfeit, etc.) but there was no headless tool to exercise them at scale. The simulator gives us a repeatable way to drive concurrent rooms through the real `commitTransaction`, `onlineGameSession`, and Firebase-rule paths and surface anomalies as reproducible JSON.
+
+### Out of scope (Phase 2 follow-ups)
+
+- Matchmaking flow stress (v1 creates rooms directly).
+- Watchdog stress with injected clock (`settings.timelimit=false` by default).
+- Adversarial fuzzing (malformed payloads, out-of-turn commands).
+- Auto-fixing — explicit non-goal; the simulator logs, humans fix.
+- Production-history exporter for `--replay`; users supply JSON manually for now.
+
+### Build notes (worth knowing)
+
+Two simulator-construction issues had to be solved to make games run cleanly; future bots/scenarios will hit the same edges:
+
+1. **Transaction cache pre-warm** — Firebase RTDB's `.transaction()` calls the update function with `current=null` if the local cache is cold, and `commitTransaction` in `roomService.js` treats null as "abort" (committed=false). The simulator now does `dbAlice.ref(...).once('value')` and the same for Bob's db before any dispatch, so the cache is warm and the first commit lands.
+2. **Per-session bus** — production has ONE module-level bus per browser tab, with ONE session on it. The simulator initially put both sessions on a single bus; that mismodels the topology because `onlineGameSession`'s watcher re-emits events like `TILES_EXCHANGED` and `LOCK_PLACED` for opponent UI updates, and those re-emits would trigger the *originating* session's handler to commit a SECOND time (which then failed `permission_denied` since the turn had flipped). Each session now gets its own bus, matching production.
+
+After both fixes: 5-game smoke runs to completion (20–71 ticks each), zero crashes, exit 0.
+
+---
+
 ## Gender address toggle — Phase 2 extended — June 2026
 
 ### What changed (Phase 2 extension — additional screens)

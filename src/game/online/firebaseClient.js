@@ -16,8 +16,31 @@
 
 let _testImpl = null;
 let _appConfig = null;
+let _emulatorOpts = null;   // { dbHost, dbPort, authUrl } or null
 let _sdkPromise = null;
 let _appPromise = null;
+
+// Detect emulator mode from APP_CONFIG.useEmulator or a `?emu=1` URL flag.
+// Lets you point the running app at a local Firebase emulator without
+// touching the real project.
+function detectEmulatorOpts(cfg) {
+  if (cfg?.useEmulator) {
+    return {
+      dbHost:  cfg.emulatorDbHost ?? 'localhost',
+      dbPort:  Number(cfg.emulatorDbPort ?? 9000),
+      authUrl: cfg.emulatorAuthUrl ?? 'http://localhost:9099',
+    };
+  }
+  try {
+    const loc = globalThis.location;
+    if (!loc) return null;
+    const url = new URL(loc.href);
+    if (url.searchParams.get('emu') === '1') {
+      return { dbHost: 'localhost', dbPort: 9000, authUrl: 'http://localhost:9099' };
+    }
+  } catch {}
+  return null;
+}
 
 const SDK_VERSION = '10.13.0';
 const SDK_URLS = [
@@ -32,7 +55,11 @@ export function setFirebaseImplForTests(impl) {
 
 export function configure({ firebaseConfig }) {
   _appConfig = firebaseConfig;
+  _emulatorOpts = detectEmulatorOpts(globalThis.APP_CONFIG ?? null);
 }
+
+// True iff the next ensureApp() will wire to a local emulator.
+export function isUsingEmulator() { return _emulatorOpts != null; }
 
 function loadOneScript(src) {
   return new Promise((resolve, reject) => {
@@ -72,10 +99,21 @@ export function ensureApp() {
     const fb = globalThis.firebase;
     if (!fb) throw new Error('firebase SDK did not load');
     const app = (fb.apps && fb.apps.length > 0) ? fb.apps[0] : fb.initializeApp(_appConfig);
+    const db = fb.database();
+    const auth = fb.auth ? fb.auth() : null;
+    if (_emulatorOpts) {
+      try { db.useEmulator(_emulatorOpts.dbHost, _emulatorOpts.dbPort); }
+      catch (e) { console.warn('[firebaseClient] db.useEmulator failed', e); }
+      if (auth) {
+        try { auth.useEmulator(_emulatorOpts.authUrl, { disableWarnings: true }); }
+        catch (e) { console.warn('[firebaseClient] auth.useEmulator failed', e); }
+      }
+      console.info(`[firebaseClient] using emulator db=${_emulatorOpts.dbHost}:${_emulatorOpts.dbPort} auth=${_emulatorOpts.authUrl}`);
+    }
     return {
       app,
-      db: fb.database(),
-      auth: fb.auth ? fb.auth() : null,
+      db,
+      auth,
       serverTimestamp: () => fb.database.ServerValue.TIMESTAMP,
     };
   })();
@@ -108,6 +146,7 @@ export async function ref(path) {
 export function _resetForTests() {
   _testImpl = null;
   _appConfig = null;
+  _emulatorOpts = null;
   _sdkPromise = null;
   _appPromise = null;
 }

@@ -154,6 +154,24 @@ export function createEngine({ state, bus }) {
       return;
     }
 
+    // Reject placement on a cell that already holds a committed tile.
+    // setCommittedTile in applyMove would silently overwrite, vanishing
+    // the old tile (not on board, not in any rack, not in the bag) —
+    // breaking tile-bag conservation. Production UI doesn't let users
+    // drop on occupied cells, but the engine must defend regardless;
+    // surfaced by the simulator's fuzz bot. Swap targets are EXPECTED
+    // to be occupied — they go through the swappedTiles path which has
+    // its own swap-no-tile / swap-on-locked checks below.
+    const occupiedPlacement = placed.find(p => getCommittedTile(state, p.r, p.c));
+    if (occupiedPlacement) {
+      emit(EV.INVALID_MOVE_REJECTED, {
+        reason: 'placed-on-occupied-cell',
+        placed,
+        occupiedCell: { r: occupiedPlacement.r, c: occupiedPlacement.c },
+      });
+      return;
+    }
+
     // Tile-swap support. A swap replaces a committed tile with one from the
     // rack; the displaced tile returns to the rack. A swap is only allowed
     // ALONGSIDE at least one regular placement (the user's rule), and the
@@ -174,6 +192,31 @@ export function createEngine({ state, bus }) {
         emit(EV.INVALID_MOVE_REJECTED, { reason: 'swap-no-tile', placed, swappedTiles: swaps });
         return;
       }
+    }
+
+    // Defensive: every placed / swapped-in tile must correspond to a real
+    // letter in the active player's rack. Production UI only ever drags
+    // tiles from the rack, but a malicious or buggy client could send a
+    // CONFIRM_MOVE whose letters aren't in the rack. Without this guard,
+    // setCommittedTile would add a tile to the board while the rack stays
+    // unchanged (applyMove only removes-from-rack if found) — net +1 tile,
+    // breaking the bag-parity invariant. Surfaced by the simulator's fuzz
+    // bot. Joker tiles are stored in the rack as '?' regardless of the
+    // assigned letter, so map isJoker → '?' for the lookup.
+    const _activeRack = state.racks[state.currentTurnSlot] ?? [];
+    const _rackCopy = [..._activeRack];
+    for (const p of [...placed, ...swaps]) {
+      const wanted = p.isJoker ? '?' : p.letter;
+      const idx = _rackCopy.indexOf(wanted);
+      if (idx < 0) {
+        emit(EV.INVALID_MOVE_REJECTED, {
+          reason: 'placed-not-in-rack',
+          placed, swappedTiles: swaps,
+          missing: wanted,
+        });
+        return;
+      }
+      _rackCopy.splice(idx, 1);
     }
 
     // Snapshot for rollback and capture the displaced letters (they go back
@@ -389,6 +432,10 @@ export function createEngine({ state, bus }) {
     if (!freeSwap) {
       const turnStartEffects = applyTurnStartEffects(state);
       emitTurnStartEffects(turnStartEffects, emit);
+      // applyExchange bumped passCount (May 2026 rule: exchanges are
+      // scoreless turns toward game-over). Mirror handlePass / handleConfirmMove
+      // and finishGame here if the threshold was hit, otherwise emit TURN_CHANGED.
+      if (isGameOver(state)) { finishGame(); return; }
       emit(EV.TURN_CHANGED, { currentTurnSlot: state.currentTurnSlot, turnNumber: state.turnNumber, reason: 'exchange' });
     }
   }

@@ -52,6 +52,8 @@ import { createAnimationController } from './ui/controllers/animationController.
 import { createGameFlowController } from './ui/controllers/gameFlowController.js';
 import { createTurnTimerController } from './ui/controllers/turnTimerController.js';
 import { createDisconnectController } from './ui/controllers/disconnectController.js';
+import { createConnectivityIndicator } from './ui/controllers/connectivityIndicator.js';
+import { startConnectivityMonitor } from './game/online/connectivityService.js';
 import { createTutorialController } from './ui/controllers/tutorialController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
@@ -2859,6 +2861,15 @@ async function boot() {
     dbRef: () => activeFbDb,
     sessionRef: () => globalThis.__spine?.activeGame?.session ?? null,
   });
+  // Live local-connectivity indicator (wifi icon in game top-bar). The
+  // monitor watches Firebase's `.info/connected` and emits NET_STATUS_CHANGED
+  // on every transition; the controller toggles the icon's classes in
+  // response. Visible only during online games (gated on modeDescriptor).
+  const connectivityMonitor = startConnectivityMonitor({ db: activeFbDb, bus });
+  const connectivityCtl = createConnectivityIndicator({
+    bus,
+    sessionRef: () => globalThis.__spine?.activeGame?.session ?? null,
+  });
   const tutorialCtl = createTutorialController({
     bus,
     activeGameRef: () => globalThis.__spine?.activeGame ?? null,
@@ -2905,6 +2916,8 @@ async function boot() {
   globalThis.__spine.gameFlowController = gameFlow;
   globalThis.__spine.turnTimerController = turnTimer;
   globalThis.__spine.disconnectController = disconnectCtl;
+  globalThis.__spine.connectivityMonitor = connectivityMonitor;
+  globalThis.__spine.connectivityIndicator = connectivityCtl;
   globalThis.__spine.tutorialController = tutorialCtl;
   globalThis.__spine.helpDropdown       = helpDropdown;
   globalThis.__spine.guideScreen        = guideScreen;

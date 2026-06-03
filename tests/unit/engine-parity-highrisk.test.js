@@ -172,12 +172,23 @@ test('legacy online.inboundNoRevalidate/listenForMoves: opponent move applies wi
   // lastMove.ts (see the lastSeenMoveTs guard in the room watcher) so an
   // un-stamped move is silently ignored. Real moves always carry Date.now().
   const moveTs = Date.now();
+  // Build a board that has the placed tiles at positions matching lastMove —
+  // this is what a real commit produces (commitCurrentState writes both board
+  // AND lastMove). Prior versions of this test sent an empty board, relying
+  // on applyOpponentMove to populate state.board purely from lastMove.tiles.
+  // The watcher's resync now treats incoming.board as authoritative (added
+  // to fix the ghost-move-after-failed-commit bug — see
+  // tests/unit/online-ghost-move-rollback.test.js), so the board field must
+  // be realistic.
+  const inboundBoard = new Array(100).fill(null);
+  inboundBoard[44] = { letter: 'ז', val: 8, isJoker: false };
+  inboundBoard[45] = { letter: 'ז', val: 8, isJoker: false };
   await db.ref('rooms/inbound-no-revalidate').update({
     version: 2,
     scores: { 0: 99, 1: 0 },
     currentTurnSlot: 1,
     turnNumber: 2,
-    board: new Array(100).fill(null),
+    board: inboundBoard,
     moveHistory: [{
       slot: 0,
       tiles: [{ r: 4, c: 4, letter: 'ז', val: 8 }, { r: 4, c: 5, letter: 'ז', val: 8 }],

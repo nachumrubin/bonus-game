@@ -32,20 +32,61 @@ export async function startPresence(db, {
 }) {
   const r = presenceRef(db, uid);
   const timestamp = () => typeof serverTimestamp === 'function' ? serverTimestamp() : (serverTimestamp ?? Date.now());
-  const initiallyHidden = !!(doc && doc.visibilityState === 'hidden');
-  await r.set({ connected: true, lastSeen: timestamp(), currentRoom, backgrounded: initiallyHidden });
-  if (r.onDisconnect) {
-    await r.onDisconnect().update({ connected: false, backgrounded: false, lastSeen: timestamp() });
+  const hiddenNow = () => !!(doc && doc.visibilityState === 'hidden');
+
+  // Write full presence + arm onDisconnect. Called once at startup AND on
+  // every WebSocket reconnect — see the .info/connected watcher below for
+  // why. Idempotent: each call replaces the prior presence record entirely.
+  async function affirmPresence() {
+    try {
+      await r.set({ connected: true, lastSeen: timestamp(), currentRoom, backgrounded: hiddenNow() });
+      if (r.onDisconnect) {
+        await r.onDisconnect().update({ connected: false, backgrounded: false, lastSeen: timestamp() });
+      }
+    } catch { /* swallow — heartbeat will retry, and .info/connected will re-fire on next reconnect */ }
   }
+  await affirmPresence();
+
+  // Restore-on-reconnect. The bug this guards against: the Firebase RTDB
+  // server fires the armed onDisconnect handler whenever the WebSocket
+  // drops — including transient drops from auth-token refresh, mobile
+  // network switch, brief connectivity loss. That writes `connected:false`
+  // to our /presence entry. When the SDK reconnects, our session has no
+  // idea and just keeps the heartbeat going (which only updates lastSeen)
+  // — so `connected` stays stuck at false from the server's perspective,
+  // and the OPPONENT'S disconnectController sees us as offline forever
+  // even though we are perfectly fine (bug #2 root cause).
+  //
+  // Fix: subscribe to RTDB's special `.info/connected` and on every
+  // transition to true, re-write the full presence + re-arm onDisconnect.
+  // The first callback fires synchronously with the current state at boot
+  // so affirmPresence runs twice on startup; that's idempotent and the
+  // cost (one extra .set) is negligible.
+  let connectedRef = null;
+  let connectedHandler = null;
+  try {
+    connectedRef = db.ref('.info/connected');
+    connectedHandler = (snap) => {
+      if (snap?.val() !== true) return;
+      affirmPresence();
+    };
+    connectedRef.on('value', connectedHandler);
+  } catch { /* .info/connected not available in this environment — ok */ }
+
+  // Heartbeat: also re-affirms `connected:true` on every tick. Belt-and-
+  // braces with the .info/connected watcher above — if the watcher misses
+  // a reconnect for any reason (callback not yet registered when reconnect
+  // happens, .info path unavailable), the heartbeat self-heals within
+  // HEARTBEAT_MS (10s). Without this, a single onDisconnect-induced
+  // `connected:false` would persist for the rest of the session.
   const interval = setInterval(() => {
-    r.update({ lastSeen: timestamp() }).catch(() => {});
+    r.update({ connected: true, lastSeen: timestamp() }).catch(() => {});
   }, HEARTBEAT_MS);
 
   let visHandler = null;
   if (doc && typeof doc.addEventListener === 'function') {
     visHandler = () => {
-      const hidden = doc.visibilityState === 'hidden';
-      r.update({ backgrounded: hidden, lastSeen: timestamp() }).catch(() => {});
+      r.update({ backgrounded: hiddenNow(), lastSeen: timestamp(), connected: true }).catch(() => {});
     };
     doc.addEventListener('visibilitychange', visHandler);
   }
@@ -53,6 +94,9 @@ export async function startPresence(db, {
   return {
     stop: async () => {
       clearInterval(interval);
+      if (connectedRef && connectedHandler) {
+        try { connectedRef.off('value', connectedHandler); } catch { /* swallow */ }
+      }
       if (doc && visHandler && typeof doc.removeEventListener === 'function') {
         try { doc.removeEventListener('visibilitychange', visHandler); } catch { /* swallow */ }
       }

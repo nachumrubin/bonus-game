@@ -673,16 +673,34 @@
   flex-direction: row;
   justify-content: space-around;
   align-items: center;
-  background: rgba(0, 2, 13, 0.97);
+  background: transparent;
   border-top: none;
-  /* Fade from transparent at top → near-black = blends into background */
-  -webkit-mask: linear-gradient(to bottom, transparent 0%, black 18%);
-          mask: linear-gradient(to bottom, transparent 0%, black 18%);
   padding: var(--nav-pad-y) 4px;
   padding-bottom: max(var(--nav-pad-y), env(safe-area-inset-bottom));
   flex-shrink: 0;
   position: relative;
   z-index: 5;
+}
+/* Paint the dark background across the FULL viewport width even though the
+   nav itself sits inside the 480px-capped .hc container. Without this the
+   black band only spans the centered ~480px on desktop, with the parent's
+   lighter gradient showing on either side. The buttons stay centered in
+   the original nav box; only the background extends. */
+.em-bottom-nav::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: rgba(0, 2, 13, 0.97);
+  /* Fade from transparent at top → near-black so the bar blends into the
+     page background (was on the nav itself; moved here so it only masks
+     the background panel, not the icons/labels above it). */
+  -webkit-mask: linear-gradient(to bottom, transparent 0%, black 18%);
+          mask: linear-gradient(to bottom, transparent 0%, black 18%);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .em-nav-item {

@@ -111,9 +111,22 @@ function exchangeTilesInPlace(state, letters) {
   if (state.bag.length < letters.length) throw new Error('exchange: not enough tiles in bag');
   const slot = state.currentTurnSlot;
   const rack = state.racks[slot];
+  // Pre-validate ALL letters are in the rack before mutating. Without this,
+  // a multi-letter exchange where letter[N] isn't in the rack leaves the
+  // letters before it partially removed (the throw stops the loop but the
+  // splices that already ran stay). The exception bubbles to handleExchange
+  // which emits INVALID_MOVE_REJECTED, but the rack is now short by however
+  // many splices completed — tiles disappear, breaking bag-parity. Surfaced
+  // by the simulator's fuzz bot.
+  const rackProbe = [...rack];
+  for (const l of letters) {
+    const i = rackProbe.indexOf(l);
+    if (i < 0) throw new Error(`exchange: rack does not contain ${l}`);
+    rackProbe.splice(i, 1);
+  }
+  // Validated — now apply the real mutation.
   for (const l of letters) {
     const i = rack.indexOf(l);
-    if (i < 0) throw new Error(`exchange: rack does not contain ${l}`);
     rack.splice(i, 1);
   }
   const rng = typeof state.exchangeRng === 'function'
