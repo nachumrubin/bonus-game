@@ -157,6 +157,16 @@ async function boot() {
 
   console.info('[spine] booting…');
 
+  // Lock orientation to portrait. Works inside an installed PWA / fullscreen
+  // context; in a normal browser tab the promise rejects with a SecurityError
+  // and we silently fall back to the CSS landscape-block overlay (styles.css).
+  try {
+    const lock = globalThis.screen?.orientation?.lock;
+    if (typeof lock === 'function') {
+      lock.call(globalThis.screen.orientation, 'portrait').catch(() => {});
+    }
+  } catch { /* not supported — CSS overlay handles the rest */ }
+
   // Stamp all data-gm/data-gf elements to the gender stored in localStorage.
   // Without this, elements default to the masculine text baked into HTML and
   // would only update after the user opens settings and changes the toggle.

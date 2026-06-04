@@ -2,6 +2,83 @@
 
 ---
 
+## Breathing gap below the global topbar — June 2026
+
+Non-home, non-game screens (stats, settings, profile, friends, avatar gallery, etc.) had their first content element sitting flush against the bottom edge of the fixed `#global-topbar`. The padding-top offset was exactly `var(--em-topbar-h)`, which pushes content below the topbar but leaves zero visible gap.
+
+Bumped the offset to `calc(var(--em-topbar-h) + 16px)` in [menu-electric.css](menu-electric.css). Single global rule that affects every secondary screen — no per-screen tweaks needed.
+
+---
+
+## Portrait-orientation enforcement (phones) — June 2026
+
+`manifest.json` already pins `"orientation": "portrait"` for installed-PWA contexts, but that does nothing inside a normal browser tab. Added two layered defenses for the in-browser case:
+
+1. **JS Screen Orientation API** ([src/main.js](src/main.js)): right after `[spine] booting…`, call `screen.orientation.lock('portrait')` inside a try/catch + `.catch(() => {})`. Succeeds inside fullscreen / installed-PWA windows on Android Chrome; silently rejects in plain tabs (browser security policy — no page can force orientation in a tab).
+
+2. **CSS landscape-block overlay** ([styles.css](styles.css)): new `#rotate-block` element in [index.html](index.html) that fills the viewport with a "סובב את המכשיר למצב לאורך" message + rotating phone icon. Shown only when `(orientation: landscape) and (max-height: 500px)` — the `max-height:500px` clause restricts the block to phone-shaped viewports so tablets and desktop browsers in landscape stay interactive. The game keeps running underneath, so rotating back immediately resumes play.
+
+### Why not block landscape unconditionally
+
+The new layout caps `.gr` at `max-width:480px` and centers it. A tablet or desktop browser in landscape still shows the app correctly — just with empty margins. Blocking those viewports would punish users for no benefit. Phones in landscape, by contrast, lose the vertical space needed for the board + rack and end up unplayable, which is the case worth blocking.
+
+---
+
+## Layout unification follow-up: proportional scaling (no hard caps) — June 2026
+
+The pixel caps on `.gr` (`max-width:480px` / `max-height:860px`) were the wrong model — they made the game a tiny fixed box on large displays. Replaced with proportional scaling: the container always fills 100% of the viewport height, and its width is `min(100%, calc(100svh * 9 / 16))`. This produces the largest phone-shaped rectangle that fits:
+
+| Viewport | `.gr` size | Notes |
+|---|---|---|
+| 414×896 (phone) | 414×896 | Width is the limit → fills edge-to-edge, no dead margins |
+| 600×1024 (dev-tools) | 576×1024 | Width derived from height → 9:16 portrait |
+| 1920×1200 (desktop) | 675×1200 | Width derived from height → centered with side margins |
+| 1024×600 (landscape tablet) | 337×600 | Width derived from height → narrow centered strip |
+
+`#sg` uses `align-items:center; justify-content:center` so the container sits centered on both axes whenever it doesn't fill the viewport. The board's `--csz` is recomputed at mount/resize by `computeBasicSizes()` from the actual container size, so the board grows along with the container.
+
+**Verification:** 175/175 unit tests pass.
+
+---
+
+## Layout unification: single phone-shaped layout at every viewport — June 2026
+
+The game screen previously rendered two completely different layouts:
+
+- **≤500 CSS-px**: info-strip with player score cards above the board, no side panels, text-only top bar (the WhatsApp-screenshot look).
+- **>500 CSS-px**: tiny side panels with scores left/right of a smaller board, no info-strip, larger board cells, wider container.
+
+Real phones in portrait reported ≤414 CSS-px (thanks to high DPR), so the info-strip layout was what users actually saw. The desktop branch was effectively dead code that only appeared in dev-tool resizing. Result: dev-tool screenshots at 539/600 CSS-px looked nothing like production.
+
+### Change
+
+`styles.css` — collapsed the two layouts into one:
+
+- `.gr` outer container capped at `max-width:480px` always (was 480px on mobile, 680px base, 1200px on tablet, 580px on widescreen via `@media(min-width:600px)` / `@media(min-width:900px)`).
+- `.left-panel` and `.right-panel` get `display:none !important` at the base rule. Selectors retained so existing DOM references in `gameScreen.js` (`#sb1`, `#sb2`, `#sv1`, `#sv2`, `#sn1`, `#sn2`, etc.) still resolve harmlessly.
+- `.info-strip` defaults to `display:flex` with full background/min-height/padding styling (was `display:none` + a `@media (max-width:500px)` override).
+- `.tbar`, `.tb`, `.sbar`, `.bot`, `.board-center`, `.ss-tiles`, `#bag-char svg`: the mobile rules were lifted out of the `@media (max-width: 500px)` wrapper and applied unconditionally.
+- `.board-center-inner --csz`: single `clamp(22px, 6vmin, 42px)` rule. The `@media (min-width:501px)` bump to `clamp(30px, 5vmin, 54px)` was removed.
+- `--row-h`: single `34px` value (was 46px base, 34px mobile, 54px tablet).
+- `.bt2-l .jok-img`: single `26px × 26px` size (was 36px base, 26px mobile).
+- The full `@media(min-width:600px)` block (40+ rules scaling `.gr`, `.hc`, `.sbox`, `.ovc`, top-bar icons, online-lobby, champions table) and the `@media(min-width:900px)` block (side-panel widening, home/setup/overlay/online wider variants, top-bar icon/text bumps) were removed wholesale.
+- `.turn-timer .tt-value` / `.tt-label`: removed the `@media (min-width: 600px)` font-size bump.
+
+### Why
+
+The app's `manifest.json` enforces portrait, and `docs-md/CLAUDE.md` notes "Mobile layout is portrait-only … Never add landscape-specific rules without testing on mobile." The desktop side-panel layout was a dev-tool-only artifact that diverged visually from the real product. Removing it means every viewport — phone, tablet, desktop browser — renders the same phone-shaped layout, centered with empty margins on wider screens.
+
+### What was not touched
+
+- `@media (max-height: 700px)` / `(max-height: 580px)` on `.hbtns`/`.hlogo` — these are *height*-based, not width-based, and shrink the home button stack on landscape phones. Still useful.
+- `@media (max-width: 380px)` / `(max-width: 360px)` on the stats screen — these shrink fonts on genuinely tiny phones to prevent overflow. Still useful, doesn't affect game layout.
+- `@media (prefers-reduced-motion: reduce)` and `(hover:hover)` — orthogonal to layout, untouched.
+- Engine, schema, dictionary, Firebase rules — all CSS-only change.
+
+**Verification:** 175/175 unit tests pass.
+
+---
+
 ## Bug fix: profile avatar icon + stall-end button label — June 2026
 
 ### Profile avatar icon showing crown instead of unlocked avatar
