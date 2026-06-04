@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="enableNotification">false</bool>
+    <color name="backgroundColor">#2d6080</color>
+    <color name="colorPrimary">#2d6080</color>
+    <color name="colorPrimaryDark">#1a3a50</color>
+    <string name="appName">בוסט — שבץ נא</string>
+    <string name="assetStatements">
+        [{
+            \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+            \"target\": {
+                \"namespace\": \"web\",
+                \"site\": \"https://boost-8ef11.web.app\"
+            }
+        }]
+    </string>
+    <string name="launchUrl">https://boost-8ef11.web.app/</string>
+    <string name="launcherName">בוסט</string>
+</resources>

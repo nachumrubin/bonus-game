@@ -3,3 +3,6 @@ config.js
 functions/.env.local
 .simulator-data/
 .emulator-data/
+keystore.properties
+*.keystore
+*.jks
