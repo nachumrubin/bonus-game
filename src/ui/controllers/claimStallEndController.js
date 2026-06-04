@@ -44,6 +44,51 @@ export function createClaimStallEndController({
     return activeGameRef()?.session?.state ?? null;
   }
 
+  // True when the human player (slot pinned on ag.mySlot) is the one who would
+  // win if stall-end is claimed.  For offline-2p (no pinned mySlot) we always
+  // return true because the fallback localSlot() already returns the leader.
+  function isHumanLeading() {
+    const ag = activeGameRef();
+    const humanSlot = ag?.mySlot;          // 0 for bot/tutorial, null for 2P
+    if (humanSlot == null) return true;
+    return localSlot() === humanSlot;
+  }
+
+  // Update every text node that differs between "win" and "lose" outcomes.
+  function refreshLabel() {
+    const winning = isHumanLeading();
+    const tbBtn = $('#btn-claim-stall-end', root);
+    if (tbBtn) {
+      const tx = tbBtn.querySelector?.('.tb-tx');
+      if (tx) tx.innerHTML = winning ? 'סיים<br>וזכה' : 'סיים<br>והפסד';
+      const ic = tbBtn.querySelector?.('.tb-ic');
+      if (ic) ic.textContent = winning ? '🏆' : '😞';
+    }
+    const icon  = $('#claim-stall-icon',  root);
+    const title = $('#claim-stall-title', root);
+    const desc  = $('#claim-stall-desc',  root);
+    const yes   = $('#claim-stall-yes',   root);
+    if (icon)  icon.textContent  = winning ? '🏆' : '😞';
+    if (title) title.textContent = winning ? 'לסיים את המשחק ולזכות?' : 'לסיים את המשחק ולהפסיד?';
+    if (desc) {
+      const gender = getGender();
+      if (winning) {
+        desc.setAttribute('data-gm', 'המשחק תקוע — אתה מוביל בניקוד וזכותך לסיים אותו עכשיו לפי כלל ההיתקעות. הניצחון יירשם לזכותך.');
+        desc.setAttribute('data-gf', 'המשחק תקוע — את מובילה בניקוד וזכותך לסיים אותו עכשיו לפי כלל ההיתקעות. הניצחון יירשם לזכותך.');
+        desc.textContent = gender === 'f'
+          ? 'המשחק תקוע — את מובילה בניקוד וזכותך לסיים אותו עכשיו לפי כלל ההיתקעות. הניצחון יירשם לזכותך.'
+          : 'המשחק תקוע — אתה מוביל בניקוד וזכותך לסיים אותו עכשיו לפי כלל ההיתקעות. הניצחון יירשם לזכותך.';
+      } else {
+        desc.setAttribute('data-gm', 'המשחק תקוע — המחשב מוביל בניקוד. אם תסיים עכשיו לפי כלל ההיתקעות, ההפסד יירשם לחשבונך.');
+        desc.setAttribute('data-gf', 'המשחק תקוע — המחשב מוביל בניקוד. אם תסיימי עכשיו לפי כלל ההיתקעות, ההפסד יירשם לחשבונך.');
+        desc.textContent = gender === 'f'
+          ? 'המשחק תקוע — המחשב מוביל בניקוד. אם תסיימי עכשיו לפי כלל ההיתקעות, ההפסד יירשם לחשבונך.'
+          : 'המשחק תקוע — המחשב מוביל בניקוד. אם תסיים עכשיו לפי כלל ההיתקעות, ההפסד יירשם לחשבונך.';
+      }
+    }
+    if (yes) yes.textContent = winning ? '🏆 סיים וזכה' : '😞 סיים והפסד';
+  }
+
   function refreshVisibility() {
     const btn = $('#btn-claim-stall-end', root);
     if (!btn) return;
@@ -54,11 +99,13 @@ export function createClaimStallEndController({
     // Pulsing glow draws attention to the option — players otherwise miss
     // that they can short-circuit a stalled game.
     btn.classList?.[allowed ? 'add' : 'remove']('claim-stall-attention');
+    if (allowed) refreshLabel();
   }
 
   function openConfirm() {
     const overlay = $('#ov-claim-stall-end', root);
     if (!overlay) return;
+    refreshLabel();
     applyGenderToRoot(overlay, getGender());
     overlay.classList?.remove('hidden');
   }
@@ -106,6 +153,7 @@ export function createClaimStallEndController({
 
   cleanups.push(bus.on(SETTINGS_CHANGED, (changes = {}) => {
     if ('gender' in changes) {
+      refreshLabel();
       const overlay = $('#ov-claim-stall-end', root);
       if (overlay) applyGenderToRoot(overlay, changes.gender);
     }

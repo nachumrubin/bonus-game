@@ -13,6 +13,7 @@
 // main.js subscribes to these to drive profileService / friendsService / auth flows.
 
 import { $, on, setText } from '../domHelpers.js';
+import { SPINE_AVATARS } from './avatarScreens.js';
 
 export const PROFILE_INTENT = Object.freeze({
   EDIT_NAME:        'profile/editName',
@@ -28,13 +29,9 @@ export const PROFILE_INTENT = Object.freeze({
 
 export const PROFILE_RENDER = 'profile/render';
 
-// Avatar id → emoji table. Mirrors the legacy AVATAR_DEFS table so the
-// spine renders the same icon. Falls back to 👑 (the legacy DEFAULT_AVATAR).
-const AVATAR_EMOJI = {
-  crown: '👑', star: '⭐', fire: '🔥', diamond: '💎', shark: '🦈',
-  dragon: '🐉', tiger: '🐯', alien: '👾', wizard: '🧙', robot: '🤖',
-  rocket: '🚀', knight: '🛡️', ninja: '🥷', genius: '🧠', vampire: '🧛',
-};
+// Avatar id → emoji table. Derived from SPINE_AVATARS so additions there are
+// automatically reflected here. Falls back to 👑 (the legacy DEFAULT_AVATAR).
+const AVATAR_EMOJI = Object.fromEntries(SPINE_AVATARS.map(a => [a.id, a.emoji]));
 const KNOWN_AVATAR_EMOJIS = new Set(Object.values(AVATAR_EMOJI));
 
 // Resolve an avatar value to its emoji character.

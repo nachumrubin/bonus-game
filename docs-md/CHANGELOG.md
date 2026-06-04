@@ -2,6 +2,28 @@
 
 ---
 
+## Bug fix: profile avatar icon + stall-end button label — June 2026
+
+### Profile avatar icon showing crown instead of unlocked avatar
+
+`profileScreen.js` had a hardcoded `AVATAR_EMOJI` map that was missing several avatar IDs introduced later in `avatarScreens.js` (`bulb`, `fox`, `handshake`, `shield`, `bolt`, `trophy`, `books`, `hero`, `target`). When any of these IDs was equipped, `avatarEmoji()` couldn't find the key and fell back to the default `'👑'` (crown).
+
+Fix: replaced the hardcoded constant with `Object.fromEntries(SPINE_AVATARS.map(a => [a.id, a.emoji]))` so the two tables can never drift apart.
+
+### "סיים וזכה" showing wrong label when bot is leading
+
+In a 1vBot game `session.mySlot` is undefined (the pinned human slot lives on `ag.mySlot`, not `ag.session.mySlot`). `localSlot()` therefore fell through to its offline fallback which returns whichever slot is currently *leading*. When the bot led, this returned slot 1 (bot), `canClaimStallEnd(state, 1)` passed, and the button appeared — but with "וזכה" even though the human would lose.
+
+Fix (`claimStallEndController.js`):
+- Added `isHumanLeading()` — reads `ag.mySlot` (the pinned human slot) and compares to `localSlot()`.
+- Added `refreshLabel()` — updates the topbar button text/icon and all four text nodes in the confirm overlay (icon, title, description, confirm button) to either the win variant ("🏆 … וזכה") or the lose variant ("😞 … והפסד").
+- `refreshLabel()` is called from `refreshVisibility()` (when button becomes visible), from `openConfirm()`, and from the gender-change handler.
+- Added `id="claim-stall-icon"`, `id="claim-stall-title"`, `id="claim-stall-desc"` to the overlay HTML so `refreshLabel()` has stable hooks.
+
+**Verification:** 175/175 unit tests pass.
+
+---
+
 ## Feature: native back-button support — June 2026
 
 The Android/browser "back" (`<`) button is now intercepted and handled inside the app rather than navigating in browser history.
