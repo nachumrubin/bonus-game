@@ -2,6 +2,28 @@
 
 ---
 
+## Boost mini-game screenshots in the guide — June 2026
+
+The guide section "בונוסים ומיני-משחקים" only described the mini-games in prose. Captured six screenshots — one per mini-game — and embedded them with bilingual captions.
+
+### What was added
+- New Playwright spec [tests/e2e/capture-minigame-screenshots.spec.js](tests/e2e/capture-minigame-screenshots.spec.js) — boots the app, calls each `window.__spine.ui.mount*MiniGame` with a seeded mulberry32 RNG (so re-runs produce visually identical captures), and snaps the `#ov-bonus` overlay (or the wheel's self-host).
+- Six new PNGs under [images/guide/minigames/](images/guide/minigames/): `wordsearch.png`, `honeycomb.png`, `unscramble.png`, `crossing.png`, `fill-middle.png`, `wheel.png`.
+- [partials/screens/guide-screen.html](partials/screens/guide-screen.html): each `<figure class="guide-shot">` block under the bonuses section, prefixed with the matching emoji from the mini-game's overlay icon.
+
+### Tiny supporting change
+- [src/main.js](src/main.js): `mountFillMiddleMiniGame` was imported but not exposed on `window.__spine.ui`. Added it to the registration block so the capture spec (and any future external harness) can drive that mini-game like the others. Pure addition — no production code path changes.
+
+### Re-running the captures
+```
+npx playwright test tests/e2e/capture-minigame-screenshots.spec.js
+```
+Spec finishes in ~12s. RNG seeds are fixed per-test so the diffs against committed PNGs only show real layout changes.
+
+**Verification:** 175/175 unit tests pass; all 6 capture tests pass.
+
+---
+
 ## Cherry-pick from `online-game-fixes` branch — June 2026
 
 The `online-game-fixes` branch (commit `29d6ef03 מדריך הדרכה fixes and othe bug fixes`) carried genuine additive bug fixes that never landed on `main` because it had also rolled back a stack of features the current branch has since gained (portrait orientation lock, rotate-block overlay, connectivity indicator, gender propagation, native back-button handler). A naive merge would have wiped those.

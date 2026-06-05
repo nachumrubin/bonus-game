@@ -275,6 +275,7 @@ async function boot() {
       mountUnscrambleMiniGame, mountWheelMiniGame,
       mountWordSearchMiniGame, mountCrosswordMiniGame,
       mountCrossingWordsMiniGame, mountHoneycombMiniGame,
+      mountFillMiddleMiniGame,
       mountScoreBonusAnimation,
       mountProfileScreen, mountStatsScreen, mountAvatarPickerScreen, mountAvatarUnlockedScreen,
       mountAuthScreens, mountFriendsScreen, mountNotificationsScreen, mountChampionsScreen, mountDictionaryScreen, mountTutorialScreen,
