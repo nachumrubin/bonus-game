@@ -516,6 +516,37 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .rq{background:rgba(0,0,0,.22);border-right:3px solid var(--by);padding:8px 10px;border-radius:3px;font-size:15px;color:#fff;margin-bottom:9px;line-height:1.8;letter-spacing:4px;}
 .ri{width:100%;padding:8px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);border-radius:4px;color:#fff;font-size:14px;font-family:'Heebo',sans-serif;direction:rtl;outline:none;margin-bottom:8px;}
 .ri:focus{border-color:var(--by);}
+/* Password field + show/hide toggle. The wrapper keeps the input + eye
+   button on the same row; the input is `.pw-input` and reserves space on
+   the right for the toggle so text never disappears behind the icon. */
+.pw-wrap{position:relative;display:block;margin-bottom:8px;}
+.pw-wrap .pw-input{margin-bottom:0;padding-left:36px;}
+.pw-toggle{position:absolute;top:50%;left:6px;right:auto;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.55);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;font-family:inherit;}
+.pw-toggle:hover{color:#fff;}
+.pw-toggle.pw-shown{color:#fff;}
+/* "Hide" state: same 👁 emoji, with a diagonal line drawn across it via
+   ::after so it reads as "eye with a slash" without depending on a
+   slashed-eye emoji (which isn't reliably rendered across platforms). */
+.pw-toggle::after{
+  content:'';
+  position:absolute;
+  left:4px;
+  right:4px;
+  top:50%;
+  height:2px;
+  background:currentColor;
+  border-radius:2px;
+  transform:translateY(-50%) rotate(-22deg);
+  transform-origin:center;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .12s ease;
+  box-shadow:0 0 0 1px rgba(0,0,0,.55);
+}
+.pw-toggle.pw-shown::after{opacity:1;}
+/* Signup notifications checkbox row */
+.su-checkbox-row{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.8);cursor:pointer;padding:4px 2px;line-height:1.4;}
+.su-checkbox-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--by,#f5c518);flex-shrink:0;}
 .urow{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:7px;}
 .ut{width:36px;height:40px;background:var(--tile);border:2px solid var(--tborder);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;color:#111;cursor:pointer;box-shadow:0 2px 0 var(--tshadow);}
 .ut.sl{background:rgba(255,255,255,.04);border:2px dashed rgba(255,255,255,.18);color:transparent;box-shadow:none;}
@@ -2364,6 +2395,30 @@ button[aria-disabled="true"] {
   border-radius: 3px;
   font-family: 'Heebo', sans-serif;
   font-size: 12px;
+}
+/* Screenshots embedded in guide sections. Cap width so even tall captures
+   stay aligned with the body text, and add a thin border so they read as
+   reference media rather than UI. */
+.guide-shot {
+  margin: 12px auto;
+  padding: 0;
+  text-align: center;
+  max-width: 220px;
+}
+.guide-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  background: #02050d;
+}
+.guide-shot figcaption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  line-height: 1.4;
 }
 
 /* ── Claim-stall-end attention pulse ──

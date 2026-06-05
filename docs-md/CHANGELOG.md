@@ -2,6 +2,45 @@
 
 ---
 
+## Cherry-pick from `online-game-fixes` branch — June 2026
+
+The `online-game-fixes` branch (commit `29d6ef03 מדריך הדרכה fixes and othe bug fixes`) carried genuine additive bug fixes that never landed on `main` because it had also rolled back a stack of features the current branch has since gained (portrait orientation lock, rotate-block overlay, connectivity indicator, gender propagation, native back-button handler). A naive merge would have wiped those.
+
+Surgical port of only the additive bits:
+
+### Guide screen — embedded screenshots
+- Six PNGs under [images/guide/](images/guide/) — `home.png`, `signup.png`, `stats.png`, `game-screen.png`, `exchange-overlay.png`, `shailta-overlay.png`.
+- [partials/screens/guide-screen.html](partials/screens/guide-screen.html): `<figure class="guide-shot">` blocks inserted into the rules/screens sections, plus a brand-new "פעולות מיוחדות בתור" section covering exchange / שאילתה / lock / joker / recall.
+- [styles.css](styles.css): new `.guide-shot` rule (caps width to 220px, adds border + shadow + caption).
+
+### Signup form — confirm password + notify opt-in + show/hide
+- [partials/screens/sign-up-screen.html](partials/screens/sign-up-screen.html): new אימות סיסמה field, "אני רוצה לקבל התראות" checkbox (checked by default), and a 👁 show/hide button next to both password fields.
+- [partials/screens/log-in-screen.html](partials/screens/log-in-screen.html): same show/hide toggle on the login password.
+- [styles.css](styles.css): `.pw-wrap`, `.pw-input`, `.pw-toggle`, `.su-checkbox-row` rules.
+- [src/ui/screens/authScreens.js](src/ui/screens/authScreens.js): `validateSignupForm` now reads `passwordConfirm` + `wantsNotifications`, emits `pass-mismatch` if the confirm doesn't match. New `pwToggleBtns` loop wires every `.pw-toggle` to flip its target input between `type=password` and `type=text`.
+- [src/main.js](src/main.js): the legacy `globalThis.signUpUser` shim and the `AUTH_INTENT.SIGN_UP` handler both pass the new fields through. The handler writes `wantsNotifications` onto the initial profile, and `bootCrossCuttingFor(uid)` reads it back before calling `notificationService.boot` — opted-out users skip the OneSignal prompt.
+
+### Friends screen — `activeRoom` permission fix
+- [src/main.js](src/main.js): the friend-detail panel was reading `users/{friendUid}/activeRoom`, which fails with `permission_denied` (other users' profile data isn't world-readable). Now reads only MY `activeRoom`, then checks whether the friend appears in that room's `players` list. Same approach the async-rooms scan already uses below.
+- [src/ui/screens/friendsScreen.js](src/ui/screens/friendsScreen.js): recent-games row now renders with `direction:ltr` and gold-colored "mine" score so the layout reads `score : opponentScore icon` consistently regardless of RTL parent and regardless of which side has the higher number.
+
+### Misc small fixes
+- [partials/screens/game.html](partials/screens/game.html): שאילתה button got `id="btn-shailta"` for stable JS targeting.
+- [src/ui/screens/dictionaryScreen.js](src/ui/screens/dictionaryScreen.js): new `DICT_INTENT.CLOSE_QUERY` event, fired when the שאילתה overlay closes — gives subscribers a clean hook.
+- [src/main.js](src/main.js): easy bot (`difficulty === 0`) now uses only the first 7,000 dictionary entries (sorted by Hebrew word frequency, so common words first). Medium/Hard still see the full vocabulary.
+
+### Explicitly NOT ported (would have rolled back current features)
+- Removal of `applyGenderToRoot`, `data-gm`/`data-gf` attributes, `g('inviteToGame')` calls — current branch keeps the gender system.
+- Removal of `screen.orientation.lock('portrait')` and `#rotate-block` overlay — current keeps them.
+- Removal of `connectivityIndicator` + `startConnectivityMonitor` — current keeps the live wifi-icon indicator.
+- Removal of the native back-button history-stack handler — current keeps the quit-overlay flow.
+- The "pending lock" + `.cell.pending-lock` class — current branch already has the equivalent feature under `.spine-pending-lock-cell`.
+- The "ם vs מ" / sofit-letter fixes — already on the current branch via the three `claude/final-form-letter-placement-nAfaC` merge commits (PRs #276/277/278) plus `f64be250 Fix: bot joker and תפזורת placing sofit letters on board tiles`.
+
+**Verification:** 175/175 unit tests pass.
+
+---
+
 ## Breathing gap below the global topbar — June 2026
 
 Non-home, non-game screens (stats, settings, profile, friends, avatar gallery, etc.) had their first content element sitting flush against the bottom edge of the fixed `#global-topbar`. The padding-top offset was exactly `var(--em-topbar-h)`, which pushes content below the topbar but leaves zero visible gap.
