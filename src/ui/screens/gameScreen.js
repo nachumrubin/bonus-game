@@ -1798,6 +1798,7 @@ function invalidReasonText(reason) {
     case 'swap-on-locked':          return 'אי אפשר להחליף אות במשבצת נעולה';
     case 'swap-no-tile':            return 'במשבצת אין אות להחלפה';
     case 'turn-already-passed':     return g('turnPassedDuringPlace');
+    case 'turn-expired':            return 'הזמן שלך נגמר — התור עובר ליריב';
     default:                        return reason;
   }
 }

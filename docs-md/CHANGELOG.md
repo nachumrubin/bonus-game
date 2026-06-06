@@ -2,6 +2,40 @@
 
 ---
 
+## Online ghost-tile race: synchronous rollback + late-commit gate — June 2026
+
+A "last-second" CONFIRM_MOVE could leave the active player staring at tiles that the server never accepted. Reported flow: P1 confirms right as the deadline hits, P2's watchdog wins the version race, P1's commit aborts, but P1 keeps seeing their tiles on screen until P2's *next* move arrives and overwrites the cells. Score reverted correctly (forceResync replaced `state.scores`), tiles did not — because the rollback was async and depended on a successful `readRoom`, and in some real-world conditions that round-trip is slow or silently fails.
+
+Two-layer fix in [src/game/sessions/onlineGameSession.js](src/game/sessions/onlineGameSession.js):
+
+1. **Synchronous rollback snapshot.** `dispatch()` now captures board / scores / racks / moveHistory / bag / activeBoosts / bonusBoard / bonusSqUsed / pendingBonuses / locks / currentTurnSlot / turnNumber / passCount / firstMove / turnDeadlineMs *before* `engine.dispatch(CONFIRM_MOVE)` mutates them. The `MOVE_CONFIRMED` handler claims the snapshot and, on `committed: false`, restores in-place and emits `TURN_CHANGED { reason: 'commit-rollback' }`. `forceResync` still runs afterward as belt-and-suspenders, but the visible-flash window is gone even if `readRoom` hangs.
+2. **Late-commit gate.** `dispatch()` refuses `CONFIRM_MOVE` outright when `Date.now() > state.turnDeadlineMs + DEFAULT_WATCHDOG_GRACE_MS`. The watchdog has (or imminently will) claim — our commit cannot win, and running the engine would just produce a tile-drop animation we'd have to reverse. Emits `INVALID_MOVE_REJECTED { reason: 'turn-expired' }` so the player gets feedback.
+
+Surfacing in the UI: [src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js) gains a new `turn-expired` mapping in `invalidReasonText` → "הזמן שלך נגמר — התור עובר ליריב" (status-bar text the active player sees on the disallowed click).
+
+**Test coverage** in [tests/unit/online-ghost-move-rollback.test.js](tests/unit/online-ghost-move-rollback.test.js):
+- *synchronous rollback*: stubs `transaction` to return `committed: false` AND `.get()` to hang forever, then asserts `state.board[4][4]` and the active rack are restored after a few microtask ticks — proves the rollback runs without any network help.
+- *late-commit gate*: seeds `turnDeadlineMs = now - 5s` and asserts `dispatch({ type: CMD.CONFIRM_MOVE, ... })` emits `INVALID_MOVE_REJECTED { reason: 'turn-expired' }` and leaves the board untouched.
+
+177 unit tests pass (175 prior + 2 new).
+
+**Note for the deferred-score / bonus-mini-game path:** the snapshot is intentionally NOT used when `MOVE_CONFIRMED` fires with `scoringDeferred: true`. Rolling back across a played mini-game (wheel spin, word-search etc.) would require undoing bonus-flow state and isn't viable as a safety net. That path keeps the existing `forceResync` recovery only.
+
+---
+
+## Crossing-words mini-game: in-tile input + word-revealing result — June 2026
+
+The B10 "שתי מילים חוצות" boost previously asked the player to type the missing letter into a separate `<input>` underneath the crossing grid, and the result overlay only said "correct/incorrect" plus the shared letter in isolation. Two small UX fixes:
+
+- [src/ui/screens/miniGames/crossingWordsMiniGame.js](src/ui/screens/miniGames/crossingWordsMiniGame.js): `buildMiniGrid` now accepts `{ withInput: true }` and embeds the single-letter `<input>` directly inside the `?` crossing cell (transparent background, gold caret/color, RTL, `maxLength=1`). The separate input below the grid in both `attachLegacy` and `attachSelf` is gone. Enter-key submission was added so the player doesn't have to mouse to "בדוק".
+- `renderResult` now spells out the completed pair on every outcome:
+  - Success → shows the two words the player's letter built (green).
+  - Wrong letter → shows the (invalid) pair the player typed, then the correct pair below.
+  - Timeout → shows the correct pair only.
+- All 13 mini-game unit tests still pass; the no-DOM test path is unchanged because the rewrite is confined to `buildMiniGrid`, `attachLegacy`, `attachSelf`, and `renderResult`.
+
+---
+
 ## Boost mini-game screenshots in the guide — June 2026
 
 The guide section "בונוסים ומיני-משחקים" only described the mini-games in prose. Captured six screenshots — one per mini-game — and embedded them with bilingual captions.

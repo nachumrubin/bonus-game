@@ -196,11 +196,12 @@ export function mountCrossingWordsMiniGame({
 
   // ─── DOM helpers ────────────────────────────────────────
 
-  function buildMiniGrid() {
+  function buildMiniGrid({ withInput = false } = {}) {
     const gridRows = pair.v.length;
     const gridCols = pair.h.length;
     const wrap = doc.createElement('div');
     wrap.style.cssText = `display:grid;grid-template-columns:repeat(${gridCols},32px);gap:2px;background:#2a5878;border:2px solid #2a5878;border-radius:3px;margin:8px auto;width:fit-content;`;
+    let input = null;
     for (let r = 0; r < gridRows; r++) {
       for (let c = 0; c < gridCols; c++) {
         const cell = doc.createElement('div');
@@ -212,7 +213,18 @@ export function mountCrossingWordsMiniGame({
           cell.style.background = '#5ba3cc';
           cell.style.border = '2px solid #e8d040';
           cell.style.color = '#e8d040';
-          cell.textContent = '?';
+          if (withInput) {
+            input = doc.createElement('input');
+            input.type = 'text';
+            input.maxLength = 1;
+            input.dir = 'rtl';
+            input.placeholder = '?';
+            input.setAttribute('aria-label', 'האות המשותפת');
+            input.style.cssText = 'width:28px;height:28px;background:transparent;border:none;outline:none;text-align:center;font-size:18px;font-weight:900;color:#e8d040;font-family:inherit;padding:0;caret-color:#e8d040;';
+            cell.appendChild(input);
+          } else {
+            cell.textContent = '?';
+          }
         } else if (isHCell && c < pair.h.length) {
           cell.style.background = '#e8e0c8';
           cell.style.color = '#111';
@@ -227,7 +239,7 @@ export function mountCrossingWordsMiniGame({
         wrap.appendChild(cell);
       }
     }
-    return wrap;
+    return { wrap, input };
   }
 
   function attachLegacy() {
@@ -235,15 +247,8 @@ export function mountCrossingWordsMiniGame({
     bovt.textContent  = 'שתי מילים חוצות!';
     bovd.textContent  = `מצא את האות המשותפת לשתי המילים תוך ${Math.floor(durationMs / 1000)} שניות (+${pts} נקודות!)`;
     bchal.innerHTML = '';
-    bchal.appendChild(buildMiniGrid());
-
-    const input = doc.createElement('input');
-    input.type = 'text';
-    input.className = 'ri';
-    input.placeholder = 'האות המשותפת...';
-    input.maxLength = 1;
-    input.dir = 'rtl';
-    bchal.appendChild(input);
+    const { wrap, input } = buildMiniGrid({ withInput: true });
+    bchal.appendChild(wrap);
 
     ovBonus.classList?.remove?.('hidden');
     setTimeout(() => input?.focus?.(), 0);
@@ -252,9 +257,12 @@ export function mountCrossingWordsMiniGame({
     bok.removeAttribute?.('onclick');
     const handleSubmit = (e) => {
       e?.preventDefault?.();
-      const attempt = (input.value ?? '').trim();
+      const attempt = (input?.value ?? '').trim();
       finish({ correct: gradeCrossingLetter(attempt, pair), attempt });
     };
+    input?.addEventListener?.('keydown', (e) => {
+      if (e.key === 'Enter') handleSubmit(e);
+    });
     bok.textContent = 'בדוק ✓';
     bok.addEventListener('click', handleSubmit);
 
@@ -272,25 +280,33 @@ export function mountCrossingWordsMiniGame({
   }
 
   function renderResult(result) {
-    const answerLabel = `האות המשותפת היא: <strong style="font-size:28px;color:var(--by);display:block;margin-top:4px;">${pair.shared}</strong>`;
+    const fill = (letter) => ({
+      h: pair.h.slice(0, pair.hpos) + letter + pair.h.slice(pair.hpos + 1),
+      v: pair.v.slice(0, pair.vpos) + letter + pair.v.slice(pair.vpos + 1),
+    });
+    const correct = fill(pair.shared);
+    const correctWordsHtml = `<span style="font-weight:900;color:var(--by);">${correct.h}</span> · <span style="font-weight:900;color:var(--by);">${correct.v}</span>`;
+
     if (!result.attempt) {
       return `<div style="text-align:center;padding:8px 0;">
         <div style="font-size:32px;margin-bottom:6px;">⏰</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:4px;">הזמן נגמר!</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.6);">${answerLabel}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:6px;">הזמן נגמר!</div>
+        <div style="font-size:14px;color:rgba(255,255,255,.85);">התשובה: ${correctWordsHtml}</div>
       </div>`;
     }
     if (result.success) {
+      const made = fill(result.attempt);
       return `<div style="text-align:center;padding:8px 0;">
         <div style="font-size:32px;margin-bottom:6px;">✅</div>
-        <div style="font-size:20px;font-weight:900;color:#8eff8e;margin-bottom:4px;letter-spacing:2px;">${result.attempt}</div>
+        <div style="font-size:18px;font-weight:900;color:#8eff8e;margin-bottom:4px;">${made.h} · ${made.v}</div>
         <div style="font-size:13px;color:#8eff8e;margin-top:4px;">כל הכבוד! הצלחת! 🎉</div>
       </div>`;
     }
+    const made = fill(result.attempt);
     return `<div style="text-align:center;padding:8px 0;">
       <div style="font-size:32px;margin-bottom:6px;">❌</div>
-      <div style="font-size:15px;color:#ff8e8e;margin-bottom:6px;letter-spacing:2px;">${result.attempt} — לא נכון</div>
-      <div style="font-size:13px;color:rgba(255,255,255,.65);">${answerLabel}</div>
+      <div style="font-size:15px;color:#ff8e8e;margin-bottom:6px;">${made.h} · ${made.v} — לא תקין</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.75);">התשובה הנכונה: ${correctWordsHtml}</div>
     </div>`;
   }
 
@@ -304,21 +320,27 @@ export function mountCrossingWordsMiniGame({
       <div style="font-size:16px;font-weight:900;margin-bottom:4px;">⚡ שתי מילים חוצות</div>
       <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:8px;">${Math.floor(durationMs / 1000)} שניות · +${pts} נקודות</div>
     `;
-    card.appendChild(buildMiniGrid());
+    const { wrap, input } = buildMiniGrid({ withInput: true });
+    card.appendChild(wrap);
     const inputRow = doc.createElement('div');
     inputRow.style.cssText = 'margin-top:10px;display:flex;gap:6px;justify-content:center;';
-    inputRow.innerHTML = `
-      <input data-cw="input" type="text" maxlength="1" dir="rtl" style="width:60px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px;border-radius:6px;font-size:20px;font-weight:900;text-align:center;" />
-      <button data-cw="submit" style="background:#e8c840;border:none;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;">בדוק</button>
-    `;
+    const submitBtn = doc.createElement('button');
+    submitBtn.setAttribute('data-cw', 'submit');
+    submitBtn.style.cssText = 'background:#e8c840;border:none;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
+    submitBtn.textContent = 'בדוק';
+    inputRow.appendChild(submitBtn);
     card.appendChild(inputRow);
     host.appendChild(card);
     doc.body?.appendChild(host);
+    setTimeout(() => input?.focus?.(), 0);
 
-    host.querySelector('[data-cw="submit"]')?.addEventListener('click', () => {
-      const input = host.querySelector('[data-cw="input"]');
+    const handleSubmit = () => {
       const attempt = (input?.value ?? '').trim();
       finish({ correct: gradeCrossingLetter(attempt, pair), attempt });
+    };
+    submitBtn.addEventListener('click', handleSubmit);
+    input?.addEventListener?.('keydown', (e) => {
+      if (e.key === 'Enter') handleSubmit();
     });
     return host;
   }

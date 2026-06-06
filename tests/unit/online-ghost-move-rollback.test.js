@@ -44,7 +44,7 @@ function loadModules() {
       globalThis.__GHOST_MOVE_DICT_LOADED__ = true;
     }
     return {
-      bus, CMD: cmds.CMD,
+      bus, CMD: cmds.CMD, EV: evts.EV,
       createInitialState: engine.createInitialState,
       makeMockDb: mock.makeMockDb,
       createRoom: roomSvc.createRoom,
@@ -146,6 +146,126 @@ test('ghost-move rollback: failed commit does not leave optimistic tiles on the 
   // Her rack should also be restored — applyMove had removed 'א' and 'ב'.
   assert.ok(sess.state.racks[0].includes('א'), 'alice\'s rack must have א back after rollback');
   assert.ok(sess.state.racks[0].includes('ב'), 'alice\'s rack must have ב back after rollback');
+});
+
+test('synchronous rollback: ghost tiles wiped before forceResync\'s readRoom round-trip', async () => {
+  // The earlier test sleeps 30ms before asserting, so it can\'t distinguish
+  // "rolled back synchronously" from "rolled back via the async forceResync
+  // path". This test stalls readRoom indefinitely so the eventual resync
+  // can never complete — the assertion proves the in-place snapshot
+  // restoration in MOVE_CONFIRMED runs without any network help.
+  const {
+    bus, CMD, createInitialState, makeMockDb, createRoom, readRoom, createOnlineGameSession,
+  } = await loadModules();
+  bus._reset();
+
+  const db = makeMockDb();
+  const engineState = createInitialState({
+    mode: 'friend-live', tileBagSeed: 'sync-rollback-test',
+    players: PLAYERS, settings: {},
+  });
+  engineState.racks = {
+    0: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'],
+    1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+  };
+  await createRoom(db, {
+    roomId: 'room', mode: 'friend-live',
+    players: PLAYERS, settings: {}, engineState, serverTimestamp: 1000,
+  });
+  await db.ref('rooms/room').update({ status: 'playing' });
+
+  const room = await readRoom(db, 'room');
+  const sess = await createOnlineGameSession({ bus, db, room, mySlot: 0 });
+  sess.start();
+
+  // Stub: transaction returns committed:false AND .get() (used by readRoom
+  // inside forceResync) never resolves. If the rollback weren\'t synchronous,
+  // the optimistic tiles would persist forever in this test.
+  const realRef = db.ref.bind(db);
+  let stubbed = 1;
+  db.ref = (p) => {
+    const ref = realRef(p);
+    if (p === 'rooms/room' && stubbed > 0) {
+      stubbed--;
+      ref.transaction = () => Promise.resolve({ committed: false, snapshot: null });
+      ref.get = () => new Promise(() => { /* hang forever */ });
+    }
+    return ref;
+  };
+
+  sess.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1, isJoker: false },
+        { r: 4, c: 5, letter: 'ב', val: 3, isJoker: false },
+      ],
+      swappedTiles: [],
+    },
+  });
+
+  // Drain the microtask queue so the MOVE_CONFIRMED async handler\'s `await
+  // commitCurrentState(...)` resolves and the synchronous rollback runs.
+  // Only Promise.resolve() ticks — no setTimeout, no readRoom wait.
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+
+  assert.equal(sess.state.board[4][4], null,
+    'synchronous rollback must wipe ghost tile (4,4) WITHOUT waiting for readRoom');
+  assert.equal(sess.state.board[4][5], null,
+    'synchronous rollback must wipe ghost tile (4,5) WITHOUT waiting for readRoom');
+  assert.ok(sess.state.racks[0].includes('א'), 'rack restored synchronously');
+  assert.ok(sess.state.racks[0].includes('ב'), 'rack restored synchronously');
+});
+
+test('late-commit gate: CONFIRM_MOVE past deadline + grace emits turn-expired and does not mutate state', async () => {
+  // When the local clock is already past turnDeadlineMs + watchdog grace,
+  // the opponent\'s watchdog has (or will imminently) claim. Refusing the
+  // dispatch with an INVALID_MOVE_REJECTED feedback prevents the brief
+  // ghost-tile flash that the rollback would otherwise have to clean up.
+  const {
+    bus, CMD, EV, createInitialState, makeMockDb, createRoom, readRoom, createOnlineGameSession,
+  } = await loadModules();
+  bus._reset();
+
+  const db = makeMockDb();
+  const engineState = createInitialState({
+    mode: 'friend-live', tileBagSeed: 'late-commit-gate',
+    players: PLAYERS, settings: { timelimit: true, botTime: 30 },
+  });
+  engineState.racks = {
+    0: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'],
+    1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+  };
+  await createRoom(db, {
+    roomId: 'room', mode: 'friend-live',
+    players: PLAYERS, settings: { timelimit: true, botTime: 30 }, engineState, serverTimestamp: 1000,
+  });
+  // Deadline already in the past — well beyond the 1s watchdog grace.
+  await db.ref('rooms/room').update({ status: 'playing', turnDeadlineMs: Date.now() - 5_000 });
+
+  const room = await readRoom(db, 'room');
+  const sess = await createOnlineGameSession({ bus, db, room, mySlot: 0 });
+  sess.start();
+
+  const rejections = [];
+  bus.on(EV.INVALID_MOVE_REJECTED, (p) => rejections.push(p));
+
+  sess.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1, isJoker: false },
+        { r: 4, c: 5, letter: 'ב', val: 3, isJoker: false },
+      ],
+      swappedTiles: [],
+    },
+  });
+
+  assert.ok(rejections.some(r => r.reason === 'turn-expired'),
+    'late confirm must emit INVALID_MOVE_REJECTED with reason=turn-expired');
+  // State must not have been mutated by the engine.
+  assert.equal(sess.state.board[4][4], null, 'no tile placed at (4,4)');
+  assert.equal(sess.state.board[4][5], null, 'no tile placed at (4,5)');
 });
 
 test.after(() => { console.info = _origInfo; });
