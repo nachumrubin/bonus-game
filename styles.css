@@ -11,6 +11,28 @@
 html,body{width:100%;height:100%;overflow:hidden;background:#02061e;}
 body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 
+/* ── PORTRAIT-ONLY ENFORCEMENT ──
+   Phone-shaped viewports in landscape get a full-screen "rotate" overlay.
+   The (max-height:500px) clause restricts this to phones — tablets and
+   desktops still have plenty of vertical space in landscape and stay
+   interactive (the layout caps at 480px and centers either way). */
+#rotate-block{display:none;}
+@media (orientation: landscape) and (max-height: 500px){
+  #rotate-block{
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:14px;
+    position:fixed; inset:0; z-index:99999;
+    background:radial-gradient(ellipse at center,#06133d,#02061e);
+    color:#fff; text-align:center; padding:24px;
+  }
+  .rotate-block-icon{font-size:64px;animation:rotateHint 1.6s ease-in-out infinite;}
+  .rotate-block-text{font-size:18px;font-weight:900;color:var(--by);letter-spacing:.5px;}
+}
+@keyframes rotateHint{
+  0%,100%{transform:rotate(0deg);}
+  50%{transform:rotate(-90deg);}
+}
+
 .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .2s;z-index:1;}
 .screen.hidden{opacity:0;pointer-events:none;}
 
@@ -111,12 +133,19 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 #sg{
   background:var(--bg);
   background-image:radial-gradient(ellipse at 50% 50%,#4a8fb8,#2a5878 100%);
-  align-items:stretch; justify-content:flex-start; overflow:hidden;
+  /* Center the phone-shaped game container both axes. */
+  align-items:center; justify-content:center; overflow:hidden;
 }
 .gr{
   display:flex; flex-direction:column;
-  width:100%; height:100%;
-  max-width:680px; margin:0 auto;
+  /* The container always fills the viewport's height. Width is derived from
+     that height to maintain a ~9:16 phone aspect ratio, but is also clamped
+     to 100% — so narrow-but-tall viewports (real phones) fill edge-to-edge
+     while wide-and-tall viewports (desktop, dev-tools) get the largest
+     phone-shaped rectangle that fits. No hard pixel caps. */
+  height:100%;
+  width:min(100%, calc(100svh * 9 / 16));
+  margin:0 auto;
 }
 
 /* top bar */
@@ -145,32 +174,23 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 }
 .sbar.ok{color:#8eff8e;} .sbar.err{color:#ff8e8e;} .sbar.bon{color:var(--by);font-weight:700;}
 
-/* ── GAME AREA: left scores | board+strips | right controls ── */
+/* ── GAME AREA: board (full width). The info-strip above carries scores. ── */
 .game-area{
   flex:1; min-height:0; min-width:0;
-  display:flex; flex-direction:row; align-items:stretch; gap:4px;
-  padding:4px; overflow:hidden;
+  display:flex; flex-direction:row; align-items:stretch; gap:0;
+  padding:2px; overflow:hidden;
 }
 
-/* left score panel */
-.left-panel{
-  width:66px; flex-shrink:0;
-  display:flex; flex-direction:column; gap:3px;
-}
-.left-panel .pb, .left-panel .scbox{ flex-shrink:0; position:relative; z-index:2; }
+/* Side panels are retired — the info-strip above the board carries scores.
+   Selectors kept so legacy DOM refs don't break, but always hidden. */
+.left-panel,
+.right-panel{ display:none !important; }
 .pb{background:var(--bg2);border:2px solid #6ab0d8;border-radius:4px;padding:4px;}
 .pl{font-size:8px;color:rgba(255,255,255,.5);text-align:center;margin-bottom:2px;font-weight:700;}
 .scbox{background:var(--bg2);border:2px solid #6ab0d8;border-radius:4px;padding:4px 6px;text-align:center;transition:border-color .2s,box-shadow .2s;}
 .scbox.act{border-color:var(--by);box-shadow:0 0 6px rgba(232,200,64,.3);}
 .scname{font-size:8px;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:1px;}
 .scval{font-size:17px;font-weight:900;line-height:1;}
-
-/* right controls panel */
-.right-panel{
-  width:66px; flex-shrink:0;
-  display:flex; flex-direction:column; gap:3px;
-}
-.right-panel .pb{ flex-shrink:0; position:relative; z-index:2; }
 .dpair{display:flex;flex-direction:column;gap:2px;}
 .dm{padding:3px 4px;font-size:8px;font-weight:700;background:var(--btn);border:2px solid var(--bborder);border-radius:3px;cursor:pointer;font-family:'Heebo',sans-serif;box-shadow:0 2px 0 var(--tshadow);color:#111;width:100%;}
 .dm.a{background:#4a7ad8;border-color:#2a4a9a;color:#fff;box-shadow:0 2px 0 #1a2a6a;}
@@ -184,15 +204,12 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 .board-center-inner {
   position: relative;
   flex-shrink: 0;
+  /* Single cell-size rule used at every viewport — the .gr container is
+     capped at phone width so the board always fits a phone-shaped layout. */
   --csz: clamp(22px, 6vmin, 42px);
   width: calc(var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + 22px);
   height: calc(var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + var(--csz) + 22px);
   /* JS refines width/height + --csz once the visible screen has settled. */
-}
-@media (min-width:501px){
-  .board-center-inner{
-    --csz: clamp(30px, 5vmin, 54px);
-  }
 }
 /* The board border: absolutely positioned over the 10×10 play area.
    Offset = 1 cell + 1 gap = (csz + 2px) from each edge of the grid.
@@ -405,8 +422,7 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .jok-sym{ display:inline-flex; align-items:center; }
 .jok-img{ object-fit:contain; vertical-align:middle; }
 .wt-l .jok-img{ width:22px; height:22px; }
-.bt2-l .jok-img{ width:36px; height:36px; }
-@media(max-width:500px){ .bt2-l .jok-img{ width:26px; height:26px; } }
+.bt2-l .jok-img{ width:26px; height:26px; }
 .wt-empty{ height:30px; width:58px; flex-shrink:0; opacity:0; }
 /* Cascade-in: tile drops in from above */
 @keyframes tileDropIn{
@@ -423,104 +439,13 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .wt.anim-out{ animation:tileDropOut .24s ease-in both; }
 
 /* ── SHARED ROW HEIGHT ── */
-:root{ --row-h:46px; }
-@media(max-width:500px){ :root{ --row-h:34px; } }
-/* ── TABLET 7": lift 680px board cap, scale home + overlays ── */
-@media(min-width:600px){
-  .gr{ max-width:min(100%,1200px); }
-  :root{ --row-h:54px; }
-  /* Home */
-  .hc{ max-width:520px; }
-  .hlogo img{ max-width:clamp(260px,72vw,420px) !important; }
-  .hbtns .bd{ font-size:17px; min-height:56px; }
-  .hbtns{ gap:10px; }
-  /* Setup screen */
-  .sbox{ max-width:400px; }
-  .stitle{ font-size:21px; }
-  .sf input{ font-size:17px; padding:10px 12px; }
-  .sf label{ font-size:12px; }
-  .db{ font-size:13px; padding:8px 10px; }
-  /* Overlays */
-  .ovc{ max-width:600px; }
-  .ovt{ font-size:22px; }
-  .ovd{ font-size:15px; }
-  .ovic{ font-size:44px; }
-  .ovb{ font-size:15px; padding:13px; }
-  .ovbtns{ gap:8px; margin-top:4px; }
-  .ri{ font-size:16px; padding:10px 12px; }
-  .code-input{ font-size:28px; padding:12px 16px; }
-  .code-display{ font-size:38px; padding:12px 16px; }
-  /* Online lobby */
-  .online-wrap{ max-width:480px; gap:18px; padding:26px; }
-  .online-title{ font-size:28px; }
-  .online-subtitle{ font-size:13px; }
-  .omode-btn{ padding:16px; font-size:16px; }
-  .omode-ic{ font-size:28px; }
-  .omode-label{ font-size:15px; }
-  .omode-desc{ font-size:12px; }
-  /* Top bar */
-  .tb .tb-ic{ font-size:22px; }
-  .tb .tb-tx{ font-size:11px; }
-  .tbtitle{ font-size:18px; }
-  .sbar{ font-size:13px; min-height:26px; }
-  /* Champions table */
-  .champs-table{ font-size:14px; }
-  .champs-table th,.champs-table td{ padding:8px 10px; }
-  /* Utility tiles (exchange/lock overlays) */
-  .ut{ width:44px; height:48px; font-size:23px; }
-}
-/* ── TABLET 10": scale side panels, score boxes, word-tracker tiles ── */
-@media(min-width:900px){
-  /* Side panels */
-  .left-panel,.right-panel{ width:90px; gap:5px; }
-  .pl{ font-size:11px; }
-  .scname{ font-size:11px; }
-  .scval{ font-size:22px; }
-  .dm{ font-size:11px; padding:5px 6px; }
-  .wt{ width:72px; height:36px; }
-  .wt-l{ font-size:20px; }
-  .wt-v{ font-size:9px; bottom:2px; }
-  .wt-empty{ height:38px; width:74px; }
-  .wt-l .jok-img{ width:28px; height:28px; }
-  /* Home */
-  .hc{ max-width:580px; }
-  .hlogo img{ max-width:clamp(300px,65vw,460px) !important; }
-  .hbtns .bd{ font-size:19px; }
-  /* Setup screen */
-  .sbox{ max-width:540px; }
-  .stitle{ font-size:30px; }
-  .sf input{ font-size:22px; padding:14px 16px; }
-  .sf label{ font-size:15px; }
-  .db{ font-size:15px; padding:10px 14px; }
-  /* Overlays */
-  .ovc{ max-width:740px; }
-  .ovt{ font-size:26px; }
-  .ovd{ font-size:17px; }
-  .ovic{ font-size:56px; }
-  .ovb{ font-size:17px; padding:16px; }
-  .ovbtns{ gap:10px; margin-top:6px; }
-  .ri{ font-size:18px; padding:12px 14px; }
-  .code-input{ font-size:34px; padding:14px 18px; }
-  .code-display{ font-size:46px; padding:14px 18px; }
-  /* Online lobby */
-  .online-wrap{ max-width:620px; gap:20px; padding:32px; }
-  .online-title{ font-size:36px; }
-  .online-subtitle{ font-size:15px; }
-  .omode-btn{ padding:18px; font-size:18px; }
-  .omode-ic{ font-size:36px; }
-  .omode-label{ font-size:17px; }
-  .omode-desc{ font-size:14px; }
-  /* Top bar */
-  .tb .tb-ic{ font-size:28px; }
-  .tb .tb-tx{ font-size:13px; }
-  .tbtitle{ font-size:22px; }
-  .sbar{ font-size:15px; min-height:30px; }
-  /* Champions table */
-  .champs-table{ font-size:16px; }
-  .champs-table th,.champs-table td{ padding:10px 12px; }
-  /* Utility tiles */
-  .ut{ width:52px; height:56px; font-size:27px; }
-}
+:root{ --row-h:34px; }
+/* Tablet/desktop width-scaling removed: the .gr/.hc/.sbox/.ovc containers
+   are capped at phone width so the UI looks identical at every viewport
+   (just centered with empty side margins on wider screens). */
+/* Tablet/desktop width-scaling has been removed entirely so every viewport
+   (phone, tablet, desktop) renders the same phone-shaped layout. The outer
+   containers (.gr/.hc/.sbox/.ovc) are capped at phone width and centered. */
 
 /* bottom rack */
 .bot{
@@ -591,6 +516,37 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .rq{background:rgba(0,0,0,.22);border-right:3px solid var(--by);padding:8px 10px;border-radius:3px;font-size:15px;color:#fff;margin-bottom:9px;line-height:1.8;letter-spacing:4px;}
 .ri{width:100%;padding:8px 10px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);border-radius:4px;color:#fff;font-size:14px;font-family:'Heebo',sans-serif;direction:rtl;outline:none;margin-bottom:8px;}
 .ri:focus{border-color:var(--by);}
+/* Password field + show/hide toggle. The wrapper keeps the input + eye
+   button on the same row; the input is `.pw-input` and reserves space on
+   the right for the toggle so text never disappears behind the icon. */
+.pw-wrap{position:relative;display:block;margin-bottom:8px;}
+.pw-wrap .pw-input{margin-bottom:0;padding-left:36px;}
+.pw-toggle{position:absolute;top:50%;left:6px;right:auto;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.55);font-size:16px;cursor:pointer;padding:4px 6px;line-height:1;font-family:inherit;}
+.pw-toggle:hover{color:#fff;}
+.pw-toggle.pw-shown{color:#fff;}
+/* "Hide" state: same 👁 emoji, with a diagonal line drawn across it via
+   ::after so it reads as "eye with a slash" without depending on a
+   slashed-eye emoji (which isn't reliably rendered across platforms). */
+.pw-toggle::after{
+  content:'';
+  position:absolute;
+  left:4px;
+  right:4px;
+  top:50%;
+  height:2px;
+  background:currentColor;
+  border-radius:2px;
+  transform:translateY(-50%) rotate(-22deg);
+  transform-origin:center;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .12s ease;
+  box-shadow:0 0 0 1px rgba(0,0,0,.55);
+}
+.pw-toggle.pw-shown::after{opacity:1;}
+/* Signup notifications checkbox row */
+.su-checkbox-row{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.8);cursor:pointer;padding:4px 2px;line-height:1.4;}
+.su-checkbox-row input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--by,#f5c518);flex-shrink:0;}
 .urow{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:7px;}
 .ut{width:36px;height:40px;background:var(--tile);border:2px solid var(--tborder);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;color:#111;cursor:pointer;box-shadow:0 2px 0 var(--tshadow);}
 .ut.sl{background:rgba(255,255,255,.04);border:2px dashed rgba(255,255,255,.18);color:transparent;box-shadow:none;}
@@ -748,51 +704,37 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
    Layout: tbar → info-strip → board (full width) → rack
    Side panels hidden, info moved to horizontal strip
 ═══════════════════════════════════════════════ */
-@media (max-width: 500px){
+/* Top bar — text-only at every viewport, no icons */
+.tbar{ gap:1px; padding:2px 2px; }
+.tb{ font-size:8px; padding:2px 1px; }
+.tb .tb-tx{ display:block; font-size:8px; line-height:1.1; }
+.tb .tb-ic{ display:none; }
+.tbtitle{ display:none; }
+#bag-char svg{ width:30px; height:34px; }
 
-  /* Top bar — text-only on mobile, no icons */
-  .tbar{ gap:1px; padding:2px 2px; }
-  .tb{ font-size:8px; padding:2px 1px; }
-  .tb .tb-tx{ display:block; font-size:8px; line-height:1.1; }
-  .tb .tb-ic{ display:none; }
-  .tbtitle{ display:none; }
-  #bag-char svg{ width:30px; height:34px; }
+/* Status bar */
+.sbar{ font-size:10px; min-height:16px; padding:1px 6px; }
 
-  /* Status bar */
-  .sbar{ font-size:10px; min-height:16px; padding:1px 6px; }
-
-  /* Info strip — shown on mobile, replaces side panels */
-  .info-strip{
-    display:flex !important;
-    align-items:center;
-    gap:0;
-    padding:2px 4px;
-    background:var(--bg2);
-    border-bottom:1px solid rgba(100,170,210,.4);
-    flex-shrink:0;
-  }
-
-  /* Game area — board takes full width, side panels hidden */
-  .game-area{ padding:2px; gap:0; }
-  .left-panel{ display:none !important; }
-  .right-panel{ display:none !important; }
-
-  /* Board gets all the space */
-  .board-center{ width:100%; }
-
-  /* Bottom rack — gap matches top bar on mobile */
-  .bot{ padding:2px 2px; gap:1px; }
-
-  /* Hide waiting tile labels (no side panels) */
-  .ss-tiles{ display:none !important; }
-  #ss-label-p1, #ss-label-p2{ display:none !important; }
-}
-
-/* Info strip — hidden on desktop, shown on mobile */
+/* Info strip — always shown; carries the score cards above the board */
 .info-strip{
-  display:none;
+  display:flex;
+  align-items:center;
+  gap:0;
+  padding:2px 4px;
+  background:var(--bg2);
+  border-bottom:1px solid rgba(100,170,210,.4);
   flex-shrink:0;
 }
+
+/* Board takes full width of the (phone-capped) game container */
+.board-center{ width:100%; }
+
+/* Bottom rack — tight gap matching the top bar */
+.bot{ padding:2px 2px; gap:1px; }
+
+/* Side panels are retired — waiting-tile labels never render */
+.ss-tiles{ display:none !important; }
+#ss-label-p1, #ss-label-p2{ display:none !important; }
 .is-cell{
   flex:1; display:flex; flex-direction:column; align-items:center;
   justify-content:center; padding:2px 3px;
@@ -1214,10 +1156,7 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
   font-size: 12px !important;
   letter-spacing: .5px !important;
 }
-@media (min-width: 600px) {
-  .turn-timer .tt-value { font-size: 32px !important; }
-  .turn-timer .tt-label { font-size: 14px !important; }
-}
+/* (Turn-timer wide-screen bump removed — same size at every viewport.) */
 
 /* ── PLAYER SCORE CARDS (mobile info strip) ── */
 .is-pcard {
@@ -1300,23 +1239,22 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
   box-shadow: 0 0 8px rgba(232,200,64,.5);
 }
 
-/* ── MOBILE INFO STRIP ── */
-@media (max-width: 500px) {
-  .info-strip {
-    background: linear-gradient(180deg, rgba(3,10,32,.99), rgba(2,8,26,.99)) !important;
-    border-bottom: 1px solid rgba(255,255,255,.1) !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,.35) !important;
-    padding: 5px 6px !important;
-    min-height: 82px !important;
-    align-items: stretch !important;
-    gap: 6px !important;
-    justify-content: center !important;
-  }
-  /* With only 2 player cards, each takes half the width */
-  .is-pcard {
-    flex: 1 !important;
-    margin: 0 !important;
-  }
+/* ── INFO STRIP (player score cards above the board) — applies at every
+       viewport, since the side-panel layout has been retired ── */
+.info-strip {
+  background: linear-gradient(180deg, rgba(3,10,32,.99), rgba(2,8,26,.99)) !important;
+  border-bottom: 1px solid rgba(255,255,255,.1) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35) !important;
+  padding: 5px 6px !important;
+  min-height: 82px !important;
+  align-items: stretch !important;
+  gap: 6px !important;
+  justify-content: center !important;
+}
+/* With only 2 player cards, each takes half the width */
+.is-pcard {
+  flex: 1 !important;
+  margin: 0 !important;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2457,6 +2395,30 @@ button[aria-disabled="true"] {
   border-radius: 3px;
   font-family: 'Heebo', sans-serif;
   font-size: 12px;
+}
+/* Screenshots embedded in guide sections. Cap width so even tall captures
+   stay aligned with the body text, and add a thin border so they read as
+   reference media rather than UI. */
+.guide-shot {
+  margin: 12px auto;
+  padding: 0;
+  text-align: center;
+  max-width: 220px;
+}
+.guide-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  background: #02050d;
+}
+.guide-shot figcaption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  line-height: 1.4;
 }
 
 /* ── Claim-stall-end attention pulse ──

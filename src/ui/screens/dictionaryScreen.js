@@ -3,6 +3,7 @@ import { cleanDictionaryWord, parseSuggestedWords } from '../../game/account/dic
 
 export const DICT_INTENT = Object.freeze({
   OPEN_QUERY:       'dictionary/query/open',
+  CLOSE_QUERY:      'dictionary/query/close',
   CHECK_QUERY:      'dictionary/query/check',
   SUBMIT_SUGGEST:   'dictionary/suggest/submit',
   OPEN_ADMIN_LOGIN: 'dictionary/admin-login/open',
@@ -57,7 +58,10 @@ export function mountDictionaryScreen({ root = globalThis.document, bus } = {}) 
 
   patchClick('button[onclick="openShailta()"]', root, () => bus.emit(DICT_INTENT.OPEN_QUERY, {}));
   patchClick('button[onclick="checkShailta()"]', queryOverlay ?? root, () => checkQuery('shin', 'shres', { clearAfterCheck: true }));
-  patchClick('button[onclick="ovClose(\'ov-shailta\')"]', queryOverlay ?? root, () => queryOverlay?.classList?.add('hidden'));
+  patchClick('button[onclick="ovClose(\'ov-shailta\')"]', queryOverlay ?? root, () => {
+    queryOverlay?.classList?.add('hidden');
+    bus.emit(DICT_INTENT.CLOSE_QUERY, {});
+  });
   patchClick('button[onclick="checkSettingsShailta()"]', root, () => checkQuery('settings-shin', 'settings-shres'));
   patchClick('button[onclick="suggestDictionaryWord()"]', root, () => submitSuggestions());
   patchClick('button[onclick="openDictionaryAdvancedSettings()"]', root, () => bus.emit(DICT_INTENT.OPEN_ADMIN_LOGIN, {}));

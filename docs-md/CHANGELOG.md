@@ -2,6 +2,178 @@
 
 ---
 
+## Online ghost-tile race: synchronous rollback + late-commit gate — June 2026
+
+A "last-second" CONFIRM_MOVE could leave the active player staring at tiles that the server never accepted. Reported flow: P1 confirms right as the deadline hits, P2's watchdog wins the version race, P1's commit aborts, but P1 keeps seeing their tiles on screen until P2's *next* move arrives and overwrites the cells. Score reverted correctly (forceResync replaced `state.scores`), tiles did not — because the rollback was async and depended on a successful `readRoom`, and in some real-world conditions that round-trip is slow or silently fails.
+
+Two-layer fix in [src/game/sessions/onlineGameSession.js](src/game/sessions/onlineGameSession.js):
+
+1. **Synchronous rollback snapshot.** `dispatch()` now captures board / scores / racks / moveHistory / bag / activeBoosts / bonusBoard / bonusSqUsed / pendingBonuses / locks / currentTurnSlot / turnNumber / passCount / firstMove / turnDeadlineMs *before* `engine.dispatch(CONFIRM_MOVE)` mutates them. The `MOVE_CONFIRMED` handler claims the snapshot and, on `committed: false`, restores in-place and emits `TURN_CHANGED { reason: 'commit-rollback' }`. `forceResync` still runs afterward as belt-and-suspenders, but the visible-flash window is gone even if `readRoom` hangs.
+2. **Late-commit gate.** `dispatch()` refuses `CONFIRM_MOVE` outright when `Date.now() > state.turnDeadlineMs + DEFAULT_WATCHDOG_GRACE_MS`. The watchdog has (or imminently will) claim — our commit cannot win, and running the engine would just produce a tile-drop animation we'd have to reverse. Emits `INVALID_MOVE_REJECTED { reason: 'turn-expired' }` so the player gets feedback.
+
+Surfacing in the UI: [src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js) gains a new `turn-expired` mapping in `invalidReasonText` → "הזמן שלך נגמר — התור עובר ליריב" (status-bar text the active player sees on the disallowed click).
+
+**Test coverage** in [tests/unit/online-ghost-move-rollback.test.js](tests/unit/online-ghost-move-rollback.test.js):
+- *synchronous rollback*: stubs `transaction` to return `committed: false` AND `.get()` to hang forever, then asserts `state.board[4][4]` and the active rack are restored after a few microtask ticks — proves the rollback runs without any network help.
+- *late-commit gate*: seeds `turnDeadlineMs = now - 5s` and asserts `dispatch({ type: CMD.CONFIRM_MOVE, ... })` emits `INVALID_MOVE_REJECTED { reason: 'turn-expired' }` and leaves the board untouched.
+
+177 unit tests pass (175 prior + 2 new).
+
+**Note for the deferred-score / bonus-mini-game path:** the snapshot is intentionally NOT used when `MOVE_CONFIRMED` fires with `scoringDeferred: true`. Rolling back across a played mini-game (wheel spin, word-search etc.) would require undoing bonus-flow state and isn't viable as a safety net. That path keeps the existing `forceResync` recovery only.
+
+---
+
+## Crossing-words mini-game: in-tile input + word-revealing result — June 2026
+
+The B10 "שתי מילים חוצות" boost previously asked the player to type the missing letter into a separate `<input>` underneath the crossing grid, and the result overlay only said "correct/incorrect" plus the shared letter in isolation. Two small UX fixes:
+
+- [src/ui/screens/miniGames/crossingWordsMiniGame.js](src/ui/screens/miniGames/crossingWordsMiniGame.js): `buildMiniGrid` now accepts `{ withInput: true }` and embeds the single-letter `<input>` directly inside the `?` crossing cell (transparent background, gold caret/color, RTL, `maxLength=1`). The separate input below the grid in both `attachLegacy` and `attachSelf` is gone. Enter-key submission was added so the player doesn't have to mouse to "בדוק".
+- `renderResult` now spells out the completed pair on every outcome:
+  - Success → shows the two words the player's letter built (green).
+  - Wrong letter → shows the (invalid) pair the player typed, then the correct pair below.
+  - Timeout → shows the correct pair only.
+- All 13 mini-game unit tests still pass; the no-DOM test path is unchanged because the rewrite is confined to `buildMiniGrid`, `attachLegacy`, `attachSelf`, and `renderResult`.
+
+---
+
+## Boost mini-game screenshots in the guide — June 2026
+
+The guide section "בונוסים ומיני-משחקים" only described the mini-games in prose. Captured six screenshots — one per mini-game — and embedded them with bilingual captions.
+
+### What was added
+- New Playwright spec [tests/e2e/capture-minigame-screenshots.spec.js](tests/e2e/capture-minigame-screenshots.spec.js) — boots the app, calls each `window.__spine.ui.mount*MiniGame` with a seeded mulberry32 RNG (so re-runs produce visually identical captures), and snaps the `#ov-bonus` overlay (or the wheel's self-host).
+- Six new PNGs under [images/guide/minigames/](images/guide/minigames/): `wordsearch.png`, `honeycomb.png`, `unscramble.png`, `crossing.png`, `fill-middle.png`, `wheel.png`.
+- [partials/screens/guide-screen.html](partials/screens/guide-screen.html): each `<figure class="guide-shot">` block under the bonuses section, prefixed with the matching emoji from the mini-game's overlay icon.
+
+### Tiny supporting change
+- [src/main.js](src/main.js): `mountFillMiddleMiniGame` was imported but not exposed on `window.__spine.ui`. Added it to the registration block so the capture spec (and any future external harness) can drive that mini-game like the others. Pure addition — no production code path changes.
+
+### Re-running the captures
+```
+npx playwright test tests/e2e/capture-minigame-screenshots.spec.js
+```
+Spec finishes in ~12s. RNG seeds are fixed per-test so the diffs against committed PNGs only show real layout changes.
+
+**Verification:** 175/175 unit tests pass; all 6 capture tests pass.
+
+---
+
+## Cherry-pick from `online-game-fixes` branch — June 2026
+
+The `online-game-fixes` branch (commit `29d6ef03 מדריך הדרכה fixes and othe bug fixes`) carried genuine additive bug fixes that never landed on `main` because it had also rolled back a stack of features the current branch has since gained (portrait orientation lock, rotate-block overlay, connectivity indicator, gender propagation, native back-button handler). A naive merge would have wiped those.
+
+Surgical port of only the additive bits:
+
+### Guide screen — embedded screenshots
+- Six PNGs under [images/guide/](images/guide/) — `home.png`, `signup.png`, `stats.png`, `game-screen.png`, `exchange-overlay.png`, `shailta-overlay.png`.
+- [partials/screens/guide-screen.html](partials/screens/guide-screen.html): `<figure class="guide-shot">` blocks inserted into the rules/screens sections, plus a brand-new "פעולות מיוחדות בתור" section covering exchange / שאילתה / lock / joker / recall.
+- [styles.css](styles.css): new `.guide-shot` rule (caps width to 220px, adds border + shadow + caption).
+
+### Signup form — confirm password + notify opt-in + show/hide
+- [partials/screens/sign-up-screen.html](partials/screens/sign-up-screen.html): new אימות סיסמה field, "אני רוצה לקבל התראות" checkbox (checked by default), and a 👁 show/hide button next to both password fields.
+- [partials/screens/log-in-screen.html](partials/screens/log-in-screen.html): same show/hide toggle on the login password.
+- [styles.css](styles.css): `.pw-wrap`, `.pw-input`, `.pw-toggle`, `.su-checkbox-row` rules.
+- [src/ui/screens/authScreens.js](src/ui/screens/authScreens.js): `validateSignupForm` now reads `passwordConfirm` + `wantsNotifications`, emits `pass-mismatch` if the confirm doesn't match. New `pwToggleBtns` loop wires every `.pw-toggle` to flip its target input between `type=password` and `type=text`.
+- [src/main.js](src/main.js): the legacy `globalThis.signUpUser` shim and the `AUTH_INTENT.SIGN_UP` handler both pass the new fields through. The handler writes `wantsNotifications` onto the initial profile, and `bootCrossCuttingFor(uid)` reads it back before calling `notificationService.boot` — opted-out users skip the OneSignal prompt.
+
+### Friends screen — `activeRoom` permission fix
+- [src/main.js](src/main.js): the friend-detail panel was reading `users/{friendUid}/activeRoom`, which fails with `permission_denied` (other users' profile data isn't world-readable). Now reads only MY `activeRoom`, then checks whether the friend appears in that room's `players` list. Same approach the async-rooms scan already uses below.
+- [src/ui/screens/friendsScreen.js](src/ui/screens/friendsScreen.js): recent-games row now renders with `direction:ltr` and gold-colored "mine" score so the layout reads `score : opponentScore icon` consistently regardless of RTL parent and regardless of which side has the higher number.
+
+### Misc small fixes
+- [partials/screens/game.html](partials/screens/game.html): שאילתה button got `id="btn-shailta"` for stable JS targeting.
+- [src/ui/screens/dictionaryScreen.js](src/ui/screens/dictionaryScreen.js): new `DICT_INTENT.CLOSE_QUERY` event, fired when the שאילתה overlay closes — gives subscribers a clean hook.
+- [src/main.js](src/main.js): easy bot (`difficulty === 0`) now uses only the first 7,000 dictionary entries (sorted by Hebrew word frequency, so common words first). Medium/Hard still see the full vocabulary.
+
+### Explicitly NOT ported (would have rolled back current features)
+- Removal of `applyGenderToRoot`, `data-gm`/`data-gf` attributes, `g('inviteToGame')` calls — current branch keeps the gender system.
+- Removal of `screen.orientation.lock('portrait')` and `#rotate-block` overlay — current keeps them.
+- Removal of `connectivityIndicator` + `startConnectivityMonitor` — current keeps the live wifi-icon indicator.
+- Removal of the native back-button history-stack handler — current keeps the quit-overlay flow.
+- The "pending lock" + `.cell.pending-lock` class — current branch already has the equivalent feature under `.spine-pending-lock-cell`.
+- The "ם vs מ" / sofit-letter fixes — already on the current branch via the three `claude/final-form-letter-placement-nAfaC` merge commits (PRs #276/277/278) plus `f64be250 Fix: bot joker and תפזורת placing sofit letters on board tiles`.
+
+**Verification:** 175/175 unit tests pass.
+
+---
+
+## Breathing gap below the global topbar — June 2026
+
+Non-home, non-game screens (stats, settings, profile, friends, avatar gallery, etc.) had their first content element sitting flush against the bottom edge of the fixed `#global-topbar`. The padding-top offset was exactly `var(--em-topbar-h)`, which pushes content below the topbar but leaves zero visible gap.
+
+Bumped the offset to `calc(var(--em-topbar-h) + 16px)` in [menu-electric.css](menu-electric.css). Single global rule that affects every secondary screen — no per-screen tweaks needed.
+
+---
+
+## Portrait-orientation enforcement (phones) — June 2026
+
+`manifest.json` already pins `"orientation": "portrait"` for installed-PWA contexts, but that does nothing inside a normal browser tab. Added two layered defenses for the in-browser case:
+
+1. **JS Screen Orientation API** ([src/main.js](src/main.js)): right after `[spine] booting…`, call `screen.orientation.lock('portrait')` inside a try/catch + `.catch(() => {})`. Succeeds inside fullscreen / installed-PWA windows on Android Chrome; silently rejects in plain tabs (browser security policy — no page can force orientation in a tab).
+
+2. **CSS landscape-block overlay** ([styles.css](styles.css)): new `#rotate-block` element in [index.html](index.html) that fills the viewport with a "סובב את המכשיר למצב לאורך" message + rotating phone icon. Shown only when `(orientation: landscape) and (max-height: 500px)` — the `max-height:500px` clause restricts the block to phone-shaped viewports so tablets and desktop browsers in landscape stay interactive. The game keeps running underneath, so rotating back immediately resumes play.
+
+### Why not block landscape unconditionally
+
+The new layout caps `.gr` at `max-width:480px` and centers it. A tablet or desktop browser in landscape still shows the app correctly — just with empty margins. Blocking those viewports would punish users for no benefit. Phones in landscape, by contrast, lose the vertical space needed for the board + rack and end up unplayable, which is the case worth blocking.
+
+---
+
+## Layout unification follow-up: proportional scaling (no hard caps) — June 2026
+
+The pixel caps on `.gr` (`max-width:480px` / `max-height:860px`) were the wrong model — they made the game a tiny fixed box on large displays. Replaced with proportional scaling: the container always fills 100% of the viewport height, and its width is `min(100%, calc(100svh * 9 / 16))`. This produces the largest phone-shaped rectangle that fits:
+
+| Viewport | `.gr` size | Notes |
+|---|---|---|
+| 414×896 (phone) | 414×896 | Width is the limit → fills edge-to-edge, no dead margins |
+| 600×1024 (dev-tools) | 576×1024 | Width derived from height → 9:16 portrait |
+| 1920×1200 (desktop) | 675×1200 | Width derived from height → centered with side margins |
+| 1024×600 (landscape tablet) | 337×600 | Width derived from height → narrow centered strip |
+
+`#sg` uses `align-items:center; justify-content:center` so the container sits centered on both axes whenever it doesn't fill the viewport. The board's `--csz` is recomputed at mount/resize by `computeBasicSizes()` from the actual container size, so the board grows along with the container.
+
+**Verification:** 175/175 unit tests pass.
+
+---
+
+## Layout unification: single phone-shaped layout at every viewport — June 2026
+
+The game screen previously rendered two completely different layouts:
+
+- **≤500 CSS-px**: info-strip with player score cards above the board, no side panels, text-only top bar (the WhatsApp-screenshot look).
+- **>500 CSS-px**: tiny side panels with scores left/right of a smaller board, no info-strip, larger board cells, wider container.
+
+Real phones in portrait reported ≤414 CSS-px (thanks to high DPR), so the info-strip layout was what users actually saw. The desktop branch was effectively dead code that only appeared in dev-tool resizing. Result: dev-tool screenshots at 539/600 CSS-px looked nothing like production.
+
+### Change
+
+`styles.css` — collapsed the two layouts into one:
+
+- `.gr` outer container capped at `max-width:480px` always (was 480px on mobile, 680px base, 1200px on tablet, 580px on widescreen via `@media(min-width:600px)` / `@media(min-width:900px)`).
+- `.left-panel` and `.right-panel` get `display:none !important` at the base rule. Selectors retained so existing DOM references in `gameScreen.js` (`#sb1`, `#sb2`, `#sv1`, `#sv2`, `#sn1`, `#sn2`, etc.) still resolve harmlessly.
+- `.info-strip` defaults to `display:flex` with full background/min-height/padding styling (was `display:none` + a `@media (max-width:500px)` override).
+- `.tbar`, `.tb`, `.sbar`, `.bot`, `.board-center`, `.ss-tiles`, `#bag-char svg`: the mobile rules were lifted out of the `@media (max-width: 500px)` wrapper and applied unconditionally.
+- `.board-center-inner --csz`: single `clamp(22px, 6vmin, 42px)` rule. The `@media (min-width:501px)` bump to `clamp(30px, 5vmin, 54px)` was removed.
+- `--row-h`: single `34px` value (was 46px base, 34px mobile, 54px tablet).
+- `.bt2-l .jok-img`: single `26px × 26px` size (was 36px base, 26px mobile).
+- The full `@media(min-width:600px)` block (40+ rules scaling `.gr`, `.hc`, `.sbox`, `.ovc`, top-bar icons, online-lobby, champions table) and the `@media(min-width:900px)` block (side-panel widening, home/setup/overlay/online wider variants, top-bar icon/text bumps) were removed wholesale.
+- `.turn-timer .tt-value` / `.tt-label`: removed the `@media (min-width: 600px)` font-size bump.
+
+### Why
+
+The app's `manifest.json` enforces portrait, and `docs-md/CLAUDE.md` notes "Mobile layout is portrait-only … Never add landscape-specific rules without testing on mobile." The desktop side-panel layout was a dev-tool-only artifact that diverged visually from the real product. Removing it means every viewport — phone, tablet, desktop browser — renders the same phone-shaped layout, centered with empty margins on wider screens.
+
+### What was not touched
+
+- `@media (max-height: 700px)` / `(max-height: 580px)` on `.hbtns`/`.hlogo` — these are *height*-based, not width-based, and shrink the home button stack on landscape phones. Still useful.
+- `@media (max-width: 380px)` / `(max-width: 360px)` on the stats screen — these shrink fonts on genuinely tiny phones to prevent overflow. Still useful, doesn't affect game layout.
+- `@media (prefers-reduced-motion: reduce)` and `(hover:hover)` — orthogonal to layout, untouched.
+- Engine, schema, dictionary, Firebase rules — all CSS-only change.
+
+**Verification:** 175/175 unit tests pass.
+
+---
+
 ## Bug fix: profile avatar icon + stall-end button label — June 2026
 
 ### Profile avatar icon showing crown instead of unlocked avatar

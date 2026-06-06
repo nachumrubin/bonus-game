@@ -86,9 +86,11 @@
    `.screen:not(#sh):not(#sg)` has specificity (0,2,1,0) — higher than
    any per-screen `#sNN { padding: ... }` shorthand (0,1,0,0) — so this
    wins over things like `#ss { padding: 18px }` and the screen still
-   gets the proper top offset. */
+   gets the proper top offset.
+   The extra `+ 16px` adds a consistent breathing gap so the first content
+   element doesn't sit flush against the topbar's bottom edge. */
 .screen:not(#sh):not(#sg) {
-  padding-top: var(--em-topbar-h);
+  padding-top: calc(var(--em-topbar-h) + 16px);
 }
 
 /* Belt-and-suspenders: any centered `.sbox` used as a non-home,

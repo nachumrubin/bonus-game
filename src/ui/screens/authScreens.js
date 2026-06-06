@@ -28,7 +28,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASS_HAS_LETTER = /[A-Za-z]/;
 const PASS_HAS_DIGIT  = /\d/;
 
-export function validateSignupForm({ name, email, password } = {}) {
+export function validateSignupForm({ name, email, password, passwordConfirm, wantsNotifications } = {}) {
   const n = (name ?? '').trim();
   const e = (email ?? '').trim();
   if (n.length === 0) return { ok: false, reason: 'no-name' };
@@ -36,7 +36,10 @@ export function validateSignupForm({ name, email, password } = {}) {
   if (!EMAIL_RE.test(e)) return { ok: false, reason: 'bad-email' };
   if (!password || password.length < PASS_MIN) return { ok: false, reason: 'pass-too-short' };
   if (!PASS_HAS_LETTER.test(password) || !PASS_HAS_DIGIT.test(password)) return { ok: false, reason: 'pass-weak' };
-  return { ok: true, payload: { name: n, email: e, password } };
+  // Only enforce the confirm match when a confirm value is supplied — keeps
+  // the validator backwards-compatible with callers that don't collect one.
+  if (passwordConfirm != null && passwordConfirm !== password) return { ok: false, reason: 'pass-mismatch' };
+  return { ok: true, payload: { name: n, email: e, password, wantsNotifications: wantsNotifications !== false } };
 }
 
 export function validateLoginForm({ email, password } = {}) {
@@ -58,6 +61,7 @@ export const AUTH_ERROR_HE = {
   'bad-email':      'דוא״ל לא חוקי',
   'pass-too-short': `סיסמה חייבת להיות לפחות ${PASS_MIN} תווים`,
   'pass-weak':      'הסיסמה חייבת לכלול אות וספרה',
+  'pass-mismatch':  'הסיסמאות אינן תואמות',
   'no-pass':        'אנא הכנס סיסמה',
 };
 
@@ -74,6 +78,8 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
   const suName   = $('#su-name',           root);
   const suEmail  = $('#su-email',          root);
   const suPass   = $('#su-pass',           root);
+  const suPassConfirm = $('#su-pass-confirm', root);
+  const suNotify = $('#su-notify',         root);
   const goLoginBtn  = $('button[onclick="showSc(\'sauth-login\')"]',  root);
   const goSignupBtn = $('button[onclick="showSc(\'sauth-signup\')"]', root);
   const guestBtns   = root?.querySelectorAll
@@ -85,7 +91,11 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
     cleanups.push(on(suSubmit, 'click', (e) => {
       e?.preventDefault?.();
       const v = validateSignupForm({
-        name: suName?.value, email: suEmail?.value, password: suPass?.value,
+        name: suName?.value,
+        email: suEmail?.value,
+        password: suPass?.value,
+        passwordConfirm: suPassConfirm?.value,
+        wantsNotifications: suNotify ? !!suNotify.checked : true,
       });
       if (!v.ok) {
         if (suError) setText(suError, AUTH_ERROR_HE[v.reason] ?? v.reason);
@@ -166,6 +176,28 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
   for (const btn of upgradeDismissBtns) {
     btn.removeAttribute?.('onclick');
     cleanups.push(on(btn, 'click', () => bus.emit(AUTH_INTENT.DISMISS_UPGRADE, {})));
+  }
+
+  // ── Show/hide password toggles ─────────────
+  // Any button with class `pw-toggle` and `data-pw-target="<input id>"`
+  // flips that input between type=password and type=text. The button text
+  // stays 👁 always; CSS draws a diagonal strikethrough via .pw-shown to
+  // signal the "hide" state (instead of swapping to a monkey emoji).
+  const pwToggleBtns = root?.querySelectorAll
+    ? Array.from(root.querySelectorAll('.pw-toggle'))
+    : [];
+  for (const btn of pwToggleBtns) {
+    cleanups.push(on(btn, 'click', (e) => {
+      e?.preventDefault?.();
+      const targetId = btn.getAttribute?.('data-pw-target');
+      if (!targetId) return;
+      const input = root?.getElementById?.(targetId) ?? root?.querySelector?.(`#${targetId}`);
+      if (!input) return;
+      const shown = input.type === 'text';
+      input.type = shown ? 'password' : 'text';
+      btn.classList?.[shown ? 'remove' : 'add']?.('pw-shown');
+      btn.setAttribute?.('aria-label', shown ? 'הצג סיסמה' : 'הסתר סיסמה');
+    }));
   }
 
   function showError(scope, msg) {

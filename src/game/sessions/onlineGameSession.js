@@ -32,6 +32,7 @@ import {
 import { setCommittedTile } from '../core/board.js';
 import { deserializeBoard } from '../online/schema.js';
 import { modeDescriptor } from './modes.js';
+import { DEFAULT_WATCHDOG_GRACE_MS } from '../online/timeoutWatchdog.js';
 
 /**
  * @typedef {import('../core/gameEngine.js').GameState} GameState
@@ -99,6 +100,17 @@ export async function createOnlineGameSession({
   // the rule's turn check, since data.currentTurnSlot on the server now
   // points to the opponent).
   let deferredCommitPending = false;
+
+  // Synchronous-rollback snapshot for the last-second-confirm race. When the
+  // local engine optimistically applies a CONFIRM_MOVE and the subsequent
+  // commitTransaction loses the version race (because the opponent's
+  // watchdog claimed the turn first), forceResync's network round-trip is
+  // too slow — the optimistic tiles flash on screen until readRoom returns,
+  // and if readRoom silently fails the ghosts persist until the next
+  // snapshot. This snapshot lets the MOVE_CONFIRMED handler restore the
+  // pre-dispatch state *immediately* on commit failure; forceResync still
+  // runs afterward as belt-and-suspenders.
+  let pendingCommitRollback = null;
 
   // The post-commit cursor advance must NEVER go past the server's actual
   // room.version. The naive `expectedVersion += 1` races with the watchRoom
@@ -168,6 +180,12 @@ export async function createOnlineGameSession({
   // ─── Outbound: when the engine confirms a local move, push it to Firebase.
   subs.push(bus.on(EV.MOVE_CONFIRMED, async ({ slot, scoringDeferred }) => {
     if (slot !== mySlot) return; // we only commit our own moves
+    // Claim the rollback snapshot for this commit attempt. Deferred-score
+    // moves can't use it (the bonus flow plays out before MOVE_SCORE_COMMITTED
+    // and we'd have to undo mini-game state too — out of scope for this
+    // safety net).
+    const rollback = pendingCommitRollback;
+    pendingCommitRollback = null;
     if (scoringDeferred) {
       deferredCommitPending = true;
       return;
@@ -177,8 +195,18 @@ export async function createOnlineGameSession({
     if (result.committed) {
       advanceVersionCursor(result);
     } else {
-      // Stale: re-read and resync. Engine state will be overwritten on the
-      // next watchRoom snapshot.
+      // Synchronous rollback first: wipe the optimistic mutation NOW, before
+      // forceResync awaits a network round-trip. Without this, the active
+      // player saw ghost tiles flash on the board (and persist if readRoom
+      // failed) until the next snapshot — see ghost-move-rollback test.
+      if (rollback) {
+        restoreFromRollback(rollback);
+        bus.emit(EV.TURN_CHANGED, {
+          currentTurnSlot: state.currentTurnSlot,
+          turnNumber: state.turnNumber,
+          reason: 'commit-rollback',
+        });
+      }
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
       forceResync('stale-version').catch(() => { /* swallow */ });
     }
@@ -477,7 +505,75 @@ export async function createOnlineGameSession({
     if (cmd?.type === CMD.CONFIRM_MOVE && state.currentTurnSlot !== mySlot) return;
     if (cmd?.type === CMD.PASS_TURN && state.currentTurnSlot !== mySlot) return;
     if (cmd?.type === CMD.PLACE_LOCK && state.currentTurnSlot !== mySlot) return;
+
+    if (cmd?.type === CMD.CONFIRM_MOVE) {
+      // Late-commit gate: once the local clock is past deadline + watchdog
+      // grace, the opponent's watchdog has (or will imminently) claim the
+      // turn. Our commit cannot win the version race; running engine.dispatch
+      // would optimistically mutate state.board and the resulting tiles
+      // would flash on screen before the rollback. Treat as a no-op move
+      // with feedback — the watchdog flip will arrive within ~1s via watchRoom.
+      const dl = Number(state.turnDeadlineMs ?? 0);
+      if (dl > 0 && Date.now() > dl + DEFAULT_WATCHDOG_GRACE_MS) {
+        bus.emit(EV.INVALID_MOVE_REJECTED, {
+          reason: 'turn-expired',
+          placed: cmd.payload?.placed ?? [],
+        });
+        return;
+      }
+      // Capture a rollback snapshot BEFORE the engine mutates state, so the
+      // MOVE_CONFIRMED handler can restore synchronously if the commit fails.
+      pendingCommitRollback = snapshotForRollback();
+    }
     engine.dispatch(cmd);
+  }
+
+  function snapshotForRollback() {
+    return {
+      board: state.board.map(row => row.slice()),
+      scores: { ...state.scores },
+      racks: {
+        0: [...(state.racks[0] ?? [])],
+        1: [...(state.racks[1] ?? [])],
+      },
+      bag: [...(state.bag ?? [])],
+      moveHistory: [...state.moveHistory],
+      activeBoosts: state.activeBoosts.map(b => ({ ...b, payload: { ...(b.payload ?? {}) } })),
+      bonusBoard: state.bonusBoard instanceof Map
+        ? new Map(state.bonusBoard)
+        : new Map(Object.entries(state.bonusBoard ?? {})),
+      bonusSqUsed: { ...(state.bonusSqUsed ?? {}) },
+      pendingBonuses: [...(state.pendingBonuses ?? [])],
+      lockedCells: [...(state.lockedCells ?? [])],
+      lockInventory: {
+        0: [...(state.lockInventory?.[0] ?? [])],
+        1: [...(state.lockInventory?.[1] ?? [])],
+      },
+      currentTurnSlot: state.currentTurnSlot,
+      turnNumber: state.turnNumber,
+      passCount: state.passCount,
+      firstMove: state.firstMove,
+      turnDeadlineMs: state.turnDeadlineMs,
+    };
+  }
+
+  function restoreFromRollback(snap) {
+    state.board = snap.board;
+    state.scores = snap.scores;
+    state.racks = snap.racks;
+    state.bag = snap.bag;
+    state.moveHistory = snap.moveHistory;
+    state.activeBoosts = snap.activeBoosts;
+    state.bonusBoard = snap.bonusBoard;
+    state.bonusSqUsed = snap.bonusSqUsed;
+    state.pendingBonuses = snap.pendingBonuses;
+    state.lockedCells = snap.lockedCells;
+    state.lockInventory = snap.lockInventory;
+    state.currentTurnSlot = snap.currentTurnSlot;
+    state.turnNumber = snap.turnNumber;
+    state.passCount = snap.passCount;
+    state.firstMove = snap.firstMove;
+    state.turnDeadlineMs = snap.turnDeadlineMs;
   }
 
   async function dispose() {
