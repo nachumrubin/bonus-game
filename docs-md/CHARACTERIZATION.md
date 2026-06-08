@@ -62,6 +62,10 @@ Source: `src/ui/screens/gameScreen.js`, `src/ui/controllers/gameController.js`
 - Player clicks board cell → tile placed tentatively
 - Clicking a tentatively placed tile recalls it to rack
 - Clicking a committed tile on the board (swap mechanic): swaps the committed tile with a rack tile
+- A board tile displaced by an in-progress swap appears at the swap's rack slot and is playable as a placement in the same move (legacy parity: `racks[turn][rackSlot] = returnedLetter`). The engine's rack-defense in `handleConfirmMove` credits the rack copy with the displaced letter before validating placements.
+- Clicking a cell that holds a tentative (pending) lock clears that lock — returns it to the bucket. Same effect as the בטל (undo) button. A 500 ms per-cell suppression window blocks the auto-quick-place branch immediately after a clear, so a fast double-tap on the lock still results in "cleared", not "cleared then re-placed".
+- Home-screen bottom nav has a "🎮 המשחקים שלי" button that opens `#smygames` — a list of every game the user has open: the local saved offline game (if any), all active async online games, and expired async games. Order: local save first (💾 badge, "משחק שמור" label), then my-turn async rooms, then opponent-turn async rooms, then expired rooms. Each row offers "המשך" (resume) and "×" (remove). Resume routing branches on the sentinel `roomId === '__local__'` — local → `resumeLocalGameViaSpine`, otherwise `resumeOnlineRoomById`. Dismiss similarly branches — local → `clearLocalGame(localStorage)`, otherwise `asyncSessionService.dismissForUid`. The list is one-shot fetched on open and refetched after each dismiss with `{ includeExpired: true }` so expired games are visible too — unlike the in-lobby `#online-sessions-wrap` strip which omits expired rooms.
+- The legacy floating "המשך משחק" play button on the top-right of the home screen was removed in June 2026; the resume entry point is now the "המשחקים שלי" list.
 - Joker placement opens `jokerPicker.js` letter selection modal
 - `CMD.CONFIRM_MOVE` dispatched on "Play" button press with `placed` array
 

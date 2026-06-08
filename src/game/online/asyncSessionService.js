@@ -23,10 +23,18 @@ function isActiveStatus(s) {
 }
 
 // Build a lobby-friendly view of one room from the perspective of `uid`.
-// Returns null if the room doesn't exist or has been completed/abandoned.
-export function summarizeForUid(room, uid) {
+// Returns null if the room doesn't exist, isn't ours, or is in a status the
+// caller doesn't want to surface. By default only active (waiting/playing)
+// statuses pass; pass `{ includeExpired: true }` to also surface expired
+// rooms (used by the "my games" screen so users can see and dismiss them).
+// Completed and abandoned rooms are always filtered out — those have their
+// own end-game flow.
+export function summarizeForUid(room, uid, opts = {}) {
   if (!room) return null;
-  if (!isActiveStatus(room.status)) return null;
+  const status = room.status ?? STATUS.WAITING;
+  const isActive = isActiveStatus(status);
+  const isExpired = status === STATUS.EXPIRED;
+  if (!isActive && !(opts.includeExpired && isExpired)) return null;
   const slot0 = room.players?.[0];
   const slot1 = room.players?.[1];
   let mySlot = null;
@@ -34,16 +42,21 @@ export function summarizeForUid(room, uid) {
   else if (slot1?.uid === uid) mySlot = 1;
   if (mySlot == null) return null; // not a participant
   const opponent = mySlot === 0 ? slot1 : slot0;
-  const isMyTurn = (room.currentTurnSlot ?? 0) === mySlot;
+  const isMyTurn = isActive && (room.currentTurnSlot ?? 0) === mySlot;
+  const myScore = Number(room.scores?.[mySlot] ?? 0);
+  const opponentScore = Number(room.scores?.[1 - mySlot] ?? 0);
   return {
     roomId:       room.roomId,
     mode:         room.mode,
-    status:       room.status ?? STATUS.WAITING,
+    status,
+    isExpired,
     mySlot,
     opponentUid:  opponent?.uid ?? null,
     opponentName: opponent?.displayName ?? '?',
     opponentAvatar: opponent?.avatar ?? null,
     isMyTurn,
+    myScore,
+    opponentScore,
     turnNumber:   room.turnNumber ?? 1,
     lastUpdated:  room.updatedAt ?? room.createdAt ?? null,
     createdAt:    room.createdAt ?? null,
@@ -51,8 +64,10 @@ export function summarizeForUid(room, uid) {
 }
 
 // List all active async sessions for `uid`. Sorted: my-turn first, then by
-// lastUpdated descending.
-export async function listAsyncSessions(db, uid) {
+// lastUpdated descending. Pass `{ includeExpired: true }` to also include
+// rooms with `status === expired` (placed at the end of the sort order so
+// actionable games stay at the top).
+export async function listAsyncSessions(db, uid, opts = {}) {
   if (!uid) return [];
   const snap = await indexRef(db, uid).get();
   const idx = snap?.val ? snap.val() : null;
@@ -61,10 +76,12 @@ export async function listAsyncSessions(db, uid) {
   const rooms = await Promise.all(roomIds.map(rid => roomService.readRoom(db, rid)));
   const out = [];
   for (let i = 0; i < rooms.length; i++) {
-    const summary = summarizeForUid(rooms[i], uid);
+    const summary = summarizeForUid(rooms[i], uid, opts);
     if (summary) out.push(summary);
   }
   out.sort((a, b) => {
+    // Expired always last; my-turn before opponent-turn; newest first inside each bucket.
+    if (a.isExpired !== b.isExpired) return a.isExpired ? 1 : -1;
     if (a.isMyTurn !== b.isMyTurn) return a.isMyTurn ? -1 : 1;
     return (b.lastUpdated ?? 0) - (a.lastUpdated ?? 0);
   });
@@ -78,13 +95,13 @@ export async function listAsyncSessions(db, uid) {
 // added/removed). Per-room turn changes don't trigger a refetch — callers
 // who need that should also subscribe to roomService.watchRoom on each
 // individual roomId.
-export function watchAsyncSessions(db, uid, cb) {
+export function watchAsyncSessions(db, uid, cb, opts = {}) {
   if (!uid) { cb([]); return () => {}; }
   const ref = indexRef(db, uid);
   let lastFire = 0;
   const handler = async () => {
     const fire = ++lastFire;
-    const sessions = await listAsyncSessions(db, uid);
+    const sessions = await listAsyncSessions(db, uid, opts);
     if (fire !== lastFire) return; // a newer fire is in flight
     cb(sessions);
   };

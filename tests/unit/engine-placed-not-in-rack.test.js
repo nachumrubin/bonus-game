@@ -242,6 +242,54 @@ test('cell defense: CONFIRM_MOVE on an already-occupied cell is rejected with no
   assert.equal(JSON.stringify(state.board), boardBefore, 'board unchanged');
 });
 
+test('rack defense: a swap-displaced board letter is usable as a placement in the same move', async () => {
+  // Regression: previously the rack defense validated every placed letter
+  // against the ORIGINAL rack and rejected when a player tried to use a
+  // letter that had just been released from the board by a swap in the
+  // same move. The UI surfaces the displaced letter at the swap's rack
+  // slot exactly so it CAN be played that turn (mirrors legacy
+  // `racks[turn][rackSlot] = returnedLetter`), so the engine must
+  // credit the rack copy with the displaced letter before validating
+  // placements.
+  const { state, engine, events, CMD, EV } = await makeEngineWithSetup();
+  // Alice plays 'אב' at (4,4)-(4,5) so there is something on the board to
+  // swap with.
+  engine.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1, isJoker: false },
+        { r: 4, c: 5, letter: 'ב', val: 3, isJoker: false },
+      ],
+      swappedTiles: [],
+    },
+  });
+  // Force Alice's turn and override her rack to contain 'ו' but NOT 'ב'.
+  // This means the ONLY way the placed 'ב' below can be valid is via the
+  // swap-displaced letter.
+  state.currentTurnSlot = 0;
+  state.racks[0] = ['ו', 'ג', 'ה', 'ז', '?', 'מ', 'ת', 'ל'];
+  const totalBefore = totalTiles(state);
+  events.length = 0;
+  // Move: swap board-'ב' at (4,5) with rack-'ו'  →  'או' at (4,4)-(4,5);
+  // place displaced 'ב' at (4,3)  →  forms 'באו' at (4,3)-(4,5). Both
+  // 'או' and 'באו' are in the Hebrew dictionary.
+  engine.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [{ r: 4, c: 3, letter: 'ב', val: 3, isJoker: false }],
+      swappedTiles: [{ r: 4, c: 5, letter: 'ו', val: 1, isJoker: false }],
+    },
+  });
+  const rejected = events.find(e => e.type === EV.INVALID_MOVE_REJECTED);
+  assert.equal(rejected, undefined,
+    `swap+reuse must not be rejected; got: ${rejected && JSON.stringify(rejected.payload)}`);
+  const confirmed = events.find(e => e.type === EV.MOVE_CONFIRMED);
+  assert.ok(confirmed, 'MOVE_CONFIRMED must fire for swap-then-reuse-displaced');
+  // Tile-bag conservation must hold across the swap+placement+refill.
+  assert.equal(totalTiles(state), totalBefore, 'tile total conserved');
+});
+
 test('rack defense: joker placement (isJoker=true) consumes the rack ? regardless of assigned letter', async () => {
   const { state, engine, events, CMD, EV } = await makeEngineWithSetup();
   const totalBefore = totalTiles(state);

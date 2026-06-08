@@ -1,0 +1,19 @@
+<!-- MY ASYNC GAMES SCREEN -->
+<div id="smygames" class="screen hidden">
+  <div class="mg-shell">
+    <header class="mg-header">
+      <button class="mg-back" onclick="goHome()" aria-label="חזרה">←</button>
+      <div class="mg-title">
+        <span class="mg-title-text">המשחקים שלי</span>
+        <span class="mg-count" id="mg-count" aria-live="polite"></span>
+      </div>
+      <div class="mg-header-spacer" aria-hidden="true"></div>
+    </header>
+    <div id="mg-empty" class="mg-empty" style="display:none;">
+      <div class="mg-empty-icon" aria-hidden="true">🎮</div>
+      <div class="mg-empty-title">אין משחקים פעילים</div>
+      <div class="mg-empty-sub">התחל משחק חדש ברשת.</div>
+    </div>
+    <div id="mg-list" class="mg-cards"></div>
+  </div>
+</div>

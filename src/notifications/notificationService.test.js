@@ -112,7 +112,10 @@ test('pushReminder and pushExpired use async-game notification kinds', async () 
   assert.equal(sent[1].data.type, 'expired');
 });
 
-test('TURN_CHANGED in async mode pushes once and dedups subsequent fires for the same turn', async () => {
+test('TURN_CHANGED in async mode: sender pushes opponent once and dedups subsequent fires for the same turn', async () => {
+  // Async push must be triggered by the SENDER (active player who just moved),
+  // because the recipient may not be online to push themselves. The push
+  // targets the opponent's uid/subscriptionId, not our own.
   _resetForTests();
   bus._reset();
   const sent = captureSends();
@@ -120,28 +123,38 @@ test('TURN_CHANGED in async mode pushes once and dedups subsequent fires for the
     mode: 'friend-async',
     mySlot: 0,
     myUid: 'me',
+    myName: 'Alice',
     opponentUid: 'them',
     opponentName: 'Bob',
-    opponentSubscriptionId: null,
+    opponentSubscriptionId: 'sub-them',
     roomId: 'r-async',
     isBackgrounded: false,
   };
   attachBusSubscriptions({ bus, sessionRef: () => session });
 
-  // The opponent (slot 1) just played → currentTurnSlot becomes mySlot (0). Push expected.
-  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 2 });
-  // Wait microtasks
+  // We just made our move → currentTurnSlot flips to opponent (slot 1). Push expected.
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 2 });
   await new Promise(r => setTimeout(r, 0));
   assert.equal(sent.length, 1);
   assert.equal(sent[0].data.type, 'turn');
+  // Targeting: the opponent, not us.
+  assert.deepEqual(sent[0].include_aliases?.external_id, ['them']);
+  assert.deepEqual(sent[0].include_subscription_ids, ['sub-them']);
+  // From the recipient's POV, the "opponent" who just played is us → myName.
+  assert.ok(sent[0].contents.en.includes('Alice'));
 
   // Same TURN_CHANGED again (e.g. duplicate watcher fire) → no second push
-  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 2 });
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 2 });
   await new Promise(r => setTimeout(r, 0));
   assert.equal(sent.length, 1);
 
-  // New turn number → fires again
-  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 4 });
+  // New turn number after opponent plays back → our turn again → no push from us
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 3 });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sent.length, 1);
+
+  // Next time we move → fires again
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 4 });
   await new Promise(r => setTimeout(r, 0));
   assert.equal(sent.length, 2);
 });
@@ -182,7 +195,7 @@ test('TURN_CHANGED to MY slot in live mode + backgrounded DOES push', async () =
   assert.equal(sent.length, 1);
 });
 
-test('TURN_CHANGED to OPPONENT slot does not push to me', async () => {
+test('TURN_CHANGED to OUR slot in async mode does NOT push (it is already our turn)', async () => {
   _resetForTests();
   bus._reset();
   const sent = captureSends();
@@ -190,13 +203,34 @@ test('TURN_CHANGED to OPPONENT slot does not push to me', async () => {
     bus,
     sessionRef: () => ({
       mode: 'friend-async',
-      mySlot: 0, myUid: 'me', opponentUid: 'them', opponentName: 'Bob',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob', opponentSubscriptionId: null,
       roomId: 'r-async-2',
     }),
   });
-  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 2 }); // opponent's turn now
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 2 }); // our turn now → nothing for us to push
   await new Promise(r => setTimeout(r, 0));
   assert.equal(sent.length, 0);
+});
+
+test('TURN_CHANGED in async mode falls back to externalIds when opponent has no subscriptionId', async () => {
+  _resetForTests();
+  bus._reset();
+  const sent = captureSends();
+  attachBusSubscriptions({
+    bus,
+    sessionRef: () => ({
+      mode: 'random-async',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob', opponentSubscriptionId: null,
+      roomId: 'r-async-3',
+    }),
+  });
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 2 });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].include_aliases?.external_id, ['them']);
+  assert.equal(sent[0].include_subscription_ids, undefined);
 });
 
 test('GAME_COMPLETED pushes both players in online mode', async () => {

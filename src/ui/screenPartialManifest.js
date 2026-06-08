@@ -42,6 +42,7 @@ export const SCREEN_PARTIALS = [
   './partials/screens/notifications-inbox.html',
   './partials/screens/avatar-gallery-screen.html',
   './partials/screens/stats-screen.html',
+  './partials/screens/async-games-screen.html',
   './partials/screens/avatar-unlock-overlay.html',
   './partials/screens/guest-upgrade-overlay.html'
 ];

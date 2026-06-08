@@ -205,7 +205,27 @@ export function createEngine({ state, bus }) {
     // assigned letter, so map isJoker → '?' for the lookup.
     const _activeRack = state.racks[state.currentTurnSlot] ?? [];
     const _rackCopy = [..._activeRack];
-    for (const p of [...placed, ...swaps]) {
+    // Process swaps first: each swap consumes the swap-in letter from the
+    // rack and releases the displaced board letter back to the rack, making
+    // it available for use as a placement in this same move. This mirrors
+    // the UI's `displayRackTile` behavior (legacy parity: swapped-in slot
+    // immediately shows the displaced letter, playable on the same turn).
+    for (const s of swaps) {
+      const wanted = s.isJoker ? '?' : s.letter;
+      const idx = _rackCopy.indexOf(wanted);
+      if (idx < 0) {
+        emit(EV.INVALID_MOVE_REJECTED, {
+          reason: 'placed-not-in-rack',
+          placed, swappedTiles: swaps,
+          missing: wanted,
+        });
+        return;
+      }
+      _rackCopy.splice(idx, 1);
+      const displaced = getCommittedTile(state, s.r, s.c);
+      if (displaced) _rackCopy.push(displaced.isJoker ? '?' : displaced.letter);
+    }
+    for (const p of placed) {
       const wanted = p.isJoker ? '?' : p.letter;
       const idx = _rackCopy.indexOf(wanted);
       if (idx < 0) {

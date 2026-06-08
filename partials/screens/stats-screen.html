@@ -24,16 +24,65 @@
 
     <!-- Tab bar -->
     <div class="stats-tabbar">
-      <button class="stats-tab active" onclick="_statsTab('progress',this)">התקדמות</button>
+      <button class="stats-tab active" onclick="_statsTab('insights',this)">תובנות</button>
+      <button class="stats-tab" onclick="_statsTab('progress',this)">התקדמות</button>
       <button class="stats-tab" onclick="_statsTab('records',this)">שיאים</button>
-      <button class="stats-tab" onclick="_statsTab('rivals',this)">יריבים ובוסטים</button>
+      <button class="stats-tab" onclick="_statsTab('rivals',this)">יריבים</button>
     </div>
 
     <!-- Tab content -->
     <div class="stats-content">
 
-      <!-- ── TAB 1: תקדמות (Progress) ── -->
-      <div id="st-panel-progress" class="stats-panel active">
+      <!-- ── TAB 1: תובנות (Insights) ── -->
+      <div id="st-panel-insights" class="stats-panel active">
+
+        <!-- Archetype identity card -->
+        <div class="ins-archetype">
+          <div class="ins-archetype-emoji" id="ins-arch-icon">🆕</div>
+          <div class="ins-archetype-body">
+            <div class="ins-archetype-tag">הסגנון שלך</div>
+            <div class="ins-archetype-name" id="ins-arch-label">חוקר</div>
+            <div class="ins-archetype-blurb" id="ins-arch-blurb">התחל לשחק כדי לפתוח את הסגנון שלך</div>
+          </div>
+        </div>
+
+        <!-- Insights About You -->
+        <div class="stats-sec-lbl">🧠 תובנות עליך</div>
+        <div class="ins-cards" id="ins-cards"></div>
+
+        <!-- Performance Trends -->
+        <div class="stats-sec-lbl">📈 מגמות</div>
+        <div class="ins-trends" id="ins-trends"></div>
+
+        <!-- This Week Snapshot -->
+        <div class="stats-sec-lbl">📅 השבוע שלך</div>
+        <div class="ins-week" id="ins-week"></div>
+
+        <!-- Word Intelligence -->
+        <div class="stats-sec-lbl">📚 ניתוח מילים</div>
+        <div class="ins-words" id="ins-words"></div>
+
+        <!-- Play Style bars -->
+        <div class="stats-sec-lbl">⚙ סגנון משחק</div>
+        <div class="ins-style" id="ins-style"></div>
+
+        <!-- Opponent insights -->
+        <div class="stats-sec-lbl">👥 היריבים שלך</div>
+        <div class="ins-opps" id="ins-opps"></div>
+
+        <!-- Milestones -->
+        <div class="stats-sec-lbl">🎯 היעד הבא</div>
+        <div class="ins-milestones" id="ins-milestones"></div>
+
+        <!-- Did You Know -->
+        <div class="ins-dyk" id="ins-dyk">
+          <span class="ins-dyk-icon" id="ins-dyk-icon">💡</span>
+          <span class="ins-dyk-text" id="ins-dyk-text"></span>
+        </div>
+      </div>
+
+      <!-- ── TAB 2: התקדמות (Progress) ── -->
+      <div id="st-panel-progress" class="stats-panel">
 
         <!-- Win rate trend sparkline -->
         <div class="stats-trend-chart">

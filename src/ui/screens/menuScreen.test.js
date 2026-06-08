@@ -38,7 +38,6 @@ function makeButton({ onclick, id }) {
 function makeMenuDom() {
   const buttons = {
     profile:    makeButton({ onclick: 'openProfileOrAuth()' }),
-    resume:     makeButton({ onclick: 'resumeSavedGame()',       id: 'btn-resume-home' }),
     twoPlayer:  makeButton({ onclick: "startSetup('vs')" }),
     bot:        makeButton({ onclick: "startSetup('bot')" }),
     online:     makeButton({ onclick: 'showOnlineLobby()' }),
@@ -123,7 +122,6 @@ test('mount: each button maps to its specific intent', () => {
   mountMenuScreen({ root, bus });
 
   buttons.profile.click();
-  buttons.resume.click();
   buttons.twoPlayer.click();
   buttons.bot.click();
   buttons.online.click();
@@ -132,25 +130,12 @@ test('mount: each button maps to its specific intent', () => {
   buttons.share.click();
 
   assert.equal(seen.get(MENU_INTENT.OPEN_PROFILE), 1);
-  assert.equal(seen.get(MENU_INTENT.RESUME_SAVED), 1);
   assert.equal(seen.get(MENU_INTENT.START_2P), 1);
   assert.equal(seen.get(MENU_INTENT.START_VS_BOT), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_ONLINE_LOBBY), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_HELP_MENU), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_SETTINGS), 1);
   assert.equal(seen.get(MENU_INTENT.SHARE_GAME), 1);
-});
-
-test('MENU_REFRESH event toggles the resume button visibility', () => {
-  bus._reset();
-  const { root, buttons } = makeMenuDom();
-  mountMenuScreen({ root, bus });
-  // Initial render: no saved game
-  bus.emit(MENU_REFRESH, { hasSavedGame: false });
-  assert.equal(buttons.resume.style.display, 'none');
-  // Now saved game appears
-  bus.emit(MENU_REFRESH, { hasSavedGame: true });
-  assert.equal(buttons.resume.style.display, '');
 });
 
 test('MENU_REFRESH event toggles share button visibility based on isAuthed', () => {

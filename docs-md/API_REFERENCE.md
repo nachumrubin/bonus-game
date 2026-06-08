@@ -440,6 +440,50 @@ showBrowserNotification(opts: {
 
 ## Account Services (`src/game/account/`)
 
+### playerInsights.js
+```typescript
+// Pure derivation of personalised stats analytics. Consumes the same
+// `profile.stats` shape produced by profileService.computeLiveGameStatsDelta;
+// no Firebase / DOM / time-source coupling (now is injectable for tests).
+
+deriveInsights(profile, now?: number): {
+  insights:   Array<{ icon: string, text: string }>,           // §1 dynamic insight cards
+  archetype:  { icon: string, label: string, blurb: string },  // §2 player identity
+  trends: {                                                    // §3 over-time trends
+    winRate:  { valuePct: number, deltaPct: number, sample: 'recent'|'lifetime' },
+    avgScore: { value: number,    deltaAbs: number },
+    activity: { thisWeek: number, prevWeek: number, deltaAbs: number },
+    rating:   { value: number, progressPct: number, nextTierLabel: string|null, nextTierFloor: number|null },
+  },
+  wordIntel: {                                                 // §4 word analytics
+    avgWordLength:    number,
+    longestWord:      string|null,
+    longestWordLen:   number,
+    bestMoveScore:    number,
+    avgPointsPerMove: number,
+    mostUsedLength:   number|null,
+  },
+  playStyle:    Array<{ label: string, pct: number, hint: string }>,  // §5 horizontal bars
+  weekSnapshot: { played: number, won: number, bestStreak: number, avgScore: number },  // §7
+  opponents:    { rival: O|null, favorite: O|null, competitive: O|null, bestRecord: O|null },  // §8
+  milestones:   Array<{ icon, label, current, target, blurb }>,  // §9 progress goals
+  didYouKnow:   { icon: string, text: string },                  // §10 rotating fact
+}
+
+// Internals exposed for tests:
+_internals: {
+  avgScoreLift, avgScoreTrend, strongestWeekday, scoreConsistency,
+  splitHalves, ratingMilestone, buildWordIntel, buildWeekSnapshot,
+  buildOpponentInsights, buildMilestones, pickArchetype,
+}
+```
+
+Trend deltas come from comparing the first half vs the second half of
+`profile.stats.recentGames` (max 20 games), not from historical
+snapshots — copy in the UI says "ב-N המשחקים האחרונים" to be honest
+about the window. ELO has no historical snapshot, so the rating trend
+returns a `nextTierLabel + progressPct` pair instead of a delta.
+
 ### ratingService.js
 ```typescript
 // Constants

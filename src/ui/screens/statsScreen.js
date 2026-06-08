@@ -1,5 +1,6 @@
 import { $, $$, on, setText } from '../domHelpers.js';
 import { PROFILE_RENDER, avatarEmoji } from './profileScreen.js';
+import { deriveInsights } from '../../game/account/playerInsights.js';
 
 export const STATS_INTENT = Object.freeze({
   BACK: 'stats/back',
@@ -62,6 +63,7 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
   function paint({ profile } = {}) {
     if (!screenEl || !profile) return;
     const stats = deriveStatsView(profile);
+    paintInsightsPanel(profile, root);
     text('#st-hero-av', avatarEmoji(profile.equippedAvatar));
     text('#st-hero-name', profile.displayName ?? 'שחקן בוסט');
     text('#st-hero-tier', stats.tier.label);
@@ -183,9 +185,11 @@ export function deriveStatsView(profile = {}) {
 
 function tabFromButton(btn) {
   const text = btn?.textContent ?? '';
+  if (text.includes('תובנות')) return 'insights';
   if (text.includes('שיאים')) return 'records';
   if (text.includes('יריבים')) return 'rivals';
-  return 'progress';
+  if (text.includes('התקדמות')) return 'progress';
+  return 'insights';
 }
 
 function switchTab(tab, el, root) {
@@ -287,6 +291,187 @@ function format1(n) {
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
+}
+
+// ─── Insights panel painting ──────────────────────────────────────────
+// Pure-render helpers that consume the playerInsights output and project
+// it onto the #st-panel-insights DOM. Exported only for tests via
+// `mountStatsScreen()._derive` and the module's exports below.
+
+export function paintInsightsPanel(profile, root) {
+  if (!profile) return;
+  const ins = deriveInsights(profile, Date.now());
+  // §2 Archetype
+  setEl('#ins-arch-icon',  root, t => t.textContent = ins.archetype.icon);
+  setEl('#ins-arch-label', root, t => t.textContent = ins.archetype.label);
+  setEl('#ins-arch-blurb', root, t => t.textContent = ins.archetype.blurb);
+  // §1 Insights cards
+  setEl('#ins-cards',      root, t => t.innerHTML = renderInsightCards(ins.insights));
+  // §3 Trends
+  setEl('#ins-trends',     root, t => t.innerHTML = renderTrends(ins.trends));
+  // §7 This-week snapshot
+  setEl('#ins-week',       root, t => t.innerHTML = renderWeekSnapshot(ins.weekSnapshot));
+  // §4 Word Intelligence
+  setEl('#ins-words',      root, t => t.innerHTML = renderWordIntel(ins.wordIntel));
+  // §5 Play style
+  setEl('#ins-style',      root, t => t.innerHTML = renderPlayStyle(ins.playStyle));
+  // §8 Opponent insights
+  setEl('#ins-opps',       root, t => t.innerHTML = renderOpponents(ins.opponents));
+  // §9 Milestones
+  setEl('#ins-milestones', root, t => t.innerHTML = renderMilestones(ins.milestones));
+  // §10 Did You Know
+  setEl('#ins-dyk-icon',   root, t => t.textContent = ins.didYouKnow.icon);
+  setEl('#ins-dyk-text',   root, t => t.textContent = ins.didYouKnow.text);
+}
+
+function setEl(sel, root, fn) {
+  const el = $(sel, root);
+  if (el) fn(el);
+}
+
+function renderInsightCards(items = []) {
+  if (!items.length) return '';
+  return items.map(i =>
+    `<div class="ins-card">`
+    + `<span class="ins-card-icon" aria-hidden="true">${escapeHtml(i.icon)}</span>`
+    + `<span class="ins-card-text">${escapeHtml(i.text)}</span>`
+    + '</div>',
+  ).join('');
+}
+
+function trendChip(label, valueText, delta, deltaSuffix = '') {
+  let arrow = '·';
+  let cls = 'trend-flat';
+  if (delta > 0)      { arrow = '▲'; cls = 'trend-up';   }
+  else if (delta < 0) { arrow = '▼'; cls = 'trend-down'; }
+  const deltaStr = (delta === 0 || delta == null) ? '' :
+    `<span class="ins-trend-delta ${cls}">${arrow} ${Math.abs(delta)}${deltaSuffix}</span>`;
+  return ''
+    + '<div class="ins-trend">'
+    + `<div class="ins-trend-lbl">${escapeHtml(label)}</div>`
+    + `<div class="ins-trend-val">${escapeHtml(valueText)}</div>`
+    + deltaStr
+    + '</div>';
+}
+
+function renderTrends(t = {}) {
+  const out = [];
+  out.push(trendChip('אחוז ניצחון', `${t.winRate?.valuePct ?? 0}%`, t.winRate?.deltaPct ?? 0, '%'));
+  out.push(trendChip('ציון ממוצע', `${t.avgScore?.value ?? 0}`, t.avgScore?.deltaAbs ?? 0));
+  out.push(trendChip('פעילות שבועית', `${t.activity?.thisWeek ?? 0} משחקים`, t.activity?.deltaAbs ?? 0));
+  // ELO: no historical snapshot, so show "X / next-tier-floor".
+  const r = t.rating ?? {};
+  const ratingVal = r.nextTierFloor != null
+    ? `${r.value ?? 0} / ${r.nextTierFloor}`
+    : `${r.value ?? 0}`;
+  const ratingLabel = r.nextTierLabel ? `דירוג (${r.nextTierLabel})` : 'דירוג';
+  out.push(''
+    + '<div class="ins-trend">'
+    + `<div class="ins-trend-lbl">${escapeHtml(ratingLabel)}</div>`
+    + `<div class="ins-trend-val">${escapeHtml(ratingVal)}</div>`
+    + `<div class="ins-trend-bar"><div class="ins-trend-bar-fill" style="width:${Number(r.progressPct) || 0}%"></div></div>`
+    + '</div>');
+  return out.join('');
+}
+
+function renderWeekSnapshot(w = {}) {
+  return ''
+    + '<div class="ins-week-grid">'
+    +   weekKpi('🎮', 'משחקים', w.played ?? 0)
+    +   weekKpi('🏆', 'ניצחונות', w.won ?? 0)
+    +   weekKpi('🔥', 'רצף', w.bestStreak ?? 0)
+    +   weekKpi('📊', 'ממוצע', w.avgScore ?? 0)
+    + '</div>';
+}
+function weekKpi(icon, label, value) {
+  return ''
+    + '<div class="ins-week-kpi">'
+    + `<div class="ins-week-kpi-icon" aria-hidden="true">${escapeHtml(icon)}</div>`
+    + `<div class="ins-week-kpi-val">${escapeHtml(String(value))}</div>`
+    + `<div class="ins-week-kpi-lbl">${escapeHtml(label)}</div>`
+    + '</div>';
+}
+
+function renderWordIntel(w = {}) {
+  const rows = [
+    { icon: '📚', label: 'אורך מילה ממוצע',   val: w.avgWordLength ? String(w.avgWordLength) : 'טרם נמדד' },
+    { icon: '🔤', label: 'המילה הארוכה ביותר', val: w.longestWord ? `${w.longestWord} (${w.longestWordLen})` : 'טרם הושג' },
+    { icon: '💯', label: 'המהלך הטוב ביותר',  val: w.bestMoveScore ? `${w.bestMoveScore} נקודות` : 'טרם הושג' },
+    { icon: '⚡', label: 'נקודות למהלך (ממוצע)', val: w.avgPointsPerMove ? `${w.avgPointsPerMove}` : 'טרם נמדד' },
+    { icon: '🎯', label: 'אורך המילה השכיח',  val: w.mostUsedLength ? `${w.mostUsedLength} אותיות` : 'טרם נמדד' },
+  ];
+  return rows.map(r => ''
+    + '<div class="ins-word-row">'
+    + `<span class="ins-word-icon" aria-hidden="true">${escapeHtml(r.icon)}</span>`
+    + `<span class="ins-word-lbl">${escapeHtml(r.label)}</span>`
+    + `<span class="ins-word-val">${escapeHtml(r.val)}</span>`
+    + '</div>',
+  ).join('');
+}
+
+function renderPlayStyle(bars = []) {
+  if (!bars.length) return '';
+  return bars.map(b => ''
+    + '<div class="ins-style-row">'
+    +   '<div class="ins-style-meta">'
+    +     `<span class="ins-style-lbl">${escapeHtml(b.label)}</span>`
+    +     `<span class="ins-style-pct">${escapeHtml(String(b.pct))}%</span>`
+    +   '</div>'
+    +   '<div class="ins-style-bar">'
+    +     `<div class="ins-style-bar-fill" style="width:${Number(b.pct) || 0}%"></div>`
+    +   '</div>'
+    +   (b.hint ? `<div class="ins-style-hint">${escapeHtml(b.hint)}</div>` : '')
+    + '</div>',
+  ).join('');
+}
+
+function renderOpponents(o = {}) {
+  const rows = [
+    { icon: '👑', label: 'היריב הגדול',           opp: o.rival },
+    { icon: '🤝', label: 'היריב האהוב',           opp: o.favorite },
+    { icon: '🔥', label: 'הצמיתות הכי תחרותית',   opp: o.competitive },
+    { icon: '🏆', label: 'הביצוע הכי טוב מולו',   opp: o.bestRecord },
+  ];
+  if (rows.every(r => !r.opp)) {
+    return '<div class="ins-empty">אין עדיין יריבים מתועדים. שחק כמה משחקים ברשת.</div>';
+  }
+  return rows.map(r => {
+    if (!r.opp) {
+      return ''
+        + '<div class="ins-opp-row ins-opp-row--empty">'
+        + `<span class="ins-opp-icon" aria-hidden="true">${escapeHtml(r.icon)}</span>`
+        + `<span class="ins-opp-lbl">${escapeHtml(r.label)}</span>`
+        + '<span class="ins-opp-val">טרם זמין</span>'
+        + '</div>';
+    }
+    const wlt = `${r.opp.won}-${r.opp.lost}-${r.opp.draw}`;
+    return ''
+      + '<div class="ins-opp-row">'
+      + `<span class="ins-opp-icon" aria-hidden="true">${escapeHtml(r.icon)}</span>`
+      + '<div class="ins-opp-body">'
+      +   `<div class="ins-opp-lbl">${escapeHtml(r.label)}</div>`
+      +   `<div class="ins-opp-name">${escapeHtml(r.opp.name)}</div>`
+      + '</div>'
+      + `<div class="ins-opp-val">${escapeHtml(wlt)}<div class="ins-opp-wr">${escapeHtml(String(r.opp.winPct))}%</div></div>`
+      + '</div>';
+  }).join('');
+}
+
+function renderMilestones(items = []) {
+  if (!items.length) return '';
+  return items.map(m => {
+    const pct = m.target > 0 ? Math.max(0, Math.min(100, Math.round((m.current / m.target) * 100))) : 0;
+    return ''
+      + '<div class="ins-ms">'
+      +   '<div class="ins-ms-head">'
+      +     `<span class="ins-ms-icon" aria-hidden="true">${escapeHtml(m.icon)}</span>`
+      +     `<span class="ins-ms-lbl">${escapeHtml(m.label)}</span>`
+      +     `<span class="ins-ms-prog">${escapeHtml(String(m.current))} / ${escapeHtml(String(m.target))}</span>`
+      +   '</div>'
+      +   `<div class="ins-ms-bar"><div class="ins-ms-bar-fill" style="width:${pct}%"></div></div>`
+      +   (m.blurb ? `<div class="ins-ms-blurb">${escapeHtml(m.blurb)}</div>` : '')
+      + '</div>';
+  }).join('');
 }
 
 async function shareStats(win, profile) {

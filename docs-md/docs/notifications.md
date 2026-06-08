@@ -52,15 +52,15 @@ This allows the server (opponent client) to target the correct OneSignal subscri
 Source: `notificationService.attachBusSubscriptions()`
 
 Triggered by bus events:
-- `EV.TURN_CHANGED` — opponent's turn ended → send "your turn" push
-- `EV.GAME_COMPLETED` — game ended → send "game over" push
+- `EV.TURN_CHANGED` — handler differs by mode (see below)
+- `EV.GAME_COMPLETED` — game ended → send "game over" push to both UIDs
 
 Mode-based gating:
-- `friend-async` / `random-async`: `pushOnMove: 'always'` — push unconditionally
-- `friend-live` / `random-live`: `pushOnMove: 'ifBackgrounded'` — push only if recipient is backgrounded
+- `friend-async` / `random-async` (`pushOnMove: 'always'`): the **SENDER** (active player whose move just landed) fires the push to the **opponent**. Trigger condition: `currentTurnSlot !== mySlot` (we just played; turn left our slot). Target: `externalIds: [opponentUid]` plus `subscriptionIds: [opponentSubscriptionId]` when available. The push body's `opponentName` field is filled with `myName` (our display name) because from the recipient's POV we are their opponent. This design is required because in async play the recipient is usually offline and cannot push themselves.
+- `friend-live` / `random-live` (`pushOnMove: 'ifBackgrounded'`): the **RECEIVER** pushes themselves only if their tab is backgrounded. Trigger condition: `currentTurnSlot === mySlot && isBackgrounded`. Target: `externalIds: [myUid]`. This works because both players are typically online during live play, and only the receiver can detect its own foreground state.
 
 Deduplication:
-- `lastTurnNotified` Map prevents duplicate pushes per `turnNumber+roomId` combination
+- `lastTurnNotified` Map prevents duplicate pushes per `roomId+turnNumber` combination, applied for both async and live paths.
 
 ### Notification Types and Hebrew Text
 
