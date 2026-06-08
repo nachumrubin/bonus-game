@@ -74,6 +74,36 @@ test('listAsyncSessions: filters out completed/abandoned rooms', async () => {
   assert.deepEqual(list.map(s => s.roomId), ['live-room']);
 });
 
+test('listAsyncSessions: includeExpired surfaces expired rooms after active ones', async () => {
+  const db = makeMockDb();
+  await makeAsyncRoom(db, { roomId: 'mine',     players: { 0: { ...ME }, 1: { ...OPP } },  currentTurnSlot: 0, updatedAt: 100, status: 'playing' });
+  await makeAsyncRoom(db, { roomId: 'theirs',   players: { 0: { ...ME }, 1: { ...OPP2 } }, currentTurnSlot: 1, updatedAt: 200, status: 'playing' });
+  await makeAsyncRoom(db, { roomId: 'expired1', players: { 0: { ...ME }, 1: { ...OPP } },  currentTurnSlot: 0, updatedAt: 300, status: 'expired' });
+
+  // Without the flag, expired rooms stay hidden (back-compat).
+  const active = await listAsyncSessions(db, ME.uid);
+  assert.deepEqual(active.map(s => s.roomId), ['mine', 'theirs']);
+
+  // With the flag, expired rooms surface at the END of the list.
+  const all = await listAsyncSessions(db, ME.uid, { includeExpired: true });
+  assert.deepEqual(all.map(s => s.roomId), ['mine', 'theirs', 'expired1']);
+  const expired = all.find(s => s.roomId === 'expired1');
+  assert.equal(expired.isExpired, true);
+  assert.equal(expired.isMyTurn, false, 'expired rooms must never report isMyTurn=true');
+});
+
+test('summarizeForUid: returns scores from room.scores', () => {
+  const r = {
+    roomId: 'r', mode: 'random-async', status: 'playing',
+    players: { 0: { uid: 'me' }, 1: { uid: 'opp', displayName: 'Bob' } },
+    scores: { 0: 42, 1: 17 },
+    currentTurnSlot: 0, updatedAt: 1,
+  };
+  const s = summarizeForUid(r, 'me');
+  assert.equal(s.myScore, 42);
+  assert.equal(s.opponentScore, 17);
+});
+
 test('listAsyncSessions: skips entries where the room no longer exists', async () => {
   const db = makeMockDb();
   await makeAsyncRoom(db, { roomId: 'alive', players: { 0: { ...ME }, 1: { ...OPP } } });

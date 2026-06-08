@@ -7,7 +7,6 @@
 //
 import { $, on } from '../domHelpers.js';
 import { startGlobe } from '../globeRenderer.js';
-import { hasLocalSavedGame } from '../../game/sessions/localSaveService.js';
 
 export const MENU_INTENT = Object.freeze({
   OPEN_PROFILE:       'menu/openProfile',
@@ -23,6 +22,7 @@ export const MENU_INTENT = Object.freeze({
   SHARE_GAME:         'menu/shareGame',
   OPEN_STATS:         'menu/openStats',
   OPEN_FRIENDS:       'menu/openFriends',
+  OPEN_MY_GAMES:      'menu/openMyGames',
   OPEN_NOTIFICATIONS: 'menu/openNotifications',
   TOPBAR_MUSIC:       'menu/topbarMusic',
 });
@@ -45,12 +45,12 @@ const TOPBAR_BUTTONS = [
 // `onclick="showAvatarGallery()"` — that legacy global already emits
 // PROFILE_INTENT.OPEN_AVATARS, so no dedicated bus intent is needed.
 const SCREEN_BUTTONS = [
-  { sel: 'button[onclick="resumeSavedGame()"]',    intent: MENU_INTENT.RESUME_SAVED },
   { sel: 'button[onclick="startSetup(\'vs\')"]',   intent: MENU_INTENT.START_2P, legacyArg: 'vs' },
   { sel: 'button[onclick="startSetup(\'bot\')"]',  intent: MENU_INTENT.START_VS_BOT, legacyArg: 'bot' },
   { sel: 'button[onclick="showOnlineLobby()"]',    intent: MENU_INTENT.OPEN_ONLINE_LOBBY },
   { sel: 'button[onclick="openStats()"]',          intent: MENU_INTENT.OPEN_STATS },
   { sel: 'button[onclick="openFriends()"]',        intent: MENU_INTENT.OPEN_FRIENDS },
+  { sel: 'button[onclick="openMyGames()"]',        intent: MENU_INTENT.OPEN_MY_GAMES },
 ];
 
 function ratingTierEmoji(rating) {
@@ -101,15 +101,10 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
 
   // Initial render — read current state from the spine/debug surface and
   // saved-session globals.
-  function render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar } = {}) {
-    const resumeBtn = $('#btn-resume-home', menuRoot);
-    const resumeCol = $('#resume-col', menuRoot);
-    // OR in the local-save status so a saved offline game keeps the
-    // resume button visible even when MENU_REFRESH callers (which only
-    // know about async-online sessions) pass hasSavedGame: false.
-    const showResume = !!hasSavedGame || hasLocalSavedGame(globalThis.localStorage);
-    if (resumeBtn) resumeBtn.style.display = showResume ? '' : 'none';
-    if (resumeCol) resumeCol.style.display = showResume ? '' : 'none';
+  function render({ isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar } = {}) {
+    // The legacy "Resume game" button was removed in favour of the
+    // "המשחקים שלי" list, which surfaces both async-online sessions and
+    // the local saved game in one place.
 
     // Display elements are in the global topbar
     const nameLabel = $('#home-user-label', topbarRoot);
@@ -170,8 +165,6 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
   // state. If we mount too early, the legacy code's later mutations will
   // re-apply directly to the DOM.
   render({
-    hasSavedGame:    !!(globalThis.savedSession || globalThis._lastSavedSessionRef)
-                      || hasLocalSavedGame(globalThis.localStorage),
     isAuthed:        !!(globalThis.__spine?.currentUser && !globalThis.__spine.currentUser.isAnonymous),
     displayName:     globalThis.pNames?.[0] ?? null,
     hasOnlineUnread: false,

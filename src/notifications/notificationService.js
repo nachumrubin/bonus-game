@@ -112,19 +112,38 @@ export function attachBusSubscriptions({ bus, sessionRef }) {
     const s = sessionRef?.();
     if (!s?.mode || !s.roomId) return;
     const desc = modeDescriptor(s.mode);
-    // Only push when the OPPONENT'S turn ends → it's now MY turn (i.e. mine on the receiving client).
-    // For async: always push to the player whose turn just started.
-    // For live: only if backgrounded > 30 s (handled by caller's `shouldPushLive` flag).
-    const shouldPush = desc.online && (desc.pushOnMove === 'always' || (desc.pushOnMove === 'ifBackgrounded' && s.isBackgrounded));
-    if (!shouldPush) return;
-    if (currentTurnSlot !== s.mySlot) return; // the OPPONENT just made a move; we are now to play
+    if (!desc.online) return;
     if (lastTurnNotified.get(s.roomId) === turnNumber) return; // dedup
-    lastTurnNotified.set(s.roomId, turnNumber);
-    await sendPush(KIND.TURN, {
-      subscriptionIds: s.opponentSubscriptionId ? null : null, // we're notifying ourselves; OneSignal sends to OUR subscription
-      externalIds: [s.myUid],
-      ctx: { roomId: s.roomId, opponentName: s.opponentName, isLive: !desc.hasTurnTimer ? false : true },
-    });
+    if (desc.pushOnMove === 'always') {
+      // Async: the SENDER (active player who just moved) pushes the OPPONENT.
+      // The opponent may not be online to push themselves — that's the whole
+      // point of async play. We fire when the turn just left our slot, so
+      // currentTurnSlot is now the opponent's. From the recipient's POV the
+      // "opponentName" in the push body is US (we are their opponent), so
+      // pass myName, not opponentName.
+      if (currentTurnSlot === s.mySlot) return; // it's our turn now, nothing to push
+      if (!s.opponentUid && !s.opponentSubscriptionId) return;
+      lastTurnNotified.set(s.roomId, turnNumber);
+      await sendPush(KIND.TURN, {
+        externalIds: s.opponentUid ? [s.opponentUid] : null,
+        subscriptionIds: s.opponentSubscriptionId ? [s.opponentSubscriptionId] : null,
+        ctx: { roomId: s.roomId, opponentName: s.myName ?? null, isLive: false },
+      });
+      return;
+    }
+    if (desc.pushOnMove === 'ifBackgrounded') {
+      // Live: the RECEIVER pushes themselves only if their tab is backgrounded.
+      // Both players are typically online during live play, so this lets each
+      // side detect its own foreground state and avoid noisy push when the
+      // game is already on screen.
+      if (currentTurnSlot !== s.mySlot) return; // opponent's turn — not ours to react
+      if (!s.isBackgrounded) return;
+      lastTurnNotified.set(s.roomId, turnNumber);
+      await sendPush(KIND.TURN, {
+        externalIds: [s.myUid],
+        ctx: { roomId: s.roomId, opponentName: s.opponentName, isLive: true },
+      });
+    }
   }));
 
   _busSubs.push(bus.on(EV.GAME_COMPLETED, async ({ winnerSlot }) => {

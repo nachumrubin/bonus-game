@@ -70,6 +70,7 @@ import { mountWaitingRoomScreen, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SE
 import { mountJoinCodeScreen, JC_INTENT } from './ui/screens/joinCodeScreen.js';
 import { mountIncomingInviteScreen, II_INTENT, IR_INTENT, II_OPEN, II_CLOSE, IR_OPEN, IR_CLOSE } from './ui/screens/incomingInviteScreen.js';
 import { mountAsyncSessionListScreen, AS_INTENT, AS_RENDER } from './ui/screens/asyncSessionListScreen.js';
+import { mountAsyncGamesScreen, MG_INTENT, MG_RENDER } from './ui/screens/asyncGamesScreen.js';
 import { mountAsyncHomeButton, AH_INTENT, AH_SHOW, AH_HIDE } from './ui/screens/asyncHomeButton.js';
 import * as asyncTurnBanner from './notifications/asyncTurnBanner.js';
 import * as browserNotificationFallback from './notifications/browserNotificationFallback.js';
@@ -270,7 +271,7 @@ async function boot() {
       mountEndGameScreen, mountPauseScreen, mountBackConfirmScreen, mountCoinTossScreen,
       mountSettingsScreen, mountDisconnectScreen, mountResignConfirmScreen,
       mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, mountCreateRoomScreen, mountWaitingRoomScreen, mountJoinCodeScreen, mountIncomingInviteScreen,
-      mountAsyncSessionListScreen, mountAsyncHomeButton,
+      mountAsyncSessionListScreen, mountAsyncGamesScreen, mountAsyncHomeButton,
       mountBonusIntroScreen, mountBoostVetoScreen, mountBoostBadges,
       mountUnscrambleMiniGame, mountWheelMiniGame,
       mountWordSearchMiniGame, mountCrosswordMiniGame,
@@ -285,6 +286,7 @@ async function boot() {
       CR_INTENT, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SENT,
       JC_INTENT, II_INTENT, IR_INTENT, II_OPEN, II_CLOSE, IR_OPEN, IR_CLOSE,
       AS_INTENT, AS_RENDER, AH_INTENT, AH_SHOW, AH_HIDE,
+      MG_INTENT, MG_RENDER,
       BI_INTENT, BI_OPEN, BI_CLOSE,
       BV_INTENT, BV_OPEN, BV_CLOSE,
       BB_INTENT, BONUS_PENDING, BONUS_RESOLVED,
@@ -632,6 +634,7 @@ async function boot() {
         roomId: session.roomId,
         mySlot,
         myUid: players[mySlot]?.uid ?? activeFbCurrentUser?.uid,
+        myName: players[mySlot]?.displayName ?? null,
         opponentUid: players[1 - mySlot]?.uid,
         opponentName: players[1 - mySlot]?.displayName,
         opponentSubscriptionId: players[1 - mySlot]?.oneSignalSubId ?? null,
@@ -1334,6 +1337,76 @@ async function boot() {
       try { await asyncSessionService.dismissForUid(activeFbDb, uid, roomId); }
       catch (e) { console.warn('[spine] dismiss', e); }
     });
+
+    // ── My-Games screen (#smygames) ──
+    // Standalone screen for browsing all of the user's games: every async
+    // online room (including expired ones, filtered out of the lobby strip)
+    // plus the single locally-saved offline game if there is one. One-shot
+    // fetch on open + after each dismiss. Resume/dismiss for online rooms
+    // reuse the same handlers as the lobby strip; resume/dismiss for the
+    // local game branches on the sentinel roomId MY_GAMES_LOCAL_ROOM_ID.
+    const MY_GAMES_LOCAL_ROOM_ID = '__local__';
+    function buildLocalGameRow() {
+      const saved = loadLocalGame(globalThis.localStorage);
+      if (!saved) return null;
+      const players = saved.state?.players ?? {};
+      const scores  = saved.state?.scores ?? {};
+      const p0 = players[0] ?? {};
+      const p1 = players[1] ?? {};
+      // "Opponent" here is the slot-1 player so the row stays readable
+      // even for offline-2p where both players are local. For bot games
+      // p1 is 'המחשב' with the 🤖 avatar.
+      return {
+        roomId: MY_GAMES_LOCAL_ROOM_ID,
+        isLocal: true,
+        isMyTurn: true, // a saved local game is always "yours" to resume
+        isExpired: false,
+        opponentName: p1.displayName ?? (saved.bot ? 'המחשב' : 'שחקן 2'),
+        opponentAvatar: p1.avatar ?? (saved.bot ? '🤖' : null),
+        myScore: Number(scores[0] ?? 0),
+        opponentScore: Number(scores[1] ?? 0),
+        lastUpdated: Number(saved.savedAt) || 0,
+      };
+    }
+    async function refreshMyGamesList() {
+      const sessions = [];
+      const local = buildLocalGameRow();
+      if (local) sessions.push(local);
+      const uid = activeFbCurrentUser?.uid;
+      if (uid && activeFbDb) {
+        try {
+          const online = await asyncSessionService.listAsyncSessions(activeFbDb, uid, { includeExpired: true });
+          sessions.push(...online);
+        } catch (e) {
+          console.warn('[spine] myGames refresh', e);
+        }
+      }
+      bus.emit(MG_RENDER, { sessions });
+    }
+    bus.on(MENU_INTENT.OPEN_MY_GAMES, () => {
+      showLegacyScreen('smygames');
+      refreshMyGamesList();
+    });
+    bus.on(MG_INTENT.RESUME, ({ roomId }) => {
+      if (roomId === MY_GAMES_LOCAL_ROOM_ID) {
+        resumeLocalGameViaSpine();
+        return;
+      }
+      resumeRoomById(roomId);
+    });
+    bus.on(MG_INTENT.DISMISS, async ({ roomId }) => {
+      if (roomId === MY_GAMES_LOCAL_ROOM_ID) {
+        clearLocalGame(globalThis.localStorage);
+        refreshMyGamesList();
+        return;
+      }
+      const uid = activeFbCurrentUser?.uid;
+      if (!uid || !activeFbDb) return;
+      try { await asyncSessionService.dismissForUid(activeFbDb, uid, roomId); }
+      catch (e) { console.warn('[spine] myGames dismiss', e); }
+      refreshMyGamesList();
+    });
+    bus.on(MG_INTENT.BACK, () => { showLegacyScreen('sh'); });
 
     // Menu's "resume" button: this online-route handler covers the case
     // where Firebase auth is initialised. It prefers the most recent
@@ -2141,7 +2214,7 @@ async function boot() {
     if (typeof showSc === 'function') {
       try { showSc(id); return; } catch { /* swallow */ }
     }
-    const screens = ['sh', 'ss', 'sg', 'so', 'scoin', 'sprofile', 'sfriends', 'snotif', 'schamps', 'sauth-signup', 'sauth-login', 'sav-gallery', 'sstats'];
+    const screens = ['sh', 'ss', 'sg', 'so', 'scoin', 'sprofile', 'sfriends', 'snotif', 'schamps', 'sauth-signup', 'sauth-login', 'sav-gallery', 'sstats', 'smygames'];
     for (const s of screens) {
       const el = globalThis.document?.getElementById?.(s);
       if (!el) continue;
@@ -2869,6 +2942,7 @@ async function boot() {
   const joinCodeScreen     = mountJoinCodeScreen({ bus });
   const incomingInvite     = mountIncomingInviteScreen({ bus });
   const asyncSessionList   = mountAsyncSessionListScreen({ bus });
+  const asyncGamesScreen   = mountAsyncGamesScreen({ bus });
   const asyncHomeBtn       = mountAsyncHomeButton({ bus });
   const bonusIntroScreen   = mountBonusIntroScreen({ bus });
   const bonusSpectatorScreen = mountBonusSpectatorScreen({
@@ -2947,6 +3021,7 @@ async function boot() {
   globalThis.__spine.joinCodeScreen     = joinCodeScreen;
   globalThis.__spine.incomingInvite     = incomingInvite;
   globalThis.__spine.asyncSessionList   = asyncSessionList;
+  globalThis.__spine.asyncGamesScreen   = asyncGamesScreen;
   globalThis.__spine.asyncHomeBtn       = asyncHomeBtn;
   globalThis.__spine.bonusIntroScreen   = bonusIntroScreen;
   globalThis.__spine.bonusSpectatorScreen = bonusSpectatorScreen;
@@ -3088,6 +3163,9 @@ function installCutoverGlobals() {
   };
   globalThis.showStatsScreen = globalThis.showStatsScreen ?? function showStatsScreen() {
     bus.emit(PROFILE_INTENT.OPEN_STATS, {});
+  };
+  globalThis.openMyGames = globalThis.openMyGames ?? function openMyGames() {
+    bus.emit(MENU_INTENT.OPEN_MY_GAMES, {});
   };
   globalThis.logoutUser = globalThis.logoutUser ?? function logoutUser() {
     bus.emit(PROFILE_INTENT.LOGOUT, {});

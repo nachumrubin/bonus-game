@@ -2,6 +2,158 @@
 
 ---
 
+## Stats screen: new "תובנות" tab — player insights, archetype, trends, milestones — June 2026
+
+Feature request: turn the stats area from a data dashboard into a personalised analytics experience that helps users understand themselves and stay motivated.
+
+**Tabs reordered** to `תובנות | התקדמות | שיאים | יריבים` — "תובנות" (Insights) is the first/default tab. The existing three quantitative tabs are unchanged.
+
+**New pure module** [src/game/account/playerInsights.js](src/game/account/playerInsights.js): `deriveInsights(profile, now) → { insights, archetype, trends, wordIntel, playStyle, weekSnapshot, opponents, milestones, didYouKnow }`. All derivation comes from existing `profile.stats` — no schema changes, no Firebase writes. The module is platform-free and unit-tested.
+
+Sections rendered into `#st-panel-insights`:
+
+1. **🧠 תובנות עליך** — dynamic Hebrew sentences (recent form, strongest weekday, bonus-score correlation, close-win specialty, comeback record, improving trend). Generated from `recentGames` + `weekdayStats`. Cards are suppressed unless the signal is clearly above noise (e.g. close-win pill needs `closeWins/wins ≥ 0.4` with `≥5` wins).
+2. **🎭 הסגנון שלך** — archetype identity card: 🆕 חוקר / 📚 מומחה לאוצר מילים / 🔥 לוקח סיכונים / 🏹 שחקן מדויק / 🧠 שחקן אסטרטגי / ⚡ חושב מהיר / 🎯 שחקן עקבי / 🃏 שחקן כל-תחומי. One-line explanation paragraph; selection order is "most distinctive first".
+3. **📈 מגמות** — four trend chips: win-rate %, average score, weekly activity, ELO. Win-rate / avg-score deltas come from comparing first half vs second half of `recentGames` (copy says "ב-N המשחקים האחרונים", honest about the window). ELO has no historical snapshot, so it shows `current / nextTierFloor` plus a tier progress bar instead of a "+42 this week" delta.
+4. **📅 השבוע שלך** — four-KPI grid (games / wins / streak / avg) filtered to `recentGames` whose `ts >= now - 7d`.
+5. **📚 ניתוח מילים** — avg word length (weighted by `wordCounts`), longest word + length, best single-move score, avg points per move, most-used word length. Each row falls back to "טרם נמדד" / "טרם הושג" rather than `—` when missing — motivating empty states per the brief.
+6. **⚙ סגנון משחק** — five horizontal progress bars: bonus usage, long words, consistency, speed, risk-taking. Each has a one-line hint explaining what the bar means.
+7. **👥 היריבים שלך** — four picks from `rivalStats`: 👑 biggest rival (most played) / 🤝 favorite opponent (most wins) / 🔥 most competitive (closest to 50/50, ≥3 games) / 🏆 best record (highest winPct, ≥3 games). Missing categories show "טרם זמין" instead of an empty row.
+8. **🎯 היעד הבא** — milestones with progress bars: next ELO tier, next 50-point high-score round, next streak level. Always shows at least one milestone so the section never feels blank.
+9. **💡 ידעת?** — single rotating fact at the bottom, picked from a computed pool keyed by `gamesPlayed % pool.length` (stable between renders, advances naturally as the player plays more).
+
+**Files**
+
+- [src/game/account/playerInsights.js](src/game/account/playerInsights.js) — pure derivation module
+- [src/game/account/playerInsights.test.js](src/game/account/playerInsights.test.js) — 23 unit tests covering every section
+- [src/ui/screens/statsScreen.js](src/ui/screens/statsScreen.js) — new `paintInsightsPanel` + section renderers; `tabFromButton` now recognises "תובנות"
+- [partials/screens/stats-screen.html](partials/screens/stats-screen.html) — new tab button + `#st-panel-insights` markup
+- [styles.css](styles.css) — new `#st-panel-insights .ins-*` section (~250 lines) using the dark-navy gradient + gold accent language established for `#smygames`
+- [tests/e2e/capture-stats-insights.spec.js](tests/e2e/capture-stats-insights.spec.js) + [images/guide/stats-insights.png](images/guide/stats-insights.png) — visual reference
+
+**Honesty about data limits**
+
+Three things the brief mentions need data we don't track yet:
+- `ELO +42 this week` would require per-day rating snapshots → replaced with `X / nextTierFloor` and a tier progress bar.
+- `Best word this week` would require per-word timestamps → not surfaced; `Longest word ever` is shown instead.
+- `Win rate +8% this month` would require monthly aggregates → replaced with first-half vs second-half of `recentGames`, copy says "ב-N המשחקים האחרונים".
+
+Adding the missing tracking is deferred to a follow-up task (would need schema additions in `profileService.computeLiveGameStatsDelta` + write-side changes in `mergeWordStats` for dated words).
+
+**Tests**
+
+- `playerInsights.test.js` — 23/23 pass: empty-profile fallback, recent form, bonus correlation, strongest day, comeback insight, every archetype branch, two-halves win-rate trend, 7-day activity window, ELO milestone, weighted avg word length, play-style range, week snapshot filter, opponent picks (rival/favorite/competitive/bestRecord), milestones, did-you-know stability.
+- `statsScreen.test.js` — existing 3/3 still pass (the new paint path is additive).
+- `npm run test:unit` — 178/178 still pass.
+
+---
+
+## "המשחקים שלי" v3: card layout, score-dominant typography, status pills — June 2026
+
+Visual redesign of the saved-games screen. The previous list-row layout looked like a settings dialog; the new card layout is purpose-built for a casual mobile game.
+
+- **One card per game** ([src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js)): each row is now `<div class="mg-card">` with rounded 18px corners, a navy gradient background slightly lighter than the page (`linear-gradient(160deg, rgba(40,68,118,.85), rgba(20,38,80,.85))`), a 1px brand-tinted border, and a soft outer shadow plus an inner highlight. Local-save cards get a faint gold border tint so the user can spot the offline-resume row at a glance.
+- **Three-column grid** (identity / score / actions): avatar + opponent name + status pill on the start side, score block centred and visually dominant, Continue + dismiss on the end side. RTL is preserved by the natural flex direction (no `dir` overrides).
+- **Score is the focus**: `<span class="mg-score-mine">42</span> : <span class="mg-score-theirs">17</span>` inside a gold-tinted radial-glow pill. Mine is 26px gold (`#ffe17a`), theirs is 22px white-85%, separator is muted. `font-variant-numeric: tabular-nums` keeps digits aligned across rows.
+- **Status pill with emoji prefix**: replaces the plain grey metadata.
+  - 🟢 תורך (`is-mine`, green tint)
+  - 🕒 תור {opponent} (`is-theirs`, neutral) — time-ago line appears below
+  - 💾 משחק שמור (`is-local`, gold tint)
+  - 🔵 פג תוקף (`is-expired`, slate tint, card desaturated)
+- **Continue button** ([styles.css](styles.css) `.mg-resume`): linear-gradient gold (`#ffd84a → #dcaf28`), 12px rounded, drop-shadow "lift" with inset top highlight, press-state transforms by 2px and shrinks the shadow.
+- **Dismiss is now secondary**: the floating × at row end is replaced with a 🗑 trash icon at 30% opacity, brightens to red-tinted on hover. Same `data-mg-dismiss` attribute (no behaviour change).
+- **Header replaces the giant footer button**: 36px back-arrow on the start side, centred "המשחקים שלי" title in brand gold, optional count badge (`<span id="mg-count">`) showing the total — populated by the JS render path, hidden via `:empty` selector when zero. The screen no longer has a full-width footer button; back navigation lives in the header.
+- **Empty state** ([partials/screens/async-games-screen.html](partials/screens/async-games-screen.html)): 🎮 + bold Hebrew copy + small subtitle, replaces the single-line "no games" text.
+- **Narrow-screen breakpoint** (`max-width:380px`): tightens card padding, shrinks avatar + score type one size, narrows the Continue button — keeps the three-column layout intact rather than wrapping.
+
+CSS lives in a new section at the bottom of [styles.css](styles.css) (~150 lines, all `#smygames .mg-*` scoped). No global rules touched; the redesign cannot affect any other screen.
+
+Screenshot: [images/guide/my-games-screen.png](images/guide/my-games-screen.png), captured by the new spec [tests/e2e/capture-my-games-screen.spec.js](tests/e2e/capture-my-games-screen.spec.js) which seeds all four row states (local / my-turn / opponent-turn / expired) at a 414×896 portrait viewport.
+
+Tests:
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — updated row-shape assertions for the new HTML (`mg-score-mine`/`theirs` spans, `mg-status is-mine`/`is-local`/`is-expired` classes, 🟢/💾/🔵 status icons, 🗑 dismiss icon). Added a coverage for the new header count badge (`#mg-count` shows `3` for three sessions and is cleared on the empty state). 12/12 pass.
+- `npm run test:unit`: 178/178 pass. No functionality changed.
+
+---
+
+## "המשחקים שלי" v2: local saved game folded in, home-screen resume button removed, wider modal — June 2026
+
+Follow-up on the new screen. Two changes from the user:
+
+1. **Removed the floating "המשך משחק" play button** from the top-right of the home screen ([partials/screens/home.html](partials/screens/home.html)) — its job is now covered by the unified list. Cleaned up the visibility logic in [src/ui/screens/menuScreen.js](src/ui/screens/menuScreen.js) (the `#btn-resume-home` / `#resume-col` references, the `hasLocalSavedGame` import, the `'button[onclick="resumeSavedGame()"]'` `SCREEN_BUTTONS` selector, the `hasSavedGame` field in initial-render) and the test that exercised it.
+2. **Local saved offline game now appears in the list**. [src/main.js](src/main.js) `refreshMyGamesList` synthesizes a row for the localStorage save (if any) via a new `buildLocalGameRow` helper using `loadLocalGame(localStorage)`; the row is prepended above online sessions and carries `isLocal: true` plus a sentinel `roomId: '__local__'`. The `MG_INTENT.RESUME` handler branches on the sentinel and calls `resumeLocalGameViaSpine()` instead of `resumeRoomById`; `MG_INTENT.DISMISS` branches to `clearLocalGame()` instead of `dismissForUid`.
+3. **Wider modal**. [partials/screens/async-games-screen.html](partials/screens/async-games-screen.html) bumped from `max-width:340px` to `max-width:min(460px,94vw); width:100%` so the avatar + name + time-ago + score + two action buttons all fit comfortably on a single row. Screen-module score column widened slightly (`min-width:60px`, `white-space:nowrap`) to accommodate three-digit scores.
+4. **Row UX for local games**: turn label is "משחק שמור" (rather than "תורך"), a 💾 badge sits in front of the opponent name to make the row visually distinct from online sessions.
+
+`MENU_INTENT.RESUME_SAVED` and the `bus.on` handler stay — they're called by the existing offline → bot/2P flow as the fallback when no online sessions are found.
+
+Tests: added `buildRowHtml: isLocal row shows the "saved game" label + 💾 badge but keeps Resume + ×` in [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js). Removed `MENU_REFRESH event toggles the resume button visibility` from [src/ui/screens/menuScreen.test.js](src/ui/screens/menuScreen.test.js) along with the `buttons.resume` DOM stub. `npm run test:unit` — 178/178 pass.
+
+---
+
+## New screen: "המשחקים שלי" — async-online games list — June 2026
+
+Feature request: a dedicated screen so users can easily return to any of their in-flight async online games. Reachable from the home screen's bottom nav.
+
+- **New screen `#smygames`** ([partials/screens/async-games-screen.html](partials/screens/async-games-screen.html)): a scrollable list of every active async game the user is in, plus expired games (filtered out of the lobby strip) so users can see why a game ended and dismiss it. Each row shows: opponent avatar + name, score (you : them), whose turn + time since last move, "המשך" button to resume (active games), "×" button to remove from the per-user index (active and expired alike).
+- **Bottom-nav button** on the home screen ([partials/screens/home.html](partials/screens/home.html)): "🎮 המשחקים שלי" — first item in the row.
+- **New screen module** [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js): exports `mountAsyncGamesScreen`, `MG_INTENT` ({ RESUME, DISMISS, BACK }), `MG_RENDER`. Purely presentational — emits intents on click; the screen module never touches Firebase directly.
+- **Service extension** [src/game/online/asyncSessionService.js](src/game/online/asyncSessionService.js): `listAsyncSessions(db, uid, { includeExpired })` and `watchAsyncSessions(..., opts)` now accept an `includeExpired` flag. Expired rooms surface with `isExpired: true` and always sort to the end. Sessions also expose `myScore` / `opponentScore` from `room.scores`. Default behaviour unchanged for callers that don't pass the flag (lobby strip stays unaffected).
+- **Wiring** [src/main.js](src/main.js): mounts the new screen, adds `globalThis.openMyGames`, routes `MENU_INTENT.OPEN_MY_GAMES → showLegacyScreen('smygames')`, fetches the list with `{ includeExpired: true }` on open, re-fetches after each dismiss. Resume reuses the existing `resumeOnlineRoomById` flow; back button calls `goHome()`.
+- **Screen ID registration**: added `'smygames'` to [src/ui/screens/screenTransitions.js](src/ui/screens/screenTransitions.js) `SCREEN_IDS` and to the screens array in `showLegacyScreen`. Partial path registered in [src/ui/screenPartialManifest.js](src/ui/screenPartialManifest.js).
+- **Menu intent**: added `MENU_INTENT.OPEN_MY_GAMES` and a `SCREEN_BUTTONS` selector in [src/ui/screens/menuScreen.js](src/ui/screens/menuScreen.js) so the new bottom-nav button is routed through the bus like the other home-screen buttons.
+
+Tests:
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — 10 cases covering time-ago bucketing, row HTML (active vs expired), HTML escaping, MG_RENDER paint + empty state, and click delegation for resume/dismiss.
+- [src/game/online/asyncSessionService.test.js](src/game/online/asyncSessionService.test.js) — added `includeExpired` surfaces expired rooms at the end; verified `summarizeForUid` returns scores. Existing 14 cases still pass.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Async push: sender-side TURN push so the opponent actually gets notified — June 2026
+
+User-reported: no push notification arrived when the opponent completed a move in an async online game.
+
+Root cause in [src/notifications/notificationService.js attachBusSubscriptions](src/notifications/notificationService.js): the `EV.TURN_CHANGED` handler fired the push from the **recipient's** side, not the sender's. The condition `if (currentTurnSlot !== s.mySlot) return;` meant "only push when it's MY turn now, and push myself (`externalIds: [s.myUid]`)". For this to deliver, the recipient's browser had to be online and listening when `TURN_CHANGED` synced in — exactly NOT the case for async play (closed tab, screen off, app dismissed). The buggy assumption was even encoded in the existing tests.
+
+Fix: split the `TURN_CHANGED` handler by `pushOnMove` mode.
+
+- **Async (`pushOnMove: 'always'`)** now fires from the SENDER (active player who just moved). Trigger: `currentTurnSlot !== mySlot` (our move just left our slot). Target: opponent's `externalIds: [opponentUid]` plus `subscriptionIds: [opponentSubscriptionId]` when available. The push body's `opponentName` is set to `myName` because from the recipient's POV we are their opponent. The Cloudflare push worker ([worker/src/index.js](worker/src/index.js)) doesn't restrict `externalIds` to the caller's UID, so the sender-targets-opponent flow works end-to-end.
+- **Live (`pushOnMove: 'ifBackgrounded'`)** keeps the existing receiver-side behavior: both players are typically online, only the receiver can detect its own foreground/background state, so it self-pushes when the tab is hidden. No change.
+
+Wired `myName` (the active player's display name) into the `sessionRef` getter in [src/main.js](src/main.js) so the push body is correctly labelled.
+
+Tests in [src/notifications/notificationService.test.js](src/notifications/notificationService.test.js): flipped the original async test (now asserts the sender pushes the opponent, that `include_aliases.external_id` and `include_subscription_ids` target the opponent, and that the body contains `myName`); added an externalIds-only fallback test for opponents without a subscriptionId. All 178 unit tests pass.
+
+---
+
+## UI: clicking a pending lock now reliably returns it to the bucket — June 2026
+
+User-reported: double-clicking a pending lock that was placed by mistake left the lock visually unchanged; only the בטל (undo) button could remove it.
+
+Root cause in [src/ui/screens/gameScreen.js onCellClick](src/ui/screens/gameScreen.js): a single click on a pending-lock cell DID clear it (via the toggle hidden inside `setPendingLock`), but the cell then fell through to the "quick-place a lock" branch which has no awareness of the previous click. On a fast double-tap the second click re-placed the lock at the same cell — so the user saw the lock blink and reappear.
+
+Fix:
+- Added an explicit early-return for pending-lock cells in `onCellClick`, mirroring the existing `pendingSwap` handling (clear and return immediately, no fallthrough to quick-place).
+- Armed a brief (500ms) per-cell suppression window after a pending lock is cleared via cell click. The quick-place branch checks `suppressQuickPlaceAt` at the same `(r, c)` and skips placement during that window — so the second tap of a double-tap is absorbed instead of re-placing the lock.
+
+The window is per-cell, short, and only active immediately after the user-driven clear. Single-click behavior is unchanged for everyone (the cell click still removes the lock). 178 unit tests still pass.
+
+---
+
+## Engine: swap-displaced board letter usable in the same move — June 2026
+
+User-reported bug: a player swapped the on-board ש with their rack ו (via "החלפת אות" tile-swap), then placed the displaced ש in a new word (שוקל) in the same move — the engine rejected the move with `placed-not-in-rack`.
+
+Root cause in [src/game/core/gameEngine.js handleConfirmMove](src/game/core/gameEngine.js): the rack-defense loop validated every `placed` and swap-in letter against the *original* rack, but never credited the rack with the letter that the swap *released* from the board. The UI (see [gameController.js displayRackTile](src/ui/controllers/gameController.js)) intentionally surfaces the displaced letter at the swap's rack slot exactly so it can be played the same turn — legacy parity (`racks[turn][rackSlot] = returnedLetter`) — so the engine was the one out of sync.
+
+Fix: split the single rack-validation loop into two passes. First process swaps (consume swap-in from rack copy, push the displaced board letter onto the rack copy); then validate `placed` against that effective rack. Net rack delta and bag-parity invariants are unchanged; only the rejection condition relaxes.
+
+Regression test in [tests/unit/engine-placed-not-in-rack.test.js](tests/unit/engine-placed-not-in-rack.test.js): swap board-`ב` ⇄ rack-`ו` and reuse the displaced `ב` to form `באו` — pre-fix this rejected with `placed-not-in-rack`; post-fix it commits cleanly and conserves tile total. All 178 unit tests pass.
+
+---
+
 ## Online ghost-tile race: synchronous rollback + late-commit gate — June 2026
 
 A "last-second" CONFIRM_MOVE could leave the active player staring at tiles that the server never accepted. Reported flow: P1 confirms right as the deadline hits, P2's watchdog wins the version race, P1's commit aborts, but P1 keeps seeing their tiles on screen until P2's *next* move arrives and overwrites the cells. Score reverted correctly (forceResync replaced `state.scores`), tiles did not — because the rollback was async and depended on a successful `readRoom`, and in some real-world conditions that round-trip is slow or silently fails.

@@ -77,6 +77,13 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // select / click-again-to-recall semantics. Cleared on confirm, recall-all,
   // exchange, or any other action that empties view.placed.
   let selectedPlacedCoord = null;
+  // After a pending-lock is cleared via a cell click, suppress the auto-
+  // quick-place at that same cell for a short window. Without this, a
+  // double-click on a pending lock — click 1 clears, click 2 re-places via
+  // the quick-place branch — would leave the lock visually unchanged and
+  // make users think the click did nothing. Reset to null on any other
+  // interaction or on render of a different cell.
+  let suppressQuickPlaceAt = null; // { r, c, untilMs }
 
   // Per-score-element tween state. Keyed by the score <span>; tracks the
   // currently-shown integer plus any in-flight rAF/timeout so we can cancel
@@ -401,6 +408,19 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       controller.unswapBoardTile?.(r, c);
       return;
     }
+    // Pending lock at this cell — clicking it removes the lock (returns it
+    // to the bucket). Mirrors the pendingSwap UX above. We also arm a brief
+    // "no auto-place" window at this cell so a second click in a fast
+    // double-tap doesn't immediately re-place via the quick-place branch.
+    const pendingLock = controller.view.pendingLock;
+    if (pendingLock && pendingLock.r === r && pendingLock.c === c) {
+      controller.clearPendingLock?.();
+      suppressQuickPlaceAt = { r, c, untilMs: Date.now() + 500 };
+      selectedLockDuration = null;
+      renderLockInventory(controller.view);
+      renderBoard(controller.view);
+      return;
+    }
     // Committed tile + rack tile selected → propose a swap (rack tile
     // replaces the committed letter; the displaced letter returns to the
     // rack on confirm).
@@ -475,6 +495,16 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       // confirm flow as the explicit-duration path above.
       if (r < 0 || r > 9 || c < 0 || c > 9) return;
       if (isCellBlockedForPlacement(controller.view, r, c)) return;
+      // Brief suppression window after the user just cleared a pending lock
+      // at this cell — see comment on suppressQuickPlaceAt. Prevents the
+      // second tap of a double-click from immediately re-placing the lock.
+      if (suppressQuickPlaceAt
+          && suppressQuickPlaceAt.r === r
+          && suppressQuickPlaceAt.c === c
+          && Date.now() < suppressQuickPlaceAt.untilMs) {
+        return;
+      }
+      suppressQuickPlaceAt = null;
       const inventory = lockInventoryForView(controller.view);
       if (!inventory.length) return;
       const duration = Math.min(...inventory);

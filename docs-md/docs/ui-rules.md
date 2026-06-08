@@ -103,19 +103,24 @@ Help dropdown / Guide / FAQ (top-bar `?` button):
 .guide-section         — accordion section (used inside both #ov-guide and #ov-faq)
 ```
 
-### Stats Screen (3-tab layout, May 2026 simplification)
+### Stats Screen (4-tab layout, June 2026 insights addition)
 
 Stats screen lives in `partials/screens/stats-screen.html`, painted by `src/ui/screens/statsScreen.js`.
 
-Tabs (parsed from button text by `tabFromButton()`):
-- `תקדמות` → `#st-panel-progress`
+Tabs (parsed from button text by `tabFromButton()`, FIRST tab is the default):
+- `תובנות` → `#st-panel-insights` (default)
+- `התקדמות` → `#st-panel-progress`
 - `שיאים`  → `#st-panel-records`
-- `יריבים ובוסטים` → `#st-panel-rivals`
+- `יריבים` → `#st-panel-rivals`
 
 Load-bearing IDs (do not rename without updating `statsScreen.js` paint code):
 
 ```
 Hero:     #st-hero-av, #st-hero-name, #st-hero-tier, #st-hero-wr, #st-hero-streak, #st-hero-insight
+Insights: #ins-arch-icon, #ins-arch-label, #ins-arch-blurb,
+          #ins-cards, #ins-trends, #ins-week, #ins-words, #ins-style,
+          #ins-opps, #ins-milestones,
+          #ins-dyk, #ins-dyk-icon, #ins-dyk-text
 Progress: #st-sparkline, #st-rating, #st-tier-bar, #st-highscore, #st-avg, #st-played,
           #st-won, #st-lost, #st-draw, #st-bar-w, #st-bar-l, #st-bar-d
 Records:  #st-fun-bestmove, #st-fun-longest, #st-fun-streak, #st-fun-comeback, #st-fun-repeated, #st-fun-bestday
@@ -124,6 +129,8 @@ Rivals:   #st-rivals-content, #st-boost-total, #st-boost-avg, #st-boost-winrate,
           #st-comeback, #st-lastmove, #st-closewins
 Legacy hidden compat: #st-streak, #st-words, #stats-wr-pct, #stats-donut-arc
 ```
+
+The Insights panel renders into innerHTML-managed containers; the JS owns the markup inside `#ins-cards`, `#ins-trends`, `#ins-week`, `#ins-words`, `#ins-style`, `#ins-opps`, `#ins-milestones`. All derivation lives in `src/game/account/playerInsights.js` (pure module, 23 unit tests).
 
 Removed in May 2026 simplification (do not re-add without product reason): `#st-avgword`, `#st-pts-tile`, `#st-move-time`, `#st-pts-move`, `#st-vs-stronger-w`, `#st-vs-weaker-w`, `#st-boost-impact-wins`, `#st-boost-impact-best`, `#st-boost-combo`, `#st-fun-luck`, `#st-fun-fastest`, `#st-perf-tier-badge`, `#st-hero-rank`, `#st-wr-pct-lbl`, `#st-streak-lbl`, `#st-best-streak`, `#st-bonuses`. The stats-screen topbar (`.stats-topbar`) and time filter (`.stats-tfseg`) are also removed — navigation lives on the persistent app top bar; cards reflect cumulative totals only.
 
@@ -346,6 +353,42 @@ Button `data-*` attributes used for event delegation (do not rename):
 - `data-notif-reject-invite` — reject game invite (value = inviteId)
 - `data-notif-accept-friend` — accept friend request (value = fromUid)
 - `data-notif-reject-friend` — reject friend request (value = fromUid)
+
+### My Async Games Screen (`#smygames`)
+
+Source: `partials/screens/async-games-screen.html`, `src/ui/screens/asyncGamesScreen.js`
+
+Standalone screen listing all of the user's games: the local saved offline game (if any) + active async online games + expired async games. Reachable from the home screen's bottom-nav "🎮 המשחקים שלי" button (`onclick="openMyGames()"`). On open, `main.js refreshMyGamesList` synthesizes the local-game row from `loadLocalGame(localStorage)` and fetches the online rooms via `asyncSessionService.listAsyncSessions(db, uid, { includeExpired: true })`. The local row has sentinel `roomId: '__local__'` and `isLocal: true` so resume / dismiss handlers can branch on it.
+
+Load-bearing IDs (do not rename without updating `asyncGamesScreen.js` + main.js routing):
+
+```
+#smygames    — screen container
+#mg-list     — cards are rendered into this element (HTML built by buildListHtml)
+#mg-empty    — empty-state block (shown when zero sessions, hidden otherwise)
+#mg-count    — header count badge; populated by JS render with the session count
+```
+
+Per-row `data-*` attributes used for event delegation (do not rename):
+- `data-mg-row="{roomId}"` — outer `<div class="mg-card">` wrapper for one game
+- `data-mg-resume="{roomId}"` — Continue button (active rows only); emits `MG_INTENT.RESUME`
+- `data-mg-dismiss="{roomId}"` — dismiss button (🗑 trash icon); emits `MG_INTENT.DISMISS`
+
+Card CSS classes (scoped under `#smygames` in [styles.css](../../styles.css)):
+- `.mg-card` — card container; modifiers `.is-expired` (desaturated, no Resume) and `.is-local` (gold border tint)
+- `.mg-card-identity > .mg-avatar`, `.mg-meta > .mg-name`, `.mg-status` — identity column
+- `.mg-status.is-mine` / `.is-theirs` / `.is-local` / `.is-expired` — coloured status pills
+- `.mg-time` — small grey time-ago line (rendered only when not my-turn)
+- `.mg-score` containing `.mg-score-mine`, `.mg-score-sep`, `.mg-score-theirs` — score is the dominant visual element
+- `.mg-actions` containing `.mg-resume` (gold gradient button) and `.mg-dismiss` (🗑 trash icon)
+- Header: `.mg-back` (icon button), `.mg-title-text`, `.mg-count` (count badge, hidden via `:empty`)
+
+Sort order: my-turn games first, then opponent-turn games, then expired games. Within each bucket, newest `lastUpdated` first.
+
+The screen ID `'smygames'` must also be present in:
+- `SCREEN_IDS` in `src/ui/screens/screenTransitions.js`
+- The screens array in `showLegacyScreen` in `src/main.js`
+- `SCREEN_PARTIALS` in `src/ui/screenPartialManifest.js`
 
 ---
 
