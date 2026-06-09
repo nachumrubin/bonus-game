@@ -69,7 +69,6 @@ import { mountCreateRoomScreen, CR_INTENT } from './ui/screens/createRoomScreen.
 import { mountWaitingRoomScreen, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SENT, buildWhatsAppShareUrl } from './ui/screens/waitingRoomScreen.js';
 import { mountJoinCodeScreen, JC_INTENT } from './ui/screens/joinCodeScreen.js';
 import { mountIncomingInviteScreen, II_INTENT, IR_INTENT, II_OPEN, II_CLOSE, IR_OPEN, IR_CLOSE } from './ui/screens/incomingInviteScreen.js';
-import { mountAsyncSessionListScreen, AS_INTENT, AS_RENDER } from './ui/screens/asyncSessionListScreen.js';
 import { mountAsyncGamesScreen, MG_INTENT, MG_RENDER } from './ui/screens/asyncGamesScreen.js';
 import { mountAsyncHomeButton, AH_INTENT, AH_SHOW, AH_HIDE } from './ui/screens/asyncHomeButton.js';
 import * as asyncTurnBanner from './notifications/asyncTurnBanner.js';
@@ -271,7 +270,7 @@ async function boot() {
       mountEndGameScreen, mountPauseScreen, mountBackConfirmScreen, mountCoinTossScreen,
       mountSettingsScreen, mountDisconnectScreen, mountResignConfirmScreen,
       mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, mountCreateRoomScreen, mountWaitingRoomScreen, mountJoinCodeScreen, mountIncomingInviteScreen,
-      mountAsyncSessionListScreen, mountAsyncGamesScreen, mountAsyncHomeButton,
+      mountAsyncGamesScreen, mountAsyncHomeButton,
       mountBonusIntroScreen, mountBoostVetoScreen, mountBoostBadges,
       mountUnscrambleMiniGame, mountWheelMiniGame,
       mountWordSearchMiniGame, mountCrosswordMiniGame,
@@ -285,7 +284,7 @@ async function boot() {
       MENU_INTENT, MENU_REFRESH, SETUP_INTENT, SETUP_OPEN, LOBBY_INTENT, MM_INTENT,
       CR_INTENT, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SENT,
       JC_INTENT, II_INTENT, IR_INTENT, II_OPEN, II_CLOSE, IR_OPEN, IR_CLOSE,
-      AS_INTENT, AS_RENDER, AH_INTENT, AH_SHOW, AH_HIDE,
+      AH_INTENT, AH_SHOW, AH_HIDE,
       MG_INTENT, MG_RENDER,
       BI_INTENT, BI_OPEN, BI_CLOSE,
       BV_INTENT, BV_OPEN, BV_CLOSE,
@@ -476,15 +475,39 @@ async function boot() {
   async function attemptSavedOnlineRecovery(uid) {
     const db = activeFbDb;
     if (!db || !uid || globalThis.__spine?.activeGame) return;
+    // Auto-resume is only for LIVE games — those need to recover after a
+    // refresh/crash because there's a real-time opponent waiting. Async
+    // games must NOT auto-resume on every app entry; the user picks them
+    // from the "המשחקים שלי" list. Without this gate, opening the app
+    // would dump the user straight into whatever async game last touched
+    // `users/{uid}/activeRoom`, regardless of intent.
     const saved = sessionPersistence.readActiveOnlineSession(globalThis.localStorage);
     if (saved?.roomId && saved.userId === uid) {
-      await resumeOnlineRoomById(saved.roomId, { skipCoin: true });
-      return;
+      try {
+        const room = await roomService.readRoom(db, saved.roomId);
+        const mode = String(room?.mode ?? '');
+        if (mode.endsWith('-live')) {
+          await resumeOnlineRoomById(saved.roomId, { skipCoin: true });
+          return;
+        }
+        // Local pointer was set for an async game we don't want to auto-
+        // resume; clear it so we don't keep re-evaluating it on every boot.
+        sessionPersistence.clearActiveOnlineSession(globalThis.localStorage);
+      } catch (e) {
+        console.warn('[spine] saved-session lookup', e);
+      }
     }
     try {
       const snap = await db.ref(`users/${uid}/activeRoom`).get();
       const roomId = snap?.val ? snap.val() : null;
-      if (roomId) await resumeOnlineRoomById(roomId, { skipCoin: true });
+      if (!roomId) return;
+      const room = await roomService.readRoom(db, roomId);
+      const mode = String(room?.mode ?? '');
+      if (mode.endsWith('-live')) {
+        await resumeOnlineRoomById(roomId, { skipCoin: true });
+      }
+      // For async rooms we deliberately do nothing — the user will pick
+      // them from "המשחקים שלי".
     } catch (e) {
       console.warn('[spine] activeRoom recovery', e);
     }
@@ -1264,16 +1287,42 @@ async function boot() {
     let activeSessionsWatch = null;
     let lastSessions = [];
 
+    // Single source of truth for the bottom-nav 🎮 bubble count: active
+    // async online rooms (expired filtered out) + the local saved offline
+    // game if one exists.
+    function computeMyGamesCount() {
+      const openOnline = (Array.isArray(lastSessions) ? lastSessions : [])
+        .filter(s => !s.isExpired).length;
+      const localCount = hasLocalSavedGame(globalThis.localStorage) ? 1 : 0;
+      return openOnline + localCount;
+    }
+
+    // gameFlowController and other modules emit MENU_REFRESH with
+    // `hasSavedGame: true|false` when the local-save state flips (after
+    // save-and-exit, or after a game ends). They don't know about
+    // lastSessions, so they can't fill in `myGamesCount` themselves.
+    // We listen here, recompute, and re-emit so the badge stays current.
+    // The `!('myGamesCount' in payload)` guard prevents an infinite loop:
+    // our own emit below DOES include `myGamesCount`, so it won't re-trigger.
+    bus.on(MENU_REFRESH, (payload = {}) => {
+      if ('hasSavedGame' in payload && !('myGamesCount' in payload)) {
+        bus.emit(MENU_REFRESH, { myGamesCount: computeMyGamesCount() });
+      }
+    });
+
     function bootAsyncSessionsFor(uid) {
       if (!uid || !activeFbDb) return;
       try { activeSessionsWatch?.(); } catch {}
       activeSessionsWatch = asyncSessionService.watchAsyncSessions(activeFbDb, uid, (sessions) => {
         lastSessions = sessions;
-        bus.emit(AS_RENDER, { sessions });
-        // Refresh menu's "you have N async games" badge.
+        // Refresh menu's "you have N async games" badge AND the bottom-nav
+        // My Games bubble. myGamesCount = active async rooms + the local
+        // saved offline game if one exists. Expired games are NOT counted
+        // — watchAsyncSessions already filters them by default.
         bus.emit(MENU_REFRESH, {
           hasOnlineUnread: sessions.some(s => s.isMyTurn),
           hasSavedGame: sessions.length > 0,
+          myGamesCount: computeMyGamesCount(),
         });
         // In-app banner (deduped) for my-turn games.
         const bannerResult = asyncTurnBanner.maybeShow({ uid, sessions });
@@ -1330,21 +1379,12 @@ async function boot() {
       return resumeOnlineRoomById(roomId, { skipCoin: false });
     }
 
-    bus.on(AS_INTENT.RESUME,  ({ roomId }) => { resumeRoomById(roomId); });
-    bus.on(AS_INTENT.DISMISS, async ({ roomId }) => {
-      const uid = activeFbCurrentUser?.uid;
-      if (!uid || !activeFbDb) return;
-      try { await asyncSessionService.dismissForUid(activeFbDb, uid, roomId); }
-      catch (e) { console.warn('[spine] dismiss', e); }
-    });
-
     // ── My-Games screen (#smygames) ──
     // Standalone screen for browsing all of the user's games: every async
-    // online room (including expired ones, filtered out of the lobby strip)
-    // plus the single locally-saved offline game if there is one. One-shot
-    // fetch on open + after each dismiss. Resume/dismiss for online rooms
-    // reuse the same handlers as the lobby strip; resume/dismiss for the
-    // local game branches on the sentinel roomId MY_GAMES_LOCAL_ROOM_ID.
+    // online room (including expired ones, filtered out elsewhere) plus
+    // the single locally-saved offline game if there is one. One-shot
+    // fetch on open + after each dismiss. Resume/dismiss for the local
+    // game branches on the sentinel roomId MY_GAMES_LOCAL_ROOM_ID.
     const MY_GAMES_LOCAL_ROOM_ID = '__local__';
     function buildLocalGameRow() {
       const saved = loadLocalGame(globalThis.localStorage);
@@ -1382,6 +1422,11 @@ async function boot() {
         }
       }
       bus.emit(MG_RENDER, { sessions });
+      // Bottom-nav badge: only count non-expired games. Expired rows still
+      // appear on the screen (so they can be dismissed) but they shouldn't
+      // inflate the "open games" badge.
+      const openCount = sessions.filter(s => !s.isExpired).length;
+      bus.emit(MENU_REFRESH, { myGamesCount: openCount });
     }
     bus.on(MENU_INTENT.OPEN_MY_GAMES, () => {
       showLegacyScreen('smygames');
@@ -1404,6 +1449,61 @@ async function boot() {
       if (!uid || !activeFbDb) return;
       try { await asyncSessionService.dismissForUid(activeFbDb, uid, roomId); }
       catch (e) { console.warn('[spine] myGames dismiss', e); }
+      refreshMyGamesList();
+    });
+    bus.on(MG_INTENT.POKE, async ({ roomId }) => {
+      // Manual poke: push a reminder to the opponent and stamp
+      // room.lastReminderAt = now. Sharing that field with
+      // asyncReminderService.classify means a manual poke automatically
+      // suppresses the auto-cron reminder for the same 24-hour window
+      // (and vice versa), so the opponent never gets a double-nag.
+      const uid = activeFbCurrentUser?.uid;
+      const db  = activeFbDb;
+      if (!uid || !db || !roomId) return;
+      try {
+        const room = await roomService.readRoom(db, roomId);
+        if (!room || !room.mode?.endsWith('-async')) return;
+        const p0 = room.players?.[0];
+        const p1 = room.players?.[1];
+        const mySlot = p0?.uid === uid ? 0 : (p1?.uid === uid ? 1 : null);
+        if (mySlot == null) return;
+        const opponent = mySlot === 0 ? p1 : p0;
+        const recipientUid = opponent?.uid;
+        if (!recipientUid) return;
+        const myName  = (mySlot === 0 ? p0 : p1)?.displayName ?? 'יריב';
+        const lastTs  = Number(room.updatedAt ?? room.createdAt) || Date.now();
+        const hoursIdle = Math.max(0, Math.floor((Date.now() - lastTs) / 3_600_000));
+        await notificationService.pushReminder({
+          recipientUid,
+          opponentName: myName, // from the recipient's POV WE are their opponent
+          roomId,
+          hoursIdle,
+          gender: settingsCompat.loadUiPreferences(globalThis.localStorage).gender,
+        });
+        // Only mark stamps AFTER the push succeeds — if the push fails,
+        // the user can retry without waiting. We write TWO fields:
+        //   - lastReminderAt: shared with the auto-cron sweep. Setting it
+        //                     here means the cron won't fire its own
+        //                     reminder for the same 24-hour window, so
+        //                     the opponent doesn't get two pushes.
+        //   - lastPokedAt:    manual-poke dedup. The button uses this to
+        //                     hide for 24 h after the user's click.
+        //
+        // The two are written as SEPARATE updates rather than a single
+        // atomic one. The `lastPokedAt` rule is new — until the database
+        // rules are redeployed (`firebase deploy --only database`), the
+        // server rejects writes to it. With one atomic update those
+        // rejections would also wipe the `lastReminderAt` write; splitting
+        // means the cron-suppression at least gets through during the
+        // rollout window. After deploy, both succeed normally.
+        const stamp = Date.now();
+        try { await db.ref(`rooms/${roomId}`).update({ lastReminderAt: stamp }); }
+        catch (e) { console.warn('[spine] myGames poke markReminded', e); }
+        try { await db.ref(`rooms/${roomId}`).update({ lastPokedAt:    stamp }); }
+        catch (e) { console.warn('[spine] myGames poke markPoked (deploy the new lastPokedAt rule)', e); }
+      } catch (e) {
+        console.warn('[spine] myGames poke', e);
+      }
       refreshMyGamesList();
     });
     bus.on(MG_INTENT.BACK, () => { showLegacyScreen('sh'); });
@@ -2926,6 +3026,12 @@ async function boot() {
   // but the wiring now goes through the bus so we can swap individual
   // intents to new-spine flows one at a time.
   const menu = mountMenuScreen({ bus });
+  // The async-sessions watcher fires its initial MENU_REFRESH on the auth
+  // callback path — which can run BEFORE this mount, in which case the
+  // bus event reaches no listener and the bottom-nav bubble stays hidden
+  // until the user opens "המשחקים שלי" (refreshMyGamesList re-emits).
+  // Seed the badge now with whatever we can read synchronously.
+  bus.emit(MENU_REFRESH, { myGamesCount: computeMyGamesCount() });
   const setup = mountSetupScreen({
     bus,
     getDisplayName: () => {
@@ -2941,7 +3047,6 @@ async function boot() {
   const waitingRoomScreen  = mountWaitingRoomScreen({ bus });
   const joinCodeScreen     = mountJoinCodeScreen({ bus });
   const incomingInvite     = mountIncomingInviteScreen({ bus });
-  const asyncSessionList   = mountAsyncSessionListScreen({ bus });
   const asyncGamesScreen   = mountAsyncGamesScreen({ bus });
   const asyncHomeBtn       = mountAsyncHomeButton({ bus });
   const bonusIntroScreen   = mountBonusIntroScreen({ bus });
@@ -3020,7 +3125,6 @@ async function boot() {
   globalThis.__spine.waitingRoomScreen  = waitingRoomScreen;
   globalThis.__spine.joinCodeScreen     = joinCodeScreen;
   globalThis.__spine.incomingInvite     = incomingInvite;
-  globalThis.__spine.asyncSessionList   = asyncSessionList;
   globalThis.__spine.asyncGamesScreen   = asyncGamesScreen;
   globalThis.__spine.asyncHomeBtn       = asyncHomeBtn;
   globalThis.__spine.bonusIntroScreen   = bonusIntroScreen;
@@ -3055,6 +3159,55 @@ async function boot() {
   globalThis.__spine.claimStallController = claimStallCtl;
 
   console.info('[spine] ready. Try window.__spine.bootOffline2P() or .bootOfflineBot()');
+
+  // App-loading overlay: hide once Firebase auth has resolved. The auth
+  // handler emits MENU_REFRESH with isAuthed: true|false on resolution
+  // (either after a profile load on sign-in, or via the teardownAuth
+  // path on sign-out / never-signed-in). Either is the "menu now has its
+  // real state" signal, so we drop the loader at that moment.
+  //
+  // Safety net: 6 s after boot, hide regardless — if Firebase silently
+  // failed to initialise (no network, blocked domain) the user must
+  // still see the menu rather than be stuck on the loader forever.
+  //
+  // Loading-text cycle: the overlay shows a rotating Hebrew status line
+  // (מתחבר... → טוען נתונים... → מכין מילים... → כמעט מוכן...) so the
+  // loader feels responsive even when auth takes a beat.
+  (function wireAppLoading() {
+    const doc = globalThis.document;
+    const el = doc?.getElementById?.('app-loading');
+    if (!el) return;
+    const textEl = doc.getElementById?.('app-loading-text');
+    const messages = ['מתחבר...', 'טוען נתונים...', 'מכין מילים...', 'כמעט מוכן...'];
+    let textIdx = 0;
+    const textTimer = setInterval(() => {
+      if (!textEl || el.classList.contains('is-hidden')) return;
+      textIdx = (textIdx + 1) % messages.length;
+      textEl.style.opacity = '0';
+      setTimeout(() => {
+        if (!textEl) return;
+        textEl.textContent = messages[textIdx];
+        textEl.style.opacity = '1';
+      }, 220);
+    }, 1400);
+
+    let hidden = false;
+    let off = null;
+    function hide() {
+      if (hidden) return;
+      hidden = true;
+      el.classList.add('is-hidden');
+      clearInterval(textTimer);
+      // Remove after the fade transition so it can't intercept clicks
+      // even if `pointer-events:none` fails.
+      setTimeout(() => el.remove?.(), 600);
+      if (off) { try { off(); } catch {} off = null; }
+    }
+    off = bus.on(MENU_REFRESH, (payload = {}) => {
+      if (typeof payload.isAuthed === 'boolean') hide();
+    });
+    setTimeout(hide, 6000);
+  })();
 
   // Auto-boot a demo session if requested (?demo=...)
   const demo = params.get('demo');

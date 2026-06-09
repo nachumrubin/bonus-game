@@ -158,6 +158,155 @@ test('bonus pending freezes the timer until award is acknowledged', () => {
   ctl.dispose();
 });
 
+test('menu pause freezes the timer at the REMAINING time and resumes from it (preserves remaining seconds)', () => {
+  bus._reset();
+  let nowMs = 1_000;
+  const session = {
+    state: {
+      mode: 'offline-solo',
+      status: 'playing',
+      currentTurnSlot: 1,
+      turnNumber: 4,
+      settings: { timelimit: true, botTime: 20 },
+      turnDeadlineMs: 0,
+    },
+    dispatched: [],
+    dispatch(cmd) { this.dispatched.push(cmd); },
+  };
+  const timerEl = makeEl();
+  const ctl = createTurnTimerController({
+    bus,
+    root: makeRoot(timerEl, makeEl()),
+    sessionRef: () => session,
+    now: () => nowMs,
+    setIntervalFn: () => 1,
+    clearIntervalFn: () => {},
+  });
+  // Initial sync builds a fresh 20s deadline.
+  assert.equal(timerEl.textContent, '20');
+  // 7 seconds in — display reads 13.
+  nowMs = 8_000;
+  ctl.sync();
+  assert.equal(timerEl.textContent, '13');
+
+  // User opens the pause overlay.
+  bus.emit('game/paused', {});
+  assert.equal(timerEl.textContent, '13', 'menu pause freezes at the remaining time, not the full clock');
+
+  // Long real-world delay while paused (e.g. 5 minutes).
+  nowMs = 308_000;
+  ctl.sync();
+  assert.equal(timerEl.textContent, '13', 'display stays frozen at remaining while paused');
+  assert.equal(session.dispatched.length, 0, 'no auto-pass while paused');
+
+  // User resumes — deadline shifts forward by 300 s, remaining is still 13.
+  bus.emit('game/resumed', {});
+  assert.equal(session.state.turnDeadlineMs, nowMs + 13_000,
+    'deadline shifts by the paused duration so remaining time is preserved');
+  ctl.sync();
+  assert.equal(timerEl.textContent, '13', 'after resume the display reads the same remaining seconds');
+
+  // 5 seconds after resume — display ticks to 8.
+  nowMs += 5_000;
+  ctl.sync();
+  assert.equal(timerEl.textContent, '8');
+  ctl.dispose();
+});
+
+test('menu pause keeps state.turnDeadlineMs rebased so saveLocalGame captures the paused remaining', () => {
+  // While the user sits on the pause overlay (e.g. reading, deciding), the
+  // turn-timer must continuously rebase state.turnDeadlineMs to now + frozen
+  // remaining. Otherwise a saveLocalGame call later would see the original
+  // absolute deadline and compute (deadline - now) which is smaller than the
+  // remaining time the player paused on.
+  bus._reset();
+  let nowMs = 1_000;
+  const session = {
+    state: {
+      mode: 'offline-solo',
+      status: 'playing',
+      currentTurnSlot: 0,
+      turnNumber: 1,
+      settings: { timelimit: true, botTime: 20 },
+      turnDeadlineMs: 0,
+    },
+    dispatched: [],
+    dispatch(cmd) { this.dispatched.push(cmd); },
+  };
+  const ctl = createTurnTimerController({
+    bus,
+    root: makeRoot(makeEl(), makeEl()),
+    sessionRef: () => session,
+    now: () => nowMs,
+    setIntervalFn: () => 1,
+    clearIntervalFn: () => {},
+  });
+  // 14 s in — 6 s remain.
+  nowMs = 15_000;
+  ctl.sync();
+  bus.emit('game/paused', {});
+  // 4 s later, the deadline must already be rebased to now+6 so a save
+  // captures the same 6 s the player saw on screen.
+  nowMs = 19_000;
+  ctl.sync();
+  assert.equal(session.state.turnDeadlineMs, nowMs + 6_000,
+    'state.turnDeadlineMs is rebased to now + frozen remaining during pause');
+  ctl.dispose();
+});
+
+test('menu pause state is cleared by GAME_STARTED — a resumed-saved-game ticks normally', () => {
+  // Repro: user pauses mid-game and clicks "צא לתפריט" (save and exit).
+  // pauseScreen never emits game/resumed for that path because the session
+  // is being torn down; the controller's `menuPauseActive` stays true. When
+  // the user later starts a new game (e.g. resumes the saved game), sync()
+  // would otherwise see the stale frozen state and never tick the timer.
+  bus._reset();
+  let nowMs = 1_000;
+  const session = {
+    state: {
+      mode: 'offline-solo',
+      status: 'playing',
+      currentTurnSlot: 0,
+      turnNumber: 1,
+      settings: { timelimit: true, botTime: 20 },
+      turnDeadlineMs: 0,
+    },
+    dispatched: [],
+    dispatch(cmd) { this.dispatched.push(cmd); },
+  };
+  const timerEl = makeEl();
+  const ctl = createTurnTimerController({
+    bus,
+    root: makeRoot(timerEl, makeEl()),
+    sessionRef: () => session,
+    now: () => nowMs,
+    setIntervalFn: () => 1,
+    clearIntervalFn: () => {},
+  });
+  // 7 s in, user pauses then saves+exits (no game/resumed fires).
+  nowMs = 8_000;
+  ctl.sync();
+  assert.equal(timerEl.textContent, '13');
+  bus.emit('game/paused', {});
+  assert.equal(timerEl.textContent, '13');
+
+  // A new game starts (resumed save or fresh game). The state object that
+  // sessionRef returns is reused with fresh per-turn fields.
+  session.state.turnNumber = 2;
+  session.state.currentTurnSlot = 0;
+  session.state.turnDeadlineMs = 0;
+  session.state._turnTimerKey = null;
+  nowMs = 1_000_000;
+  bus.emit(EV.GAME_STARTED, { mode: session.state.mode });
+  // Controller must have cleared menuPauseActive — sync now sees a fresh
+  // game and computes a new 20 s deadline.
+  assert.equal(timerEl.textContent, '20', 'timer must reset/run after a new game starts');
+  nowMs += 4_000;
+  ctl.sync();
+  assert.equal(timerEl.textContent, '16', 'timer ticks normally after resume-from-save');
+  ctl.dispose();
+});
+
 test('offline turn change resets the deadline (no leftover from previous turn)', () => {
   bus._reset();
   let nowMs = 1_000;

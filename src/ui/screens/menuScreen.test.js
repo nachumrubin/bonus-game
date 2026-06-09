@@ -46,6 +46,7 @@ function makeMenuDom() {
     share:      makeButton({ onclick: 'shareGame()',              id: 'btn-share-game' }),
     nameLabel:  makeButton({ id: 'home-user-label' }),
     onlineBadge: makeButton({ id: 'online-badge' }),
+    mgBadge:    makeButton({ id: 'mg-nav-badge' }),
   };
 
   const sh = {
@@ -136,6 +137,25 @@ test('mount: each button maps to its specific intent', () => {
   assert.equal(seen.get(MENU_INTENT.OPEN_HELP_MENU), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_SETTINGS), 1);
   assert.equal(seen.get(MENU_INTENT.SHARE_GAME), 1);
+});
+
+test('MENU_REFRESH paints the My-Games bottom-nav badge from `myGamesCount`', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  mountMenuScreen({ root, bus });
+  // No payload field → no change.
+  buttons.mgBadge.textContent = '';
+  buttons.mgBadge.style.display = 'none';
+  bus.emit(MENU_REFRESH, { displayName: 'Alice' });
+  assert.equal(buttons.mgBadge.textContent, '', 'no myGamesCount in payload → badge untouched');
+  // Three open games.
+  bus.emit(MENU_REFRESH, { myGamesCount: 3 });
+  assert.equal(buttons.mgBadge.textContent, '3');
+  assert.equal(buttons.mgBadge.style.display, '');
+  // Zero open games hides the bubble.
+  bus.emit(MENU_REFRESH, { myGamesCount: 0 });
+  assert.equal(buttons.mgBadge.textContent, '');
+  assert.equal(buttons.mgBadge.style.display, 'none');
 });
 
 test('MENU_REFRESH event toggles share button visibility based on isAuthed', () => {

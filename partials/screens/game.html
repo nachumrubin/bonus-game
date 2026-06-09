@@ -103,16 +103,18 @@
       </div>
     </div>
 
+    <!-- Inactive player's rack — shown above the active rack only in
+         hot-seat 2P with settings.showBothRacks=true. Hidden otherwise. -->
+    <div id="brack2-row" class="brack2-row" style="display:none;">
+      <span id="brack2-label" class="brack2-label"></span>
+      <div id="brack2" class="brack2"></div>
+    </div>
+
     <!-- bottom rack: active player's tiles -->
     <div class="bot">
       <div class="brack" id="brack"></div>
       <button class="bplay" id="btn-recall" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2);" data-gm-html="בטל<br>↩" data-gf-html="בטלי<br>↩">בטל<br>↩</button>
       <button class="bplay" id="btn-play" data-gm-html="שבץ<br>✓" data-gf-html="שבצי<br>✓">שבץ<br>✓</button>
-    </div>
-    <!-- hidden brack2 kept for compatibility -->
-    <div id="brack2-row" style="display:none">
-      <span id="brack2-label"></span>
-      <div id="brack2" style="display:none"></div>
     </div>
   </div>
 </div>

@@ -42,10 +42,26 @@ export function mountPauseScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
+  // Showing the pause overlay must actually freeze the game (turn timer +
+  // bot moves), otherwise "המשחק מושהה" is a lie and the user comes back
+  // to a board the bot just played on. We emit dedicated game/paused →
+  // game/resumed events that the turn-timer and bot session listen for.
+  // We deliberately do NOT reuse bonus/pending — that event also triggers
+  // the bonus intro overlay in main.js and resets the per-turn clock to
+  // the full allowance (correct for mini-games, wrong for a menu pause).
+  // game/* preserves the remaining time across the pause.
+  let frozen = false;
+  function freezeForPause()   { if (!frozen) { frozen = true;  bus.emit('game/paused');  } }
+  function unfreezeForPause() { if (frozen)  { frozen = false; bus.emit('game/resumed'); } }
+  cleanups.push(bus.on(PAUSE_INTENT.RESUME, unfreezeForPause));
+  cleanups.push(bus.on(PAUSE_INTENT.SAVE_AND_EXIT, () => { frozen = false; }));
+  cleanups.push(bus.on(PAUSE_INTENT.QUIT_NO_SAVE,  () => { frozen = false; }));
+
   cleanups.push(bus.on(PAUSE_OPEN, ({ playerName } = {}) => {
     if (playerName) setText($('#pause-player-name', overlay), playerName);
     applyGenderToRoot(overlay, getGender());
     overlay.classList?.remove('hidden');
+    freezeForPause();
   }));
 
   cleanups.push(bus.on(SETTINGS_CHANGED, (changes = {}) => {

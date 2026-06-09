@@ -33,17 +33,27 @@ function deserializeState(raw) {
   return { ...raw, bonusBoard: deserializeBonusBoard(raw.bonusBoard) };
 }
 
-export function saveLocalGame(storage, payload = {}) {
+export function saveLocalGame(storage, payload = {}, now = Date.now()) {
   if (!storage) return false;
   const state = payload.state;
   if (!state || state.status !== 'playing') return false;
+  // turnDeadlineMs is an absolute timestamp at runtime. Storing it raw to
+  // localStorage means the saved snapshot goes stale the moment the user
+  // walks away — on reload, (deadline - now) is negative or much smaller
+  // than the remaining time the player paused on. We convert to REMAINING
+  // ms on save and re-anchor on load so the saved clock survives any wait.
+  const stateForSave = { ...state };
+  const deadline = Number(stateForSave.turnDeadlineMs) || 0;
+  if (deadline > 0) {
+    stateForSave.turnDeadlineMs = Math.max(0, deadline - now);
+  }
   const record = {
     version: LOCAL_SAVED_GAME_VERSION,
-    savedAt: Date.now(),
+    savedAt: now,
     mode: payload.mode ?? state.mode ?? 'offline-2p',
     bot: !!payload.bot,
     difficulty: Number.isFinite(payload.difficulty) ? Number(payload.difficulty) : 1,
-    state: serializeState(state),
+    state: serializeState(stateForSave),
   };
   try {
     storage.setItem(LOCAL_SAVED_GAME_KEY, JSON.stringify(record));
@@ -54,7 +64,7 @@ export function saveLocalGame(storage, payload = {}) {
   }
 }
 
-export function loadLocalGame(storage) {
+export function loadLocalGame(storage, now = Date.now()) {
   if (!storage) return null;
   try {
     const raw = storage.getItem(LOCAL_SAVED_GAME_KEY);
@@ -63,6 +73,11 @@ export function loadLocalGame(storage) {
     if (!parsed || parsed.version !== LOCAL_SAVED_GAME_VERSION) return null;
     const state = deserializeState(parsed.state);
     if (!state || state.schemaVersion !== 2 || state.status !== 'playing') return null;
+    // While serialised, turnDeadlineMs holds REMAINING ms (see saveLocalGame).
+    // Re-anchor to an absolute timestamp anchored at `now` so the engine and
+    // the turn-timer controller see the same value type they always do.
+    const remaining = Number(state.turnDeadlineMs) || 0;
+    if (remaining > 0) state.turnDeadlineMs = now + remaining;
     return {
       version: parsed.version,
       savedAt: Number(parsed.savedAt) || 0,

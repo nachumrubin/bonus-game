@@ -101,7 +101,7 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
 
   // Initial render — read current state from the spine/debug surface and
   // saved-session globals.
-  function render({ isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar } = {}) {
+  function render({ isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar, myGamesCount } = {}) {
     // The legacy "Resume game" button was removed in favour of the
     // "המשחקים שלי" list, which surfaces both async-online sessions and
     // the local saved game in one place.
@@ -156,6 +156,18 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
         onlineBadge.textContent   = count > 0 ? String(count) : '';
       } else {
         onlineBadge.style.display = hasOnlineUnread ? '' : 'none';
+      }
+    }
+
+    // Bottom-nav "My Games" bubble — the count of open games (active async
+    // rooms + the local saved offline game, expired rooms excluded). null
+    // means "no update this render"; we leave the badge alone in that case.
+    if (myGamesCount != null) {
+      const mgBadge = $('#mg-nav-badge', menuRoot);
+      if (mgBadge) {
+        const n = Number(myGamesCount);
+        mgBadge.style.display = n > 0 ? '' : 'none';
+        mgBadge.textContent   = n > 0 ? String(n) : '';
       }
     }
   }

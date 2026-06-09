@@ -26,6 +26,25 @@ export function createTurnTimerController({
   // overlays, wheel) bump this on start and decrement on completion so the
   // bot/opponent doesn't lose seconds while the human is in a boost flow.
   let bonusPauseCount = 0;
+  // Menu pause (e.g. the "המשחק מושהה" overlay). Distinct from the bonus
+  // pause because the user expects to come back to the SAME remaining time,
+  // not a fresh full clock. We snapshot the remaining ms when game/paused
+  // fires; on game/resumed we shift state.turnDeadlineMs forward by the
+  // duration of the pause so remaining time is preserved.
+  let menuPauseActive = false;
+  let menuPauseRemainingMs = 0;
+
+  // Clear any stale menu-pause state before the per-event sync runs. The
+  // controller is created once at app boot and lives for the whole app
+  // session, so a paused-then-saved game can leave `menuPauseActive=true`
+  // hanging around — when the next game starts (fresh game OR a resumed
+  // local save) sync() would otherwise display the previous game's frozen
+  // remaining time and never tick. Registered BEFORE sync so the reset
+  // fires first in the bus's FIFO Set iteration order.
+  cleanups.push(bus.on(EV.GAME_STARTED, () => {
+    menuPauseActive = false;
+    menuPauseRemainingMs = 0;
+  }));
 
   const eventTypes = [
     EV.GAME_STARTED,
@@ -39,6 +58,10 @@ export function createTurnTimerController({
   // or auto-bonus overlay → award-acknowledged).
   cleanups.push(bus.on('bonus/pending', pauseForBonus));
   cleanups.push(bus.on('bonus/resolved', resumeFromBonus));
+
+  // Menu pause/resume. Preserves remaining time across the pause.
+  cleanups.push(bus.on('game/paused',  freezeForMenuPause));
+  cleanups.push(bus.on('game/resumed', resumeFromMenuPause));
 
   // Opponent boost mirror: pause this client's timer while the active
   // player is in a boost flow on the other side. We can't use the local
@@ -122,6 +145,31 @@ export function createTurnTimerController({
   sync();
   interval = setIntervalFn?.(sync, tickMs) ?? null;
 
+  function freezeForMenuPause() {
+    if (menuPauseActive) return; // idempotent
+    const state = sessionRef()?.state;
+    const deadline = Number(state?.turnDeadlineMs) || 0;
+    menuPauseRemainingMs = deadline > 0 ? Math.max(0, deadline - now()) : 0;
+    menuPauseActive = true;
+    sync();
+  }
+  function resumeFromMenuPause() {
+    if (!menuPauseActive) return; // idempotent
+    menuPauseActive = false;
+    const state = sessionRef()?.state;
+    if (state && menuPauseRemainingMs > 0) {
+      // Shift the deadline forward by however long the pause lasted, so
+      // the player resumes with the same remaining time they paused on.
+      state.turnDeadlineMs = now() + menuPauseRemainingMs;
+      // Re-anchor the per-turn cache; the new deadline must override the
+      // stale one ensureDeadline cached before the pause began.
+      state._turnTimerKey = `${state.turnNumber}:${state.currentTurnSlot}`;
+    }
+    menuPauseRemainingMs = 0;
+    timedOutKey = null; // allow a fresh auto-pass if we resume past the deadline
+    sync();
+  }
+
   function pauseForBonus() {
     bonusPauseCount += 1;
     sync();
@@ -157,6 +205,36 @@ export function createTurnTimerController({
     const state = session?.state;
     const timerEl = $('#turn-timer-value', root);
     const wrap = $('#turn-timer', root);
+
+    // Menu pause: freeze the display at the REMAINING time captured when
+    // pause started, and suppress the auto-pass dispatch. Unlike the bonus
+    // pause below, we don't display the full per-turn allowance — the
+    // whole point of a menu pause is that the player resumes exactly where
+    // they left off.
+    if (menuPauseActive) {
+      const desc = modeDescriptor(state?.mode);
+      const timerEnabled = !!state?.settings?.timelimit
+        && (desc.hasTurnTimer === true || desc.hasTurnTimer === 'optional');
+      // Keep state.turnDeadlineMs continuously rebased to now() + remaining
+      // so any external snapshot (e.g. saveLocalGame on "צא לתפריט") sees
+      // the paused remaining, not a value decremented by the seconds the
+      // player spent sitting on the pause overlay.
+      if (state && menuPauseRemainingMs > 0) {
+        state.turnDeadlineMs = now() + menuPauseRemainingMs;
+      }
+      if (state?.status === 'playing' && timerEnabled && menuPauseRemainingMs > 0) {
+        const secs = Math.max(0, Math.ceil(menuPauseRemainingMs / 1000));
+        setText(timerEl, String(secs));
+        wrap?.classList?.add?.('active');
+        wrap?.classList?.toggle?.('urgent', secs <= 10);
+        wrap?.classList?.toggle?.('crit',  secs <= 5);
+        wrap?.classList?.toggle?.('warn',  secs <= 10 && secs > 5);
+      } else {
+        setText(timerEl, '--');
+        wrap?.classList?.remove?.('urgent', 'warn', 'crit', 'active');
+      }
+      return;
+    }
 
     // Bonus pause: freeze the display at the full per-turn allowance and
     // skip the auto-pass dispatch. We do NOT call ensureDeadline here so

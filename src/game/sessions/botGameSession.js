@@ -101,6 +101,10 @@ export function attachBotPlayer(session, {
   // emitted by bonusActivationController and gameScreen.
   const offBonusPending  = bus.on('bonus/pending',                pause);
   const offBonusResolved = bus.on('bonus/resolved',               resume);
+  // Menu pause/resume — same effect as the bonus pair: hold any pending
+  // bot move while the human is in the "המשחק מושהה" overlay.
+  const offGamePaused    = bus.on('game/paused',                  pause);
+  const offGameResumed   = bus.on('game/resumed',                 resume);
   const offBoostActivated = bus.on(EV.BOOST_ACTIVATED, (payload) => {
     // Every fresh bonus-square activation pops the modal award overlay;
     // pause the bot until the player clicks אישור. `consumed: true` events
@@ -119,6 +123,7 @@ export function attachBotPlayer(session, {
     cancelPendingThink();
     offTurn(); offGameStarted();
     offBonusPending(); offBonusResolved();
+    offGamePaused(); offGameResumed();
     offBoostActivated(); offBoostAck();
   }
   // Push the full detach (not just the bus unsubscribes) so session.dispose()

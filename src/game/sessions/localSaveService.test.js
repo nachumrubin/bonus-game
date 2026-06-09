@@ -32,6 +32,36 @@ function makeState({ status = 'playing' } = {}) {
   return state;
 }
 
+test('turnDeadlineMs survives an arbitrary delay between save and load — remaining time is preserved', () => {
+  // Repro: player pauses with 6 s on the clock, saves and exits, walks away
+  // for 10 s, then resumes. Before the fix the deadline was stored as an
+  // absolute Date.now() value so the loaded snapshot would show 6-10=-4 s
+  // (timer instantly at zero / auto-passed).
+  const storage = makeStorage();
+  const state = makeState();
+  const SAVE_NOW = 1_000_000;
+  state.turnDeadlineMs = SAVE_NOW + 6_000;   // 6 s left
+  assert.equal(saveLocalGame(storage, { state, mode: 'offline-solo', bot: true }, SAVE_NOW), true);
+
+  const LOAD_NOW = SAVE_NOW + 10_000;        // resumed 10 s later
+  const loaded = loadLocalGame(storage, LOAD_NOW);
+  assert.ok(loaded, 'loaded payload exists');
+  // Anchored to LOAD_NOW + 6 s — the saved REMAINING time is preserved.
+  assert.equal(loaded.state.turnDeadlineMs, LOAD_NOW + 6_000);
+  // And the original in-memory state is NOT mutated by the save (we copied).
+  assert.equal(state.turnDeadlineMs, SAVE_NOW + 6_000, 'original state object stays untouched');
+});
+
+test('save without an active turn deadline leaves turnDeadlineMs at 0 on load', () => {
+  const storage = makeStorage();
+  const state = makeState();
+  state.turnDeadlineMs = 0;
+  assert.equal(saveLocalGame(storage, { state }, 1_000_000), true);
+  const loaded = loadLocalGame(storage, 5_000_000);
+  assert.ok(loaded);
+  assert.equal(loaded.state.turnDeadlineMs, 0, 'no active timer → stays 0 across the round trip');
+});
+
 test('save → load round-trips engine state including the bonusBoard Map', () => {
   const storage = makeStorage();
   const state = makeState();

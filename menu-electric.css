@@ -733,6 +733,35 @@
 .em-nav-icon  { font-size: var(--nav-icon);  line-height: 1; display: block; }
 .em-nav-label { font-size: var(--nav-label); font-weight: 700; line-height: 1; white-space: nowrap; }
 
+/* Bubble badge on the "My Games" nav button — sits on the top-left
+   corner of the 🎮 icon (RTL → top-LEFT visually is "top-end" of the
+   icon, but the icon glyph itself has no LTR/RTL flow, so we anchor by
+   position rather than start/end). Hidden via inline display:none until
+   the count goes above 0. */
+.em-nav-item { position: relative; }
+.em-nav-badge {
+  position: absolute;
+  top: -2px;
+  /* The icon centers in a flex column with the label below; the icon is
+     roughly the width of the nav item's content box, so 50%-derived
+     positioning hugs the upper-right corner of the glyph in RTL. */
+  right: calc(50% - 18px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: #e74c3c;
+  color: #fff;
+  font-family: 'Heebo', sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 16px;
+  border-radius: 999px;
+  text-align: center;
+  box-shadow: 0 0 5px rgba(231, 76, 60, 0.85);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
 /* ─ Animations ───────────────────────────────────────── */
 
 /* Game-mode card float: 2px, barely visible */

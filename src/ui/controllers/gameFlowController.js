@@ -33,7 +33,28 @@ export function createGameFlowController({
 
   wireButton('#btn-pause', () => bus.emit(PAUSE_OPEN, currentPlayerPayload()));
   wireButtons('button[onclick="openSettings()"]', () => bus.emit(SETTINGS_OPEN, {}));
+
+  // The end-menu button needs special handling: we cache the .tb-tx span
+  // at mount time BEFORE wireButtons() strips the onclick attribute.
+  // Otherwise the EV.GAME_STARTED listener below couldn't find the button
+  // again — `button[onclick="openEndMenu()"]` matches nothing once the
+  // attribute is gone.
+  const endMenuBtn = root?.querySelector?.('button[onclick="openEndMenu()"]') ?? null;
+  const endMenuTx  = endMenuBtn?.querySelector?.('.tb-tx') ?? null;
   wireButtons('button[onclick="openEndMenu()"]', () => bus.emit(BACK_OPEN, {}));
+
+  // Offline modes can pause-and-save from the back-confirm overlay, so the
+  // top-bar end button reads "סיים / שמור" to advertise the save path.
+  // Online (live/async) games have no local-save option, so we keep the
+  // shorter "סיום" label there.
+  cleanups.push(bus.on(EV.GAME_STARTED, ({ mode } = {}) => {
+    if (!endMenuTx) return;
+    if (mode === 'offline-solo' || mode === 'offline-2p') {
+      endMenuTx.innerHTML = 'סיים<br>/ שמור';
+    } else {
+      endMenuTx.textContent = 'סיום';
+    }
+  }));
   wireButtons('button[onclick="toggleMusic()"]', () => {
     const { enabled } = audioService.toggle();
     // Emit SETTINGS_CHANGED so the settings overlay (if open) repaints its

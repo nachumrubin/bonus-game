@@ -31,6 +31,11 @@ export function createGameController({ bus, session, mySlot = null }) {
     turnNumber: 0,
     scores: { 0: 0, 1: 0 },
     rackForMe: [],
+    // Inactive player's rack for the offline-2p "show both racks" toggle.
+    // null in all other modes; see syncFromState.
+    rackForOpponent: null,
+    opponentSlot: null,
+    opponentName: null,
     bagRemaining: 0,
     status: 'playing',
     lastMove: null,
@@ -62,6 +67,25 @@ export function createGameController({ bus, session, mySlot = null }) {
       // Hot-seat 2P or solo: the "active" rack is just the current turn's rack
       view.rackForMe = [...(s.racks[s.currentTurnSlot] ?? [])];
       view.isMyTurn = true;
+    }
+    // Inactive-player rack peek. Surfaced for the offline-2p "show both
+    // racks" toggle (state.settings.showBothRacks). Bot games NEVER expose
+    // the bot's rack — the setup screen forces showBothRacks=false there,
+    // but we also guard here defensively. Online games (mySlot != null)
+    // also don't expose the opponent's rack — that would leak info to the
+    // other client.
+    if (mySlot == null
+        && s.settings?.showBothRacks
+        && s.mode === 'offline-2p'
+        && (s.currentTurnSlot === 0 || s.currentTurnSlot === 1)) {
+      const otherSlot = 1 - s.currentTurnSlot;
+      view.rackForOpponent = [...(s.racks[otherSlot] ?? [])];
+      view.opponentSlot = otherSlot;
+      view.opponentName = s.players?.[otherSlot]?.displayName ?? `שחקן ${otherSlot + 1}`;
+    } else {
+      view.rackForOpponent = null;
+      view.opponentSlot = null;
+      view.opponentName = null;
     }
     view.bagRemaining = s.bag?.length ?? 0;
     view.status = s.status;

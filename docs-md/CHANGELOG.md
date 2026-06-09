@@ -2,6 +2,333 @@
 
 ---
 
+## App boot loader v2: animated בוסט tile-drop + lightning sweep — June 2026
+
+Replaced the static logo + spinner with a polished game-style loader that matches the word-game identity. Pure CSS animations (no JS for the visuals), feels native to the brand.
+
+**Animation sequence (2800 ms cycle, infinite)**
+
+| t (ms) | event |
+|---|---|
+| 0   | tile **ב** starts falling from above (right-most in RTL) |
+| 180 | tile **ו** starts falling |
+| 360 | tile **ס** starts falling |
+| 540 | tile **ט** starts falling (left-most in RTL) |
+| ~930 | all four tiles settled with bounce + soft gold glow |
+| ~960 | horizontal lightning bolt sweeps across the row, left → right |
+| ~1060 | tiles flash bright white from the strike, then settle back to gold |
+| ~2400 | tiles tilt + fade upward, ready for the next loop |
+
+The bolt has the **same 2800 ms duration as each tile** and uses `animation-delay: 540ms` (matching the last tile's drop offset), so the strike always lands right after the last tile's bounce — across every loop, no drift.
+
+**Hebrew tile values** are the real Scrabble values from `letterDistribution.js`: ב=3, ו=1, ס=5, ט=4. Tiny number in the bottom-right corner of each tile completes the Scrabble-tile look.
+
+**RTL correctness** — DOM order is ב,ו,ס,ט inside a `flex-direction: row` container. Under the page's inherited `dir="rtl"` this renders right-to-left as **בוסט**.
+
+**Loading text rotates** through `מתחבר... → טוען נתונים... → מכין מילים... → כמעט מוכן...` every 1.4 s with a 220 ms fade. Stops when the loader hides.
+
+**Files**
+
+- [index.html](index.html) — loader markup replaced: four `.app-loading-tile` divs (with `.t-letter` + `.t-val` spans), one `.app-loading-bolt` div, and a `.app-loading-text` element ID'd `app-loading-text`.
+- [styles.css](styles.css) — `.app-loading-*` section rewritten:
+  - `.app-loading-tile` keyframes `app-loading-tile-cycle` cover drop → bounce → settled → lightning flash → fade up
+  - `.app-loading-bolt` keyframes `app-loading-bolt-strike` cover the horizontal sweep with translate+scale+opacity transitions
+  - Responsive overrides at `max-height: 640px` and `max-width: 360px` shrink tile size for short / narrow phones
+  - `padding-top: env(safe-area-inset-top)` honours notch insets on installed PWAs
+- [src/main.js](src/main.js) — `wireAppLoading` IIFE extended with a `setInterval` that rotates the four Hebrew loading messages while the loader is visible. The interval is `clearInterval`'d when the loader hides.
+
+**Hide trigger unchanged from v1** — first `MENU_REFRESH` carrying `isAuthed: true|false` hides the loader; 6 s safety timeout as a fallback; the element is `.remove()`d after the 0.6 s fade.
+
+**Screenshot** at [images/guide/app-loading.png](images/guide/app-loading.png), captured by [tests/e2e/capture-app-loading.spec.js](tests/e2e/capture-app-loading.spec.js) at the moment just after all four tiles have landed.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## App boot loader — June 2026
+
+Cover the menu screen with a full-viewport loader until Firebase auth resolves, so the user never sees the "partial menu" (no bottom-nav, no bell, generic person icon) during the ~1-2 s auth round-trip.
+
+- [index.html](index.html) — `<div id="app-loading">` is the very first child of `<body>`, visible at first paint. Markup: a `בוסט` wordmark in brand gold, a small CSS-only spinner, and "טוען...". No JS needed to show it.
+- [styles.css](styles.css) — new `.app-loading` block at the bottom: full overlay with the brand navy gradient backdrop (`radial-gradient(ellipse at 50% 30%, #15296b 0%, #04081a 70%)`), `z-index: 99999`, fade-out transition on `.is-hidden`. Includes the pulse animation on the wordmark and a 36 px rotating ring spinner.
+- [src/main.js](src/main.js) — `wireAppLoading` IIFE right after the "spine ready" log subscribes to `MENU_REFRESH` and hides the overlay on the first event that carries `isAuthed: true|false`. That signal fires from two places: the sign-in path (`profileService.read` → `bus.emit(MENU_REFRESH, { isAuthed, displayName, rating, avatar })`) and the sign-out / no-cached-auth path (`teardownCrossCuttingAuth → bus.emit(MENU_REFRESH, { isAuthed: false, displayName: '' })`). A 6 s safety timeout hides the overlay regardless so a silent Firebase init failure can't trap the user on the loader forever. After the fade transition the overlay is `.remove()`d so it can't intercept clicks.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Setup: "פעיל" (show both racks) now actually shows both racks — June 2026
+
+The toggle in setup wrote `state.settings.showBothRacks` but nothing read it — the rack render always showed only the current-turn rack. Wired it through end-to-end.
+
+- [src/ui/controllers/gameController.js](src/ui/controllers/gameController.js) `syncFromState` — when `mySlot == null` AND `state.settings.showBothRacks` AND `mode === 'offline-2p'` AND `currentTurnSlot ∈ {0,1}`, exposes `view.rackForOpponent` = `state.racks[1 - currentTurnSlot]`, plus `opponentSlot` and `opponentName`. Defensive guards: bot games never reveal the bot's rack (setup also forces `showBothRacks: false` for `mode === 'bot'`); online games (`mySlot != null`) likewise — wouldn't make sense to leak the opponent's tiles.
+- [src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js) — new `renderBrack2(v)` paints into the legacy `#brack2` slot (now visible) with read-only tiles. Called from inside `renderRack` so it stays in sync with every rack update.
+- [partials/screens/game.html](partials/screens/game.html) — moved `#brack2-row` to sit ABOVE `.bot` instead of below it, so the inactive rack appears just above the active player's rack when shown.
+- [styles.css](styles.css) — `.brack2-row` styled as a dimmed (`opacity:.78`) read-only strip with a small label ("מגש {opponentName}") and tiles scaled to `transform:scale(.72)` so they read as "peek" rather than "interactive".
+
+When `showBothRacks: false` (the default — "כבוי"), `rackForOpponent` is `null` and `renderBrack2` hides `#brack2-row`, restoring the original privacy mode.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Remove the active-games strip from the online lobby — June 2026
+
+The "המשחקים שלי" standalone screen + the home-nav bubble fully replace the lobby's small strip of active rooms. Stripped the duplicate UI.
+
+- [partials/screens/online-lobby.html](partials/screens/online-lobby.html) — removed `<div id="online-sessions-wrap">`
+- [src/main.js](src/main.js) — removed the `mountAsyncSessionListScreen` import + mount + `__spine.asyncSessionList` global; removed the `AS_INTENT`/`AS_RENDER` imports + re-export + the `bus.emit(AS_RENDER, ...)` call + the `bus.on(AS_INTENT.RESUME/DISMISS)` handlers (My Games uses MG_INTENT, asyncReminderService can still call `asyncSessionService.dismissForUid` directly when needed)
+- Deleted `src/ui/screens/asyncSessionListScreen.js` and its test file — the module had no remaining consumers
+- Docs: [docs-md/FILE_INDEX.md](docs-md/FILE_INDEX.md) and [docs-md/CHARACTERIZATION.md](docs-md/CHARACTERIZATION.md) updated to point at `asyncGamesScreen.js` instead
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## My Games nav-bubble: recompute when the local-save state flips (save-and-exit, game-end) — June 2026
+
+User saved a vs-Bot game via "צא לתפריט", returned to the home screen, and the bottom-nav 🎮 bubble didn't increment to count the new saved game.
+
+Cause: [gameFlowController.js](src/ui/controllers/gameFlowController.js) emits `MENU_REFRESH` with `{ hasSavedGame: true }` after a successful save (and `{ hasSavedGame: false }` after a game ends). It can't include `myGamesCount` because it has no access to the async-watcher's `lastSessions`. The menuScreen's render skips updates that don't carry `myGamesCount`, so the badge stayed stale.
+
+Fix in [src/main.js](src/main.js):
+- Extracted `computeMyGamesCount()` helper — single source of truth for the bubble count (`lastSessions.filter(s => !s.isExpired).length + (hasLocalSavedGame(localStorage) ? 1 : 0)`). The async watcher and the post-mount seed both call it now.
+- Added a `MENU_REFRESH` listener: when an incoming payload carries `hasSavedGame` but no `myGamesCount`, recompute and emit a follow-up `MENU_REFRESH` with the fresh count. The follow-up DOES include `myGamesCount`, so the listener's guard (`!('myGamesCount' in payload)`) prevents it from re-triggering — no infinite loop.
+
+Covers: save-and-exit (`hasSavedGame: true`), game-completed cleanup (`hasSavedGame: false`), and any future emitters that signal save-state changes the same way.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## My Games nav-bubble: seed on mount so it's correct without opening the screen — June 2026
+
+User reported the new home-nav 🎮 badge "updates only after entering the My Games screen". Cause is an event-listener race in [src/main.js](src/main.js):
+
+- The async-sessions watcher is started inside `bootAsyncSessionsFor`, called from the auth-event handler (line 370).
+- If Firebase has cached data from the previous session, the watcher's initial `'value'` callback can fire **synchronously during subscribe** — before `mountMenuScreen` runs (line 3016). The `MENU_REFRESH` it emits reaches no listener, and the badge stays at its partial default (`display:none`).
+- Later when the user opens "המשחקים שלי", `refreshMyGamesList` re-emits `MENU_REFRESH` and the badge finally paints.
+
+Fix: immediately after `mountMenuScreen`, emit a one-shot `MENU_REFRESH` with the count we can compute synchronously — `lastSessions.filter(s => !s.isExpired).length + (hasLocalSavedGame ? 1 : 0)`. The watcher's earlier write to `lastSessions` (if it fired synchronously) is captured here; if it fired async and runs later, its own `MENU_REFRESH` will overwrite. Either way the badge is correct from first paint.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Open-games count moves from the My Games screen title to a bubble on the home-nav button — June 2026
+
+The "(N)" pill next to "המשחקים שלי" in the screen header was hidden until you'd already opened the screen — at which point the count was redundant. Moved it to a bubble on the **bottom-nav button** so the count is visible from the home screen before you decide to navigate.
+
+- Removed `<span class="mg-count" id="mg-count">` from [partials/screens/async-games-screen.html](partials/screens/async-games-screen.html) and the related update path in [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) (also dropped the now-unused `setText` import and the legacy badge test).
+- Added `<span class="em-nav-badge" id="mg-nav-badge">` to the "המשחקים שלי" bottom-nav button in [partials/screens/home.html](partials/screens/home.html). Styled in [menu-electric.css](menu-electric.css) as a red 16 px circle (`#e74c3c`, same hue as the topbar notification badge) positioned on the upper-right of the 🎮 glyph.
+- [src/main.js](src/main.js) now emits `MENU_REFRESH` with a new `myGamesCount` field. The async watcher emits `lastSessions.length + (hasLocalSavedGame ? 1 : 0)` (expired rooms are filtered out by `watchAsyncSessions` already). `refreshMyGamesList` also emits — but using the non-expired filter on the *full* list, so a dismiss / save-and-exit updates the bubble immediately without waiting for the Firebase round-trip.
+- [src/ui/screens/menuScreen.js](src/ui/screens/menuScreen.js) `render()` paints `#mg-nav-badge`: hide when 0, show the number otherwise. A `null`/`undefined` value means "no change this render" so unrelated `MENU_REFRESH` events (display-name updates, share-button toggles, etc.) don't accidentally clear the bubble.
+- Tests: removed the old screen-header-count test; added a new case in [src/ui/screens/menuScreen.test.js](src/ui/screens/menuScreen.test.js) covering missing/3/0 payloads.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Disabled שחק: override the global `aria-disabled` pointer-events:none — June 2026
+
+User reported the "תור היריב" tooltip wasn't firing in the live app, even though the unit test passed. The JS was right — the CSS was eating the click. A **global** rule at [styles.css:2033](styles.css#L2033) (added previously to neutralise the bot's rack while it thinks) sets `pointer-events: none` on any `button[aria-disabled="true"]` element. My delegated click handler never received the event because the click was being blocked before it could bubble.
+
+Unit tests didn't catch this because the test fixture uses a plain object button — no CSS engine, no `pointer-events`. Browsers, however, honour it.
+
+Fix in [styles.css](styles.css): added a `#smygames`-scoped override that restores `pointer-events: auto` and a pointer cursor on the disabled שחק button. Opacity / saturate from the global rule still cascade through (which gives us the dimmed look) — only the click-blocking is reversed for this specific button.
+
+A comment in the override block explicitly calls out the global rule it's overriding, so future me doesn't break it again.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## My Games: toast feedback — "תור היריב" tooltip on disabled שחק, "היריב קיבל דחיפה" on poke — June 2026
+
+Two UX touches on the cards.
+
+**1. Disabled שחק now shows a tooltip on click.** The opponent-turn שחק button used the HTML `disabled` attribute, which silently swallowed clicks. Players tapping it saw nothing happen. Now the button uses ONLY `aria-disabled="true"` plus a `.is-disabled` class — clicks fire, and the screen's click delegation detects the aria-disabled state and pops a transient "זה תור היריב — חכה לתשובה" toast at the bottom of the screen for ~1.8 s instead of dispatching `MG_INTENT.RESUME`.
+
+**2. The poke button shows a confirmation.** Clicking 👋 now displays a green "היריב קיבל דחיפה 👋" toast immediately. It's optimistic — fires on click without waiting for the round-trip — because the screen module doesn't have a signal back from the main.js push handler. The handler still logs on send failure; the toast just confirms the intent landed.
+
+**Implementation**
+- [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) — new `showToast(text, kind)` helper that creates a single floater appended to `#smygames`, reuses it across clicks, auto-clears after `TOAST_MS = 1800`. Cleaned up on `unmount()`. Click delegation now checks `aria-disabled` before dispatching and emits the right toast for poke clicks.
+- [styles.css](styles.css) — `.mg-toast` styled as a bottom-pinned pill with two kind modifiers (`--ok` green, `--info` blue), slide-up fade transition, `position:fixed; bottom:24px`. `.mg-play` switched from `[disabled]` selectors to `.is-disabled` to match the new markup; `cursor` relaxed from `not-allowed` to `default` since clicks now do something useful.
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — fixture grew a `createElement`/`removeChild`-capable fake screen; two new test cases: disabled שחק click does not dispatch RESUME and produces an info toast; poke click both dispatches POKE and produces an ok toast.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Poke handler: split the two timestamp writes so the cron-suppression survives the un-deployed `lastPokedAt` rule — June 2026
+
+User hit `PERMISSION_DENIED` clicking the 👋 button after the v2 split. Cause: the previous handler wrote both fields in one atomic `update({ lastPokedAt, lastReminderAt })`, and `lastPokedAt`'s rule isn't deployed yet — the server rejected the whole transaction, so neither field landed. The push went out before the rejected write so the opponent got their notification, but the dedup state stayed stale.
+
+Fix in [src/main.js](src/main.js): split the stamps into two separate `.update()` calls.
+- `lastReminderAt` first — the rule for this field has been deployed for months, so this always succeeds and the cron is correctly suppressed for 24 h.
+- `lastPokedAt` second — silently fails until the rules are redeployed. The log line includes "(deploy the new lastPokedAt rule)" as a hint.
+
+After running `firebase deploy --only database` both writes succeed and the manual button hides for 24 h as designed. Until then the manual button still reappears immediately after a click, but the opponent at least isn't double-pushed by the cron.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Poke button v2: decouple from cron's `lastReminderAt` so it always appears when expected — June 2026
+
+User reported the 👋 button wasn't showing on a card where it clearly should — opponent's turn for 1+ day, no prior manual click. Root cause: the previous build gated `canPoke` on `room.lastReminderAt`, the same field the auto-cron reminder sweep writes. When the app boots, [src/main.js](src/main.js) opportunistically calls `asyncReminderService.sweepForUser`, which pushes reminders for any 24-h-idle async room AND stamps `lastReminderAt = now`. The very next paint of "My Games" then had `canPoke()` return `false` because of that fresh stamp — so the button got hidden for a full day even though the user had never manually clicked.
+
+**Fix:** decouple. Introduce a separate `lastPokedAt` field that ONLY the manual button writes. The cron continues to write `lastReminderAt` only.
+
+- [firebase.database.rules.json](firebase.database.rules.json) — new `lastPokedAt` write rule, same auth condition as `lastReminderAt` (either player in the room). **Rules change**: needs deploy + `npm run test:emulator` before pushing to prod.
+- [src/game/online/asyncSessionService.js](src/game/online/asyncSessionService.js) — `summarizeForUid` now surfaces both `lastReminderAt` and `lastPokedAt`.
+- [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) — `canPoke` now keys on `lastPokedAt`; comment explains why the cron field is deliberately ignored.
+- [src/main.js](src/main.js) — `MG_INTENT.POKE` handler now writes BOTH fields atomically: `lastPokedAt` so the manual button hides for 24 h, and `lastReminderAt` so the cron doesn't double-push the opponent in the same window. The opponent still gets exactly one notification per 24 h period regardless of channel.
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — added a regression test that explicitly asserts `lastReminderAt: now - 1h` does NOT hide the button when `lastPokedAt` is null; `canPoke` matrix updated to check the new field.
+
+`npm run test:unit` — 178/178 pass. Emulator tests not re-run (no emulator runtime in this session); the new rule mirrors `lastReminderAt`'s existing rule one-for-one, so the same coverage applies — but it's worth a separate emulator pass before deploying.
+
+---
+
+## My Games: 👋 poke button on opponent-turn cards (24h cooldown, shares dedup with auto-cron) — June 2026
+
+Added a manual reminder-push button to each opponent-turn card so the player can nudge an idle opponent on demand instead of waiting for the next 24-hour automatic sweep.
+
+**Behaviour**
+- The 👋 button sits after the שחק button (visually to its left in RTL) on opponent-turn, non-expired, non-local cards only. My-turn cards have no poke (would poke yourself); expired and local cards likewise.
+- Clicking pushes `KIND.REMINDER` to the opponent (same payload `notificationService.pushReminder` uses for the cron sweep) and stamps `room.lastReminderAt = Date.now()` via a direct `db.ref('rooms/{id}').update({ lastReminderAt })`. Existing rules already permit either player to write that field.
+- The button then disappears for 24 hours — the same `lastReminderAt` field gates [src/game/online/asyncReminderService.js](src/game/online/asyncReminderService.js) `classify()`, so a manual poke also suppresses the next auto-cron reminder for the same window (and vice-versa). The opponent never gets a double-nag.
+- `lastReminderAt` is only written if the push send resolves — a failed push leaves the field unchanged so the user can retry without waiting 24 h.
+
+**Files**
+- [src/game/online/asyncSessionService.js](src/game/online/asyncSessionService.js) — `summarizeForUid` now surfaces `lastReminderAt` so the screen can compute the cooldown locally.
+- [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) — new `MG_INTENT.POKE`, exported `canPoke(s, now)` helper (matches the service's 24h gate), `buildRowHtml` adds `<button data-mg-poke>👋</button>` after the שחק button when allowed, click delegation handles the new attribute.
+- [styles.css](styles.css) — `.mg-poke` styled as a secondary blue-tinted button (distinct from gold שחק and red 🗑), with a narrow-screen override.
+- [src/main.js](src/main.js) — new `MG_INTENT.POKE` handler: read the room, identify the opponent slot, push the reminder with `opponentName: myName` (from the recipient's POV we are their opponent), then write `lastReminderAt` only on push success, then `refreshMyGamesList()` so the 👋 disappears immediately.
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — 5 new cases: poke renders for opponent-turn-with-cold-cooldown; hides after a recent stamp; never appears on my-turn / expired / local cards; `canPoke` 24h gate matrix; click delegation emits `MG_INTENT.POKE`.
+- [tests/e2e/capture-my-games-screen.spec.js](tests/e2e/capture-my-games-screen.spec.js) + [images/guide/my-games-screen.png](images/guide/my-games-screen.png) — seed updated so the screenshot shows the 👋 next to the disabled שחק on the opponent-turn דני card.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## "המשחקים שלי" v4: stripped-down card — name, time, score, one action — June 2026
+
+The card was too dense and elements stacked diagonally. Simplified to the user's spec — only the things that matter, on a single horizontal row.
+
+**Removed**
+- Avatar circle
+- Status pill (🟢 תורך / 🕒 תור X / 💾 משחק שמור / 🔵 פג תוקף)
+- Trash icon next to the action for non-expired cards
+
+**Final card content**
+- *Right*: opponent name + a small time-ago line beneath it (single row each, ellipsed if too long)
+- *Centre*: gold score pill (unchanged)
+- *Left*: one action button
+  - `שחק` button — **enabled** iff `isMyTurn`, **disabled** (dimmed, `cursor:not-allowed`) otherwise. The disabled state is the cue that you're waiting on the opponent; no separate status pill needed.
+  - `🗑` trash button — replaces `שחק` for expired games. The only delete path on this screen.
+
+**Files**
+- [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) — rewrote `buildRowHtml`; dropped `statusEntry`, `modeBadge`, `AVATAR_ID_TO_EMOJI`, `resolveAvatar`; cards now carry an `is-waiting` class when it's not your turn.
+- [styles.css](styles.css) — replaced the three-column grid with a flat flex row, dropped `.mg-avatar` / `.mg-status` / `.mg-meta` / `.mg-actions` rules, swapped `.mg-resume` for `.mg-play` (with a clear `[disabled]` styling), repainted `.mg-dismiss` as the expired-only red trash button.
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — replaced the old status-pill / avatar assertions with: my-turn → enabled שחק + no dismiss + no avatar + no status; opponent-turn → disabled + `is-waiting`; expired → 🗑 + no שחק; local saved → `is-local` frame + enabled שחק.
+- Screenshot regenerated: [images/guide/my-games-screen.png](images/guide/my-games-screen.png).
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Three follow-up fixes: end-button label, My Games card layout, async auto-resume — June 2026
+
+**1. The end-button label swap wasn't happening.** The June 7 change to relabel the top-bar "סיום" button as "סיים / שמור" for offline games used `root.querySelector('button[onclick="openEndMenu()"]')` inside the `EV.GAME_STARTED` listener. But `wireButtons()` strips the `onclick` attribute on mount — by the time the event fires, the selector matches nothing. Fix in [src/ui/controllers/gameFlowController.js](src/ui/controllers/gameFlowController.js): cache `endMenuBtn` + `endMenuTx` references at controller construction time, BEFORE `wireButtons` strips the attribute. The listener now uses the cached `.tb-tx` reference. Test updated to model the post-mount state (button has no onclick attribute) so the same bug can't regress.
+
+**2. My Games cards were truncating the opponent name on phones.** The card grid was `auto 1fr auto` — identity column got `auto` and the score got `1fr`, so the score pill hogged the available width and the identity column collapsed. The opponent name ellipsed to "בו..." and the status pill wrapped over multiple lines. Fix in [styles.css](styles.css): grid is now `minmax(0,1fr) auto auto` — identity takes the flex space, score and actions are sized to their content (the gold score pill is small enough that there's room even on 360 px viewports). Also added `white-space:nowrap; text-overflow:ellipsis` on `.mg-time` so the "לפני 21 שע'" line stops wrapping. Screenshot regenerated.
+
+**3. App entry auto-resumed into whatever async game last touched activeRoom.** [src/main.js](src/main.js) `attemptSavedOnlineRecovery` read either a local saved-session pointer or `users/{uid}/activeRoom` and called `resumeOnlineRoomById` unconditionally. For live games this is desirable (the opponent is waiting in real time). For async games it's wrong — the user wants to land on the home screen and choose. Fix: check `room.mode` via `roomService.readRoom` and only auto-resume when the mode ends in `-live`. Async rooms are deliberately skipped — the user picks them from "המשחקים שלי". Stale local pointers to async rooms are cleared on the next boot so they don't keep being re-evaluated.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Saved-game timer: preserve REMAINING time across an arbitrary save→resume delay — June 2026
+
+User reported that resuming a paused game from "My Games" shaved real-time seconds off the timer (paused at 6 s → resumed 10 s later → instantly auto-passed). Two compounding bugs.
+
+**Bug A — save stores an absolute timestamp.** `state.turnDeadlineMs` is an absolute `Date.now()` value at runtime. [src/game/sessions/localSaveService.js](src/game/sessions/localSaveService.js) was serialising it as-is, so on resume the saved deadline was already in the past — `deadline - now` would be the original remaining MINUS the wall-clock time the user spent away from the app.
+
+Fix: `saveLocalGame` now converts `turnDeadlineMs` to REMAINING ms before serialising (`Math.max(0, deadline - now)`), and `loadLocalGame` re-anchors it to an absolute timestamp on read (`now + remaining`). Both functions accept an injectable `now` for deterministic tests. The original in-memory state object is not mutated — `saveLocalGame` shallow-copies before converting.
+
+**Bug B — save-time deadline went stale while you sat on the pause overlay.** Even within a single session: pause at 6 s → spend 4 s reading the overlay → click "צא לתפריט" → save captures `deadline - now` = 2 s. The 4 seconds spent on the overlay were getting silently swallowed.
+
+Fix in [src/ui/controllers/turnTimerController.js](src/ui/controllers/turnTimerController.js): during menu pause, `sync()` now continuously rebases `state.turnDeadlineMs = now() + menuPauseRemainingMs`. The display still uses the frozen `menuPauseRemainingMs` (so no visible ticking), but any external snapshot at any moment sees the paused remaining. Combined with Bug A's fix, the saved record genuinely captures what was on screen at pause time.
+
+Tests
+- [src/game/sessions/localSaveService.test.js](src/game/sessions/localSaveService.test.js) — 2 new cases: 6 s saved + 10 s wait → loads as `LOAD_NOW + 6_000` (not the original absolute deadline); zero-deadline games round-trip as 0; original state stays untouched by save.
+- [src/ui/controllers/turnTimerController.test.js](src/ui/controllers/turnTimerController.test.js) — new case: 14 s into a 20 s turn → pause → 4 s real-world delay → `state.turnDeadlineMs` is rebased to `now + 6_000` (so a hypothetical saveLocalGame at that instant would capture exactly 6 s).
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Resume-from-save: stale menu-pause state was freezing the new game's timer — June 2026
+
+Follow-up to the pause-overlay work. The turn-timer controller is created once at app boot and lives for the whole app session — it doesn't get torn down between games. When a player opened the pause overlay and clicked "צא לתפריט" (save and exit), the controller's `menuPauseActive` was set to `true` but never cleared, because the save-and-exit path tears down the session without emitting `game/resumed`. The next game that started (a resumed save, or a fresh 1vBot/1vs1 game) would inherit that stale flag — `sync()` kept displaying the previous game's frozen remaining time and never ticked.
+
+Fix in [src/ui/controllers/turnTimerController.js](src/ui/controllers/turnTimerController.js): added a dedicated `EV.GAME_STARTED` listener that resets `menuPauseActive = false; menuPauseRemainingMs = 0` *before* `sync()` runs. The reset listener is registered before the existing per-event sync registrations so the bus's FIFO `Set` iteration runs the reset first. `bonusPauseCount` is intentionally NOT reset here — bonus pauses are session-scoped (they belong to mini-game flows that end with the session), and resetting could mask a real bug.
+
+Regression test in [src/ui/controllers/turnTimerController.test.js](src/ui/controllers/turnTimerController.test.js): 7 s into a 20 s turn → `game/paused` → no `game/resumed` (simulating save-and-exit) → `EV.GAME_STARTED` for the next game → timer reads 20 s and ticks normally. 178/178 unit tests still pass.
+
+---
+
+## Pause overlay: switch from `bonus/pending` to dedicated `game/paused`, preserve remaining time — June 2026
+
+Two follow-up fixes to yesterday's "pause overlay actually pauses" change.
+
+**1. Bug: clicking "השהה ושמור" was opening the bonus mini-game intro overlay.** Yesterday I reused the `'bonus/pending'` bus event to freeze the game from the pause overlay. That event is overloaded — [src/main.js:2309](src/main.js) listens to it and emits `BI_OPEN`, which opens the bonus intro modal ("בוסט!" + "בוא נשחק"). For a bonus square that's the right behaviour; for a menu pause it's a wrong screen the user sees instead of the pause modal.
+
+**2. Bug: the timer was resetting to the full per-turn allowance on pause, not preserving the remaining time.** The bonus-pause path is intentionally "reset to full" because a bonus mini-game gives the player a fresh clock. A menu pause must NOT — the player should resume with the same seconds they paused on.
+
+Fix: introduced dedicated `'game/paused'` / `'game/resumed'` bus events. Updated [src/ui/screens/pauseScreen.js](src/ui/screens/pauseScreen.js) to emit those (no more `bonus/*`), and added matching listeners:
+
+- [src/ui/controllers/turnTimerController.js](src/ui/controllers/turnTimerController.js) — new `freezeForMenuPause` / `resumeFromMenuPause`. On pause: snapshots `state.turnDeadlineMs - now()` into `menuPauseRemainingMs`. During pause: `sync()` displays the frozen remaining seconds (with the correct urgent/warn/crit class), suppresses the auto-pass dispatch. On resume: shifts `state.turnDeadlineMs = now() + menuPauseRemainingMs` and re-anchors the per-turn cache, so the player continues with exactly the remaining time they paused on, no matter how long the pause lasted.
+- [src/game/sessions/botGameSession.js](src/game/sessions/botGameSession.js) — also subscribes to `game/paused` / `game/resumed` and routes to the existing `pause()` / `resume()` helpers, so any pending bot-think is held across a menu pause.
+
+Tests
+- [src/ui/screens/overlays.test.js](src/ui/screens/overlays.test.js) — updated to assert `game/paused` is emitted and `bonus/*` is explicitly NOT emitted (regression guard against the wrong overlay re-appearing).
+- [src/ui/controllers/turnTimerController.test.js](src/ui/controllers/turnTimerController.test.js) — new case: 7 s into a 20 s turn → pause → 5 min real-time delay → still reads 13 s → resume → deadline shifts by exactly the paused duration → 5 s later reads 8 s. Pre-existing "bonus pending" test still passes — the two pause mechanisms now live side-by-side cleanly.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Pause overlay (`#ov-pause`) — actually pauses the game, simplified actions — June 2026
+
+Two fixes to the pause overlay reached via the "סיים / שמור" → "השהה ושמור" path.
+
+**1. Bug: "המשחק מושהה" was a lie.** Opening the pause overlay only changed the DOM — the turn timer kept ticking and the bot kept playing. Fix in [src/ui/screens/pauseScreen.js](src/ui/screens/pauseScreen.js): `PAUSE_OPEN` now emits `'bonus/pending'`, `PAUSE_INTENT.RESUME` emits `'bonus/resolved'`. Both [turnTimerController](src/ui/controllers/turnTimerController.js) and [botGameSession](src/game/sessions/botGameSession.js) already listen for that pair to freeze themselves during bonus mini-games, so the menu-pause reuses the existing freeze plumbing rather than inventing new wiring. A `frozen` latch guards against double-freeze if `PAUSE_OPEN` fires twice. `SAVE_AND_EXIT` / `QUIT_NO_SAVE` clear the latch without emitting `bonus/resolved` because the session is being torn down — the listeners go away with it.
+
+**2. Simplified actions** in [partials/screens/pause-overlay.html](partials/screens/pause-overlay.html):
+- Removed "🗑 צא בלי לשמור" (the quit-without-save button). With the back-confirm overlay already offering "🚪 צא בלי לשמור" upstream, having the same option here was redundant.
+- Renamed "💾 שמור וצא לתפריט" → "צא לתפריט". Save is now the only exit path from this overlay, so the label drops the redundant "שמור ו" prefix.
+
+The `PAUSE_INTENT.QUIT_NO_SAVE` event handler in [gameFlowController.js](src/ui/controllers/gameFlowController.js) is left in place — it's no longer reachable from the UI but exists as a clean intent-level seam and is referenced by an existing test.
+
+Tests in [src/ui/screens/overlays.test.js](src/ui/screens/overlays.test.js): two new cases assert `PAUSE_OPEN` emits exactly one `bonus/pending`, a second `PAUSE_OPEN` while frozen does not double-emit, `RESUME` emits one `bonus/resolved`, and `SAVE_AND_EXIT` does not emit a stray unfreeze. `npm run test:unit` — 178/178 pass.
+
+---
+
+## Game-screen end button: relabelled "סיים / שמור" in offline modes — June 2026
+
+The top-bar "🏁 סיום" button opens the back-confirm overlay which offers Continue / Pause-and-Save / Leave-without-saving. The save option only does anything in offline games (no localStorage save path for online rooms), so the label now advertises it where it's actually useful.
+
+In [src/ui/controllers/gameFlowController.js](src/ui/controllers/gameFlowController.js), subscribed to `EV.GAME_STARTED` and update the button's `.tb-tx` span based on `mode`:
+- `offline-solo` / `offline-2p` → `סיים<br>/ שמור` (two-line, mirroring the existing two-line `סיים<br>וזכה` claim-stall button)
+- everything else → restores the original `סיום`
+
+The actual flow (back-confirm overlay options) is unchanged; only the label updates. Test in [src/ui/controllers/gameFlowController.test.js](src/ui/controllers/gameFlowController.test.js) covers all three branches. `npm run test:unit` still 178/178.
+
+---
+
 ## Stats screen: new "תובנות" tab — player insights, archetype, trends, milestones — June 2026
 
 Feature request: turn the stats area from a data dashboard into a personalised analytics experience that helps users understand themselves and stay motivated.
