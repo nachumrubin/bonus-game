@@ -459,22 +459,6 @@ test('legacy addApprovedDictionaryWords/checkDictionaryQuery: approved words syn
   assert.equal(dict.DICT.has('ספר'), true);
 });
 
-test('legacy dictionary admin rows: suggestions are sanitized, de-duped, and filtered against approved/rejected words', async () => {
-  const { dictionaryService } = await loadModules();
-  assert.deepEqual(dictionaryService.parseSuggestedWords('אב, אב\nג!ד'), ['אב', 'גד']);
-  const pending = dictionaryService.buildPendingSuggestions({
-    suggestions: {
-      a: { word: 'אב', status: 'pending', createdAt: 2 },
-      b: { word: 'גד', status: 'pending', createdAt: 1 },
-      c: { word: 'אב', status: 'pending', createdAt: 3 },
-      d: { word: 'הו', status: 'approved', createdAt: 4 },
-    },
-    rejected: { x: { word: 'גד' } },
-    approved: {},
-  });
-  assert.deepEqual(pending.map(p => p.word), ['אב']);
-});
-
 test('legacy calcElo/ranking rows: modular rating helpers preserve Elo math and sorted leaderboard behavior', async () => {
   const { ratingService } = await loadModules();
   assert.equal(ratingService.applyDelta(800, 800, 1), 812);

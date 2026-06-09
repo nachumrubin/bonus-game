@@ -55,12 +55,6 @@
         }
       }
     },
-    "dictionarySuggestions": {
-      ".read": true,
-      "$suggestionId": {
-        ".write": "auth != null"
-      }
-    },
     "dictionaryApproved": {
       ".read": true,
       "$word": {

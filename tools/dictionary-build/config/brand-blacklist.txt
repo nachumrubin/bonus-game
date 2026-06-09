@@ -1,0 +1,30 @@
+# Brand-name lemmas to exclude (one per line).
+#
+# Brand names creep into HSpell because they're common in Hebrew text but they
+# are proper nouns. Excluding them prevents words like גוגל / פייסבוק /
+# קוקה־קולה appearing on the board.
+
+# --- Tech brands ---
+גוגל
+פייסבוק
+טוויטר
+אינסטגרם
+ווטסאפ
+טלגרם
+מיקרוסופט
+אפל
+אמזון
+נטפליקס
+יוטיוב
+לינקדאין
+זום
+
+# --- Consumer brands (seed list, expand on review) ---
+קוקה
+פפסי
+מקדונלדס
+
+# --- Israeli brands ---
+תנובה
+שטראוס
+אסם

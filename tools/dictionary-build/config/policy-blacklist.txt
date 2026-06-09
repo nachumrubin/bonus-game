@@ -1,0 +1,19 @@
+# Policy-excluded lemmas (one per line). These will never appear in
+# data/dictionary.v2.bin regardless of source corroboration.
+#
+# Categories:
+#   - Slurs (ethnic, religious, ableist)
+#   - Sexual / vulgar terms not appropriate for a family-friendly board game
+#   - Categories the product owner has explicitly opted out of
+#
+# Comments start with '#'. Blank lines ignored.
+#
+# Keep alphabetically grouped within categories for diff sanity.
+# Pair with src/game/core/hebrewDictionary.js → EXACT_REJECTS, which holds the
+# runtime equivalent (currently only possessive-pronoun forms + one entry).
+
+# --- Slurs ---
+# (seed from existing EXACT_REJECTS slur entry; add more after review)
+נאצי
+
+# --- Add additional entries below after review ---

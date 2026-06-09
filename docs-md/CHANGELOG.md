@@ -2,6 +2,207 @@
 
 ---
 
+## Dictionary v2 promoted to default + bot keeps legacy 40K vocabulary — June 2026
+
+Wraps up the dictionary v2 rollout.
+
+**v2 is now the default.** [src/main.js](../src/main.js) `dictionaryModeFromUrl()` flipped: every visitor gets the 63K curated dictionary unless they explicitly add `?dict=v1`. The legacy 40K stays in the build as a rollback for one release.
+
+**Bot vocabulary stays at the legacy 40K**, regardless of which mode the player sees. Rationale: the bot's candidate-list size affects perceived strength; if the bot suddenly gained access to thousands of new HSpell-derived inflections, "playing against the computer" would feel noticeably different overnight. Keeping the bot on a stable corpus means difficulty stays calibrated to what players are used to.
+
+Difficulty caps changed too:
+
+| Difficulty | Old | New |
+|---|---|---|
+| Easy (0)   | 7,000 (legacy only) | **5,000** (legacy) |
+| Medium (1) | full DICT | **20,000** (legacy) |
+| Hard (2)   | full DICT | **40,000** (legacy, full) |
+
+Old behavior had only two distinct strengths (easy at 7K, medium=hard at ~40K). New behavior has three. Players selecting medium should notice the bot is meaningfully easier than hard — previously they were the same.
+
+**Mechanism:**
+
+- New `hebrewDictionary.loadBotLegacyVocabularyOnce()` — fetches `data/dictionary.base.txt` (the legacy 40K, kept in the repo) on demand, caches in module state. Called once at boot from `ensureDictionaryLoaded` so the cache is hot before the user can pick bot mode.
+- New sync accessor `getBotLegacyVocabularyCached()` returns the cached array (or null pre-load).
+- [src/main.js](../src/main.js) bot wiring reads from the cached legacy list and applies the new caps. Falls back to `DICT` if the cache isn't ready yet (rare race; the bot still gets *something* to play).
+- **Validation still uses `isValid()`** which goes through v2. So the bot picks from a 40K candidate universe but every pick passes the 63K-word validator — strict superset means no surprise rejections of bot moves.
+
+**Tests:** all 177 unit + 49 dictionary-related still pass.
+
+**No Firebase changes.**
+
+**Rollback:**
+- `?dict=v1` reverts the dictionary for an individual visitor.
+- Reverting this commit reverts the default flip. The bot-vocabulary change is independent and can be kept.
+
+---
+
+## Dictionary cleanup: remove the legacy suggest→review pipeline — June 2026
+
+Removed the dead code flagged in the previous three June 2026 entries (suggest panel → admin queue → direct add/remove). All of this was reachable only through the `🔐 הגדרות מתקדמות` button, which was deleted last commit.
+
+**Files deleted (3):**
+
+- `partials/screens/admin-login-overlay.html`
+- `partials/screens/admin-advanced-settings-overlay.html`
+- `partials/screens/admin-confirm-decision-overlay.html`
+
+**Files trimmed:**
+
+- [src/ui/screenPartialManifest.js](../src/ui/screenPartialManifest.js) — removed the 3 deleted overlay entries.
+- [src/game/account/dictionaryService.js](../src/game/account/dictionaryService.js) — removed `DICTIONARY_SUGGESTIONS_PATH`, `buildPendingSuggestions`, `submitDictionarySuggestions`, `submitDictionaryRemovalSuggestions`, `listPendingDictionarySuggestions`, `applyDictionaryDecision`. Module went from ~270 lines to ~150.
+- [src/game/account/dictionaryService.test.js](../src/game/account/dictionaryService.test.js) — removed tests for the deleted functions.
+- [src/ui/screens/dictionaryScreen.js](../src/ui/screens/dictionaryScreen.js) — removed `buildAdminSuggestionsHtml`, the `OPEN_ADMIN_LOGIN` / `ADMIN_SIGN_IN` / `ADMIN_SIGN_OUT` / `ADMIN_CLOSE` / `ADMIN_APPROVE` / `ADMIN_REJECT` / `ADMIN_CONFIRM` / `ADMIN_CANCEL` intent constants; the `ADMIN_LOGIN_ERROR` / `ADMIN_OPEN` / `ADMIN_RENDER` / `ADMIN_CONFIRM` render constants; the corresponding `patchClick` and `bus.on` wiring; the `signIn` / `requestDecision` helpers; the overlay refs and the password-input keydown handler. Module went from ~265 lines to ~125.
+- [src/ui/screens/dictionaryScreen.test.js](../src/ui/screens/dictionaryScreen.test.js) — removed admin queue tests + the makeRoot scaffold for the removed overlays.
+- [src/main.js](../src/main.js) — removed `dictAdminAuthed` / `dictAdminSuggestions` / `dictRecentlyProcessedWords` state; the `ADMIN_SIGN_IN` / `ADMIN_SIGN_OUT` / `ADMIN_APPROVE` / `ADMIN_REJECT` / `ADMIN_CONFIRM` intent handlers; the `refreshDictionaryAdminSuggestions` helper; the `verifyDictionaryAdminPassword` SHA-256 function (no longer needed — the panel itself is admin-gated via `admins/{uid}` lookup).
+- [tests/unit/engine-parity-highrisk.test.js](../tests/unit/engine-parity-highrisk.test.js) — removed the legacy dictionary admin parity row.
+- [firebase.database.rules.json](../firebase.database.rules.json) — removed the `dictionarySuggestions` path rules. Existing `dictionaryApproved` / `dictionaryRejected` rules unchanged.
+- [tests/unit/firebase-rules.test.js](../tests/unit/firebase-rules.test.js) — updated the dictionary-moderation rule test to assert `dictionarySuggestions` is *absent* (regression guard against the path being reintroduced).
+
+**Tests:** `npm run test:unit` 177/177 passing (was 178 — minus the one legacy parity row I removed).
+
+**Firebase impact:** the `/dictionarySuggestions` path can now be cleared from the live database. The rule removal means no one can write there anymore (no path rule = default-deny). Existing entries (if any) become unreachable, which is the intent.
+
+**Optional follow-up:** if any pre-existing `/dictionarySuggestions` entries are in prod, an admin can `firebase database:remove` the path now that the runtime no longer references it.
+
+---
+
+## Dictionary admin: collapse suggest+review into one-step add/remove — June 2026
+
+Same day follow-up. With the panel now scoped to admins only, the suggest→review pipeline became a redundant double click. Collapsed into single-step direct action.
+
+**UI changes** ([partials/screens/settings.html](../partials/screens/settings.html)):
+
+- Buttons: `📨 שלח הצעה` → `➕ הוסף למילון` (green); `🗑️ שלח הצעת הסרה` → `🗑️ הסר מהמילון` (red).
+- Removed: the `🔐 הגדרות מתקדמות` button (and its divider above). The admin-review overlay is no longer reachable from the UI.
+- Tooltip: panel title hint now says "השינוי מיידי" (effect is immediate) instead of "ההצעות יעברו לאישור מנהל" (suggestions will go to admin approval).
+
+**Service changes** ([dictionaryService.js](../src/game/account/dictionaryService.js)):
+
+- New `addWordsToDictionary(db, { words, ... })` — writes each word directly to `/dictionaryApproved`. Skips words that are already approved or currently blocked (admin must unblock before re-adding).
+- New `removeWordsFromDictionary(db, { words, isValidWord, ... })` — validates each word is currently valid; writes a `/dictionaryRejected` entry with `source: 'admin-direct-remove'`; also strips the word from `/dictionaryApproved` if it was there (otherwise the boot approved-sync would re-add it next session).
+
+**Intent handlers** ([src/main.js](../src/main.js)):
+
+- `DICT_INTENT.SUBMIT_SUGGEST` now calls `addWordsToDictionary` instead of `submitDictionarySuggestions`. Mutates runtime `DICT` immediately on success so the new word is playable without a reload.
+- `DICT_INTENT.SUBMIT_REMOVAL` now calls `removeWordsFromDictionary` instead of `submitDictionaryRemovalSuggestions`. Mutates runtime `BLOCKED_OVERLAY` immediately so the word becomes invalid without a reload.
+- Status messages updated: "נשלחה לבדיקה" → "נוספה למילון" / "הוסרה מהמילון".
+
+**Tests:** 6 new tests in [dictionaryService.test.js](../src/game/account/dictionaryService.test.js) covering the new direct functions. All 178 unit tests still pass.
+
+**No Firebase rule changes.** Both `/dictionaryApproved` and `/dictionaryRejected` already enforce `admins/{auth.uid} === true` for writes.
+
+**Dead code (cleanup follow-up):** the following are no longer reachable from the new UI but were left in place to keep the diff focused. A follow-up commit should remove them once we're sure the new flow is stable:
+
+- `submitDictionarySuggestions`, `submitDictionaryRemovalSuggestions`, `applyDictionaryDecision`, `listPendingDictionarySuggestions`, `buildPendingSuggestions` in [dictionaryService.js](../src/game/account/dictionaryService.js)
+- Their corresponding tests
+- The admin-login + admin-review-queue overlay HTML in [partials/screens/](../partials/screens/) — overlay IDs `#ov-dict-login`, `#ov-dict-admin`, `#ov-dict-confirm`
+- The `DICT_INTENT.OPEN_ADMIN_LOGIN`, `ADMIN_SIGN_IN`, `ADMIN_APPROVE`, `ADMIN_REJECT`, `ADMIN_CONFIRM`, `ADMIN_CANCEL`, `ADMIN_SIGN_OUT` constants and their handlers
+- The `DICT_RENDER.ADMIN_OPEN`, `ADMIN_RENDER`, `ADMIN_CONFIRM`, `ADMIN_LOGIN_ERROR` constants and their renderers
+- The `patchClick`s in `dictionaryScreen.js` for buttons that no longer exist (they're no-ops because `querySelector` returns null — harmless)
+- The 'type' field semantics in `/dictionarySuggestions` (path no longer written to)
+
+---
+
+## Dictionary admin queue: type-aware decisions + runtime block-overlay — June 2026
+
+Follow-up to the "suggest a word to remove" feature (same day). The previous commit added the new path but the admin queue would still write "approve" of a remove-suggestion to `/dictionaryApproved` — opposite of intent. This commit completes the round trip:
+
+- **Add/remove badge in the admin queue** — each row now shows a colored pill (`➕ הוספה` green, `🗑️ הסרה` red) derived from `item.type`. Legacy entries without a type default to `add`. See [buildAdminSuggestionsHtml](../src/ui/screens/dictionaryScreen.js) at line ~35.
+- **Type-aware decision routing in [applyDictionaryDecision](../src/game/account/dictionaryService.js).** The destination write now depends on `(type, action)`:
+
+  | type | action | destination |
+  |---|---|---|
+  | `add` | `approve` | `/dictionaryApproved` (existing) |
+  | `add` | `reject` | `/dictionaryRejected` with `source: 'add-rejected'` |
+  | `remove` | `approve` | `/dictionaryRejected` with `source: 'remove-approved'` |
+  | `remove` | `reject` | (no destination write — suggestion just closes) |
+
+  Same word can be selected as both add and remove in one batch; the bucket key is `(word, type)` so each routes independently.
+- **Runtime block-overlay.** New exported `BLOCKED_OVERLAY` Set in [hebrewDictionary.js](../src/game/core/hebrewDictionary.js). Populated at boot by the new `syncBlockedDictionaryWordsOnce(db, set)` in dictionaryService.js, which reads `/dictionaryRejected`. Both v1 and v2 `isValid()` consult it before any positive lookup — a blocked word always rejects even if it's in DICT, the DAWG, or an approved-overlay entry. Mirrors the existing `syncApprovedDictionaryWordsOnce` pattern.
+- **Boot wiring in [main.js](../src/main.js):** the existing approved-sync block now also calls `syncBlockedDictionaryWordsOnce`. One additional `.get()` per session.
+
+**Tests:** 6 new tests in [dictionaryService.test.js](../src/game/account/dictionaryService.test.js) (remove-approve routing, remove-reject no-write, add-reject regression, sync populates, end-to-end isValid rejects a synced block, badge contents). All 178 unit tests still pass.
+
+**No Firebase rule changes.** `/dictionaryRejected` already exists with admin-write rules; we're just storing more `source` metadata in entries (a permissive schema field, no rule change needed).
+
+**Semantics note:** the `/dictionaryRejected` path now mixes two kinds of entries:
+- `source: 'add-rejected'` — suggestion to add was denied; word was never valid (no runtime effect today, was implicit before).
+- `source: 'remove-approved'` — admin approved a removal of a valid word; word is now blocked at runtime.
+
+Both kinds populate `BLOCKED_OVERLAY`. The former is a no-op (word wasn't valid anyway); the latter is the new gameplay-affecting case.
+
+---
+
+## Dictionary "suggest a word to remove" + admin-only suggestion panel — June 2026
+
+Players could already suggest words to ADD to the dictionary via the settings screen (`📨 שלח הצעה`). Two changes:
+
+1. **New "suggest a word to remove" feature.** Mirrors the add flow. Admin clicks the new "🗑️ שלח הצעת הסרה" button with a list of comma-separated words; each word is validated client-side via `isValid()` so only words currently in the dictionary can be submitted (prevents pollution of the admin review queue with non-existent words). Submissions land in `/dictionarySuggestions` with `type: 'remove'`.
+2. **Entire "ניהול מילון" panel is now admin-only.** Previously the add-suggestion input + button were visible to all users and only the deeper "🔐 הגדרות מתקדמות" admin button was hidden. Now the whole panel is hidden unless the signed-in user's UID has `admins/{uid} === true` in Firebase. Non-admins still see the שאילתה (word check) panel above it.
+
+**Files:**
+
+- [partials/screens/settings.html](../partials/screens/settings.html) — wrapped panel in `id="dict-mgmt-panel"` (default `display:none`); added a remove-suggestion input (`dict-remove-input`) + button + status div (`dict-remove-status`) below a divider.
+- [src/main.js](../src/main.js) — renamed `setDictAdvancedBtnVisible` → `setDictMgmtVisible` (toggles the whole panel now). Added `DICT_INTENT.SUBMIT_REMOVAL` handler that injects `hebrewDictionary.isValid` as the validator predicate.
+- [src/game/account/dictionaryService.js](../src/game/account/dictionaryService.js) — new `submitDictionaryRemovalSuggestions(db, { words, isValidWord, ... })`. Writes `type: 'remove'` to `/dictionarySuggestions`. Existing `submitDictionarySuggestions` now writes `type: 'add'` explicitly. `buildPendingSuggestions` surfaces the type (missing field = legacy `'add'` for back-compat) and no longer gates remove-suggestions on approval status.
+- [src/ui/screens/dictionaryScreen.js](../src/ui/screens/dictionaryScreen.js) — new intent `SUBMIT_REMOVAL` and render constant `REMOVAL_STATUS`. New `submitRemovalSuggestions()` function; new button click handler; new render handler painting status into `dict-remove-status`.
+
+**Tests:** 5 new in [dictionaryService.test.js](../src/game/account/dictionaryService.test.js) (write-only-if-valid, all-skipped path, missing-predicate error, type field surfaced, approval doesn't gate removals). 2 new in [dictionaryScreen.test.js](../src/ui/screens/dictionaryScreen.test.js) (button emits SUBMIT_REMOVAL, render writes to status div). All 178 unit tests still pass.
+
+**No Firebase rule changes.** The new `type` field is permissive under existing `/dictionarySuggestions` rules (auth required, schema is open by design). No emulator-test churn.
+
+**No breaking changes.** Existing suggestions without a `type` field are treated as `'add'` so legacy entries in the live queue render correctly under the new admin UI.
+
+---
+
+## Dictionary v2 — DAWG-encoded curated lexicon (behind `?dict=v2` flag) — June 2026
+
+The 40K-entry `data/dictionary.base.txt` is the long pole on "this word should be valid but the game rejected it" complaints. Replacing the list end-to-end is a multi-week effort (HSpell build + Wiktionary/Wikipedia corroboration + native-speaker review). This commit lands the **runtime swap + the build pipeline scaffolding** so the data work can proceed independently.
+
+**Runtime changes** (gated by `?dict=v2`; legacy path is the default and unchanged):
+
+- New [src/game/core/dawg.js](../src/game/core/dawg.js) — pure-JS minimal DAWG encoder + decoder. Build uses Daciuk's incremental construction (sorted input, suffix sharing). Format v1: header + per-node offset table + sequential `[flags, edgeCount, (u16 char, u32 target) × N]` payload. The full 40K Hebrew dictionary fits in **235 KB binary** vs 454 KB plaintext — and that's before the new lexicon's morphological-overlap savings kick in.
+- New `loadDictV2(url)` / `setDictionaryMode('v1' | 'v2')` / `isValidV2(word)` in [src/game/core/hebrewDictionary.js](../src/game/core/hebrewDictionary.js). v2 path: clean Hebrew letters → EXACT_REJECTS short-circuit → CLASSIC_ALLOW / DEFECTIVE_ACCEPT short-circuit → DAWG lookup with terminal-final variants → DICT approved-overlay fallback. **No morphological fallback chain** — the curated lexicon ships inflected forms directly, so suffix stripping becomes dead code in v2. Sync, returns boolean — same contract as legacy.
+- [src/main.js](../src/main.js) reads `?dict=v2` from `location.search` and calls `loadDictV2()` instead of `loadDict()`. Legacy callers untouched.
+- `data/dictionary.v2.bin` + `data/dictionary.v2.meta.json` shipped in the repo. **First built end-to-end on June 9, 2026** from HSpell 1.4 (Debian source mirror) → 147,917 curated words → 8,958-node DAWG → 290 KB binary. Pipeline metrics on first build: 60/60 gold-positive (100%), 0/19 gold-negative (0% leak), 0 legacy losses, 126 EXACT_REJECTS intentionally stripped.
+- `EXACT_REJECTS` extended with two entries discovered during the build: `ירושלים` (proper noun in HSpell) and `עליי` (plene spelling of existing `עלי`).
+
+**Build pipeline scaffolding** at [tools/dictionary-build/](../tools/dictionary-build/) (not yet run end-to-end — needs WSL/Linux for HSpell):
+
+- `01-fetch-hspell.sh` clones + builds HSpell 1.4. `02-enumerate.js` dumps surface forms.
+- `03a-extract-lemmas.js` parses `wolig.dat` into a lemma + paradigm TSV.
+- `03b-corroborate-lemmas.js` cross-checks against Wiktionary, Wikipedia frequency (≥ 5), legacy 40K, Academy decisions. Auto-accept requires ≥ 2 sources with at least one non-HSpell corroborator.
+- `03c-filter-lemmas.js` applies categorical blacklists: manual-reject, policy (slurs), brand, archaic, HSpell proper-noun/foreign/Aramaic tags, short-word minimum corroboration. Every drop is logged with its rule.
+- `03d-inflect.js` generates surface forms via paradigms whitelisted in `config/paradigms-allowed.yaml` (nouns/adj/verbs without pronoun-suffix forms; no prefix combinations).
+- `04-review-queue.js` emits unreviewed lemmas as CSV for native-speaker grading. Decisions persist in `review/manual-decisions.tsv` across rebuilds.
+- `05-merge-and-gate.js` unions paradigm output + legacy + manual accepts, applies EXACT_REJECTS, then runs hard gates: word-count bounds, ≤ 0.5% legacy loss, gold-positive ≥ 99%, gold-negative ≤ 2%. Build fails on any gate trip.
+- `06-encode.js` DAWGs the curated list. `--from-legacy` flag re-encodes the existing 40K (how the placeholder binary was built).
+
+**Tests** ([src/game/core/dawg.test.js](../src/game/core/dawg.test.js) + extensions to [src/game/core/hebrewDictionary.test.js](../src/game/core/hebrewDictionary.test.js)):
+
+- 11 DAWG tests: round-trip on the full 40K (100% recovery), iteration order, size budget (< 300 KB), error paths.
+- 12 new v2 dictionary tests: exact-hit, no-morphology-fallback, terminal-final variants, every EXACT_REJECTS rejects, every CLASSIC_ALLOW / DEFECTIVE_ACCEPT accepts even when absent from the DAWG, Firebase approved overlay, empty/non-Hebrew rejection, mode-switch hygiene, and a load test against the actual shipped `data/dictionary.v2.bin`.
+- `npm run test:unit` stays at 178/178 passing — legacy path completely untouched.
+
+**Hard-rule compliance** ([docs-md/CLAUDE.md](CLAUDE.md)):
+
+- `EXACT_REJECTS`, `CLASSIC_ALLOW`, `DEFECTIVE_ACCEPT` sets preserved — and now actively enforced in the v2 `isValid()` (the v1 path only used them in the morphology chain).
+- `isValid()` contract preserved: synchronous, returns boolean. Mode branch happens internally.
+- `data/dictionary.base.txt` untouched — legacy path still loads it.
+- No event/command renames, no Firebase rule changes, no DOM ID changes.
+
+**Open follow-ups** (tracked in TASKS.md):
+
+- Produce a real HSpell-derived curated lexicon and rebuild `dictionary.v2.bin`.
+- Get legal sign-off on HSpell GPLv2 (see [tools/dictionary-build/LICENSE.md](../tools/dictionary-build/LICENSE.md)).
+- Seed `gold-positive.txt` from real player-rejection logs once the canary ships.
+- Flip default to v2 once gated rollout shows no regressions; then delete `dictionary.base.txt` and the v1 path.
+
+See [the plan](../../.claude/plans/the-biggest-problem-with-twinkly-canyon.md) for the full multi-phase design.
+
+---
+
 ## App boot loader v2: animated בוסט tile-drop + lightning sweep — June 2026
 
 Replaced the static logo + spinner with a polished game-style loader that matches the word-game identity. Pure CSS animations (no JS for the visuals), feels native to the brand.

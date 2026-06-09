@@ -300,26 +300,60 @@ string   // value is just the username
 
 ---
 
-## `/dictionarySuggestions`
+## `/dictionarySuggestions` *(removed June 2026)*
 
-User-submitted word suggestions.
+This path used to stage user-suggested words for admin review. It was removed when the dictionary panel became admin-only and the staging step lost its purpose. Admins now write directly to `/dictionaryApproved` (add) or `/dictionaryRejected` (remove). The Firebase rule for this path has been removed (default-deny) and the service functions that read/wrote it (`submitDictionarySuggestions`, `submitDictionaryRemovalSuggestions`, `buildPendingSuggestions`, `applyDictionaryDecision`, `listPendingDictionarySuggestions`) no longer exist. Any leftover entries in production can be safely cleared with `firebase database:remove /dictionarySuggestions`.
+
+Historical structure (kept here only for reference if you find legacy data in a stale database export):
 
 ```
 {
   [key: string]: {
     word: string,
-    submittedBy: string,     // uid
-    submittedAt: ServerTimestamp
-    // other fields: Unknown / needs verification
+    normalizedWord: string,
+    type: 'add' | 'remove',    // missing on legacy entries → treated as 'add'
+    status: 'pending' | 'approved' | 'rejected',
+    createdAt: ServerTimestamp,
+    reviewedAt?: ServerTimestamp
   }
 }
 ```
 
+The admin queue ([dictionaryService.js](../../src/game/account/dictionaryService.js) `buildPendingSuggestions`) does not gate `'remove'` entries on approval status — those entries explicitly target words that *are* approved.
+
 ---
 
-## `/dictionaryApproved` and `/dictionaryRejected`
+## `/dictionaryApproved`
 
-Admin-moderated word lists. Structure: Unknown / needs verification — exact shape not traced in available code.
+```
+{
+  [word: string]: {
+    word: string,
+    approvedAt: ServerTimestamp
+  }
+}
+```
+
+Words approved by an admin. Merged into the runtime `DICT` Set at boot by `syncApprovedDictionaryWordsOnce` so they're valid in gameplay.
+
+## `/dictionaryRejected`
+
+```
+{
+  [pushKey: string]: {
+    word: string,
+    rejectedAt: ServerTimestamp,
+    source?: 'add-rejected' | 'remove-approved'  // missing on legacy entries
+  }
+}
+```
+
+Words explicitly excluded from gameplay. Two kinds of entries (distinguished by `source`):
+
+- **`'add-rejected'`** — an add-suggestion was rejected by an admin. The word was never valid; this entry only prevents re-submission.
+- **`'remove-approved'`** — a remove-suggestion was approved by an admin. The word was valid; this entry blocks it at runtime.
+
+Both kinds are merged into `hebrewDictionary.BLOCKED_OVERLAY` at boot by `syncBlockedDictionaryWordsOnce`. `isValid()` consults this set before any positive lookup, so a blocked word always rejects regardless of its presence in DICT, the DAWG, or `/dictionaryApproved`.
 
 ---
 

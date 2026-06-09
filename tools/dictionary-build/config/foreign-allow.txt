@@ -1,0 +1,40 @@
+# Foreign-origin lemmas explicitly allowed (one per line).
+#
+# Overrides the "drop foreign transliterations" filter in 03c-filter-lemmas.js.
+# Words here are kept even if HSpell tags them as foreign.
+#
+# Rationale: many loanwords are fully naturalized into Hebrew and would be
+# unfair to disallow (אינטרנט, טלפון, ראדיו…). Seed list mirrors loanwords
+# already present in data/dictionary.base.txt.
+
+אינטרנט
+טלפון
+ראדיו
+טלוויזיה
+מחשב
+אינטרנט
+טכנולוגיה
+דמוקרטיה
+פוליטיקה
+אקדמיה
+אוניברסיטה
+פילוסופיה
+פסיכולוגיה
+ביולוגיה
+כימיה
+פיזיקה
+מתמטיקה
+היסטוריה
+גאוגרפיה
+ספורט
+תיאטרון
+קולנוע
+מוזיקה
+פסטיבל
+קונצרט
+פסטה
+פיצה
+המבורגר
+קפה
+תה
+שוקולד

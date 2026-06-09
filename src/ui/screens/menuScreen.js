@@ -116,10 +116,13 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
       }
     }
 
-    // Avatar
+    // Avatar — reset to the default 👤 on sign-out so the previous user's
+    // avatar doesn't linger in the topbar. Only overwrite with the saved
+    // avatar when explicitly provided.
     const avatarEl = $('#home-avatar-ic', topbarRoot);
-    if (avatarEl && avatar) {
-      avatarEl.textContent = avatar;
+    if (avatarEl) {
+      if (avatar) avatarEl.textContent = avatar;
+      else if (isAuthed === false) avatarEl.textContent = '👤';
     }
 
     // Bell — show only when authenticated (guests have no invites to receive)

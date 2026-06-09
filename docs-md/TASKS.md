@@ -5,6 +5,21 @@
 
 ---
 
+## TODOs — Dictionary v2 rollout
+
+The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG). What's left before flipping the default and removing the v1 path:
+
+- [ ] **Run the build pipeline end-to-end.** Needs WSL/Linux for HSpell (perl + autotools). Steps: `bash 01-fetch-hspell.sh` → `node 02-enumerate.js` → `03a-extract-lemmas.js` → `03b-corroborate-lemmas.js` → `03c-filter-lemmas.js` → `03d-inflect.js`. Produces `output/lemmas-review.tsv` for the next step.
+- [ ] **Acquire corroboration sources.** Hebrew Wiktionary lemma dump and Hebrew Wikipedia frequency list. Currently the pipeline runs without them (single-source HSpell) — every lemma falls to the review queue. With Wiktionary alone, expect ~70% of lemmas to auto-accept.
+- [ ] **Native-speaker review of `pending-review.csv`.** Budget: 20–40 hours for the initial pass. Decisions go into `tools/dictionary-build/review/manual-decisions.tsv` and persist across rebuilds.
+- [ ] **Seed `tools/dictionary-build/config/gold-positive.txt` from real player-rejection logs.** Every "this word should have been valid" complaint becomes a held-out test the build can't regress.
+- [ ] **Legal sign-off on HSpell GPLv2.** See [tools/dictionary-build/LICENSE.md](../tools/dictionary-build/LICENSE.md) — if the project can't accept GPLv2 implications, switch to Hunspell `he_IL` or commission a permissive list.
+- [ ] **Canary the `?dict=v2` flag.** Open the app with `?dict=v2` and exercise the formerly-rejected-real-words list. Watch the console for `[isValidV2]` logs.
+- [ ] **Flip default.** Change `dictionaryModeFromUrl()` in `main.js` to default `'v2'`. Keep `?dict=v1` as a rollback switch for one release.
+- [ ] **Cleanup commit (separate PR):** delete `data/dictionary.base.txt`, the v1 morphology chain in `hebrewDictionary.js` (`candidateLemmas`, `spellingVariants`, `POSSESSIVE_SUFFIXES`, `VERB_SUFFIXES`, `looksLikePrefixedParticle`, `looksLikePossessive`, `analyze`'s lemma branch), the v1 loader, and the mode switch. Update tests accordingly.
+
+---
+
 ## TODOs — Online Simulator (Phase 5)
 
 - [ ] Deferred-score split-write scenario: dispose the active session AFTER `MOVE_CONFIRMED(scoringDeferred=true)` but BEFORE `FINALIZE_BOOST_AWARD`. Verify the room state stays consistent (no half-committed move), the opponent's view isn't corrupted, and the reconnected session correctly sees the move as never-committed. Needs bonus-square placement to be driven deterministically (bonuses sit at off-grid edges; random bot rarely hits them) — either inject a scripted-move bot or seed the engine state with `state.pendingScoreCommit` directly.

@@ -143,6 +143,33 @@ Removed in May 2026 simplification (do not re-add without product reason): `#st-
 
 Both IDs are wired by `settingsScreen.js` via `VALUE_SELECTS`. The active pill carries `active-yes`; the inactive pill has no active class. Do not add `onclick` attributes — they are removed and re-wired by the screen controller.
 
+### Settings Screen — Dictionary Management Panel (admin-only, direct-action)
+
+```
+#dict-mgmt-panel       — entire admin-only panel. Hidden (display:none) by default;
+                          main.js setDictMgmtVisible() reveals it when admins/{uid}===true.
+#dict-word-input       — add input
+#dict-word-status      — add status line
+#dict-remove-input     — remove input
+#dict-remove-status    — remove status line
+```
+
+Button selectors (DOM rewired by `dictionaryScreen.js` `patchClick`):
+
+```
+button[onclick="suggestDictionaryWord()"]      — emits DICT_INTENT.SUBMIT_SUGGEST (now does direct add)
+button[onclick="suggestDictionaryRemoval()"]   — emits DICT_INTENT.SUBMIT_REMOVAL (now does direct remove)
+```
+
+The `suggestDictionaryWord` / `suggestDictionaryRemoval` function names are historical from when these triggered the suggest→review flow. They now trigger direct add/remove via main.js handlers that call `addWordsToDictionary` / `removeWordsFromDictionary`.
+
+Do not move the inputs/buttons outside `#dict-mgmt-panel` — the visibility check is what enforces admin-only access; pulling a child input outside the panel would leak it to all users.
+
+Removed June 2026:
+- `#btn-dict-advanced` (admin-queue entry point — flow collapsed into direct action).
+- Overlays `#ov-dict-login` / `#ov-dict-admin` / `#ov-dict-confirm` (legacy review-queue UI).
+- Bus intents/renders `DICT_INTENT.OPEN_ADMIN_LOGIN` / `ADMIN_SIGN_IN` / `ADMIN_SIGN_OUT` / `ADMIN_CLOSE` / `ADMIN_APPROVE` / `ADMIN_REJECT` / `ADMIN_CONFIRM` / `ADMIN_CANCEL` and `DICT_RENDER.ADMIN_LOGIN_ERROR` / `ADMIN_OPEN` / `ADMIN_RENDER` / `ADMIN_CONFIRM`.
+
 ---
 
 ### Button Selectors (legacy onclick removal)

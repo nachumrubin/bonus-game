@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import {
-  buildAdminSuggestionsHtml,
   DICT_INTENT,
   DICT_RENDER,
   formatQueryResult,
@@ -20,7 +19,6 @@ function makeEl({ value = '', onclick = null, hidden = false } = {}) {
     innerHTML: '',
     className: '',
     style: {},
-    checked: false,
     classList: {
       add(c) { cls.add(c); },
       remove(c) { cls.delete(c); },
@@ -36,7 +34,6 @@ function makeEl({ value = '', onclick = null, hidden = false } = {}) {
     },
     click() { for (const l of listeners) if (l.ev === 'click') l.fn({ preventDefault() {} }); },
     keydown(key) { for (const l of listeners) if (l.ev === 'keydown') l.fn({ key, preventDefault() {} }); },
-    change(target) { for (const l of listeners) if (l.ev === 'change') l.fn({ target }); },
     focus() { this.focused = true; },
     select() { this.selected = true; },
     querySelector(sel) { return this._children?.[sel] ?? null; },
@@ -45,51 +42,25 @@ function makeEl({ value = '', onclick = null, hidden = false } = {}) {
 
 function makeRoot() {
   const els = {
-    '#ov-shailta': makeEl({ hidden: true }),
-    '#ov-dict-login': makeEl({ hidden: true }),
-    '#ov-dict-admin': makeEl({ hidden: true }),
-    '#ov-dict-confirm': makeEl({ hidden: true }),
-    '#shin': makeEl(),
-    '#shres': makeEl(),
-    '#settings-shin': makeEl(),
-    '#settings-shres': makeEl(),
-    '#dict-word-input': makeEl(),
-    '#dict-word-status': makeEl(),
-    '#dict-admin-password': makeEl(),
-    '#dict-login-status': makeEl(),
-    '#dict-admin-suggestions': makeEl(),
-    '#dict-admin-confirm-text': makeEl(),
-    '#dict-admin-logout-btn': makeEl({ hidden: true }),
-    'button[onclick="openShailta()"]': makeEl({ onclick: 'openShailta()' }),
+    '#ov-shailta':         makeEl({ hidden: true }),
+    '#shin':               makeEl(),
+    '#shres':              makeEl(),
+    '#settings-shin':      makeEl(),
+    '#settings-shres':     makeEl(),
+    '#dict-word-input':    makeEl(),
+    '#dict-word-status':   makeEl(),
+    '#dict-remove-input':  makeEl(),
+    '#dict-remove-status': makeEl(),
+    'button[onclick="openShailta()"]':                 makeEl({ onclick: 'openShailta()' }),
+    'button[onclick="checkSettingsShailta()"]':        makeEl({ onclick: 'checkSettingsShailta()' }),
+    'button[onclick="suggestDictionaryWord()"]':       makeEl({ onclick: 'suggestDictionaryWord()' }),
+    'button[onclick="suggestDictionaryRemoval()"]':    makeEl({ onclick: 'suggestDictionaryRemoval()' }),
   };
   els['#ov-shailta']._children = {
-    'button[onclick="checkShailta()"]': makeEl({ onclick: 'checkShailta()' }),
-    'button[onclick="ovClose(\'ov-shailta\')"]': makeEl({ onclick: "ovClose('ov-shailta')" }),
+    'button[onclick="checkShailta()"]':            makeEl({ onclick: 'checkShailta()' }),
+    'button[onclick="ovClose(\'ov-shailta\')"]':   makeEl({ onclick: "ovClose('ov-shailta')" }),
   };
-  els['#ov-dict-login']._children = {
-    'button[onclick="dictionaryAdminSignIn()"]': makeEl({ onclick: 'dictionaryAdminSignIn()' }),
-    'button[onclick="closeDictionaryAdvancedSettings()"]': makeEl({ onclick: 'closeDictionaryAdvancedSettings()' }),
-  };
-  els['#ov-dict-admin']._children = {
-    'button[onclick="approveDictionaryWord()"]': makeEl({ onclick: 'approveDictionaryWord()' }),
-    'button[onclick="rejectDictionaryWord()"]': makeEl({ onclick: 'rejectDictionaryWord()' }),
-    'button[onclick="dictionaryAdminSignOut()"]': els['#dict-admin-logout-btn'],
-    'button[onclick="closeAdminWindow()"]': makeEl({ onclick: 'closeAdminWindow()' }),
-  };
-  els['#ov-dict-confirm']._children = {
-    'button[onclick="confirmDictionaryDecision()"]': makeEl({ onclick: 'confirmDictionaryDecision()' }),
-    'button[onclick="cancelDictionaryDecision()"]': makeEl({ onclick: 'cancelDictionaryDecision()' }),
-  };
-  els['button[onclick="checkSettingsShailta()"]'] = makeEl({ onclick: 'checkSettingsShailta()' });
-  els['button[onclick="suggestDictionaryWord()"]'] = makeEl({ onclick: 'suggestDictionaryWord()' });
-  els['button[onclick="openDictionaryAdvancedSettings()"]'] = makeEl({ onclick: 'openDictionaryAdvancedSettings()' });
-
-  return {
-    els,
-    querySelector(sel) {
-      return els[sel] ?? null;
-    },
-  };
+  return { els, querySelector(sel) { return els[sel] ?? null; } };
 }
 
 test('formatQueryResult renders empty, loading, valid, and invalid states', () => {
@@ -97,14 +68,6 @@ test('formatQueryResult renders empty, loading, valid, and invalid states', () =
   assert.match(formatQueryResult({ reason: 'loading' }).text, /נטען/);
   assert.equal(formatQueryResult({ word: 'בית', valid: true }).className, 'shres ok');
   assert.equal(formatQueryResult({ word: 'בייתת', valid: false }).className, 'shres bad');
-});
-
-test('buildAdminSuggestionsHtml renders escaped rows and empty state', () => {
-  assert.match(buildAdminSuggestionsHtml([]), /אין הצעות/);
-  const html = buildAdminSuggestionsHtml([{ id: 'x<1', word: '<אב>' }], new Set(['x<1']));
-  assert.match(html, /x&lt;1/);
-  assert.match(html, /&lt;אב&gt;/);
-  assert.match(html, /checked/);
 });
 
 test('query check cleans input and emits CHECK_QUERY', () => {
@@ -119,7 +82,7 @@ test('query check cleans input and emits CHECK_QUERY', () => {
   assert.equal(els['#shin'].value, '');
 });
 
-test('settings suggestion submit parses words and emits SUBMIT_SUGGEST', () => {
+test('add-word submit parses input and emits SUBMIT_SUGGEST', () => {
   bus._reset();
   const { els, ...root } = makeRoot();
   els['#dict-word-input'].value = 'חדש, חדש2,אחר';
@@ -130,6 +93,25 @@ test('settings suggestion submit parses words and emits SUBMIT_SUGGEST', () => {
   assert.deepEqual(events, [{ words: ['חדש', 'אחר'] }]);
 });
 
+test('remove-word submit parses input and emits SUBMIT_REMOVAL', () => {
+  bus._reset();
+  const { els, ...root } = makeRoot();
+  els['#dict-remove-input'].value = 'מחק, מחק2,אחר';
+  const events = [];
+  bus.on(DICT_INTENT.SUBMIT_REMOVAL, (p) => events.push(p));
+  mountDictionaryScreen({ root, bus });
+  els['button[onclick="suggestDictionaryRemoval()"]'].click();
+  assert.deepEqual(events, [{ words: ['מחק', 'אחר'] }]);
+});
+
+test('REMOVAL_STATUS render paints status into dict-remove-status', () => {
+  bus._reset();
+  const { els, ...root } = makeRoot();
+  mountDictionaryScreen({ root, bus });
+  bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'הוסרה', isError: false });
+  assert.equal(els['#dict-remove-status'].textContent, 'הוסרה');
+});
+
 test('render events paint query and suggestion status', () => {
   bus._reset();
   const { els, ...root } = makeRoot();
@@ -137,23 +119,6 @@ test('render events paint query and suggestion status', () => {
   bus.emit(DICT_RENDER.QUERY_RESULT, { target: 'settings', word: 'בית', valid: true });
   assert.match(els['#settings-shres'].textContent, /בית/);
   assert.equal(els['#settings-shres'].className, 'shres ok');
-  bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'נשלח', isError: false });
-  assert.equal(els['#dict-word-status'].textContent, 'נשלח');
-});
-
-test('admin approval requires selection then emits selected ids', () => {
-  bus._reset();
-  const { els, ...root } = makeRoot();
-  const approvals = [];
-  bus.on(DICT_INTENT.ADMIN_APPROVE, (p) => approvals.push(p));
-  mountDictionaryScreen({ root, bus });
-  bus.emit(DICT_RENDER.ADMIN_RENDER, { suggestions: [{ id: 's1', word: 'חדש' }] });
-
-  els['#dict-admin-suggestions'].change({
-    checked: true,
-    getAttribute(name) { return name === 'data-dict-suggestion-id' ? 's1' : null; },
-  });
-  els['#ov-dict-admin']._children['button[onclick="approveDictionaryWord()"]'].click();
-
-  assert.deepEqual(approvals, [{ ids: ['s1'], suggestions: [{ id: 's1', word: 'חדש' }] }]);
+  bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'נוספה', isError: false });
+  assert.equal(els['#dict-word-status'].textContent, 'נוספה');
 });

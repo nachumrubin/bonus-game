@@ -1,4 +1,19 @@
-export const DICTIONARY_SUGGESTIONS_PATH = 'dictionarySuggestions';
+// Dictionary admin operations.
+//
+// The admin panel writes directly to two Firebase paths:
+//   /dictionaryApproved  — words explicitly added to the dictionary
+//   /dictionaryRejected  — words explicitly excluded from gameplay
+//
+// At boot, the runtime mirrors both paths into in-memory overlays
+// (hebrewDictionary.DICT and hebrewDictionary.BLOCKED_OVERLAY) via the
+// sync* functions below. isValid() consults BLOCKED_OVERLAY before any
+// positive lookup so admin removals override DAWG/DICT hits.
+//
+// History: a suggest→review pipeline used to live here, routed through a
+// /dictionarySuggestions Firebase path. It was removed in June 2026 when
+// the dictionary panel became admin-only and the staging step lost its
+// purpose. See CHANGELOG entries dated June 2026.
+
 export const DICTIONARY_APPROVED_PATH = 'dictionaryApproved';
 export const DICTIONARY_REJECTED_PATH = 'dictionaryRejected';
 
@@ -6,6 +21,8 @@ export function cleanDictionaryWord(raw) {
   return String(raw ?? '').replace(/[^א-ת]/g, '').trim();
 }
 
+// Parse a comma/newline-separated string of words, normalizing each to
+// Hebrew-only and deduplicating.
 export function parseSuggestedWords(raw) {
   const seen = new Set();
   return String(raw ?? '')
@@ -20,80 +37,85 @@ export function parseSuggestedWords(raw) {
     });
 }
 
-export function buildPendingSuggestions({ suggestions = {}, rejected = {}, approved = {}, recentlyProcessed = new Set() } = {}) {
-  const rejectedWords = wordsFromRecord(rejected);
-  const approvedWords = wordsFromRecord(approved);
-  const seenWords = new Set();
-  return Object.entries(suggestions ?? {})
-    .map(([id, entry]) => ({
-      id,
-      word: cleanDictionaryWord(entry?.word ?? entry?.normalizedWord ?? ''),
-      status: entry?.status ?? 'pending',
-      createdAt: Number(entry?.createdAt ?? 0) || 0,
-    }))
-    .filter((entry) => {
-      if (!entry.word || entry.status !== 'pending') return false;
-      if (rejectedWords.has(entry.word) || approvedWords.has(entry.word) || recentlyProcessed.has(entry.word)) return false;
-      if (seenWords.has(entry.word)) return false;
-      seenWords.add(entry.word);
-      return true;
-    })
-    .sort((a, b) => (a.createdAt - b.createdAt) || a.word.localeCompare(b.word));
-}
-
-export async function submitDictionarySuggestions(db, {
+// Admin direct-add. Writes each word to /dictionaryApproved/{word} with
+// { word, approvedAt }. Skips words that are already approved or currently
+// blocked (admin must un-block before re-adding).
+export async function addWordsToDictionary(db, {
   words,
   now = Date.now(),
   serverTimestamp = null,
 } = {}) {
-  if (!db) throw new Error('submitDictionarySuggestions: db required');
+  if (!db) throw new Error('addWordsToDictionary: db required');
   const parsed = Array.isArray(words) ? words.map(cleanDictionaryWord).filter(Boolean) : parseSuggestedWords(words);
-  if (!parsed.length) return { ok: false, reason: 'empty', submitted: [], skipped: [] };
+  if (!parsed.length) return { ok: false, reason: 'empty', added: [], skipped: [] };
 
-  const rejectedSnap = await db.ref(DICTIONARY_REJECTED_PATH).get();
-  const approvedSnap = await db.ref(DICTIONARY_APPROVED_PATH).get();
-  const rejectedWords = wordsFromRecord(rejectedSnap?.val ? rejectedSnap.val() : null);
+  const [approvedSnap, rejectedSnap] = await Promise.all([
+    db.ref(DICTIONARY_APPROVED_PATH).get(),
+    db.ref(DICTIONARY_REJECTED_PATH).get(),
+  ]);
   const approvedWords = wordsFromRecord(approvedSnap?.val ? approvedSnap.val() : null);
+  const rejectedWords = wordsFromRecord(rejectedSnap?.val ? rejectedSnap.val() : null);
   const unique = [...new Set(parsed)];
-  const submitted = [];
+  const stamp = typeof serverTimestamp === 'function' ? serverTimestamp() : now;
+  const added = [];
   const skipped = [];
 
   for (const word of unique) {
-    if (rejectedWords.has(word)) { skipped.push({ word, reason: 'rejected' }); continue; }
-    if (approvedWords.has(word)) { skipped.push({ word, reason: 'approved' }); continue; }
-    const ref = db.ref(DICTIONARY_SUGGESTIONS_PATH).push();
-    await ref.set({
-      word,
-      normalizedWord: word,
-      status: 'pending',
-      createdAt: typeof serverTimestamp === 'function' ? serverTimestamp() : now,
-    });
-    submitted.push(word);
+    if (approvedWords.has(word)) { skipped.push({ word, reason: 'already-approved' }); continue; }
+    if (rejectedWords.has(word)) { skipped.push({ word, reason: 'currently-blocked' }); continue; }
+    await db.ref(`${DICTIONARY_APPROVED_PATH}/${word}`).set({ word, approvedAt: stamp });
+    added.push(word);
   }
-
   return {
-    ok: submitted.length > 0,
-    reason: submitted.length > 0 ? null : 'all-skipped',
-    submitted,
+    ok: added.length > 0,
+    reason: added.length > 0 ? null : 'all-skipped',
+    added,
     skipped,
   };
 }
 
-export async function listPendingDictionarySuggestions(db, { recentlyProcessed = new Set() } = {}) {
-  if (!db) throw new Error('listPendingDictionarySuggestions: db required');
-  const [suggestionsSnap, rejectedSnap, approvedSnap] = await Promise.all([
-    db.ref(DICTIONARY_SUGGESTIONS_PATH).get(),
-    db.ref(DICTIONARY_REJECTED_PATH).get(),
-    db.ref(DICTIONARY_APPROVED_PATH).get(),
-  ]);
-  return buildPendingSuggestions({
-    suggestions: suggestionsSnap?.val ? suggestionsSnap.val() : null,
-    rejected: rejectedSnap?.val ? rejectedSnap.val() : null,
-    approved: approvedSnap?.val ? approvedSnap.val() : null,
-    recentlyProcessed,
-  });
+// Admin direct-remove. Validates each word is currently valid (via injected
+// isValidWord predicate), writes a /dictionaryRejected entry, and strips the
+// word from /dictionaryApproved if it was there (so the boot approved-sync
+// doesn't re-add it next session).
+export async function removeWordsFromDictionary(db, {
+  words,
+  isValidWord,
+  now = Date.now(),
+  serverTimestamp = null,
+} = {}) {
+  if (!db) throw new Error('removeWordsFromDictionary: db required');
+  if (typeof isValidWord !== 'function') {
+    throw new Error('removeWordsFromDictionary: isValidWord predicate required');
+  }
+  const parsed = Array.isArray(words) ? words.map(cleanDictionaryWord).filter(Boolean) : parseSuggestedWords(words);
+  if (!parsed.length) return { ok: false, reason: 'empty', removed: [], skipped: [] };
+
+  const unique = [...new Set(parsed)];
+  const stamp = typeof serverTimestamp === 'function' ? serverTimestamp() : now;
+  const removed = [];
+  const skipped = [];
+
+  for (const word of unique) {
+    if (!isValidWord(word)) { skipped.push({ word, reason: 'not-in-dictionary' }); continue; }
+    await db.ref(DICTIONARY_REJECTED_PATH).push().set({
+      word,
+      rejectedAt: stamp,
+      source: 'admin-direct-remove',
+    });
+    await db.ref(`${DICTIONARY_APPROVED_PATH}/${word}`).remove();
+    removed.push(word);
+  }
+  return {
+    ok: removed.length > 0,
+    reason: removed.length > 0 ? null : 'all-skipped',
+    removed,
+    skipped,
+  };
 }
 
+// Boot-time sync: merge /dictionaryApproved into the runtime DICT set so
+// admin-added words validate in gameplay.
 export async function syncApprovedDictionaryWordsOnce(db, dictSet) {
   if (!db) throw new Error('syncApprovedDictionaryWordsOnce: db required');
   if (!dictSet || typeof dictSet.add !== 'function') {
@@ -105,38 +127,18 @@ export async function syncApprovedDictionaryWordsOnce(db, dictSet) {
   return words.size;
 }
 
-export async function applyDictionaryDecision(db, {
-  action,
-  suggestions = [],
-  ids = [],
-  now = Date.now(),
-  serverTimestamp = null,
-} = {}) {
-  if (!db) throw new Error('applyDictionaryDecision: db required');
-  if (action !== 'approve' && action !== 'reject') return { ok: false, reason: 'bad-action', changed: 0, words: [] };
-  const selectedIds = new Set(ids);
-  if (!selectedIds.size) return { ok: false, reason: 'empty', changed: 0, words: [] };
-
-  const selected = suggestions.filter((s) => selectedIds.has(s.id) && cleanDictionaryWord(s.word));
-  const words = [...new Set(selected.map((s) => cleanDictionaryWord(s.word)))];
-  const stamp = typeof serverTimestamp === 'function' ? serverTimestamp() : now;
-
-  for (const word of words) {
-    if (action === 'approve') {
-      await db.ref(`${DICTIONARY_APPROVED_PATH}/${word}`).set({ word, approvedAt: stamp });
-    } else {
-      await db.ref(DICTIONARY_REJECTED_PATH).push().set({ word, rejectedAt: stamp });
-    }
-    for (const suggestion of suggestions) {
-      if (cleanDictionaryWord(suggestion.word) !== word) continue;
-      await db.ref(`${DICTIONARY_SUGGESTIONS_PATH}/${suggestion.id}`).update({
-        status: action === 'approve' ? 'approved' : 'rejected',
-        reviewedAt: stamp,
-      });
-    }
+// Boot-time sync: merge /dictionaryRejected into the runtime block-overlay
+// so admin-removed words always reject, overriding any positive DAWG/DICT
+// lookup.
+export async function syncBlockedDictionaryWordsOnce(db, blockedSet) {
+  if (!db) throw new Error('syncBlockedDictionaryWordsOnce: db required');
+  if (!blockedSet || typeof blockedSet.add !== 'function') {
+    throw new Error('syncBlockedDictionaryWordsOnce: blockedSet required');
   }
-
-  return { ok: true, action, changed: words.length, words };
+  const snap = await db.ref(DICTIONARY_REJECTED_PATH).get();
+  const words = wordsFromRecord(snap?.val ? snap.val() : null);
+  for (const word of words) blockedSet.add(word);
+  return words.size;
 }
 
 function wordsFromRecord(record) {

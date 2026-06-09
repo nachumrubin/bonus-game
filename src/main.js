@@ -385,26 +385,28 @@ async function boot() {
     activePresenceHandle = null;
     activePresenceUid = null;
     sessionPersistence.clearActiveOnlineSession(globalThis.localStorage);
-    setDictAdvancedBtnVisible(false);
+    setDictMgmtVisible(false);
   }
 
   // /admins/{uid} controls whether the settings overlay surfaces the
   // הגדרות מתקדמות button. We check on every auth boot (the read itself
   // is gated by the same `.read: auth != null` rule).
   async function refreshAdminUiFor(uid) {
-    if (!uid || !activeFbDb) { setDictAdvancedBtnVisible(false); return; }
+    if (!uid || !activeFbDb) { setDictMgmtVisible(false); return; }
     try {
       const snap = await activeFbDb.ref(`admins/${uid}`).get();
-      setDictAdvancedBtnVisible(snap?.exists?.() === true && snap.val() === true);
+      setDictMgmtVisible(snap?.exists?.() === true && snap.val() === true);
     } catch (e) {
       console.warn('[spine] admin lookup failed', e);
-      setDictAdvancedBtnVisible(false);
+      setDictMgmtVisible(false);
     }
   }
-  function setDictAdvancedBtnVisible(visible) {
-    const btn = globalThis.document?.getElementById?.('btn-dict-advanced');
-    if (!btn) return;
-    btn.style.display = visible ? '' : 'none';
+  // Toggle the entire dictionary-management panel (add + remove suggestion
+  // inputs plus the admin-only הגדרות מתקדמות button). Non-admins see no
+  // panel at all; the שאילתה word-check panel above it stays visible to all.
+  function setDictMgmtVisible(visible) {
+    const panel = globalThis.document?.getElementById?.('dict-mgmt-panel');
+    if (panel) panel.style.display = visible ? '' : 'none';
   }
 
   function wireAuthCrossCutting() {
@@ -1547,9 +1549,6 @@ async function boot() {
 
   // ── Account / profile / friends / rating ──────────────
   // Dictionary query / suggestions / admin review.
-  let dictAdminAuthed = false;
-  let dictAdminSuggestions = [];
-  const dictRecentlyProcessedWords = new Set();
 
   bus.on(DICT_INTENT.CHECK_QUERY, async ({ word, target = 'main' } = {}) => {
     if (!word) {
@@ -1570,126 +1569,99 @@ async function boot() {
     });
   });
 
+  // Admin-only direct add. Writes to /dictionaryApproved and immediately
+  // updates the runtime DICT so the word is playable without a reload.
   bus.on(DICT_INTENT.SUBMIT_SUGGEST, async ({ words = [] } = {}) => {
     if (!words.length) {
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'נא להזין מילה להצעה', isError: true });
+      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'נא להזין מילה', isError: true });
       return;
     }
-    // Firebase rule on `dictionarySuggestions` requires auth != null. Catch
-    // the unauthenticated case here so the player sees a clear Hebrew
-    // message rather than a silent PERMISSION_DENIED in the console.
     if (!activeFbCurrentUser?.uid) {
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, {
-        message: 'יש להתחבר כדי לשלוח הצעת מילה',
-        isError: true,
-      });
+      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'יש להתחבר', isError: true });
       return;
     }
-    bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'שולח...', isError: false });
+    bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'מוסיף...', isError: false });
     try {
       const db = await getDictionaryDb();
-      const result = await dictionaryService.submitDictionarySuggestions(db, {
+      const result = await dictionaryService.addWordsToDictionary(db, {
         words,
         serverTimestamp: () => firebaseTimestamp(),
       });
       if (!result.ok) {
-        const first = words[0] ?? '';
-        bus.emit(DICT_RENDER.SUGGESTION_STATUS, {
-          message: words.length === 1 ? `"${first}" נדחתה או אושרה בעבר` : 'כל המילים כבר טופלו בעבר',
-          isError: true,
-        });
+        const firstSkip = result.skipped?.[0];
+        const reason = firstSkip?.reason === 'currently-blocked'
+          ? `"${firstSkip.word}" כרגע חסומה — יש להסיר חסימה תחילה`
+          : words.length === 1
+            ? `"${firstSkip?.word ?? words[0]}" כבר במילון`
+            : 'כל המילים כבר במילון';
+        bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: reason, isError: true });
         return;
       }
+      // Mirror into runtime sets so the change is visible immediately.
+      for (const w of result.added) {
+        hebrewDictionary.DICT.add(w);
+        hebrewDictionary.BLOCKED_OVERLAY.delete(w);
+      }
       const skipped = result.skipped?.length ?? 0;
-      let message = result.submitted.length === 1
-        ? `"${result.submitted[0]}" נשלחה לבדיקה ✓`
-        : `נשלחו ${result.submitted.length} מילים לבדיקה ✓`;
+      let message = result.added.length === 1
+        ? `"${result.added[0]}" נוספה למילון ✓`
+        : `נוספו ${result.added.length} מילים למילון ✓`;
       if (skipped > 0) message += ` (${skipped} דולגו)`;
       bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message, isError: false });
       const input = globalThis.document?.getElementById?.('dict-word-input');
       if (input) input.value = '';
     } catch (e) {
-      console.warn('[spine] dictionary suggest', e);
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'שליחת ההצעה נכשלה', isError: true });
+      console.warn('[spine] dictionary add', e);
+      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'ההוספה נכשלה', isError: true });
     }
   });
 
-  bus.on(DICT_INTENT.ADMIN_SIGN_IN, async ({ password = '' } = {}) => {
-    if (!password) {
-      bus.emit(DICT_RENDER.ADMIN_LOGIN_ERROR, { message: 'נא להזין סיסמה' });
+  // Admin-only direct remove. Writes to /dictionaryRejected and immediately
+  // updates the runtime BLOCKED_OVERLAY so the word becomes invalid without
+  // a reload.
+  bus.on(DICT_INTENT.SUBMIT_REMOVAL, async ({ words = [] } = {}) => {
+    if (!words.length) {
+      bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'נא להזין מילה', isError: true });
       return;
     }
-    const ok = await verifyDictionaryAdminPassword(password);
-    if (!ok) {
-      bus.emit(DICT_RENDER.ADMIN_LOGIN_ERROR, { message: 'סיסמה שגויה' });
+    if (!activeFbCurrentUser?.uid) {
+      bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'יש להתחבר', isError: true });
       return;
     }
-    dictAdminAuthed = true;
-    bus.emit(DICT_RENDER.ADMIN_OPEN, {});
-    await refreshDictionaryAdminSuggestions();
-  });
-
-  bus.on(DICT_INTENT.ADMIN_SIGN_OUT, () => {
-    dictAdminAuthed = false;
-    dictAdminSuggestions = [];
-    dictRecentlyProcessedWords.clear();
-    bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'המנהל נותק', isError: false });
-  });
-
-  bus.on(DICT_INTENT.ADMIN_APPROVE, ({ ids = [] } = {}) => {
-    if (ids.length) bus.emit(DICT_RENDER.ADMIN_CONFIRM, { action: 'approve', count: ids.length });
-  });
-  bus.on(DICT_INTENT.ADMIN_REJECT, ({ ids = [] } = {}) => {
-    if (ids.length) bus.emit(DICT_RENDER.ADMIN_CONFIRM, { action: 'reject', count: ids.length });
-  });
-  bus.on(DICT_INTENT.ADMIN_CONFIRM, async ({ action, ids = [] } = {}) => {
-    if (!dictAdminAuthed) {
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'אין הרשאת מנהל', isError: true });
-      return;
-    }
+    bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'מסיר...', isError: false });
     try {
       const db = await getDictionaryDb();
-      const result = await dictionaryService.applyDictionaryDecision(db, {
-        action,
-        ids,
-        suggestions: dictAdminSuggestions,
+      const result = await dictionaryService.removeWordsFromDictionary(db, {
+        words,
+        isValidWord: (w) => hebrewDictionary.isValid?.(w) ?? false,
         serverTimestamp: () => firebaseTimestamp(),
       });
       if (!result.ok) {
-        bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'הפעולה נכשלה', isError: true });
+        const firstSkip = result.skipped?.[0]?.word ?? '';
+        bus.emit(DICT_RENDER.REMOVAL_STATUS, {
+          message: words.length === 1 ? `"${firstSkip}" לא נמצאה במילון` : 'אף אחת מהמילים אינה במילון',
+          isError: true,
+        });
         return;
       }
-      for (const word of result.words) {
-        dictRecentlyProcessedWords.add(word);
-        if (action === 'approve') hebrewDictionary.DICT.add(word);
+      // Mirror into runtime sets so the change is visible immediately.
+      for (const w of result.removed) {
+        hebrewDictionary.BLOCKED_OVERLAY.add(w);
+        hebrewDictionary.DICT.delete(w);
       }
-      if (globalThis.HebrewValidator && action === 'approve') globalThis.HebrewValidator.init?.(hebrewDictionary.DICT);
-      dictAdminSuggestions = dictAdminSuggestions.filter((s) => !result.words.includes(s.word));
-      bus.emit(DICT_RENDER.ADMIN_RENDER, { suggestions: dictAdminSuggestions });
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, {
-        message: action === 'approve' ? `אושרו ${result.changed} מילים ✓` : `נדחו ${result.changed} מילים`,
-        isError: false,
-      });
-      await refreshDictionaryAdminSuggestions();
+      const skipped = result.skipped?.length ?? 0;
+      let message = result.removed.length === 1
+        ? `"${result.removed[0]}" הוסרה מהמילון ✓`
+        : `הוסרו ${result.removed.length} מילים מהמילון ✓`;
+      if (skipped > 0) message += ` (${skipped} לא במילון)`;
+      bus.emit(DICT_RENDER.REMOVAL_STATUS, { message, isError: false });
+      const input = globalThis.document?.getElementById?.('dict-remove-input');
+      if (input) input.value = '';
     } catch (e) {
-      console.warn('[spine] dictionary decision', e);
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'הפעולה נכשלה', isError: true });
+      console.warn('[spine] dictionary remove', e);
+      bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'ההסרה נכשלה', isError: true });
     }
   });
-
-  async function refreshDictionaryAdminSuggestions() {
-    if (!dictAdminAuthed) return;
-    try {
-      const db = await getDictionaryDb();
-      dictAdminSuggestions = await dictionaryService.listPendingDictionarySuggestions(db, {
-        recentlyProcessed: dictRecentlyProcessedWords,
-      });
-      bus.emit(DICT_RENDER.ADMIN_RENDER, { suggestions: dictAdminSuggestions });
-    } catch (e) {
-      console.warn('[spine] dictionary admin refresh', e);
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'טעינת הצעות נכשלה', isError: true });
-    }
-  }
 
   async function getDictionaryDb() {
     if (activeFbDb) return activeFbDb;
@@ -1699,15 +1671,6 @@ async function boot() {
 
   function firebaseTimestamp() {
     return activeFbServerTimestamp?.() ?? Date.now();
-  }
-
-  async function verifyDictionaryAdminPassword(password) {
-    const adminHash = '67bee854bb6636e19557e79d9a160dbd60f794210c65f9d7647dd8d0e608c2ae';
-    const cryptoObj = globalThis.crypto;
-    if (!cryptoObj?.subtle || typeof TextEncoder === 'undefined') return false;
-    const msgBuffer = new TextEncoder().encode(String(password));
-    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', msgBuffer);
-    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('') === adminHash;
   }
 
   // Merge admin-approved words from Firebase into the local dictionary.
@@ -1726,6 +1689,15 @@ async function boot() {
       if (count > 0) {
         console.info('[spine] approved dictionary merged:', count, 'new size:', hebrewDictionary.DICT.size);
         if (globalThis.HebrewValidator) globalThis.HebrewValidator.init?.(hebrewDictionary.DICT);
+      }
+      // Block-overlay: words admins have explicitly excluded from gameplay
+      // (either rejected add-suggestions or approved remove-suggestions).
+      // isValid checks BLOCKED_OVERLAY before any positive lookup.
+      const blockedCount = await dictionaryService.syncBlockedDictionaryWordsOnce(
+        db, hebrewDictionary.BLOCKED_OVERLAY
+      );
+      if (blockedCount > 0) {
+        console.info('[spine] blocked-words overlay:', blockedCount);
       }
     } catch (e) {
       console.warn('[spine] approved dictionary sync', e);
@@ -2927,20 +2899,28 @@ async function boot() {
     }
 
     if (bot) {
-      // Dictionary is sorted by Hebrew word frequency (common words first),
-      // so slicing the first N entries yields a vocabulary the bot will
-      // actually choose from on EASY — capping at 7000 keeps the easy bot
-      // using only common, short words so it's noticeably easier than
-      // MEDIUM/HARD which see the full vocabulary.
-      const EASY_VOCAB_CAP = 7000;
+      // The bot always picks from the legacy 40K list (frequency-sorted,
+      // common words first), regardless of which dictionary mode is active.
+      // This keeps bot strength stable as the player-facing dictionary grows.
+      // Validation still runs against the active dictionary via isValid(),
+      // so any word the bot picks is naturally accepted.
+      //
+      //   easy   (0)  → first  5,000 words
+      //   medium (1)  → first 20,000 words
+      //   hard   (2)  → full  40,000 words
+      const VOCAB_CAPS = [5000, 20000, 40000];
+      const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
+      // Legacy vocabulary is preloaded at boot in ensureDictionaryLoaded.
+      // If we get here before it's ready (rare race), fall back to DICT so
+      // the bot still has *something* to play.
+      const legacy = hebrewDictionary.getBotLegacyVocabularyCached();
+      const sourceWords = legacy ?? [...hebrewDictionary.DICT];
       const fullList = [...new Set(
-        [...hebrewDictionary.DICT]
-          .filter(w => w.length >= 2 && w.length <= 6)
-          .map(w => hebrewDictionary.norm(w)),
+        sourceWords
+          .filter((w) => w.length >= 2 && w.length <= 6)
+          .map((w) => hebrewDictionary.norm(w)),
       )];
-      const wordList = (difficulty === 0)
-        ? fullList.slice(0, EASY_VOCAB_CAP)
-        : fullList;
+      const wordList = fullList.slice(0, cap);
       attachBotPlayer(session, {
         slot: 1, wordList,
         isWordValid: (w) => hebrewDictionary.isValid(w),
@@ -3626,14 +3606,37 @@ async function ensureAuthedUser() {
   throw new Error('Firebase auth probe failed even after fresh sign-in');
 }
 
+// v2 (curated HSpell-derived 63K dictionary) became the default in June 2026
+// after the canary at ?dict=v2 ran clean. ?dict=v1 remains as a rollback
+// switch for one release in case a regression surfaces.
+function dictionaryModeFromUrl() {
+  try {
+    const params = new URLSearchParams(globalThis.location?.search || '');
+    return params.get('dict') === 'v1' ? 'v1' : 'v2';
+  } catch {
+    return 'v2';
+  }
+}
+
 function ensureDictionaryLoaded() {
   if (hebrewDictionary.DICT.size > 0) {
     return Promise.resolve(hebrewDictionary.DICT.size);
   }
   if (!dictionaryLoadPromise) {
-    dictionaryLoadPromise = hebrewDictionary.loadDict()
+    const mode = dictionaryModeFromUrl();
+    hebrewDictionary.setDictionaryMode(mode);
+    const loader = mode === 'v2' ? hebrewDictionary.loadDictV2() : hebrewDictionary.loadDict();
+    dictionaryLoadPromise = loader
       .then((size) => {
-        console.info('[spine] dictionary size:', size);
+        console.info('[spine] dictionary size:', size, '(mode:', mode + ')');
+        // Eagerly load the legacy bot vocabulary so the offline bot has a
+        // candidate list ready when a user starts a bot game. Fire-and-forget;
+        // the bot wiring tolerates a still-loading vocabulary by falling back
+        // to DICT, but in practice this resolves long before the user picks
+        // bot mode.
+        hebrewDictionary.loadBotLegacyVocabularyOnce().catch((e) => {
+          console.warn('[spine] bot vocabulary preload failed:', e);
+        });
         return size;
       })
       .catch((e) => {
