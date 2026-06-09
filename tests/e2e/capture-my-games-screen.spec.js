@@ -75,12 +75,14 @@ test('my-games screen: card layout with all four row states', async ({ page }) =
         myScore: 208, opponentScore: 260,
         lastUpdated: nowFixed - 9 * HOUR,
       },
-      // 3) Opponent-turn online game (neutral pill + time-ago)
+      // 3) Opponent-turn online game — shows the 👋 poke button because
+      //    lastReminderAt is null (no reminder pushed in the last 24 h).
       {
         roomId: 'r-theirs', isLocal: false, isMyTurn: false, isExpired: false,
-        opponentName: 'דני', opponentAvatar: 'dragon',
+        opponentName: 'דני', opponentAvatar: 'dragon', opponentUid: 'dani',
         myScore: 31, opponentScore: 6,
         lastUpdated: nowFixed - 2 * DAY,
+        lastReminderAt: null,
       },
       // 4) Expired game (muted look, no Resume button)
       {

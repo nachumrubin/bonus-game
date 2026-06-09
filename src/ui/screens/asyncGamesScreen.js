@@ -1,33 +1,43 @@
 // asyncGamesScreen — full-screen list of the user's saved & in-flight games.
 //
-// Renders #smygames as a stack of "game cards":
-//   - Identity (avatar + opponent name + status pill + time-ago) on one side
-//   - Score, large and centered, as the dominant visual element
-//   - Resume action + secondary dismiss (🗑) on the opposite side
+// Renders #smygames as a stack of game cards. Each card is a single
+// horizontal row with three columns:
+//   - Identity (opponent name + time-ago line)
+//   - Score (gold pill, dominant)
+//   - Action: a שחק button (enabled iff isMyTurn) for live cards, or a 🗑
+//     trash button for expired cards (the only delete path on this screen).
 //
 // This module is purely presentational: it subscribes to MG_RENDER to
-// receive a sessions array and emits MG_INTENT.RESUME / DISMISS / BACK
-// on user clicks. Data plumbing (asyncSessionService + Firebase) lives
-// in main.js, which translates these intents to the existing
-// AS_INTENT.RESUME / AS_INTENT.DISMISS handlers.
+// receive a sessions array and emits MG_INTENT.RESUME / DISMISS / BACK /
+// POKE on user clicks. Data plumbing (asyncSessionService + Firebase)
+// lives in main.js, which handles those intents directly.
 
-import { $, on, setText } from '../domHelpers.js';
+import { $, on } from '../domHelpers.js';
 
 export const MG_INTENT = Object.freeze({
   RESUME:  'myGames/resume',
   DISMISS: 'myGames/dismiss',
+  POKE:    'myGames/poke',
   BACK:    'myGames/back',
 });
 
 export const MG_RENDER = 'myGames/render';
 
-const AVATAR_ID_TO_EMOJI = {
-  crown:'👑', star:'⭐', fire:'🔥', diamond:'💎', shark:'🦈',
-  dragon:'🐉', tiger:'🐯', alien:'👾', wizard:'🧙', robot:'🤖',
-  rocket:'🚀', knight:'🛡️', ninja:'🥷', genius:'🧠', vampire:'🧛',
-};
-function resolveAvatar(raw, fallback = '👤') {
-  return AVATAR_ID_TO_EMOJI[raw] ?? raw ?? fallback;
+// Manual-poke cooldown. The button hides for 24 hours after the user
+// clicks it. We gate on `lastPokedAt` (manual only) — NOT `lastReminderAt`
+// (which the auto-cron sweep also writes). If we shared the field, a cron
+// reminder that fired on app boot would hide the button for a full day
+// even though the user never clicked.
+const POKE_COOLDOWN_HOURS = 24;
+
+export function canPoke(s, now = Date.now()) {
+  if (!s || s.isExpired || s.isLocal) return false;
+  if (s.isMyTurn) return false; // pointless to poke yourself
+  if (!s.opponentUid) return false; // no addressable recipient
+  const last = Number(s.lastPokedAt) || 0;
+  if (last <= 0) return true;
+  const hours = (now - last) / 3_600_000;
+  return hours >= POKE_COOLDOWN_HOURS;
 }
 
 function escapeHtml(s) {
@@ -48,57 +58,50 @@ export function timeAgoLabel(ts, now) {
   return `לפני ${days} ימים`;
 }
 
-// Status pill: { icon, text, cls }. The icon is an emoji glyph the user
-// reads as part of the badge; cls selects the colour (green my-turn,
-// neutral opponent-turn, gold local-save, muted expired).
-function statusEntry(s) {
-  if (s.isExpired) return { icon: '🔵', text: 'פג תוקף', cls: 'is-expired' };
-  if (s.isLocal)   return { icon: '💾', text: 'משחק שמור', cls: 'is-local' };
-  if (s.isMyTurn)  return { icon: '🟢', text: 'תורך', cls: 'is-mine' };
-  return { icon: '🕒', text: `תור ${s.opponentName ?? 'היריב'}`, cls: 'is-theirs' };
-}
-
 export function buildRowHtml(s, { now = Date.now() } = {}) {
-  const avatar = resolveAvatar(s.opponentAvatar);
   const ago = timeAgoLabel(s.lastUpdated, now);
-  const status = statusEntry(s);
   const myScore = Number(s.myScore ?? 0);
   const opScore = Number(s.opponentScore ?? 0);
   const cardCls = [
     'mg-card',
     s.isExpired ? 'is-expired' : '',
     s.isLocal   ? 'is-local'   : '',
+    !s.isExpired && !s.isMyTurn ? 'is-waiting' : '',
   ].filter(Boolean).join(' ');
-  const actionBtn = s.isExpired
-    ? ''
-    : `<button class="mg-resume" data-mg-resume="${escapeHtml(s.roomId)}">המשך</button>`;
+  // Expired games get the trash icon (only delete path on this screen).
+  // Live games get a שחק button — enabled iff isMyTurn. The disabled state
+  // is what tells the user "waiting on the opponent"; we no longer carry a
+  // separate status pill. When it's NOT my turn (and the room isn't
+  // expired/local), a 👋 poke button sits after the שחק button — clicking
+  // it pushes a reminder to the opponent and hides the button for 24 h.
+  //
+  // Note: when !isMyTurn we use ONLY aria-disabled="true" (no HTML
+  // `disabled` attribute) so the click still fires — the click handler
+  // detects the aria-disabled state and shows the "תור היריב" tooltip
+  // instead of dispatching MG_INTENT.RESUME.
+  const action = s.isExpired
+    ? `<button class="mg-dismiss" data-mg-dismiss="${escapeHtml(s.roomId)}" aria-label="הסר">🗑</button>`
+    : `<button class="mg-play${s.isMyTurn ? '' : ' is-disabled'}" data-mg-resume="${escapeHtml(s.roomId)}"`
+        + (s.isMyTurn ? '' : ' aria-disabled="true"')
+        + '>שחק</button>'
+      + (canPoke(s, now)
+          ? `<button class="mg-poke" data-mg-poke="${escapeHtml(s.roomId)}" aria-label="דחוף את היריב">👋</button>`
+          : '');
   // Score uses literal " : " around the colon so screen-reader output and
   // tests both see the canonical "N : N" form. Each number is wrapped in
   // its own span for typographic emphasis (mine is larger + gold).
   return ''
     + `<div data-mg-row="${escapeHtml(s.roomId)}" class="${cardCls}">`
     +   '<div class="mg-card-identity">'
-    +     `<div class="mg-avatar" aria-hidden="true">${escapeHtml(avatar)}</div>`
-    +     '<div class="mg-meta">'
-    +       '<div class="mg-name">'
-    +         escapeHtml(s.opponentName ?? '?')
-    +       '</div>'
-    +       `<span class="mg-status ${status.cls}">`
-    +         `<span aria-hidden="true">${escapeHtml(status.icon)}</span>`
-    +         escapeHtml(status.text)
-    +       '</span>'
-    +       (ago && !s.isMyTurn ? `<div class="mg-time">${escapeHtml(ago)}</div>` : '')
-    +     '</div>'
+    +     `<div class="mg-name">${escapeHtml(s.opponentName ?? '?')}</div>`
+    +     (ago ? `<div class="mg-time">${escapeHtml(ago)}</div>` : '')
     +   '</div>'
     +   '<div class="mg-score" aria-label="תוצאה">'
     +     `<span class="mg-score-mine">${myScore}</span>`
     +     ' <span class="mg-score-sep">:</span> '
     +     `<span class="mg-score-theirs">${opScore}</span>`
     +   '</div>'
-    +   '<div class="mg-actions">'
-    +     actionBtn
-    +     `<button class="mg-dismiss" data-mg-dismiss="${escapeHtml(s.roomId)}" aria-label="הסר">🗑</button>`
-    +   '</div>'
+    +   action
     + '</div>';
 }
 
@@ -112,7 +115,6 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
   const list   = $('#mg-list',  root);
   const empty  = $('#mg-empty', root);
   const screen = $('#smygames', root);
-  const count  = $('#mg-count', root);
   if (!list || !screen) {
     return { unmount() {}, refresh() {} };
   }
@@ -120,7 +122,6 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
   let cleanups = [];
 
   function render(sessions = []) {
-    if (count) setText(count, sessions.length ? String(sessions.length) : '');
     if (!sessions.length) {
       list.innerHTML = '';
       if (empty) empty.style.display = '';
@@ -130,15 +131,51 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
     list.innerHTML = buildListHtml(sessions, { now: now() });
   }
 
-  // Click delegation for resume + dismiss.
+  // Toast container — one floater pinned to the screen, reused across
+  // clicks. Auto-clears after `TOAST_MS`. We append it to the screen
+  // container so it scrolls with the cards rather than detaching.
+  const TOAST_MS = 1800;
+  let toastEl = null;
+  let toastTimer = null;
+  function showToast(text, kind = 'info') {
+    const doc = screen?.ownerDocument ?? globalThis.document;
+    if (!doc) return;
+    if (!toastEl) {
+      toastEl = doc.createElement?.('div');
+      if (!toastEl) return;
+      toastEl.className = 'mg-toast';
+      screen.appendChild?.(toastEl);
+    }
+    toastEl.className = `mg-toast mg-toast--${kind} is-visible`;
+    toastEl.textContent = text;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      if (toastEl) toastEl.className = 'mg-toast';
+    }, TOAST_MS);
+  }
+
+  // Click delegation for resume + dismiss + poke.
   cleanups.push(on(list, 'click', (e) => {
     const t = e.target;
     const btn = t?.tagName === 'BUTTON' ? t : (t?.closest?.('button') ?? null);
     if (!btn) return;
+    // Disabled שחק button: don't dispatch — show the "תור היריב" tooltip.
+    if (btn.getAttribute('aria-disabled') === 'true') {
+      showToast('זה תור היריב — חכה לתשובה', 'info');
+      return;
+    }
     const resume  = btn.getAttribute('data-mg-resume');
     const dismiss = btn.getAttribute('data-mg-dismiss');
+    const poke    = btn.getAttribute('data-mg-poke');
     if (resume)  bus.emit(MG_INTENT.RESUME,  { roomId: resume });
     if (dismiss) bus.emit(MG_INTENT.DISMISS, { roomId: dismiss });
+    if (poke) {
+      bus.emit(MG_INTENT.POKE, { roomId: poke });
+      // Optimistic feedback — the actual push is async and we trust the
+      // main.js handler to log on failure. Showing a quick confirmation
+      // is more important than waiting for the round-trip.
+      showToast('היריב קיבל דחיפה 👋', 'ok');
+    }
   }));
 
   cleanups.push(bus.on(MG_RENDER, ({ sessions } = {}) => render(sessions)));
@@ -151,7 +188,10 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
       for (const off of cleanups) try { off(); } catch { /* swallow */ }
       cleanups = [];
       list.innerHTML = '';
-      if (count) setText(count, '');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = null;
+      if (toastEl?.parentElement) toastEl.parentElement.removeChild(toastEl);
+      toastEl = null;
     },
   };
 }

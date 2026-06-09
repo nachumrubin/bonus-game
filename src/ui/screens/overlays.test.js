@@ -165,6 +165,46 @@ test('pauseScreen: PAUSE_OPEN unhides overlay; resume button emits RESUME', () =
   assert.ok(overlay.classList.contains('hidden')); // closed on action
 });
 
+test('pauseScreen: PAUSE_OPEN emits game/paused; RESUME emits game/resumed (not bonus/* — that would open the bonus overlay)', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-pause' });
+  const resume = makeBtn({ onclick: 'resumeGame()' });
+  elements.set('resume', resume); elements.set('pause-player-name', makeBtn());
+  const root = { querySelector: () => overlay };
+  const signals = [];
+  const bonusSignals = [];
+  bus.on('game/paused',    () => signals.push('freeze'));
+  bus.on('game/resumed',   () => signals.push('unfreeze'));
+  bus.on('bonus/pending',  () => bonusSignals.push('bonus-pending'));
+  bus.on('bonus/resolved', () => bonusSignals.push('bonus-resolved'));
+  mountPauseScreen({ root, bus });
+  bus.emit(PAUSE_OPEN, {});
+  assert.deepEqual(signals, ['freeze'], 'pause overlay open must freeze the game');
+  assert.deepEqual(bonusSignals, [], 'menu pause must NOT emit bonus/* (would open the bonus overlay)');
+  // A second PAUSE_OPEN while already frozen must not double-emit.
+  bus.emit(PAUSE_OPEN, {});
+  assert.deepEqual(signals, ['freeze']);
+  resume.fireClick();
+  assert.deepEqual(signals, ['freeze', 'unfreeze'], 'resume must unfreeze');
+  assert.deepEqual(bonusSignals, []);
+});
+
+test('pauseScreen: SAVE_AND_EXIT does not need to unfreeze (session is torn down)', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-pause' });
+  const resume = makeBtn({ onclick: 'resumeGame()' });
+  const save   = makeBtn({ onclick: 'savePauseAndHome()' });
+  elements.set('resume', resume); elements.set('save', save);
+  const root = { querySelector: () => overlay };
+  const signals = [];
+  bus.on('game/paused',  () => signals.push('freeze'));
+  bus.on('game/resumed', () => signals.push('unfreeze'));
+  mountPauseScreen({ root, bus });
+  bus.emit(PAUSE_OPEN, {});
+  save.fireClick();
+  assert.deepEqual(signals, ['freeze'], 'save/exit must NOT emit a stray unfreeze');
+});
+
 test('pauseScreen: each button emits its intent', () => {
   bus._reset();
   const { overlay, elements } = makeOverlay({ id: 'ov-pause' });

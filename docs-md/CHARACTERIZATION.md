@@ -176,7 +176,7 @@ Source: `presenceService.js`
 Source: `asyncSessionService.js`, `asyncReminderService.js`
 
 - Games indexed at `/users/{uid}/asyncRooms/{roomId}`
-- Sessions listed in `asyncSessionListScreen.js`
+- Sessions listed in `asyncGamesScreen.js` (the standalone "המשחקים שלי" screen)
 - Sort order: my-turn games first, then by `lastUpdated` descending
 - **24-hour reminder:** Push sent after 24h idle (to the player whose turn it is)
 - **7-day expiry:** Room status set to `'expired'`, push sent to both players

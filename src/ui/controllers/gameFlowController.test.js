@@ -129,6 +129,52 @@ test('settings changes update animation preference', () => {
   globalThis.localStorage = oldStorage;
 });
 
+test('end-button label swaps to "סיים / שמור" on offline game start, stays "סיום" online', () => {
+  bus._reset();
+  // The real wireButtons() strips the onclick attribute after mount, so the
+  // GAME_STARTED listener must use a reference cached at mount time, not a
+  // fresh selector lookup. We model that here by tracking removeAttribute
+  // calls on the button — the test fails if the controller tries to re-find
+  // the element by the (now-stripped) onclick attribute.
+  function makeEndBtn() {
+    const tx = { textContent: 'סיום', innerHTML: 'סיום' };
+    const btn = {
+      getAttribute: () => null, // onclick stripped post-mount
+      removeAttribute: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      querySelector: (sel) => sel === '.tb-tx' ? tx : null,
+    };
+    return { btn, tx };
+  }
+  function rootForBtn(btn) {
+    return {
+      querySelector: (sel) => sel === 'button[onclick="openEndMenu()"]' ? btn : null,
+      querySelectorAll: (sel) => sel === 'button[onclick="openEndMenu()"]' ? [btn] : [],
+      getElementById: () => null,
+    };
+  }
+  // Offline solo → label swaps.
+  let { btn, tx } = makeEndBtn();
+  createGameFlowController({ bus, root: rootForBtn(btn), activeGameRef: () => makeActiveGame() });
+  bus.emit(EV.GAME_STARTED, { mode: 'offline-solo' });
+  assert.equal(tx.innerHTML, 'סיים<br>/ שמור');
+
+  // Offline 2P → also swaps.
+  bus._reset();
+  ({ btn, tx } = makeEndBtn());
+  createGameFlowController({ bus, root: rootForBtn(btn), activeGameRef: () => makeActiveGame() });
+  bus.emit(EV.GAME_STARTED, { mode: 'offline-2p' });
+  assert.equal(tx.innerHTML, 'סיים<br>/ שמור');
+
+  // Online async → label stays "סיום".
+  bus._reset();
+  ({ btn, tx } = makeEndBtn());
+  createGameFlowController({ bus, root: rootForBtn(btn), activeGameRef: () => makeActiveGame() });
+  bus.emit(EV.GAME_STARTED, { mode: 'friend-async' });
+  assert.equal(tx.textContent, 'סיום');
+});
+
 test('pause and settings buttons emit overlay-open events', () => {
   bus._reset();
   const pause = makeEl();

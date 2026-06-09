@@ -59,6 +59,8 @@ export function summarizeForUid(room, uid, opts = {}) {
     opponentScore,
     turnNumber:   room.turnNumber ?? 1,
     lastUpdated:  room.updatedAt ?? room.createdAt ?? null,
+    lastReminderAt: room.lastReminderAt ?? null,
+    lastPokedAt:  room.lastPokedAt ?? null,
     createdAt:    room.createdAt ?? null,
   };
 }

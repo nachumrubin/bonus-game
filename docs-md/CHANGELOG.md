@@ -2,6 +2,534 @@
 
 ---
 
+## Dictionary v2 promoted to default + bot keeps legacy 40K vocabulary — June 2026
+
+Wraps up the dictionary v2 rollout.
+
+**v2 is now the default.** [src/main.js](../src/main.js) `dictionaryModeFromUrl()` flipped: every visitor gets the 63K curated dictionary unless they explicitly add `?dict=v1`. The legacy 40K stays in the build as a rollback for one release.
+
+**Bot vocabulary stays at the legacy 40K**, regardless of which mode the player sees. Rationale: the bot's candidate-list size affects perceived strength; if the bot suddenly gained access to thousands of new HSpell-derived inflections, "playing against the computer" would feel noticeably different overnight. Keeping the bot on a stable corpus means difficulty stays calibrated to what players are used to.
+
+Difficulty caps changed too:
+
+| Difficulty | Old | New |
+|---|---|---|
+| Easy (0)   | 7,000 (legacy only) | **5,000** (legacy) |
+| Medium (1) | full DICT | **20,000** (legacy) |
+| Hard (2)   | full DICT | **40,000** (legacy, full) |
+
+Old behavior had only two distinct strengths (easy at 7K, medium=hard at ~40K). New behavior has three. Players selecting medium should notice the bot is meaningfully easier than hard — previously they were the same.
+
+**Mechanism:**
+
+- New `hebrewDictionary.loadBotLegacyVocabularyOnce()` — fetches `data/dictionary.base.txt` (the legacy 40K, kept in the repo) on demand, caches in module state. Called once at boot from `ensureDictionaryLoaded` so the cache is hot before the user can pick bot mode.
+- New sync accessor `getBotLegacyVocabularyCached()` returns the cached array (or null pre-load).
+- [src/main.js](../src/main.js) bot wiring reads from the cached legacy list and applies the new caps. Falls back to `DICT` if the cache isn't ready yet (rare race; the bot still gets *something* to play).
+- **Validation still uses `isValid()`** which goes through v2. So the bot picks from a 40K candidate universe but every pick passes the 63K-word validator — strict superset means no surprise rejections of bot moves.
+
+**Tests:** all 177 unit + 49 dictionary-related still pass.
+
+**No Firebase changes.**
+
+**Rollback:**
+- `?dict=v1` reverts the dictionary for an individual visitor.
+- Reverting this commit reverts the default flip. The bot-vocabulary change is independent and can be kept.
+
+---
+
+## Dictionary cleanup: remove the legacy suggest→review pipeline — June 2026
+
+Removed the dead code flagged in the previous three June 2026 entries (suggest panel → admin queue → direct add/remove). All of this was reachable only through the `🔐 הגדרות מתקדמות` button, which was deleted last commit.
+
+**Files deleted (3):**
+
+- `partials/screens/admin-login-overlay.html`
+- `partials/screens/admin-advanced-settings-overlay.html`
+- `partials/screens/admin-confirm-decision-overlay.html`
+
+**Files trimmed:**
+
+- [src/ui/screenPartialManifest.js](../src/ui/screenPartialManifest.js) — removed the 3 deleted overlay entries.
+- [src/game/account/dictionaryService.js](../src/game/account/dictionaryService.js) — removed `DICTIONARY_SUGGESTIONS_PATH`, `buildPendingSuggestions`, `submitDictionarySuggestions`, `submitDictionaryRemovalSuggestions`, `listPendingDictionarySuggestions`, `applyDictionaryDecision`. Module went from ~270 lines to ~150.
+- [src/game/account/dictionaryService.test.js](../src/game/account/dictionaryService.test.js) — removed tests for the deleted functions.
+- [src/ui/screens/dictionaryScreen.js](../src/ui/screens/dictionaryScreen.js) — removed `buildAdminSuggestionsHtml`, the `OPEN_ADMIN_LOGIN` / `ADMIN_SIGN_IN` / `ADMIN_SIGN_OUT` / `ADMIN_CLOSE` / `ADMIN_APPROVE` / `ADMIN_REJECT` / `ADMIN_CONFIRM` / `ADMIN_CANCEL` intent constants; the `ADMIN_LOGIN_ERROR` / `ADMIN_OPEN` / `ADMIN_RENDER` / `ADMIN_CONFIRM` render constants; the corresponding `patchClick` and `bus.on` wiring; the `signIn` / `requestDecision` helpers; the overlay refs and the password-input keydown handler. Module went from ~265 lines to ~125.
+- [src/ui/screens/dictionaryScreen.test.js](../src/ui/screens/dictionaryScreen.test.js) — removed admin queue tests + the makeRoot scaffold for the removed overlays.
+- [src/main.js](../src/main.js) — removed `dictAdminAuthed` / `dictAdminSuggestions` / `dictRecentlyProcessedWords` state; the `ADMIN_SIGN_IN` / `ADMIN_SIGN_OUT` / `ADMIN_APPROVE` / `ADMIN_REJECT` / `ADMIN_CONFIRM` intent handlers; the `refreshDictionaryAdminSuggestions` helper; the `verifyDictionaryAdminPassword` SHA-256 function (no longer needed — the panel itself is admin-gated via `admins/{uid}` lookup).
+- [tests/unit/engine-parity-highrisk.test.js](../tests/unit/engine-parity-highrisk.test.js) — removed the legacy dictionary admin parity row.
+- [firebase.database.rules.json](../firebase.database.rules.json) — removed the `dictionarySuggestions` path rules. Existing `dictionaryApproved` / `dictionaryRejected` rules unchanged.
+- [tests/unit/firebase-rules.test.js](../tests/unit/firebase-rules.test.js) — updated the dictionary-moderation rule test to assert `dictionarySuggestions` is *absent* (regression guard against the path being reintroduced).
+
+**Tests:** `npm run test:unit` 177/177 passing (was 178 — minus the one legacy parity row I removed).
+
+**Firebase impact:** the `/dictionarySuggestions` path can now be cleared from the live database. The rule removal means no one can write there anymore (no path rule = default-deny). Existing entries (if any) become unreachable, which is the intent.
+
+**Optional follow-up:** if any pre-existing `/dictionarySuggestions` entries are in prod, an admin can `firebase database:remove` the path now that the runtime no longer references it.
+
+---
+
+## Dictionary admin: collapse suggest+review into one-step add/remove — June 2026
+
+Same day follow-up. With the panel now scoped to admins only, the suggest→review pipeline became a redundant double click. Collapsed into single-step direct action.
+
+**UI changes** ([partials/screens/settings.html](../partials/screens/settings.html)):
+
+- Buttons: `📨 שלח הצעה` → `➕ הוסף למילון` (green); `🗑️ שלח הצעת הסרה` → `🗑️ הסר מהמילון` (red).
+- Removed: the `🔐 הגדרות מתקדמות` button (and its divider above). The admin-review overlay is no longer reachable from the UI.
+- Tooltip: panel title hint now says "השינוי מיידי" (effect is immediate) instead of "ההצעות יעברו לאישור מנהל" (suggestions will go to admin approval).
+
+**Service changes** ([dictionaryService.js](../src/game/account/dictionaryService.js)):
+
+- New `addWordsToDictionary(db, { words, ... })` — writes each word directly to `/dictionaryApproved`. Skips words that are already approved or currently blocked (admin must unblock before re-adding).
+- New `removeWordsFromDictionary(db, { words, isValidWord, ... })` — validates each word is currently valid; writes a `/dictionaryRejected` entry with `source: 'admin-direct-remove'`; also strips the word from `/dictionaryApproved` if it was there (otherwise the boot approved-sync would re-add it next session).
+
+**Intent handlers** ([src/main.js](../src/main.js)):
+
+- `DICT_INTENT.SUBMIT_SUGGEST` now calls `addWordsToDictionary` instead of `submitDictionarySuggestions`. Mutates runtime `DICT` immediately on success so the new word is playable without a reload.
+- `DICT_INTENT.SUBMIT_REMOVAL` now calls `removeWordsFromDictionary` instead of `submitDictionaryRemovalSuggestions`. Mutates runtime `BLOCKED_OVERLAY` immediately so the word becomes invalid without a reload.
+- Status messages updated: "נשלחה לבדיקה" → "נוספה למילון" / "הוסרה מהמילון".
+
+**Tests:** 6 new tests in [dictionaryService.test.js](../src/game/account/dictionaryService.test.js) covering the new direct functions. All 178 unit tests still pass.
+
+**No Firebase rule changes.** Both `/dictionaryApproved` and `/dictionaryRejected` already enforce `admins/{auth.uid} === true` for writes.
+
+**Dead code (cleanup follow-up):** the following are no longer reachable from the new UI but were left in place to keep the diff focused. A follow-up commit should remove them once we're sure the new flow is stable:
+
+- `submitDictionarySuggestions`, `submitDictionaryRemovalSuggestions`, `applyDictionaryDecision`, `listPendingDictionarySuggestions`, `buildPendingSuggestions` in [dictionaryService.js](../src/game/account/dictionaryService.js)
+- Their corresponding tests
+- The admin-login + admin-review-queue overlay HTML in [partials/screens/](../partials/screens/) — overlay IDs `#ov-dict-login`, `#ov-dict-admin`, `#ov-dict-confirm`
+- The `DICT_INTENT.OPEN_ADMIN_LOGIN`, `ADMIN_SIGN_IN`, `ADMIN_APPROVE`, `ADMIN_REJECT`, `ADMIN_CONFIRM`, `ADMIN_CANCEL`, `ADMIN_SIGN_OUT` constants and their handlers
+- The `DICT_RENDER.ADMIN_OPEN`, `ADMIN_RENDER`, `ADMIN_CONFIRM`, `ADMIN_LOGIN_ERROR` constants and their renderers
+- The `patchClick`s in `dictionaryScreen.js` for buttons that no longer exist (they're no-ops because `querySelector` returns null — harmless)
+- The 'type' field semantics in `/dictionarySuggestions` (path no longer written to)
+
+---
+
+## Dictionary admin queue: type-aware decisions + runtime block-overlay — June 2026
+
+Follow-up to the "suggest a word to remove" feature (same day). The previous commit added the new path but the admin queue would still write "approve" of a remove-suggestion to `/dictionaryApproved` — opposite of intent. This commit completes the round trip:
+
+- **Add/remove badge in the admin queue** — each row now shows a colored pill (`➕ הוספה` green, `🗑️ הסרה` red) derived from `item.type`. Legacy entries without a type default to `add`. See [buildAdminSuggestionsHtml](../src/ui/screens/dictionaryScreen.js) at line ~35.
+- **Type-aware decision routing in [applyDictionaryDecision](../src/game/account/dictionaryService.js).** The destination write now depends on `(type, action)`:
+
+  | type | action | destination |
+  |---|---|---|
+  | `add` | `approve` | `/dictionaryApproved` (existing) |
+  | `add` | `reject` | `/dictionaryRejected` with `source: 'add-rejected'` |
+  | `remove` | `approve` | `/dictionaryRejected` with `source: 'remove-approved'` |
+  | `remove` | `reject` | (no destination write — suggestion just closes) |
+
+  Same word can be selected as both add and remove in one batch; the bucket key is `(word, type)` so each routes independently.
+- **Runtime block-overlay.** New exported `BLOCKED_OVERLAY` Set in [hebrewDictionary.js](../src/game/core/hebrewDictionary.js). Populated at boot by the new `syncBlockedDictionaryWordsOnce(db, set)` in dictionaryService.js, which reads `/dictionaryRejected`. Both v1 and v2 `isValid()` consult it before any positive lookup — a blocked word always rejects even if it's in DICT, the DAWG, or an approved-overlay entry. Mirrors the existing `syncApprovedDictionaryWordsOnce` pattern.
+- **Boot wiring in [main.js](../src/main.js):** the existing approved-sync block now also calls `syncBlockedDictionaryWordsOnce`. One additional `.get()` per session.
+
+**Tests:** 6 new tests in [dictionaryService.test.js](../src/game/account/dictionaryService.test.js) (remove-approve routing, remove-reject no-write, add-reject regression, sync populates, end-to-end isValid rejects a synced block, badge contents). All 178 unit tests still pass.
+
+**No Firebase rule changes.** `/dictionaryRejected` already exists with admin-write rules; we're just storing more `source` metadata in entries (a permissive schema field, no rule change needed).
+
+**Semantics note:** the `/dictionaryRejected` path now mixes two kinds of entries:
+- `source: 'add-rejected'` — suggestion to add was denied; word was never valid (no runtime effect today, was implicit before).
+- `source: 'remove-approved'` — admin approved a removal of a valid word; word is now blocked at runtime.
+
+Both kinds populate `BLOCKED_OVERLAY`. The former is a no-op (word wasn't valid anyway); the latter is the new gameplay-affecting case.
+
+---
+
+## Dictionary "suggest a word to remove" + admin-only suggestion panel — June 2026
+
+Players could already suggest words to ADD to the dictionary via the settings screen (`📨 שלח הצעה`). Two changes:
+
+1. **New "suggest a word to remove" feature.** Mirrors the add flow. Admin clicks the new "🗑️ שלח הצעת הסרה" button with a list of comma-separated words; each word is validated client-side via `isValid()` so only words currently in the dictionary can be submitted (prevents pollution of the admin review queue with non-existent words). Submissions land in `/dictionarySuggestions` with `type: 'remove'`.
+2. **Entire "ניהול מילון" panel is now admin-only.** Previously the add-suggestion input + button were visible to all users and only the deeper "🔐 הגדרות מתקדמות" admin button was hidden. Now the whole panel is hidden unless the signed-in user's UID has `admins/{uid} === true` in Firebase. Non-admins still see the שאילתה (word check) panel above it.
+
+**Files:**
+
+- [partials/screens/settings.html](../partials/screens/settings.html) — wrapped panel in `id="dict-mgmt-panel"` (default `display:none`); added a remove-suggestion input (`dict-remove-input`) + button + status div (`dict-remove-status`) below a divider.
+- [src/main.js](../src/main.js) — renamed `setDictAdvancedBtnVisible` → `setDictMgmtVisible` (toggles the whole panel now). Added `DICT_INTENT.SUBMIT_REMOVAL` handler that injects `hebrewDictionary.isValid` as the validator predicate.
+- [src/game/account/dictionaryService.js](../src/game/account/dictionaryService.js) — new `submitDictionaryRemovalSuggestions(db, { words, isValidWord, ... })`. Writes `type: 'remove'` to `/dictionarySuggestions`. Existing `submitDictionarySuggestions` now writes `type: 'add'` explicitly. `buildPendingSuggestions` surfaces the type (missing field = legacy `'add'` for back-compat) and no longer gates remove-suggestions on approval status.
+- [src/ui/screens/dictionaryScreen.js](../src/ui/screens/dictionaryScreen.js) — new intent `SUBMIT_REMOVAL` and render constant `REMOVAL_STATUS`. New `submitRemovalSuggestions()` function; new button click handler; new render handler painting status into `dict-remove-status`.
+
+**Tests:** 5 new in [dictionaryService.test.js](../src/game/account/dictionaryService.test.js) (write-only-if-valid, all-skipped path, missing-predicate error, type field surfaced, approval doesn't gate removals). 2 new in [dictionaryScreen.test.js](../src/ui/screens/dictionaryScreen.test.js) (button emits SUBMIT_REMOVAL, render writes to status div). All 178 unit tests still pass.
+
+**No Firebase rule changes.** The new `type` field is permissive under existing `/dictionarySuggestions` rules (auth required, schema is open by design). No emulator-test churn.
+
+**No breaking changes.** Existing suggestions without a `type` field are treated as `'add'` so legacy entries in the live queue render correctly under the new admin UI.
+
+---
+
+## Dictionary v2 — DAWG-encoded curated lexicon (behind `?dict=v2` flag) — June 2026
+
+The 40K-entry `data/dictionary.base.txt` is the long pole on "this word should be valid but the game rejected it" complaints. Replacing the list end-to-end is a multi-week effort (HSpell build + Wiktionary/Wikipedia corroboration + native-speaker review). This commit lands the **runtime swap + the build pipeline scaffolding** so the data work can proceed independently.
+
+**Runtime changes** (gated by `?dict=v2`; legacy path is the default and unchanged):
+
+- New [src/game/core/dawg.js](../src/game/core/dawg.js) — pure-JS minimal DAWG encoder + decoder. Build uses Daciuk's incremental construction (sorted input, suffix sharing). Format v1: header + per-node offset table + sequential `[flags, edgeCount, (u16 char, u32 target) × N]` payload. The full 40K Hebrew dictionary fits in **235 KB binary** vs 454 KB plaintext — and that's before the new lexicon's morphological-overlap savings kick in.
+- New `loadDictV2(url)` / `setDictionaryMode('v1' | 'v2')` / `isValidV2(word)` in [src/game/core/hebrewDictionary.js](../src/game/core/hebrewDictionary.js). v2 path: clean Hebrew letters → EXACT_REJECTS short-circuit → CLASSIC_ALLOW / DEFECTIVE_ACCEPT short-circuit → DAWG lookup with terminal-final variants → DICT approved-overlay fallback. **No morphological fallback chain** — the curated lexicon ships inflected forms directly, so suffix stripping becomes dead code in v2. Sync, returns boolean — same contract as legacy.
+- [src/main.js](../src/main.js) reads `?dict=v2` from `location.search` and calls `loadDictV2()` instead of `loadDict()`. Legacy callers untouched.
+- `data/dictionary.v2.bin` + `data/dictionary.v2.meta.json` shipped in the repo. **First built end-to-end on June 9, 2026** from HSpell 1.4 (Debian source mirror) → 147,917 curated words → 8,958-node DAWG → 290 KB binary. Pipeline metrics on first build: 60/60 gold-positive (100%), 0/19 gold-negative (0% leak), 0 legacy losses, 126 EXACT_REJECTS intentionally stripped.
+- `EXACT_REJECTS` extended with two entries discovered during the build: `ירושלים` (proper noun in HSpell) and `עליי` (plene spelling of existing `עלי`).
+
+**Build pipeline scaffolding** at [tools/dictionary-build/](../tools/dictionary-build/) (not yet run end-to-end — needs WSL/Linux for HSpell):
+
+- `01-fetch-hspell.sh` clones + builds HSpell 1.4. `02-enumerate.js` dumps surface forms.
+- `03a-extract-lemmas.js` parses `wolig.dat` into a lemma + paradigm TSV.
+- `03b-corroborate-lemmas.js` cross-checks against Wiktionary, Wikipedia frequency (≥ 5), legacy 40K, Academy decisions. Auto-accept requires ≥ 2 sources with at least one non-HSpell corroborator.
+- `03c-filter-lemmas.js` applies categorical blacklists: manual-reject, policy (slurs), brand, archaic, HSpell proper-noun/foreign/Aramaic tags, short-word minimum corroboration. Every drop is logged with its rule.
+- `03d-inflect.js` generates surface forms via paradigms whitelisted in `config/paradigms-allowed.yaml` (nouns/adj/verbs without pronoun-suffix forms; no prefix combinations).
+- `04-review-queue.js` emits unreviewed lemmas as CSV for native-speaker grading. Decisions persist in `review/manual-decisions.tsv` across rebuilds.
+- `05-merge-and-gate.js` unions paradigm output + legacy + manual accepts, applies EXACT_REJECTS, then runs hard gates: word-count bounds, ≤ 0.5% legacy loss, gold-positive ≥ 99%, gold-negative ≤ 2%. Build fails on any gate trip.
+- `06-encode.js` DAWGs the curated list. `--from-legacy` flag re-encodes the existing 40K (how the placeholder binary was built).
+
+**Tests** ([src/game/core/dawg.test.js](../src/game/core/dawg.test.js) + extensions to [src/game/core/hebrewDictionary.test.js](../src/game/core/hebrewDictionary.test.js)):
+
+- 11 DAWG tests: round-trip on the full 40K (100% recovery), iteration order, size budget (< 300 KB), error paths.
+- 12 new v2 dictionary tests: exact-hit, no-morphology-fallback, terminal-final variants, every EXACT_REJECTS rejects, every CLASSIC_ALLOW / DEFECTIVE_ACCEPT accepts even when absent from the DAWG, Firebase approved overlay, empty/non-Hebrew rejection, mode-switch hygiene, and a load test against the actual shipped `data/dictionary.v2.bin`.
+- `npm run test:unit` stays at 178/178 passing — legacy path completely untouched.
+
+**Hard-rule compliance** ([docs-md/CLAUDE.md](CLAUDE.md)):
+
+- `EXACT_REJECTS`, `CLASSIC_ALLOW`, `DEFECTIVE_ACCEPT` sets preserved — and now actively enforced in the v2 `isValid()` (the v1 path only used them in the morphology chain).
+- `isValid()` contract preserved: synchronous, returns boolean. Mode branch happens internally.
+- `data/dictionary.base.txt` untouched — legacy path still loads it.
+- No event/command renames, no Firebase rule changes, no DOM ID changes.
+
+**Open follow-ups** (tracked in TASKS.md):
+
+- Produce a real HSpell-derived curated lexicon and rebuild `dictionary.v2.bin`.
+- Get legal sign-off on HSpell GPLv2 (see [tools/dictionary-build/LICENSE.md](../tools/dictionary-build/LICENSE.md)).
+- Seed `gold-positive.txt` from real player-rejection logs once the canary ships.
+- Flip default to v2 once gated rollout shows no regressions; then delete `dictionary.base.txt` and the v1 path.
+
+See [the plan](../../.claude/plans/the-biggest-problem-with-twinkly-canyon.md) for the full multi-phase design.
+
+---
+
+## App boot loader v2: animated בוסט tile-drop + lightning sweep — June 2026
+
+Replaced the static logo + spinner with a polished game-style loader that matches the word-game identity. Pure CSS animations (no JS for the visuals), feels native to the brand.
+
+**Animation sequence (2800 ms cycle, infinite)**
+
+| t (ms) | event |
+|---|---|
+| 0   | tile **ב** starts falling from above (right-most in RTL) |
+| 180 | tile **ו** starts falling |
+| 360 | tile **ס** starts falling |
+| 540 | tile **ט** starts falling (left-most in RTL) |
+| ~930 | all four tiles settled with bounce + soft gold glow |
+| ~960 | horizontal lightning bolt sweeps across the row, left → right |
+| ~1060 | tiles flash bright white from the strike, then settle back to gold |
+| ~2400 | tiles tilt + fade upward, ready for the next loop |
+
+The bolt has the **same 2800 ms duration as each tile** and uses `animation-delay: 540ms` (matching the last tile's drop offset), so the strike always lands right after the last tile's bounce — across every loop, no drift.
+
+**Hebrew tile values** are the real Scrabble values from `letterDistribution.js`: ב=3, ו=1, ס=5, ט=4. Tiny number in the bottom-right corner of each tile completes the Scrabble-tile look.
+
+**RTL correctness** — DOM order is ב,ו,ס,ט inside a `flex-direction: row` container. Under the page's inherited `dir="rtl"` this renders right-to-left as **בוסט**.
+
+**Loading text rotates** through `מתחבר... → טוען נתונים... → מכין מילים... → כמעט מוכן...` every 1.4 s with a 220 ms fade. Stops when the loader hides.
+
+**Files**
+
+- [index.html](index.html) — loader markup replaced: four `.app-loading-tile` divs (with `.t-letter` + `.t-val` spans), one `.app-loading-bolt` div, and a `.app-loading-text` element ID'd `app-loading-text`.
+- [styles.css](styles.css) — `.app-loading-*` section rewritten:
+  - `.app-loading-tile` keyframes `app-loading-tile-cycle` cover drop → bounce → settled → lightning flash → fade up
+  - `.app-loading-bolt` keyframes `app-loading-bolt-strike` cover the horizontal sweep with translate+scale+opacity transitions
+  - Responsive overrides at `max-height: 640px` and `max-width: 360px` shrink tile size for short / narrow phones
+  - `padding-top: env(safe-area-inset-top)` honours notch insets on installed PWAs
+- [src/main.js](src/main.js) — `wireAppLoading` IIFE extended with a `setInterval` that rotates the four Hebrew loading messages while the loader is visible. The interval is `clearInterval`'d when the loader hides.
+
+**Hide trigger unchanged from v1** — first `MENU_REFRESH` carrying `isAuthed: true|false` hides the loader; 6 s safety timeout as a fallback; the element is `.remove()`d after the 0.6 s fade.
+
+**Screenshot** at [images/guide/app-loading.png](images/guide/app-loading.png), captured by [tests/e2e/capture-app-loading.spec.js](tests/e2e/capture-app-loading.spec.js) at the moment just after all four tiles have landed.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## App boot loader — June 2026
+
+Cover the menu screen with a full-viewport loader until Firebase auth resolves, so the user never sees the "partial menu" (no bottom-nav, no bell, generic person icon) during the ~1-2 s auth round-trip.
+
+- [index.html](index.html) — `<div id="app-loading">` is the very first child of `<body>`, visible at first paint. Markup: a `בוסט` wordmark in brand gold, a small CSS-only spinner, and "טוען...". No JS needed to show it.
+- [styles.css](styles.css) — new `.app-loading` block at the bottom: full overlay with the brand navy gradient backdrop (`radial-gradient(ellipse at 50% 30%, #15296b 0%, #04081a 70%)`), `z-index: 99999`, fade-out transition on `.is-hidden`. Includes the pulse animation on the wordmark and a 36 px rotating ring spinner.
+- [src/main.js](src/main.js) — `wireAppLoading` IIFE right after the "spine ready" log subscribes to `MENU_REFRESH` and hides the overlay on the first event that carries `isAuthed: true|false`. That signal fires from two places: the sign-in path (`profileService.read` → `bus.emit(MENU_REFRESH, { isAuthed, displayName, rating, avatar })`) and the sign-out / no-cached-auth path (`teardownCrossCuttingAuth → bus.emit(MENU_REFRESH, { isAuthed: false, displayName: '' })`). A 6 s safety timeout hides the overlay regardless so a silent Firebase init failure can't trap the user on the loader forever. After the fade transition the overlay is `.remove()`d so it can't intercept clicks.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Setup: "פעיל" (show both racks) now actually shows both racks — June 2026
+
+The toggle in setup wrote `state.settings.showBothRacks` but nothing read it — the rack render always showed only the current-turn rack. Wired it through end-to-end.
+
+- [src/ui/controllers/gameController.js](src/ui/controllers/gameController.js) `syncFromState` — when `mySlot == null` AND `state.settings.showBothRacks` AND `mode === 'offline-2p'` AND `currentTurnSlot ∈ {0,1}`, exposes `view.rackForOpponent` = `state.racks[1 - currentTurnSlot]`, plus `opponentSlot` and `opponentName`. Defensive guards: bot games never reveal the bot's rack (setup also forces `showBothRacks: false` for `mode === 'bot'`); online games (`mySlot != null`) likewise — wouldn't make sense to leak the opponent's tiles.
+- [src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js) — new `renderBrack2(v)` paints into the legacy `#brack2` slot (now visible) with read-only tiles. Called from inside `renderRack` so it stays in sync with every rack update.
+- [partials/screens/game.html](partials/screens/game.html) — moved `#brack2-row` to sit ABOVE `.bot` instead of below it, so the inactive rack appears just above the active player's rack when shown.
+- [styles.css](styles.css) — `.brack2-row` styled as a dimmed (`opacity:.78`) read-only strip with a small label ("מגש {opponentName}") and tiles scaled to `transform:scale(.72)` so they read as "peek" rather than "interactive".
+
+When `showBothRacks: false` (the default — "כבוי"), `rackForOpponent` is `null` and `renderBrack2` hides `#brack2-row`, restoring the original privacy mode.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Remove the active-games strip from the online lobby — June 2026
+
+The "המשחקים שלי" standalone screen + the home-nav bubble fully replace the lobby's small strip of active rooms. Stripped the duplicate UI.
+
+- [partials/screens/online-lobby.html](partials/screens/online-lobby.html) — removed `<div id="online-sessions-wrap">`
+- [src/main.js](src/main.js) — removed the `mountAsyncSessionListScreen` import + mount + `__spine.asyncSessionList` global; removed the `AS_INTENT`/`AS_RENDER` imports + re-export + the `bus.emit(AS_RENDER, ...)` call + the `bus.on(AS_INTENT.RESUME/DISMISS)` handlers (My Games uses MG_INTENT, asyncReminderService can still call `asyncSessionService.dismissForUid` directly when needed)
+- Deleted `src/ui/screens/asyncSessionListScreen.js` and its test file — the module had no remaining consumers
+- Docs: [docs-md/FILE_INDEX.md](docs-md/FILE_INDEX.md) and [docs-md/CHARACTERIZATION.md](docs-md/CHARACTERIZATION.md) updated to point at `asyncGamesScreen.js` instead
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## My Games nav-bubble: recompute when the local-save state flips (save-and-exit, game-end) — June 2026
+
+User saved a vs-Bot game via "צא לתפריט", returned to the home screen, and the bottom-nav 🎮 bubble didn't increment to count the new saved game.
+
+Cause: [gameFlowController.js](src/ui/controllers/gameFlowController.js) emits `MENU_REFRESH` with `{ hasSavedGame: true }` after a successful save (and `{ hasSavedGame: false }` after a game ends). It can't include `myGamesCount` because it has no access to the async-watcher's `lastSessions`. The menuScreen's render skips updates that don't carry `myGamesCount`, so the badge stayed stale.
+
+Fix in [src/main.js](src/main.js):
+- Extracted `computeMyGamesCount()` helper — single source of truth for the bubble count (`lastSessions.filter(s => !s.isExpired).length + (hasLocalSavedGame(localStorage) ? 1 : 0)`). The async watcher and the post-mount seed both call it now.
+- Added a `MENU_REFRESH` listener: when an incoming payload carries `hasSavedGame` but no `myGamesCount`, recompute and emit a follow-up `MENU_REFRESH` with the fresh count. The follow-up DOES include `myGamesCount`, so the listener's guard (`!('myGamesCount' in payload)`) prevents it from re-triggering — no infinite loop.
+
+Covers: save-and-exit (`hasSavedGame: true`), game-completed cleanup (`hasSavedGame: false`), and any future emitters that signal save-state changes the same way.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## My Games nav-bubble: seed on mount so it's correct without opening the screen — June 2026
+
+User reported the new home-nav 🎮 badge "updates only after entering the My Games screen". Cause is an event-listener race in [src/main.js](src/main.js):
+
+- The async-sessions watcher is started inside `bootAsyncSessionsFor`, called from the auth-event handler (line 370).
+- If Firebase has cached data from the previous session, the watcher's initial `'value'` callback can fire **synchronously during subscribe** — before `mountMenuScreen` runs (line 3016). The `MENU_REFRESH` it emits reaches no listener, and the badge stays at its partial default (`display:none`).
+- Later when the user opens "המשחקים שלי", `refreshMyGamesList` re-emits `MENU_REFRESH` and the badge finally paints.
+
+Fix: immediately after `mountMenuScreen`, emit a one-shot `MENU_REFRESH` with the count we can compute synchronously — `lastSessions.filter(s => !s.isExpired).length + (hasLocalSavedGame ? 1 : 0)`. The watcher's earlier write to `lastSessions` (if it fired synchronously) is captured here; if it fired async and runs later, its own `MENU_REFRESH` will overwrite. Either way the badge is correct from first paint.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Open-games count moves from the My Games screen title to a bubble on the home-nav button — June 2026
+
+The "(N)" pill next to "המשחקים שלי" in the screen header was hidden until you'd already opened the screen — at which point the count was redundant. Moved it to a bubble on the **bottom-nav button** so the count is visible from the home screen before you decide to navigate.
+
+- Removed `<span class="mg-count" id="mg-count">` from [partials/screens/async-games-screen.html](partials/screens/async-games-screen.html) and the related update path in [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) (also dropped the now-unused `setText` import and the legacy badge test).
+- Added `<span class="em-nav-badge" id="mg-nav-badge">` to the "המשחקים שלי" bottom-nav button in [partials/screens/home.html](partials/screens/home.html). Styled in [menu-electric.css](menu-electric.css) as a red 16 px circle (`#e74c3c`, same hue as the topbar notification badge) positioned on the upper-right of the 🎮 glyph.
+- [src/main.js](src/main.js) now emits `MENU_REFRESH` with a new `myGamesCount` field. The async watcher emits `lastSessions.length + (hasLocalSavedGame ? 1 : 0)` (expired rooms are filtered out by `watchAsyncSessions` already). `refreshMyGamesList` also emits — but using the non-expired filter on the *full* list, so a dismiss / save-and-exit updates the bubble immediately without waiting for the Firebase round-trip.
+- [src/ui/screens/menuScreen.js](src/ui/screens/menuScreen.js) `render()` paints `#mg-nav-badge`: hide when 0, show the number otherwise. A `null`/`undefined` value means "no change this render" so unrelated `MENU_REFRESH` events (display-name updates, share-button toggles, etc.) don't accidentally clear the bubble.
+- Tests: removed the old screen-header-count test; added a new case in [src/ui/screens/menuScreen.test.js](src/ui/screens/menuScreen.test.js) covering missing/3/0 payloads.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Disabled שחק: override the global `aria-disabled` pointer-events:none — June 2026
+
+User reported the "תור היריב" tooltip wasn't firing in the live app, even though the unit test passed. The JS was right — the CSS was eating the click. A **global** rule at [styles.css:2033](styles.css#L2033) (added previously to neutralise the bot's rack while it thinks) sets `pointer-events: none` on any `button[aria-disabled="true"]` element. My delegated click handler never received the event because the click was being blocked before it could bubble.
+
+Unit tests didn't catch this because the test fixture uses a plain object button — no CSS engine, no `pointer-events`. Browsers, however, honour it.
+
+Fix in [styles.css](styles.css): added a `#smygames`-scoped override that restores `pointer-events: auto` and a pointer cursor on the disabled שחק button. Opacity / saturate from the global rule still cascade through (which gives us the dimmed look) — only the click-blocking is reversed for this specific button.
+
+A comment in the override block explicitly calls out the global rule it's overriding, so future me doesn't break it again.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## My Games: toast feedback — "תור היריב" tooltip on disabled שחק, "היריב קיבל דחיפה" on poke — June 2026
+
+Two UX touches on the cards.
+
+**1. Disabled שחק now shows a tooltip on click.** The opponent-turn שחק button used the HTML `disabled` attribute, which silently swallowed clicks. Players tapping it saw nothing happen. Now the button uses ONLY `aria-disabled="true"` plus a `.is-disabled` class — clicks fire, and the screen's click delegation detects the aria-disabled state and pops a transient "זה תור היריב — חכה לתשובה" toast at the bottom of the screen for ~1.8 s instead of dispatching `MG_INTENT.RESUME`.
+
+**2. The poke button shows a confirmation.** Clicking 👋 now displays a green "היריב קיבל דחיפה 👋" toast immediately. It's optimistic — fires on click without waiting for the round-trip — because the screen module doesn't have a signal back from the main.js push handler. The handler still logs on send failure; the toast just confirms the intent landed.
+
+**Implementation**
+- [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) — new `showToast(text, kind)` helper that creates a single floater appended to `#smygames`, reuses it across clicks, auto-clears after `TOAST_MS = 1800`. Cleaned up on `unmount()`. Click delegation now checks `aria-disabled` before dispatching and emits the right toast for poke clicks.
+- [styles.css](styles.css) — `.mg-toast` styled as a bottom-pinned pill with two kind modifiers (`--ok` green, `--info` blue), slide-up fade transition, `position:fixed; bottom:24px`. `.mg-play` switched from `[disabled]` selectors to `.is-disabled` to match the new markup; `cursor` relaxed from `not-allowed` to `default` since clicks now do something useful.
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — fixture grew a `createElement`/`removeChild`-capable fake screen; two new test cases: disabled שחק click does not dispatch RESUME and produces an info toast; poke click both dispatches POKE and produces an ok toast.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Poke handler: split the two timestamp writes so the cron-suppression survives the un-deployed `lastPokedAt` rule — June 2026
+
+User hit `PERMISSION_DENIED` clicking the 👋 button after the v2 split. Cause: the previous handler wrote both fields in one atomic `update({ lastPokedAt, lastReminderAt })`, and `lastPokedAt`'s rule isn't deployed yet — the server rejected the whole transaction, so neither field landed. The push went out before the rejected write so the opponent got their notification, but the dedup state stayed stale.
+
+Fix in [src/main.js](src/main.js): split the stamps into two separate `.update()` calls.
+- `lastReminderAt` first — the rule for this field has been deployed for months, so this always succeeds and the cron is correctly suppressed for 24 h.
+- `lastPokedAt` second — silently fails until the rules are redeployed. The log line includes "(deploy the new lastPokedAt rule)" as a hint.
+
+After running `firebase deploy --only database` both writes succeed and the manual button hides for 24 h as designed. Until then the manual button still reappears immediately after a click, but the opponent at least isn't double-pushed by the cron.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Poke button v2: decouple from cron's `lastReminderAt` so it always appears when expected — June 2026
+
+User reported the 👋 button wasn't showing on a card where it clearly should — opponent's turn for 1+ day, no prior manual click. Root cause: the previous build gated `canPoke` on `room.lastReminderAt`, the same field the auto-cron reminder sweep writes. When the app boots, [src/main.js](src/main.js) opportunistically calls `asyncReminderService.sweepForUser`, which pushes reminders for any 24-h-idle async room AND stamps `lastReminderAt = now`. The very next paint of "My Games" then had `canPoke()` return `false` because of that fresh stamp — so the button got hidden for a full day even though the user had never manually clicked.
+
+**Fix:** decouple. Introduce a separate `lastPokedAt` field that ONLY the manual button writes. The cron continues to write `lastReminderAt` only.
+
+- [firebase.database.rules.json](firebase.database.rules.json) — new `lastPokedAt` write rule, same auth condition as `lastReminderAt` (either player in the room). **Rules change**: needs deploy + `npm run test:emulator` before pushing to prod.
+- [src/game/online/asyncSessionService.js](src/game/online/asyncSessionService.js) — `summarizeForUid` now surfaces both `lastReminderAt` and `lastPokedAt`.
+- [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) — `canPoke` now keys on `lastPokedAt`; comment explains why the cron field is deliberately ignored.
+- [src/main.js](src/main.js) — `MG_INTENT.POKE` handler now writes BOTH fields atomically: `lastPokedAt` so the manual button hides for 24 h, and `lastReminderAt` so the cron doesn't double-push the opponent in the same window. The opponent still gets exactly one notification per 24 h period regardless of channel.
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — added a regression test that explicitly asserts `lastReminderAt: now - 1h` does NOT hide the button when `lastPokedAt` is null; `canPoke` matrix updated to check the new field.
+
+`npm run test:unit` — 178/178 pass. Emulator tests not re-run (no emulator runtime in this session); the new rule mirrors `lastReminderAt`'s existing rule one-for-one, so the same coverage applies — but it's worth a separate emulator pass before deploying.
+
+---
+
+## My Games: 👋 poke button on opponent-turn cards (24h cooldown, shares dedup with auto-cron) — June 2026
+
+Added a manual reminder-push button to each opponent-turn card so the player can nudge an idle opponent on demand instead of waiting for the next 24-hour automatic sweep.
+
+**Behaviour**
+- The 👋 button sits after the שחק button (visually to its left in RTL) on opponent-turn, non-expired, non-local cards only. My-turn cards have no poke (would poke yourself); expired and local cards likewise.
+- Clicking pushes `KIND.REMINDER` to the opponent (same payload `notificationService.pushReminder` uses for the cron sweep) and stamps `room.lastReminderAt = Date.now()` via a direct `db.ref('rooms/{id}').update({ lastReminderAt })`. Existing rules already permit either player to write that field.
+- The button then disappears for 24 hours — the same `lastReminderAt` field gates [src/game/online/asyncReminderService.js](src/game/online/asyncReminderService.js) `classify()`, so a manual poke also suppresses the next auto-cron reminder for the same window (and vice-versa). The opponent never gets a double-nag.
+- `lastReminderAt` is only written if the push send resolves — a failed push leaves the field unchanged so the user can retry without waiting 24 h.
+
+**Files**
+- [src/game/online/asyncSessionService.js](src/game/online/asyncSessionService.js) — `summarizeForUid` now surfaces `lastReminderAt` so the screen can compute the cooldown locally.
+- [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) — new `MG_INTENT.POKE`, exported `canPoke(s, now)` helper (matches the service's 24h gate), `buildRowHtml` adds `<button data-mg-poke>👋</button>` after the שחק button when allowed, click delegation handles the new attribute.
+- [styles.css](styles.css) — `.mg-poke` styled as a secondary blue-tinted button (distinct from gold שחק and red 🗑), with a narrow-screen override.
+- [src/main.js](src/main.js) — new `MG_INTENT.POKE` handler: read the room, identify the opponent slot, push the reminder with `opponentName: myName` (from the recipient's POV we are their opponent), then write `lastReminderAt` only on push success, then `refreshMyGamesList()` so the 👋 disappears immediately.
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — 5 new cases: poke renders for opponent-turn-with-cold-cooldown; hides after a recent stamp; never appears on my-turn / expired / local cards; `canPoke` 24h gate matrix; click delegation emits `MG_INTENT.POKE`.
+- [tests/e2e/capture-my-games-screen.spec.js](tests/e2e/capture-my-games-screen.spec.js) + [images/guide/my-games-screen.png](images/guide/my-games-screen.png) — seed updated so the screenshot shows the 👋 next to the disabled שחק on the opponent-turn דני card.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## "המשחקים שלי" v4: stripped-down card — name, time, score, one action — June 2026
+
+The card was too dense and elements stacked diagonally. Simplified to the user's spec — only the things that matter, on a single horizontal row.
+
+**Removed**
+- Avatar circle
+- Status pill (🟢 תורך / 🕒 תור X / 💾 משחק שמור / 🔵 פג תוקף)
+- Trash icon next to the action for non-expired cards
+
+**Final card content**
+- *Right*: opponent name + a small time-ago line beneath it (single row each, ellipsed if too long)
+- *Centre*: gold score pill (unchanged)
+- *Left*: one action button
+  - `שחק` button — **enabled** iff `isMyTurn`, **disabled** (dimmed, `cursor:not-allowed`) otherwise. The disabled state is the cue that you're waiting on the opponent; no separate status pill needed.
+  - `🗑` trash button — replaces `שחק` for expired games. The only delete path on this screen.
+
+**Files**
+- [src/ui/screens/asyncGamesScreen.js](src/ui/screens/asyncGamesScreen.js) — rewrote `buildRowHtml`; dropped `statusEntry`, `modeBadge`, `AVATAR_ID_TO_EMOJI`, `resolveAvatar`; cards now carry an `is-waiting` class when it's not your turn.
+- [styles.css](styles.css) — replaced the three-column grid with a flat flex row, dropped `.mg-avatar` / `.mg-status` / `.mg-meta` / `.mg-actions` rules, swapped `.mg-resume` for `.mg-play` (with a clear `[disabled]` styling), repainted `.mg-dismiss` as the expired-only red trash button.
+- [src/ui/screens/asyncGamesScreen.test.js](src/ui/screens/asyncGamesScreen.test.js) — replaced the old status-pill / avatar assertions with: my-turn → enabled שחק + no dismiss + no avatar + no status; opponent-turn → disabled + `is-waiting`; expired → 🗑 + no שחק; local saved → `is-local` frame + enabled שחק.
+- Screenshot regenerated: [images/guide/my-games-screen.png](images/guide/my-games-screen.png).
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Three follow-up fixes: end-button label, My Games card layout, async auto-resume — June 2026
+
+**1. The end-button label swap wasn't happening.** The June 7 change to relabel the top-bar "סיום" button as "סיים / שמור" for offline games used `root.querySelector('button[onclick="openEndMenu()"]')` inside the `EV.GAME_STARTED` listener. But `wireButtons()` strips the `onclick` attribute on mount — by the time the event fires, the selector matches nothing. Fix in [src/ui/controllers/gameFlowController.js](src/ui/controllers/gameFlowController.js): cache `endMenuBtn` + `endMenuTx` references at controller construction time, BEFORE `wireButtons` strips the attribute. The listener now uses the cached `.tb-tx` reference. Test updated to model the post-mount state (button has no onclick attribute) so the same bug can't regress.
+
+**2. My Games cards were truncating the opponent name on phones.** The card grid was `auto 1fr auto` — identity column got `auto` and the score got `1fr`, so the score pill hogged the available width and the identity column collapsed. The opponent name ellipsed to "בו..." and the status pill wrapped over multiple lines. Fix in [styles.css](styles.css): grid is now `minmax(0,1fr) auto auto` — identity takes the flex space, score and actions are sized to their content (the gold score pill is small enough that there's room even on 360 px viewports). Also added `white-space:nowrap; text-overflow:ellipsis` on `.mg-time` so the "לפני 21 שע'" line stops wrapping. Screenshot regenerated.
+
+**3. App entry auto-resumed into whatever async game last touched activeRoom.** [src/main.js](src/main.js) `attemptSavedOnlineRecovery` read either a local saved-session pointer or `users/{uid}/activeRoom` and called `resumeOnlineRoomById` unconditionally. For live games this is desirable (the opponent is waiting in real time). For async games it's wrong — the user wants to land on the home screen and choose. Fix: check `room.mode` via `roomService.readRoom` and only auto-resume when the mode ends in `-live`. Async rooms are deliberately skipped — the user picks them from "המשחקים שלי". Stale local pointers to async rooms are cleared on the next boot so they don't keep being re-evaluated.
+
+`npm run test:unit` — 178/178 pass.
+
+---
+
+## Saved-game timer: preserve REMAINING time across an arbitrary save→resume delay — June 2026
+
+User reported that resuming a paused game from "My Games" shaved real-time seconds off the timer (paused at 6 s → resumed 10 s later → instantly auto-passed). Two compounding bugs.
+
+**Bug A — save stores an absolute timestamp.** `state.turnDeadlineMs` is an absolute `Date.now()` value at runtime. [src/game/sessions/localSaveService.js](src/game/sessions/localSaveService.js) was serialising it as-is, so on resume the saved deadline was already in the past — `deadline - now` would be the original remaining MINUS the wall-clock time the user spent away from the app.
+
+Fix: `saveLocalGame` now converts `turnDeadlineMs` to REMAINING ms before serialising (`Math.max(0, deadline - now)`), and `loadLocalGame` re-anchors it to an absolute timestamp on read (`now + remaining`). Both functions accept an injectable `now` for deterministic tests. The original in-memory state object is not mutated — `saveLocalGame` shallow-copies before converting.
+
+**Bug B — save-time deadline went stale while you sat on the pause overlay.** Even within a single session: pause at 6 s → spend 4 s reading the overlay → click "צא לתפריט" → save captures `deadline - now` = 2 s. The 4 seconds spent on the overlay were getting silently swallowed.
+
+Fix in [src/ui/controllers/turnTimerController.js](src/ui/controllers/turnTimerController.js): during menu pause, `sync()` now continuously rebases `state.turnDeadlineMs = now() + menuPauseRemainingMs`. The display still uses the frozen `menuPauseRemainingMs` (so no visible ticking), but any external snapshot at any moment sees the paused remaining. Combined with Bug A's fix, the saved record genuinely captures what was on screen at pause time.
+
+Tests
+- [src/game/sessions/localSaveService.test.js](src/game/sessions/localSaveService.test.js) — 2 new cases: 6 s saved + 10 s wait → loads as `LOAD_NOW + 6_000` (not the original absolute deadline); zero-deadline games round-trip as 0; original state stays untouched by save.
+- [src/ui/controllers/turnTimerController.test.js](src/ui/controllers/turnTimerController.test.js) — new case: 14 s into a 20 s turn → pause → 4 s real-world delay → `state.turnDeadlineMs` is rebased to `now + 6_000` (so a hypothetical saveLocalGame at that instant would capture exactly 6 s).
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Resume-from-save: stale menu-pause state was freezing the new game's timer — June 2026
+
+Follow-up to the pause-overlay work. The turn-timer controller is created once at app boot and lives for the whole app session — it doesn't get torn down between games. When a player opened the pause overlay and clicked "צא לתפריט" (save and exit), the controller's `menuPauseActive` was set to `true` but never cleared, because the save-and-exit path tears down the session without emitting `game/resumed`. The next game that started (a resumed save, or a fresh 1vBot/1vs1 game) would inherit that stale flag — `sync()` kept displaying the previous game's frozen remaining time and never ticked.
+
+Fix in [src/ui/controllers/turnTimerController.js](src/ui/controllers/turnTimerController.js): added a dedicated `EV.GAME_STARTED` listener that resets `menuPauseActive = false; menuPauseRemainingMs = 0` *before* `sync()` runs. The reset listener is registered before the existing per-event sync registrations so the bus's FIFO `Set` iteration runs the reset first. `bonusPauseCount` is intentionally NOT reset here — bonus pauses are session-scoped (they belong to mini-game flows that end with the session), and resetting could mask a real bug.
+
+Regression test in [src/ui/controllers/turnTimerController.test.js](src/ui/controllers/turnTimerController.test.js): 7 s into a 20 s turn → `game/paused` → no `game/resumed` (simulating save-and-exit) → `EV.GAME_STARTED` for the next game → timer reads 20 s and ticks normally. 178/178 unit tests still pass.
+
+---
+
+## Pause overlay: switch from `bonus/pending` to dedicated `game/paused`, preserve remaining time — June 2026
+
+Two follow-up fixes to yesterday's "pause overlay actually pauses" change.
+
+**1. Bug: clicking "השהה ושמור" was opening the bonus mini-game intro overlay.** Yesterday I reused the `'bonus/pending'` bus event to freeze the game from the pause overlay. That event is overloaded — [src/main.js:2309](src/main.js) listens to it and emits `BI_OPEN`, which opens the bonus intro modal ("בוסט!" + "בוא נשחק"). For a bonus square that's the right behaviour; for a menu pause it's a wrong screen the user sees instead of the pause modal.
+
+**2. Bug: the timer was resetting to the full per-turn allowance on pause, not preserving the remaining time.** The bonus-pause path is intentionally "reset to full" because a bonus mini-game gives the player a fresh clock. A menu pause must NOT — the player should resume with the same seconds they paused on.
+
+Fix: introduced dedicated `'game/paused'` / `'game/resumed'` bus events. Updated [src/ui/screens/pauseScreen.js](src/ui/screens/pauseScreen.js) to emit those (no more `bonus/*`), and added matching listeners:
+
+- [src/ui/controllers/turnTimerController.js](src/ui/controllers/turnTimerController.js) — new `freezeForMenuPause` / `resumeFromMenuPause`. On pause: snapshots `state.turnDeadlineMs - now()` into `menuPauseRemainingMs`. During pause: `sync()` displays the frozen remaining seconds (with the correct urgent/warn/crit class), suppresses the auto-pass dispatch. On resume: shifts `state.turnDeadlineMs = now() + menuPauseRemainingMs` and re-anchors the per-turn cache, so the player continues with exactly the remaining time they paused on, no matter how long the pause lasted.
+- [src/game/sessions/botGameSession.js](src/game/sessions/botGameSession.js) — also subscribes to `game/paused` / `game/resumed` and routes to the existing `pause()` / `resume()` helpers, so any pending bot-think is held across a menu pause.
+
+Tests
+- [src/ui/screens/overlays.test.js](src/ui/screens/overlays.test.js) — updated to assert `game/paused` is emitted and `bonus/*` is explicitly NOT emitted (regression guard against the wrong overlay re-appearing).
+- [src/ui/controllers/turnTimerController.test.js](src/ui/controllers/turnTimerController.test.js) — new case: 7 s into a 20 s turn → pause → 5 min real-time delay → still reads 13 s → resume → deadline shifts by exactly the paused duration → 5 s later reads 8 s. Pre-existing "bonus pending" test still passes — the two pause mechanisms now live side-by-side cleanly.
+
+`npm run test:unit` — 178/178 still pass.
+
+---
+
+## Pause overlay (`#ov-pause`) — actually pauses the game, simplified actions — June 2026
+
+Two fixes to the pause overlay reached via the "סיים / שמור" → "השהה ושמור" path.
+
+**1. Bug: "המשחק מושהה" was a lie.** Opening the pause overlay only changed the DOM — the turn timer kept ticking and the bot kept playing. Fix in [src/ui/screens/pauseScreen.js](src/ui/screens/pauseScreen.js): `PAUSE_OPEN` now emits `'bonus/pending'`, `PAUSE_INTENT.RESUME` emits `'bonus/resolved'`. Both [turnTimerController](src/ui/controllers/turnTimerController.js) and [botGameSession](src/game/sessions/botGameSession.js) already listen for that pair to freeze themselves during bonus mini-games, so the menu-pause reuses the existing freeze plumbing rather than inventing new wiring. A `frozen` latch guards against double-freeze if `PAUSE_OPEN` fires twice. `SAVE_AND_EXIT` / `QUIT_NO_SAVE` clear the latch without emitting `bonus/resolved` because the session is being torn down — the listeners go away with it.
+
+**2. Simplified actions** in [partials/screens/pause-overlay.html](partials/screens/pause-overlay.html):
+- Removed "🗑 צא בלי לשמור" (the quit-without-save button). With the back-confirm overlay already offering "🚪 צא בלי לשמור" upstream, having the same option here was redundant.
+- Renamed "💾 שמור וצא לתפריט" → "צא לתפריט". Save is now the only exit path from this overlay, so the label drops the redundant "שמור ו" prefix.
+
+The `PAUSE_INTENT.QUIT_NO_SAVE` event handler in [gameFlowController.js](src/ui/controllers/gameFlowController.js) is left in place — it's no longer reachable from the UI but exists as a clean intent-level seam and is referenced by an existing test.
+
+Tests in [src/ui/screens/overlays.test.js](src/ui/screens/overlays.test.js): two new cases assert `PAUSE_OPEN` emits exactly one `bonus/pending`, a second `PAUSE_OPEN` while frozen does not double-emit, `RESUME` emits one `bonus/resolved`, and `SAVE_AND_EXIT` does not emit a stray unfreeze. `npm run test:unit` — 178/178 pass.
+
+---
+
+## Game-screen end button: relabelled "סיים / שמור" in offline modes — June 2026
+
+The top-bar "🏁 סיום" button opens the back-confirm overlay which offers Continue / Pause-and-Save / Leave-without-saving. The save option only does anything in offline games (no localStorage save path for online rooms), so the label now advertises it where it's actually useful.
+
+In [src/ui/controllers/gameFlowController.js](src/ui/controllers/gameFlowController.js), subscribed to `EV.GAME_STARTED` and update the button's `.tb-tx` span based on `mode`:
+- `offline-solo` / `offline-2p` → `סיים<br>/ שמור` (two-line, mirroring the existing two-line `סיים<br>וזכה` claim-stall button)
+- everything else → restores the original `סיום`
+
+The actual flow (back-confirm overlay options) is unchanged; only the label updates. Test in [src/ui/controllers/gameFlowController.test.js](src/ui/controllers/gameFlowController.test.js) covers all three branches. `npm run test:unit` still 178/178.
+
+---
+
 ## Stats screen: new "תובנות" tab — player insights, archetype, trends, milestones — June 2026
 
 Feature request: turn the stats area from a data dashboard into a personalised analytics experience that helps users understand themselves and stay motivated.

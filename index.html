@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260607205635">
+<meta name="version" content="20260609224250">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -23,12 +23,42 @@
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
-<link rel="stylesheet" href="styles.css?v=20260607205635">
-<link rel="stylesheet" href="menu-electric.css?v=20260607205635">
+<link rel="stylesheet" href="styles.css?v=20260609224250">
+<link rel="stylesheet" href="menu-electric.css?v=20260609224250">
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
 </head>
 <body>
+<!-- App boot loader — covers everything until Firebase auth resolves and
+     the menuScreen has its first render with an authoritative isAuthed
+     state. Hidden by main.js (see the wireAppLoading IIFE). Inlined here
+     and styled in styles.css so it's visible at first paint, before any
+     other module runs.
+
+     Animation sequence (per 2800ms cycle, CSS-driven):
+       0ms   ┃ tile ב starts falling (right-most in RTL)
+       180ms ┃ tile ו starts falling
+       360ms ┃ tile ס starts falling
+       540ms ┃ tile ט starts falling (left-most in RTL)
+       ~930ms┃ all four tiles settled
+       960ms ┃ lightning bolt sweeps across the row
+       ~1100ms each tile flashes brighter
+       ~2400ms tiles fade upward, cycle restarts -->
+<div id="app-loading" class="app-loading">
+  <div class="app-loading-stage">
+    <div class="app-loading-tiles" role="img" aria-label="בוסט">
+      <!-- DOM order is ב,ו,ס,ט — under dir="rtl" they render visually
+           right-to-left and read as the word "בוסט" -->
+      <div class="app-loading-tile"><span class="t-letter">ב</span><span class="t-val">3</span></div>
+      <div class="app-loading-tile"><span class="t-letter">ו</span><span class="t-val">1</span></div>
+      <div class="app-loading-tile"><span class="t-letter">ס</span><span class="t-val">5</span></div>
+      <div class="app-loading-tile"><span class="t-letter">ט</span><span class="t-val">4</span></div>
+      <div class="app-loading-bolt" aria-hidden="true"></div>
+    </div>
+    <div class="app-loading-text" id="app-loading-text">מתחבר...</div>
+  </div>
+</div>
+
 <!-- Global top bar — shown on all screens except the game board (#sg).
      Visibility and home-button active state are managed by screenTransitions.js. -->
 <header id="global-topbar" class="em-topbar" style="display:none">
@@ -76,7 +106,7 @@
   <div class="rotate-block-icon">📱↻</div>
   <div class="rotate-block-text">סובב את המכשיר למצב לאורך</div>
 </div>
-<script type="module" src="src/ui/screenPartials.js?v=20260607205635"></script>
-<script type="module" src="src/main.js?v=20260607205635"></script>
+<script type="module" src="src/ui/screenPartials.js?v=20260609224250"></script>
+<script type="module" src="src/main.js?v=20260609224250"></script>
 </body>
 </html>

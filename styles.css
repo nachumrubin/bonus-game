@@ -463,6 +463,37 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 /* Main play rack: display:contents dissolves the wrapper so all 9 items
    (7 tiles + 2 buttons) become direct flex children of .bot with equal flex:1 */
 #brack{display:contents;}
+
+/* Inactive player's rack — shown only in offline-2p with
+   settings.showBothRacks=true. Sits just above the active rack as a
+   read-only peek. Smaller and dimmer than the active rack so it can't
+   be confused with the interactive one. */
+.brack2-row{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  padding:4px 8px;
+  margin:0 8px 4px;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:8px;
+  opacity:.78;
+}
+.brack2-label{
+  font-size:10px;font-weight:800;color:rgba(255,255,255,.55);
+  letter-spacing:.3px;
+}
+.brack2{
+  display:flex;gap:3px;justify-content:center;flex-wrap:nowrap;
+  pointer-events:none;
+}
+.brack2 .bt2{
+  /* Visibly smaller than the active tiles. */
+  transform:scale(.72);
+  transform-origin:center;
+  margin:-6px -3px;
+}
 .bt2{
   flex:1; min-width:0; aspect-ratio:1;
   background:var(--tile); border:2px solid var(--tborder); border-radius:3px;
@@ -2505,18 +2536,17 @@ button[aria-disabled="true"] {
   display:flex;flex-direction:column;gap:12px;
 }
 
-/* Card */
+/* Card — single horizontal row: identity | score | action. */
 #smygames .mg-card{
   position:relative;
-  display:grid;
-  grid-template-columns:auto 1fr auto;
+  display:flex;
   align-items:center;
   gap:12px;
-  padding:14px 14px 12px;
+  padding:12px 14px;
   background:
     linear-gradient(160deg, rgba(40,68,118,.85) 0%, rgba(20,38,80,.85) 100%);
   border:1px solid rgba(120,170,230,.18);
-  border-radius:18px;
+  border-radius:16px;
   box-shadow:
     0 6px 18px rgba(0,0,0,.30),
     inset 0 1px 0 rgba(255,255,255,.06);
@@ -2532,62 +2562,25 @@ button[aria-disabled="true"] {
     0 0 0 1px rgba(232,200,64,.08);
 }
 
-/* Identity column (avatar + name + status) */
+/* Identity column — name + time-ago stacked, takes the flex space. */
 #smygames .mg-card-identity{
-  display:flex; align-items:center; gap:10px;
+  flex:1 1 auto;
   min-width:0;
-}
-#smygames .mg-avatar{
-  flex:0 0 auto;
-  width:42px;height:42px;border-radius:50%;
-  display:inline-flex;align-items:center;justify-content:center;
-  font-size:26px;line-height:1;
-  background:linear-gradient(135deg, rgba(232,200,64,.18), rgba(120,80,40,.20));
-  border:1px solid rgba(232,200,64,.30);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
-}
-#smygames .mg-meta{
-  display:flex;flex-direction:column;gap:3px;
-  min-width:0;
+  display:flex;flex-direction:column;gap:2px;
 }
 #smygames .mg-name{
   font-size:14px;font-weight:900;color:#fff;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   letter-spacing:.2px;
-}
-#smygames .mg-status{
-  display:inline-flex;align-items:center;gap:5px;
-  font-size:11px;font-weight:800;
-  padding:3px 9px;
-  border-radius:999px;
-  background:rgba(255,255,255,.08);
-  color:rgba(255,255,255,.85);
-  width:fit-content;max-width:100%;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  border:1px solid rgba(255,255,255,.05);
-}
-#smygames .mg-status.is-mine{
-  background:rgba(70,200,110,.20);
-  color:#9af0b7;
-  border-color:rgba(70,200,110,.30);
-}
-#smygames .mg-status.is-theirs{
-  background:rgba(255,255,255,.07);
-  color:rgba(255,255,255,.78);
-}
-#smygames .mg-status.is-expired{
-  background:rgba(120,140,170,.18);
-  color:rgba(200,215,235,.85);
-}
-#smygames .mg-status.is-local{
-  background:rgba(232,200,64,.20);
-  color:#fce39e;
-  border-color:rgba(232,200,64,.30);
+  line-height:1.15;
 }
 #smygames .mg-time{
-  font-size:10px;font-weight:600;
-  color:rgba(255,255,255,.45);
+  font-size:10.5px;font-weight:600;
+  color:rgba(255,255,255,.50);
   letter-spacing:.2px;
+  line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  max-width:100%;
 }
 
 /* Score — dominant centre element */
@@ -2617,18 +2610,16 @@ button[aria-disabled="true"] {
   font-size:22px;color:rgba(255,255,255,.90);
 }
 
-/* Actions column */
-#smygames .mg-actions{
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-}
-#smygames .mg-resume{
+/* Action — שחק for live cards (enabled iff isMyTurn), 🗑 for expired. */
+#smygames .mg-play{
+  flex:0 0 auto;
   background:linear-gradient(180deg, #ffd84a, #dcaf28);
   border:1px solid rgba(184,154,32,.85);
   border-radius:12px;
   color:#231a00;
   font-family:Heebo,sans-serif;font-size:13px;font-weight:900;
-  padding:8px 18px;
-  min-width:72px;
+  padding:9px 18px;
+  min-width:70px;
   cursor:pointer;
   letter-spacing:.3px;
   box-shadow:
@@ -2636,24 +2627,99 @@ button[aria-disabled="true"] {
     inset 0 1px 0 rgba(255,255,255,.55);
   transition:transform .08s ease, box-shadow .12s ease, filter .12s ease;
 }
-#smygames .mg-resume:hover{filter:brightness(1.06);}
-#smygames .mg-resume:active{
+#smygames .mg-play:hover:not(.is-disabled){filter:brightness(1.06);}
+#smygames .mg-play:active:not(.is-disabled){
   transform:translateY(2px);
   box-shadow:0 1px 0 rgba(140,110,0,.55), inset 0 1px 0 rgba(255,255,255,.4);
 }
+#smygames .mg-play.is-disabled,
+#smygames button.mg-play[aria-disabled="true"]{
+  /* Waiting on the opponent: dimmed, no shadow lift. The HTML `disabled`
+     attribute is intentionally NOT set so clicks still fire — the click
+     handler shows a "תור היריב" toast instead of dispatching RESUME.
+     The global `button[aria-disabled="true"]` rule (around line 2035)
+     sets `pointer-events:none` to neutralise the bot's rack while it
+     thinks; we override that here so this button's click reaches the
+     delegated handler. Opacity/saturate from the global rule still apply
+     and give the dimmed look — we don't need to redeclare them. */
+  pointer-events:auto;
+  cursor:pointer;
+  background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  border-color:rgba(255,255,255,.10);
+  color:rgba(255,255,255,.35);
+  box-shadow:none;
+}
 #smygames .mg-dismiss{
-  background:none;border:none;
-  font-size:14px;color:rgba(255,255,255,.30);
-  padding:4px 6px;cursor:pointer;
-  border-radius:8px;
-  line-height:1;
-  transition:color .15s ease, background .15s ease, transform .1s ease;
+  flex:0 0 auto;
+  background:rgba(255,90,90,.10);
+  border:1px solid rgba(255,90,90,.30);
+  color:rgba(255,150,150,.85);
+  font-size:18px;line-height:1;
+  border-radius:12px;
+  padding:8px 12px;
+  min-width:48px;
+  cursor:pointer;
+  transition:background .15s ease, transform .1s ease;
 }
-#smygames .mg-dismiss:hover{
-  color:rgba(255,150,150,.90);
-  background:rgba(255,255,255,.05);
+#smygames .mg-dismiss:hover{background:rgba(255,90,90,.18);}
+#smygames .mg-dismiss:active{transform:scale(.94);}
+
+/* Poke (👋) — secondary action that pushes a reminder to the opponent.
+   Sits AFTER the שחק button in reading order (visually to its left in RTL).
+   Hidden once clicked; returns 24 h later. */
+#smygames .mg-poke{
+  flex:0 0 auto;
+  background:rgba(120,170,230,.12);
+  border:1px solid rgba(120,170,230,.30);
+  color:#cfe4ff;
+  font-size:18px;line-height:1;
+  border-radius:12px;
+  padding:8px 12px;
+  min-width:48px;
+  cursor:pointer;
+  transition:background .15s ease, transform .1s ease, filter .15s ease;
 }
-#smygames .mg-dismiss:active{transform:scale(.92);}
+#smygames .mg-poke:hover{background:rgba(120,170,230,.22); filter:brightness(1.05);}
+#smygames .mg-poke:active{transform:scale(.94);}
+
+/* Toast — one floater pinned at the bottom of the screen, used for
+   "תור היריב" tooltips on the disabled שחק button and "היריב קיבל
+   דחיפה" confirmation on the poke. Hidden until `.is-visible`. */
+#smygames .mg-toast{
+  position:fixed;
+  left:50%;
+  bottom:24px;
+  transform:translate(-50%, 30px);
+  background:rgba(20,32,60,.92);
+  border:1px solid rgba(255,255,255,.12);
+  color:#fff;
+  font-family:Heebo,sans-serif;
+  font-size:13px;
+  font-weight:800;
+  padding:10px 16px;
+  border-radius:999px;
+  box-shadow:0 10px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s ease, transform .22s ease;
+  z-index:9999;
+  white-space:nowrap;
+  max-width:min(440px,92vw);
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#smygames .mg-toast.is-visible{
+  opacity:1;
+  transform:translate(-50%, 0);
+}
+#smygames .mg-toast--ok{
+  background:rgba(35,90,55,.94);
+  border-color:rgba(120,220,150,.30);
+}
+#smygames .mg-toast--info{
+  background:rgba(40,60,100,.94);
+  border-color:rgba(120,170,230,.22);
+}
 
 /* Empty state */
 #smygames .mg-empty{
@@ -2665,15 +2731,16 @@ button[aria-disabled="true"] {
 #smygames .mg-empty-title{font-size:14px;font-weight:900;color:rgba(255,255,255,.85);}
 #smygames .mg-empty-sub{font-size:11px;color:rgba(255,255,255,.45);}
 
-/* Narrow screens — keep three columns but shrink the score so the
-   identity column doesn't get squeezed below readable. */
+/* Narrow screens — shrink the score and Play button so the name + time
+   column stays comfortably wide on 360 px phones. */
 @media (max-width:380px){
-  #smygames .mg-card{padding:12px;gap:10px;}
-  #smygames .mg-avatar{width:38px;height:38px;font-size:22px;}
+  #smygames .mg-card{padding:10px 12px; gap:10px;}
   #smygames .mg-score{padding:5px 10px;}
   #smygames .mg-score-mine{font-size:22px;}
   #smygames .mg-score-theirs{font-size:18px;}
-  #smygames .mg-resume{padding:7px 14px; min-width:64px; font-size:12px;}
+  #smygames .mg-play{padding:7px 14px; min-width:62px; font-size:12px;}
+  #smygames .mg-dismiss{min-width:42px; padding:7px 10px;}
+  #smygames .mg-poke{min-width:42px; padding:7px 10px; font-size:16px;}
 }
 
 
@@ -2920,4 +2987,188 @@ button[aria-disabled="true"] {
 #st-panel-insights .ins-empty{
   font-size:11px;color:rgba(255,255,255,.45);text-align:center;
   padding:14px 8px;
+}
+
+/* =========================================================
+   App boot loader (#app-loading) — staged tile-drop + lightning loop
+   ========================================================= */
+.app-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 30%, #15296b 0%, #04081a 70%);
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+  /* Respect notches / status bars on installed PWAs. */
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  overflow: hidden;
+}
+.app-loading.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.app-loading-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  padding: 0 24px;
+}
+
+/* The tile row. dir="rtl" is inherited from <html> so the four DOM
+   children render right-to-left: ב (right) → ו → ס → ט (left), which
+   reads as the Hebrew word בוסט. */
+.app-loading-tiles {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  /* The bolt is absolutely positioned over the tiles; give the row a
+     bit of horizontal breathing room so the bolt's overshoot doesn't
+     get clipped by the parent's bounding box. */
+  padding: 6px 26px;
+}
+
+/* Per-tile golden Scrabble-style square. The drop+bounce animation
+   makes this opacity:0 → 1 visible only inside its own keyframes. */
+.app-loading-tile {
+  position: relative;
+  width: 58px;
+  height: 64px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Heebo', sans-serif;
+  font-weight: 900;
+  color: #1a1a3e;
+  font-size: 36px;
+  line-height: 1;
+  background:
+    linear-gradient(160deg, #ffe17a 0%, #e8c840 45%, #c8a225 100%);
+  border: 1px solid rgba(184, 154, 32, 0.85);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  opacity: 0;
+  /* Shared keyframes: fall → bounce → settled → lightning flash →
+     fade upward → reset. Stagger via animation-delay below so the
+     four tiles land one after another but loop in sync. */
+  animation: app-loading-tile-cycle 2800ms cubic-bezier(0.34, 1.45, 0.64, 1) infinite;
+}
+.app-loading-tile:nth-child(1) { animation-delay: 0ms;   }
+.app-loading-tile:nth-child(2) { animation-delay: 180ms; }
+.app-loading-tile:nth-child(3) { animation-delay: 360ms; }
+.app-loading-tile:nth-child(4) { animation-delay: 540ms; }
+
+.app-loading-tile .t-letter {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.app-loading-tile .t-val {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #2a2a55;
+  opacity: 0.85;
+}
+
+/* Drop from above → bounce → hold → lightning flash → fade upward.
+   Percentages map to 2800ms total. The "drop" sits in the first ~14%
+   (0–390ms), tiles hold settled through the lightning flash at ~35%
+   (~970ms), then fade upward at ~85% to prepare the next loop. */
+@keyframes app-loading-tile-cycle {
+  0%   { transform: translateY(-280px) rotate(-14deg); opacity: 0;
+         filter: drop-shadow(0 4px 12px rgba(0,0,0,0)); }
+  5%   { opacity: 1; }
+  14%  { transform: translateY(10px)   rotate(3deg);  opacity: 1; }
+  18%  { transform: translateY(-4px)   rotate(-1deg); }
+  22%  { transform: translateY(0)      rotate(0deg);
+         filter: drop-shadow(0 4px 12px rgba(0,0,0,0.45))
+                 drop-shadow(0 0 10px rgba(232,200,64,0.35)); }
+  34%  { transform: translateY(0)      rotate(0deg);
+         filter: drop-shadow(0 4px 12px rgba(0,0,0,0.45))
+                 drop-shadow(0 0 10px rgba(232,200,64,0.35)); }
+  38%  { transform: translateY(-1px)   rotate(0deg);
+         filter: drop-shadow(0 0 24px rgba(255,255,200,0.95))
+                 drop-shadow(0 0 12px rgba(255,255,255,0.7))
+                 brightness(1.45); }
+  44%  { transform: translateY(0)      rotate(0deg);
+         filter: drop-shadow(0 4px 12px rgba(0,0,0,0.45))
+                 drop-shadow(0 0 14px rgba(232,200,64,0.55))
+                 brightness(1.12); }
+  78%  { transform: translateY(0)      rotate(0deg); opacity: 1;
+         filter: drop-shadow(0 4px 12px rgba(0,0,0,0.45)); }
+  88%  { transform: translateY(-14px)  rotate(2deg);  opacity: 0; }
+  100% { transform: translateY(-280px) rotate(8deg);  opacity: 0; }
+}
+
+/* The horizontal lightning sweep. Synced via the same 2800ms duration
+   plus a 540ms delay (matching the last tile) so it fires AFTER all
+   four tiles have landed and stays in sync on every loop. */
+.app-loading-bolt {
+  position: absolute;
+  top: 50%;
+  left: -14%;
+  right: -14%;
+  height: 8px;
+  border-radius: 8px;
+  transform: translate3d(-32%, -50%, 0) scaleX(0.55);
+  background:
+    linear-gradient(90deg,
+      rgba(255, 255, 200, 0)   0%,
+      rgba(255, 255, 200, 0)   8%,
+      rgba(255, 255, 200, 0.75) 32%,
+      #ffffff                  50%,
+      rgba(255, 255, 200, 0.75) 68%,
+      rgba(255, 255, 200, 0)   92%,
+      rgba(255, 255, 200, 0)   100%);
+  filter:
+    blur(2px)
+    drop-shadow(0 0 16px rgba(255, 240, 120, 0.95))
+    drop-shadow(0 0 28px rgba(255, 255, 150, 0.7));
+  opacity: 0;
+  pointer-events: none;
+  animation: app-loading-bolt-strike 2800ms linear infinite;
+  animation-delay: 540ms;
+}
+
+@keyframes app-loading-bolt-strike {
+  /* The strike portion is 15%-23% of the cycle = 420–644ms in, which
+     lands at wall time ~960ms thanks to the 540ms delay — right after
+     the last tile finishes bouncing. */
+  0%, 14% { opacity: 0; transform: translate3d(-32%, -50%, 0) scaleX(0.55); }
+  15%     { opacity: 1; transform: translate3d(-32%, -50%, 0) scaleX(0.55); }
+  22%     { opacity: 1; transform: translate3d( 32%, -50%, 0) scaleX(1.40); }
+  23%, 100% { opacity: 0; transform: translate3d( 32%, -50%, 0) scaleX(1.40); }
+}
+
+/* Rotating loading message — swapped by main.js's wireAppLoading. */
+.app-loading-text {
+  font-family: 'Heebo', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: 2px;
+  min-height: 18px;
+  transition: opacity 0.25s ease;
+}
+
+/* Short phones / small viewports: shrink tiles + gap rather than crop. */
+@media (max-height: 640px) {
+  .app-loading-tile { width: 50px; height: 56px; font-size: 30px; }
+  .app-loading-tiles { gap: 6px; padding: 6px 20px; }
+  .app-loading-stage { gap: 22px; }
+}
+@media (max-width: 360px) {
+  .app-loading-tile { width: 48px; height: 54px; font-size: 28px; }
+  .app-loading-tile .t-val { font-size: 10px; bottom: 3px; right: 5px; }
 }

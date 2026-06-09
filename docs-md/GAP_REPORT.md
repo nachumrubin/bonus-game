@@ -305,11 +305,12 @@ Words submitted to `/dictionaryApproved` are not proven to be used in game valid
 - Score animation polling (`setInterval(100ms)` for overlay close) is a polling pattern that could miss events
 - **Mitigation added (item 13):** scoring animation timing constants moved to shared `src/ui/scoreAnimationTimings.js` so they cannot diverge from `animationController.js`
 
-### `hebrewDictionary.js` — ⚠️ remains fragile (data curation)
-- Complex lemmatization with multiple stripping strategies
+### `hebrewDictionary.js` — ⚠️ remains fragile (data curation), partial mitigation June 2026
+- Complex lemmatization with multiple stripping strategies (v1 path)
 - `EXACT_REJECTS` set (~220 entries) relies on manual curation — a wrong entry silently rejects valid words
-- No comprehensive test that validates all ~220 EXACT_REJECTS are actually incorrect words
-- **Mitigation added (item 11):** Firebase-approved words now have end-to-end test proving they merge into `DICT` and pass `isValid()` — incorrect rejects can be overridden by admin approval
+- **Mitigation added (June 2026):** v2 path (behind `?dict=v2`) actively enforces `EXACT_REJECTS` in `isValidV2()`, and the test suite asserts every member rejects. Same for `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` accepting. See [src/game/core/hebrewDictionary.test.js](../src/game/core/hebrewDictionary.test.js).
+- **Mitigation added (item 11):** Firebase-approved words now have end-to-end test proving they merge into `DICT` and pass `isValid()` (both v1 and v2 paths)
+- **Open:** Real curated lexicon still TODO — v2 binary currently ships the legacy 40K re-encoded as a placeholder. See TASKS.md "Dictionary v2 rollout".
 
 ### `timeoutWatchdog.js` — ✅ hardened
 - Runs in the browser (not server-side) — by design

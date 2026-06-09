@@ -69,7 +69,6 @@ import { mountCreateRoomScreen, CR_INTENT } from './ui/screens/createRoomScreen.
 import { mountWaitingRoomScreen, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SENT, buildWhatsAppShareUrl } from './ui/screens/waitingRoomScreen.js';
 import { mountJoinCodeScreen, JC_INTENT } from './ui/screens/joinCodeScreen.js';
 import { mountIncomingInviteScreen, II_INTENT, IR_INTENT, II_OPEN, II_CLOSE, IR_OPEN, IR_CLOSE } from './ui/screens/incomingInviteScreen.js';
-import { mountAsyncSessionListScreen, AS_INTENT, AS_RENDER } from './ui/screens/asyncSessionListScreen.js';
 import { mountAsyncGamesScreen, MG_INTENT, MG_RENDER } from './ui/screens/asyncGamesScreen.js';
 import { mountAsyncHomeButton, AH_INTENT, AH_SHOW, AH_HIDE } from './ui/screens/asyncHomeButton.js';
 import * as asyncTurnBanner from './notifications/asyncTurnBanner.js';
@@ -271,7 +270,7 @@ async function boot() {
       mountEndGameScreen, mountPauseScreen, mountBackConfirmScreen, mountCoinTossScreen,
       mountSettingsScreen, mountDisconnectScreen, mountResignConfirmScreen,
       mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, mountCreateRoomScreen, mountWaitingRoomScreen, mountJoinCodeScreen, mountIncomingInviteScreen,
-      mountAsyncSessionListScreen, mountAsyncGamesScreen, mountAsyncHomeButton,
+      mountAsyncGamesScreen, mountAsyncHomeButton,
       mountBonusIntroScreen, mountBoostVetoScreen, mountBoostBadges,
       mountUnscrambleMiniGame, mountWheelMiniGame,
       mountWordSearchMiniGame, mountCrosswordMiniGame,
@@ -285,7 +284,7 @@ async function boot() {
       MENU_INTENT, MENU_REFRESH, SETUP_INTENT, SETUP_OPEN, LOBBY_INTENT, MM_INTENT,
       CR_INTENT, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SENT,
       JC_INTENT, II_INTENT, IR_INTENT, II_OPEN, II_CLOSE, IR_OPEN, IR_CLOSE,
-      AS_INTENT, AS_RENDER, AH_INTENT, AH_SHOW, AH_HIDE,
+      AH_INTENT, AH_SHOW, AH_HIDE,
       MG_INTENT, MG_RENDER,
       BI_INTENT, BI_OPEN, BI_CLOSE,
       BV_INTENT, BV_OPEN, BV_CLOSE,
@@ -386,26 +385,28 @@ async function boot() {
     activePresenceHandle = null;
     activePresenceUid = null;
     sessionPersistence.clearActiveOnlineSession(globalThis.localStorage);
-    setDictAdvancedBtnVisible(false);
+    setDictMgmtVisible(false);
   }
 
   // /admins/{uid} controls whether the settings overlay surfaces the
   // הגדרות מתקדמות button. We check on every auth boot (the read itself
   // is gated by the same `.read: auth != null` rule).
   async function refreshAdminUiFor(uid) {
-    if (!uid || !activeFbDb) { setDictAdvancedBtnVisible(false); return; }
+    if (!uid || !activeFbDb) { setDictMgmtVisible(false); return; }
     try {
       const snap = await activeFbDb.ref(`admins/${uid}`).get();
-      setDictAdvancedBtnVisible(snap?.exists?.() === true && snap.val() === true);
+      setDictMgmtVisible(snap?.exists?.() === true && snap.val() === true);
     } catch (e) {
       console.warn('[spine] admin lookup failed', e);
-      setDictAdvancedBtnVisible(false);
+      setDictMgmtVisible(false);
     }
   }
-  function setDictAdvancedBtnVisible(visible) {
-    const btn = globalThis.document?.getElementById?.('btn-dict-advanced');
-    if (!btn) return;
-    btn.style.display = visible ? '' : 'none';
+  // Toggle the entire dictionary-management panel (add + remove suggestion
+  // inputs plus the admin-only הגדרות מתקדמות button). Non-admins see no
+  // panel at all; the שאילתה word-check panel above it stays visible to all.
+  function setDictMgmtVisible(visible) {
+    const panel = globalThis.document?.getElementById?.('dict-mgmt-panel');
+    if (panel) panel.style.display = visible ? '' : 'none';
   }
 
   function wireAuthCrossCutting() {
@@ -476,15 +477,39 @@ async function boot() {
   async function attemptSavedOnlineRecovery(uid) {
     const db = activeFbDb;
     if (!db || !uid || globalThis.__spine?.activeGame) return;
+    // Auto-resume is only for LIVE games — those need to recover after a
+    // refresh/crash because there's a real-time opponent waiting. Async
+    // games must NOT auto-resume on every app entry; the user picks them
+    // from the "המשחקים שלי" list. Without this gate, opening the app
+    // would dump the user straight into whatever async game last touched
+    // `users/{uid}/activeRoom`, regardless of intent.
     const saved = sessionPersistence.readActiveOnlineSession(globalThis.localStorage);
     if (saved?.roomId && saved.userId === uid) {
-      await resumeOnlineRoomById(saved.roomId, { skipCoin: true });
-      return;
+      try {
+        const room = await roomService.readRoom(db, saved.roomId);
+        const mode = String(room?.mode ?? '');
+        if (mode.endsWith('-live')) {
+          await resumeOnlineRoomById(saved.roomId, { skipCoin: true });
+          return;
+        }
+        // Local pointer was set for an async game we don't want to auto-
+        // resume; clear it so we don't keep re-evaluating it on every boot.
+        sessionPersistence.clearActiveOnlineSession(globalThis.localStorage);
+      } catch (e) {
+        console.warn('[spine] saved-session lookup', e);
+      }
     }
     try {
       const snap = await db.ref(`users/${uid}/activeRoom`).get();
       const roomId = snap?.val ? snap.val() : null;
-      if (roomId) await resumeOnlineRoomById(roomId, { skipCoin: true });
+      if (!roomId) return;
+      const room = await roomService.readRoom(db, roomId);
+      const mode = String(room?.mode ?? '');
+      if (mode.endsWith('-live')) {
+        await resumeOnlineRoomById(roomId, { skipCoin: true });
+      }
+      // For async rooms we deliberately do nothing — the user will pick
+      // them from "המשחקים שלי".
     } catch (e) {
       console.warn('[spine] activeRoom recovery', e);
     }
@@ -1264,16 +1289,42 @@ async function boot() {
     let activeSessionsWatch = null;
     let lastSessions = [];
 
+    // Single source of truth for the bottom-nav 🎮 bubble count: active
+    // async online rooms (expired filtered out) + the local saved offline
+    // game if one exists.
+    function computeMyGamesCount() {
+      const openOnline = (Array.isArray(lastSessions) ? lastSessions : [])
+        .filter(s => !s.isExpired).length;
+      const localCount = hasLocalSavedGame(globalThis.localStorage) ? 1 : 0;
+      return openOnline + localCount;
+    }
+
+    // gameFlowController and other modules emit MENU_REFRESH with
+    // `hasSavedGame: true|false` when the local-save state flips (after
+    // save-and-exit, or after a game ends). They don't know about
+    // lastSessions, so they can't fill in `myGamesCount` themselves.
+    // We listen here, recompute, and re-emit so the badge stays current.
+    // The `!('myGamesCount' in payload)` guard prevents an infinite loop:
+    // our own emit below DOES include `myGamesCount`, so it won't re-trigger.
+    bus.on(MENU_REFRESH, (payload = {}) => {
+      if ('hasSavedGame' in payload && !('myGamesCount' in payload)) {
+        bus.emit(MENU_REFRESH, { myGamesCount: computeMyGamesCount() });
+      }
+    });
+
     function bootAsyncSessionsFor(uid) {
       if (!uid || !activeFbDb) return;
       try { activeSessionsWatch?.(); } catch {}
       activeSessionsWatch = asyncSessionService.watchAsyncSessions(activeFbDb, uid, (sessions) => {
         lastSessions = sessions;
-        bus.emit(AS_RENDER, { sessions });
-        // Refresh menu's "you have N async games" badge.
+        // Refresh menu's "you have N async games" badge AND the bottom-nav
+        // My Games bubble. myGamesCount = active async rooms + the local
+        // saved offline game if one exists. Expired games are NOT counted
+        // — watchAsyncSessions already filters them by default.
         bus.emit(MENU_REFRESH, {
           hasOnlineUnread: sessions.some(s => s.isMyTurn),
           hasSavedGame: sessions.length > 0,
+          myGamesCount: computeMyGamesCount(),
         });
         // In-app banner (deduped) for my-turn games.
         const bannerResult = asyncTurnBanner.maybeShow({ uid, sessions });
@@ -1330,21 +1381,12 @@ async function boot() {
       return resumeOnlineRoomById(roomId, { skipCoin: false });
     }
 
-    bus.on(AS_INTENT.RESUME,  ({ roomId }) => { resumeRoomById(roomId); });
-    bus.on(AS_INTENT.DISMISS, async ({ roomId }) => {
-      const uid = activeFbCurrentUser?.uid;
-      if (!uid || !activeFbDb) return;
-      try { await asyncSessionService.dismissForUid(activeFbDb, uid, roomId); }
-      catch (e) { console.warn('[spine] dismiss', e); }
-    });
-
     // ── My-Games screen (#smygames) ──
     // Standalone screen for browsing all of the user's games: every async
-    // online room (including expired ones, filtered out of the lobby strip)
-    // plus the single locally-saved offline game if there is one. One-shot
-    // fetch on open + after each dismiss. Resume/dismiss for online rooms
-    // reuse the same handlers as the lobby strip; resume/dismiss for the
-    // local game branches on the sentinel roomId MY_GAMES_LOCAL_ROOM_ID.
+    // online room (including expired ones, filtered out elsewhere) plus
+    // the single locally-saved offline game if there is one. One-shot
+    // fetch on open + after each dismiss. Resume/dismiss for the local
+    // game branches on the sentinel roomId MY_GAMES_LOCAL_ROOM_ID.
     const MY_GAMES_LOCAL_ROOM_ID = '__local__';
     function buildLocalGameRow() {
       const saved = loadLocalGame(globalThis.localStorage);
@@ -1382,6 +1424,11 @@ async function boot() {
         }
       }
       bus.emit(MG_RENDER, { sessions });
+      // Bottom-nav badge: only count non-expired games. Expired rows still
+      // appear on the screen (so they can be dismissed) but they shouldn't
+      // inflate the "open games" badge.
+      const openCount = sessions.filter(s => !s.isExpired).length;
+      bus.emit(MENU_REFRESH, { myGamesCount: openCount });
     }
     bus.on(MENU_INTENT.OPEN_MY_GAMES, () => {
       showLegacyScreen('smygames');
@@ -1404,6 +1451,61 @@ async function boot() {
       if (!uid || !activeFbDb) return;
       try { await asyncSessionService.dismissForUid(activeFbDb, uid, roomId); }
       catch (e) { console.warn('[spine] myGames dismiss', e); }
+      refreshMyGamesList();
+    });
+    bus.on(MG_INTENT.POKE, async ({ roomId }) => {
+      // Manual poke: push a reminder to the opponent and stamp
+      // room.lastReminderAt = now. Sharing that field with
+      // asyncReminderService.classify means a manual poke automatically
+      // suppresses the auto-cron reminder for the same 24-hour window
+      // (and vice versa), so the opponent never gets a double-nag.
+      const uid = activeFbCurrentUser?.uid;
+      const db  = activeFbDb;
+      if (!uid || !db || !roomId) return;
+      try {
+        const room = await roomService.readRoom(db, roomId);
+        if (!room || !room.mode?.endsWith('-async')) return;
+        const p0 = room.players?.[0];
+        const p1 = room.players?.[1];
+        const mySlot = p0?.uid === uid ? 0 : (p1?.uid === uid ? 1 : null);
+        if (mySlot == null) return;
+        const opponent = mySlot === 0 ? p1 : p0;
+        const recipientUid = opponent?.uid;
+        if (!recipientUid) return;
+        const myName  = (mySlot === 0 ? p0 : p1)?.displayName ?? 'יריב';
+        const lastTs  = Number(room.updatedAt ?? room.createdAt) || Date.now();
+        const hoursIdle = Math.max(0, Math.floor((Date.now() - lastTs) / 3_600_000));
+        await notificationService.pushReminder({
+          recipientUid,
+          opponentName: myName, // from the recipient's POV WE are their opponent
+          roomId,
+          hoursIdle,
+          gender: settingsCompat.loadUiPreferences(globalThis.localStorage).gender,
+        });
+        // Only mark stamps AFTER the push succeeds — if the push fails,
+        // the user can retry without waiting. We write TWO fields:
+        //   - lastReminderAt: shared with the auto-cron sweep. Setting it
+        //                     here means the cron won't fire its own
+        //                     reminder for the same 24-hour window, so
+        //                     the opponent doesn't get two pushes.
+        //   - lastPokedAt:    manual-poke dedup. The button uses this to
+        //                     hide for 24 h after the user's click.
+        //
+        // The two are written as SEPARATE updates rather than a single
+        // atomic one. The `lastPokedAt` rule is new — until the database
+        // rules are redeployed (`firebase deploy --only database`), the
+        // server rejects writes to it. With one atomic update those
+        // rejections would also wipe the `lastReminderAt` write; splitting
+        // means the cron-suppression at least gets through during the
+        // rollout window. After deploy, both succeed normally.
+        const stamp = Date.now();
+        try { await db.ref(`rooms/${roomId}`).update({ lastReminderAt: stamp }); }
+        catch (e) { console.warn('[spine] myGames poke markReminded', e); }
+        try { await db.ref(`rooms/${roomId}`).update({ lastPokedAt:    stamp }); }
+        catch (e) { console.warn('[spine] myGames poke markPoked (deploy the new lastPokedAt rule)', e); }
+      } catch (e) {
+        console.warn('[spine] myGames poke', e);
+      }
       refreshMyGamesList();
     });
     bus.on(MG_INTENT.BACK, () => { showLegacyScreen('sh'); });
@@ -1447,9 +1549,6 @@ async function boot() {
 
   // ── Account / profile / friends / rating ──────────────
   // Dictionary query / suggestions / admin review.
-  let dictAdminAuthed = false;
-  let dictAdminSuggestions = [];
-  const dictRecentlyProcessedWords = new Set();
 
   bus.on(DICT_INTENT.CHECK_QUERY, async ({ word, target = 'main' } = {}) => {
     if (!word) {
@@ -1470,126 +1569,99 @@ async function boot() {
     });
   });
 
+  // Admin-only direct add. Writes to /dictionaryApproved and immediately
+  // updates the runtime DICT so the word is playable without a reload.
   bus.on(DICT_INTENT.SUBMIT_SUGGEST, async ({ words = [] } = {}) => {
     if (!words.length) {
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'נא להזין מילה להצעה', isError: true });
+      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'נא להזין מילה', isError: true });
       return;
     }
-    // Firebase rule on `dictionarySuggestions` requires auth != null. Catch
-    // the unauthenticated case here so the player sees a clear Hebrew
-    // message rather than a silent PERMISSION_DENIED in the console.
     if (!activeFbCurrentUser?.uid) {
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, {
-        message: 'יש להתחבר כדי לשלוח הצעת מילה',
-        isError: true,
-      });
+      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'יש להתחבר', isError: true });
       return;
     }
-    bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'שולח...', isError: false });
+    bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'מוסיף...', isError: false });
     try {
       const db = await getDictionaryDb();
-      const result = await dictionaryService.submitDictionarySuggestions(db, {
+      const result = await dictionaryService.addWordsToDictionary(db, {
         words,
         serverTimestamp: () => firebaseTimestamp(),
       });
       if (!result.ok) {
-        const first = words[0] ?? '';
-        bus.emit(DICT_RENDER.SUGGESTION_STATUS, {
-          message: words.length === 1 ? `"${first}" נדחתה או אושרה בעבר` : 'כל המילים כבר טופלו בעבר',
-          isError: true,
-        });
+        const firstSkip = result.skipped?.[0];
+        const reason = firstSkip?.reason === 'currently-blocked'
+          ? `"${firstSkip.word}" כרגע חסומה — יש להסיר חסימה תחילה`
+          : words.length === 1
+            ? `"${firstSkip?.word ?? words[0]}" כבר במילון`
+            : 'כל המילים כבר במילון';
+        bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: reason, isError: true });
         return;
       }
+      // Mirror into runtime sets so the change is visible immediately.
+      for (const w of result.added) {
+        hebrewDictionary.DICT.add(w);
+        hebrewDictionary.BLOCKED_OVERLAY.delete(w);
+      }
       const skipped = result.skipped?.length ?? 0;
-      let message = result.submitted.length === 1
-        ? `"${result.submitted[0]}" נשלחה לבדיקה ✓`
-        : `נשלחו ${result.submitted.length} מילים לבדיקה ✓`;
+      let message = result.added.length === 1
+        ? `"${result.added[0]}" נוספה למילון ✓`
+        : `נוספו ${result.added.length} מילים למילון ✓`;
       if (skipped > 0) message += ` (${skipped} דולגו)`;
       bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message, isError: false });
       const input = globalThis.document?.getElementById?.('dict-word-input');
       if (input) input.value = '';
     } catch (e) {
-      console.warn('[spine] dictionary suggest', e);
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'שליחת ההצעה נכשלה', isError: true });
+      console.warn('[spine] dictionary add', e);
+      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'ההוספה נכשלה', isError: true });
     }
   });
 
-  bus.on(DICT_INTENT.ADMIN_SIGN_IN, async ({ password = '' } = {}) => {
-    if (!password) {
-      bus.emit(DICT_RENDER.ADMIN_LOGIN_ERROR, { message: 'נא להזין סיסמה' });
+  // Admin-only direct remove. Writes to /dictionaryRejected and immediately
+  // updates the runtime BLOCKED_OVERLAY so the word becomes invalid without
+  // a reload.
+  bus.on(DICT_INTENT.SUBMIT_REMOVAL, async ({ words = [] } = {}) => {
+    if (!words.length) {
+      bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'נא להזין מילה', isError: true });
       return;
     }
-    const ok = await verifyDictionaryAdminPassword(password);
-    if (!ok) {
-      bus.emit(DICT_RENDER.ADMIN_LOGIN_ERROR, { message: 'סיסמה שגויה' });
+    if (!activeFbCurrentUser?.uid) {
+      bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'יש להתחבר', isError: true });
       return;
     }
-    dictAdminAuthed = true;
-    bus.emit(DICT_RENDER.ADMIN_OPEN, {});
-    await refreshDictionaryAdminSuggestions();
-  });
-
-  bus.on(DICT_INTENT.ADMIN_SIGN_OUT, () => {
-    dictAdminAuthed = false;
-    dictAdminSuggestions = [];
-    dictRecentlyProcessedWords.clear();
-    bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'המנהל נותק', isError: false });
-  });
-
-  bus.on(DICT_INTENT.ADMIN_APPROVE, ({ ids = [] } = {}) => {
-    if (ids.length) bus.emit(DICT_RENDER.ADMIN_CONFIRM, { action: 'approve', count: ids.length });
-  });
-  bus.on(DICT_INTENT.ADMIN_REJECT, ({ ids = [] } = {}) => {
-    if (ids.length) bus.emit(DICT_RENDER.ADMIN_CONFIRM, { action: 'reject', count: ids.length });
-  });
-  bus.on(DICT_INTENT.ADMIN_CONFIRM, async ({ action, ids = [] } = {}) => {
-    if (!dictAdminAuthed) {
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'אין הרשאת מנהל', isError: true });
-      return;
-    }
+    bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'מסיר...', isError: false });
     try {
       const db = await getDictionaryDb();
-      const result = await dictionaryService.applyDictionaryDecision(db, {
-        action,
-        ids,
-        suggestions: dictAdminSuggestions,
+      const result = await dictionaryService.removeWordsFromDictionary(db, {
+        words,
+        isValidWord: (w) => hebrewDictionary.isValid?.(w) ?? false,
         serverTimestamp: () => firebaseTimestamp(),
       });
       if (!result.ok) {
-        bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'הפעולה נכשלה', isError: true });
+        const firstSkip = result.skipped?.[0]?.word ?? '';
+        bus.emit(DICT_RENDER.REMOVAL_STATUS, {
+          message: words.length === 1 ? `"${firstSkip}" לא נמצאה במילון` : 'אף אחת מהמילים אינה במילון',
+          isError: true,
+        });
         return;
       }
-      for (const word of result.words) {
-        dictRecentlyProcessedWords.add(word);
-        if (action === 'approve') hebrewDictionary.DICT.add(word);
+      // Mirror into runtime sets so the change is visible immediately.
+      for (const w of result.removed) {
+        hebrewDictionary.BLOCKED_OVERLAY.add(w);
+        hebrewDictionary.DICT.delete(w);
       }
-      if (globalThis.HebrewValidator && action === 'approve') globalThis.HebrewValidator.init?.(hebrewDictionary.DICT);
-      dictAdminSuggestions = dictAdminSuggestions.filter((s) => !result.words.includes(s.word));
-      bus.emit(DICT_RENDER.ADMIN_RENDER, { suggestions: dictAdminSuggestions });
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, {
-        message: action === 'approve' ? `אושרו ${result.changed} מילים ✓` : `נדחו ${result.changed} מילים`,
-        isError: false,
-      });
-      await refreshDictionaryAdminSuggestions();
+      const skipped = result.skipped?.length ?? 0;
+      let message = result.removed.length === 1
+        ? `"${result.removed[0]}" הוסרה מהמילון ✓`
+        : `הוסרו ${result.removed.length} מילים מהמילון ✓`;
+      if (skipped > 0) message += ` (${skipped} לא במילון)`;
+      bus.emit(DICT_RENDER.REMOVAL_STATUS, { message, isError: false });
+      const input = globalThis.document?.getElementById?.('dict-remove-input');
+      if (input) input.value = '';
     } catch (e) {
-      console.warn('[spine] dictionary decision', e);
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'הפעולה נכשלה', isError: true });
+      console.warn('[spine] dictionary remove', e);
+      bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'ההסרה נכשלה', isError: true });
     }
   });
-
-  async function refreshDictionaryAdminSuggestions() {
-    if (!dictAdminAuthed) return;
-    try {
-      const db = await getDictionaryDb();
-      dictAdminSuggestions = await dictionaryService.listPendingDictionarySuggestions(db, {
-        recentlyProcessed: dictRecentlyProcessedWords,
-      });
-      bus.emit(DICT_RENDER.ADMIN_RENDER, { suggestions: dictAdminSuggestions });
-    } catch (e) {
-      console.warn('[spine] dictionary admin refresh', e);
-      bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'טעינת הצעות נכשלה', isError: true });
-    }
-  }
 
   async function getDictionaryDb() {
     if (activeFbDb) return activeFbDb;
@@ -1599,15 +1671,6 @@ async function boot() {
 
   function firebaseTimestamp() {
     return activeFbServerTimestamp?.() ?? Date.now();
-  }
-
-  async function verifyDictionaryAdminPassword(password) {
-    const adminHash = '67bee854bb6636e19557e79d9a160dbd60f794210c65f9d7647dd8d0e608c2ae';
-    const cryptoObj = globalThis.crypto;
-    if (!cryptoObj?.subtle || typeof TextEncoder === 'undefined') return false;
-    const msgBuffer = new TextEncoder().encode(String(password));
-    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', msgBuffer);
-    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('') === adminHash;
   }
 
   // Merge admin-approved words from Firebase into the local dictionary.
@@ -1626,6 +1689,15 @@ async function boot() {
       if (count > 0) {
         console.info('[spine] approved dictionary merged:', count, 'new size:', hebrewDictionary.DICT.size);
         if (globalThis.HebrewValidator) globalThis.HebrewValidator.init?.(hebrewDictionary.DICT);
+      }
+      // Block-overlay: words admins have explicitly excluded from gameplay
+      // (either rejected add-suggestions or approved remove-suggestions).
+      // isValid checks BLOCKED_OVERLAY before any positive lookup.
+      const blockedCount = await dictionaryService.syncBlockedDictionaryWordsOnce(
+        db, hebrewDictionary.BLOCKED_OVERLAY
+      );
+      if (blockedCount > 0) {
+        console.info('[spine] blocked-words overlay:', blockedCount);
       }
     } catch (e) {
       console.warn('[spine] approved dictionary sync', e);
@@ -2827,20 +2899,28 @@ async function boot() {
     }
 
     if (bot) {
-      // Dictionary is sorted by Hebrew word frequency (common words first),
-      // so slicing the first N entries yields a vocabulary the bot will
-      // actually choose from on EASY — capping at 7000 keeps the easy bot
-      // using only common, short words so it's noticeably easier than
-      // MEDIUM/HARD which see the full vocabulary.
-      const EASY_VOCAB_CAP = 7000;
+      // The bot always picks from the legacy 40K list (frequency-sorted,
+      // common words first), regardless of which dictionary mode is active.
+      // This keeps bot strength stable as the player-facing dictionary grows.
+      // Validation still runs against the active dictionary via isValid(),
+      // so any word the bot picks is naturally accepted.
+      //
+      //   easy   (0)  → first  5,000 words
+      //   medium (1)  → first 20,000 words
+      //   hard   (2)  → full  40,000 words
+      const VOCAB_CAPS = [5000, 20000, 40000];
+      const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
+      // Legacy vocabulary is preloaded at boot in ensureDictionaryLoaded.
+      // If we get here before it's ready (rare race), fall back to DICT so
+      // the bot still has *something* to play.
+      const legacy = hebrewDictionary.getBotLegacyVocabularyCached();
+      const sourceWords = legacy ?? [...hebrewDictionary.DICT];
       const fullList = [...new Set(
-        [...hebrewDictionary.DICT]
-          .filter(w => w.length >= 2 && w.length <= 6)
-          .map(w => hebrewDictionary.norm(w)),
+        sourceWords
+          .filter((w) => w.length >= 2 && w.length <= 6)
+          .map((w) => hebrewDictionary.norm(w)),
       )];
-      const wordList = (difficulty === 0)
-        ? fullList.slice(0, EASY_VOCAB_CAP)
-        : fullList;
+      const wordList = fullList.slice(0, cap);
       attachBotPlayer(session, {
         slot: 1, wordList,
         isWordValid: (w) => hebrewDictionary.isValid(w),
@@ -2926,6 +3006,12 @@ async function boot() {
   // but the wiring now goes through the bus so we can swap individual
   // intents to new-spine flows one at a time.
   const menu = mountMenuScreen({ bus });
+  // The async-sessions watcher fires its initial MENU_REFRESH on the auth
+  // callback path — which can run BEFORE this mount, in which case the
+  // bus event reaches no listener and the bottom-nav bubble stays hidden
+  // until the user opens "המשחקים שלי" (refreshMyGamesList re-emits).
+  // Seed the badge now with whatever we can read synchronously.
+  bus.emit(MENU_REFRESH, { myGamesCount: computeMyGamesCount() });
   const setup = mountSetupScreen({
     bus,
     getDisplayName: () => {
@@ -2941,7 +3027,6 @@ async function boot() {
   const waitingRoomScreen  = mountWaitingRoomScreen({ bus });
   const joinCodeScreen     = mountJoinCodeScreen({ bus });
   const incomingInvite     = mountIncomingInviteScreen({ bus });
-  const asyncSessionList   = mountAsyncSessionListScreen({ bus });
   const asyncGamesScreen   = mountAsyncGamesScreen({ bus });
   const asyncHomeBtn       = mountAsyncHomeButton({ bus });
   const bonusIntroScreen   = mountBonusIntroScreen({ bus });
@@ -3020,7 +3105,6 @@ async function boot() {
   globalThis.__spine.waitingRoomScreen  = waitingRoomScreen;
   globalThis.__spine.joinCodeScreen     = joinCodeScreen;
   globalThis.__spine.incomingInvite     = incomingInvite;
-  globalThis.__spine.asyncSessionList   = asyncSessionList;
   globalThis.__spine.asyncGamesScreen   = asyncGamesScreen;
   globalThis.__spine.asyncHomeBtn       = asyncHomeBtn;
   globalThis.__spine.bonusIntroScreen   = bonusIntroScreen;
@@ -3055,6 +3139,55 @@ async function boot() {
   globalThis.__spine.claimStallController = claimStallCtl;
 
   console.info('[spine] ready. Try window.__spine.bootOffline2P() or .bootOfflineBot()');
+
+  // App-loading overlay: hide once Firebase auth has resolved. The auth
+  // handler emits MENU_REFRESH with isAuthed: true|false on resolution
+  // (either after a profile load on sign-in, or via the teardownAuth
+  // path on sign-out / never-signed-in). Either is the "menu now has its
+  // real state" signal, so we drop the loader at that moment.
+  //
+  // Safety net: 6 s after boot, hide regardless — if Firebase silently
+  // failed to initialise (no network, blocked domain) the user must
+  // still see the menu rather than be stuck on the loader forever.
+  //
+  // Loading-text cycle: the overlay shows a rotating Hebrew status line
+  // (מתחבר... → טוען נתונים... → מכין מילים... → כמעט מוכן...) so the
+  // loader feels responsive even when auth takes a beat.
+  (function wireAppLoading() {
+    const doc = globalThis.document;
+    const el = doc?.getElementById?.('app-loading');
+    if (!el) return;
+    const textEl = doc.getElementById?.('app-loading-text');
+    const messages = ['מתחבר...', 'טוען נתונים...', 'מכין מילים...', 'כמעט מוכן...'];
+    let textIdx = 0;
+    const textTimer = setInterval(() => {
+      if (!textEl || el.classList.contains('is-hidden')) return;
+      textIdx = (textIdx + 1) % messages.length;
+      textEl.style.opacity = '0';
+      setTimeout(() => {
+        if (!textEl) return;
+        textEl.textContent = messages[textIdx];
+        textEl.style.opacity = '1';
+      }, 220);
+    }, 1400);
+
+    let hidden = false;
+    let off = null;
+    function hide() {
+      if (hidden) return;
+      hidden = true;
+      el.classList.add('is-hidden');
+      clearInterval(textTimer);
+      // Remove after the fade transition so it can't intercept clicks
+      // even if `pointer-events:none` fails.
+      setTimeout(() => el.remove?.(), 600);
+      if (off) { try { off(); } catch {} off = null; }
+    }
+    off = bus.on(MENU_REFRESH, (payload = {}) => {
+      if (typeof payload.isAuthed === 'boolean') hide();
+    });
+    setTimeout(hide, 6000);
+  })();
 
   // Auto-boot a demo session if requested (?demo=...)
   const demo = params.get('demo');
@@ -3473,14 +3606,37 @@ async function ensureAuthedUser() {
   throw new Error('Firebase auth probe failed even after fresh sign-in');
 }
 
+// v2 (curated HSpell-derived 63K dictionary) became the default in June 2026
+// after the canary at ?dict=v2 ran clean. ?dict=v1 remains as a rollback
+// switch for one release in case a regression surfaces.
+function dictionaryModeFromUrl() {
+  try {
+    const params = new URLSearchParams(globalThis.location?.search || '');
+    return params.get('dict') === 'v1' ? 'v1' : 'v2';
+  } catch {
+    return 'v2';
+  }
+}
+
 function ensureDictionaryLoaded() {
   if (hebrewDictionary.DICT.size > 0) {
     return Promise.resolve(hebrewDictionary.DICT.size);
   }
   if (!dictionaryLoadPromise) {
-    dictionaryLoadPromise = hebrewDictionary.loadDict()
+    const mode = dictionaryModeFromUrl();
+    hebrewDictionary.setDictionaryMode(mode);
+    const loader = mode === 'v2' ? hebrewDictionary.loadDictV2() : hebrewDictionary.loadDict();
+    dictionaryLoadPromise = loader
       .then((size) => {
-        console.info('[spine] dictionary size:', size);
+        console.info('[spine] dictionary size:', size, '(mode:', mode + ')');
+        // Eagerly load the legacy bot vocabulary so the offline bot has a
+        // candidate list ready when a user starts a bot game. Fire-and-forget;
+        // the bot wiring tolerates a still-loading vocabulary by falling back
+        // to DICT, but in practice this resolves long before the user picks
+        // bot mode.
+        hebrewDictionary.loadBotLegacyVocabularyOnce().catch((e) => {
+          console.warn('[spine] bot vocabulary preload failed:', e);
+        });
         return size;
       })
       .catch((e) => {

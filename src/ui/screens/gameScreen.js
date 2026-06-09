@@ -965,7 +965,45 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     return wrap;
   }
 
+  function renderBrack2(v) {
+    // Render the inactive player's rack in the legacy #brack2 slot —
+    // populated only when v.rackForOpponent is non-null (offline-2p with
+    // settings.showBothRacks=true). Read-only peek; no click handlers.
+    const row    = root.querySelector?.('#brack2-row');
+    const slot   = root.querySelector?.('#brack2');
+    const label  = root.querySelector?.('#brack2-label');
+    if (!row || !slot) return;
+    const opponentRack = v.rackForOpponent;
+    if (!Array.isArray(opponentRack)) {
+      row.style.display = 'none';
+      slot.innerHTML = '';
+      return;
+    }
+    row.style.display = '';
+    if (label) label.textContent = v.opponentName ? `מגש ${v.opponentName}` : '';
+    let html = '';
+    for (let i = 0; i < 8; i++) {
+      const letter = opponentRack[i];
+      if (!letter) {
+        html += '<div class="bt2 emp"></div>';
+        continue;
+      }
+      const isJoker = letter === '?';
+      const display = isJoker
+        ? `<span class="jok-sym"><img class="jok-img" src="jocker.PNG" alt=""></span>`
+        : letter;
+      const val = isJoker ? 0 : (HV[letter] ?? 0);
+      const valDisplay = isJoker ? '' : val;
+      const jok = isJoker ? ' jok' : '';
+      html += `<div class="bt2${jok}"><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
+    }
+    slot.innerHTML = html;
+  }
+
   function renderRack(v) {
+    // Keep the opponent's read-only peek in sync. brack2 is shown only
+    // when v.rackForOpponent is non-null (offline-2p + showBothRacks).
+    try { renderBrack2(v); } catch { /* swallow */ }
     if (!brack) return;
     const rack = v.rackForMe ?? [];
     // Build a signature that reflects what the rack will actually display —

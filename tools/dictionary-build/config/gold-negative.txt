@@ -1,0 +1,47 @@
+# Held-out negative test set — words the curated dictionary MUST NOT validate.
+#
+# Used by 05-merge-and-gate.js: build fails if more than 2% of these words
+# appear in the final list.
+#
+# Seed entries cover the failure modes we're trying to prevent:
+#   - Proper nouns (names, places)
+#   - Brand names
+#   - Possessive-suffixed prepositions (the EXACT_REJECTS pattern)
+#   - Foreign transliterations not naturalized
+#   - Slang / vulgar
+#   - Made-up nonsense (sanity check)
+#
+# Expand during native-speaker review.
+
+# Names (proper nouns)
+# Note: דוד / משה / שרה / רחל / חיפה were initially listed here, but each
+# doubles as a legitimate common Hebrew word (uncle, drawing, sang, ewe,
+# covered respectively). Removed from this list — they SHOULD validate.
+# Keep only proper nouns that have no common-noun homograph.
+
+# Israeli place names (no common-noun homograph)
+ירושלים
+תלאביב
+
+# Brand names (also in brand-blacklist.txt, but verify gating works)
+גוגל
+פייסבוק
+
+# Possessive-suffixed forms (subset of EXACT_REJECTS)
+שלי
+שלך
+שלו
+שלה
+שלנו
+שלכם
+אצלי
+אצלך
+ממני
+ממך
+עליי
+עליך
+
+# Nonsense / sanity-check
+חחחחח
+אאאאאא
+זקסזקסזקס

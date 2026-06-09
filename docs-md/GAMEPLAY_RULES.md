@@ -93,6 +93,10 @@ When a bonus mini-game is triggered, scoring is deferred: the score is not commi
 
 Source: `src/game/core/hebrewDictionary.js`
 
+Two paths exist; the active one is selected by `setDictionaryMode('v1' | 'v2')`, called from `main.js` based on the `?dict=v2` URL parameter. `v1` is the default.
+
+### v1 (legacy, default)
+
 - Dictionary: `data/dictionary.base.txt` (464 KB Hebrew word list)
 - Loaded at boot via `loadDict()` → `DICT` Set
 - Validation: `isValid(word)` → `analyze()` with morphological analysis
@@ -106,6 +110,20 @@ Source: `src/game/core/hebrewDictionary.js`
 - **Explicit rejects:** ~220 possessive pronouns in `EXACT_REJECTS` Set are always invalid
 - **Explicit allows:** `CLASSIC_ALLOW` (~20 short particles) and `DEFECTIVE_ACCEPT` (10 defective spellings) always valid
 - **External validator:** If `globalThis.HebrewValidator` is loaded and ready, `hv.validate(w)` is called as the primary check; `analyze()` is fallback
+
+### v2 (DAWG-encoded curated lexicon, behind `?dict=v2`)
+
+- Dictionary: `data/dictionary.v2.bin` (DAWG-encoded; currently the legacy 40K re-encoded as a placeholder, ~235 KB binary)
+- Loaded at boot via `loadDictV2()` → parses DAWG into a queryable structure, also mirrors words into `DICT` Set so existing iteration callers (mini-game word search, bot) work unchanged
+- Validation: `isValid(word)` → `isValidV2()`, which uses the DAWG directly. **No morphological fallback** — the curated lexicon is responsible for shipping every legal inflection (הטיה) as its own surface form.
+- **Policy order (first match wins):**
+  1. Clean input to Hebrew letters only; empty → invalid
+  2. `EXACT_REJECTS` hit → invalid
+  3. `CLASSIC_ALLOW` hit → valid (also `DEFECTIVE_ACCEPT`)
+  4. DAWG lookup (with terminal-final variants) → valid
+  5. DICT approved-overlay hit (Firebase-approved words added after load) → valid
+  6. Otherwise → invalid
+- **Build pipeline:** `tools/dictionary-build/` — lemma-first, multi-source corroboration (HSpell + Wiktionary + Wikipedia frequency + legacy 40K + Academy), paradigm-gated inflection generation, native-speaker review queue for single-source lemmas, hard quality gates (≥ 99% gold-positive, ≤ 2% gold-negative leak, ≤ 0.5% legacy loss) before the binary ships.
 
 ---
 

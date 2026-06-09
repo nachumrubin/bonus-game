@@ -30,6 +30,7 @@
       "android/**",
       "scripts/**",
       "tests/**",
+      "tools/**",
       "twa-manifest.json",
       "package.json",
       "package-lock.json",

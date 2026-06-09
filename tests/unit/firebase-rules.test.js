@@ -25,12 +25,10 @@ test('firebase rules include dictionary moderation protections', () => {
   const rulesDoc = JSON.parse(raw);
   const rules = rulesDoc.rules || {};
 
-  assert.ok(rules.dictionarySuggestions, 'dictionarySuggestions path should exist');
-  assert.equal(
-    rules.dictionarySuggestions.$suggestionId['.write'],
-    'auth != null',
-    'suggestions should require authentication'
-  );
+  // /dictionarySuggestions was removed in June 2026 along with the
+  // suggest→review pipeline. Admins now write directly to approved/rejected.
+  assert.equal(rules.dictionarySuggestions, undefined,
+    'dictionarySuggestions path should be removed (legacy suggest→review pipeline)');
 
   assert.ok(rules.dictionaryApproved, 'dictionaryApproved path should exist');
   assert.equal(

@@ -55,12 +55,27 @@
       <div class="shres" id="settings-shres"></div>
       <button onclick="checkSettingsShailta()" style="width:100%;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#f8d86a,#d59c28);border:2px solid #a97918;color:#2a1d05;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #76530f;" data-gm="בדוק ✓" data-gf="בדקי ✓">בדוק ✓</button>
     </div>
-    <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
-      <div class="set-panel-title" style="margin-bottom:10px;">📖 ניהול מילון <span class="sett-info">i<span class="sett-tip">הצע מילה חדשה להוספה למילון המשחק. ההצעה תועבר לאישור מנהל לפני שתתווסף</span></span></div>
+    <!-- Dictionary management panel — admin-only. main.js toggles its visibility
+         based on the Firebase admins/{uid} check (see setDictMgmtVisible).
+         Admins write directly to /dictionaryApproved (add) or /dictionaryRejected
+         (remove); there is no staging through /dictionarySuggestions. -->
+    <div id="dict-mgmt-panel" style="display:none;width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+      <div class="set-panel-title" style="margin-bottom:10px;">📖 ניהול מילון <span class="sett-info">i<span class="sett-tip">הוסף מילה חדשה למילון או הסר מילה קיימת. השינוי מיידי</span></span></div>
+
+      <!-- Add directly -->
+      <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:4px;">➕ הוספה למילון</div>
       <input id="dict-word-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" data-gm-placeholder="הכנס מילה / מילים מופרדות בפסיק" data-gf-placeholder="הכניסי מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
-      <button onclick="suggestDictionaryWord()" style="width:100%;margin-top:8px;padding:11px;border-radius:8px;border:none;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.75);font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.09)'" data-gm="📨 שלח הצעה" data-gf="📨 שלחי הצעה">📨 שלח הצעה</button>
-      <button id="btn-dict-advanced" onclick="openDictionaryAdvancedSettings()" style="display:none;width:100%;margin-top:6px;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#5a8ad0,#3a5aaa);border:2px solid #2a3a8a;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #1a2a6a;">🔐 הגדרות מתקדמות</button>
+      <button onclick="suggestDictionaryWord()" style="width:100%;margin-top:8px;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#3a8a5a,#286a3a);border:2px solid #1a4a2a;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #103a1a;" data-gm="➕ הוסף למילון" data-gf="➕ הוסיפי למילון">➕ הוסף למילון</button>
       <div id="dict-word-status" style="margin-top:8px;font-size:12px;min-height:18px;color:#9fd4f5;text-align:center;"></div>
+
+      <!-- Divider -->
+      <div style="height:1px;background:rgba(255,255,255,.1);margin:14px 0;"></div>
+
+      <!-- Remove directly -->
+      <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:4px;">🗑️ הסרה מהמילון</div>
+      <input id="dict-remove-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" data-gm-placeholder="הכנס מילה / מילים מופרדות בפסיק" data-gf-placeholder="הכניסי מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
+      <button onclick="suggestDictionaryRemoval()" style="width:100%;margin-top:8px;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#a0463a,#7a2a2a);border:2px solid #5a1a1a;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #3a0a0a;" data-gm="🗑️ הסר מהמילון" data-gf="🗑️ הסירי מהמילון">🗑️ הסר מהמילון</button>
+      <div id="dict-remove-status" style="margin-top:8px;font-size:12px;min-height:18px;color:#9fd4f5;text-align:center;"></div>
     </div>
     <div class="ovbtns"><button class="ovb p" onclick="ovClose('ov-settings')">אישור ✓</button></div>
   </div>

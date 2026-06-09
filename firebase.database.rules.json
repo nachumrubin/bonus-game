@@ -40,6 +40,9 @@
         "lastReminderAt": {
           ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
         },
+        "lastPokedAt": {
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+        },
         "abandonedBy": {
           ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
         },
@@ -50,12 +53,6 @@
             }
           }
         }
-      }
-    },
-    "dictionarySuggestions": {
-      ".read": true,
-      "$suggestionId": {
-        ".write": "auth != null"
       }
     },
     "dictionaryApproved": {
