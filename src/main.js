@@ -3049,7 +3049,7 @@ async function boot() {
   const championsScreen    = mountChampionsScreen({ bus });
   const dictionaryScreen   = mountDictionaryScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });
-  const onboarding         = mountOnboardingController({ bus, storage: globalThis.localStorage });
+  const onboarding         = mountOnboardingController({ bus, storage: globalThis.localStorage, getUid: () => activeFbCurrentUser?.uid ?? null });
   const jokerPicker = mountJokerPicker({ bus });
   // In-game overlays
   const endScreen     = mountEndGameScreen({ bus });
