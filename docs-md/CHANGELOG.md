@@ -2,6 +2,17 @@
 
 ---
 
+## Feat: per-screen onboarding tooltips for new players — June 2026
+
+New `onboardingController.js` shows a popup the first time a user visits each key screen. Styled using the existing `.ov`/`.ovc` dark-navy overlay pattern (matching the rest of the app). Includes a pre-checked "אל תציג שוב" (Don't show again) checkbox — checking it before dismissal permanently hides that screen's popup via `localStorage` (`spine.onboarding.dismissed`). Without the checkbox, the popup re-appears next session.
+
+**Screens covered:** home (`sh`), online lobby (`so`), game setup (`ss`), stats (`sstats`), profile (`sprofile`), friends (`sfriends`), notifications (`snotif`), my games (`smygames`). The game screen (`sg`) is intentionally excluded — the full tutorial covers it.
+
+**Files added:** `src/ui/controllers/onboardingController.js`, `partials/screens/onboarding-overlay.html`  
+**Files modified:** `styles.css` (`.onb-*` rules), `screenPartialManifest.js`, `main.js` (import + mount + emit in `showLegacyScreen`)
+
+---
+
 ## Fix: time-since-last-move not resetting after a move — June 2026
 
 `rawCommitCurrentState()` in `onlineGameSession.js` was building the Firebase patch without an `updatedAt` field. Since `commitTransaction()` only auto-increments `version`, the room's `updatedAt` timestamp was never written on move commits. `asyncSessionService.summarizeForUid()` reads `room.updatedAt` to populate `lastUpdated`, which drives the "לפני N ימים" display in the game list — so the label never refreshed after a move.

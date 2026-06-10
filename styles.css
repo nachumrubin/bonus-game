@@ -3172,3 +3172,44 @@ button[aria-disabled="true"] {
   .app-loading-tile { width: 48px; height: 54px; font-size: 28px; }
   .app-loading-tile .t-val { font-size: 10px; bottom: 3px; right: 5px; }
 }
+
+/* ── ONBOARDING OVERLAY ── */
+/* Sits above normal overlays (z-index 100) but below the tutorial spotlights (8050+). */
+#ov-onboarding { z-index: 500; }
+.onb-card { text-align: right; }
+.onb-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 4px;
+  text-align: right;
+}
+.onb-bullets li {
+  font-size: 13px;
+  color: rgba(255,255,255,.82);
+  padding: 7px 0;
+  line-height: 1.5;
+  direction: rtl;
+}
+.onb-bullets li + li {
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.onb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.onb-nsa-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  cursor: pointer;
+  user-select: none;
+}
+.onb-nsa-label input[type="checkbox"] { cursor: pointer; accent-color: var(--by, #f0c040); }
+.onb-dismiss-btn { flex: 0 0 auto; min-width: 88px; padding: 10px 14px; font-size: 14px; }
