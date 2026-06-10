@@ -2392,24 +2392,6 @@ async function boot() {
       bus.emit(BI_OPEN, payload);
     }));
 
-    // Auto-category bonus (B2/B4/B9) triggered by the bot: the engine emits
-    // BOOST_ACTIVATED for auto_extra_score and defers points until the human
-    // clicks אישור on the award overlay. animationController skips the
-    // overlay for the opponent slot, so we finalize the award ourselves and
-    // emit BONUS_AWARD_ACK so the bot/turn-timer resume.
-    if (botSlot != null) {
-      subs.push(bus.on(EV.BOOST_ACTIVATED, ({ slot, boostId, payload, consumed, pending, bonusIdx }) => {
-        if (consumed || pending) return;
-        if (slot !== botSlot) return;
-        const extra = boostId === 'auto_extra_score' ? (Number(payload?.extra) || 0) : 0;
-        session.dispatch({
-          type: CMD.FINALIZE_BOOST_AWARD,
-          payload: { slot, extra, bonusIdx },
-        });
-        bus.emit(BONUS_AWARD_ACK, { slot, boostId, extra: payload?.extra ?? 0 });
-      }));
-    }
-
     // Lazy word-list selectors — building the filtered arrays is non-trivial
     // (DICT is potentially tens of thousands of entries) so we cache them
     // for the lifetime of the bonus flow.
@@ -2942,7 +2924,7 @@ async function boot() {
     // detection silently stopped working).
     const humanSlot = (bot || mode === 'tutorial') ? 0 : null;
     const controller = createGameController({ bus, session, mySlot: humanSlot });
-    const animationController = createAnimationController({ bus, mySlot: humanSlot });
+    const animationController = createAnimationController({ bus, mySlot: humanSlot, showOpponentBoostOverlay: !!bot });
     animationController.setEnabled(settingsCompat.loadUiPreferences(globalThis.localStorage).animationsEnabled);
     const screen = mountGameScreen({
       controller,

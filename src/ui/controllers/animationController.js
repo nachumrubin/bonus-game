@@ -23,7 +23,7 @@ import {
   COUNTUP_PEAK_MS,
 } from '../scoreAnimationTimings.js';
 
-export function createAnimationController({ bus, mySlot = null }) {
+export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false }) {
   if (!bus) throw new Error('createAnimationController: bus required');
 
   let enabled = true;
@@ -202,19 +202,20 @@ export function createAnimationController({ bus, mySlot = null }) {
     // Fresh activation opens the modal award overlay (in animationController's
     // renderer) which counts as an open bonus overlay for score-commit gating.
     overlayCount += 1;
-    // Only show the award overlay when the activation belongs to the local
-    // player. For a pinned local seat (bot games, online), an opponent's
-    // bonus must not pop a modal for us — finalization for the bot is
-    // handled by attachBonusFlow in main.js. mySlot=null means a shared
-    // local screen (2P offline) where every activation is "ours" to ack.
-    if (mySlot != null && slot !== mySlot) return;
+    // For a pinned local seat (online), an opponent's bonus must not pop a
+    // modal — finalization is handled server-side. In bot games we DO want to
+    // show the overlay so the human can see what the bot earned; that path is
+    // opted in via showOpponentBoostOverlay. mySlot=null means a shared local
+    // screen (2P offline) where every activation is "ours" to ack.
+    const isOpponent = mySlot != null && slot !== mySlot;
+    if (isOpponent && !showOpponentBoostOverlay) return;
     // Every fresh bonus-square activation routes through the same modal
     // award overlay so the player always sees a concrete description of
     // what they earned. The legacy small "+BONUS" float that the player
     // could miss is gone.
     trigger({
       kind: 'bonusAwardOverlay',
-      payload: { slot, boostId, bonusIdx, extra: payload?.extra ?? 0, boostPayload: payload ?? null },
+      payload: { slot, boostId, bonusIdx, extra: payload?.extra ?? 0, boostPayload: payload ?? null, isOpponent },
     });
   }));
 
