@@ -3214,6 +3214,11 @@ async function boot() {
     spineShowScreen('sh', { doc: globalThis.document });
     if (params.get('open') === 'notifications') {
       bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS);
+      params.delete('open');
+      const cleaned = params.toString()
+        ? globalThis.location.pathname + '?' + params.toString()
+        : globalThis.location.pathname;
+      globalThis.history?.replaceState?.(null, '', cleaned);
     }
   }
 
