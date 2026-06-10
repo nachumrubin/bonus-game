@@ -1744,7 +1744,7 @@ function describeBoost(boostId, payload, extra) {
   }
 }
 
-function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bonusIdx, boostPayload } = {}) {
+function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bonusIdx, boostPayload, isOpponent } = {}) {
   const doc = ownerDocumentOf(root);
   if (!doc?.createElement) return;
   const info = describeBoost(boostId, boostPayload, extra);
@@ -1771,7 +1771,7 @@ function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bo
     <div class="ovt">${escapeForOverlay(info.title)}</div>
     <div class="ovd" style="font-size:32px;font-weight:900;color:var(--by);margin-bottom:4px;">${escapeForOverlay(info.bigText)}</div>
     ${info.sub ? `<div class="ovd" style="margin-bottom:12px;">${escapeForOverlay(info.sub)}</div>` : ''}
-    <div class="ovd" style="margin-bottom:12px;font-size:11px;opacity:.6;">שחקן ${(slot ?? 0) + 1}</div>
+    <div class="ovd" style="margin-bottom:12px;font-size:11px;opacity:.6;">${isOpponent ? 'הבוט' : `שחקן ${(slot ?? 0) + 1}`}</div>
     <div class="ovbtns"><button type="button" class="ovb p" data-bonus-ok>אישור ✓</button></div>
   `;
   positioner.appendChild(card);

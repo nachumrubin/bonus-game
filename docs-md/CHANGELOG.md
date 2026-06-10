@@ -2,6 +2,24 @@
 
 ---
 
+## Feat: show bot's boost overlay to the human player — June 2026
+
+When the bot lands on an auto-boost square (B2/B4/B9) or a future-effect square (B5/B6/B7), the human player now sees the same modal award overlay they would see in 2-player mode. The overlay shows the boost type and, for point boosts, the extra points earned. The label reads "הבוט" instead of "שחקן 2". Clicking אישור finalises the award (dispatches `FINALIZE_BOOST_AWARD`), exactly as for the human's own boosts.
+
+**Why this change:** Previously the bot's `BOOST_ACTIVATED` event was silently swallowed — `animationController` had an early-return guard for opponent slots, and `attachBonusFlow` auto-finalised the award without any UI. This made it impossible for the human to know why the bot's score suddenly jumped.
+
+**How it works:**
+- `createAnimationController` gains a `showOpponentBoostOverlay` flag (default `false`). Bot games pass `true`.
+- When the flag is set, the `BOOST_ACTIVATED` guard is lifted for the opponent slot and the overlay fires with `isOpponent: true`.
+- `showBonusAwardOverlay` in `gameScreen.js` renders "הבוט" as the player label when `isOpponent` is true.
+- The `attachBonusFlow` bot auto-finalise block is removed; finalization now happens through the normal overlay `close()` path, ensuring `FINALIZE_BOOST_AWARD` is dispatched after the human acknowledges.
+
+**Not changed:** mini-game and wheel bot bonuses (B1/B3/B8/B10/B11/B12/B13) are still auto-resolved silently; their overlay is a separate story.
+
+**Files modified:** `src/ui/controllers/animationController.js`, `src/ui/screens/gameScreen.js`, `src/main.js`
+
+---
+
 ## Feat: per-screen onboarding tooltips for new players — June 2026
 
 New `onboardingController.js` shows a popup the first time a user visits each key screen. Styled using the existing `.ov`/`.ovc` dark-navy overlay pattern (matching the rest of the app). Includes a pre-checked "אל תציג שוב" (Don't show again) checkbox — checking it before dismissal permanently hides that screen's popup via `localStorage` (`spine.onboarding.dismissed`). Without the checkbox, the popup re-appears next session.
