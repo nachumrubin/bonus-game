@@ -676,10 +676,12 @@ async function boot() {
   // the user can pick names + difficulty, then PLAY_CLICKED starts the game.
     bus.on(MENU_INTENT.START_2P, () => {
       showLegacyScreen('ss');
+      bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: 'ss-vs' });
       bus.emit(SETUP_OPEN, { mode: 'vs', initialDifficulty: 1 });
     });
     bus.on(MENU_INTENT.START_VS_BOT, () => {
       showLegacyScreen('ss');
+      bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: 'ss-bot' });
       bus.emit(SETUP_OPEN, { mode: 'bot', initialDifficulty: 1 });
     });
     bus.on(MENU_INTENT.OPEN_PROFILE, () => {
