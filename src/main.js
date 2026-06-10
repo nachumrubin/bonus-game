@@ -2122,6 +2122,17 @@ async function boot() {
         await ratingService.upsertRatingLeaderboardEntry(fbDb, { uid, profile: initial, rating: initial.rating });
         await fbDb.ref(`userIds/${userId}`).set(uid);
         showLegacyScreen('sh');
+        if (wantsNotifications !== false) {
+          // User opted in — request push permission immediately after signup.
+          globalThis.requestNotifPermission?.();
+        } else {
+          // User opted out — remind them they can enable later via Settings.
+          bus.emit(NOTIF_BANNER_SHOW, {
+            avatar: '🔔',
+            text: 'ניתן להפעיל התראות בכל עת מתוך הגדרות',
+            action: 'openSettings',
+          });
+        }
       } catch (e) {
         authScreens.showError('signup', e?.message ?? AUTH_ERROR_HE['bad-email']);
       }
@@ -3521,9 +3532,13 @@ function installCutoverGlobals() {
     if (btn) btn.disabled = true;
     if (status) status.innerHTML = '<span class="sett-notif-spinner"></span>';
     try {
+      const uid = activeFbCurrentUser?.uid;
+      // Ensure OneSignal is initialised before calling optIn — boot() is
+      // concurrency-safe so concurrent callers (e.g. bootCrossCuttingFor +
+      // post-signup call) await the same in-flight promise.
+      await notificationService.boot({ uid: uid || undefined });
       if (globalThis.OneSignal?.User?.PushSubscription) {
         await globalThis.OneSignal.User.PushSubscription.optIn();
-        const uid = activeFbCurrentUser?.uid;
         if (uid) await notificationService.loginUser(uid);
       } else {
         await globalThis.Notification?.requestPermission?.();

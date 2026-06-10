@@ -167,6 +167,8 @@ export function mountNotifBanner({ root = globalThis.document, bus } = {}) {
   cleanups.push(on(banner, 'click', () => {
     if (currentAction === 'openNotifications') {
       bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS, { source: 'banner' });
+    } else if (currentAction === 'openSettings') {
+      bus.emit(MENU_INTENT.OPEN_SETTINGS);
     }
     hide();
   }));

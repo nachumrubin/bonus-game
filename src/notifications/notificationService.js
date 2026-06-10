@@ -19,6 +19,7 @@ import { buildPushBody, KIND } from './pushPayloadBuilder.js';
 import { modeDescriptor } from '../game/sessions/modes.js';
 
 let _booted = false;
+let _bootPromise = null;
 let _appId = null;
 let _pushWorkerUrl = null;
 let _getIdToken = null;
@@ -52,27 +53,31 @@ async function defaultSendPush(body) {
   }
 }
 
-// One-time OneSignal SDK boot. Idempotent — calling boot() twice is a no-op.
-// Replaces the duplicated init at index.html:8409 / 8876.
+// One-time OneSignal SDK boot. Idempotent — concurrent callers await the
+// same in-flight promise so a second call during sign-up doesn't race.
 export async function boot({ uid } = {}) {
   if (_booted) return _oneSignalReady;
+  if (_bootPromise) { await _bootPromise; return _oneSignalReady; }
   _booted = true;
-  try {
-    if (!globalThis.OneSignal) return false; // SDK not loaded; skip (silent fallback)
-    const cfg = globalThis.APP_CONFIG ?? {};
-    if (!cfg.onesignalAppId) return false;
-    await globalThis.OneSignal.init({ appId: cfg.onesignalAppId, serviceWorkerPath: 'sw.js' });
-    _oneSignalReady = true;
-    if (uid) await globalThis.OneSignal.login(uid);
-    return true;
-  } catch (e) {
-    const msg = String(e?.message ?? e ?? '');
-    if (!msg.includes('App not configured for web push')) {
-      console.warn('[notification.boot]', e);
+  _bootPromise = (async () => {
+    try {
+      if (!globalThis.OneSignal) return false; // SDK not loaded; skip (silent fallback)
+      const cfg = globalThis.APP_CONFIG ?? {};
+      if (!cfg.onesignalAppId) return false;
+      await globalThis.OneSignal.init({ appId: cfg.onesignalAppId, serviceWorkerPath: 'sw.js' });
+      _oneSignalReady = true;
+      if (uid) await globalThis.OneSignal.login(uid);
+      return true;
+    } catch (e) {
+      const msg = String(e?.message ?? e ?? '');
+      if (!msg.includes('App not configured for web push')) {
+        console.warn('[notification.boot]', e);
+      }
+      _oneSignalReady = false;
+      return false;
     }
-    _oneSignalReady = false;
-    return false;
-  }
+  })();
+  return _bootPromise;
 }
 
 export async function loginUser(uid) {
@@ -226,6 +231,7 @@ export async function pushExpired({ recipientUid, roomId }) {
 // Test reset — wipes module-level state.
 export function _resetForTests() {
   _booted = false;
+  _bootPromise = null;
   _appId = null;
   _pushWorkerUrl = null;
   _getIdToken = null;
