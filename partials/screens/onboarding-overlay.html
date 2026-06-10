@@ -1,0 +1,16 @@
+<!-- Per-screen onboarding popup — shown once per screen to new users.
+     Content is injected dynamically by onboardingController.js. -->
+<div id="ov-onboarding" class="ov hidden" dir="rtl">
+  <div class="ovc onb-card">
+    <div class="ovic" id="onb-icon"></div>
+    <div class="ovt"  id="onb-title"></div>
+    <ul class="onb-bullets" id="onb-body"></ul>
+    <div class="onb-footer">
+      <label class="onb-nsa-label">
+        <input type="checkbox" id="onb-noshowcb" checked>
+        <span>אל תציג שוב</span>
+      </label>
+      <button class="ovb p onb-dismiss-btn" id="onb-dismiss-btn">הבנתי ✓</button>
+    </div>
+  </div>
+</div>

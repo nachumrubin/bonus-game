@@ -55,6 +55,7 @@ import { createDisconnectController } from './ui/controllers/disconnectControlle
 import { createConnectivityIndicator } from './ui/controllers/connectivityIndicator.js';
 import { startConnectivityMonitor } from './game/online/connectivityService.js';
 import { createTutorialController } from './ui/controllers/tutorialController.js';
+import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/controllers/onboardingController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
 import { showScreen as spineShowScreen } from './ui/screens/screenTransitions.js';
@@ -2282,6 +2283,8 @@ async function boot() {
         _scStack.push(id);
       }
     }
+    // Notify onboarding before the early-return branch so every path is covered.
+    bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: id });
     const showSc = globalThis.showSc;
     if (typeof showSc === 'function') {
       try { showSc(id); return; } catch { /* swallow */ }
@@ -3046,6 +3049,7 @@ async function boot() {
   const championsScreen    = mountChampionsScreen({ bus });
   const dictionaryScreen   = mountDictionaryScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });
+  const onboarding         = mountOnboardingController({ bus, storage: globalThis.localStorage });
   const jokerPicker = mountJokerPicker({ bus });
   // In-game overlays
   const endScreen     = mountEndGameScreen({ bus });
