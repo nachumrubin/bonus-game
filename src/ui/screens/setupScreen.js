@@ -188,11 +188,21 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
   return { unmount };
 }
 
-// Keep this in sync with setup.html.
-registerOnboardingContent('ss', {
-  icon: '⚙️',
-  title: 'הגדרות המשחק',
+// Keep these in sync with setup.html.
+registerOnboardingContent('ss-bot', {
+  icon: '🤖',
+  title: 'הגדרות — נגד המחשב',
   bullets: [
+    '💪 רמת קושי — קל / בינוני / קשה',
+    '⏱ קצב משחק — בזק (20) / רגיל (40) / איטי (60) / ללא',
+  ],
+});
+
+registerOnboardingContent('ss-vs', {
+  icon: '👥',
+  title: 'הגדרות — שני שחקנים',
+  bullets: [
+    '✏️ שם שחקן 1 / שם שחקן 2 — הזן שמות לשני השחקנים',
     '⏱ קצב משחק — בזק (20) / רגיל (40) / איטי (60) / ללא',
     '👁 הצג מגש שני השחקנים — ראה גם את האותיות של היריב',
   ],
