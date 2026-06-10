@@ -17,7 +17,7 @@ function loadMapKindToRoute() {
 test('service worker routes invite notifications to notifications screen', () => {
   const mapKindToRoute = loadMapKindToRoute();
   const route = mapKindToRoute('invite', '123456');
-  assert.equal(route.url, '/');
+  assert.equal(route.url, '/?open=notifications');
   assert.deepEqual(plain(route.message), { type: 'OPEN_NOTIFICATIONS' });
 });
 

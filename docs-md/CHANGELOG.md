@@ -2,6 +2,18 @@
 
 ---
 
+## Fix: notification cold-start routing + opted-out user subscription — June 2026
+
+Two edge-case bugs in the push notification flow.
+
+**Bug 1 — Cold-start routing:** When tapping an invite notification with the app closed, `clients.matchAll()` returns no windows so the service worker calls `clients.openWindow(route.url)` but never delivers the `postMessage`. The fix encodes the destination in the URL itself: the invite `case` in `sw.js` now opens `/?open=notifications`, and `main.js` reads this param at boot and emits `MENU_INTENT.OPEN_NOTIFICATIONS` to navigate straight to the inbox — no postMessage needed.
+
+**Bug 2 — Opted-out users:** Users who unchecked "אני רוצה לקבל התראות" on sign-up had `wantsNotifications: false` persisted, so `bootCrossCuttingFor()` skipped `notificationService.boot()` on every login. Tapping "הפעל" in Settings then called `optIn()` before `OneSignal.init()` (or fell back to native-only), and because `_oneSignalReady` remained `false` after `loginUser()` was skipped, the subscription was never linked to the user's Firebase UID. Fix: `requestNotifPermission()` already calls `boot()` before `optIn()` (added in the previous fix); now it also writes `wantsNotifications: true` to `users/${uid}/profile/wantsNotifications` after the browser grants permission, so subsequent logins will call `boot()` normally.
+
+**Files modified:** `sw.js`, `src/main.js`, `src/testing/serviceWorkerRouting.test.js`
+
+---
+
 ## Fix: sign-up notification checkbox now actually enables push — June 2026
 
 The "אני רוצה לקבל התראות" checkbox on the sign-up screen was read and persisted but never acted on — `boot()` + `loginUser()` only initialize the OneSignal SDK; they don't call `optIn()` which is what requests the browser permission prompt and subscribes the device.

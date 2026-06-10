@@ -3203,6 +3203,9 @@ async function boot() {
     // when something later calls showScreen('sh'). Trigger it once here so
     // the buttons cascade in on initial load too.
     spineShowScreen('sh', { doc: globalThis.document });
+    if (params.get('open') === 'notifications') {
+      bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS);
+    }
   }
 
   // Native back-button (browser ← / Android back gesture) interception.
@@ -3542,6 +3545,10 @@ function installCutoverGlobals() {
         if (uid) await notificationService.loginUser(uid);
       } else {
         await globalThis.Notification?.requestPermission?.();
+      }
+      if (globalThis.Notification?.permission === 'granted' && uid && activeFbDb) {
+        activeFbDb.ref(`users/${uid}/profile/wantsNotifications`).set(true)
+          .catch(e => console.warn('[notif] persist wantsNotifications', e));
       }
     } catch (e) {
       console.warn('[notif] permission request', e);
