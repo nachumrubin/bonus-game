@@ -3185,8 +3185,8 @@ button[aria-disabled="true"] {
   overflow: hidden;
 }
 @keyframes onb-slide-in {
-  from { transform: translateX(60px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+  from { transform: translateX(-60px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
 }
 .onb-bullets li {
   font-size: 13px;
