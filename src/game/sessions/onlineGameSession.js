@@ -655,6 +655,7 @@ export async function createOnlineGameSession({
         turnDeadlineMs,
         settings,
         lastMove,
+        updatedAt: Date.now(),
       };
       if (turnChanged && lastMove?.type !== 'free-exchange') {
         patch.livePreview = null;

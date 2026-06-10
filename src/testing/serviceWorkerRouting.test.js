@@ -14,11 +14,11 @@ function loadMapKindToRoute() {
   return sandbox.mapKindToRoute;
 }
 
-test('service worker routes invite notifications to join flow', () => {
+test('service worker routes invite notifications to notifications screen', () => {
   const mapKindToRoute = loadMapKindToRoute();
   const route = mapKindToRoute('invite', '123456');
-  assert.equal(route.url, '/?join=123456');
-  assert.deepEqual(plain(route.message), { type: 'OPEN_JOIN', roomCode: '123456', roomId: '123456' });
+  assert.equal(route.url, '/?open=notifications');
+  assert.deepEqual(plain(route.message), { type: 'OPEN_NOTIFICATIONS' });
 });
 
 test('service worker routes turn and reminder notifications to resume flow', () => {

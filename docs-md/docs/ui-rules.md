@@ -101,6 +101,19 @@ Help dropdown / Guide / FAQ (top-bar `?` button):
 #ov-guide              — game guide overlay (collapsible <details> sections by topic)
 #ov-faq                — FAQ overlay (collapsible <details> Q&As)
 .guide-section         — accordion section (used inside both #ov-guide and #ov-faq)
+
+Onboarding overlay (per-screen first-visit tooltips):
+#ov-onboarding         — full-screen dark backdrop (.ov class); hidden by default; z-index 500
+#onb-icon              — large emoji icon (populated by onboardingController.js)
+#onb-title             — screen title text (ovt style)
+#onb-body              — <ul> of bullet points (onb-bullets class); populated dynamically
+#onb-noshowcb          — "אל תציג שוב" checkbox (pre-checked); governs localStorage persistence
+#onb-dismiss-btn       — "הבנתי ✓" primary button; triggers dismiss + optional save
+.onb-bullets           — bullet list inside #onb-body
+.onb-footer            — row containing checkbox label + dismiss button
+.onb-nsa-label         — label wrapping #onb-noshowcb + text
+Storage key: 'spine.onboarding.dismissed' (JSON array of permanently-dismissed screen IDs)
+Event: ONBOARDING_SCREEN_ENTER ('onboarding/screenEnter') — emitted by showLegacyScreen()
 ```
 
 ### Stats Screen (4-tab layout, June 2026 insights addition)

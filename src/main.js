@@ -55,6 +55,7 @@ import { createDisconnectController } from './ui/controllers/disconnectControlle
 import { createConnectivityIndicator } from './ui/controllers/connectivityIndicator.js';
 import { startConnectivityMonitor } from './game/online/connectivityService.js';
 import { createTutorialController } from './ui/controllers/tutorialController.js';
+import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/controllers/onboardingController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
 import { showScreen as spineShowScreen } from './ui/screens/screenTransitions.js';
@@ -560,6 +561,11 @@ async function boot() {
       const roomId = data.roomId ?? data.room;
       if (roomId) resumeOnlineRoomById(roomId, { skipCoin: true });
       else bus.emit(CHAMPS_OPEN, {});
+      return;
+    }
+    if (type === 'OPEN_NOTIFICATIONS') {
+      bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS);
+      return;
     }
   }
 
@@ -675,10 +681,12 @@ async function boot() {
   // the user can pick names + difficulty, then PLAY_CLICKED starts the game.
     bus.on(MENU_INTENT.START_2P, () => {
       showLegacyScreen('ss');
+      bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: 'ss-vs' });
       bus.emit(SETUP_OPEN, { mode: 'vs', initialDifficulty: 1 });
     });
     bus.on(MENU_INTENT.START_VS_BOT, () => {
       showLegacyScreen('ss');
+      bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: 'ss-bot' });
       bus.emit(SETUP_OPEN, { mode: 'bot', initialDifficulty: 1 });
     });
     bus.on(MENU_INTENT.OPEN_PROFILE, () => {
@@ -741,31 +749,39 @@ async function boot() {
     });
     bus.on(LOBBY_INTENT.CREATE_ROOM, () => {
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.remove?.('hidden');
+      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
       const nameInput = globalThis.document?.getElementById?.('cr-name');
       if (nameInput) {
         const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
                   ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
         if (name) nameInput.value = name;
       }
+      const nameRow = globalThis.document?.getElementById?.('cr-name-row');
+      if (nameRow) nameRow.style.display = isAuthed ? 'none' : '';
     });
     bus.on(LOBBY_INTENT.JOIN_BY_CODE, () => {
       globalThis.document?.getElementById?.('ov-join-code')?.classList?.remove?.('hidden');
+      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
       const nameInput = globalThis.document?.getElementById?.('jc-name');
       if (nameInput) {
         const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
                   ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
         if (name) nameInput.value = name;
       }
+      const nameRow = globalThis.document?.getElementById?.('jc-name-row');
+      if (nameRow) nameRow.style.display = isAuthed ? 'none' : '';
     });
     bus.on(LOBBY_INTENT.MATCHMAKING, () => {
       globalThis.document?.getElementById?.('ov-matchmaking')?.classList?.remove?.('hidden');
+      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
       const nameInput = globalThis.document?.getElementById?.('mm-name');
       if (nameInput) {
         const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
                   ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
         if (name) nameInput.value = name;
       }
-      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
+      const nameRow = globalThis.document?.getElementById?.('mm-name-row');
+      if (nameRow) nameRow.style.display = isAuthed ? 'none' : '';
       const ratingRow = globalThis.document?.getElementById?.('mm-rating-row');
       if (ratingRow) ratingRow.style.display = isAuthed ? '' : 'none';
     });
@@ -2114,6 +2130,17 @@ async function boot() {
         await ratingService.upsertRatingLeaderboardEntry(fbDb, { uid, profile: initial, rating: initial.rating });
         await fbDb.ref(`userIds/${userId}`).set(uid);
         showLegacyScreen('sh');
+        if (wantsNotifications !== false) {
+          // User opted in — request push permission immediately after signup.
+          globalThis.requestNotifPermission?.();
+        } else {
+          // User opted out — remind them they can enable later via Settings.
+          bus.emit(NOTIF_BANNER_SHOW, {
+            avatar: '🔔',
+            text: 'ניתן להפעיל התראות בכל עת מתוך הגדרות',
+            action: 'openSettings',
+          });
+        }
       } catch (e) {
         authScreens.showError('signup', e?.message ?? AUTH_ERROR_HE['bad-email']);
       }
@@ -2282,6 +2309,8 @@ async function boot() {
         _scStack.push(id);
       }
     }
+    // Notify onboarding before the early-return branch so every path is covered.
+    bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: id });
     const showSc = globalThis.showSc;
     if (typeof showSc === 'function') {
       try { showSc(id); return; } catch { /* swallow */ }
@@ -2386,24 +2415,6 @@ async function boot() {
       }
       bus.emit(BI_OPEN, payload);
     }));
-
-    // Auto-category bonus (B2/B4/B9) triggered by the bot: the engine emits
-    // BOOST_ACTIVATED for auto_extra_score and defers points until the human
-    // clicks אישור on the award overlay. animationController skips the
-    // overlay for the opponent slot, so we finalize the award ourselves and
-    // emit BONUS_AWARD_ACK so the bot/turn-timer resume.
-    if (botSlot != null) {
-      subs.push(bus.on(EV.BOOST_ACTIVATED, ({ slot, boostId, payload, consumed, pending, bonusIdx }) => {
-        if (consumed || pending) return;
-        if (slot !== botSlot) return;
-        const extra = boostId === 'auto_extra_score' ? (Number(payload?.extra) || 0) : 0;
-        session.dispatch({
-          type: CMD.FINALIZE_BOOST_AWARD,
-          payload: { slot, extra, bonusIdx },
-        });
-        bus.emit(BONUS_AWARD_ACK, { slot, boostId, extra: payload?.extra ?? 0 });
-      }));
-    }
 
     // Lazy word-list selectors — building the filtered arrays is non-trivial
     // (DICT is potentially tens of thousands of entries) so we cache them
@@ -2937,7 +2948,7 @@ async function boot() {
     // detection silently stopped working).
     const humanSlot = (bot || mode === 'tutorial') ? 0 : null;
     const controller = createGameController({ bus, session, mySlot: humanSlot });
-    const animationController = createAnimationController({ bus, mySlot: humanSlot });
+    const animationController = createAnimationController({ bus, mySlot: humanSlot, showOpponentBoostOverlay: !!bot });
     animationController.setEnabled(settingsCompat.loadUiPreferences(globalThis.localStorage).animationsEnabled);
     const screen = mountGameScreen({
       controller,
@@ -3019,6 +3030,7 @@ async function boot() {
       if (!fbUser) return null;
       return lastProfile?.displayName ?? fbUser.displayName ?? null;
     },
+    getIsAuthed: () => !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous),
   });
   const onlineLobby = mountOnlineLobbyScreen({ bus });
   const matchmakingOverlay = mountMatchmakingOverlayScreen({ bus });
@@ -3046,6 +3058,7 @@ async function boot() {
   const championsScreen    = mountChampionsScreen({ bus });
   const dictionaryScreen   = mountDictionaryScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });
+  const onboarding         = mountOnboardingController({ bus, storage: globalThis.localStorage, getUid: () => activeFbCurrentUser?.uid ?? null });
   const jokerPicker = mountJokerPicker({ bus });
   // In-game overlays
   const endScreen     = mountEndGameScreen({ bus });
@@ -3199,6 +3212,14 @@ async function boot() {
     // when something later calls showScreen('sh'). Trigger it once here so
     // the buttons cascade in on initial load too.
     spineShowScreen('sh', { doc: globalThis.document });
+    if (params.get('open') === 'notifications') {
+      bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS);
+      params.delete('open');
+      const cleaned = params.toString()
+        ? globalThis.location.pathname + '?' + params.toString()
+        : globalThis.location.pathname;
+      globalThis.history?.replaceState?.(null, '', cleaned);
+    }
   }
 
   // Native back-button (browser ← / Android back gesture) interception.
@@ -3496,6 +3517,57 @@ function installCutoverGlobals() {
       console.error('[spine] crSendInvite', e);
       if (statusEl) { statusEl.textContent = 'שגיאה בשליחת ההזמנה'; statusEl.style.color = '#f87'; }
     }
+  };
+
+  // ── Notification permission button ───────────────────────────────
+  // settings.html's "הפעל" button has onclick="requestNotifPermission()".
+  // Sync the status display whenever the settings overlay opens so the
+  // current browser permission state is reflected immediately.
+  function syncNotifStatusUi() {
+    const doc = globalThis.document;
+    const btn = doc?.getElementById?.('sett-notif-button');
+    const status = doc?.getElementById?.('sett-notif-status');
+    if (!status && !btn) return;
+    const permission = globalThis.Notification?.permission ?? 'default';
+    const granted = permission === 'granted';
+    const blocked = permission === 'denied';
+    if (status) {
+      status.textContent = granted ? 'פעיל ✓' : blocked ? 'חסום' : 'כבוי';
+      status.style.color = granted ? '#8eff8e' : blocked ? '#ff8e8e' : 'rgba(255,255,255,.4)';
+    }
+    if (btn) {
+      btn.disabled = granted || blocked;
+      btn.textContent = granted ? 'פעיל' : blocked ? 'חסום בדפדפן' : 'הפעל';
+    }
+  }
+  bus.on(SETTINGS_OPEN, syncNotifStatusUi);
+
+  globalThis.requestNotifPermission = globalThis.requestNotifPermission ?? async function requestNotifPermission() {
+    const doc = globalThis.document;
+    const btn = doc?.getElementById?.('sett-notif-button');
+    const status = doc?.getElementById?.('sett-notif-status');
+    if (btn) btn.disabled = true;
+    if (status) status.innerHTML = '<span class="sett-notif-spinner"></span>';
+    try {
+      const uid = activeFbCurrentUser?.uid;
+      // Ensure OneSignal is initialised before calling optIn — boot() is
+      // concurrency-safe so concurrent callers (e.g. bootCrossCuttingFor +
+      // post-signup call) await the same in-flight promise.
+      await notificationService.boot({ uid: uid || undefined });
+      if (globalThis.OneSignal?.User?.PushSubscription) {
+        await globalThis.OneSignal.User.PushSubscription.optIn();
+        if (uid) await notificationService.loginUser(uid);
+      } else {
+        await globalThis.Notification?.requestPermission?.();
+      }
+      if (globalThis.Notification?.permission === 'granted' && uid && activeFbDb) {
+        activeFbDb.ref(`users/${uid}/profile/wantsNotifications`).set(true)
+          .catch(e => console.warn('[notif] persist wantsNotifications', e));
+      }
+    } catch (e) {
+      console.warn('[notif] permission request', e);
+    }
+    syncNotifStatusUi();
   };
 }
 

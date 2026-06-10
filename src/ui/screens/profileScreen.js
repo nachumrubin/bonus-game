@@ -14,6 +14,7 @@
 
 import { $, on, setText } from '../domHelpers.js';
 import { SPINE_AVATARS } from './avatarScreens.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const PROFILE_INTENT = Object.freeze({
   EDIT_NAME:        'profile/editName',
@@ -153,3 +154,15 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
     _isMounted: () => !!screenEl,
   };
 }
+
+// Keep this in sync with profile-screen.html.
+registerOnboardingContent('sprofile', {
+  icon: '👤',
+  title: 'הפרופיל שלי',
+  bullets: [
+    '✏️ לחץ על השם לעריכה',
+    '🖼 לחץ על האווטאר לשינוי מהגלריה',
+    '⭐ דירוג ELO — עולה עם ניצחון, יורד עם הפסד',
+    '📊 סטטיסטיקות מלאות — לחץ לצפייה בכל הנתונים',
+  ],
+});

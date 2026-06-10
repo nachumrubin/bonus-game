@@ -2,6 +2,87 @@
 
 ---
 
+## Fix: notification cold-start routing + opted-out user subscription — June 2026
+
+Two edge-case bugs in the push notification flow.
+
+**Bug 1 — Cold-start routing:** When tapping an invite notification with the app closed, `clients.matchAll()` returns no windows so the service worker calls `clients.openWindow(route.url)` but never delivers the `postMessage`. The fix encodes the destination in the URL itself: the invite `case` in `sw.js` now opens `/?open=notifications`, and `main.js` reads this param at boot and emits `MENU_INTENT.OPEN_NOTIFICATIONS` to navigate straight to the inbox — no postMessage needed.
+
+**Bug 2 — Opted-out users:** Users who unchecked "אני רוצה לקבל התראות" on sign-up had `wantsNotifications: false` persisted, so `bootCrossCuttingFor()` skipped `notificationService.boot()` on every login. Tapping "הפעל" in Settings then called `optIn()` before `OneSignal.init()` (or fell back to native-only), and because `_oneSignalReady` remained `false` after `loginUser()` was skipped, the subscription was never linked to the user's Firebase UID. Fix: `requestNotifPermission()` already calls `boot()` before `optIn()` (added in the previous fix); now it also writes `wantsNotifications: true` to `users/${uid}/profile/wantsNotifications` after the browser grants permission, so subsequent logins will call `boot()` normally.
+
+**Files modified:** `sw.js`, `src/main.js`, `src/testing/serviceWorkerRouting.test.js`
+
+---
+
+## Fix: sign-up notification checkbox now actually enables push — June 2026
+
+The "אני רוצה לקבל התראות" checkbox on the sign-up screen was read and persisted but never acted on — `boot()` + `loginUser()` only initialize the OneSignal SDK; they don't call `optIn()` which is what requests the browser permission prompt and subscribes the device.
+
+**If checkbox is checked (default):** after account creation the app immediately calls `requestNotifPermission()`, which ensures OneSignal is initialised and then calls `OneSignal.User.PushSubscription.optIn()` — this shows the browser's native "Allow Notifications?" dialog and subscribes the device.
+
+**If checkbox is unchecked:** a slide-down banner appears on the home screen saying "ניתן להפעיל התראות בכל עת מתוך הגדרות". Clicking the banner opens the Settings overlay directly.
+
+**Concurrency fix in `notificationService.boot()`:** `boot()` now stores the in-flight init promise (`_bootPromise`). Concurrent callers (the regular `onAuthStateChanged` boot + the new post-signup `requestNotifPermission` call) await the same promise instead of racing, which would have returned `false` before init completed.
+
+**Files modified:** `src/notifications/notificationService.js`, `src/main.js`, `src/ui/screens/notificationsScreen.js` (added `openSettings` banner action)
+
+---
+
+## Fix: push notifications for game invitations — June 2026
+
+When a friend sends a game invitation, the recipient's phone now shows the notification in the system notification dropdown even when the app is closed.
+
+**Root cause:** The Settings screen "הפעל" notification button (`sett-notif-button`) called `requestNotifPermission()`, a global function that had never been implemented in the new spine. Without it, the OneSignal SDK was initialised on login but the browser's push permission was never requested — no permission means no push delivery.
+
+**What changed:**
+
+1. **`requestNotifPermission` global** added in `installCutoverGlobals()` in `main.js`. When the user taps "הפעל", it calls `OneSignal.User.PushSubscription.optIn()` (OneSignal v16 API) to trigger the browser's native permission prompt and subscribe the device, then re-logs the Firebase UID with OneSignal to link the subscription to the user's `external_id`. Falls back to `Notification.requestPermission()` if the OneSignal SDK isn't loaded.
+
+2. **Notification status display** (`sett-notif-status`) is now synced every time the Settings overlay opens: shows "פעיל ✓" (green) when granted, "חסום" (red) when denied, "כבוי" (grey) when default. The button is disabled when permission is already granted or permanently blocked.
+
+3. **Invite notification routing** (`sw.js`): tapping an invite notification now routes to the notifications screen (`OPEN_NOTIFICATIONS`) rather than the join-by-code screen. `handleServiceWorkerMessage` in `main.js` gained an `OPEN_NOTIFICATIONS` handler that emits `MENU_INTENT.OPEN_NOTIFICATIONS`. The service worker cache name was stamped via `scripts/stamp-build.js`.
+
+**Files modified:** `src/main.js`, `sw.js`, `src/testing/serviceWorkerRouting.test.js`
+
+---
+
+## Feat: show bot's boost overlay to the human player — June 2026
+
+When the bot lands on an auto-boost square (B2/B4/B9) or a future-effect square (B5/B6/B7), the human player now sees the same modal award overlay they would see in 2-player mode. The overlay shows the boost type and, for point boosts, the extra points earned. The label reads "הבוט" instead of "שחקן 2". Clicking אישור finalises the award (dispatches `FINALIZE_BOOST_AWARD`), exactly as for the human's own boosts.
+
+**Why this change:** Previously the bot's `BOOST_ACTIVATED` event was silently swallowed — `animationController` had an early-return guard for opponent slots, and `attachBonusFlow` auto-finalised the award without any UI. This made it impossible for the human to know why the bot's score suddenly jumped.
+
+**How it works:**
+- `createAnimationController` gains a `showOpponentBoostOverlay` flag (default `false`). Bot games pass `true`.
+- When the flag is set, the `BOOST_ACTIVATED` guard is lifted for the opponent slot and the overlay fires with `isOpponent: true`.
+- `showBonusAwardOverlay` in `gameScreen.js` renders "הבוט" as the player label when `isOpponent` is true.
+- The `attachBonusFlow` bot auto-finalise block is removed; finalization now happens through the normal overlay `close()` path, ensuring `FINALIZE_BOOST_AWARD` is dispatched after the human acknowledges.
+
+**Not changed:** mini-game and wheel bot bonuses (B1/B3/B8/B10/B11/B12/B13) are still auto-resolved silently; their overlay is a separate story.
+
+**Files modified:** `src/ui/controllers/animationController.js`, `src/ui/screens/gameScreen.js`, `src/main.js`
+
+---
+
+## Feat: per-screen onboarding tooltips for new players — June 2026
+
+New `onboardingController.js` shows a popup the first time a user visits each key screen. Styled using the existing `.ov`/`.ovc` dark-navy overlay pattern (matching the rest of the app). Includes a pre-checked "אל תציג שוב" (Don't show again) checkbox — checking it before dismissal permanently hides that screen's popup via `localStorage` (`spine.onboarding.dismissed`). Without the checkbox, the popup re-appears next session.
+
+**Screens covered:** home (`sh`), online lobby (`so`), game setup (`ss`), stats (`sstats`), profile (`sprofile`), friends (`sfriends`), notifications (`snotif`), my games (`smygames`). The game screen (`sg`) is intentionally excluded — the full tutorial covers it.
+
+**Files added:** `src/ui/controllers/onboardingController.js`, `partials/screens/onboarding-overlay.html`  
+**Files modified:** `styles.css` (`.onb-*` rules), `screenPartialManifest.js`, `main.js` (import + mount + emit in `showLegacyScreen`)
+
+---
+
+## Fix: time-since-last-move not resetting after a move — June 2026
+
+`rawCommitCurrentState()` in `onlineGameSession.js` was building the Firebase patch without an `updatedAt` field. Since `commitTransaction()` only auto-increments `version`, the room's `updatedAt` timestamp was never written on move commits. `asyncSessionService.summarizeForUid()` reads `room.updatedAt` to populate `lastUpdated`, which drives the "לפני N ימים" display in the game list — so the label never refreshed after a move.
+
+**Fix:** Added `updatedAt: Date.now()` to the patch in `rawCommitCurrentState()`.
+
+---
+
 ## Dictionary v2 promoted to default + bot keeps legacy 40K vocabulary — June 2026
 
 Wraps up the dictionary v2 rollout.

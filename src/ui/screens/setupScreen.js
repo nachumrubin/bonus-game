@@ -14,6 +14,7 @@
 
 import { $, on } from '../domHelpers.js';
 import { loadUiPreferences } from '../../game/settings/settingsCompat.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const SETUP_INTENT = Object.freeze({
   PLAY_CLICKED: 'setup/playClicked',
@@ -40,7 +41,7 @@ const SELECTORS = {
   backBtn:    'button[onclick="goHome()"]',
 };
 
-export function mountSetupScreen({ root = globalThis.document, bus, getDisplayName } = {}) {
+export function mountSetupScreen({ root = globalThis.document, bus, getDisplayName, getIsAuthed } = {}) {
   if (!bus) throw new Error('mountSetupScreen: bus required');
 
   const setup = $(SELECTORS.setupRoot, root);
@@ -160,6 +161,10 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
     if (p1Input) {
       const name = getDisplayName?.() ?? loadUiPreferences(globalThis.localStorage).lastDisplayName;
       if (name) p1Input.value = name;
+      // Hide the name field in bot mode when the user is signed in — their
+      // profile name is used automatically.
+      const p1Row = p1Input.closest?.('.sf') ?? p1Input.parentElement;
+      if (p1Row) p1Row.style.display = (mode === 'bot' && getIsAuthed?.()) ? 'none' : '';
     }
     // Show P2 input only in vs mode; show difficulty only in bot mode
     const p2Field = $(SELECTORS.p2Field, setup);
@@ -186,3 +191,23 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
 
   return { unmount };
 }
+
+// Keep these in sync with setup.html.
+registerOnboardingContent('ss-bot', {
+  icon: '🤖',
+  title: 'הגדרות — נגד המחשב',
+  bullets: [
+    '💪 רמת קושי — קל / בינוני / קשה',
+    '⏱ קצב משחק — בזק (20) / רגיל (40) / איטי (60) / ללא',
+  ],
+});
+
+registerOnboardingContent('ss-vs', {
+  icon: '👥',
+  title: 'הגדרות — שני שחקנים',
+  bullets: [
+    '✏️ שם שחקן 1 / שם שחקן 2 — הזן שמות לשני השחקנים',
+    '⏱ קצב משחק — בזק (20) / רגיל (40) / איטי (60) / ללא',
+    '👁 הצג מגש שני השחקנים — ראה גם את האותיות של היריב',
+  ],
+});

@@ -7,6 +7,7 @@
 //
 import { $, on } from '../domHelpers.js';
 import { startGlobe } from '../globeRenderer.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const MENU_INTENT = Object.freeze({
   OPEN_PROFILE:       'menu/openProfile',
@@ -195,3 +196,15 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     },
   };
 }
+
+// Keep this in sync with the home screen layout (home.html).
+registerOnboardingContent('sh', {
+  icon: '🏠',
+  title: 'ברוך הבא לבונוס!',
+  bullets: [
+    '🌐 משחק ברשת — שחק מול שחקנים מכל הארץ',
+    '👥 שני שחקנים — על מכשיר אחד',
+    '🤖 נגד המחשב — בחר מתוך שלוש רמות קושי',
+    '❓ לחץ ? לגישה להדרכה, מדריך ושאלות נפוצות',
+  ],
+});

@@ -6,6 +6,7 @@
 
 import { $, on } from '../domHelpers.js';
 import { MENU_INTENT } from './menuScreen.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const NOTIF_BANNER_SHOW = 'notif/bannerShow';
 
@@ -166,6 +167,8 @@ export function mountNotifBanner({ root = globalThis.document, bus } = {}) {
   cleanups.push(on(banner, 'click', () => {
     if (currentAction === 'openNotifications') {
       bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS, { source: 'banner' });
+    } else if (currentAction === 'openSettings') {
+      bus.emit(MENU_INTENT.OPEN_SETTINGS);
     }
     hide();
   }));
@@ -187,3 +190,13 @@ export function mountNotifBanner({ root = globalThis.document, bus } = {}) {
     },
   };
 }
+
+// Keep this in sync with notifications-inbox.html.
+registerOnboardingContent('snotif', {
+  icon: '🔔',
+  title: 'הזמנות',
+  bullets: [
+    '🎮 הזמנות למשחק — קבל או דחה הזמנות',
+    '👥 בקשות חברות — אשר שחקנים שהוסיפו אותך',
+  ],
+});

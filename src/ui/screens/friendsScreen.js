@@ -13,6 +13,7 @@
 
 import { $, on, setText } from '../domHelpers.js';
 import { g, getGender } from '../genderText.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const FRIENDS_INTENT = Object.freeze({
   COPY_MY_ID:     'friendsUi/copyMyId',
@@ -77,7 +78,7 @@ export function buildFriendsListHtml(friends = []) {
   }
   return friends.map(f => {
     const online    = !!f.connected;
-    const lastSeen  = f.lastSeen ? formatLastSeen(f.lastSeen) : '';
+    const lastSeen  = !online && f.lastSeen ? formatLastSeen(f.lastSeen) : '';
     const ratingStr = f.rating != null ? String(f.rating) : '—';
     const dotClass  = online ? 'fr-online-dot fr-online-dot--on' : 'fr-online-dot';
     return `<div data-fr-row="${escapeHtml(f.uid)}" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.06);">`
@@ -281,3 +282,14 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     },
   };
 }
+
+// Keep this in sync with friends-screen.html.
+registerOnboardingContent('sfriends', {
+  icon: '👥',
+  title: 'חברים',
+  bullets: [
+    '🆔 המזהה שלך — שתף עם חברים כדי שיוסיפו אותך',
+    '➕ הוסף לפי מזהה — הזן מזהה בן 6 תווים',
+    '⏳ בקשות ממתינות — אשר חברים שהוסיפו אותך',
+  ],
+});

@@ -37,8 +37,8 @@ function mapKindToRoute(kind, roomId) {
   switch (kind) {
     case 'invite':
       return {
-        url: roomId ? '/?join=' + roomId : '/',
-        message: roomId ? { type: 'OPEN_JOIN', roomCode: roomId, roomId: roomId } : null,
+        url: '/?open=notifications',
+        message: { type: 'OPEN_NOTIFICATIONS' },
       };
     case 'invite_accepted':
       return {
@@ -67,7 +67,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260609230443';
+var CACHE_NAME = 'boost-20260610172752';
 var ASSETS = [
   './',
   './index.html',
