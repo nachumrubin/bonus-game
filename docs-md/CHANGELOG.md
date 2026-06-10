@@ -2,6 +2,14 @@
 
 ---
 
+## Fix: time-since-last-move not resetting after a move — June 2026
+
+`rawCommitCurrentState()` in `onlineGameSession.js` was building the Firebase patch without an `updatedAt` field. Since `commitTransaction()` only auto-increments `version`, the room's `updatedAt` timestamp was never written on move commits. `asyncSessionService.summarizeForUid()` reads `room.updatedAt` to populate `lastUpdated`, which drives the "לפני N ימים" display in the game list — so the label never refreshed after a move.
+
+**Fix:** Added `updatedAt: Date.now()` to the patch in `rawCommitCurrentState()`.
+
+---
+
 ## Dictionary v2 promoted to default + bot keeps legacy 40K vocabulary — June 2026
 
 Wraps up the dictionary v2 rollout.
