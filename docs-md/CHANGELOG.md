@@ -2,6 +2,20 @@
 
 ---
 
+## Fix: sign-up notification checkbox now actually enables push — June 2026
+
+The "אני רוצה לקבל התראות" checkbox on the sign-up screen was read and persisted but never acted on — `boot()` + `loginUser()` only initialize the OneSignal SDK; they don't call `optIn()` which is what requests the browser permission prompt and subscribes the device.
+
+**If checkbox is checked (default):** after account creation the app immediately calls `requestNotifPermission()`, which ensures OneSignal is initialised and then calls `OneSignal.User.PushSubscription.optIn()` — this shows the browser's native "Allow Notifications?" dialog and subscribes the device.
+
+**If checkbox is unchecked:** a slide-down banner appears on the home screen saying "ניתן להפעיל התראות בכל עת מתוך הגדרות". Clicking the banner opens the Settings overlay directly.
+
+**Concurrency fix in `notificationService.boot()`:** `boot()` now stores the in-flight init promise (`_bootPromise`). Concurrent callers (the regular `onAuthStateChanged` boot + the new post-signup `requestNotifPermission` call) await the same promise instead of racing, which would have returned `false` before init completed.
+
+**Files modified:** `src/notifications/notificationService.js`, `src/main.js`, `src/ui/screens/notificationsScreen.js` (added `openSettings` banner action)
+
+---
+
 ## Fix: push notifications for game invitations — June 2026
 
 When a friend sends a game invitation, the recipient's phone now shows the notification in the system notification dropdown even when the app is closed.
