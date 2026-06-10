@@ -3182,6 +3182,11 @@ button[aria-disabled="true"] {
   padding: 0;
   margin: 0 0 4px;
   text-align: right;
+  overflow: hidden;
+}
+@keyframes onb-slide-in {
+  from { transform: translateX(60px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
 }
 .onb-bullets li {
   font-size: 13px;
@@ -3189,7 +3194,12 @@ button[aria-disabled="true"] {
   padding: 7px 0;
   line-height: 1.5;
   direction: rtl;
+  animation: onb-slide-in 0.35s ease-out both;
 }
+.onb-bullets li:nth-child(1) { animation-delay: 0.05s; }
+.onb-bullets li:nth-child(2) { animation-delay: 0.15s; }
+.onb-bullets li:nth-child(3) { animation-delay: 0.25s; }
+.onb-bullets li:nth-child(4) { animation-delay: 0.35s; }
 .onb-bullets li + li {
   border-top: 1px solid rgba(255,255,255,.08);
 }
