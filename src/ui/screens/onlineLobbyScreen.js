@@ -5,6 +5,7 @@
 
 import { $, on } from '../domHelpers.js';
 import { startGlobe } from '../globeRenderer.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const LOBBY_INTENT = Object.freeze({
   CREATE_ROOM:   'lobby/createRoom',
@@ -54,3 +55,14 @@ export function mountOnlineLobbyScreen({ root = globalThis.document, bus } = {})
 
   return { unmount };
 }
+
+// Keep this in sync with online-lobby.html.
+registerOnboardingContent('so', {
+  icon: '🌐',
+  title: 'משחק אונליין',
+  bullets: [
+    '🆕 פתח משחק חדש — בחר הגדרות ושלח קוד לחבר',
+    '🔑 הצטרף לפי קוד — הזן קוד שקיבלת מחבר',
+    '🎲 חפש יריב אקראי — התחבר לשחקן זמין',
+  ],
+});
