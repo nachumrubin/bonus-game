@@ -13,6 +13,7 @@
 
 import { $, on, setText } from '../domHelpers.js';
 import { g, getGender } from '../genderText.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const FRIENDS_INTENT = Object.freeze({
   COPY_MY_ID:     'friendsUi/copyMyId',
@@ -281,3 +282,14 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     },
   };
 }
+
+// Keep this in sync with friends-screen.html.
+registerOnboardingContent('sfriends', {
+  icon: '👥',
+  title: 'חברים',
+  bullets: [
+    '🆔 המזהה שלך — שתף עם חברים כדי שיוסיפו אותך',
+    '➕ הוסף לפי מזהה — הזן מזהה בן 6 תווים',
+    '⏳ בקשות ממתינות — אשר חברים שהוסיפו אותך',
+  ],
+});

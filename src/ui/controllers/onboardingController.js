@@ -5,86 +5,22 @@ export const ONBOARDING_SCREEN_ENTER = 'onboarding/screenEnter';
 
 const STORAGE_KEY = 'spine.onboarding.dismissed';
 
-// Per-screen content shown to first-time visitors. Screens without an entry
-// are silently skipped. The game screen (sg) is intentionally excluded — the
-// full tutorial covers it.
-const SCREEN_CONTENT = {
-  sh: {
-    icon: '🏠',
-    title: 'ברוך הבא לבונוס!',
-    bullets: [
-      '🎮 שחק נגד הבוט, מול חבר, או אונליין',
-      '📊 לחץ על הפרופיל כדי לראות את הסטטיסטיקות שלך',
-      '🔔 הפעמון — הזמנות למשחק ועדכונים',
-      '❓ לחץ על ? לגישה להדרכה, מדריך ושאלות נפוצות',
-    ],
-  },
-  so: {
-    icon: '🌐',
-    title: 'משחק אונליין',
-    bullets: [
-      '⚡ חי — מהלכים בזמן אמת, עם שעון לכל מהלך',
-      '🔄 אסינכרוני — כל שחקן מהלך בזמנו שלו, ללא לחץ',
-      '👥 הזמן חבר ישירות עם קוד משחק',
-      '🎯 התאמה אוטומטית נגד יריב ברמתך',
-    ],
-  },
-  ss: {
-    icon: '⚙️',
-    title: 'הגדרות המשחק',
-    bullets: [
-      '⏱ הגדר את הזמן המותר לכל מהלך',
-      '📖 אפשר ערעורים — כל שחקן בוחר כמה ערעורים מותרים',
-      '👀 הצגת שתי הסטירות — ראה גם את לוח האותיות של היריב',
-    ],
-  },
-  sstats: {
-    icon: '📊',
-    title: 'הסטטיסטיקות שלך',
-    bullets: [
-      '💡 תובנות — ניתוח אישי של סגנון המשחק שלך',
-      '📈 התקדמות — גרף דירוג ואחוז ניצחון לאורך זמן',
-      '🏆 שיאים — המהלך הטוב ביותר, רצף ניצחונות ועוד',
-      '🤺 יריבים — נתונים מפורטים מול כל יריב שפגשת',
-    ],
-  },
-  sprofile: {
-    icon: '👤',
-    title: 'הפרופיל שלך',
-    bullets: [
-      '✏️ שנה שם — הכינוי שיופיע ליריבים שלך',
-      '🖼 בחר אווטאר מתוך הגלריה',
-      '⭐ דירוג Elo — עולה עם ניצחון, יורד עם הפסד',
-      '🎖 דרגות: מטבע ← כסף ← זהב ← יהלום',
-    ],
-  },
-  sfriends: {
-    icon: '👥',
-    title: 'חברים',
-    bullets: [
-      '🔍 חפש שחקנים לפי שם משתמש',
-      '✉️ שלח בקשת חברות — הם יקבלו עדכון',
-      '⚔️ אתגר חבר למשחק ישירות מהרשימה',
-    ],
-  },
-  snotif: {
-    icon: '🔔',
-    title: 'עדכונים',
-    bullets: [
-      '📨 הזמנות למשחק — קבל או דחה ישירות מכאן',
-      '🤝 בקשות חברות — אשר שחקנים חדשים לרשימה שלך',
-    ],
-  },
-  smygames: {
-    icon: '🎮',
-    title: 'המשחקים שלי',
-    bullets: [
-      '🟢 בתורי — משחקים שמחכים לפעולה שלך',
-      '⏳ בתור היריב — ממתין לתשובת הצד השני',
-      '💾 משחק שמור — ממשיך משחק מקומי שנשמר במכשיר',
-    ],
-  },
-};
+// Registry populated by each screen's module via registerOnboardingContent().
+// Keeping the copy next to the screen that owns it means a developer updating
+// a screen's features will find the onboarding text in the same file.
+const _registry = new Map();
+
+/**
+ * Register onboarding tooltip content for a screen.
+ * Call at module level in the screen's own JS file so content stays
+ * co-located and is registered at import time.
+ *
+ * @param {string} screenId   DOM id of the screen container (e.g. 'sh')
+ * @param {{ icon: string, title: string, bullets: string[] }} content
+ */
+export function registerOnboardingContent(screenId, content) {
+  _registry.set(screenId, content);
+}
 
 function escapeHtml(str) {
   return str
@@ -96,10 +32,16 @@ function escapeHtml(str) {
 /**
  * Mount the screen-by-screen onboarding system.
  *
+ * Behaviour:
+ * - Shows each screen's popup once per session.
+ * - If the user dismisses with the "אל תציג שוב" checkbox checked, the screen
+ *   is permanently suppressed (saved to localStorage).
+ * - If dismissed without the checkbox, the popup reappears next session.
+ *
  * @param {{ bus: object, storage?: Storage, triggerInitialScreen?: string }} opts
- *   triggerInitialScreen — screen ID to show on first load (default 'sh').
- *   The initial screen doesn't go through showLegacyScreen so we trigger it
- *   explicitly after the app loading animation clears.
+ *   triggerInitialScreen — screen ID shown at app start before showLegacyScreen
+ *   is ever called (default 'sh'). Triggered at 1 000 ms to clear the loading
+ *   animation.
  */
 export function mountOnboardingController({
   bus,
@@ -111,8 +53,8 @@ export function mountOnboardingController({
   const dismissed = new Set(
     JSON.parse(storage?.getItem(STORAGE_KEY) ?? '[]'),
   );
-  // Per-session guard: once shown in this session, don't repeat even if the
-  // user navigated away and came back without dismissing with "don't show again".
+  // Per-session guard: once shown this session, don't repeat even if the
+  // user navigates back to the screen without having checked "don't show again".
   const shownThisSession = new Set();
   let pendingTimer = null;
 
@@ -122,30 +64,30 @@ export function mountOnboardingController({
   }
 
   function populateAndShow(screenId) {
-    const content = SCREEN_CONTENT[screenId];
+    const content = _registry.get(screenId);
     if (!content) return;
 
-    const overlay  = $(`#ov-onboarding`);
-    const iconEl   = $(`#onb-icon`);
-    const titleEl  = $(`#onb-title`);
-    const bodyEl   = $(`#onb-body`);
-    const cbEl     = $(`#onb-noshowcb`);
+    const overlay = $(`#ov-onboarding`);
+    const iconEl  = $(`#onb-icon`);
+    const titleEl = $(`#onb-title`);
+    const bodyEl  = $(`#onb-body`);
+    const cbEl    = $(`#onb-noshowcb`);
 
     if (!overlay) return;
 
-    if (iconEl)  iconEl.textContent = content.icon;
+    if (iconEl)  iconEl.textContent  = content.icon;
     if (titleEl) titleEl.textContent = content.title;
-    if (bodyEl)  bodyEl.innerHTML = content.bullets
+    if (bodyEl)  bodyEl.innerHTML    = content.bullets
       .map(b => `<li>${escapeHtml(b)}</li>`)
       .join('');
-    if (cbEl) cbEl.checked = true;
+    if (cbEl) cbEl.checked = false;
 
     overlay.dataset.screenId = screenId;
     overlay.classList.remove('hidden');
   }
 
   function maybeShow(screenId) {
-    if (!SCREEN_CONTENT[screenId]) return;
+    if (!_registry.has(screenId)) return;
     if (shownThisSession.has(screenId)) return;
     if (dismissed.has(screenId)) return;
     shownThisSession.add(screenId);
@@ -155,7 +97,7 @@ export function mountOnboardingController({
   }
 
   function handleDismiss() {
-    const overlay  = $(`#ov-onboarding`);
+    const overlay = $(`#ov-onboarding`);
     if (!overlay) return;
     const screenId = overlay.dataset.screenId;
     const cbEl     = $(`#onb-noshowcb`);
@@ -167,7 +109,6 @@ export function mountOnboardingController({
     maybeShow(screenId);
   });
 
-  // Wire dismiss button and backdrop-click at mount time (DOM exists by now).
   const dismissBtn = $(`#onb-dismiss-btn`);
   const overlay    = $(`#ov-onboarding`);
 
@@ -179,8 +120,6 @@ export function mountOnboardingController({
     ? on(overlay, 'click', (e) => { if (e.target === overlay) handleDismiss(); })
     : () => {};
 
-  // Trigger the initial home screen once the app loading animation clears.
-  // 1 000 ms covers the longest app-loading sequence (tile bounce + fade-out).
   if (triggerInitialScreen) {
     pendingTimer = setTimeout(() => maybeShow(triggerInitialScreen), 1000);
   }

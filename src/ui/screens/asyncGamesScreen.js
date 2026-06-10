@@ -13,6 +13,7 @@
 // lives in main.js, which handles those intents directly.
 
 import { $, on } from '../domHelpers.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const MG_INTENT = Object.freeze({
   RESUME:  'myGames/resume',
@@ -195,3 +196,14 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
     },
   };
 }
+
+// Keep this in sync with async-games-screen.html.
+registerOnboardingContent('smygames', {
+  icon: '🎮',
+  title: 'המשחקים שלי',
+  bullets: [
+    '🟢 בתורי — לחץ "המשך" לשחק',
+    '⏳ בתור היריב — ממתין לתשובת הצד השני',
+    '💾 שמור — המשחק האופליין השמור במכשיר',
+  ],
+});

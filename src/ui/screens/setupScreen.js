@@ -14,6 +14,7 @@
 
 import { $, on } from '../domHelpers.js';
 import { loadUiPreferences } from '../../game/settings/settingsCompat.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const SETUP_INTENT = Object.freeze({
   PLAY_CLICKED: 'setup/playClicked',
@@ -186,3 +187,13 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
 
   return { unmount };
 }
+
+// Keep this in sync with setup.html.
+registerOnboardingContent('ss', {
+  icon: '⚙️',
+  title: 'הגדרות המשחק',
+  bullets: [
+    '⏱ קצב משחק — בזק (20) / רגיל (40) / איטי (60) / ללא',
+    '👁 הצג מגש שני השחקנים — ראה גם את האותיות של היריב',
+  ],
+});

@@ -1,6 +1,7 @@
 import { $, $$, on, setText } from '../domHelpers.js';
 import { PROFILE_RENDER, avatarEmoji } from './profileScreen.js';
 import { deriveInsights } from '../../game/account/playerInsights.js';
+import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const STATS_INTENT = Object.freeze({
   BACK: 'stats/back',
@@ -491,3 +492,15 @@ function escapeHtml(s) {
     .replaceAll('"', '&quot;')
     .replaceAll('\'', '&#39;');
 }
+
+// Keep this in sync with stats-screen.html tab names.
+registerOnboardingContent('sstats', {
+  icon: '📊',
+  title: 'סטטיסטיקות',
+  bullets: [
+    '💡 תובנות — ניתוח אישי של סגנון המשחק שלך',
+    '📈 התקדמות — דירוג ELO, שיא ניקוד ואחוז ניצחון',
+    '🏆 שיאים — הכי הרבה נקודות במהלך אחד, המילה הארוכה ביותר ועוד',
+    '🤺 יריבים — שימוש בבוסטים, ניצחונות בקאמבק, משחקים צמודים',
+  ],
+});
