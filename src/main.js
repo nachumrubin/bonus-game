@@ -749,31 +749,39 @@ async function boot() {
     });
     bus.on(LOBBY_INTENT.CREATE_ROOM, () => {
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.remove?.('hidden');
+      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
       const nameInput = globalThis.document?.getElementById?.('cr-name');
       if (nameInput) {
         const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
                   ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
         if (name) nameInput.value = name;
       }
+      const nameRow = globalThis.document?.getElementById?.('cr-name-row');
+      if (nameRow) nameRow.style.display = isAuthed ? 'none' : '';
     });
     bus.on(LOBBY_INTENT.JOIN_BY_CODE, () => {
       globalThis.document?.getElementById?.('ov-join-code')?.classList?.remove?.('hidden');
+      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
       const nameInput = globalThis.document?.getElementById?.('jc-name');
       if (nameInput) {
         const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
                   ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
         if (name) nameInput.value = name;
       }
+      const nameRow = globalThis.document?.getElementById?.('jc-name-row');
+      if (nameRow) nameRow.style.display = isAuthed ? 'none' : '';
     });
     bus.on(LOBBY_INTENT.MATCHMAKING, () => {
       globalThis.document?.getElementById?.('ov-matchmaking')?.classList?.remove?.('hidden');
+      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
       const nameInput = globalThis.document?.getElementById?.('mm-name');
       if (nameInput) {
         const name = lastProfile?.displayName ?? activeFbCurrentUser?.displayName
                   ?? settingsCompat.loadUiPreferences(globalThis.localStorage).lastDisplayName;
         if (name) nameInput.value = name;
       }
-      const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
+      const nameRow = globalThis.document?.getElementById?.('mm-name-row');
+      if (nameRow) nameRow.style.display = isAuthed ? 'none' : '';
       const ratingRow = globalThis.document?.getElementById?.('mm-rating-row');
       if (ratingRow) ratingRow.style.display = isAuthed ? '' : 'none';
     });
@@ -3022,6 +3030,7 @@ async function boot() {
       if (!fbUser) return null;
       return lastProfile?.displayName ?? fbUser.displayName ?? null;
     },
+    getIsAuthed: () => !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous),
   });
   const onlineLobby = mountOnlineLobbyScreen({ bus });
   const matchmakingOverlay = mountMatchmakingOverlayScreen({ bus });
