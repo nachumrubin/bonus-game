@@ -2,6 +2,24 @@
 
 ---
 
+## Fix: push notifications for game invitations — June 2026
+
+When a friend sends a game invitation, the recipient's phone now shows the notification in the system notification dropdown even when the app is closed.
+
+**Root cause:** The Settings screen "הפעל" notification button (`sett-notif-button`) called `requestNotifPermission()`, a global function that had never been implemented in the new spine. Without it, the OneSignal SDK was initialised on login but the browser's push permission was never requested — no permission means no push delivery.
+
+**What changed:**
+
+1. **`requestNotifPermission` global** added in `installCutoverGlobals()` in `main.js`. When the user taps "הפעל", it calls `OneSignal.User.PushSubscription.optIn()` (OneSignal v16 API) to trigger the browser's native permission prompt and subscribe the device, then re-logs the Firebase UID with OneSignal to link the subscription to the user's `external_id`. Falls back to `Notification.requestPermission()` if the OneSignal SDK isn't loaded.
+
+2. **Notification status display** (`sett-notif-status`) is now synced every time the Settings overlay opens: shows "פעיל ✓" (green) when granted, "חסום" (red) when denied, "כבוי" (grey) when default. The button is disabled when permission is already granted or permanently blocked.
+
+3. **Invite notification routing** (`sw.js`): tapping an invite notification now routes to the notifications screen (`OPEN_NOTIFICATIONS`) rather than the join-by-code screen. `handleServiceWorkerMessage` in `main.js` gained an `OPEN_NOTIFICATIONS` handler that emits `MENU_INTENT.OPEN_NOTIFICATIONS`. The service worker cache name was stamped via `scripts/stamp-build.js`.
+
+**Files modified:** `src/main.js`, `sw.js`, `src/testing/serviceWorkerRouting.test.js`
+
+---
+
 ## Feat: show bot's boost overlay to the human player — June 2026
 
 When the bot lands on an auto-boost square (B2/B4/B9) or a future-effect square (B5/B6/B7), the human player now sees the same modal award overlay they would see in 2-player mode. The overlay shows the boost type and, for point boosts, the extra points earned. The label reads "הבוט" instead of "שחקן 2". Clicking אישור finalises the award (dispatches `FINALIZE_BOOST_AWARD`), exactly as for the human's own boosts.
