@@ -561,6 +561,11 @@ async function boot() {
       const roomId = data.roomId ?? data.room;
       if (roomId) resumeOnlineRoomById(roomId, { skipCoin: true });
       else bus.emit(CHAMPS_OPEN, {});
+      return;
+    }
+    if (type === 'OPEN_NOTIFICATIONS') {
+      bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS);
+      return;
     }
   }
 
@@ -3484,6 +3489,49 @@ function installCutoverGlobals() {
       console.error('[spine] crSendInvite', e);
       if (statusEl) { statusEl.textContent = 'שגיאה בשליחת ההזמנה'; statusEl.style.color = '#f87'; }
     }
+  };
+
+  // ── Notification permission button ───────────────────────────────
+  // settings.html's "הפעל" button has onclick="requestNotifPermission()".
+  // Sync the status display whenever the settings overlay opens so the
+  // current browser permission state is reflected immediately.
+  function syncNotifStatusUi() {
+    const doc = globalThis.document;
+    const btn = doc?.getElementById?.('sett-notif-button');
+    const status = doc?.getElementById?.('sett-notif-status');
+    if (!status && !btn) return;
+    const permission = globalThis.Notification?.permission ?? 'default';
+    const granted = permission === 'granted';
+    const blocked = permission === 'denied';
+    if (status) {
+      status.textContent = granted ? 'פעיל ✓' : blocked ? 'חסום' : 'כבוי';
+      status.style.color = granted ? '#8eff8e' : blocked ? '#ff8e8e' : 'rgba(255,255,255,.4)';
+    }
+    if (btn) {
+      btn.disabled = granted || blocked;
+      btn.textContent = granted ? 'פעיל' : blocked ? 'חסום בדפדפן' : 'הפעל';
+    }
+  }
+  bus.on(SETTINGS_OPEN, syncNotifStatusUi);
+
+  globalThis.requestNotifPermission = globalThis.requestNotifPermission ?? async function requestNotifPermission() {
+    const doc = globalThis.document;
+    const btn = doc?.getElementById?.('sett-notif-button');
+    const status = doc?.getElementById?.('sett-notif-status');
+    if (btn) btn.disabled = true;
+    if (status) status.innerHTML = '<span class="sett-notif-spinner"></span>';
+    try {
+      if (globalThis.OneSignal?.User?.PushSubscription) {
+        await globalThis.OneSignal.User.PushSubscription.optIn();
+        const uid = activeFbCurrentUser?.uid;
+        if (uid) await notificationService.loginUser(uid);
+      } else {
+        await globalThis.Notification?.requestPermission?.();
+      }
+    } catch (e) {
+      console.warn('[notif] permission request', e);
+    }
+    syncNotifStatusUi();
   };
 }
 
