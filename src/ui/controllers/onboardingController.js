@@ -33,34 +33,47 @@ function escapeHtml(str) {
  * Mount the screen-by-screen onboarding system.
  *
  * Behaviour:
- * - Shows each screen's popup once per session.
+ * - Shows each screen's popup once per session, per user.
+ * - Dismissals are stored under a UID-scoped localStorage key so each user
+ *   on the same device gets their own independent state.
  * - If the user dismisses with the "אל תציג שוב" checkbox checked, the screen
- *   is permanently suppressed (saved to localStorage).
+ *   is permanently suppressed for that user (saved to localStorage).
  * - If dismissed without the checkbox, the popup reappears next session.
+ * - When getUid() returns a different value (user switch), the per-session
+ *   guard resets so the new user sees the popups for screens they visit.
  *
- * @param {{ bus: object, storage?: Storage, triggerInitialScreen?: string }} opts
- *   triggerInitialScreen — screen ID shown at app start before showLegacyScreen
- *   is ever called (default 'sh'). Triggered at 1 000 ms to clear the loading
- *   animation.
+ * @param {{ bus: object, storage?: Storage, triggerInitialScreen?: string, getUid?: () => string|null }} opts
+ *   getUid — returns the current user's UID (or null when unauthenticated).
+ *   triggerInitialScreen — screen shown at app start before showLegacyScreen
+ *   is ever called (default 'sh'). Triggered at 1 000 ms after mount.
  */
 export function mountOnboardingController({
   bus,
   storage = globalThis.localStorage,
   triggerInitialScreen = 'sh',
+  getUid = () => null,
 } = {}) {
   if (!bus) throw new Error('mountOnboardingController: bus required');
 
-  const dismissed = new Set(
-    JSON.parse(storage?.getItem(STORAGE_KEY) ?? '[]'),
-  );
-  // Per-session guard: once shown this session, don't repeat even if the
-  // user navigates back to the screen without having checked "don't show again".
+  // Per-session guard: reset whenever the signed-in user changes.
   const shownThisSession = new Set();
+  let lastUid = getUid();
   let pendingTimer = null;
 
+  // UID-scoped key keeps each user's dismissals independent on shared devices.
+  function storageKey() {
+    return `${STORAGE_KEY}.${getUid() ?? 'guest'}`;
+  }
+
+  function isDismissed(screenId) {
+    return new Set(JSON.parse(storage?.getItem(storageKey()) ?? '[]')).has(screenId);
+  }
+
   function saveDismissed(screenId) {
-    dismissed.add(screenId);
-    storage?.setItem(STORAGE_KEY, JSON.stringify([...dismissed]));
+    const key = storageKey();
+    const current = new Set(JSON.parse(storage?.getItem(key) ?? '[]'));
+    current.add(screenId);
+    storage?.setItem(key, JSON.stringify([...current]));
   }
 
   function populateAndShow(screenId) {
@@ -87,9 +100,17 @@ export function mountOnboardingController({
   }
 
   function maybeShow(screenId) {
+    // Detect user switch: clear the per-session guard so the new user
+    // sees popups for screens they haven't dismissed under their own UID.
+    const currentUid = getUid();
+    if (currentUid !== lastUid) {
+      shownThisSession.clear();
+      lastUid = currentUid;
+    }
+
     if (!_registry.has(screenId)) return;
     if (shownThisSession.has(screenId)) return;
-    if (dismissed.has(screenId)) return;
+    if (isDismissed(screenId)) return;
     shownThisSession.add(screenId);
     clearTimeout(pendingTimer);
     // Delay so the screen's entrance animation finishes first.
