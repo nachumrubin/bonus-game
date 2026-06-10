@@ -78,7 +78,7 @@ export function buildFriendsListHtml(friends = []) {
   }
   return friends.map(f => {
     const online    = !!f.connected;
-    const lastSeen  = f.lastSeen ? formatLastSeen(f.lastSeen) : '';
+    const lastSeen  = !online && f.lastSeen ? formatLastSeen(f.lastSeen) : '';
     const ratingStr = f.rating != null ? String(f.rating) : '—';
     const dotClass  = online ? 'fr-online-dot fr-online-dot--on' : 'fr-online-dot';
     return `<div data-fr-row="${escapeHtml(f.uid)}" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.06);">`
