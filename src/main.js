@@ -183,6 +183,24 @@ async function boot() {
   // background and every word-facing feature can retry on demand.
   scheduleDictionaryPreload();
 
+  // ─── Service worker registration ───────────────────────
+  // Register the app's own service worker for offline caching + push.
+  // Previously sw.js was only ever registered as a side-effect of
+  // OneSignal.init({ serviceWorkerPath: 'sw.js' }); when OneSignal failed to
+  // initialise (e.g. "App not configured for web push") the app was left with
+  // NO service worker at all — no offline cache and no push, and the on-device
+  // diagnostic reported "SW registrations: 0". Register it directly so caching
+  // never depends on the push provider. OneSignal then adopts this existing
+  // /sw.js registration during its own init.
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    const registerSw = () => {
+      navigator.serviceWorker.register('sw.js', { scope: '/' })
+        .catch((e) => console.warn('[sw] registration failed', e));
+    };
+    if (globalThis.document?.readyState === 'complete') registerSw();
+    else globalThis.addEventListener?.('load', registerSw, { once: true });
+  }
+
   // ─── Notifications boot ────────────────────────────────
   // Notification service boot is idempotent.
   const cfg = globalThis.APP_CONFIG ?? {};
@@ -973,6 +991,10 @@ async function boot() {
       bus.emit(WR_OPEN, { code, mode: filters.spineMode, friendName: friendNameForWr, isAuthed: isAuthedForWr });
 
       // If triggered from the friend detail overlay, auto-send invite to that friend.
+      // Captured here and folded into `activePending` below — `activePending`
+      // does not exist yet at this point, so we cannot mutate it directly.
+      let autoInviteId = null;
+      let autoInviteToUid = null;
       if (pendingFriendTarget) {
         const ft = pendingFriendTarget;
         pendingFriendTarget = null;
@@ -993,11 +1015,10 @@ async function boot() {
             inviteeUid:  ft.uid,
             inviterName: myName,
             roomId:      null,
+            isLive:      invMode.endsWith('-live'),
           })?.catch(() => {});
-          if (activePending) {
-            activePending.inviteId    = inviteId;
-            activePending.inviteToUid = ft.uid;
-          }
+          autoInviteId    = inviteId;
+          autoInviteToUid = ft.uid;
           bus.emit(WR_LIVE_INVITE_SENT, { expiresAt, friendName: ft.name });
         } catch (e) {
           console.warn('[spine] friend auto-invite failed', e);
@@ -1023,6 +1044,11 @@ async function boot() {
       activePending = {
         code,
         mode: filters.spineMode,
+        // Set when this room was opened by auto-inviting a friend, so the
+        // invite-ack listener can match a rejection to this waiting room and
+        // close it (and so WR cancel can revoke the outstanding invite).
+        inviteId:    autoInviteId,
+        inviteToUid: autoInviteToUid,
         offWatch: roomCodeService.watchPending(fbDb, code, () => {}),
         offActiveRoom: () => fbDb.ref(`users/${fbUser.uid}/activeRoom`).off('value', activeRoomHandler),
       };
@@ -1170,14 +1196,21 @@ async function boot() {
               text:   `${next.fromName ?? 'שחקן'} מזמין אותך למשחק`,
               action: 'openNotifications',
             });
-            // Browser-notification fallback for background tabs.
-            browserNotificationFallback.showBrowserNotification({
-              title: 'הזמנה למשחק',
-              body:  `${next.fromName ?? 'שחקן'} מזמין אותך למשחק`,
-              data:  { type: 'invite' },
-              swRegistration: globalThis.navigator?.serviceWorker?.ready ?? null,
-              onClick: handleBrowserNotificationClick,
-            }).catch(() => { /* swallow */ });
+            // Browser-notification fallback for background tabs — ONLY when
+            // OneSignal push is NOT active. Otherwise the sender's OneSignal
+            // push and this local notification both fire and the recipient
+            // sees the same invite twice. The fallback exists for users whose
+            // OneSignal push never initialised; for everyone else the remote
+            // push already covers the backgrounded case.
+            if (!notificationService.isOneSignalReady()) {
+              browserNotificationFallback.showBrowserNotification({
+                title: 'הזמנה למשחק',
+                body:  `${next.fromName ?? 'שחקן'} מזמין אותך למשחק`,
+                data:  { type: 'invite' },
+                swRegistration: globalThis.navigator?.serviceWorker?.ready ?? null,
+                onClick: handleBrowserNotificationClick,
+              }).catch(() => { /* swallow */ });
+            }
           }
         }
 
@@ -1350,7 +1383,10 @@ async function boot() {
         // means re-firing for the same roomCode just replaces the prior
         // notification. We fire one per my-turn room so clicking jumps to
         // that specific game.
-        if (bannerResult?.shown) {
+        // Skip the local fallback when OneSignal push is active — the async
+        // turn push (sent by the opponent) already covers the backgrounded
+        // case, so firing this too would double-notify.
+        if (bannerResult?.shown && !notificationService.isOneSignalReady()) {
           const sw = globalThis.navigator?.serviceWorker?.ready ?? null;
           for (const s of sessions.filter(x => x.isMyTurn)) {
             const opp = s.opponentName ?? 'יריב';
@@ -3492,6 +3528,7 @@ function installCutoverGlobals() {
         inviteeUid:  toUid,
         inviterName: fbUser.displayName ?? 'שחקן',
         roomId:      null,
+        isLive:      mode?.endsWith('-live'),
       }).catch((e) => console.warn('[spine] pushInvite', e));
 
       if (mode?.endsWith('-async')) {
@@ -3546,29 +3583,60 @@ function installCutoverGlobals() {
     const doc = globalThis.document;
     const btn = doc?.getElementById?.('sett-notif-button');
     const status = doc?.getElementById?.('sett-notif-status');
+
+    // Bail early when the browser can't do web push at all — e.g. an in-app
+    // webview (Facebook/Telegram/Gmail browser) or an insecure context. In
+    // those environments OneSignal.init()/optIn() routinely never resolve,
+    // which previously left the button disabled and the spinner stuck forever.
+    const supportsPush = typeof globalThis.Notification !== 'undefined'
+      && typeof globalThis.Notification.requestPermission === 'function';
+    if (!supportsPush) {
+      if (status) {
+        status.textContent = 'לא נתמך בדפדפן זה';
+        status.style.color = '#ff8e8e';
+      }
+      if (btn) { btn.disabled = true; btn.textContent = 'לא נתמך'; }
+      return;
+    }
+
     if (btn) btn.disabled = true;
     if (status) status.innerHTML = '<span class="sett-notif-spinner"></span>';
+
+    // Hard ceiling on the OneSignal calls so a hung SDK can never leave the
+    // UI stuck. On timeout the promise rejects, the catch runs, and the
+    // `finally` re-syncs the button to the real Notification.permission state.
+    const withTimeout = (p, ms) => Promise.race([
+      Promise.resolve(p),
+      new Promise((_, reject) => globalThis.setTimeout?.(() => reject(new Error('notif-timeout')), ms)),
+    ]);
+
     try {
       const uid = activeFbCurrentUser?.uid;
       // Ensure OneSignal is initialised before calling optIn — boot() is
       // concurrency-safe so concurrent callers (e.g. bootCrossCuttingFor +
       // post-signup call) await the same in-flight promise.
-      await notificationService.boot({ uid: uid || undefined });
+      await withTimeout(notificationService.boot({ uid: uid || undefined }), 10000);
       if (globalThis.OneSignal?.User?.PushSubscription) {
-        await globalThis.OneSignal.User.PushSubscription.optIn();
+        await withTimeout(globalThis.OneSignal.User.PushSubscription.optIn(), 30000);
         if (uid) await notificationService.loginUser(uid);
       } else {
-        await globalThis.Notification?.requestPermission?.();
+        // Native prompt waits on the user, so don't race it with a timeout.
+        await globalThis.Notification.requestPermission();
       }
       if (globalThis.Notification?.permission === 'granted' && uid && activeFbDb) {
         activeFbDb.ref(`users/${uid}/profile/wantsNotifications`).set(true)
           .catch(e => console.warn('[notif] persist wantsNotifications', e));
       }
     } catch (e) {
+      // Includes the 'notif-timeout' case: syncNotifStatusUi() in the finally
+      // resets the button to the real permission state ('כבוי' → 'הפעל'),
+      // so a hung SDK leaves the control retryable rather than stuck.
       console.warn('[notif] permission request', e);
+    } finally {
+      syncNotifStatusUi();
     }
-    syncNotifStatusUi();
   };
+
 }
 
 async function ensureFirebaseGlobals() {

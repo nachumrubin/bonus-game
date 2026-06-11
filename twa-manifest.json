@@ -12,7 +12,7 @@
   "navigationDividerColor": "#2d6080",
   "navigationDividerColorDark": "#2d6080",
   "backgroundColor": "#2d6080",
-  "enableNotifications": false,
+  "enableNotifications": true,
   "shortcuts": [],
   "iconUrl": "https://boost-8ef11.web.app/icon-512.png",
   "maskableIconUrl": "https://boost-8ef11.web.app/icon-512.png",

@@ -83,16 +83,29 @@ export function mountOnboardingController({
     const overlay = $(`#ov-onboarding`);
     const iconEl  = $(`#onb-icon`);
     const titleEl = $(`#onb-title`);
+    const introEl = $(`#onb-intro`);
     const bodyEl  = $(`#onb-body`);
+    const noteEl  = $(`#onb-note`);
     const cbEl    = $(`#onb-noshowcb`);
 
     if (!overlay) return;
 
     if (iconEl)  iconEl.textContent  = content.icon;
     if (titleEl) titleEl.textContent = content.title;
+    // Optional lead-in paragraph (e.g. "what is this app"). Toggle the
+    // `hidden` class so screens that omit it don't leave a stray gap.
+    if (introEl) {
+      introEl.textContent = content.intro ?? '';
+      introEl.classList.toggle('hidden', !content.intro);
+    }
     if (bodyEl)  bodyEl.innerHTML    = content.bullets
       .map(b => `<li>${escapeHtml(b)}</li>`)
       .join('');
+    // Optional footer note (e.g. "where to find more info").
+    if (noteEl) {
+      noteEl.textContent = content.note ?? '';
+      noteEl.classList.toggle('hidden', !content.note);
+    }
     if (cbEl) cbEl.checked = false;
 
     overlay.dataset.screenId = screenId;

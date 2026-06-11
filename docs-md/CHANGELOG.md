@@ -2,6 +2,110 @@
 
 ---
 
+## Invite notification: distinguish live vs async; remove temp diagnostic — June 2026
+
+Invite push notifications now state the game type. `pushInvite()` takes an `isLive` flag (derived from the invite `mode` at both send sites in `main.js` via `mode.endsWith('-live')`), threaded through the already-allow-listed `isLive` ctx field. Both `pushPayloadBuilder.js` copies (client + worker) branch the INVITE heading/body:
+- Live → "הוזמנת למשחק חי! ⚡" / "X מזמין אותך למשחק עכשיו"
+- Async → "הוזמנת למשחק! 📩" / "X מזמין אותך למשחק תורות"
+
+Notification copy lives in `pushPayloadBuilder.js` (`TITLES` / new `defaultTitle()` / `defaultBody()`); the **worker copy is authoritative** (the worker rebuilds the body server-side) so text changes require `cd worker && npm run deploy`.
+
+Also removed the temporary on-device 🩺 "אבחון התראות" diagnostic panel (settings.html + `diagnoseNotifications` in main.js + `getLastBootError` in notificationService.js) now that push is confirmed working end-to-end. `isOneSignalReady()` is kept — the duplicate-notification fix depends on it.
+
+**Files modified:** `src/notifications/notificationService.js`, `src/notifications/pushPayloadBuilder.js`, `worker/src/pushPayloadBuilder.js`, `src/main.js`, `partials/screens/settings.html`
+
+---
+
+## TWA (native Android) push notifications: enable + force heads-up — June 2026
+
+Installed web PWAs (WebAPK) on Android post web-push at `IMPORTANCE_DEFAULT` — they vibrate but never heads-up/wake the screen, and neither the push payload nor Samsung's pop-up toggle can elevate them (the channel is system-created). The native TWA is the only route to guaranteed heads-up, but it was misconfigured:
+
+- `twa-manifest.json` had `"enableNotifications": false` → generated `enableNotification=false` → the `DelegationService` was disabled, so the TWA showed **no** push at all.
+- No `POST_NOTIFICATIONS` permission (required on Android 13+).
+- Even with delegation on, androidx.browser's `TrustedWebActivityService` creates its channel at `IMPORTANCE_DEFAULT` (confirmed in `NotificationApiHelperForO`), so it would *still* only vibrate.
+
+Changes (under `android/` + `twa-manifest.json`):
+- `enableNotifications: true` (manifest source of truth) + `enableNotification` bool true.
+- Added `<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>`.
+- Added a custom `app.boost8ef11.twa.NotificationService extends DelegationService` that overrides `onNotifyNotificationWithChannel` to post on an `IMPORTANCE_HIGH` channel (`boost_push_high`), and pointed the manifest `<service>` at it. This is what actually produces the heads-up banner + screen wake.
+
+Requires rebuilding/installing the TWA. Caveat: `bubblewrap update` regenerates the manifest and resets the service name — re-point it at the custom service after any regeneration.
+
+**Files modified:** `twa-manifest.json`, `android/app/src/main/AndroidManifest.xml`, `android/app/src/main/res/values/bools.xml`, `android/app/src/main/java/app/boost8ef11/twa/NotificationService.java` (new)
+
+---
+
+## Push notifications: high delivery priority (heads-up / screen wake) — June 2026
+
+Notifications arrived but only vibrated — no heads-up banner or screen wake on Android. The OneSignal payload set no `priority`, so pushes were sent at normal priority and Android presented them quietly. Added `priority: 10` (high) to `buildPushBody` in both `src/notifications/pushPayloadBuilder.js` and the authoritative `worker/src/pushPayloadBuilder.js` (the Cloudflare worker rebuilds the body server-side, so the worker copy is the one that ships — **requires `cd worker && npm run deploy`**, separate from Firebase hosting).
+
+Note: high priority makes the device wake/deliver promptly, but whether a notification shows as heads-up is ultimately governed by the Android **notification-channel importance** for the installed PWA, which the user controls in system settings (set the app's notifications to "Alerting"/pop-up, not "Silent").
+
+**Files modified:** `src/notifications/pushPayloadBuilder.js`, `worker/src/pushPayloadBuilder.js`
+
+---
+
+## Fix: duplicate invite/turn notifications (OneSignal push + local fallback) — June 2026
+
+A backgrounded recipient saw **two** system notifications per invite: the sender's OneSignal remote push (title "…מזמין אותך למשחק" 🎮) *and* a local `browserNotificationFallback` fired by the recipient's own Firebase invite listener (title "הזמנה למשחק"). Same for async turns.
+
+`browserNotificationFallback` exists for users whose OneSignal push never initialised; its `shouldFire()` gate only checks permission + hidden-tab, not whether OneSignal already covers the case. So once push works, both fired. Fix: guard both fallback call sites in `src/main.js` with `!notificationService.isOneSignalReady()` — the local fallback now fires only when the remote push won't.
+
+**Files modified:** `src/main.js`
+
+---
+
+## Fix: service worker never registered → no push, no offline cache (ROOT CAUSE) — June 2026
+
+The on-device notification diagnostic showed `SW registrations: 0` even with notifications granted and `optedIn: true` — so no push token was ever issued and nothing could be delivered while the app was closed.
+
+Root cause: `sw.js`'s precache used `cache.addAll(ASSETS)`, which is **atomic** — a single 404 rejects the whole `install`, so the service worker never registers (no offline cache **and** no push). The `ASSETS` list still referenced three partials deleted in the June 2026 dictionary-admin cleanup (`admin-advanced-settings-overlay.html`, `admin-confirm-decision-overlay.html`, `admin-login-overlay.html`), so install failed on every load. `scripts/stamp-build.js` only stamps the cache-name timestamp; it does **not** manage the asset list, so the stale entries went unnoticed.
+
+Fixes in `sw.js`:
+- Removed the three dead partial entries from `ASSETS`.
+- Replaced `cache.addAll(ASSETS)` with per-asset `cache.add(url).catch(...)`. Precaching now degrades gracefully — a stale/missing entry is logged and skipped instead of nuking the entire service worker. This permanently prevents this class of outage.
+
+Related notification fixes landed alongside (separate entries): independent `sw.js` registration in `main.js` (the app never registered its own SW — it relied on OneSignal.init), `requestNotifPermission()` hardening (timeouts/finally so the "הפעל" button can't hang), `boot()` now re-runs `OneSignal.login(uid)` on later boots and passes explicit SW paths/scope, and a temporary on-device 🩺 diagnostic panel in Settings.
+
+**Files modified:** `sw.js`
+
+---
+
+## Fix: notification "הפעל" button stuck on spinner — June 2026
+
+In the Settings overlay, tapping "הפעל" under "התראות משחק" disabled the button and showed a spinner in `#sett-notif-status`, cleared only by `syncNotifStatusUi()` at the very end of `requestNotifPermission()`. There was no timeout, so when `notificationService.boot()` (`OneSignal.init`) or `OneSignal.User.PushSubscription.optIn()` never resolved — common in in-app webviews (Facebook/Telegram/Gmail in-app browser) and insecure contexts — the spinner stayed forever and the button never re-enabled.
+
+Hardened `requestNotifPermission()` in `src/main.js`:
+- **Support pre-check** — if `Notification`/`requestPermission` is unavailable, show "לא נתמך בדפדפן זה" and return instead of spinning.
+- **Timeouts** on the OneSignal calls (`boot()` 10 s, `optIn()` 30 s) via a `Promise.race`, so a hung SDK rejects rather than hanging.
+- **`finally { syncNotifStatusUi() }`** — the button is now always re-synced to the real `Notification.permission` state (e.g. back to "הפעל"), making the control retryable instead of stuck. The native-permission fallback path is intentionally left un-raced since it legitimately waits on the user.
+
+**Files modified:** `src/main.js`
+
+---
+
+## Fix: live-invite waiting room not closing on rejection (friend auto-invite path) — June 2026
+
+When a live game was started by inviting a friend directly from the friend-detail overlay, the waiting-room countdown overlay ("ממתין ל…") stayed open after the friend rejected the invite — only the "X דחה את ההזמנה" banner appeared.
+
+Root cause was a statement-ordering bug in the `CR_INTENT.CONFIRM` handler in `src/main.js`. The auto-invite block ran *before* `activePending` was constructed, so its `activePending.inviteId = inviteId` assignment hit a `null`/stale object and was lost. The freshly-built `activePending` therefore had no `inviteId`, and the invite-ack listener's close guard (`last.inviteId === activePending?.inviteId`) never matched a rejection — so `WR_CLOSE` was never emitted. (The manual waiting-room invite path was unaffected because `activePending` already exists by the time it sends.)
+
+Fix: capture the auto-invite `inviteId`/`toUid` into locals and fold them into the `activePending` object at construction time. This also repairs WR-cancel for the same path (it reads `activePending.inviteId`/`inviteToUid` to revoke the outstanding invite).
+
+**Files modified:** `src/main.js`
+
+---
+
+## Feature: richer, welcoming home-screen onboarding popup — June 2026
+
+The first-visit onboarding popup on the home screen (`#sh`) was a bare bullet list. It's now a short, welcoming introduction: a lead-in paragraph explaining what Boost is (a Hebrew Scrabble-style word game with bonus mini-games), four feature bullets (שבץ-נא gameplay, בוסטים mini-games for bonus points, statistics & insights, game modes), and a closing note pointing to the `?` top-bar button for full rules and more info.
+
+To support this, the onboarding content model gained two **optional** fields rendered by `onboardingController.js`: `intro` (lead-in paragraph, above the bullets) and `note` (footer line, below the bullets). Both toggle a `hidden` class so screens that omit them (every other screen) render exactly as before. New DOM elements `#onb-intro` and `#onb-note` were added to `onboarding-overlay.html`, with `.onb-intro` / `.onb-note` styles in `styles.css`.
+
+**Files modified:** `partials/screens/onboarding-overlay.html`, `src/ui/controllers/onboardingController.js`, `src/ui/screens/menuScreen.js`, `styles.css`
+
+---
+
 ## Fix: notification cold-start routing + opted-out user subscription — June 2026
 
 Two edge-case bugs in the push notification flow.

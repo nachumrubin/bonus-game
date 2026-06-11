@@ -27,6 +27,10 @@ let _sendPush = null;
 let _busSubs = [];
 let _oneSignalReady = false;
 
+// Whether OneSignal finished init. Read by main.js to decide whether the local
+// browser-notification fallback is needed (skipped when the remote push covers it).
+export function isOneSignalReady() { return _oneSignalReady; }
+
 export function configure({ appId, pushWorkerUrl, getIdToken, sendPush }) {
   _appId = appId;
   _pushWorkerUrl = pushWorkerUrl ?? null;
@@ -56,15 +60,33 @@ async function defaultSendPush(body) {
 // One-time OneSignal SDK boot. Idempotent — concurrent callers await the
 // same in-flight promise so a second call during sign-up doesn't race.
 export async function boot({ uid } = {}) {
-  if (_booted) return _oneSignalReady;
-  if (_bootPromise) { await _bootPromise; return _oneSignalReady; }
+  // Already initialised (or mid-init): don't re-init OneSignal (v16 only allows
+  // init once), but DO (re)link the user — boot() may first run while signed
+  // out/anonymous, and the subscription must be associated with the real uid
+  // for external_id-targeted pushes to reach this device.
+  if (_booted) {
+    if (_oneSignalReady && uid) await safeLogin(uid);
+    return _oneSignalReady;
+  }
+  if (_bootPromise) {
+    await _bootPromise;
+    if (_oneSignalReady && uid) await safeLogin(uid);
+    return _oneSignalReady;
+  }
   _booted = true;
   _bootPromise = (async () => {
     try {
       if (!globalThis.OneSignal) return false; // SDK not loaded; skip (silent fallback)
       const cfg = globalThis.APP_CONFIG ?? {};
       if (!cfg.onesignalAppId) return false;
-      await globalThis.OneSignal.init({ appId: cfg.onesignalAppId, serviceWorkerPath: 'sw.js' });
+      await globalThis.OneSignal.init({
+        appId: cfg.onesignalAppId,
+        // Use the app's own combined worker (it importScripts OneSignal's SW
+        // SDK). Matches the OneSignal dashboard "Service Workers" settings.
+        serviceWorkerPath: 'sw.js',
+        serviceWorkerUpdaterPath: 'sw.js',
+        serviceWorkerParam: { scope: '/' },
+      });
       _oneSignalReady = true;
       if (uid) await globalThis.OneSignal.login(uid);
       return true;
@@ -78,6 +100,15 @@ export async function boot({ uid } = {}) {
     }
   })();
   return _bootPromise;
+}
+
+// Idempotent best-effort OneSignal user link. Never throws.
+async function safeLogin(uid) {
+  try {
+    if (globalThis.OneSignal) await globalThis.OneSignal.login(uid);
+  } catch (e) {
+    console.warn('[notification.login]', e);
+  }
 }
 
 export async function loginUser(uid) {
@@ -179,10 +210,10 @@ async function sendPush(kind, opts) {
 
 // Direct-send helpers for invite / friend events (called from inviteService /
 // friendsService — those don't flow through the engine bus).
-export async function pushInvite({ inviteeUid, inviterName, roomId }) {
+export async function pushInvite({ inviteeUid, inviterName, roomId, isLive }) {
   await sendPush(KIND.INVITE, {
     externalIds: [inviteeUid],
-    ctx: { roomId, inviterName },
+    ctx: { roomId, inviterName, isLive: !!isLive },
   });
 }
 

@@ -67,7 +67,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260610172752';
+var CACHE_NAME = 'boost-20260611202410';
 var ASSETS = [
   './',
   './index.html',
@@ -80,9 +80,6 @@ var ASSETS = [
   './assets/music/inspire-action.mp3',
   './src/ui/screenPartials.js',
   './src/ui/screenPartialManifest.js',
-  './partials/screens/admin-advanced-settings-overlay.html',
-  './partials/screens/admin-confirm-decision-overlay.html',
-  './partials/screens/admin-login-overlay.html',
   './partials/screens/avatar-gallery-screen.html',
   './partials/screens/avatar-unlock-overlay.html',
   './partials/screens/back-confirm-overlay.html',
@@ -122,7 +119,16 @@ var ASSETS = [
 self.addEventListener('install', function(e){
   e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache){
-      return cache.addAll(ASSETS);
+      // Cache each asset independently. cache.addAll() is ATOMIC — a single
+      // 404 (e.g. a partial removed from the repo without updating this list)
+      // rejects the whole install, so the service worker never registers and
+      // the app is left with NO offline cache AND NO push. Per-asset add()
+      // with a catch degrades gracefully: a stale entry is just skipped.
+      return Promise.all(ASSETS.map(function(url){
+        return cache.add(url).catch(function(err){
+          console.warn('[sw] precache skip', url, err && err.message);
+        });
+      }));
     })
   );
   self.skipWaiting();

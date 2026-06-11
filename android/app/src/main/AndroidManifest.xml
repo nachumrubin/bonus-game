@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Required on Android 13+ (API 33) for the TWA notification delegation
+         service to post web-push notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -55,9 +59,11 @@
             </intent-filter>
         </activity>
 
-        <!-- TWA Service for Digital Asset Links verification -->
+        <!-- TWA notification delegation service. Custom subclass posts on an
+             IMPORTANCE_HIGH channel so notifications heads-up + wake the screen
+             (the library default is IMPORTANCE_DEFAULT = vibrate only). -->
         <service
-            android:name="com.google.androidbrowserhelper.trusted.DelegationService"
+            android:name="app.boost8ef11.twa.NotificationService"
             android:enabled="@bool/enableNotification"
             android:exported="true">
             <intent-filter>
