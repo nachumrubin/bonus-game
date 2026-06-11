@@ -106,7 +106,9 @@ Onboarding overlay (per-screen first-visit tooltips):
 #ov-onboarding         — full-screen dark backdrop (.ov class); hidden by default; z-index 500
 #onb-icon              — large emoji icon (populated by onboardingController.js)
 #onb-title             — screen title text (ovt style)
+#onb-intro             — optional lead-in paragraph (onb-intro class) above the bullets; gets `hidden` when the screen's content has no `intro` field
 #onb-body              — <ul> of bullet points (onb-bullets class); populated dynamically
+#onb-note              — optional footer note (onb-note class) below the bullets; gets `hidden` when the screen's content has no `note` field
 #onb-noshowcb          — "אל תציג שוב" checkbox (pre-checked); governs localStorage persistence
 #onb-dismiss-btn       — "הבנתי ✓" primary button; triggers dismiss + optional save
 .onb-bullets           — bullet list inside #onb-body

@@ -27,9 +27,20 @@ const TITLES = {
   [KIND.FRIEND_ACCEPTED]:  'בקשת החברות אושרה! 🤝',
 };
 
+// Title can depend on ctx (e.g. invite live vs async); falls back to the
+// static TITLES map for kinds whose heading never varies.
+function defaultTitle(kind, ctx) {
+  if (kind === KIND.INVITE) {
+    return ctx.isLive ? 'הוזמנת למשחק חי! ⚡' : 'הוזמנת למשחק! 📩';
+  }
+  return TITLES[kind] ?? '';
+}
+
 function defaultBody(kind, ctx) {
   switch (kind) {
-    case KIND.INVITE:           return `${ctx.inviterName ?? 'שחקן'} מזמין אותך למשחק`;
+    case KIND.INVITE:           return ctx.isLive
+      ? `${ctx.inviterName ?? 'שחקן'} מזמין אותך למשחק עכשיו`
+      : `${ctx.inviterName ?? 'שחקן'} מזמין אותך למשחק תורות`;
     case KIND.INVITE_ACCEPTED:  return `${ctx.opponentName ?? 'יריב'} קיבל את ההזמנה`;
     case KIND.INVITE_REJECTED:  return `${ctx.opponentName ?? 'יריב'} דחה את ההזמנה`;
     case KIND.TURN:             return `${ctx.opponentName ?? 'היריב'} סיים מהלך. עכשיו תורך.`;
@@ -51,9 +62,14 @@ export function buildPushBody({ appId, kind, ctx = {}, subscriptionIds, external
 
   const out = {
     app_id: appId,
-    headings: { en: title ?? TITLES[kind] ?? '' },
+    headings: { en: title ?? defaultTitle(kind, ctx) },
     contents: { en: body ?? defaultBody(kind, ctx) },
     data: { type: kind, ...ctx, ...(data ?? {}) },
+    // High delivery priority — tells FCM/the push service to wake the device
+    // and present immediately (heads-up) rather than delivering quietly/
+    // batched. Without this, Android often shows the push silently (vibrate
+    // only, no screen wake or slide-down).
+    priority: 10,
   };
   if (subscriptionIds?.length) out.include_subscription_ids = subscriptionIds;
   if (externalIds?.length) {

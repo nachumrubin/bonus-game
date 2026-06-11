@@ -3121,7 +3121,7 @@ button[aria-disabled="true"] {
   right: -14%;
   height: 8px;
   border-radius: 8px;
-  transform: translate3d(-32%, -50%, 0) scaleX(0.55);
+  transform: translate3d(32%, -50%, 0) scaleX(0.55);
   background:
     linear-gradient(90deg,
       rgba(255, 255, 200, 0)   0%,
@@ -3145,10 +3145,10 @@ button[aria-disabled="true"] {
   /* The strike portion is 15%-23% of the cycle = 420–644ms in, which
      lands at wall time ~960ms thanks to the 540ms delay — right after
      the last tile finishes bouncing. */
-  0%, 14% { opacity: 0; transform: translate3d(-32%, -50%, 0) scaleX(0.55); }
-  15%     { opacity: 1; transform: translate3d(-32%, -50%, 0) scaleX(0.55); }
-  22%     { opacity: 1; transform: translate3d( 32%, -50%, 0) scaleX(1.40); }
-  23%, 100% { opacity: 0; transform: translate3d( 32%, -50%, 0) scaleX(1.40); }
+  0%, 14% { opacity: 0; transform: translate3d( 32%, -50%, 0) scaleX(0.55); }
+  15%     { opacity: 1; transform: translate3d( 32%, -50%, 0) scaleX(0.55); }
+  22%     { opacity: 1; transform: translate3d(-32%, -50%, 0) scaleX(1.40); }
+  23%, 100% { opacity: 0; transform: translate3d(-32%, -50%, 0) scaleX(1.40); }
 }
 
 /* Rotating loading message — swapped by main.js's wireAppLoading. */
@@ -3177,6 +3177,23 @@ button[aria-disabled="true"] {
 /* Sits above normal overlays (z-index 100) but below the tutorial spotlights (8050+). */
 #ov-onboarding { z-index: 500; }
 .onb-card { text-align: right; }
+.onb-intro {
+  font-size: 13px;
+  color: rgba(255,255,255,.66);
+  line-height: 1.65;
+  text-align: center;
+  margin: 2px 0 12px;
+}
+.onb-intro.hidden, .onb-note.hidden { display: none; }
+.onb-note {
+  font-size: 12px;
+  color: rgba(255,255,255,.6);
+  line-height: 1.6;
+  text-align: center;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
 .onb-bullets {
   list-style: none;
   padding: 0;
