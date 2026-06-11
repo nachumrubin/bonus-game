@@ -1,4 +1,0 @@
-app.boost8ef11.twa.test.app-androidTest-0 C:\Users\Admin\Documents\GitHub\bonus-game\android\app\build\generated\res\resValues\androidTest\debug
-app.boost8ef11.twa.test.app-mergeDebugAndroidTestResources-1 C:\Users\Admin\Documents\GitHub\bonus-game\android\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
-app.boost8ef11.twa.test.app-mergeDebugAndroidTestResources-2 C:\Users\Admin\Documents\GitHub\bonus-game\android\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
-app.boost8ef11.twa.test.app-merged_res-3 C:\Users\Admin\Documents\GitHub\bonus-game\android\app\build\intermediates\merged_res\debugAndroidTest

@@ -6,3 +6,23 @@ functions/.env.local
 keystore.properties
 *.keystore
 *.jks
+
+# Dependencies (regenerable via npm install)
+node_modules/
+worker/node_modules/
+
+# Cloudflare wrangler local state
+.wrangler/
+worker/.wrangler/
+
+# Android build artifacts (regenerable via gradle / bubblewrap)
+android/build/
+android/app/build/
+android/.gradle/
+android/app/release/
+*.apk
+*.aab
+
+# IDE / editor
+.idea/
+android/.idea/
