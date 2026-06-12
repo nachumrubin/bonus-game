@@ -14,6 +14,8 @@
 - [x] "סיום" ends an async game (resign) — `gameFlowController.js`; home button stays leave-and-resume.
 - [x] Coin toss only at game start — `startOnlineGameViaSpine` skips it once a room has moves.
 - [x] My-Games screen live-updates on an opponent move — `main.js` watches each listed async room (`watchRoom`) while `#smygames` is open, tears down on navigate-away. Previously the card only refreshed on (re)open because the async index doesn't change on a move.
+- [x] Game-over push is informative — names the winner from each player's perspective + final score (`notificationService` + `pushPayloadBuilder`, client + worker). Needs `cd worker && npm run deploy`.
+- [x] Matchmaking 3-player race no longer double-books a partner — `tryPair` single-driver (lower uid) claims both queue nodes. See `DECISIONS.md` D-matchmaking-claim. ⚠️ Re-run the simulator matchmaking scenario (`npm run sim -- --scenario matchmaking`) against the emulator before relying on it under heavy concurrency.
 - [x] "×2 boost triples score": **could not reproduce** — engine verified ×2/×4 correct, regression tests added (`gameEngine.test.js`). Confirmed by reporter as not an issue.
 - [x] "Skipping a תפזורת still grants bonus points": **verified correct, no bug** — a 0-find skip commits only the base word score (resolveBonusActivation/resolveMiniGameResult/FINALIZE all award 0). Reporter confirmed the score came from the placed word, not the bonus. Regression test added (`engine-parity-highrisk.test.js`: "skipping an interactive mini-game … commits only the base word score").
 

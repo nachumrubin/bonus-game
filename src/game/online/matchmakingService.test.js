@@ -159,7 +159,8 @@ test('tryPair: prefers a compatible partner over an incompatible older one', asy
     serverTimestamp: 50,
   });
   await joinQueue(db, {
-    uid: 'compat-newer', mode: 'random-live',
+    // Higher uid than 'me' so 'me' is the driver (lower uid drives the claim).
+    uid: 'z-compat-newer', mode: 'random-live',
     profile: { rating: 1000 },
     settings: { strict: true, timelimit: true },
     serverTimestamp: 200,
@@ -175,7 +176,7 @@ test('tryPair: prefers a compatible partner over an incompatible older one', asy
     createRoomFromPair: async () => ({ roomId: 'r', room: {} }),
   });
   assert.equal(r.matched, true);
-  assert.equal(r.partnerUid, 'compat-newer');
+  assert.equal(r.partnerUid, 'z-compat-newer');
 });
 
 test('tryPair: simultaneous race — only one client claims the pair', async () => {
@@ -209,6 +210,67 @@ test('tryPair: simultaneous race — only one client claims the pair', async () 
   // Both queue entries removed.
   assert.equal(db._data.matchmakingQueue['random-live']?.alice ?? null, null);
   assert.equal(db._data.matchmakingQueue['random-live']?.bob ?? null, null);
+});
+
+test('tryPair: the higher-uid side waits (does not create a room)', async () => {
+  const db = makeMockDb();
+  await joinQueue(db, {
+    uid: 'aaa', mode: 'random-live',
+    profile: { displayName: 'A' }, settings: {}, serverTimestamp: 100,
+  });
+  await joinQueue(db, {
+    uid: 'zzz', mode: 'random-live',
+    profile: { displayName: 'Z' }, settings: {}, serverTimestamp: 200,
+  });
+  // 'zzz' picks 'aaa' but must NOT drive (it's the higher uid); it waits for
+  // its activeRoom instead. Both entries stay until the lower side claims.
+  const r = await tryPair(db, {
+    uid: 'zzz', mode: 'random-live',
+    createRoomFromPair: async () => { throw new Error('higher uid must not create a room'); },
+  });
+  assert.equal(r.matched, false);
+  assert.ok(db._data.matchmakingQueue['random-live']?.aaa, 'partner still queued');
+  assert.ok(db._data.matchmakingQueue['random-live']?.zzz, 'waiter still queued');
+});
+
+test('tryPair: two searchers who both pick the same higher-uid partner do not double-book it', async () => {
+  // Regression for the 3-player race: with a single-shared-node claim, both
+  // 'aaa' and 'bbb' (each lower than the partner) claimed their OWN nodes and
+  // both created a room with 'zzz-partner', double-booking it — the third
+  // player ended up in a coin toss with a phantom opponent.
+  const db = makeMockDb();
+  // Partner is the OLDEST (so both others pick it) AND the highest uid.
+  await joinQueue(db, {
+    uid: 'zzz-partner', mode: 'random-live',
+    profile: { displayName: 'P' }, settings: {}, serverTimestamp: 50,
+  });
+  await joinQueue(db, {
+    uid: 'aaa', mode: 'random-live',
+    profile: { displayName: 'A' }, settings: {}, serverTimestamp: 100,
+  });
+  await joinQueue(db, {
+    uid: 'bbb', mode: 'random-live',
+    profile: { displayName: 'B' }, settings: {}, serverTimestamp: 150,
+  });
+
+  let createCount = 0;
+  const make = (uid) => tryPair(db, {
+    uid, mode: 'random-live',
+    createRoomFromPair: async (mine, theirs) => {
+      createCount += 1;
+      return { roomId: `r-${mine.uid}`, room: {}, _theirs: theirs.uid };
+    },
+  });
+  const [ra, rb] = await Promise.all([make('aaa'), make('bbb')]);
+
+  const matched = [ra, rb].filter(r => r.matched);
+  assert.equal(matched.length, 1, 'only one room may claim the shared partner');
+  assert.equal(createCount, 1, 'createRoomFromPair runs exactly once');
+  assert.equal(matched[0].partnerUid, 'zzz-partner');
+  // Partner claimed exactly once; the loser rolled itself back for a retry.
+  assert.equal(db._data.matchmakingQueue['random-live']?.['zzz-partner'] ?? null, null);
+  const loserUid = ra.matched ? 'bbb' : 'aaa';
+  assert.ok(db._data.matchmakingQueue['random-live']?.[loserUid], 'loser re-queued for retry');
 });
 
 test('tryPair picks the oldest waiting partner', async () => {

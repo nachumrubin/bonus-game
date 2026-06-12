@@ -66,16 +66,27 @@ export function isCompatible(a, b) {
 
 // Try to find a partner in the queue and pair atomically.
 // Returns { matched: true, partnerUid, roomId } if a pair was claimed, or
-// { matched: false } if nobody compatible is waiting (caller should keep
-// listening).
+// { matched: false } if nobody compatible is waiting / we should keep
+// listening (the higher-uid waiter learns it was paired via its activeRoom).
 //
-// `createRoomFromPair(myEntry, theirEntry)` is a callback that produces the
-// room metadata + roomId from the two queue entries. It runs OUTSIDE the
-// transaction so it can use the full createInitialState pipeline; the
-// transaction's only job is to atomically claim both entries — this is
-// what guarantees a single winner when both clients run tryPair at the
-// same instant (without it, both can "win", each builds its own room,
-// and the two players end up in two different rooms with desynced state).
+// `createRoomFromPair(myEntry, theirEntry)` produces the room from the two
+// queue entries. It runs only after BOTH queue nodes have been claimed.
+//
+// Concurrency model — why both nodes are claimed, and why only the lower uid
+// drives:
+//   The earlier version claimed a single SHARED node, min(me, partner). That
+//   serialized two clients who picked EACH OTHER, but NOT two clients who both
+//   picked the same partner: if that partner had the highest uid, each searcher
+//   claimed its OWN (different) node, both transactions committed, and both
+//   created a room with the shared partner — double-booking it. The third
+//   player then sat in a coin toss against a phantom opponent. (Reported June
+//   2026; see DECISIONS.md.)
+//   Fix: a pair has exactly one driver — the LOWER uid. The driver claims BOTH
+//   queue nodes (its own first, then the partner's). Any two pairings that
+//   involve the same player both claim that player's node, so they serialize
+//   on it; the loser aborts. Claiming OWN-first means a rollback only ever
+//   re-adds our OWN entry, staying within the `auth.uid === $uid` write rule
+//   (the rules allow deleting any node but writing only your own).
 export async function tryPair(db, { uid, mode, createRoomFromPair }) {
   const all = await queueRef(db, mode).get();
   const entries = all?.val ? all.val() : null;
@@ -91,33 +102,33 @@ export async function tryPair(db, { uid, mode, createRoomFromPair }) {
   if (others.length === 0) return { matched: false };
   const partner = others[0];
 
-  // Atomically claim the pair via a transaction on a SHARED queue entry —
-  // the one belonging to whichever uid sorts first. Both racing clients
-  // (who picked each other as partner) compute the same path, so their
-  // transactions serialize on the same node: only one sees `current` as
-  // present and returns null to delete it; the other reads null and
-  // aborts. The rules allow this because writing `null` satisfies the
-  // `!newData.exists()` branch of the $uid write rule, no matter who is
-  // authenticated. A transaction on the parent /matchmakingQueue/{mode}
-  // node would be rejected — there is no .write rule at that level.
-  const claimUid = uid < partner.uid ? uid : partner.uid;
-  const otherUid = uid < partner.uid ? partner.uid : uid;
-  const claim = await db.ref(`${PATH.matchmakingQueue}/${mode}/${claimUid}`)
-    .transaction((current) => {
-      if (!current) return; // abort — the other client already claimed
-      return null;          // claim by deleting this entry
-    });
-  if (!claim?.committed) return { matched: false };
+  // Only the lower-uid side drives the claim; the higher-uid side waits for
+  // its activeRoom to flip (set by createRoom for both players). This makes a
+  // pair have a single driver and lets that driver own both claims.
+  if (uid > partner.uid) return { matched: false };
 
-  // We own the pair. Best-effort: remove the other entry too so it doesn't
-  // sit as a phantom in the queue. Rules also allow this (newData is null).
-  try {
-    await db.ref(`${PATH.matchmakingQueue}/${mode}/${otherUid}`).remove();
-  } catch (err) {
-    // If this fails the partner's listener will still see activeRoom flip
-    // and proceed; the stale queue entry is recovered by the next tryPair
-    // or the onDisconnect handler in joinQueue.
-    console.warn('[matchmakingService.tryPair] removing partner queue entry failed', err);
+  // Claim our OWN node first.
+  const selfClaim = await selfQueueRef(db, mode, uid).transaction((current) => {
+    if (!current) return; // someone already claimed us — abort
+    return null;          // claim by deleting
+  });
+  if (!selfClaim?.committed) return { matched: false };
+
+  // Then claim the partner's node. If it's already gone (another pairing took
+  // this partner), roll our own entry back into the queue and bail so we're
+  // not silently dropped — the next queue change re-runs tryPair.
+  const partnerClaim = await selfQueueRef(db, mode, partner.uid).transaction((current) => {
+    if (!current) return; // partner already taken — abort
+    return null;
+  });
+  if (!partnerClaim?.committed) {
+    try {
+      await selfQueueRef(db, mode, uid).set(myEntry);
+      selfQueueRef(db, mode, uid).onDisconnect?.().remove();
+    } catch (err) {
+      console.warn('[matchmakingService.tryPair] re-queue after lost partner failed', err);
+    }
+    return { matched: false };
   }
 
   const { room, roomId } = await createRoomFromPair(myEntry, partner);

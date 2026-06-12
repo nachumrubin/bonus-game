@@ -2,6 +2,16 @@
 
 ---
 
+## Matchmaking: fix 3-player race that double-booked a partner — June 2026
+
+`tryPair` claimed a single shared queue node, `min(me, partner)`. That serialized two clients who picked each other, but not two clients who both picked the **same higher-uid partner** — each claimed its OWN node, both committed, and both created a room with that partner. With 3 simultaneous "random match" joins, two players paired correctly and the third was left in the coin-toss screen with a phantom opponent (the double-booked player, who was actually in the other room).
+
+Now a pair has one **driver** (the lower uid) that claims **both** nodes — its own first, then the partner's — so any two pairings involving the same player serialize on that player's node and the loser aborts + re-queues. The higher-uid side waits for its `activeRoom`. Own-node-first keeps rollbacks within the `auth.uid === $uid` write rule, so no Firebase-rules change was needed. See `DECISIONS.md` (D-matchmaking-claim).
+
+**Files modified:** `src/game/online/matchmakingService.js`, `src/game/online/matchmakingService.test.js`
+
+---
+
 ## Game-over push notification: informative body (winner + final score) — June 2026
 
 The `completed` push previously read "המשחק הסתיים" in both title and body, and a single combined push to both players reused one `ctx` (so `didWin` was the sender's — wrong for the loser). Also, the online `GAME_COMPLETED` event carries `winnerSlot: null`, so `didWin` was effectively always false.
