@@ -1462,7 +1462,7 @@ async function boot() {
         // user sat on #smygames didn't flip the card to "your turn" (updated
         // score + שחק button) until they left and re-entered. The watcher only
         // fires on real room changes, so this isn't a hot path.
-        if (_scStack[_scStack.length - 1] === 'smygames') {
+        if (isMyGamesScreenVisible()) {
           refreshMyGamesList();
         }
         // In-app banner (deduped) for my-turn games.
@@ -1560,6 +1560,14 @@ async function boot() {
     // user left and re-entered the screen. We attach one watchRoom per listed
     // async room while #smygames is open and tear them down on navigate-away.
     let mgRoomWatchers = [];
+    // Use the actual DOM visibility (#smygames lacks the `.hidden` class while
+    // shown — see screenTransitions.showScreen) rather than the _scStack
+    // cursor, which can desync (e.g. back-navigation sets _scBack so the push
+    // is skipped) and would then silently suppress the live re-render.
+    function isMyGamesScreenVisible() {
+      const el = globalThis.document?.getElementById?.('smygames');
+      return !!el && !el.classList?.contains?.('hidden');
+    }
     function stopMyGamesRoomWatchers() {
       for (const off of mgRoomWatchers) { try { off(); } catch { /* swallow */ } }
       mgRoomWatchers = [];
@@ -1575,7 +1583,7 @@ async function boot() {
         let primed = false;
         const off = roomService.watchRoom(activeFbDb, roomId, () => {
           if (!primed) { primed = true; return; }
-          if (_scStack[_scStack.length - 1] !== 'smygames') { stopMyGamesRoomWatchers(); return; }
+          if (!isMyGamesScreenVisible()) { stopMyGamesRoomWatchers(); return; }
           refreshMyGamesList();
         });
         mgRoomWatchers.push(off);
