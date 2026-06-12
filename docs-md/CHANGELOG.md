@@ -2,6 +2,24 @@
 
 ---
 
+## Bug-fix batch: async invite/end, coin toss, settings X, friend-avatar, push cold-start — June 2026
+
+Seven reported issues from manual QA on the `Some-bugs-found` branch:
+
+1. **×2 boost "triples" the score — could not reproduce; verified correct.** The engine scales by exactly the factor (base 4 → 8 for ×2, → 16 for ×4) across the normal, deferred-bonus, and online commit paths; `scoreMove` has no board multipliers and the `applyRemote` boost-replay hook is unused in production. Added regression tests in `src/game/core/gameEngine.test.js` (×2, ×4, and "opponent's multiplier must not scale my move") that lock in the exact factor and would fail on a ×3 regression. **No production code changed for this item.**
+2. **Async friend invite no longer shows the "waiting for X…" hourglass.** In `CR_INTENT.CONFIRM` (`main.js`), an async friend invite now sends the invite, shows a one-shot toast (`ההזמנה נשלחה ל-X! נעדכן אותך כשהיא תתקבל.`), cancels the now-unused pending code room, and returns to the menu instead of opening the waiting room. Live invites + code-share games keep the waiting room.
+3. **Settings overlay got a top-corner "×".** Added `#sett-close-x` to `partials/screens/settings.html`; `settingsScreen.js` now wires *every* `ovClose('ov-settings')` button (querySelectorAll) so both the X and the bottom אישור emit `SETTINGS_INTENT.CLOSE`.
+4. **Friend-detail avatar rendered the literal id (e.g. "crown") instead of 👑.** `friendsScreen.js` detail render now routes `friend.avatar` through `resolveAvatar()` like the friends list already did. Regression test added.
+5. **Tapping the "your turn" push now lands inside the game on a cold start.** `main.js` `handleLaunchParams()` reads the `?resume=` / `?summary=` / `?open=` query string that `sw.js` opens, routes it through the existing `OPEN_*` handlers, then strips the param. The warm postMessage and browser-fallback paths already routed correctly.
+6. **"סיום" now actually ends an async game.** `gameFlowController.js` `BACK_INTENT.LEAVE` resigns for *all* online games (live + async), firing `GAME_COMPLETED` → terminal status in Firebase. The separate `#btn-async-home` button remains the leave-and-resume path. Reverses the earlier "async leave is non-destructive" decision — see `DECISIONS.md` and `docs/intentional-change-register.md`.
+7. **Coin toss only runs at the start of a game.** `startOnlineGameViaSpine` (`main.js`) force-skips the coin toss when the room already has moves (`moveHistory.length > 0` / `turnNumber > 1`), so resuming an async game from My Games / the turn banner no longer replays the coin-toss splash on every entry.
+
+Also investigated (no code change): **"skipping a תפזורת/word-search still grants bonus points"** — verified the engine commits only the base word score on a 0-find skip (the reporter's extra points came from the placed word, not the bonus). Locked in with a regression test in `tests/unit/engine-parity-highrisk.test.js`.
+
+**Files modified:** `src/main.js`, `src/ui/controllers/gameFlowController.js`, `src/ui/screens/friendsScreen.js`, `src/ui/screens/settingsScreen.js`, `partials/screens/settings.html`, `src/game/core/gameEngine.test.js`, `tests/unit/engine-parity-highrisk.test.js`, `src/ui/screens/friendsScreen.test.js`, `src/ui/screens/overlays.test.js`, `src/ui/controllers/gameFlowController.test.js`, `tests/unit/disconnect-leave-e2e.test.js`
+
+---
+
 ## Invite notification: distinguish live vs async; remove temp diagnostic — June 2026
 
 Invite push notifications now state the game type. `pushInvite()` takes an `isLive` flag (derived from the invite `mode` at both send sites in `main.js` via `mode.endsWith('-live')`), threaded through the already-allow-listed `isLive` ctx field. Both `pushPayloadBuilder.js` copies (client + worker) branch the INVITE heading/body:

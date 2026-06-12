@@ -256,7 +256,7 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     const statsEl   = $('#fd-stats', root);
     const recentEl  = $('#fd-recent', root);
 
-    if (avatarEl)  avatarEl.textContent  = friend.avatar ?? '👤';
+    if (avatarEl)  avatarEl.textContent  = resolveAvatar(friend.avatar, '👤');
     if (nameEl)    nameEl.textContent    = friend.name ?? '?';
     if (ratingEl)  ratingEl.textContent  = friend.rating != null ? `⭐ ${friend.rating}` : '';
     if (statsEl)   statsEl.innerHTML     = buildDetailStatsHtml(rivalEntry);

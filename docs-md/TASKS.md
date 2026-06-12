@@ -5,6 +5,19 @@
 
 ---
 
+## QA bug-fix batch — June 2026 (`Some-bugs-found` branch)
+
+- [x] Async friend invite shows a toast instead of the waiting-room hourglass (`main.js` `CR_INTENT.CONFIRM`).
+- [x] Settings overlay top-corner "×" close button (`#sett-close-x`).
+- [x] Friend-detail avatar resolves id → emoji (no literal "crown") (`friendsScreen.js`) + test.
+- [x] Cold-start push routing: `?resume=`/`?summary=`/`?open=` handled at boot (`main.js` `handleLaunchParams`).
+- [x] "סיום" ends an async game (resign) — `gameFlowController.js`; home button stays leave-and-resume.
+- [x] Coin toss only at game start — `startOnlineGameViaSpine` skips it once a room has moves.
+- [x] "×2 boost triples score": **could not reproduce** — engine verified ×2/×4 correct, regression tests added (`gameEngine.test.js`). Confirmed by reporter as not an issue.
+- [x] "Skipping a תפזורת still grants bonus points": **verified correct, no bug** — a 0-find skip commits only the base word score (resolveBonusActivation/resolveMiniGameResult/FINALIZE all award 0). Reporter confirmed the score came from the placed word, not the bonus. Regression test added (`engine-parity-highrisk.test.js`: "skipping an interactive mini-game … commits only the base word score").
+
+---
+
 ## TODOs — Dictionary v2 rollout
 
 The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG). What's left before flipping the default and removing the v1 path:

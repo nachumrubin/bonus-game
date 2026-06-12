@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountFriendsScreen, buildRequestsHtml, buildFriendsListHtml,
-  FRIENDS_INTENT, FRIENDS_RENDER,
+  FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER,
 } from './friendsScreen.js';
 
 test('buildRequestsHtml: empty list', () => {
@@ -58,6 +58,16 @@ function makeEl(initial = {}) {
   };
 }
 
+function makeOverlay() {
+  const listeners = [];
+  return {
+    dataset: {},
+    classList: { add() {}, remove() {}, contains() { return false; } },
+    addEventListener(ev, fn) { listeners.push({ ev, fn }); },
+    removeEventListener() {},
+  };
+}
+
 function makeRoot() {
   const els = {
     myId:        makeEl(),
@@ -71,6 +81,14 @@ function makeRoot() {
     copyStatus:  makeEl(),
     sendBtn:     makeEl(),
     backBtn:     makeEl(),
+    detailOv:    makeOverlay(),
+    fdClose:     makeEl(),
+    fdAvatar:    makeEl(),
+    fdName:      makeEl(),
+    fdRating:    makeEl(),
+    fdStats:     makeWrap(),
+    fdRecent:    makeWrap(),
+    fdGames:     makeWrap(),
   };
   const root = {
     querySelector(sel) {
@@ -84,6 +102,14 @@ function makeRoot() {
         case '#add-friend-status':return els.addStatus;
         case '#friends-req-badge':return els.reqBadge;
         case '#fr-copy-status':   return els.copyStatus;
+        case '#ov-friend-detail': return els.detailOv;
+        case '#fd-close':         return els.fdClose;
+        case '#fd-active-games':  return els.fdGames;
+        case '#fd-avatar':        return els.fdAvatar;
+        case '#fd-name':          return els.fdName;
+        case '#fd-rating':        return els.fdRating;
+        case '#fd-stats':         return els.fdStats;
+        case '#fd-recent':        return els.fdRecent;
         case 'button[onclick="sendFriendRequest()"]': return els.sendBtn;
         case 'button[onclick="openProfileOrAuth()"]': return els.backBtn;
         default: return null;
@@ -108,6 +134,37 @@ test('FRIENDS_RENDER paints my-id, requests, friends, count, badge', () => {
   assert.match(els.friendsList.innerHTML, /נחום/);
   assert.equal(els.count.textContent, '(2)');
   assert.equal(els.reqBadge.textContent, '1');
+});
+
+// Regression: the friend-detail overlay must resolve an avatar *id* (e.g.
+// 'crown') to its emoji, exactly like the friends list does. A past fix
+// added resolveAvatar() to the list but missed the detail header, so the
+// literal word "crown" rendered next to the friend's name.
+test('FRIENDS_DETAIL_RENDER resolves an avatar id to its emoji (no literal "crown")', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  mountFriendsScreen({ root, bus });
+  bus.emit(FRIENDS_DETAIL_RENDER, {
+    friend: { uid: 'u9', name: 'הודיה', avatar: 'crown', rating: 811 },
+    rivalEntry: null,
+    vsRecent: [],
+    activeGames: [],
+    myUid: 'me',
+  });
+  assert.equal(els.fdAvatar.textContent, '👑');
+  assert.notEqual(els.fdAvatar.textContent, 'crown');
+  assert.equal(els.fdName.textContent, 'הודיה');
+});
+
+test('FRIENDS_DETAIL_RENDER passes a raw emoji avatar through unchanged', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  mountFriendsScreen({ root, bus });
+  bus.emit(FRIENDS_DETAIL_RENDER, {
+    friend: { uid: 'u9', name: 'דנה', avatar: '🦈' },
+    rivalEntry: null, vsRecent: [], activeGames: [], myUid: 'me',
+  });
+  assert.equal(els.fdAvatar.textContent, '🦈');
 });
 
 test('FRIENDS_RENDER with no requests hides the wrap and the badge', () => {

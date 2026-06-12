@@ -344,6 +344,7 @@ async function boot() {
   let activePresenceUid = null;
   let lastLivePreviewWrite = '';
   const recoveredSessionForUid = new Set();
+  let launchParamsHandled = false;
 
   async function bootCrossCuttingFor(uid) {
     if (!uid) return;
@@ -396,6 +397,19 @@ async function boot() {
     if (!recoveredSessionForUid.has(uid)) {
       recoveredSessionForUid.add(uid);
       attemptSavedOnlineRecovery(uid).catch((e) => console.warn('[spine] saved-session recovery', e));
+    }
+
+    // Cold-start deep links from a tapped push notification. The warm path
+    // postMessages OPEN_* to an already-focused tab (see sw.js); on a cold
+    // start the tab boots fresh and the query string sw.js opened
+    // (`/?resume=<roomId>`, `/?summary=<roomId>`, `/?open=notifications`) is
+    // the only signal. Without this a tapped "תורך נגד X" turn notification
+    // dropped the user on the default menu / My-Games screen instead of
+    // inside the game. Route it once, then strip the param so a manual
+    // refresh doesn't replay it.
+    if (!launchParamsHandled) {
+      launchParamsHandled = true;
+      try { handleLaunchParams(); } catch (e) { console.warn('[spine] launch params', e); }
     }
   }
 
@@ -553,6 +567,38 @@ async function boot() {
     const handler = (event) => handleServiceWorkerMessage(event?.data ?? event);
     try { globalThis.navigator?.serviceWorker?.addEventListener?.('message', handler); } catch {}
     globalThis.__spine.handleServiceWorkerMessage = handleServiceWorkerMessage;
+  }
+
+  // Translate the cold-start launch query string (set by sw.js's
+  // clients.openWindow when no tab was focused) into the same OPEN_* routing
+  // the warm postMessage path uses. Mirrors mapKindToRoute in sw.js.
+  function handleLaunchParams() {
+    let qs;
+    try { qs = new URLSearchParams(globalThis.location?.search ?? ''); }
+    catch { return; }
+    const resume  = qs.get('resume');
+    const summary = qs.get('summary');
+    const open    = qs.get('open');
+    let routed = false;
+    if (resume) {
+      handleServiceWorkerMessage({ type: 'OPEN_TURN', roomId: resume });
+      routed = true;
+    } else if (summary) {
+      handleServiceWorkerMessage({ type: 'OPEN_GAME_SUMMARY', roomId: summary });
+      routed = true;
+    } else if (open === 'notifications') {
+      handleServiceWorkerMessage({ type: 'OPEN_NOTIFICATIONS' });
+      routed = true;
+    }
+    // Strip the consumed param so a manual refresh / back-forward doesn't
+    // bounce the user back into the game.
+    if (routed) {
+      try {
+        const url = new globalThis.URL(globalThis.location.href);
+        for (const k of ['resume', 'summary', 'open']) url.searchParams.delete(k);
+        globalThis.history?.replaceState?.(null, '', url.pathname + (url.search || '') + (url.hash || ''));
+      } catch { /* swallow */ }
+    }
   }
 
   function handleServiceWorkerMessage(data = {}) {
@@ -983,12 +1029,23 @@ async function boot() {
       }
       const { code } = result;
 
+      // An async friend invite has no "both players present" handshake — the
+      // recipient answers whenever they like — so there is nothing to wait in
+      // a waiting room FOR. Show a one-shot confirmation toast instead of the
+      // hourglass overlay (which read "waiting for X…" and made no sense for
+      // async). Live friend invites and code-share games keep the waiting room.
+      const isAsyncMode      = (filters.spineMode ?? '').endsWith('-async');
+      const isFriendInvite   = !!pendingFriendTarget;
+      const asyncFriendInvite = isAsyncMode && isFriendInvite;
+
       // Open the waiting-room overlay. Capture friend target BEFORE emitting so
       // the overlay starts in friend-mode immediately (no flash of code UI).
       const friendNameForWr = pendingFriendTarget?.name ?? null;
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.add?.('hidden');
       const isAuthedForWr = !!(fbUser?.uid && !fbUser?.isAnonymous);
-      bus.emit(WR_OPEN, { code, mode: filters.spineMode, friendName: friendNameForWr, isAuthed: isAuthedForWr });
+      if (!asyncFriendInvite) {
+        bus.emit(WR_OPEN, { code, mode: filters.spineMode, friendName: friendNameForWr, isAuthed: isAuthedForWr });
+      }
 
       // If triggered from the friend detail overlay, auto-send invite to that friend.
       // Captured here and folded into `activePending` below — `activePending`
@@ -1019,9 +1076,33 @@ async function boot() {
           })?.catch(() => {});
           autoInviteId    = inviteId;
           autoInviteToUid = ft.uid;
+          if (asyncFriendInvite) {
+            // No waiting room: confirm with a toast, drop the now-unused pending
+            // code room, and return to the menu. The host is notified (push +
+            // async banner) when the recipient accepts and it becomes their turn.
+            inAppNotificationService.show({
+              kind: inAppNotificationService.TOAST_KIND.OK,
+              text: `ההזמנה נשלחה ל${ft.name ?? 'חבר'}! נעדכן אותך כשהיא תתקבל.`,
+              durationMs: 5000,
+            });
+            await teardownPending();
+            roomCodeService.cancelPending(fbDb, code).catch((e) => console.warn('[spine] async invite cancelPending', e));
+            showLegacyScreen('sh');
+            return;
+          }
           bus.emit(WR_LIVE_INVITE_SENT, { expiresAt, friendName: ft.name });
         } catch (e) {
           console.warn('[spine] friend auto-invite failed', e);
+          if (asyncFriendInvite) {
+            inAppNotificationService.show({
+              kind: inAppNotificationService.TOAST_KIND.ERROR,
+              text: 'שליחת ההזמנה נכשלה. נסה/י שוב.',
+              durationMs: 4000,
+            });
+            await teardownPending();
+            showLegacyScreen('sh');
+            return;
+          }
         }
       }
 
@@ -2756,6 +2837,15 @@ async function boot() {
     if (skipCoin && room?.status !== 'playing' && !(room?.mode ?? '').endsWith('-async')) {
       skipCoin = false;
     }
+    // The coin toss only decides who opens — it is meaningless once the game
+    // is underway. Any room that already has moves (or has advanced past the
+    // first turn) is a *resume*, so force-skip the coin regardless of how we
+    // got here. Without this, re-entering an async game from My Games / the
+    // turn banner replayed the coin-toss splash on every single entry.
+    const alreadyStarted = Array.isArray(room?.moveHistory)
+      ? room.moveHistory.length > 0
+      : Number(room?.turnNumber ?? 1) > 1;
+    if (!skipCoin && alreadyStarted) skipCoin = true;
 
     if (!skipCoin) {
       pendingCoinStart = () => {

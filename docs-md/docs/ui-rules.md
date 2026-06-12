@@ -158,6 +158,14 @@ Removed in May 2026 simplification (do not re-add without product reason): `#st-
 
 Both IDs are wired by `settingsScreen.js` via `VALUE_SELECTS`. The active pill carries `active-yes`; the inactive pill has no active class. Do not add `onclick` attributes — they are removed and re-wired by the screen controller.
 
+### Settings Screen — Close Buttons
+
+The settings overlay has **two** close affordances, both with `onclick="ovClose('ov-settings')"`:
+- `#sett-close-x` — the top-left corner "×" (added June 2026 so the overlay can be dismissed without the bottom button)
+- the bottom `.ovbtns` "אישור ✓" button
+
+`settingsScreen.js` wires **all** matching buttons via `overlay.querySelectorAll('button[onclick="ovClose(\'ov-settings\')"]')` (not just the first) so each emits `SETTINGS_INTENT.CLOSE` and hides the overlay. If you add another close control, give it the same `onclick` and it will be wired automatically.
+
 ### Settings Screen — Dictionary Management Panel (admin-only, direct-action)
 
 ```

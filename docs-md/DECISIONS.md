@@ -5,6 +5,18 @@
 
 ---
 
+## D-async-end: "סיום" ends an async game (resign); the home button leaves-and-resumes — June 2026
+
+**Decision:** The in-game top-bar **סיום** (🏁) button — which opens the back-confirm overlay → "leave" → `BACK_INTENT.LEAVE` — now **resigns** for *all* online games, async included. The separate async-only **home** button (`#btn-async-home` → `AH_INTENT.GO_HOME`) is the leave-and-resume path.
+
+**Supersedes:** the earlier decision that "leaving an async game is non-destructive" (the old `BACK_INTENT.LEAVE` branch only resigned `online && !isAsync`). Under that design both buttons did the same leave-and-keep, so the player had **no way to actually end an async game** — the reported bug.
+
+**Evidence:** `src/ui/controllers/gameFlowController.js` `BACK_INTENT.LEAVE` now branches on `ag?.online` (was `ag?.online && !ag?.isAsync`). Resign fires `EV.GAME_COMPLETED`; `onlineGameSession` writes the terminal status via `setStatus` (clearing the async index). Test: `tests/unit/disconnect-leave-e2e.test.js` ("BACK_INTENT.LEAVE for async online dispatches RESIGN_GAME to end the game").
+
+**Tradeoff:** resigning an async game counts as a forfeit (opponent wins). The non-destructive "I'll finish later" intent is still served by the home button.
+
+---
+
 ## D1: ES6 Module Spine Architecture (No Bundler)
 
 **Decision:** The new "spine" architecture uses native ES6 modules loaded directly by the browser. No bundler (Webpack, Vite, Rollup) is used.
