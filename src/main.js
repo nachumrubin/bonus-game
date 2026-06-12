@@ -1456,6 +1456,15 @@ async function boot() {
           hasSavedGame: sessions.length > 0,
           myGamesCount: computeMyGamesCount(),
         });
+        // Live-refresh the My-Games screen if it's the one on screen. The
+        // screen was previously rendered only on open (MENU_INTENT.OPEN_MY_GAMES)
+        // and after dismiss/poke, so an opponent move that arrived while the
+        // user sat on #smygames didn't flip the card to "your turn" (updated
+        // score + שחק button) until they left and re-entered. The watcher only
+        // fires on real room changes, so this isn't a hot path.
+        if (_scStack[_scStack.length - 1] === 'smygames') {
+          refreshMyGamesList();
+        }
         // In-app banner (deduped) for my-turn games.
         const bannerResult = asyncTurnBanner.maybeShow({ uid, sessions });
         // Browser-notification fallback. The banner already dedupes within
@@ -1543,15 +1552,51 @@ async function boot() {
         lastUpdated: Number(saved.savedAt) || 0,
       };
     }
+    // Per-room live watchers for the open My-Games screen. The async-session
+    // index (users/{uid}/asyncRooms) only changes when a game is added or
+    // removed — an opponent's MOVE updates rooms/{roomId}, not the index — so
+    // watchAsyncSessions never fires on a move. Without watching the rooms
+    // themselves, a card stayed stale ("not your turn", old score) until the
+    // user left and re-entered the screen. We attach one watchRoom per listed
+    // async room while #smygames is open and tear them down on navigate-away.
+    let mgRoomWatchers = [];
+    function stopMyGamesRoomWatchers() {
+      for (const off of mgRoomWatchers) { try { off(); } catch { /* swallow */ } }
+      mgRoomWatchers = [];
+    }
+    function watchMyGamesRooms(roomIds) {
+      stopMyGamesRoomWatchers();
+      if (!activeFbDb) return;
+      for (const roomId of roomIds) {
+        if (!roomId || roomId === MY_GAMES_LOCAL_ROOM_ID) continue;
+        // watchRoom fires once immediately with the current value; skip that
+        // priming fire so attaching doesn't trigger a redundant re-render
+        // (and, since re-rendering re-attaches, an infinite loop).
+        let primed = false;
+        const off = roomService.watchRoom(activeFbDb, roomId, () => {
+          if (!primed) { primed = true; return; }
+          if (_scStack[_scStack.length - 1] !== 'smygames') { stopMyGamesRoomWatchers(); return; }
+          refreshMyGamesList();
+        });
+        mgRoomWatchers.push(off);
+      }
+    }
+    // Tear the room watchers down whenever we leave the My-Games screen.
+    bus.on(ONBOARDING_SCREEN_ENTER, ({ screenId } = {}) => {
+      if (screenId !== 'smygames') stopMyGamesRoomWatchers();
+    });
+
     async function refreshMyGamesList() {
       const sessions = [];
       const local = buildLocalGameRow();
       if (local) sessions.push(local);
       const uid = activeFbCurrentUser?.uid;
+      let onlineRoomIds = [];
       if (uid && activeFbDb) {
         try {
           const online = await asyncSessionService.listAsyncSessions(activeFbDb, uid, { includeExpired: true });
           sessions.push(...online);
+          onlineRoomIds = online.map(s => s.roomId).filter(Boolean);
         } catch (e) {
           console.warn('[spine] myGames refresh', e);
         }
@@ -1562,6 +1607,8 @@ async function boot() {
       // inflate the "open games" badge.
       const openCount = sessions.filter(s => !s.isExpired).length;
       bus.emit(MENU_REFRESH, { myGamesCount: openCount });
+      // Keep the live room watchers in sync with the rows currently shown.
+      watchMyGamesRooms(onlineRoomIds);
     }
     bus.on(MENU_INTENT.OPEN_MY_GAMES, () => {
       showLegacyScreen('smygames');
