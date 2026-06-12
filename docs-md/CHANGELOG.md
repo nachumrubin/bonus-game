@@ -2,6 +2,21 @@
 
 ---
 
+## Game-over push notification: informative body (winner + final score) — June 2026
+
+The `completed` push previously read "המשחק הסתיים" in both title and body, and a single combined push to both players reused one `ctx` (so `didWin` was the sender's — wrong for the loser). Also, the online `GAME_COMPLETED` event carries `winnerSlot: null`, so `didWin` was effectively always false.
+
+Now `notificationService` (`GAME_COMPLETED` handler) sends **one push per player from that player's perspective**, deriving the winner from `abandonedBy` → explicit `winnerSlot` → final-score comparison (draw-aware), and dedupes per room (the engine and the online-session watcher both emit `GAME_COMPLETED`). The body (`completedBody`):
+- Win → `ניצחת! 🏆 התוצאה הסופית: <my>:<opp>`
+- Loss → `<opponent> ניצח/ה. התוצאה הסופית: <my>:<opp>`
+- Draw → `תיקו! התוצאה הסופית: <my>:<opp>`
+
+Title stays "המשחק הסתיים". New `ctx` fields `isDraw` / `myScore` / `opponentScore` were added to the worker's `ALLOWED_CTX_KEYS`. **The worker copy is authoritative** (it rebuilds the body server-side), so this needs `cd worker && npm run deploy` to take effect on real devices.
+
+**Files modified:** `src/notifications/notificationService.js`, `src/notifications/pushPayloadBuilder.js`, `worker/src/pushPayloadBuilder.js`, `worker/src/index.js`, `src/notifications/notificationService.test.js`, `src/notifications/pushPayloadBuilder.test.js`
+
+---
+
 ## Bug-fix batch: async invite/end, coin toss, settings X, friend-avatar, push cold-start — June 2026
 
 Seven reported issues from manual QA on the `Some-bugs-found` branch:

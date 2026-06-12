@@ -49,6 +49,29 @@ test('COMPLETED includes didWin in data + body reflects winner state', () => {
   assert.equal(loseBody.contents.en, 'המשחק הסתיים');
 });
 
+test('COMPLETED body names the winner and appends the final score', () => {
+  const win = buildPushBody({
+    appId: 'a', kind: KIND.COMPLETED, externalIds: ['u'],
+    ctx: { roomId: 'r1', didWin: true, myScore: 42, opponentScore: 30, opponentName: 'Bob' },
+  });
+  assert.ok(win.contents.en.includes('ניצחת'));
+  assert.ok(win.contents.en.includes('42:30'));
+
+  const lose = buildPushBody({
+    appId: 'a', kind: KIND.COMPLETED, externalIds: ['u'],
+    ctx: { roomId: 'r1', didWin: false, myScore: 30, opponentScore: 42, opponentName: 'Bob' },
+  });
+  assert.ok(lose.contents.en.includes('Bob'));
+  assert.ok(lose.contents.en.includes('30:42'));
+
+  const draw = buildPushBody({
+    appId: 'a', kind: KIND.COMPLETED, externalIds: ['u'],
+    ctx: { roomId: 'r1', isDraw: true, didWin: false, myScore: 20, opponentScore: 20 },
+  });
+  assert.ok(draw.contents.en.includes('תיקו'));
+  assert.ok(draw.contents.en.includes('20:20'));
+});
+
 test('FRIEND_REQUEST title + body uses fromName', () => {
   const body = buildPushBody({
     appId: 'a',

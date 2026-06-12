@@ -143,6 +143,7 @@ export function attachBusSubscriptions({ bus, sessionRef }) {
   // holding a stale reference across game switches.
 
   const lastTurnNotified = new Map(); // roomId → turnNumber
+  const completedNotified = new Set(); // roomIds already game-over-notified
 
   _busSubs.push(bus.on(EV.TURN_CHANGED, async ({ currentTurnSlot, turnNumber }) => {
     const s = sessionRef?.();
@@ -182,14 +183,49 @@ export function attachBusSubscriptions({ bus, sessionRef }) {
     }
   }));
 
-  _busSubs.push(bus.on(EV.GAME_COMPLETED, async ({ winnerSlot }) => {
+  _busSubs.push(bus.on(EV.GAME_COMPLETED, async ({ winnerSlot, scores, abandonedBy } = {}) => {
     const s = sessionRef?.();
     if (!s?.mode || !s.roomId) return;
     if (!modeDescriptor(s.mode).online) return;
-    await sendPush(KIND.COMPLETED, {
-      externalIds: [s.myUid, s.opponentUid].filter(Boolean),
-      ctx: { roomId: s.roomId, didWin: winnerSlot === s.mySlot },
-    });
+    // Both the engine (real winnerSlot) and the online-session watcher
+    // (winnerSlot:null on a remote terminal write) can emit GAME_COMPLETED for
+    // the same room. Dedup so each player gets one game-over push.
+    if (completedNotified.has(s.roomId)) return;
+    completedNotified.add(s.roomId);
+
+    // winnerSlot is null on the online watcher path, so derive the winner
+    // ourselves: a resign/forfeit hands the win to the other slot; otherwise
+    // compare the final scores (equal = draw).
+    const score0 = Number(scores?.[0] ?? 0);
+    const score1 = Number(scores?.[1] ?? 0);
+    let winSlot;
+    if (abandonedBy === 0 || abandonedBy === 1) winSlot = 1 - abandonedBy;
+    else if (winnerSlot === 0 || winnerSlot === 1) winSlot = winnerSlot;
+    else winSlot = score0 === score1 ? null : (score0 > score1 ? 0 : 1);
+
+    // Each player gets their OWN perspective (won/lost/draw + their score
+    // first). The previous single combined push reused one ctx for both, so
+    // the loser saw the winner's "ניצחת" copy.
+    const recipients = [
+      { uid: s.myUid,       slot: s.mySlot,     oppName: s.opponentName },
+      { uid: s.opponentUid, slot: 1 - s.mySlot, oppName: s.myName },
+    ];
+    for (const r of recipients) {
+      if (!r.uid) continue;
+      const myScore  = r.slot === 0 ? score0 : score1;
+      const oppScore = r.slot === 0 ? score1 : score0;
+      await sendPush(KIND.COMPLETED, {
+        externalIds: [r.uid],
+        ctx: {
+          roomId: s.roomId,
+          didWin: winSlot === r.slot,
+          isDraw: winSlot == null,
+          myScore,
+          opponentScore: oppScore,
+          opponentName: r.oppName ?? null,
+        },
+      });
+    }
   }));
 
   return detach;
