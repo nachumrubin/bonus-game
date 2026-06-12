@@ -364,6 +364,60 @@ test('CONFIRM_MOVE with extra_turn boost banked keeps the same player on turn', 
   assert.equal(state.activeBoosts.length, 0, 'extra_turn entry is consumed after firing');
 });
 
+// Regression guard for the reported "×2 boost triples the score" bug. The
+// multiplier must scale the committed score by EXACTLY its factor — base 4
+// → 8 for ×2, → 16 for ×4 — never base + factor·base (which would be ×3 / ×5).
+test('CONFIRM_MOVE with an active ×2 multiplier scores exactly 2× (not 3×)', () => {
+  resetBoostRegistry();
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.activeBoosts = [{ slot: 0, boostId: 'multiply_next_turns', payload: { multiplier: 2, turnsRemaining: 1 }, turnNumber: 1 }];
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+
+  assert.equal(state.scores[0], 8, 'base 4 × 2 === 8 (a ×3 result of 12 is the bug)');
+  assert.equal(state.activeBoosts.length, 0, 'single-turn multiplier is consumed');
+});
+
+test('CONFIRM_MOVE with an active ×4 multiplier scores exactly 4×', () => {
+  resetBoostRegistry();
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.activeBoosts = [{ slot: 0, boostId: 'multiply_next_turns', payload: { multiplier: 4, turnsRemaining: 1 }, turnNumber: 1 }];
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+
+  assert.equal(state.scores[0], 16, 'base 4 × 4 === 16');
+});
+
+test('a ×2 multiplier owned by the opponent does NOT scale my move', () => {
+  resetBoostRegistry();
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  // Boost belongs to slot 1; slot 0 is playing → it must not fire.
+  state.activeBoosts = [{ slot: 1, boostId: 'multiply_next_turns', payload: { multiplier: 2, turnsRemaining: 1 }, turnNumber: 1 }];
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+
+  assert.equal(state.scores[0], 4, 'opponent multiplier must not apply to my score');
+  assert.equal(state.activeBoosts.length, 1, 'opponent multiplier remains until their turn');
+});
+
 test('CONFIRM_MOVE with a tile swap returns the displaced letter to the rack', () => {
   resetBoostRegistry();
   seedDict(['דב']);

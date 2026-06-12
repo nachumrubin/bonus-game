@@ -61,6 +61,11 @@ function makeOverlay({ id, classes = ['ov', 'hidden'] }) {
       }
       return null;
     },
+    querySelectorAll(sel) {
+      const m = sel.match(/onclick="([^"]+)"/);
+      if (!m) return [];
+      return [...elements.values()].filter(el => el.getAttribute('onclick') === m[1]);
+    },
   };
   return { overlay, elements };
 }
@@ -334,6 +339,28 @@ test('settingsScreen: counter +/- buttons adjust display and emit SETTINGS_CHANG
   assert.deepEqual(changed, { botTime: 25 });
   minus.fireClick();
   assert.equal(display.textContent, '20');
+});
+
+test('settingsScreen: both the top "×" and bottom "אישור" close the overlay', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-settings' });
+  // Two buttons share onclick="ovClose('ov-settings')": the corner X and אישור.
+  const xBtn  = makeBtn({ onclick: "ovClose('ov-settings')" });
+  const okBtn = makeBtn({ onclick: "ovClose('ov-settings')" });
+  elements.set('sett-close-x', xBtn);
+  elements.set('sett-ok', okBtn);
+  const root = { querySelector: () => overlay };
+  let closes = 0;
+  bus.on(SETTINGS_INTENT.CLOSE, () => closes++);
+  mountSettingsScreen({ root, bus });
+
+  xBtn.fireClick();
+  assert.equal(closes, 1, 'X button emits CLOSE');
+  assert.ok(overlay.classList.contains('hidden'));
+  overlay.classList.remove('hidden');
+  okBtn.fireClick();
+  assert.equal(closes, 2, 'אישור button also emits CLOSE');
+  assert.ok(overlay.classList.contains('hidden'));
 });
 
 // ─── Disconnect ──────────────────────────────────────────────────

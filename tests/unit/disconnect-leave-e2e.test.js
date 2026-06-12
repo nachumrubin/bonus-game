@@ -174,7 +174,12 @@ test('BACK_INTENT.LEAVE for live online writes abandoned status to Firebase', as
 // 3. BACK_INTENT.LEAVE — async / offline games must NOT resign
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('BACK_INTENT.LEAVE for async online does NOT dispatch RESIGN_GAME', () => {
+// The top-bar "סיום" (🏁) button opens the back-confirm overlay; confirming
+// "leave" must END an async game (resign → terminal status in Firebase), not
+// silently leave it open. The separate "home" button (#btn-async-home /
+// AH_INTENT.GO_HOME) is the leave-and-resume path. This reverses the earlier
+// "async leave is non-destructive" decision — see DECISIONS.md (2026-06).
+test('BACK_INTENT.LEAVE for async online dispatches RESIGN_GAME to end the game', () => {
   bus._reset();
 
   const dispatched = [];
@@ -201,12 +206,13 @@ test('BACK_INTENT.LEAVE for async online does NOT dispatch RESIGN_GAME', () => {
   });
   bus.emit(BACK_INTENT.LEAVE, {});
 
-  assert.equal(
-    dispatched.filter(c => c.type === CMD.RESIGN_GAME).length, 0,
-    'async leave must NOT dispatch RESIGN_GAME',
-  );
-  assert.equal(endedCount, 1, 'async leave must call endActiveGame');
-  assert.deepEqual(screens, ['sh'], 'async leave must navigate to home screen');
+  const resigns = dispatched.filter(c => c.type === CMD.RESIGN_GAME);
+  assert.equal(resigns.length, 1, 'async leave must dispatch RESIGN_GAME to end the game');
+  assert.equal(resigns[0].payload?.slot, 0, 'resign for my slot');
+  // Resign ends via GAME_COMPLETED → end screen; it must NOT dispose + route
+  // home like an offline leave (that is what the home button does instead).
+  assert.equal(endedCount, 0, 'async end must not call endActiveGame directly');
+  assert.deepEqual(screens, [], 'async end shows the end screen, not the home screen');
 });
 
 test('BACK_INTENT.LEAVE for offline game does NOT dispatch RESIGN_GAME', () => {

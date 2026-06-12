@@ -7,6 +7,20 @@ All entries below are currently `approved: false`. They are documented because t
 ```json
 [
   {
+    "behavior": "Ending an async game from the in-game 'סיום' button",
+    "legacyBehavior": "Leaving an async game via the back-confirm overlay was non-destructive: BACK_INTENT.LEAVE only resigned for live online games (online && !isAsync); async leave just disposed the session and went home, leaving the game open. This left no way to actually end/forfeit an async game from inside it.",
+    "newBehavior": "BACK_INTENT.LEAVE now resigns for ALL online games (gameFlowController.js), so 'סיום' ends an async game (GAME_COMPLETED -> terminal Firebase status). The async-only home button (#btn-async-home / AH_INTENT.GO_HOME) remains the leave-and-resume path.",
+    "reason": "User-reported bug: 'סיום' did nothing in async games. The two buttons (סיום vs home) are now distinct: end/forfeit vs leave-and-resume.",
+    "approved": true
+  },
+  {
+    "behavior": "Async friend invite confirmation UI",
+    "legacyBehavior": "Sending a friend invite for an async game opened the live 'waiting for X…' hourglass overlay, which made no sense for turn-based async play (no both-players-present handshake).",
+    "newBehavior": "main.js CR_INTENT.CONFIRM: async friend invites send the invite, show a one-shot toast ('ההזמנה נשלחה ל-X! נעדכן אותך כשהיא תתקבל.'), cancel the unused pending code room, and return to the menu. Live invites + code-share games keep the waiting room.",
+    "reason": "User-reported bug: async invites should not block on a waiting overlay; the host is notified when the recipient accepts.",
+    "approved": true
+  },
+  {
     "behavior": "Friend invite room creation",
     "legacyBehavior": "Friend invite flow used Firebase invite records and could create or reference a room before the invite was accepted, with rejection cleanup paths.",
     "newBehavior": "src/game/online/inviteService.js creates no room until acceptInvite(), then creates the room atomically and writes an invite ack.",

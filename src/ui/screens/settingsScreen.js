@@ -142,9 +142,13 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
     bus.emit(SETTINGS_CHANGED, { [ctr.key]: next });
   }
 
-  // ─── Close button ───────────────────────────────────────
-  const closeBtn = $('button[onclick="ovClose(\'ov-settings\')"]', overlay);
-  if (closeBtn) {
+  // ─── Close buttons ──────────────────────────────────────
+  // Both the bottom "אישור ✓" button and the top-corner "×" close the
+  // overlay. They share the legacy onclick="ovClose('ov-settings')", so wire
+  // every match (not just the first) — otherwise the player can only dismiss
+  // settings via אישור and the X does nothing through the spine path.
+  const closeBtns = overlay.querySelectorAll?.('button[onclick="ovClose(\'ov-settings\')"]') ?? [];
+  for (const closeBtn of closeBtns) {
     closeBtn.removeAttribute('onclick');
     cleanups.push(on(closeBtn, 'click', (e) => {
       e.preventDefault?.();

@@ -289,6 +289,35 @@ test('legacy bonusSkip: skipped pending bonus is cleared after base move commit'
   assert.equal(state.pendingBonuses.length, 0, 'legacy bonusSkip clears bonusPend and only commits the base move');
 });
 
+// Reported bug: "skipping a תפזורת (B11 word search) still granted 10 bonus
+// points." Skipping resolves the mini-game with extra:0, so the committed
+// score must be ONLY the base word score (here 'בא' = 3+1 = 4) — never base
+// + a phantom bonus. Covers B11 and the other interactive mini-game tiles.
+test('skipping an interactive mini-game (B11 תפזורת etc.) commits only the base word score', async () => {
+  for (const bonusType of ['B11', 'B1', 'B3', 'B8', 'B10', 'B12']) {
+    const { commands, board, dict, state, eng } = await makeEngine({ seed: `skip-${bonusType}` });
+    seedDict(dict, ['בא']);
+    state.firstMove = false;
+    state.racks[0] = ['ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+    state.bonusAssignment[0] = { type: bonusType };
+    board.setCommittedTile(state, 0, 1, { letter: 'א', val: 1, isJoker: false });
+
+    eng.dispatch({ type: commands.CMD.CONFIRM_MOVE, payload: { placed: [{ r: -1, c: 1, letter: 'ב', val: 3 }] } });
+    assert.equal(state.pendingBonuses.length, 1, `${bonusType} defers scoring`);
+    const baseScore = state.pendingScoreCommit?.baseScore ?? 0;
+    assert.equal(baseScore, 4, `${bonusType} base 'בא' = 4`);
+    assert.equal(state.scores[0], 0, `${bonusType} base score held until the mini-game resolves`);
+
+    // Skip = resolve with extra 0 (what bonusActivationController.resolveMiniGame
+    // dispatches when found.size === 0).
+    eng.dispatch({ type: commands.CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, bonusIdx: 0, extra: 0 } });
+
+    assert.equal(state.scores[0], baseScore, `${bonusType} skip commits ONLY the base word score (no phantom bonus)`);
+    assert.equal(state.scores[0], 4, `${bonusType} skip total is 4, not 14`);
+    assert.equal(state.pendingBonuses.length, 0, `${bonusType} pending bonus cleared`);
+  }
+});
+
 test('legacy bonusOk: interactive B1/B3/B8/B10/B11/B12 success clears pending and awards only after acknowledgement', async () => {
   const interactive = [
     ['B1', 100],

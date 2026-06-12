@@ -93,6 +93,25 @@ test('confirmed resign dispatches RESIGN_GAME for my slot', () => {
   assert.equal(active.dispatched[0].payload.slot, 0);
 });
 
+test('back-leave in an async online game resigns to end it (does not silently leave)', () => {
+  bus._reset();
+  const active = makeActiveGame({ online: true, isAsync: true });
+  const screens = [];
+  createGameFlowController({
+    bus,
+    root: makeRoot(),
+    activeGameRef: () => active,
+    showScreen: (id) => screens.push(id),
+  });
+  bus.emit(BACK_INTENT.LEAVE, {});
+  assert.equal(active.dispatched[0].type, CMD.RESIGN_GAME, 'async leave must resign');
+  assert.equal(active.dispatched[0].payload.slot, 0);
+  // Resign ends the game via GAME_COMPLETED → end screen; it must NOT just
+  // dispose + route home like an offline leave.
+  assert.equal(active.ended, 0);
+  assert.deepEqual(screens, []);
+});
+
 test('settings changes update active session settings and legacy gameSettings', () => {
   bus._reset();
   const active = makeActiveGame();

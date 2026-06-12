@@ -155,10 +155,14 @@ export function createGameFlowController({
   }));
   cleanups.push(bus.on(BACK_INTENT.LEAVE, () => {
     const ag = activeGameRef();
-    if (ag?.online && !ag?.isAsync) {
-      // Live online: resign so the opponent is notified, then show end screen.
-      // The user already confirmed "leave" via the back-confirm dialog so we
-      // skip the resign-confirm step and go straight to the resign dispatch.
+    if (ag?.online) {
+      // Online (live AND async): the top-bar "סיום" button means END the
+      // game, so resign — the engine fires GAME_COMPLETED and the online
+      // session writes the terminal status to Firebase (clearing the async
+      // index). For async this is the only way to actually finish a game;
+      // the separate "home" button (#btn-async-home) is the leave-and-resume
+      // path. The user already confirmed via the back-confirm dialog, so we
+      // skip the resign-confirm step and dispatch straight away.
       ag.session?.dispatch?.({ type: CMD.RESIGN_GAME, payload: { slot: ag.session.mySlot } });
       hideOverlay('ov-back-confirm');
       return;
