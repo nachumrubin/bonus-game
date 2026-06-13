@@ -72,13 +72,22 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     const wn = $('#wn', overlay);
     const ws = $('#wws', overlay);
     const mySlot = globalThis.__spine?.activeGame?.session?.mySlot;
-    const effectiveWinner = winnerSlot != null
-      ? winnerSlot
-      : (abandonedBy === 0 ? 1 : abandonedBy === 1 ? 0 : null);
+    // A tied final score (incl. 0-0) is a draw, even if a player left — a
+    // walkout at 0-0 is not a win for the other side.
+    const score0 = Number(scores?.[0] ?? 0);
+    const score1 = Number(scores?.[1] ?? 0);
+    const effectiveWinner = (score0 === score1)
+      ? null
+      : (winnerSlot != null
+          ? winnerSlot
+          : (abandonedBy === 0 ? 1 : abandonedBy === 1 ? 0 : (score0 > score1 ? 0 : 1)));
 
     if (effectiveWinner == null) {
-      setText(wn, 'תיקו!');
-      setText(ws, '');
+      setText(wn, 'המשחק הסתיים בתיקו');
+      // Note the walkout when the draw came from a player leaving at a tie.
+      const note = abandonedBy == null ? ''
+        : (mySlot === abandonedBy ? 'עזבת את המשחק' : 'היריב עזב את המשחק');
+      setText(ws, note);
       return;
     }
 

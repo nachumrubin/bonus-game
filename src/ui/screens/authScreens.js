@@ -65,6 +65,29 @@ export const AUTH_ERROR_HE = {
   'no-pass':        'אנא הכנס סיסמה',
 };
 
+// Firebase Auth backend error codes → Hebrew. Wrong-password / user-not-found
+// / invalid-credential are deliberately collapsed into one generic message so
+// we don't leak whether an email is registered.
+export const FIREBASE_AUTH_ERROR_HE = {
+  'auth/invalid-credential':        'הדוא״ל או הסיסמה שגויים',
+  'auth/invalid-login-credentials': 'הדוא״ל או הסיסמה שגויים',
+  'auth/wrong-password':            'הדוא״ל או הסיסמה שגויים',
+  'auth/user-not-found':            'הדוא״ל או הסיסמה שגויים',
+  'auth/invalid-email':             'דוא״ל לא חוקי',
+  'auth/missing-password':          'אנא הכנס סיסמה',
+  'auth/user-disabled':             'החשבון הזה הושבת',
+  'auth/too-many-requests':         'יותר מדי ניסיונות. נסו שוב מאוחר יותר',
+  'auth/network-request-failed':    'אין חיבור לאינטרנט. נסו שוב',
+  'auth/email-already-in-use':      'הדוא״ל הזה כבר רשום',
+  'auth/weak-password':             `סיסמה חייבת להיות לפחות ${PASS_MIN} תווים`,
+};
+
+// Resolve a thrown Firebase Auth error (or anything with a `.code`) to a
+// Hebrew message, never the raw English string. Unknown codes fall back.
+export function firebaseAuthErrorHe(e, fallback = 'אירעה שגיאה. נסו שוב') {
+  return FIREBASE_AUTH_ERROR_HE[e?.code ?? ''] ?? fallback;
+}
+
 // Public mounter. Returns an object with `unmount()` and `showError(scope, msg)`
 // for main.js to surface backend errors.
 export function mountAuthScreens({ root = globalThis.document, bus } = {}) {

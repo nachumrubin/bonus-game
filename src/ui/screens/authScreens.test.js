@@ -4,8 +4,22 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountAuthScreens, validateSignupForm, validateLoginForm, validateResetForm,
-  AUTH_ERROR_HE, AUTH_INTENT,
+  AUTH_ERROR_HE, AUTH_INTENT, firebaseAuthErrorHe,
 } from './authScreens.js';
+
+test('firebaseAuthErrorHe: maps backend codes to Hebrew, never the raw string', () => {
+  // Wrong credentials collapse to one generic message (no account enumeration).
+  for (const code of ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found']) {
+    assert.equal(firebaseAuthErrorHe({ code }), 'הדוא״ל או הסיסמה שגויים');
+  }
+  assert.equal(firebaseAuthErrorHe({ code: 'auth/invalid-email' }), 'דוא״ל לא חוקי');
+  assert.equal(firebaseAuthErrorHe({ code: 'auth/email-already-in-use' }), 'הדוא״ל הזה כבר רשום');
+  // Unknown code → Hebrew fallback, not the English message.
+  const e = { code: 'auth/something-new', message: 'The supplied auth credential is incorrect.' };
+  const msg = firebaseAuthErrorHe(e);
+  assert.notEqual(msg, e.message);
+  assert.match(msg, /[֐-׿]/); // contains Hebrew
+});
 
 test('validateSignupForm: rejects missing fields', () => {
   assert.equal(validateSignupForm({}).reason, 'no-name');

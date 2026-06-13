@@ -94,7 +94,7 @@ import {
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
   diffNewlyUnlocked, findAvatar,
 } from './ui/screens/avatarScreens.js';
-import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE } from './ui/screens/authScreens.js';
+import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe } from './ui/screens/authScreens.js';
 import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER } from './ui/screens/friendsScreen.js';
 import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
 import { mountChampionsScreen, CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR } from './ui/screens/championsScreen.js';
@@ -2314,7 +2314,7 @@ async function boot() {
           });
         }
       } catch (e) {
-        authScreens.showError('signup', e?.message ?? AUTH_ERROR_HE['bad-email']);
+        authScreens.showError('signup', firebaseAuthErrorHe(e, AUTH_ERROR_HE['bad-email']));
       }
     });
 
@@ -2329,7 +2329,7 @@ async function boot() {
         await fbAuth.signInWithEmailAndPassword(email, password);
         showLegacyScreen('sh');
       }
-      catch (e) { authScreens.showError('login', e?.message ?? 'שגיאה'); }
+      catch (e) { authScreens.showError('login', firebaseAuthErrorHe(e)); }
     });
 
     bus.on(AUTH_INTENT.RESET_PASSWORD, async ({ email }) => {
@@ -2343,7 +2343,7 @@ async function boot() {
         await fbAuth.sendPasswordResetEmail(email);
         authScreens.showInfo('login', 'נשלח אימייל לאיפוס הסיסמה');
       } catch (e) {
-        authScreens.showError('login', e?.message ?? 'שגיאה בשליחת אימייל');
+        authScreens.showError('login', firebaseAuthErrorHe(e, 'שגיאה בשליחת אימייל'));
       }
     });
 
@@ -2400,11 +2400,16 @@ async function boot() {
       if (ag._eloApplied) return;
       ag._eloApplied = true;
 
-      // When winnerSlot is null (emitted by the room watcher path which has no
-      // local engine result), derive the winner from abandonedBy so that
-      // resignations are recorded correctly instead of falling back to 'draw'.
-      const effectiveWinnerSlot = winnerSlot != null ? winnerSlot
-        : (abandonedBy != null ? 1 - abandonedBy : null);
+      // Derive the recorded outcome. A tied final score (incl. 0-0) is a draw
+      // even on a walkout — keep this in step with the end screen + push. When
+      // winnerSlot is null (the room-watcher path has no local engine result),
+      // fall back to abandonedBy so resignations are still recorded.
+      const sc = session?.state?.scores ?? {};
+      const s0 = Number(sc[0] ?? 0);
+      const s1 = Number(sc[1] ?? 0);
+      const effectiveWinnerSlot = (s0 === s1) ? null
+        : (winnerSlot != null ? winnerSlot
+          : (abandonedBy != null ? 1 - abandonedBy : (s0 > s1 ? 0 : 1)));
       const result = effectiveWinnerSlot == null ? 'draw' : (effectiveWinnerSlot === mySlot ? 'win' : 'loss');
 
       // Stats — pass the winnerSlot-based result so history always agrees

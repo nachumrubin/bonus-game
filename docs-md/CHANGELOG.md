@@ -2,6 +2,20 @@
 
 ---
 
+## Tied games are a draw even on a walkout; Hebrew auth errors — June 2026
+
+**Draw on a tie.** A game ending with equal scores (incl. 0-0) is now a **draw even if a player left** — a walkout at a tie is no longer recorded/shown as a win for the other side. The rule (`score0 === score1` → draw, checked before `abandonedBy`/`winnerSlot`) is applied consistently at the outcome layer:
+- End screen (`endGameScreen`): title now reads "המשחק הסתיים בתיקו" with a "היריב עזב את המשחק" / "עזבת את המשחק" note when the draw came from a walkout.
+- Push (`notificationService` → `completedBody`): "תיקו! התוצאה הסופית: 0:0".
+- ELO/stats (`main.js`) and `gameFlowController.winnerSlot`.
+Core engine `turnManager.winnerSlot` is unchanged (the online path already emits `winnerSlot:null`; ELO at 0-0 was already skipped for zero-move games).
+
+**Hebrew auth errors.** Login / signup / password-reset failures previously surfaced the raw English Firebase string (e.g. "The supplied auth credential is incorrect…"). `authScreens.firebaseAuthErrorHe(e)` now maps `e.code` to Hebrew, collapsing wrong-password / user-not-found / invalid-credential into one generic "הדוא״ל או הסיסמה שגויים" (no account enumeration), with a Hebrew fallback for unknown codes.
+
+**Files modified:** `src/ui/screens/endGameScreen.js`, `src/ui/controllers/gameFlowController.js`, `src/notifications/notificationService.js`, `src/main.js`, `src/ui/screens/authScreens.js`, plus tests (`overlays.test.js`, `notificationService.test.js`, `authScreens.test.js`).
+
+---
+
 ## Matchmaking: fix 3-player race that double-booked a partner — June 2026
 
 `tryPair` claimed a single shared queue node, `min(me, partner)`. That serialized two clients who picked each other, but not two clients who both picked the **same higher-uid partner** — each claimed its OWN node, both committed, and both created a room with that partner. With 3 simultaneous "random match" joins, two players paired correctly and the third was left in the coin-toss screen with a phantom opponent (the double-booked player, who was actually in the other room).

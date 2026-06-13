@@ -194,14 +194,16 @@ export function attachBusSubscriptions({ bus, sessionRef }) {
     completedNotified.add(s.roomId);
 
     // winnerSlot is null on the online watcher path, so derive the winner
-    // ourselves: a resign/forfeit hands the win to the other slot; otherwise
-    // compare the final scores (equal = draw).
+    // ourselves. A tied final score (incl. 0-0) is a draw even on a walkout, so
+    // check the tie FIRST; otherwise a resign/forfeit hands the win to the
+    // other slot.
     const score0 = Number(scores?.[0] ?? 0);
     const score1 = Number(scores?.[1] ?? 0);
     let winSlot;
-    if (abandonedBy === 0 || abandonedBy === 1) winSlot = 1 - abandonedBy;
+    if (score0 === score1) winSlot = null;
     else if (winnerSlot === 0 || winnerSlot === 1) winSlot = winnerSlot;
-    else winSlot = score0 === score1 ? null : (score0 > score1 ? 0 : 1);
+    else if (abandonedBy === 0 || abandonedBy === 1) winSlot = 1 - abandonedBy;
+    else winSlot = score0 > score1 ? 0 : 1;
 
     // Each player gets their OWN perspective (won/lost/draw + their score
     // first). The previous single combined push reused one ctx for both, so

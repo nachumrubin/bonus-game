@@ -291,6 +291,31 @@ test('GAME_COMPLETED is sent once per room even if emitted twice', async () => {
   assert.equal(sent.length, 2, 'two recipients, but only one round of pushes');
 });
 
+test('GAME_COMPLETED: a 0-0 walkout is a draw, not a win for the other side', async () => {
+  _resetForTests();
+  bus._reset();
+  const sent = captureSends();
+  attachBusSubscriptions({
+    bus,
+    sessionRef: () => ({
+      mode: 'random-async',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob',
+      roomId: 'r-walkout',
+    }),
+  });
+  // Opponent (slot 1) abandoned at 0-0; the engine path would call that a win
+  // for slot 0, but a tie is a draw even on a walkout.
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 0, 1: 0 }, abandonedBy: 1 });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sent.length, 2);
+  for (const p of sent) {
+    assert.equal(p.data.isDraw, true);
+    assert.equal(p.data.didWin, false);
+    assert.ok(p.contents.en.includes('תיקו'));
+  }
+});
+
 test('GAME_COMPLETED on a draw says תיקו to both', async () => {
   _resetForTests();
   bus._reset();
