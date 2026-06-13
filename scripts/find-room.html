@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>בוסט — Find Room (debug)</title>
+<!--
+  Standalone debug GUI for looking up a game's room id by player names + time.
+  Same idea as scripts/find-room.mjs but in the browser. Reads prod /rooms
+  directly (public read, no auth). Open this file in a browser (double-click)
+  or serve it locally — it is intentionally NOT under the app's served root,
+  so it is not deployed with hosting.
+-->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --bg:#0a1430; --panel:#12224e; --panel2:#0d1b3f; --line:rgba(255,255,255,.12);
+    --txt:#eaf2ff; --muted:rgba(234,242,255,.55); --accent:#f8d86a; --green:#1ed760;
+    --red:#ff8e8e; --blue:#4a90d9;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:linear-gradient(160deg,#0a1430,#0d1b3f 60%,#0a1024);
+    color:var(--txt); font-family:'Segoe UI',Heebo,Arial,sans-serif; min-height:100vh;
+    padding:18px;
+  }
+  h1 { font-size:20px; margin:0 0 2px; }
+  h1 .em { color:var(--accent); }
+  .sub { color:var(--muted); font-size:12px; margin-bottom:16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; max-width:880px; margin:0 auto 16px; }
+  form { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field.full { grid-column:1 / -1; }
+  label { font-size:12px; color:var(--muted); }
+  input[type=text], input[type=datetime-local], input[type=number] {
+    background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px; color:var(--txt); font-size:14px; font-family:inherit; outline:none;
+  }
+  input:focus { border-color:var(--accent); }
+  .opts { display:flex; gap:18px; flex-wrap:wrap; align-items:center; grid-column:1 / -1; font-size:13px; color:var(--muted); }
+  .opts label { display:flex; gap:6px; align-items:center; color:var(--txt); cursor:pointer; }
+  .actions { grid-column:1 / -1; display:flex; gap:10px; align-items:center; }
+  button {
+    background:linear-gradient(180deg,#f8d86a,#d59c28); border:none; border-radius:8px;
+    padding:11px 22px; font-weight:800; font-size:14px; color:#2a1d05; cursor:pointer;
+    font-family:inherit;
+  }
+  button.secondary { background:var(--panel2); border:1px solid var(--line); color:var(--txt); font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { color:var(--muted); font-size:13px; }
+  .status.err { color:var(--red); }
+  .results { max-width:880px; margin:0 auto; }
+  .room {
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; margin-bottom:10px;
+  }
+  .room.best { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .room .top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .rid { font-family:Consolas,monospace; font-size:15px; font-weight:700; color:var(--accent); }
+  .delta { font-size:12px; color:var(--blue); font-weight:700; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+  .pill.best { background:var(--accent); color:#2a1d05; border:none; font-weight:800; }
+  .copy { margin-inline-start:auto; background:var(--panel2); border:1px solid var(--line); color:var(--txt); border-radius:6px; padding:5px 10px; font-size:12px; font-weight:600; }
+  .meta { color:var(--muted); font-size:12px; margin-top:6px; }
+  .players { display:flex; gap:18px; margin-top:8px; flex-wrap:wrap; }
+  .pl { font-size:14px; }
+  .pl .nm { font-weight:700; }
+  .pl .sc { color:var(--accent); font-weight:800; margin-inline-start:6px; }
+  .muted { color:var(--muted); font-size:12px; }
+  .empty { color:var(--muted); text-align:center; padding:24px; }
+  @media (max-width:560px){ form{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+  <h1>🔍 <span class="em">Find Room</span> — debug</h1>
+  <div class="sub">חיפוש מזהה חדר לפי שמות השחקנים וזמן המשחק (קריאה בלבד מ-/rooms)</div>
+
+  <div class="card">
+    <form id="f">
+      <div class="field">
+        <label for="host">שם מארח / שחקן (חובה)</label>
+        <input id="host" type="text" placeholder="נחום רובין" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="guest">שם יריב (אופציונלי)</label>
+        <input id="guest" type="text" placeholder="הודיה" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="at">בערך מתי שוחק (אופציונלי)</label>
+        <input id="at" type="datetime-local">
+      </div>
+      <div class="field">
+        <label for="limit">מקסימום תוצאות</label>
+        <input id="limit" type="number" value="20" min="1" max="200">
+      </div>
+      <div class="opts">
+        <label><input id="anyOrder" type="checkbox" checked> כל סדר (מארח/יריב מתחלפים)</label>
+        <label><input id="contains" type="checkbox"> התאמה חלקית (substring)</label>
+      </div>
+      <div class="actions">
+        <button id="go" type="submit">חפש</button>
+        <button id="reload" type="button" class="secondary" title="טען מחדש את הנתונים מהשרת">↻ רענן נתונים</button>
+        <span id="status" class="status"></span>
+      </div>
+    </form>
+  </div>
+
+  <div id="results" class="results"></div>
+  <div class="sub" style="max-width:880px;margin:14px auto 0;text-align:center;">
+    נפתח ישירות בדפדפן (double-click). אם החיבור נחסם, הריצו מקומית:
+    <code style="color:var(--accent)">npx serve scripts</code> ואז פתחו <code style="color:var(--accent)">/find-room.html</code>.
+  </div>
+
+<script>
+const CONFIG = {
+  apiKey: 'AIzaSyCE-Im2HzYhJVlRd07uIHqcsCGTQQhYgDo',
+  authDomain: 'boost-8ef11.firebaseapp.com',
+  databaseURL: 'https://boost-8ef11-default-rtdb.firebaseio.com',
+  projectId: 'boost-8ef11',
+  appId: '1:816797852120:web:bfb9ab25fe8e6d9860d2ad',
+};
+firebase.initializeApp(CONFIG);
+
+let roomsCache = null; // { roomId: room }
+
+function norm(s){ return String(s ?? '').trim().toLowerCase().replace(/\s+/g,' '); }
+function nameMatches(playerName, query, contains){
+  const p = norm(playerName), q = norm(query);
+  if (!q) return false;
+  return contains ? p.includes(q) : p === q;
+}
+function roomNameMatch(room, opts){
+  const p0 = room.players?.[0]?.displayName ?? room.players?.['0']?.displayName ?? '';
+  const p1 = room.players?.[1]?.displayName ?? room.players?.['1']?.displayName ?? '';
+  const { host, guest, anyOrder, contains } = opts;
+  if (!anyOrder){
+    if (nameMatches(p0, host, contains) && (!guest || nameMatches(p1, guest, contains))) return { hostSlot:0, guestSlot:1 };
+    return null;
+  }
+  const in0 = nameMatches(p0, host, contains), in1 = nameMatches(p1, host, contains);
+  if (!in0 && !in1) return null;
+  if (!guest) return { hostSlot: in0?0:1, guestSlot: in0?1:0 };
+  if (in0 && nameMatches(p1, guest, contains)) return { hostSlot:0, guestSlot:1 };
+  if (in1 && nameMatches(p0, guest, contains)) return { hostSlot:1, guestSlot:0 };
+  return null;
+}
+function fmtDelta(ms){
+  const abs=Math.abs(ms), m=Math.round(abs/60000);
+  if (m<60) return (ms<0?'-':'+')+m+'m';
+  return (ms<0?'-':'+')+(abs/3600000).toFixed(1)+'h';
+}
+function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+const $ = id => document.getElementById(id);
+function setStatus(msg, err){ const s=$('status'); s.textContent=msg||''; s.className='status'+(err?' err':''); }
+
+async function ensureRooms(force){
+  if (roomsCache && !force) return roomsCache;
+  setStatus('טוען /rooms מהשרת…');
+  const snap = await firebase.database().ref('rooms').get();
+  roomsCache = snap.val() || {};
+  setStatus(`נטענו ${Object.keys(roomsCache).length} חדרים`);
+  return roomsCache;
+}
+
+async function search(){
+  const host = $('host').value.trim();
+  if (!host){ setStatus('נא להזין שם מארח/שחקן', true); return; }
+  const guest = $('guest').value.trim();
+  const atVal = $('at').value;
+  const targetMs = atVal ? new Date(atVal).getTime() : null;
+  const limit = Math.max(1, Number($('limit').value) || 20);
+  const opts = { host, guest, anyOrder: $('anyOrder').checked, contains: $('contains').checked };
+
+  let all;
+  try { all = await ensureRooms(false); }
+  catch (e){ setStatus('שגיאה בטעינת הנתונים: '+(e?.message||e), true); return; }
+
+  let matches = Object.entries(all)
+    .filter(([,r]) => r && typeof r === 'object')
+    .map(([roomId, r]) => {
+      const m = roomNameMatch(r, opts);
+      if (!m) return null;
+      const createdAt = Number(r.createdAt ?? 0);
+      return {
+        roomId, createdAt,
+        deltaMs: targetMs!=null ? createdAt-targetMs : null,
+        status: r.status ?? '?', mode: r.mode ?? '?',
+        host: r.players?.[m.hostSlot]?.displayName ?? '?',
+        guest: r.players?.[m.guestSlot]?.displayName ?? '?',
+        hostSlot:m.hostSlot, guestSlot:m.guestSlot,
+        hostScore: Number(r.scores?.[m.hostSlot] ?? r.scores?.[String(m.hostSlot)] ?? 0),
+        guestScore: Number(r.scores?.[m.guestSlot] ?? r.scores?.[String(m.guestSlot)] ?? 0),
+        moves: Array.isArray(r.moveHistory) ? r.moveHistory.length : 0,
+      };
+    })
+    .filter(Boolean);
+
+  matches.sort((a,b)=> targetMs!=null ? Math.abs(a.deltaMs)-Math.abs(b.deltaMs) : b.createdAt-a.createdAt);
+  const shown = matches.slice(0, limit);
+  setStatus(`${matches.length} תוצאות${matches.length>limit?` (מציג ${limit})`:''}`);
+  render(shown);
+}
+
+function render(rows){
+  const el = $('results');
+  if (!rows.length){ el.innerHTML = '<div class="room empty">לא נמצאו משחקים. בדקו את האיות (התאמה מדויקת אלא אם סומן "התאמה חלקית").</div>'; return; }
+  el.innerHTML = rows.map((x,i)=>{
+    const when = x.createdAt ? new Date(x.createdAt) : null;
+    const local = when ? when.toLocaleString() : '—';
+    const iso = when ? when.toISOString() : '';
+    const delta = x.deltaMs!=null ? `<span class="delta">Δ${fmtDelta(x.deltaMs)}</span>` : '';
+    return `<div class="room ${i===0?'best':''}">
+      <div class="top">
+        <span class="rid">${esc(x.roomId)}</span>
+        ${delta}
+        ${i===0?'<span class="pill best">התאמה הטובה ביותר</span>':''}
+        <button class="copy" data-copy="${esc(x.roomId)}">העתק</button>
+      </div>
+      <div class="meta">${esc(local)} &nbsp;·&nbsp; <span style="opacity:.7">${esc(iso)}</span></div>
+      <div class="meta">mode: ${esc(x.mode)} &nbsp;·&nbsp; status: ${esc(x.status)} &nbsp;·&nbsp; moves: ${x.moves}</div>
+      <div class="players">
+        <div class="pl"><span class="nm">${esc(x.host)}</span> <span class="muted">(slot ${x.hostSlot})</span><span class="sc">${x.hostScore}</span></div>
+        <div class="pl"><span class="nm">${esc(x.guest)}</span> <span class="muted">(slot ${x.guestSlot})</span><span class="sc">${x.guestScore}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('f').addEventListener('submit', (e)=>{ e.preventDefault(); search(); });
+document.getElementById('reload').addEventListener('click', ()=>{ ensureRooms(true).catch(e=>setStatus('שגיאה: '+(e?.message||e), true)); });
+document.getElementById('results').addEventListener('click', (e)=>{
+  const b = e.target.closest('[data-copy]');
+  if (!b) return;
+  navigator.clipboard?.writeText(b.getAttribute('data-copy')).then(()=>{ const t=b.textContent; b.textContent='✓ הועתק'; setTimeout(()=>b.textContent=t,1200); }).catch(()=>{});
+});
+</script>
+</body>
+</html>

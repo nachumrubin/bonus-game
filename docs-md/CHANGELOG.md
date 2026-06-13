@@ -14,7 +14,9 @@ In a **timed** online game, an `extra_turn` boost (B5 / wheel) keeps the turn wi
 
 ## Debug tool: find a game's room id by player names + time — June 2026
 
-`scripts/find-room.mjs` (`npm run find-room -- …`) looks up a room id from the two players' display names and roughly when the game was played. Read-only; connects straight to prod RTDB with no auth (the prod rules allow unauthenticated `/rooms` reads — same basis as `exportProdHistories.mjs`).
+Two front-ends, same logic:
+- **GUI:** `scripts/find-room.html` — a standalone page (Firebase compat SDK from CDN; reads public `/rooms` directly, no backend/build). Open it in a browser (double-click) or `npx serve scripts`. Form fields for host/guest/datetime, "any order" + "contains" toggles, sortable-by-proximity results with copy-roomId buttons. Lives under `scripts/` so it is **not** deployed with hosting.
+- **CLI:** `scripts/find-room.mjs` (`npm run find-room -- …`) looks up a room id from the two players' display names and roughly when the game was played. Read-only; connects straight to prod RTDB with no auth (the prod rules allow unauthenticated `/rooms` reads — same basis as `exportProdHistories.mjs`).
 
 ```
 npm run find-room -- --host "נחום רובין" --guest "הודיה" --at "2026-06-13 22:17"
