@@ -2,6 +2,16 @@
 
 ---
 
+## Fix: extra-turn boost in timed games (deadline not reset → instant timeout) — June 2026
+
+In a **timed** online game, an `extra_turn` boost (B5 / wheel) keeps the turn with the same player, so `commitCurrentState`'s `turnChanged` flag was false and the turn deadline was **not** reset. The player inherited the (already nearly-expired) deadline from the turn they just played; the instant their boost award overlay closed and un-paused the opponent's watchdog, the stale deadline was past and the watchdog timed them out — so they never actually got the extra turn. Diagnosed from prod room `mm_1781378227581_8c2yxm` (B5 extra_turn on slot 1, then `missedTurns:[0,1]` / `_passCount:1`).
+
+`onlineGameSession.commitCurrentState` now also resets `turnDeadlineMs` for an **extra-turn commit** (a real move that did not rotate the turn; free-exchange excluded), giving the player a full fresh window. No rules change.
+
+**Files modified:** `src/game/sessions/onlineGameSession.js`, `src/game/sessions/onlineGameSession.test.js`.
+
+---
+
 ## Debug tool: find a game's room id by player names + time — June 2026
 
 `scripts/find-room.mjs` (`npm run find-room -- …`) looks up a room id from the two players' display names and roughly when the game was played. Read-only; connects straight to prod RTDB with no auth (the prod rules allow unauthenticated `/rooms` reads — same basis as `exportProdHistories.mjs`).
