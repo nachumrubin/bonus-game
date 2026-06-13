@@ -99,6 +99,7 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
   // ── Signup ─────────────────────────────────
   const suSubmit = $('#su-submit-btn',     root);
   const suError  = $('#su-error',          root);
+  const suNameError = $('#su-name-error',  root);
   const suName   = $('#su-name',           root);
   const suEmail  = $('#su-email',          root);
   const suPass   = $('#su-pass',           root);
@@ -121,6 +122,8 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
         passwordConfirm: suPassConfirm?.value,
         wantsNotifications: suNotify ? !!suNotify.checked : true,
       });
+      // Fresh attempt — clear both the field-level and form-level errors.
+      if (suNameError) setText(suNameError, '');
       if (!v.ok) {
         if (suError) setText(suError, AUTH_ERROR_HE[v.reason] ?? v.reason);
         return;
@@ -226,6 +229,8 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
 
   function showError(scope, msg) {
     if (scope === 'signup' && suError) setText(suError, msg ?? '');
+    // Field-level error rendered directly under the שם תצוגה input.
+    if (scope === 'signup-name' && suNameError) setText(suNameError, msg ?? '');
     if (scope === 'login') paintLogin(msg ?? '');
   }
 

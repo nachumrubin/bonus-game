@@ -2295,7 +2295,7 @@ async function boot() {
       try {
         const avail = await profileService.checkUsernameAvailable(fbDb, name);
         if (avail && avail.available === false) {
-          authScreens.showError('signup', AUTH_ERROR_HE['name-taken']);
+          authScreens.showError('signup-name', AUTH_ERROR_HE['name-taken']);
           return;
         }
       } catch { /* read failed — fall through to the authoritative claim */ }
@@ -2311,7 +2311,7 @@ async function boot() {
         if (!claim?.ok) {
           try { await cred.user?.delete?.(); }
           catch (e) { console.warn('[spine] signup name-taken cleanup', e); }
-          authScreens.showError('signup', AUTH_ERROR_HE['name-taken']);
+          authScreens.showError('signup-name', AUTH_ERROR_HE['name-taken']);
           return;
         }
         const userId = profileService.generateUserId();

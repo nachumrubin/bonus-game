@@ -77,6 +77,7 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
   const els = {
     suSubmit: makeBtn(),
     suError:  makeLabel(),
+    suNameError: makeLabel(),
     suName:   makeInput(name),
     suEmail:  makeInput(email),
     suPass:   makeInput(password),
@@ -95,6 +96,7 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
       switch (sel) {
         case '#su-submit-btn':   return els.suSubmit;
         case '#su-error':        return els.suError;
+        case '#su-name-error':   return els.suNameError;
         case '#su-name':         return els.suName;
         case '#su-email':        return els.suEmail;
         case '#su-pass':         return els.suPass;
@@ -171,8 +173,12 @@ test('showError surfaces an arbitrary message under the right scope', () => {
   const screen = mountAuthScreens({ root, bus });
   screen.showError('signup', 'דוא״ל בשימוש');
   screen.showError('login',  'סיסמה שגויה');
+  screen.showError('signup-name', 'שם המשתמש כבר קיים');
   assert.equal(els.suError.textContent, 'דוא״ל בשימוש');
   assert.equal(els.liError.textContent, 'סיסמה שגויה');
+  // The name-taken message renders under the שם תצוגה field, not the
+  // form-level error row.
+  assert.equal(els.suNameError.textContent, 'שם המשתמש כבר קיים');
 });
 
 test('throws if bus missing', () => {
