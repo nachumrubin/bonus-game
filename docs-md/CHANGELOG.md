@@ -2,6 +2,21 @@
 
 ---
 
+## Debug tool: find a game's room id by player names + time — June 2026
+
+`scripts/find-room.mjs` (`npm run find-room -- …`) looks up a room id from the two players' display names and roughly when the game was played. Read-only; connects straight to prod RTDB with no auth (the prod rules allow unauthenticated `/rooms` reads — same basis as `exportProdHistories.mjs`).
+
+```
+npm run find-room -- --host "נחום רובין" --guest "הודיה" --at "2026-06-13 22:17"
+node scripts/find-room.mjs "נחום רובין" "הודיה" "2026-06-13 22:17"
+```
+
+Names match in either slot (case-insensitive; `--strict` for host=slot0/guest=slot1, `--contains` for substring); `--guest` is optional. With `--at`, results sort by closeness (shown as a Δ); `--window <min>` hard-filters. Prints roomId, time (UTC + local), mode/status/moves, and per-player scores, then a "Best match →" line. `--json` for machine-readable output.
+
+**Files added:** `scripts/find-room.mjs`; **modified:** `package.json` (`find-room` script).
+
+---
+
 ## Unique display names enforced at signup — June 2026
 
 Registration now rejects a display name that's already taken with "שם המשתמש כבר קיים, בחרו שם אחר". The `usernames/{lowercaseName} → uid` index and `profileService.claimUsername` (atomic transaction) already existed and the rename flow already honored them — but the **signup handler ignored `claimUsername`'s result**, so two accounts could share a name. `main.js` now: (1) fast-pre-checks `checkUsernameAvailable` before creating the auth account (usernames are world-readable), and (2) treats the post-creation atomic `claimUsername` as authoritative for the simultaneous-signup race — on collision it deletes the just-created auth user (so the email stays reusable) and shows the error.
