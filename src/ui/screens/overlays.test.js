@@ -122,7 +122,46 @@ test('endGameScreen: tie shows draw text', () => {
   const root = { querySelector: () => overlay };
   mountEndGameScreen({ root, bus });
   bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 40, 1: 40 } });
-  assert.equal(elements.get('wn').textContent, 'תיקו!');
+  assert.equal(elements.get('wn').textContent, 'המשחק הסתיים בתיקו');
+});
+
+test('endGameScreen: a 0-0 walkout is a draw, not a win for the other side', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-end' });
+  ['wn', 'wws', 'en1', 'en2', 'es1', 'es2'].forEach(id => elements.set(id, makeBtn()));
+  const rematch = makeBtn({ onclick: 'rematch()' });
+  const home    = makeBtn({ onclick: 'goHome()' });
+  const origQS = overlay.querySelector;
+  overlay.querySelector = (sel) => {
+    if (sel === 'button[onclick="rematch()"]') return rematch;
+    if (sel === 'button[onclick="goHome()"]') return home;
+    return origQS.call(overlay, sel);
+  };
+  const root = { querySelector: () => overlay };
+  mountEndGameScreen({ root, bus });
+  // Online walkout: winnerSlot is null and slot 1 abandoned at 0-0.
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 0, 1: 0 }, abandonedBy: 1 });
+  assert.equal(elements.get('wn').textContent, 'המשחק הסתיים בתיקו');
+});
+
+test('endGameScreen: a NON-zero tie walkout is a loss for the leaver (not a draw)', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-end' });
+  ['wn', 'wws', 'en1', 'en2', 'es1', 'es2'].forEach(id => elements.set(id, makeBtn()));
+  const rematch = makeBtn({ onclick: 'rematch()' });
+  const home    = makeBtn({ onclick: 'goHome()' });
+  const origQS = overlay.querySelector;
+  overlay.querySelector = (sel) => {
+    if (sel === 'button[onclick="rematch()"]') return rematch;
+    if (sel === 'button[onclick="goHome()"]') return home;
+    return origQS.call(overlay, sel);
+  };
+  const root = { querySelector: () => overlay };
+  mountEndGameScreen({ root, bus });
+  // 10-10 but slot 1 left → slot 0 wins (leaver loses), NOT a draw.
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 10, 1: 10 }, abandonedBy: 1 });
+  assert.match(elements.get('wn').textContent, /ניצח/);
+  assert.doesNotMatch(elements.get('wn').textContent, /תיקו/);
 });
 
 test('endGameScreen: rematch and home buttons emit intents', () => {

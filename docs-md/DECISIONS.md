@@ -5,6 +5,20 @@
 
 ---
 
+## D-matchmaking-claim: pair has one driver (lower uid) that claims both queue nodes — June 2026
+
+**Decision:** In `matchmakingService.tryPair`, a matched pair has exactly one **driver** — the **lower-uid** side. The driver claims **both** queue nodes (its own first, then the partner's) via per-node transactions; the higher-uid side returns `matched:false` and waits for its `activeRoom` to flip.
+
+**Supersedes:** the single-shared-node claim on `min(me, partner)`. That serialized two clients who picked *each other*, but not two clients who both picked the **same higher-uid partner**: each claimed its OWN node, both committed, and both created a room with the shared partner — double-booking it. With 3 simultaneous searchers this left the odd player in a coin toss against a phantom opponent (reported June 2026).
+
+**Why own-node-first:** the RTDB rule for `/matchmakingQueue/{mode}/{uid}` allows deleting any node (`!newData.exists()`) but writing only your own (`auth.uid === $uid`). Claiming our own node first means a rollback (when the partner was already taken) only ever **re-adds our own** entry, staying within the write rule. No rules change was needed.
+
+**Liveness:** `spineMatchmaking` re-runs `tryPair` on every queue change, so the lower side always re-drives; the lowest active searcher always makes progress, pairs off, and the set shrinks.
+
+**Evidence:** `src/game/online/matchmakingService.js` (`tryPair`); tests in `matchmakingService.test.js` ("two searchers who both pick the same higher-uid partner do not double-book it", "the higher-uid side waits").
+
+---
+
 ## D-async-end: "סיום" ends an async game (resign); the home button leaves-and-resumes — June 2026
 
 **Decision:** The in-game top-bar **סיום** (🏁) button — which opens the back-confirm overlay → "leave" → `BACK_INTENT.LEAVE` — now **resigns** for *all* online games, async included. The separate async-only **home** button (`#btn-async-home` → `AH_INTENT.GO_HOME`) is the leave-and-resume path.

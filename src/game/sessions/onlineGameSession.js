@@ -611,10 +611,22 @@ export async function createOnlineGameSession({
     return commitTransaction(db, room.roomId, expectedVersion, (currentRoom) => {
       const settings = { ...(state.settings ?? currentRoom.settings ?? {}) };
       const turnChanged = Number(currentRoom.currentTurnSlot ?? 0) !== Number(state.currentTurnSlot ?? 0);
+      // An extra-turn boost keeps the turn with the SAME player, so
+      // `turnChanged` is false — but it is still a fresh turn that needs a
+      // fresh deadline. Without this the player inherits the (usually nearly
+      // expired) deadline from the turn they just played; the moment their
+      // boost overlay closes and un-pauses the opponent's watchdog, that stale
+      // deadline is already past and the watchdog times them out before they
+      // can take the extra turn. Detect it as: a real move was just committed
+      // but the turn did not rotate. free-exchange is excluded — it's a
+      // within-turn action that continues the SAME turn, not a new one.
+      const isMove = lastMove && (lastMove.type === undefined || lastMove.type === 'move');
+      const isExtraTurn = !turnChanged && !!isMove
+        && Number(lastMove.slot) === Number(state.currentTurnSlot);
       const shouldRunTimer = shouldUseSharedTurnTimer(currentRoom.mode ?? room.mode, settings);
       let turnDeadlineMs = shouldRunTimer ? (state.turnDeadlineMs ?? currentRoom.turnDeadlineMs ?? null) : null;
 
-      if (shouldRunTimer && turnChanged && lastMove?.type !== 'free-exchange') {
+      if (shouldRunTimer && (turnChanged || isExtraTurn) && lastMove?.type !== 'free-exchange') {
         turnDeadlineMs = Date.now() + turnLimitMsFromSettings(settings);
         state.turnDeadlineMs = turnDeadlineMs;
       } else if (!shouldRunTimer) {

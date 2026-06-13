@@ -2,6 +2,80 @@
 
 ---
 
+## Fix: extra-turn boost in timed games (deadline not reset → instant timeout) — June 2026
+
+In a **timed** online game, an `extra_turn` boost (B5 / wheel) keeps the turn with the same player, so `commitCurrentState`'s `turnChanged` flag was false and the turn deadline was **not** reset. The player inherited the (already nearly-expired) deadline from the turn they just played; the instant their boost award overlay closed and un-paused the opponent's watchdog, the stale deadline was past and the watchdog timed them out — so they never actually got the extra turn. Diagnosed from prod room `mm_1781378227581_8c2yxm` (B5 extra_turn on slot 1, then `missedTurns:[0,1]` / `_passCount:1`).
+
+`onlineGameSession.commitCurrentState` now also resets `turnDeadlineMs` for an **extra-turn commit** (a real move that did not rotate the turn; free-exchange excluded), giving the player a full fresh window. No rules change.
+
+**Files modified:** `src/game/sessions/onlineGameSession.js`, `src/game/sessions/onlineGameSession.test.js`.
+
+---
+
+## Debug tool: find a game's room id by player names + time — June 2026
+
+Two front-ends, same logic:
+- **GUI:** `scripts/find-room.html` — a standalone page (Firebase compat SDK from CDN; reads public `/rooms` directly, no backend/build). Open it in a browser (double-click) or `npx serve scripts`. Form fields for host/guest/datetime, "any order" + "contains" toggles, sortable-by-proximity results with copy-roomId buttons. Lives under `scripts/` so it is **not** deployed with hosting.
+- **CLI:** `scripts/find-room.mjs` (`npm run find-room -- …`) looks up a room id from the two players' display names and roughly when the game was played. Read-only; connects straight to prod RTDB with no auth (the prod rules allow unauthenticated `/rooms` reads — same basis as `exportProdHistories.mjs`).
+
+```
+npm run find-room -- --host "נחום רובין" --guest "הודיה" --at "2026-06-13 22:17"
+node scripts/find-room.mjs "נחום רובין" "הודיה" "2026-06-13 22:17"
+```
+
+Names match in either slot (case-insensitive; `--strict` for host=slot0/guest=slot1, `--contains` for substring); `--guest` is optional. With `--at`, results sort by closeness (shown as a Δ); `--window <min>` hard-filters. Prints roomId, time (UTC + local), mode/status/moves, and per-player scores, then a "Best match →" line. `--json` for machine-readable output.
+
+**Files added:** `scripts/find-room.mjs`; **modified:** `package.json` (`find-room` script).
+
+---
+
+## Unique display names enforced at signup — June 2026
+
+Registration now rejects a display name that's already taken with "שם המשתמש כבר קיים, בחרו שם אחר". The `usernames/{lowercaseName} → uid` index and `profileService.claimUsername` (atomic transaction) already existed and the rename flow already honored them — but the **signup handler ignored `claimUsername`'s result**, so two accounts could share a name. `main.js` now: (1) fast-pre-checks `checkUsernameAvailable` before creating the auth account (usernames are world-readable), and (2) treats the post-creation atomic `claimUsername` as authoritative for the simultaneous-signup race — on collision it deletes the just-created auth user (so the email stays reusable) and shows the error.
+
+**Files modified:** `src/main.js`, `src/ui/screens/authScreens.js` (`AUTH_ERROR_HE['name-taken']`).
+
+---
+
+## 0-0 walkout is a draw (other walkouts = leaver loses); Hebrew auth errors — June 2026
+
+**Walkout outcome.** When a player leaves/abandons, **only a 0-0 game is a draw**; any other score — *including a non-zero tie like 10-10* — is a **loss for the leaver** (the other side wins). Normal (non-walkout) finishes keep the usual "equal scores = draw". The rule is applied consistently at the outcome layer:
+- End screen (`endGameScreen`): a 0-0 walkout shows "המשחק הסתיים בתיקו" with a "היריב עזב את המשחק" / "עזבת את המשחק" note; other walkouts show the winner as before.
+- Push (`notificationService` → `completedBody`): a 0-0 walkout sends "תיקו! התוצאה הסופית: 0:0".
+- ELO/stats (`main.js`) and `gameFlowController.winnerSlot`.
+Core engine `turnManager.winnerSlot` is unchanged (the online path already emits `winnerSlot:null`; ELO at 0-0 was already skipped for zero-move games).
+
+**Hebrew auth errors.** Login / signup / password-reset failures previously surfaced the raw English Firebase string (e.g. "The supplied auth credential is incorrect…"). `authScreens.firebaseAuthErrorHe(e)` now maps `e.code` to Hebrew, collapsing wrong-password / user-not-found / invalid-credential into one generic "הדוא״ל או הסיסמה שגויים" (no account enumeration), with a Hebrew fallback for unknown codes.
+
+**Files modified:** `src/ui/screens/endGameScreen.js`, `src/ui/controllers/gameFlowController.js`, `src/notifications/notificationService.js`, `src/main.js`, `src/ui/screens/authScreens.js`, plus tests (`overlays.test.js`, `notificationService.test.js`, `authScreens.test.js`).
+
+---
+
+## Matchmaking: fix 3-player race that double-booked a partner — June 2026
+
+`tryPair` claimed a single shared queue node, `min(me, partner)`. That serialized two clients who picked each other, but not two clients who both picked the **same higher-uid partner** — each claimed its OWN node, both committed, and both created a room with that partner. With 3 simultaneous "random match" joins, two players paired correctly and the third was left in the coin-toss screen with a phantom opponent (the double-booked player, who was actually in the other room).
+
+Now a pair has one **driver** (the lower uid) that claims **both** nodes — its own first, then the partner's — so any two pairings involving the same player serialize on that player's node and the loser aborts + re-queues. The higher-uid side waits for its `activeRoom`. Own-node-first keeps rollbacks within the `auth.uid === $uid` write rule, so no Firebase-rules change was needed. See `DECISIONS.md` (D-matchmaking-claim).
+
+**Files modified:** `src/game/online/matchmakingService.js`, `src/game/online/matchmakingService.test.js`
+
+---
+
+## Game-over push notification: informative body (winner + final score) — June 2026
+
+The `completed` push previously read "המשחק הסתיים" in both title and body, and a single combined push to both players reused one `ctx` (so `didWin` was the sender's — wrong for the loser). Also, the online `GAME_COMPLETED` event carries `winnerSlot: null`, so `didWin` was effectively always false.
+
+Now `notificationService` (`GAME_COMPLETED` handler) sends **one push per player from that player's perspective**, deriving the winner from `abandonedBy` → explicit `winnerSlot` → final-score comparison (draw-aware), and dedupes per room (the engine and the online-session watcher both emit `GAME_COMPLETED`). The body (`completedBody`):
+- Win → `ניצחת! 🏆 התוצאה הסופית: <my>:<opp>`
+- Loss → `<opponent> ניצח/ה. התוצאה הסופית: <my>:<opp>`
+- Draw → `תיקו! התוצאה הסופית: <my>:<opp>`
+
+Title stays "המשחק הסתיים". New `ctx` fields `isDraw` / `myScore` / `opponentScore` were added to the worker's `ALLOWED_CTX_KEYS`. **The worker copy is authoritative** (it rebuilds the body server-side), so this needs `cd worker && npm run deploy` to take effect on real devices.
+
+**Files modified:** `src/notifications/notificationService.js`, `src/notifications/pushPayloadBuilder.js`, `worker/src/pushPayloadBuilder.js`, `worker/src/index.js`, `src/notifications/notificationService.test.js`, `src/notifications/pushPayloadBuilder.test.js`
+
+---
+
 ## Bug-fix batch: async invite/end, coin toss, settings X, friend-avatar, push cold-start — June 2026
 
 Seven reported issues from manual QA on the `Some-bugs-found` branch:
@@ -13,6 +87,8 @@ Seven reported issues from manual QA on the `Some-bugs-found` branch:
 5. **Tapping the "your turn" push now lands inside the game on a cold start.** `main.js` `handleLaunchParams()` reads the `?resume=` / `?summary=` / `?open=` query string that `sw.js` opens, routes it through the existing `OPEN_*` handlers, then strips the param. The warm postMessage and browser-fallback paths already routed correctly.
 6. **"סיום" now actually ends an async game.** `gameFlowController.js` `BACK_INTENT.LEAVE` resigns for *all* online games (live + async), firing `GAME_COMPLETED` → terminal status in Firebase. The separate `#btn-async-home` button remains the leave-and-resume path. Reverses the earlier "async leave is non-destructive" decision — see `DECISIONS.md` and `docs/intentional-change-register.md`.
 7. **Coin toss only runs at the start of a game.** `startOnlineGameViaSpine` (`main.js`) force-skips the coin toss when the room already has moves (`moveHistory.length > 0` / `turnNumber > 1`), so resuming an async game from My Games / the turn banner no longer replays the coin-toss splash on every entry.
+
+**My-Games screen now live-updates on an opponent move.** The `users/{uid}/asyncRooms` index only changes on add/remove (a move updates `rooms/{roomId}`, not the index), so `watchAsyncSessions` never fired on a move and the My-Games card stayed stale ("not your turn", old score) until the user left and re-entered. `main.js` now attaches a `watchRoom` per listed async room while `#smygames` is open (priming-fire skipped to avoid a re-render loop) and tears them down on navigate-away via `ONBOARDING_SCREEN_ENTER`; the index watcher also re-renders the screen when it's the one visible. "Is the screen visible" is tested via the actual `#smygames` `.hidden` class (`isMyGamesScreenVisible`), not the `_scStack` cursor — the cursor can desync (e.g. back-navigation skips the push) and would then silently suppress the live re-render.
 
 Also investigated (no code change): **"skipping a תפזורת/word-search still grants bonus points"** — verified the engine commits only the base word score on a 0-find skip (the reporter's extra points came from the placed word, not the bonus). Locked in with a regression test in `tests/unit/engine-parity-highrisk.test.js`.
 

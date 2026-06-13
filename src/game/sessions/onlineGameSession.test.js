@@ -13,6 +13,7 @@ import { makeMockDb } from '../online/mockFirebase.js';
 import { createRoom } from '../online/roomService.js';
 import { createInitialState } from '../core/gameEngine.js';
 import { createOnlineGameSession } from './onlineGameSession.js';
+import { _resetAndRegister as registerBoosts } from '../boosts/index.js';
 
 const _origLog = console.log;
 console.log = () => {};
@@ -175,6 +176,42 @@ test('online session: turn-advancing commit rotates the shared deadline and rese
   assert.equal(roomNow.currentTurnSlot, 1);
   assert.ok(roomNow.turnDeadlineMs > before);
   assert.equal(roomNow.missedTurns[0], 0);
+  await sessA.dispose();
+});
+
+test('online session: an extra-turn move gets a FRESH deadline (not the stale one it would inherit)', async () => {
+  // Regression: in a timed game, an extra_turn boost keeps the turn with the
+  // same player but `turnChanged` is false, so the deadline was NOT reset —
+  // the player inherited their already-expired deadline and the opponent's
+  // watchdog timed them out the instant the boost overlay closed. (Seen in
+  // prod room mm_1781378227581_8c2yxm: B5 extra_turn, missedTurns[1]=1.)
+  bus._reset();
+  registerBoosts();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live', { timelimit: true, botTime: 20 });
+  // A nearly-expired deadline: not yet past (so the move itself is allowed),
+  // but with ~no time left — exactly what the extra turn would inherit.
+  const stale = Date.now() + 1500;
+  await db.ref('rooms/online-room').update({ turnDeadlineMs: stale });
+
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.turnDeadlineMs = stale;
+  // Bank an extra_turn for slot 0 so the upcoming move keeps the turn.
+  sessA.state.activeBoosts.push({ slot: 0, boostId: 'extra_turn', payload: {}, turnNumber: sessA.state.turnNumber });
+
+  sessA.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  const roomNow = db._data.rooms['online-room'];
+  assert.equal(roomNow.currentTurnSlot, 0, 'extra_turn keeps the same player on turn');
+  // Without the fix the deadline stays ~`stale`; with it, a full ~20s window.
+  assert.ok(roomNow.turnDeadlineMs >= Date.now() + 15_000,
+    `extra-turn must get a fresh full deadline, got ${roomNow.turnDeadlineMs} (stale was ${stale})`);
   await sessA.dispose();
 });
 

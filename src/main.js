@@ -94,7 +94,7 @@ import {
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
   diffNewlyUnlocked, findAvatar,
 } from './ui/screens/avatarScreens.js';
-import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE } from './ui/screens/authScreens.js';
+import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe } from './ui/screens/authScreens.js';
 import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER } from './ui/screens/friendsScreen.js';
 import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
 import { mountChampionsScreen, CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR } from './ui/screens/championsScreen.js';
@@ -1456,6 +1456,15 @@ async function boot() {
           hasSavedGame: sessions.length > 0,
           myGamesCount: computeMyGamesCount(),
         });
+        // Live-refresh the My-Games screen if it's the one on screen. The
+        // screen was previously rendered only on open (MENU_INTENT.OPEN_MY_GAMES)
+        // and after dismiss/poke, so an opponent move that arrived while the
+        // user sat on #smygames didn't flip the card to "your turn" (updated
+        // score + שחק button) until they left and re-entered. The watcher only
+        // fires on real room changes, so this isn't a hot path.
+        if (isMyGamesScreenVisible()) {
+          refreshMyGamesList();
+        }
         // In-app banner (deduped) for my-turn games.
         const bannerResult = asyncTurnBanner.maybeShow({ uid, sessions });
         // Browser-notification fallback. The banner already dedupes within
@@ -1543,15 +1552,59 @@ async function boot() {
         lastUpdated: Number(saved.savedAt) || 0,
       };
     }
+    // Per-room live watchers for the open My-Games screen. The async-session
+    // index (users/{uid}/asyncRooms) only changes when a game is added or
+    // removed — an opponent's MOVE updates rooms/{roomId}, not the index — so
+    // watchAsyncSessions never fires on a move. Without watching the rooms
+    // themselves, a card stayed stale ("not your turn", old score) until the
+    // user left and re-entered the screen. We attach one watchRoom per listed
+    // async room while #smygames is open and tear them down on navigate-away.
+    let mgRoomWatchers = [];
+    // Use the actual DOM visibility (#smygames lacks the `.hidden` class while
+    // shown — see screenTransitions.showScreen) rather than the _scStack
+    // cursor, which can desync (e.g. back-navigation sets _scBack so the push
+    // is skipped) and would then silently suppress the live re-render.
+    function isMyGamesScreenVisible() {
+      const el = globalThis.document?.getElementById?.('smygames');
+      return !!el && !el.classList?.contains?.('hidden');
+    }
+    function stopMyGamesRoomWatchers() {
+      for (const off of mgRoomWatchers) { try { off(); } catch { /* swallow */ } }
+      mgRoomWatchers = [];
+    }
+    function watchMyGamesRooms(roomIds) {
+      stopMyGamesRoomWatchers();
+      if (!activeFbDb) return;
+      for (const roomId of roomIds) {
+        if (!roomId || roomId === MY_GAMES_LOCAL_ROOM_ID) continue;
+        // watchRoom fires once immediately with the current value; skip that
+        // priming fire so attaching doesn't trigger a redundant re-render
+        // (and, since re-rendering re-attaches, an infinite loop).
+        let primed = false;
+        const off = roomService.watchRoom(activeFbDb, roomId, () => {
+          if (!primed) { primed = true; return; }
+          if (!isMyGamesScreenVisible()) { stopMyGamesRoomWatchers(); return; }
+          refreshMyGamesList();
+        });
+        mgRoomWatchers.push(off);
+      }
+    }
+    // Tear the room watchers down whenever we leave the My-Games screen.
+    bus.on(ONBOARDING_SCREEN_ENTER, ({ screenId } = {}) => {
+      if (screenId !== 'smygames') stopMyGamesRoomWatchers();
+    });
+
     async function refreshMyGamesList() {
       const sessions = [];
       const local = buildLocalGameRow();
       if (local) sessions.push(local);
       const uid = activeFbCurrentUser?.uid;
+      let onlineRoomIds = [];
       if (uid && activeFbDb) {
         try {
           const online = await asyncSessionService.listAsyncSessions(activeFbDb, uid, { includeExpired: true });
           sessions.push(...online);
+          onlineRoomIds = online.map(s => s.roomId).filter(Boolean);
         } catch (e) {
           console.warn('[spine] myGames refresh', e);
         }
@@ -1562,6 +1615,8 @@ async function boot() {
       // inflate the "open games" badge.
       const openCount = sessions.filter(s => !s.isExpired).length;
       bus.emit(MENU_REFRESH, { myGamesCount: openCount });
+      // Keep the live room watchers in sync with the rows currently shown.
+      watchMyGamesRooms(onlineRoomIds);
     }
     bus.on(MENU_INTENT.OPEN_MY_GAMES, () => {
       showLegacyScreen('smygames');
@@ -2234,12 +2289,31 @@ async function boot() {
         authScreens.showError('signup', 'אין חיבור לשרת. נסה שוב.');
         return;
       }
+      // Fast pre-check: reject a taken display name BEFORE creating the auth
+      // account (usernames are world-readable). The post-creation claim below
+      // is the authoritative atomic guard for the simultaneous-signup race.
+      try {
+        const avail = await profileService.checkUsernameAvailable(fbDb, name);
+        if (avail && avail.available === false) {
+          authScreens.showError('signup-name', AUTH_ERROR_HE['name-taken']);
+          return;
+        }
+      } catch { /* read failed — fall through to the authoritative claim */ }
+
       try {
         const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
         const uid = cred?.user?.uid;
         if (!uid) return;
-        // Claim username + write initial profile
-        await profileService.claimUsername(fbDb, { uid, newName: name });
+        // Atomically claim the (unique) display name. If another account took
+        // it in the race window, roll back the just-created auth user so the
+        // email stays reusable and no profile-less account lingers.
+        const claim = await profileService.claimUsername(fbDb, { uid, newName: name });
+        if (!claim?.ok) {
+          try { await cred.user?.delete?.(); }
+          catch (e) { console.warn('[spine] signup name-taken cleanup', e); }
+          authScreens.showError('signup-name', AUTH_ERROR_HE['name-taken']);
+          return;
+        }
         const userId = profileService.generateUserId();
         const initial = profileService.buildInitialProfile({ displayName: name, userId });
         initial.wantsNotifications = wantsNotifications !== false;
@@ -2259,7 +2333,7 @@ async function boot() {
           });
         }
       } catch (e) {
-        authScreens.showError('signup', e?.message ?? AUTH_ERROR_HE['bad-email']);
+        authScreens.showError('signup', firebaseAuthErrorHe(e, AUTH_ERROR_HE['bad-email']));
       }
     });
 
@@ -2274,7 +2348,7 @@ async function boot() {
         await fbAuth.signInWithEmailAndPassword(email, password);
         showLegacyScreen('sh');
       }
-      catch (e) { authScreens.showError('login', e?.message ?? 'שגיאה'); }
+      catch (e) { authScreens.showError('login', firebaseAuthErrorHe(e)); }
     });
 
     bus.on(AUTH_INTENT.RESET_PASSWORD, async ({ email }) => {
@@ -2288,7 +2362,7 @@ async function boot() {
         await fbAuth.sendPasswordResetEmail(email);
         authScreens.showInfo('login', 'נשלח אימייל לאיפוס הסיסמה');
       } catch (e) {
-        authScreens.showError('login', e?.message ?? 'שגיאה בשליחת אימייל');
+        authScreens.showError('login', firebaseAuthErrorHe(e, 'שגיאה בשליחת אימייל'));
       }
     });
 
@@ -2345,11 +2419,16 @@ async function boot() {
       if (ag._eloApplied) return;
       ag._eloApplied = true;
 
-      // When winnerSlot is null (emitted by the room watcher path which has no
-      // local engine result), derive the winner from abandonedBy so that
-      // resignations are recorded correctly instead of falling back to 'draw'.
-      const effectiveWinnerSlot = winnerSlot != null ? winnerSlot
-        : (abandonedBy != null ? 1 - abandonedBy : null);
+      // Derive the recorded outcome — keep this in step with the end screen +
+      // push. Walkout: ONLY 0-0 is a draw; any other score (incl. a non-zero
+      // tie) is a loss for the leaver. Normal finish: equal scores draw, else
+      // higher wins. (winnerSlot is null on the room-watcher path.)
+      const sc = session?.state?.scores ?? {};
+      const s0 = Number(sc[0] ?? 0);
+      const s1 = Number(sc[1] ?? 0);
+      const effectiveWinnerSlot = (abandonedBy === 0 || abandonedBy === 1)
+        ? ((s0 === 0 && s1 === 0) ? null : 1 - abandonedBy)
+        : (winnerSlot != null ? winnerSlot : (s0 === s1 ? null : (s0 > s1 ? 0 : 1)));
       const result = effectiveWinnerSlot == null ? 'draw' : (effectiveWinnerSlot === mySlot ? 'win' : 'loss');
 
       // Stats — pass the winnerSlot-based result so history always agrees

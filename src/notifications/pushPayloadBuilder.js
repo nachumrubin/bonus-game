@@ -39,6 +39,18 @@ function defaultTitle(kind, ctx) {
   return TITLES[kind] ?? '';
 }
 
+// Game-over body — names the winner from the recipient's perspective and
+// appends the final score (recipient's score first). Falls back to the bare
+// "game ended" line when scores weren't supplied.
+function completedBody(ctx) {
+  const haveScore = typeof ctx.myScore === 'number' && typeof ctx.opponentScore === 'number';
+  const score = haveScore ? ` התוצאה הסופית: ${ctx.myScore}:${ctx.opponentScore}` : '';
+  if (ctx.isDraw) return `תיקו!${score}`;
+  if (ctx.didWin) return `ניצחת! 🏆${score}`;
+  if (haveScore || ctx.opponentName) return `${ctx.opponentName ?? 'היריב'} ניצח/ה.${score}`;
+  return 'המשחק הסתיים';
+}
+
 function defaultBody(kind, ctx) {
   switch (kind) {
     case KIND.INVITE:           return ctx.isLive
@@ -50,7 +62,7 @@ function defaultBody(kind, ctx) {
     case KIND.REMINDER:         return ctx.gender === 'נקבה'
       ? `את לא משחקת כבר ${ctx.hoursIdle ?? 24} שעות`
       : `אתה לא משחק כבר ${ctx.hoursIdle ?? 24} שעות`;
-    case KIND.COMPLETED:        return ctx.didWin ? 'ניצחת! 🏆' : 'המשחק הסתיים';
+    case KIND.COMPLETED:        return completedBody(ctx);
     case KIND.EXPIRED:          return 'המשחק פג תוקף עקב חוסר פעילות';
     case KIND.FRIEND_REQUEST:   return `${ctx.fromName ?? 'משתמש'} שלח לך בקשת חברות`;
     case KIND.FRIEND_ACCEPTED:  return `${ctx.fromName ?? 'משתמש'} קיבל את בקשת החברות שלך`;

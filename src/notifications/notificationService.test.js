@@ -233,7 +233,7 @@ test('TURN_CHANGED in async mode falls back to externalIds when opponent has no 
   assert.equal(sent[0].include_subscription_ids, undefined);
 });
 
-test('GAME_COMPLETED pushes both players in online mode', async () => {
+test('GAME_COMPLETED pushes each player their own winner perspective + score', async () => {
   _resetForTests();
   bus._reset();
   const sent = captureSends();
@@ -241,16 +241,127 @@ test('GAME_COMPLETED pushes both players in online mode', async () => {
     bus,
     sessionRef: () => ({
       mode: 'random-async',
-      mySlot: 0, myUid: 'me', opponentUid: 'them',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob',
       roomId: 'r-end',
     }),
   });
-  bus.emit(EV.GAME_COMPLETED, { winnerSlot: 0 });
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: 0, scores: { 0: 42, 1: 30 } });
   await new Promise(r => setTimeout(r, 0));
-  assert.equal(sent.length, 1);
-  assert.deepEqual(sent[0].include_aliases.external_id.sort(), ['me', 'them'].sort());
-  assert.equal(sent[0].data.type, 'completed');
-  assert.equal(sent[0].data.didWin, true);
+
+  // One push per player, each from that player's perspective.
+  assert.equal(sent.length, 2);
+  const mine = sent.find(p => p.include_aliases.external_id[0] === 'me');
+  const theirs = sent.find(p => p.include_aliases.external_id[0] === 'them');
+  assert.ok(mine && theirs);
+  assert.equal(mine.data.type, 'completed');
+
+  // Winner (slot 0 = me): "you won" + my score first.
+  assert.equal(mine.data.didWin, true);
+  assert.equal(mine.data.myScore, 42);
+  assert.equal(mine.data.opponentScore, 30);
+  assert.ok(mine.contents.en.includes('ניצחת'));
+  assert.ok(mine.contents.en.includes('42:30'));
+
+  // Loser (slot 1 = them): names the winner + their score first.
+  assert.equal(theirs.data.didWin, false);
+  assert.equal(theirs.data.myScore, 30);
+  assert.equal(theirs.data.opponentScore, 42);
+  assert.ok(theirs.contents.en.includes('Alice'));
+  assert.ok(theirs.contents.en.includes('30:42'));
+});
+
+test('GAME_COMPLETED is sent once per room even if emitted twice', async () => {
+  _resetForTests();
+  bus._reset();
+  const sent = captureSends();
+  attachBusSubscriptions({
+    bus,
+    sessionRef: () => ({
+      mode: 'random-async',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob',
+      roomId: 'r-end-dup',
+    }),
+  });
+  // Engine emit (real winnerSlot) + online-watcher emit (winnerSlot:null).
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: 0, scores: { 0: 10, 1: 5 } });
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 10, 1: 5 } });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sent.length, 2, 'two recipients, but only one round of pushes');
+});
+
+test('GAME_COMPLETED: a 0-0 walkout is a draw, not a win for the other side', async () => {
+  _resetForTests();
+  bus._reset();
+  const sent = captureSends();
+  attachBusSubscriptions({
+    bus,
+    sessionRef: () => ({
+      mode: 'random-async',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob',
+      roomId: 'r-walkout',
+    }),
+  });
+  // Opponent (slot 1) abandoned at 0-0; the engine path would call that a win
+  // for slot 0, but a tie is a draw even on a walkout.
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 0, 1: 0 }, abandonedBy: 1 });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sent.length, 2);
+  for (const p of sent) {
+    assert.equal(p.data.isDraw, true);
+    assert.equal(p.data.didWin, false);
+    assert.ok(p.contents.en.includes('תיקו'));
+  }
+});
+
+test('GAME_COMPLETED: a NON-zero tie walkout is a loss for the leaver, not a draw', async () => {
+  _resetForTests();
+  bus._reset();
+  const sent = captureSends();
+  attachBusSubscriptions({
+    bus,
+    sessionRef: () => ({
+      mode: 'random-async',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob',
+      roomId: 'r-tie-walkout',
+    }),
+  });
+  // 10-10 but slot 1 (Bob) left → slot 0 (me) wins; not a draw.
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 10, 1: 10 }, abandonedBy: 1 });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sent.length, 2);
+  const mine = sent.find(p => p.include_aliases.external_id[0] === 'me');
+  const theirs = sent.find(p => p.include_aliases.external_id[0] === 'them');
+  assert.equal(mine.data.isDraw, false);
+  assert.equal(mine.data.didWin, true);
+  assert.equal(theirs.data.didWin, false);
+  assert.equal(theirs.data.isDraw, false);
+});
+
+test('GAME_COMPLETED on a draw says תיקו to both', async () => {
+  _resetForTests();
+  bus._reset();
+  const sent = captureSends();
+  attachBusSubscriptions({
+    bus,
+    sessionRef: () => ({
+      mode: 'random-async',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob',
+      roomId: 'r-draw',
+    }),
+  });
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 20, 1: 20 } });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sent.length, 2);
+  for (const p of sent) {
+    assert.equal(p.data.isDraw, true);
+    assert.equal(p.data.didWin, false);
+    assert.ok(p.contents.en.includes('תיקו'));
+  }
 });
 
 test('GAME_COMPLETED in offline mode does not push', async () => {

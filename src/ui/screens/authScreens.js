@@ -63,7 +63,31 @@ export const AUTH_ERROR_HE = {
   'pass-weak':      'הסיסמה חייבת לכלול אות וספרה',
   'pass-mismatch':  'הסיסמאות אינן תואמות',
   'no-pass':        'אנא הכנס סיסמה',
+  'name-taken':     'שם המשתמש כבר קיים, בחרו שם אחר',
 };
+
+// Firebase Auth backend error codes → Hebrew. Wrong-password / user-not-found
+// / invalid-credential are deliberately collapsed into one generic message so
+// we don't leak whether an email is registered.
+export const FIREBASE_AUTH_ERROR_HE = {
+  'auth/invalid-credential':        'הדוא״ל או הסיסמה שגויים',
+  'auth/invalid-login-credentials': 'הדוא״ל או הסיסמה שגויים',
+  'auth/wrong-password':            'הדוא״ל או הסיסמה שגויים',
+  'auth/user-not-found':            'הדוא״ל או הסיסמה שגויים',
+  'auth/invalid-email':             'דוא״ל לא חוקי',
+  'auth/missing-password':          'אנא הכנס סיסמה',
+  'auth/user-disabled':             'החשבון הזה הושבת',
+  'auth/too-many-requests':         'יותר מדי ניסיונות. נסו שוב מאוחר יותר',
+  'auth/network-request-failed':    'אין חיבור לאינטרנט. נסו שוב',
+  'auth/email-already-in-use':      'הדוא״ל הזה כבר רשום',
+  'auth/weak-password':             `סיסמה חייבת להיות לפחות ${PASS_MIN} תווים`,
+};
+
+// Resolve a thrown Firebase Auth error (or anything with a `.code`) to a
+// Hebrew message, never the raw English string. Unknown codes fall back.
+export function firebaseAuthErrorHe(e, fallback = 'אירעה שגיאה. נסו שוב') {
+  return FIREBASE_AUTH_ERROR_HE[e?.code ?? ''] ?? fallback;
+}
 
 // Public mounter. Returns an object with `unmount()` and `showError(scope, msg)`
 // for main.js to surface backend errors.
@@ -75,6 +99,7 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
   // ── Signup ─────────────────────────────────
   const suSubmit = $('#su-submit-btn',     root);
   const suError  = $('#su-error',          root);
+  const suNameError = $('#su-name-error',  root);
   const suName   = $('#su-name',           root);
   const suEmail  = $('#su-email',          root);
   const suPass   = $('#su-pass',           root);
@@ -97,6 +122,8 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
         passwordConfirm: suPassConfirm?.value,
         wantsNotifications: suNotify ? !!suNotify.checked : true,
       });
+      // Fresh attempt — clear both the field-level and form-level errors.
+      if (suNameError) setText(suNameError, '');
       if (!v.ok) {
         if (suError) setText(suError, AUTH_ERROR_HE[v.reason] ?? v.reason);
         return;
@@ -202,6 +229,8 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
 
   function showError(scope, msg) {
     if (scope === 'signup' && suError) setText(suError, msg ?? '');
+    // Field-level error rendered directly under the שם תצוגה input.
+    if (scope === 'signup-name' && suNameError) setText(suNameError, msg ?? '');
     if (scope === 'login') paintLogin(msg ?? '');
   }
 

@@ -67,7 +67,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260612054021';
+var CACHE_NAME = 'boost-20260613213349';
 var ASSETS = [
   './',
   './index.html',

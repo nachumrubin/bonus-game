@@ -20,6 +20,8 @@ const MAX_CTX_STRING_LEN = 80;   // cap reflected strings to limit phishing-text
 const ALLOWED_CTX_KEYS = new Set([
   'roomId', 'inviterName', 'opponentName', 'fromName',
   'hoursIdle', 'didWin', 'isLive',
+  // Game-over copy: winner perspective + final score.
+  'isDraw', 'myScore', 'opponentScore',
 ]);
 
 function corsHeaders(origin) {

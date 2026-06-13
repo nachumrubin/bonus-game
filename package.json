@@ -11,7 +11,8 @@
     "emu": "firebase emulators:start --project demo-bonus-game --only auth,database,hosting",
     "test:e2e:headed": "playwright test --headed",
     "dict:add": "node scripts/add-dictionary-words.js",
-    "dict:export": "node scripts/export-dictionary-file.js"
+    "dict:export": "node scripts/export-dictionary-file.js",
+    "find-room": "node scripts/find-room.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",

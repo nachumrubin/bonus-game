@@ -4,8 +4,22 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountAuthScreens, validateSignupForm, validateLoginForm, validateResetForm,
-  AUTH_ERROR_HE, AUTH_INTENT,
+  AUTH_ERROR_HE, AUTH_INTENT, firebaseAuthErrorHe,
 } from './authScreens.js';
+
+test('firebaseAuthErrorHe: maps backend codes to Hebrew, never the raw string', () => {
+  // Wrong credentials collapse to one generic message (no account enumeration).
+  for (const code of ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found']) {
+    assert.equal(firebaseAuthErrorHe({ code }), 'הדוא״ל או הסיסמה שגויים');
+  }
+  assert.equal(firebaseAuthErrorHe({ code: 'auth/invalid-email' }), 'דוא״ל לא חוקי');
+  assert.equal(firebaseAuthErrorHe({ code: 'auth/email-already-in-use' }), 'הדוא״ל הזה כבר רשום');
+  // Unknown code → Hebrew fallback, not the English message.
+  const e = { code: 'auth/something-new', message: 'The supplied auth credential is incorrect.' };
+  const msg = firebaseAuthErrorHe(e);
+  assert.notEqual(msg, e.message);
+  assert.match(msg, /[֐-׿]/); // contains Hebrew
+});
 
 test('validateSignupForm: rejects missing fields', () => {
   assert.equal(validateSignupForm({}).reason, 'no-name');
@@ -63,6 +77,7 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
   const els = {
     suSubmit: makeBtn(),
     suError:  makeLabel(),
+    suNameError: makeLabel(),
     suName:   makeInput(name),
     suEmail:  makeInput(email),
     suPass:   makeInput(password),
@@ -81,6 +96,7 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
       switch (sel) {
         case '#su-submit-btn':   return els.suSubmit;
         case '#su-error':        return els.suError;
+        case '#su-name-error':   return els.suNameError;
         case '#su-name':         return els.suName;
         case '#su-email':        return els.suEmail;
         case '#su-pass':         return els.suPass;
@@ -157,8 +173,12 @@ test('showError surfaces an arbitrary message under the right scope', () => {
   const screen = mountAuthScreens({ root, bus });
   screen.showError('signup', 'דוא״ל בשימוש');
   screen.showError('login',  'סיסמה שגויה');
+  screen.showError('signup-name', 'שם המשתמש כבר קיים');
   assert.equal(els.suError.textContent, 'דוא״ל בשימוש');
   assert.equal(els.liError.textContent, 'סיסמה שגויה');
+  // The name-taken message renders under the שם תצוגה field, not the
+  // form-level error row.
+  assert.equal(els.suNameError.textContent, 'שם המשתמש כבר קיים');
 });
 
 test('throws if bus missing', () => {
