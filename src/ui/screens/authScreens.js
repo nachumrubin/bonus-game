@@ -63,6 +63,7 @@ export const AUTH_ERROR_HE = {
   'pass-weak':      'הסיסמה חייבת לכלול אות וספרה',
   'pass-mismatch':  'הסיסמאות אינן תואמות',
   'no-pass':        'אנא הכנס סיסמה',
+  'name-taken':     'שם המשתמש כבר קיים, בחרו שם אחר',
 };
 
 // Firebase Auth backend error codes → Hebrew. Wrong-password / user-not-found

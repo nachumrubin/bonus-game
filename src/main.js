@@ -2289,12 +2289,31 @@ async function boot() {
         authScreens.showError('signup', 'אין חיבור לשרת. נסה שוב.');
         return;
       }
+      // Fast pre-check: reject a taken display name BEFORE creating the auth
+      // account (usernames are world-readable). The post-creation claim below
+      // is the authoritative atomic guard for the simultaneous-signup race.
+      try {
+        const avail = await profileService.checkUsernameAvailable(fbDb, name);
+        if (avail && avail.available === false) {
+          authScreens.showError('signup', AUTH_ERROR_HE['name-taken']);
+          return;
+        }
+      } catch { /* read failed — fall through to the authoritative claim */ }
+
       try {
         const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
         const uid = cred?.user?.uid;
         if (!uid) return;
-        // Claim username + write initial profile
-        await profileService.claimUsername(fbDb, { uid, newName: name });
+        // Atomically claim the (unique) display name. If another account took
+        // it in the race window, roll back the just-created auth user so the
+        // email stays reusable and no profile-less account lingers.
+        const claim = await profileService.claimUsername(fbDb, { uid, newName: name });
+        if (!claim?.ok) {
+          try { await cred.user?.delete?.(); }
+          catch (e) { console.warn('[spine] signup name-taken cleanup', e); }
+          authScreens.showError('signup', AUTH_ERROR_HE['name-taken']);
+          return;
+        }
         const userId = profileService.generateUserId();
         const initial = profileService.buildInitialProfile({ displayName: name, userId });
         initial.wantsNotifications = wantsNotifications !== false;

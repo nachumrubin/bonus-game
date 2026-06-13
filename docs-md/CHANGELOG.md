@@ -2,6 +2,14 @@
 
 ---
 
+## Unique display names enforced at signup — June 2026
+
+Registration now rejects a display name that's already taken with "שם המשתמש כבר קיים, בחרו שם אחר". The `usernames/{lowercaseName} → uid` index and `profileService.claimUsername` (atomic transaction) already existed and the rename flow already honored them — but the **signup handler ignored `claimUsername`'s result**, so two accounts could share a name. `main.js` now: (1) fast-pre-checks `checkUsernameAvailable` before creating the auth account (usernames are world-readable), and (2) treats the post-creation atomic `claimUsername` as authoritative for the simultaneous-signup race — on collision it deletes the just-created auth user (so the email stays reusable) and shows the error.
+
+**Files modified:** `src/main.js`, `src/ui/screens/authScreens.js` (`AUTH_ERROR_HE['name-taken']`).
+
+---
+
 ## 0-0 walkout is a draw (other walkouts = leaver loses); Hebrew auth errors — June 2026
 
 **Walkout outcome.** When a player leaves/abandons, **only a 0-0 game is a draw**; any other score — *including a non-zero tie like 10-10* — is a **loss for the leaver** (the other side wins). Normal (non-walkout) finishes keep the usual "equal scores = draw". The rule is applied consistently at the outcome layer:
