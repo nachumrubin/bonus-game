@@ -2,11 +2,11 @@
 
 ---
 
-## Tied games are a draw even on a walkout; Hebrew auth errors — June 2026
+## 0-0 walkout is a draw (other walkouts = leaver loses); Hebrew auth errors — June 2026
 
-**Draw on a tie.** A game ending with equal scores (incl. 0-0) is now a **draw even if a player left** — a walkout at a tie is no longer recorded/shown as a win for the other side. The rule (`score0 === score1` → draw, checked before `abandonedBy`/`winnerSlot`) is applied consistently at the outcome layer:
-- End screen (`endGameScreen`): title now reads "המשחק הסתיים בתיקו" with a "היריב עזב את המשחק" / "עזבת את המשחק" note when the draw came from a walkout.
-- Push (`notificationService` → `completedBody`): "תיקו! התוצאה הסופית: 0:0".
+**Walkout outcome.** When a player leaves/abandons, **only a 0-0 game is a draw**; any other score — *including a non-zero tie like 10-10* — is a **loss for the leaver** (the other side wins). Normal (non-walkout) finishes keep the usual "equal scores = draw". The rule is applied consistently at the outcome layer:
+- End screen (`endGameScreen`): a 0-0 walkout shows "המשחק הסתיים בתיקו" with a "היריב עזב את המשחק" / "עזבת את המשחק" note; other walkouts show the winner as before.
+- Push (`notificationService` → `completedBody`): a 0-0 walkout sends "תיקו! התוצאה הסופית: 0:0".
 - ELO/stats (`main.js`) and `gameFlowController.winnerSlot`.
 Core engine `turnManager.winnerSlot` is unchanged (the online path already emits `winnerSlot:null`; ELO at 0-0 was already skipped for zero-move games).
 

@@ -256,10 +256,12 @@ export function createGameFlowController({
 function winnerSlot(state) {
   const a = state?.scores?.[0] ?? 0;
   const b = state?.scores?.[1] ?? 0;
-  // A tied score (incl. 0-0) is a draw even if a player abandoned — a walkout
-  // at a tie isn't a win for the other side.
+  // Walkout: ONLY 0-0 is a draw; any other score (incl. a non-zero tie) is a
+  // loss for the leaver. Normal finish: equal scores draw, else higher wins.
+  if (state?.abandonedBy === 0 || state?.abandonedBy === 1) {
+    if (a === 0 && b === 0) return null;
+    return state.abandonedBy === 0 ? 1 : 0;
+  }
   if (a === b) return null;
-  if (state?.abandonedBy === 0) return 1;
-  if (state?.abandonedBy === 1) return 0;
   return a > b ? 0 : 1;
 }

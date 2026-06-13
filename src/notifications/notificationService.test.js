@@ -316,6 +316,31 @@ test('GAME_COMPLETED: a 0-0 walkout is a draw, not a win for the other side', as
   }
 });
 
+test('GAME_COMPLETED: a NON-zero tie walkout is a loss for the leaver, not a draw', async () => {
+  _resetForTests();
+  bus._reset();
+  const sent = captureSends();
+  attachBusSubscriptions({
+    bus,
+    sessionRef: () => ({
+      mode: 'random-async',
+      mySlot: 0, myUid: 'me', myName: 'Alice',
+      opponentUid: 'them', opponentName: 'Bob',
+      roomId: 'r-tie-walkout',
+    }),
+  });
+  // 10-10 but slot 1 (Bob) left → slot 0 (me) wins; not a draw.
+  bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 10, 1: 10 }, abandonedBy: 1 });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sent.length, 2);
+  const mine = sent.find(p => p.include_aliases.external_id[0] === 'me');
+  const theirs = sent.find(p => p.include_aliases.external_id[0] === 'them');
+  assert.equal(mine.data.isDraw, false);
+  assert.equal(mine.data.didWin, true);
+  assert.equal(theirs.data.didWin, false);
+  assert.equal(theirs.data.isDraw, false);
+});
+
 test('GAME_COMPLETED on a draw says תיקו to both', async () => {
   _resetForTests();
   bus._reset();

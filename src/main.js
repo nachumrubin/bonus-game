@@ -2400,16 +2400,16 @@ async function boot() {
       if (ag._eloApplied) return;
       ag._eloApplied = true;
 
-      // Derive the recorded outcome. A tied final score (incl. 0-0) is a draw
-      // even on a walkout — keep this in step with the end screen + push. When
-      // winnerSlot is null (the room-watcher path has no local engine result),
-      // fall back to abandonedBy so resignations are still recorded.
+      // Derive the recorded outcome — keep this in step with the end screen +
+      // push. Walkout: ONLY 0-0 is a draw; any other score (incl. a non-zero
+      // tie) is a loss for the leaver. Normal finish: equal scores draw, else
+      // higher wins. (winnerSlot is null on the room-watcher path.)
       const sc = session?.state?.scores ?? {};
       const s0 = Number(sc[0] ?? 0);
       const s1 = Number(sc[1] ?? 0);
-      const effectiveWinnerSlot = (s0 === s1) ? null
-        : (winnerSlot != null ? winnerSlot
-          : (abandonedBy != null ? 1 - abandonedBy : (s0 > s1 ? 0 : 1)));
+      const effectiveWinnerSlot = (abandonedBy === 0 || abandonedBy === 1)
+        ? ((s0 === 0 && s1 === 0) ? null : 1 - abandonedBy)
+        : (winnerSlot != null ? winnerSlot : (s0 === s1 ? null : (s0 > s1 ? 0 : 1)));
       const result = effectiveWinnerSlot == null ? 'draw' : (effectiveWinnerSlot === mySlot ? 'win' : 'loss');
 
       // Stats — pass the winnerSlot-based result so history always agrees
