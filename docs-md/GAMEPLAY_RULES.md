@@ -330,11 +330,23 @@ Source: `src/game/sessions/modes.js`
 
 Source: `src/game/sessions/botGameSession.js`, `botSearch.js`
 
-- Bot plays against player in offline-solo mode
-- Difficulty and thinking delay configurable (`difficulty`, `thinkingMs`)
+- Bot plays against player in offline-solo mode; dispatches `CMD.CONFIRM_MOVE` or `CMD.PASS_TURN`
 - Bot pauses during bonus flows (mini-game/wheel UI)
-- Uses `botSearch.js` for move selection (algorithm details: Unknown / needs verification — `botSearch.js` not fully read)
-- Dispatches `CMD.CONFIRM_MOVE` or `CMD.PASS_TURN`
+- Three difficulty levels (קל / בינוני / קשה = easy/medium/hard, 0/1/2), driven by the **`DIFFICULTY_PROFILES`** table in `botSearch.js` so levels are clearly distinguishable and tunable. `searchBotMove(state, slot, wordList, isWordValid, { difficulty, rng })` resolves a profile (override with `opts.profile` in tests). Profile levers:
+
+  | lever | easy | medium | hard |
+  |---|---|---|---|
+  | `maxWordLen` (longest word considered) | 3 | 5 | 6 |
+  | `tries` / `anchLimit` (search breadth) | 14 / 6 | 60 / 14 | 120 / 20 |
+  | bonus squares as anchors | no | yes | yes |
+  | reject placements on bonus tiles | yes | no | no |
+  | move selection | lowest 25th-percentile (+20% chance of its single worst move) | random of top-3 | highest |
+  | `scoreCeiling` (soft max points) | 12 | ∞ | ∞ |
+  | weakened opening move | yes | no | no |
+
+  Easy is intentionally a **beginner**: only 2–3 letter words, low-value plays, weak opener, never uses bonus squares. (Measured spread on a representative board: easy mean ≈ 8, medium ≈ 30, hard ≈ 34.)
+- **Vocabulary** (`main.js`): the bot draws from the legacy ~40K frequency-sorted corpus (kept stable for calibration), capped per level — `VOCAB_CAPS = [2000, 20000, 40000]` (easy/medium/hard). Combined with `maxWordLen`, easy effectively uses only the most common short words.
+- **Think time** (`main.js`, cosmetic — no strength effect): `THINK_MS = [1000, 3000, 5000]` ms (easy snappy, hard lingers), passed to `attachBotPlayer` as `thinkingMs`.
 
 ---
 

@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 
 import { createInitialState } from '../core/gameEngine.js';
 import { setCommittedTile, isBonusPos } from '../core/board.js';
-import { canMakeWord, tryPlaceWord, findAnchors, searchBotMove, DIFFICULTY } from './botSearch.js';
+import {
+  canMakeWord, tryPlaceWord, findAnchors, searchBotMove, pickMove,
+  resolveProfile, DIFFICULTY, DIFFICULTY_PROFILES,
+} from './botSearch.js';
 
 const acceptAll = () => true;
 
@@ -196,6 +199,93 @@ test('searchBotMove: refuses any placement that creates an invalid cross-word', 
     assert.equal(usesColumn5, false,
       'bot must not place tiles that form an invalid cross-word');
   }
+});
+
+// ── Difficulty profiles: word-length cap, ceiling, blunder, ordering ──
+
+test('searchBotMove: EASY only plays short words; HARD uses the long one (first move)', () => {
+  const words = ['בגדהו', 'בג']; // length 5 and length 2, both rack-spellable
+  const rack = ['ב','ג','ד','ה','ו','ז','ח','ט'];
+
+  const sHard = fresh(); sHard.racks[1] = [...rack]; sHard.currentTurnSlot = 1;
+  const hard = searchBotMove(sHard, 1, words, acceptAll, { difficulty: DIFFICULTY.HARD });
+  assert.ok(hard);
+  assert.equal(hard.word, 'בגדהו', 'HARD opens with the long, high-value word');
+
+  const sEasy = fresh(); sEasy.racks[1] = [...rack]; sEasy.currentTurnSlot = 1;
+  const easy = searchBotMove(sEasy, 1, words, acceptAll,
+    { difficulty: DIFFICULTY.EASY, rng: fixedRng([0.5]) });
+  assert.ok(easy);
+  assert.ok(easy.word.length <= 3, `EASY must cap word length (got "${easy.word}")`);
+});
+
+test('pickMove: strategies — best / topN / percentile', () => {
+  const found = [{ score: 2 }, { score: 5 }, { score: 9 }, { score: 14 }];
+  // best → highest
+  assert.equal(pickMove(found, { select: 'best', scoreCeiling: Infinity }).score, 14);
+  // topN with rng=0 → top of the topN
+  assert.equal(pickMove(found, { select: 'topN', topN: 3, scoreCeiling: Infinity }, fixedRng([0])).score, 14);
+  // percentile with rng=0 → lowest of the low slice
+  assert.equal(pickMove(found, { select: 'percentile', percentile: 0.25, scoreCeiling: Infinity, blunderChance: 0 }, fixedRng([0])).score, 2);
+});
+
+test('pickMove: scoreCeiling restricts the pool, with a lowest-move fallback', () => {
+  const easyish = { select: 'percentile', percentile: 1, scoreCeiling: 12, blunderChance: 0 };
+  // Only the <=12 moves are eligible → never returns the 20.
+  const a = pickMove([{ score: 5 }, { score: 20 }], easyish, fixedRng([0.99]));
+  assert.ok(a.score <= 12);
+  // Every move exceeds the ceiling → fall back to the single lowest, not null.
+  const b = pickMove([{ score: 15 }, { score: 20 }], easyish, fixedRng([0.99]));
+  assert.equal(b.score, 15);
+});
+
+test('pickMove: blunderChance makes EASY take its single worst move', () => {
+  const found = [{ score: 1 }, { score: 4 }, { score: 8 }];
+  const easy = DIFFICULTY_PROFILES[DIFFICULTY.EASY];
+  // rng() = 0 < 0.20 → blunder branch → the absolute lowest.
+  assert.equal(pickMove(found, easy, fixedRng([0])).score, 1);
+  // rng() = 0.99 ≥ 0.20 → low-percentile slice (cut = ceil(3*0.25)=1) → still lowest here.
+  assert.equal(pickMove(found, easy, fixedRng([0.99])).score, 1);
+});
+
+test('searchBotMove: mean move score is ordered EASY < MEDIUM < HARD', () => {
+  // A 6-letter word only HARD can reach (≤6), a 5-letter for MEDIUM (≤5),
+  // short ones for EASY (≤3). acceptAll keeps every cross-word legal so the
+  // selection strategy + length cap drive the spread.
+  // 'בגדהוז' is 6 letters → only HARD (maxWordLen 6) can reach it; MEDIUM is
+  // capped at 5, so HARD's best strictly beats MEDIUM's.
+  const words = ['בג', 'גד', 'בגד', 'גדה', 'בגדה', 'גדהו', 'בגדהו', 'בגדהוז'];
+  const rack = ['ב','ג','ד','ה','ו','ז','ח','ט'];
+  function meanScore(difficulty) {
+    let sum = 0, n = 0;
+    for (let i = 0; i < 40; i++) {
+      const s = fresh({ firstMove: false });
+      setCommittedTile(s, 4, 5, { letter: 'א', val: 1 });
+      s.racks[1] = [...rack];
+      s.currentTurnSlot = 1;
+      const m = searchBotMove(s, 1, words, acceptAll, { difficulty });
+      if (m) { sum += m.score; n += 1; }
+    }
+    return n ? sum / n : 0;
+  }
+  const easy = meanScore(DIFFICULTY.EASY);
+  const med  = meanScore(DIFFICULTY.MEDIUM);
+  const hard = meanScore(DIFFICULTY.HARD);
+  assert.ok(easy < med, `expected EASY(${easy.toFixed(1)}) < MEDIUM(${med.toFixed(1)})`);
+  assert.ok(med < hard, `expected MEDIUM(${med.toFixed(1)}) < HARD(${hard.toFixed(1)})`);
+});
+
+test('searchBotMove: opts.profile overrides the difficulty-derived profile', () => {
+  const s = fresh({ firstMove: false });
+  setCommittedTile(s, 4, 5, { letter: 'א', val: 1 });
+  s.racks[1] = ['ב','ג','ד','ה','ו','ז','ח','ט'];
+  s.currentTurnSlot = 1;
+  // Pass HARD difficulty but a length-1-capped profile → no word qualifies.
+  const move = searchBotMove(s, 1, ['בג', 'בגד'], acceptAll, {
+    difficulty: DIFFICULTY.HARD,
+    profile: { ...resolveProfile(DIFFICULTY.HARD), maxWordLen: 1 },
+  });
+  assert.equal(move, null, 'profile.maxWordLen=1 filters out every candidate');
 });
 
 // Note on coverage NOT added:

@@ -5,6 +5,10 @@
 
 ---
 
+## Bot difficulty distinguishability — June 2026
+
+- [x] Make easy/medium/hard clearly distinct — `DIFFICULTY_PROFILES` + `pickMove` in `botSearch.js`; easy is now beginner-level (short words, low picks, weak opener, score ceiling, blunder chance). `main.js` vocab cap 5000→2000 for easy + per-level think time. Calibrated easy≈8 / med≈30 / hard≈34. Tunable constants flagged in GAP_REPORT.
+
 ## QA bug-fix batch — June 2026 (`Some-bugs-found` branch)
 
 - [x] Async friend invite shows a toast instead of the waiting-room hourglass (`main.js` `CR_INTENT.CONFIRM`).
