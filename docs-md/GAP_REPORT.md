@@ -108,6 +108,8 @@ The pre-existing concurrent-race test ("parity: concurrent claims — only the f
 
 **Not addressed (would be a separate effort):** a golden-fixture parity test against the legacy `doBotSearch`. This would require either snapshotting legacy output for many fixtures or running both implementations side-by-side — substantial scope, and bot move selection is acknowledged in `docs/intentional-change-register.md` as not requiring exact parity.
 
+**Update (June 2026): difficulty levels made distinguishable.** Move selection moved to a data-driven `DIFFICULTY_PROFILES` table + `pickMove()` in `botSearch.js` (easy is now a true beginner — `maxWordLen 3`, lowest-percentile pick, `scoreCeiling 12`, weak opener, blunder chance). New `botSearch.test.js` cases guard it: a **mean-score ordering** test (`EASY < MEDIUM < HARD`), length-cap, ceiling + lowest-move fallback, `pickMove` strategy/blunder, and an `opts.profile` override. **Calibration constants to tune if balance shifts:** `DIFFICULTY_PROFILES.*.percentile` / `scoreCeiling` / `maxWordLen` (in `botSearch.js`) and `VOCAB_CAPS[0]` (in `main.js`).
+
 ---
 
 ### 6. B1–B13 Bonus Branch Coverage Incomplete *(Missing Test)* — ✅ RESOLVED

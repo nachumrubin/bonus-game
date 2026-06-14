@@ -28,6 +28,75 @@ import { BDEFS } from '../boosts/data.js';
 
 export const DIFFICULTY = Object.freeze({ EASY: 0, MEDIUM: 1, HARD: 2 });
 
+// Per-difficulty behaviour, data-driven so levels stay tunable + testable.
+// Levers:
+//   maxWordLen          – longest word the bot will even consider (easy = short)
+//   tries / anchLimit   – search breadth (candidates tried, anchors per word)
+//   includeBonusSquares – whether off-grid bonus squares are valid anchors
+//   avoidBonusTiles     – reject any placement that lands on a bonus square
+//   select              – 'best' | 'topN' | 'percentile' (see pickMove)
+//   topN / percentile   – parameters for the selection strategy
+//   scoreCeiling        – soft cap: prefer moves at/below this score (easy)
+//   weakenFirstMove     – run the opener through pickMove instead of "first valid"
+//   blunderChance       – probability the easy bot takes its single worst move
+export const DIFFICULTY_PROFILES = Object.freeze({
+  [DIFFICULTY.EASY]: Object.freeze({
+    maxWordLen: 3, tries: 14, anchLimit: 6,
+    includeBonusSquares: false, avoidBonusTiles: true,
+    select: 'percentile', percentile: 0.25, scoreCeiling: 12,
+    weakenFirstMove: true, blunderChance: 0.20,
+  }),
+  [DIFFICULTY.MEDIUM]: Object.freeze({
+    maxWordLen: 5, tries: 60, anchLimit: 14,
+    includeBonusSquares: true, avoidBonusTiles: false,
+    select: 'topN', topN: 3, scoreCeiling: Infinity,
+    weakenFirstMove: false, blunderChance: 0,
+  }),
+  [DIFFICULTY.HARD]: Object.freeze({
+    maxWordLen: 6, tries: 120, anchLimit: 20,
+    includeBonusSquares: true, avoidBonusTiles: false,
+    select: 'best', scoreCeiling: Infinity,
+    weakenFirstMove: false, blunderChance: 0,
+  }),
+});
+
+export function resolveProfile(difficulty) {
+  return DIFFICULTY_PROFILES[difficulty] ?? DIFFICULTY_PROFILES[DIFFICULTY.MEDIUM];
+}
+
+// Choose one move from the candidates found, per the profile's strategy.
+// Never returns null when `found` is non-empty.
+//   - 'best'        → highest score (hard)
+//   - 'topN'        → random among the topN highest (medium)
+//   - 'percentile'  → random among the lowest `percentile` slice (easy);
+//                     with `blunderChance`, sometimes the single worst move.
+// A finite `scoreCeiling` first restricts to moves at/below it (falling back
+// to the single lowest move if every option exceeds the ceiling), so the easy
+// bot can't accidentally drop a monster word.
+export function pickMove(found, profile, rng = Math.random) {
+  if (!found || found.length === 0) return null;
+
+  let pool = found;
+  if (Number.isFinite(profile.scoreCeiling)) {
+    const under = found.filter(m => m.score <= profile.scoreCeiling);
+    pool = under.length > 0 ? under : [found.reduce((a, b) => b.score < a.score ? b : a)];
+  }
+
+  if (profile.select === 'best') {
+    return pool.reduce((a, b) => b.score > a.score ? b : a);
+  }
+  if (profile.select === 'topN') {
+    const sorted = [...pool].sort((a, b) => b.score - a.score);
+    return sorted[Math.floor(rng() * Math.min(profile.topN ?? 3, sorted.length))];
+  }
+  // 'percentile' — lowest slice, with an occasional all-out blunder.
+  const sorted = [...pool].sort((a, b) => a.score - b.score);
+  if (profile.blunderChance > 0 && rng() < profile.blunderChance) return sorted[0];
+  const cut = Math.max(1, Math.ceil(sorted.length * (profile.percentile ?? 0.5)));
+  const weak = sorted.slice(0, cut);
+  return weak[Math.floor(rng() * weak.length)];
+}
+
 export function canMakeWord(word, rack) {
   const a = [...rack];
   for (const ch of word) {
@@ -121,14 +190,19 @@ function shuffleInPlace(arr, rng = Math.random) {
 // the caller wants; this function will further filter and try them.
 export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
   const { difficulty = DIFFICULTY.MEDIUM, rng = Math.random } = opts;
+  // Production resolves the profile from `difficulty`; tests may inject one
+  // directly via opts.profile to exercise a lever without a real level.
+  const profile = opts.profile ?? resolveProfile(difficulty);
   const rack = state.racks[slot];
 
   const candidates = wordList
+    .filter(w => w.length <= profile.maxWordLen)
     .filter(w => canMakeWord(w, rack))
     .sort((a, b) => b.length - a.length);
 
   if (state.firstMove) {
     const mid = Math.floor(BOARD_SIZE / 2);
+    const firstMoves = [];
     for (const w of candidates.slice(0, 30)) {
       const tries = [
         [mid, mid, 'H'],
@@ -142,20 +216,24 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
         const words = getAllWords(state, placed);
         if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
         const score = scoreMove(words, placed.length);
-        return { placed, word: w, score };
+        const move = { placed, word: w, score };
+        // Medium/hard keep the legacy "first valid wins" opener; only easy
+        // collects all openers so it can deliberately pick a weak one.
+        if (!profile.weakenFirstMove) return move;
+        firstMoves.push(move);
       }
     }
-    return null;
+    if (firstMoves.length === 0) return null;
+    return pickMove(firstMoves, profile, rng);
   }
 
-  const anchors = findAnchors(state, { includeBonusSquares: difficulty >= DIFFICULTY.MEDIUM });
+  const anchors = findAnchors(state, { includeBonusSquares: profile.includeBonusSquares });
 
   const found = [];
-  const tries = Math.min(candidates.length, difficulty === DIFFICULTY.HARD ? 120 : difficulty === DIFFICULTY.MEDIUM ? 60 : 20);
+  const tries = Math.min(candidates.length, profile.tries);
   for (let i = 0; i < tries; i++) {
     const w = candidates[i];
-    const anchLimit = difficulty === DIFFICULTY.HARD ? 20 : difficulty === DIFFICULTY.MEDIUM ? 14 : 9;
-    const anchorOrder = shuffleInPlace([...anchors], rng).slice(0, anchLimit);
+    const anchorOrder = shuffleInPlace([...anchors], rng).slice(0, profile.anchLimit);
     for (const { r, c } of anchorOrder) {
       const isBonus = isBonusPos(r, c);
       const dirs = isBonus ? (r === -1 || r === BOARD_SIZE ? ['V'] : ['H']) : ['H', 'V'];
@@ -166,7 +244,7 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
           const sc = dir === 'H' ? c - offset : c;
           const placed = tryPlaceWord(state, w, sr, sc, dir, slot);
           if (!placed) continue;
-          if (difficulty === DIFFICULTY.EASY && placed.some(p => isBonusPos(p.r, p.c))) continue;
+          if (profile.avoidBonusTiles && placed.some(p => isBonusPos(p.r, p.c))) continue;
           const words = getAllWords(state, placed);
           if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
           const score = scoreMove(words, placed.length);
@@ -176,16 +254,5 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
     }
   }
 
-  if (found.length === 0) return null;
-  if (difficulty === DIFFICULTY.HARD) {
-    return found.reduce((a, b) => b.score > a.score ? b : a);
-  }
-  if (difficulty === DIFFICULTY.MEDIUM) {
-    found.sort((a, b) => b.score - a.score);
-    return found[Math.floor(rng() * Math.min(3, found.length))];
-  }
-  // Easy: bottom half
-  found.sort((a, b) => a.score - b.score);
-  const pool = found.slice(0, Math.max(1, Math.ceil(found.length / 2)));
-  return pool[Math.floor(rng() * pool.length)];
+  return pickMove(found, profile, rng);
 }

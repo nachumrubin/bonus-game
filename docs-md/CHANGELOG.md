@@ -2,6 +2,20 @@
 
 ---
 
+## Bot difficulty: make easy/medium/hard clearly distinguishable — June 2026
+
+Users reported the "easy" (קל) bot was also hard. It wasn't actually weak: its vocab cap kept a *frequency-sorted* corpus (the most common, high-value short words), its "bottom-half random" pick still surfaced strong plays, all levels shared a fixed 3s think time, and the **first move ignored difficulty**.
+
+Replaced the scattered `difficulty ===` branches in `searchBotMove` with a data-driven **`DIFFICULTY_PROFILES`** table in `botSearch.js` (pure, frozen) consumed via a single `pickMove(found, profile, rng)` selector. Levers per level: `maxWordLen` (easy 3 / med 5 / hard 6), search breadth (`tries`/`anchLimit`), bonus-square use, selection strategy (easy = lowest 25th-percentile with a 20% "play your worst move" blunder / med = top-3 random / hard = best), a soft `scoreCeiling` of 12 for easy, and a weakened opening move for easy. `searchBotMove`'s signature is unchanged (`opts.profile` optional override for tests).
+
+`main.js`: vocab caps `5000→2000` for easy (`VOCAB_CAPS = [2000, 20000, 40000]`) and per-level think time `THINK_MS = [1000, 3000, 5000]` (cosmetic). Corpus stays the legacy 40K. Measured spread on a representative board: **easy ≈ 8, medium ≈ 30, hard ≈ 34** (easy max ≤ 12).
+
+Tests: new `botSearch.test.js` cases (length cap, ceiling + fallback, `pickMove` strategies, blunder path, mean-score ordering `EASY < MEDIUM < HARD`, `opts.profile` override) and a `session.test.js` case asserting per-level `thinkingMs` is forwarded to the scheduler. Existing bot tests unchanged.
+
+**Files modified:** `src/game/sessions/botSearch.js`, `src/main.js`, `src/game/sessions/botSearch.test.js`, `src/game/sessions/session.test.js`, `docs-md/GAMEPLAY_RULES.md`.
+
+---
+
 ## Fix: extra-turn boost in timed games (deadline not reset → instant timeout) — June 2026
 
 In a **timed** online game, an `extra_turn` boost (B5 / wheel) keeps the turn with the same player, so `commitCurrentState`'s `turnChanged` flag was false and the turn deadline was **not** reset. The player inherited the (already nearly-expired) deadline from the turn they just played; the instant their boost award overlay closed and un-paused the opponent's watchdog, the stale deadline was past and the watchdog timed them out — so they never actually got the extra turn. Diagnosed from prod room `mm_1781378227581_8c2yxm` (B5 extra_turn on slot 1, then `missedTurns:[0,1]` / `_passCount:1`).

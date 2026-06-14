@@ -3121,10 +3121,12 @@ async function boot() {
       // Validation still runs against the active dictionary via isValid(),
       // so any word the bot picks is naturally accepted.
       //
-      //   easy   (0)  → first  5,000 words
+      //   easy   (0)  → first  2,000 words (and botSearch caps easy to 2-3
+      //                 letter words, so it only ever uses the most common,
+      //                 short, low-value words — a real beginner)
       //   medium (1)  → first 20,000 words
       //   hard   (2)  → full  40,000 words
-      const VOCAB_CAPS = [5000, 20000, 40000];
+      const VOCAB_CAPS = [2000, 20000, 40000];
       const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
       // Legacy vocabulary is preloaded at boot in ensureDictionaryLoaded.
       // If we get here before it's ready (rare race), fall back to DICT so
@@ -3137,10 +3139,14 @@ async function boot() {
           .map((w) => hebrewDictionary.norm(w)),
       )];
       const wordList = fullList.slice(0, cap);
+      // Per-level "thinking" delay — cosmetic only (does not affect move
+      // strength), but reinforces the feel: easy answers fast, hard lingers.
+      const THINK_MS = [1000, 3000, 5000];
+      const thinkingMs = THINK_MS[difficulty] ?? 3000;
       attachBotPlayer(session, {
         slot: 1, wordList,
         isWordValid: (w) => hebrewDictionary.isValid(w),
-        difficulty, thinkingMs: 3000,
+        difficulty, thinkingMs,
       });
     }
 

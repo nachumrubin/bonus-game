@@ -77,6 +77,26 @@ test('attachBotPlayer: bot moves on its turn', () => {
   assert.equal(session.state.currentTurnSlot, 0);
 });
 
+test('attachBotPlayer: forwards thinkingMs as the scheduler delay', () => {
+  bus._reset();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const session = createLocalGameSession({ bus, mode: 'offline-solo', tileBagSeed: 'bot-think', players, startingSlot: 1 });
+  session.state.racks[1] = ['א','ב','ג','ד','ה','ו','ז','ח'];
+
+  const delays = [];
+  attachBotPlayer(session, {
+    slot: 1,
+    wordList: ['אב'],
+    isWordValid: () => true,
+    thinkingMs: 5000, // hard-level delay
+    scheduler: (fn, delay) => { delays.push(delay); fn(); },
+  });
+  session.start();
+
+  assert.deepEqual(delays, [5000], 'the per-level thinkingMs is passed straight to the scheduler');
+});
+
 test('attachBotPlayer: passes when no valid move is available', () => {
   bus._reset();
   DICT.clear();
