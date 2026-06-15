@@ -2,6 +2,20 @@
 
 ---
 
+## Fix: forfeiting player not notified when opponent's watchdog commits forfeit simultaneously — June 2026
+
+**Bug:** When an online game was forfeited (player timed out twice in a row), the forfeiting player's client was not shown the game-over screen if they happened to try a move at the exact moment the opponent's watchdog committed `status:'abandoned'` to Firebase.
+
+**Root cause:** `forceResync()` in `onlineGameSession.js` is called when a Firebase commit fails due to a stale version (e.g., the watchdog wrote first). It correctly reads the authoritative room, updates `state.status = 'abandoned'`, and advances `lastAppliedVersion` to the abandoned version. But it only emitted `EV.TURN_CHANGED`, not `EV.GAME_COMPLETED`. When the `watchRoom` snapshot subsequently arrived with the abandoned status, it routed through `applyTerminalStatusIfNeeded`, which short-circuited because `state.status === incoming.status` (already 'abandoned'). As a result, `EV.GAME_COMPLETED` was never emitted — the forfeiting player's screen continued as if the game was still in progress, and the turn appeared to pass to their opponent.
+
+**Fix:** Added a terminal-status check at the end of `forceResync`, mirroring the one already present in the `watchRoom` main path. If `state.status` transitioned to a terminal value during the resync, `EV.GAME_COMPLETED` is now emitted immediately.
+
+**Test coverage:** New test in `tests/unit/online-ghost-move-rollback.test.js`: stubs the transaction to fail and directly mutates `_data` to `abandoned` (bypassing watchers), so the only path to `EV.GAME_COMPLETED` is through `forceResync`. Confirmed the event fires after the fix, did not fire before.
+
+`npm run test:unit` 179/179.
+
+---
+
 ## Fix: B11 hidden-word accepted too-short words — June 2026
 
 The hidden-word mini-game (B11 מילה נסתרת) demands a 3-letter word, but `checkSelection` accepted any dictionary word of length ≥ 2 — so a 2-letter run like `נצ` won the bonus. Tightened the rule to require the selection to be **exactly `wordLen` letters** (the hidden word's length, 3). Forward/reverse dictionary acceptance is unchanged, so any *3-letter* real word still wins — only the incidental shorter runs are now rejected. Wrong-length taps show `✗ <word> — צריך 3 אותיות`. Added a regression test (a 2-letter run is rejected even when the validator accepts it; the 3-letter hidden word still wins). `npm run test:unit` 178/178; `hiddenWordMiniGame.test.js` 13/13.
