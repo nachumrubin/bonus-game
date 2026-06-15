@@ -125,6 +125,9 @@ ID format: `"${turnNumber}:${slot}:${r}:${c}:${duration}"`
 }
 ```
 
+### turnTimerBonusMs (transient, local)
+`state.turnTimerBonusMs` (number, ms) holds timer-bonus seconds queued for the slot whose turn is starting. Set by the engine's `applyTurnStartEffects` (from a consumed `timer_bonus` boost) and consumed by `turnTimerController.ensureDeadline` (offline/optional modes) when it computes the turn's deadline. Local-only — not written to the Firebase room patch.
+
 ### GameSettings Object (subset)
 ```
 {

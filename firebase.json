@@ -31,14 +31,23 @@
       "scripts/**",
       "tests/**",
       "tools/**",
-      "twa-manifest.json",
       "package.json",
       "package-lock.json",
       "playwright.config.js",
       "firebase.database.rules.json",
       "*.keystore",
       "*.jks",
-      "keystore.properties"
+      "keystore.properties",
+      "app/**",
+      "build/**",
+      ".gradle/**",
+      "gradle/**",
+      "gradlew",
+      "gradlew.bat",
+      "build.gradle",
+      "settings.gradle",
+      "gradle.properties",
+      "manifest-checksum.txt"
     ],
     "headers": [
       {

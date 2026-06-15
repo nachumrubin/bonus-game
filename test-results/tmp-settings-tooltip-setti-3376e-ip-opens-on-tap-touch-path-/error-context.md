@@ -1,0 +1,761 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: tmp-settings-tooltip.spec.js >> settings "i" tooltip opens on tap (touch path)
+- Location: tests\e2e\tmp-settings-tooltip.spec.js:5:1
+
+# Error details
+
+```
+Error: expect(received).toBeGreaterThan(expected)
+
+Expected: > 0.9
+Received:   0.852663
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - button "🎵" [ref=e4] [cursor=pointer]:
+        - generic [ref=e5]: 🎵
+      - button "⚙️" [ref=e6] [cursor=pointer]:
+        - generic [ref=e7]: ⚙️
+      - button "?" [ref=e8] [cursor=pointer]:
+        - generic [ref=e9]: "?"
+      - button "🏠" [disabled] [ref=e10]:
+        - generic [ref=e11]: 🏠
+    - button "👤 כניסה / הרשמה" [ref=e12] [cursor=pointer]:
+      - generic [ref=e14]: 👤
+      - generic [ref=e16]: כניסה / הרשמה
+  - alert [ref=e17] [cursor=pointer]
+  - generic:
+    - generic [ref=e19]:
+      - img "בוסט" [ref=e21]
+      - generic [ref=e22]:
+        - button "משחק ברשת שחק מול שחקנים מכל הארץ" [ref=e24] [cursor=pointer]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: משחק ברשת
+            - generic [ref=e29]: שחק מול שחקנים מכל הארץ
+        - generic [ref=e30]:
+          - button "שני שחקנים על מכשיר אחד" [ref=e32] [cursor=pointer]:
+            - img [ref=e34]
+            - generic [ref=e47]:
+              - generic [ref=e48]: שני שחקנים
+              - generic [ref=e49]: על מכשיר אחד
+          - button "נגד המחשב בחר מתוך שלוש רמות קושי" [ref=e51] [cursor=pointer]:
+            - img [ref=e53]
+            - generic [ref=e67]:
+              - generic [ref=e68]: נגד המחשב
+              - generic [ref=e69]: בחר מתוך שלוש רמות קושי
+      - generic [ref=e70]:
+        - link "מדיניות פרטיות" [ref=e71] [cursor=pointer]:
+          - /url: privacy-policy.html
+        - text: · v2.1 · build 20260614223706
+        - generic [ref=e72]:
+          - text: "Music: \"Inspire Action\" by"
+          - link "Yuri Megis" [ref=e73] [cursor=pointer]:
+            - /url: https://freemusicarchive.org/music/ura-megis/
+          - text: ·
+          - link "Free Music Archive" [ref=e74] [cursor=pointer]:
+            - /url: https://freemusicarchive.org/music/ura-megis/single/inspire-action-1/
+          - text: ·
+          - link "CC BY 4.0" [ref=e75] [cursor=pointer]:
+            - /url: https://creativecommons.org/licenses/by/4.0/
+    - generic:
+      - generic:
+        - generic: משחק אונליין
+        - generic: בחר כיצד תרצה לשחק
+        - generic:
+          - button "🏠 פתח משחק חדש בחר הגדרות ושלח קוד לחבר":
+            - generic: 🏠
+            - generic:
+              - generic: פתח משחק חדש
+              - generic: בחר הגדרות ושלח קוד לחבר
+          - button "🔑 הצטרף לפי קוד הזן קוד שקיבלת מחבר":
+            - generic: 🔑
+            - generic:
+              - generic: הצטרף לפי קוד
+              - generic: הזן קוד שקיבלת מחבר
+          - button "🎲 חפש יריב אקראי התחבר לשחקן זמין":
+            - generic: 🎲
+            - generic:
+              - generic: חפש יריב אקראי
+              - generic: התחבר לשחקן זמין
+        - button "← חזרה"
+    - generic:
+      - generic:
+        - generic: 🏠
+        - generic: פתיחת משחק חדש
+        - generic: בחר הגדרות ושלח את הקוד לחבר
+        - generic:
+          - generic: השם שלך
+          - textbox "השם שלך"
+        - generic:
+          - generic: סוג משחק
+          - generic:
+            - button "⚡ לייב"
+            - button "📬 אסינכרוני"
+        - generic:
+          - generic: קצב משחק (שניות)
+          - generic:
+            - button "⚡ בזק (20)"
+            - button "🎯 רגיל (40)"
+            - button "🐢 איטי (60)"
+        - generic:
+          - button "פתח משחק"
+          - button "ביטול"
+    - generic:
+      - generic:
+        - generic: ⏳
+        - generic: ממתין לשחקן שני...
+        - generic:
+          - generic: "שתף את הקוד:"
+          - generic: "------"
+        - generic:
+          - button "שתף ב-WhatsApp"
+          - button "ביטול"
+        - generic:
+          - generic: "הזמן שחקן לפי שם משתמש:"
+          - generic:
+            - generic:
+              - textbox "חפש חבר..."
+            - button "שלח"
+    - generic:
+      - generic:
+        - generic: 🎮
+        - generic: הוזמנת למשחק!
+        - generic:
+          - button "הצטרף 🚀"
+          - button "לא עכשיו"
+    - generic:
+      - generic:
+        - generic: ✋
+        - generic: ההזמנה נדחתה
+        - generic: השחקן שהזמנת לא זמין כרגע.
+        - generic:
+          - button "חזור לאונליין"
+    - generic:
+      - generic:
+        - generic: 🔑
+        - generic: הצטרף למשחק
+        - generic: הזן את הקוד שקיבלת
+        - generic:
+          - generic: השם שלך
+          - textbox: שחקן 2
+        - textbox "000000"
+        - generic:
+          - button "הצטרף"
+          - button "ביטול"
+    - generic:
+      - generic:
+        - generic: 🎲
+        - generic: חיפוש יריב
+        - generic:
+          - generic: השם שלך
+          - textbox: שחקן
+        - generic:
+          - generic:
+            - generic: סוג משחק
+            - generic:
+              - button "לייב"
+              - button "אסינכרוני"
+          - generic:
+            - generic: קצב משחק (שניות)
+            - generic:
+              - button "⚡ בזק (20)"
+              - button "🎯 רגיל (40)"
+              - button "🐢 איטי (60)"
+          - generic:
+            - checkbox "חיפוש מדויק בלבד" [checked]
+            - generic: חיפוש מדויק בלבד
+          - generic:
+            - generic: טווח דירוג
+            - generic:
+              - button "כולם"
+              - button "±100"
+              - button "±200"
+              - button "±500"
+        - generic:
+          - button "חפש יריב"
+          - button "ביטול"
+    - generic:
+      - generic:
+        - generic: 🎲
+        - generic: מחפש יריב...
+        - generic:
+          - generic:
+            - generic: 👑
+            - generic: שחקן
+            - generic: את/ה
+          - generic: VS
+          - generic:
+            - generic: מחפש...
+        - generic:
+          - button "ביטול"
+    - generic:
+      - generic:
+        - generic: 📡
+        - generic: היריב התנתק!
+        - generic: ממתין לחזרה...
+        - generic: "30"
+        - generic: אם לא יחזור — תזכה בניצחון טכני
+    - generic:
+      - generic:
+        - generic:
+          - generic: הגדרות
+        - generic:
+          - generic: שם שחקן 1
+          - textbox: שחקן 1
+        - generic:
+          - generic: שם שחקן 2
+          - textbox: שחקן 2
+        - generic:
+          - generic: קצב משחק (שניות)
+          - generic:
+            - button "⚡ בזק (20)"
+            - button "🎯 רגיל (40)"
+            - button "🐢 איטי (60)"
+            - button "∞ ללא"
+        - generic:
+          - generic: הצג מגש שני השחקנים
+          - generic:
+            - button "👁 פעיל"
+            - button "👤 כבוי"
+        - generic:
+          - button "← חזרה"
+          - button "▶ שחק!"
+    - generic:
+      - generic:
+        - generic: הגרלת שחקן פותח
+        - generic: מטילים מטבע...
+        - generic: 🪙
+        - generic: בהצלחה!
+        - button "לחצו כדי להיכנס למשחק" [disabled]
+    - generic:
+      - generic:
+        - generic:
+          - button "הגדרות":
+            - generic: הגדרות
+          - button "החלפת אות":
+            - text: החלפת
+            - text: אות
+          - button "שאילתה":
+            - generic: שאילתה
+          - button "סיום":
+            - generic: סיום
+          - button "מוזיקה" [pressed]:
+            - generic: מוזיקה
+          - generic "שקית האותיות":
+            - generic:
+              - generic:
+                - generic: קופה
+                - generic: "98"
+        - generic: בחר אות מהמגש ולחץ על משבצת
+        - generic:
+          - generic:
+            - generic: שחקן 1
+            - generic: 👑
+            - generic: "0"
+            - generic: נקודות
+          - generic:
+            - generic: שחקן 2
+            - generic: 👤
+            - generic: "0"
+            - generic: נקודות
+        - generic:
+          - button "בטל ↩":
+            - text: בטל
+            - text: ↩
+          - button "שבץ ✓":
+            - text: שבץ
+            - text: ✓
+    - generic:
+      - generic:
+        - generic: ⏸️
+        - generic: המשחק מושהה
+        - generic:
+          - button "▶ המשך משחק"
+          - button "צא לתפריט"
+    - generic:
+      - generic:
+        - generic: 🚪
+        - generic: לצאת מהמשחק?
+        - generic: ההתקדמות לא תישמר אלא אם תבחר להשהות
+        - generic:
+          - button "← המשך לשחק"
+          - button "⏸ השהה ושמור"
+          - button "🚪 צא בלי לשמור"
+    - generic:
+      - generic:
+        - generic: "!"
+        - generic: לפרוש מהמשחק?
+        - generic: היריב יקבל ניצחון מיידי.
+        - generic:
+          - button "פרוש"
+          - button "המשך לשחק"
+    - generic:
+      - generic:
+        - generic: 🏆
+        - generic: לסיים את המשחק ולזכות?
+        - generic: המשחק תקוע — אתה מוביל בניקוד וזכותך לסיים אותו עכשיו לפי כלל ההיתקעות. הניצחון יירשם לזכותך.
+        - generic:
+          - button "🏆 סיים וזכה"
+          - button "המשך לשחק"
+    - generic [ref=e77]:
+      - button "סגור" [ref=e78] [cursor=pointer]: ×
+      - generic [ref=e79]: ⚙️ הגדרות
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - text: מוזיקה
+            - generic [ref=e83] [cursor=pointer]:
+              - text: i
+              - generic [ref=e84]: הפעלת מוסיקת רקע במהלך המשחק
+          - generic [ref=e85]:
+            - generic [ref=e86] [cursor=pointer]: 🎵 כן
+            - generic [ref=e87] [cursor=pointer]: 🔇 לא
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - text: אפקטי קול
+            - generic [ref=e90] [cursor=pointer]:
+              - text: i
+              - generic: צלילים קצרים לאירועי משחק (מילה לא תקינה, בונוס, סוף המשחק)
+          - generic [ref=e91]:
+            - generic [ref=e92] [cursor=pointer]: 🔊 כן
+            - generic [ref=e93] [cursor=pointer]: 🔇 לא
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - text: רטט
+            - generic [ref=e96] [cursor=pointer]:
+              - text: i
+              - generic: רטט קצר במכשירים תומכים לאירועי משחק עיקריים
+          - generic [ref=e97]:
+            - generic [ref=e98] [cursor=pointer]: 📳 כן
+            - generic [ref=e99] [cursor=pointer]: 🚫 לא
+        - generic [ref=e100]:
+          - generic [ref=e101]:
+            - text: באיזה לשון לפנות אליך?
+            - generic [ref=e102] [cursor=pointer]:
+              - text: i
+              - generic: פניות בהתראות ובמשחק יותאמו ללשון שתבחר
+          - generic [ref=e103]:
+            - generic [ref=e104] [cursor=pointer]: זכר
+            - generic [ref=e105] [cursor=pointer]: נקבה
+          - generic [ref=e106]: "לדוגמה: \"שבץ ✓\", \"בטל ↩\", \"לחץ\""
+      - generic [ref=e107]:
+        - generic [ref=e108]:
+          - generic [ref=e109]:
+            - text: 🔔 התראות משחק
+            - generic [ref=e110] [cursor=pointer]:
+              - text: i
+              - generic: קבל התראה כשתורך במשחק אסינכרוני או כשיריב מצטרף למשחקך
+          - generic [ref=e111]: דורש אישור דפדפן
+        - generic [ref=e112]:
+          - generic [ref=e113]: חסום
+          - button "חסום בדפדפן" [disabled] [ref=e114]
+      - generic [ref=e115]:
+        - generic [ref=e116]:
+          - text: 🔎 שאילתה — בדיקת מילה
+          - generic [ref=e117] [cursor=pointer]:
+            - text: i
+            - generic: בדוק אם מילה קיימת במילון המשחק בלי לפתוח משחק חדש
+        - textbox "הקלד מילה..." [ref=e119]
+        - button "בדוק ✓" [ref=e121] [cursor=pointer]
+      - button "אישור ✓" [ref=e123] [cursor=pointer]
+    - generic:
+      - generic:
+        - generic: 🃏
+        - generic: בחר אות לג'וקר
+        - generic: הג'וקר יהפוך לאות שתבחר (ללא ניקוד)
+        - generic:
+          - button "ביטול"
+    - generic:
+      - generic:
+        - generic: 🔄
+        - generic: החלפת אות אחת
+        - generic: בחר אות מהמגש להחלפה מהשקית (פעם אחת בתור)
+        - generic:
+          - button "ביטול"
+    - generic:
+      - generic:
+        - generic: שאילתה — מילון
+        - generic: האם המילה קיימת? הטיימר ממשיך לרוץ!
+        - generic:
+          - textbox "הקלד מילה..."
+        - generic:
+          - button "בדוק ✓"
+          - button "סגור"
+    - generic:
+      - generic:
+        - generic: 🎓
+        - generic: ברוך הבא!
+        - generic:
+          - text: זו הפעם הראשונה שלך במשחק.
+          - text: האם תרצה לעבור את ההדרכה לפני שמתחילים?
+        - generic:
+          - button "כן ✓"
+          - button "לא ×"
+        - generic:
+          - checkbox "אל תציג שוב"
+          - generic: אל תציג שוב
+    - generic:
+      - generic:
+        - generic: 🌟
+        - generic: בוסט!
+        - generic:
+          - button "אישור ✓"
+    - generic:
+      - generic:
+        - generic: ⚡
+        - generic: משחקון בוסט!
+        - generic:
+          - button "בוא נשחק ▶"
+    - generic:
+      - generic:
+        - generic: ⚡
+        - generic: היריב מקבל בוסט!
+        - generic: ⏳ ממתין לתוצאה...
+    - generic:
+      - generic:
+        - generic: 🛡️
+        - generic: הבוסט בוטל
+        - generic:
+          - button "הבנתי ✓"
+    - generic:
+      - generic:
+        - generic: 🏆
+        - generic:
+          - generic:
+            - generic: "0"
+          - generic:
+            - generic: "0"
+        - generic:
+          - generic: טבלת דירוגים — 10 השחקנים המובילים
+        - generic:
+          - button "🔄 שוב"
+          - button "🏠 בית"
+    - generic:
+      - generic:
+        - generic: 🏆 טבלת דירוגים
+        - generic:
+          - button "סגור"
+    - generic:
+      - generic:
+        - generic: 📖 מדריך המשחק
+        - generic:
+          - group:
+            - generic "חוקי המשחק וניקוד ▼"
+            - generic:
+              - 'figure "מסך המשחק: לוח 10×10, המגש למטה, הניקוד והשעון בראש."':
+                - img "מסך משחק — לוח 10×10, מגש אותיות וטיימר תור"
+                - generic: "מסך המשחק: לוח 10×10, המגש למטה, הניקוד והשעון בראש."
+              - paragraph:
+                - text: הלוח הוא רשת של
+                - strong: 10×10
+                - text: . בכל תור יש לך
+                - strong: 8 אותיות
+                - text: במגש, ובשק הכללי
+                - strong: 108 אותיות
+                - text: ובהן 2 ג'וקרים.
+              - paragraph:
+                - strong: "איך מקבלים נקודות:"
+                - text: כל אות שווה את ערכה הקבוע (למשל א=1, צ=9, ג'וקר=0). הניקוד הוא סכום כל האותיות במילה. כשנוצרות יותר ממילה אחת במהלך אחד — סופרים את כולן.
+              - paragraph:
+                - strong: "בונוס בינגו:"
+                - text: הנחת כל 8 האותיות במהלך אחד מזכה ב-
+                - strong: "+50"
+                - text: נקודות נוספות.
+              - paragraph:
+                - strong: "כללי הנחה:"
+              - list:
+                - listitem: חייבים להניח לפחות אות אחת בכל תור.
+                - listitem: כל האותיות במהלך חייבות להיות באותה שורה או אותו טור.
+                - listitem: אסור שיהיו רווחים בין האותיות שהנחת.
+                - listitem: חוץ מהמהלך הראשון — לפחות אות אחת חייבת להיצמד למילה קיימת.
+              - paragraph:
+                - strong: "סיום המשחק:"
+              - list:
+                - listitem: 2 סבבים רצופים שבהם אף שחקן לא הניח אות (הפסה, החלפת אותיות או מילה לא תקינה) — המשחק נסגר אוטומטית.
+                - listitem: השק התרוקן ולשחקן אחד אין יותר אותיות במגש.
+                - listitem: אחד השחקנים פרש.
+                - listitem:
+                  - strong: השחקן המוביל
+                  - text: יכול ללחוץ על "🏆 סיים וזכה" כדי לסגור משחק תקוע מוקדם — הכפתור מופיע אחרי סבב שלם של מהלכים בלי ניקוד.
+              - paragraph:
+                - strong: "קביעת המנצח:"
+                - text: הניקוד הגבוה ביותר ניצח. תיקו אפשרי אם הניקוד שווה. אם אחד פרש — השני ניצח.
+          - group:
+            - generic "מילים והטיות מותרות ▼"
+          - group:
+            - generic "מסכי המשחק ▼"
+          - group:
+            - generic "מצבי משחק ▼"
+          - group:
+            - generic "דירוג ולוח שיאים ▼"
+          - group:
+            - generic "פעולות מיוחדות בתור ▼"
+          - group:
+            - generic "בונוסים ומיני-משחקים ▼"
+        - generic:
+          - button "סגור"
+    - generic:
+      - generic:
+        - generic: ❓ שאלות נפוצות
+        - generic:
+          - group:
+            - generic "למה המילה שלי נדחתה? ▼"
+          - group:
+            - generic "איך מקבלים בונוס בינגו? ▼"
+          - group:
+            - generic "מה קורה אם היריב מתנתק? ▼"
+          - group:
+            - generic "אחרי כמה זמן נסגר משחק אסינכרוני? ▼"
+          - group:
+            - generic "איך משחק נגמר? ▼"
+          - group:
+            - generic "אני מוביל אבל היריב לא משחק — מה עושים? ▼"
+          - group:
+            - generic "איך עובד הג'וקר? ▼"
+          - group:
+            - generic "איך עובד הדירוג? ▼"
+          - group:
+            - generic "מה ההבדל בין משחק חי לאסינכרוני? ▼"
+          - group:
+            - generic "אפשר לבטל מהלך אחרי שאישרתי? ▼"
+          - group:
+            - generic "למה לא קיבלתי התראה (push)? ▼"
+          - group:
+            - generic "איך מזמינים חבר למשחק? ▼"
+          - group:
+            - generic "מה זה שאילתה? ▼"
+        - generic:
+          - button "סגור"
+    - generic:
+      - generic:
+        - generic: ✨ יצירת חשבון
+        - generic:
+          - generic: שם תצוגה (עד 15 תווים)
+          - textbox "השם שיופיע במשחק"
+        - generic:
+          - generic: דוא"ל
+          - textbox "your@email.com"
+        - generic:
+          - generic: סיסמה (8+ תווים, אות וספרה)
+          - generic:
+            - textbox "••••••••"
+            - button "הצג סיסמה": 👁
+        - generic:
+          - generic: אימות סיסמה
+          - generic:
+            - textbox "••••••••"
+            - button "הצג סיסמה": 👁
+        - generic:
+          - checkbox "אני רוצה לקבל התראות (משחקים, הזמנות, תזכורות)" [checked]
+          - generic: אני רוצה לקבל התראות (משחקים, הזמנות, תזכורות)
+        - button "צור חשבון"
+        - generic:
+          - button "יש לי חשבון"
+          - button "המשך כאורח"
+    - generic:
+      - generic:
+        - generic: 🔐 כניסה
+        - generic:
+          - generic: דוא"ל
+          - textbox "your@email.com"
+        - generic:
+          - generic: סיסמה
+          - generic:
+            - textbox "••••••••"
+            - button "הצג סיסמה": 👁
+        - button "כניסה"
+        - button "שכחתי סיסמה"
+        - generic:
+          - button "חשבון חדש"
+          - button "כאורח"
+    - generic:
+      - generic:
+        - generic: 👤 הפרופיל שלי
+        - generic:
+          - generic: 👑
+          - generic: לחץ לשינוי אווטאר
+        - generic:
+          - generic: לחץ לעריכה
+        - generic:
+          - generic:
+            - generic: משחקים
+            - generic: "0"
+          - generic:
+            - generic: ניצחונות
+            - generic: "0"
+          - generic:
+            - generic: אחוז ניצחון
+            - generic: 0%
+          - generic:
+            - generic: שיא אישי
+            - generic: "0"
+          - generic:
+            - generic: שיא רצף 🏅
+            - generic: "0"
+          - generic:
+            - generic: רצף נוכחי 🔥
+            - generic: "0"
+        - button "👥 חברים"
+        - button "📊 סטטיסטיקות מלאות"
+        - button "התנתקות 🚪"
+    - generic:
+      - generic:
+        - generic:
+          - generic: 👤
+          - button "סגור": ×
+        - generic:
+          - generic: 📊 סטטיסטיקה ביניכם
+        - generic:
+          - generic: ⏱ 5 המשחקים האחרונים
+        - generic:
+          - generic: 🎮 משחקים פעילים
+    - generic:
+      - generic:
+        - generic: 👥 חברים
+        - generic:
+          - generic: המזהה שלך — שתף כדי שחברים יוסיפו אותך
+          - generic: "------"
+        - generic:
+          - generic: הוסף לפי מזהה
+          - generic:
+            - textbox "הזן מזהה (6 תווים)..."
+            - button "הוסף"
+        - generic:
+          - generic: חברים (0)
+          - generic:
+            - generic: אין חברים עדיין
+        - button "← חזרה לפרופיל"
+    - generic:
+      - generic:
+        - generic: 🔔 הזמנות
+        - generic: אין הזמנות ממתינות
+    - generic:
+      - generic:
+        - generic:
+          - generic: 🏆 הישגים שלי
+    - generic:
+      - generic:
+        - generic:
+          - generic:
+            - generic: 🏆
+            - generic: שחקן בוסט
+            - generic: ⚡ זהב
+          - generic:
+            - generic:
+              - generic: 0%
+              - generic: אחוז ניצחון
+            - generic:
+              - generic: 0 🔥
+              - generic: רצף נוכחי
+        - generic:
+          - button "תובנות"
+          - button "התקדמות"
+          - button "שיאים"
+          - button "יריבים"
+        - generic:
+          - generic:
+            - generic:
+              - generic: 🆕
+              - generic:
+                - generic: הסגנון שלך
+                - generic: חוקר
+                - generic: התחל לשחק כדי לפתוח את הסגנון שלך
+            - generic: 🧠 תובנות עליך
+            - generic: 📈 מגמות
+            - generic: 📅 השבוע שלך
+            - generic: 📚 ניתוח מילים
+            - generic: ⚙ סגנון משחק
+            - generic: 👥 היריבים שלך
+            - generic: 🎯 היעד הבא
+            - generic:
+              - generic: 💡
+    - generic:
+      - generic:
+        - banner:
+          - button "חזרה": ←
+          - generic:
+            - generic: המשחקים שלי
+        - generic:
+          - generic: 🎮
+          - generic: אין משחקים פעילים
+          - generic: התחל משחק חדש ברשת.
+    - generic:
+      - generic:
+        - generic: 🎉 אווטאר חדש נפתח!
+        - generic: 👑
+        - generic:
+          - button "בחר אווטאר"
+          - button "המשך"
+    - generic:
+      - generic:
+        - generic: ✨
+        - generic: שמור את ההתקדמות שלך
+        - generic: צור חשבון חינמי כדי לשמור סטטיסטיקות ולהופיע בטבלת האלופים.
+        - generic:
+          - button "צור חשבון"
+          - button "לא עכשיו"
+    - generic:
+      - generic:
+        - list
+        - generic:
+          - generic:
+            - checkbox "אל תציג שוב"
+            - generic: אל תציג שוב
+          - button "הבנתי ✓"
+```
+
+# Test source
+
+```ts
+  1  | const { test, expect } = require('@playwright/test');
+  2  | 
+  3  | test.use({ viewport: { width: 412, height: 820 } });
+  4  | 
+  5  | test('settings "i" tooltip opens on tap (touch path)', async ({ page }) => {
+  6  |   await page.goto('/');
+  7  |   await page.waitForFunction(() => window.__spine?.enabled === true);
+  8  |   // Hide boot splash, open settings via the spine bus.
+  9  |   await page.evaluate(() => {
+  10 |     document.getElementById('app-loading')?.style && (document.getElementById('app-loading').style.display = 'none');
+  11 |     window.__spine.bus.emit('overlay/settings/open', {});
+  12 |   });
+  13 |   await page.waitForTimeout(200);
+  14 | 
+  15 |   const icon = page.locator('#ov-settings .sett-info').first();
+  16 |   await expect(icon).toBeVisible();
+  17 | 
+  18 |   // Before tap: tip hidden (opacity 0).
+  19 |   const tip = icon.locator('.sett-tip');
+  20 |   const before = await tip.evaluate((el) => getComputedStyle(el).opacity);
+  21 | 
+  22 |   await icon.click();
+  23 |   await page.waitForTimeout(100);
+  24 | 
+  25 |   const after = await tip.evaluate((el) => ({
+  26 |     opacity: getComputedStyle(el).opacity,
+  27 |     visible: el.classList.contains('tip-visible'),
+  28 |     rect: el.getBoundingClientRect(),
+  29 |   }));
+  30 |   console.log('TOOLTIP', JSON.stringify({ before, after }));
+  31 |   expect(after.visible).toBe(true);
+> 32 |   expect(Number(after.opacity)).toBeGreaterThan(0.9);
+     |                                 ^ Error: expect(received).toBeGreaterThan(expected)
+  33 |   // On-screen (within viewport).
+  34 |   expect(after.rect.top).toBeGreaterThanOrEqual(0);
+  35 |   expect(after.rect.left).toBeGreaterThanOrEqual(0);
+  36 |   expect(after.rect.right).toBeLessThanOrEqual(412);
+  37 | });
+  38 | 
+```

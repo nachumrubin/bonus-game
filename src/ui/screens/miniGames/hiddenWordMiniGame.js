@@ -18,8 +18,9 @@
 //   • 10-second timer
 //   • Tap one cell to start the selection, tap a second cell on the same
 //     straight/diagonal line to commit. Same cell twice = cancel.
-//   • The committed run is read forward AND reverse; if either is a valid
-//     dictionary word the round is won.
+//   • The committed run must be exactly the hidden word's length (3 letters);
+//     it is read forward AND reverse, and if either is a valid dictionary word
+//     the round is won. Shorter incidental runs (e.g. 2 letters) don't count.
 //   • Award is all-or-nothing: 30 points on the first valid word, else 0.
 //   • Empty cells filled with random Hebrew letters (no final forms).
 //   • "סיים" finishes early.
@@ -184,11 +185,13 @@ export function mountHiddenWordMiniGame({
 
   function elapsedSec() { return Math.floor((Date.now() - startedAt) / 1000); }
 
-  // Accept a forward/reverse reading if it is a dictionary word. Length must
-  // be ≥2 to count as a word. Returns the matched word or null.
+  // Accept a forward/reverse reading if it is a dictionary word. The selection
+  // must be EXACTLY wordLen letters long — the challenge asks for an N-letter
+  // word (the hidden word's length), so shorter incidental words (e.g. a
+  // 2-letter run) don't count. Returns the matched word or null.
   function checkSelection(from, to) {
     const fwd = readLine(puzzle.grid, from, to);
-    if (!fwd || fwd.length < 2) return null;
+    if (!fwd || fwd.length !== wordLen) return null;
     const rev = [...fwd].reverse().join('');
     if (validator(fwd)) return fwd;
     if (validator(rev)) return rev;
@@ -406,7 +409,11 @@ export function mountHiddenWordMiniGame({
       finish();
       return;
     }
-    setStatus(word ? `✗ ${word}` : 'בחר אותיות על קו ישר', false);
+    if (word && word.length !== wordLen) {
+      setStatus(`✗ ${word} — צריך ${wordLen} אותיות`, false);
+    } else {
+      setStatus(word ? `✗ ${word}` : 'בחר אותיות על קו ישר', false);
+    }
     clearSel();
   }
 }

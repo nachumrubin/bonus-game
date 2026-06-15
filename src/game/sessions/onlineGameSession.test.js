@@ -215,6 +215,44 @@ test('online session: an extra-turn move gets a FRESH deadline (not the stale on
   await sessA.dispose();
 });
 
+test('online session: a queued timer_bonus extends the NEXT player\'s committed deadline (and is consumed once)', async () => {
+  // The committing client is authoritative for the next player's deadline.
+  // When the turn rotates to a slot that banked a B13 timer_bonus, the engine's
+  // applyTurnStartEffects records state.turnTimerBonusMs and rawCommitCurrentState
+  // must add it on top of the base limit — then clear it (one-shot).
+  bus._reset();
+  registerBoosts();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live', { timelimit: true, botTime: 20 });
+
+  // A comfortably-future deadline so the move isn't gated as a late commit.
+  const live = Date.now() + 15_000;
+  await db.ref('rooms/online-room').update({ turnDeadlineMs: live });
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.turnDeadlineMs = live;
+  // Bank a +10s timer_bonus for slot 1 — it fires when the turn rotates to them.
+  sessA.state.activeBoosts.push({ slot: 1, boostId: 'timer_bonus', payload: { seconds: 10 }, turnNumber: sessA.state.turnNumber });
+
+  sessA.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  const roomNow = db._data.rooms['online-room'];
+  assert.equal(roomNow.currentTurnSlot, 1, 'turn rotates to the booster');
+  // Base 20s alone could never reach now+25s; the +10s bonus must have applied.
+  assert.ok(roomNow.turnDeadlineMs >= Date.now() + 25_000,
+    `next deadline must include the +10s bonus, got ${roomNow.turnDeadlineMs}`);
+  // One-shot: cleared after the commit resolved.
+  assert.equal(Number(sessA.state.turnTimerBonusMs) || 0, 0, 'timer bonus consumed after commit');
+  // And the boost itself was consumed from activeBoosts.
+  assert.ok(!sessA.state.activeBoosts.some(b => b.boostId === 'timer_bonus'), 'timer_bonus boost consumed');
+  await sessA.dispose();
+});
+
 test('online session: no-lastMove timeout snapshot resyncs remote turn state', async () => {
   bus._reset();
   const db = makeMockDb();

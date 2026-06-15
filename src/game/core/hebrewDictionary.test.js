@@ -17,9 +17,7 @@ import {
   setDictionaryMode,
   getDictionaryMode,
   setDawgForTests,
-  EXACT_REJECTS,
-  CLASSIC_ALLOW,
-  DEFECTIVE_ACCEPT,
+  BLOCKED_OVERLAY,
 } from './hebrewDictionary.js';
 import { buildDawg, serializeDawg, parseDawg } from './dawg.js';
 
@@ -203,48 +201,28 @@ test('v2: terminal final-form variants are accepted', () => {
   } finally { resetToV1(); }
 });
 
-test('v2: EXACT_REJECTS always reject even if word slips into DAWG', () => {
+// The in-code EXACT_REJECTS / CLASSIC_ALLOW / DEFECTIVE_ACCEPT lists were
+// removed (June 2026) — reject/accept curation now lives only in the Firebase
+// overlays (BLOCKED_OVERLAY / approved-overlay). These tests assert the overlay
+// path, which is the single remaining policy mechanism.
+test('v2: BLOCKED_OVERLAY rejects a word even when it is in the DAWG', () => {
   try {
-    const sample = [...EXACT_REJECTS].slice(0, 5);
-    // Deliberately include EXACT_REJECTS words in the DAWG to prove the
-    // runtime policy filter still kicks in.
-    setDawgForTests(dawgFromWords(['שלום', ...sample]));
+    setDawgForTests(dawgFromWords(['שלום', 'בית']));
     setDictionaryMode('v2');
-    for (const w of sample) {
-      assert.equal(isValid(w), false, `EXACT_REJECTS member ${w} must reject`);
-    }
-    assert.equal(isValid('שלום'), true);
-  } finally { resetToV1(); }
+    assert.equal(isValid('בית'), true, 'in-DAWG word valid before blocking');
+    BLOCKED_OVERLAY.add('בית');
+    assert.equal(isValid('בית'), false, 'BLOCKED_OVERLAY must override a DAWG hit');
+  } finally { BLOCKED_OVERLAY.delete('בית'); resetToV1(); }
 });
 
-test('v2: every EXACT_REJECTS member rejects', () => {
+test('v1: BLOCKED_OVERLAY rejects a word that is in DICT', () => {
   try {
-    setDawgForTests(dawgFromWords(['placeholder']));
-    setDictionaryMode('v2');
-    for (const w of EXACT_REJECTS) {
-      assert.equal(isValid(w), false, `EXACT_REJECTS member ${w} must reject`);
-    }
-  } finally { resetToV1(); }
-});
-
-test('v2: CLASSIC_ALLOW members always accept even if DAWG omits them', () => {
-  try {
-    setDawgForTests(dawgFromWords(['filler']));
-    setDictionaryMode('v2');
-    for (const w of CLASSIC_ALLOW) {
-      assert.equal(isValid(w), true, `CLASSIC_ALLOW member ${w} must accept`);
-    }
-  } finally { resetToV1(); }
-});
-
-test('v2: DEFECTIVE_ACCEPT members always accept even if DAWG omits them', () => {
-  try {
-    setDawgForTests(dawgFromWords(['filler']));
-    setDictionaryMode('v2');
-    for (const w of DEFECTIVE_ACCEPT) {
-      assert.equal(isValid(w), true, `DEFECTIVE_ACCEPT member ${w} must accept`);
-    }
-  } finally { resetToV1(); }
+    setDictionaryMode('v1');
+    DICT.add('בית');
+    assert.equal(isValid('בית'), true, 'DICT word valid before blocking');
+    BLOCKED_OVERLAY.add('בית');
+    assert.equal(isValid('בית'), false, 'BLOCKED_OVERLAY must override a DICT hit');
+  } finally { BLOCKED_OVERLAY.delete('בית'); resetToV1(); }
 });
 
 test('v2: Firebase-approved overlay (DICT.add after load) is honored', () => {

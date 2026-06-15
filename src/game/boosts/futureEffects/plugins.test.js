@@ -154,9 +154,38 @@ test('timer_bonus: extends turnDeadlineMs on the booster\'s next turn-start', ()
   const ctx = {
     startingSlot: 0,
     turnDeadlineMs: 1_000_000,
+    turnTimerBonusMs: 0,
     activeBoosts: [{ slot: 0, boostId: 'timer_bonus', payload: { seconds: 10 }, turnNumber: 5 }],
   };
   const out = runHook(TRIGGERS.ON_TURN_START, ctx);
   assert.equal(out.turnDeadlineMs, 1_010_000);
+  // Also accumulates the bonus so the timer controller can apply it when no
+  // absolute deadline is present (the offline case).
+  assert.equal(out.turnTimerBonusMs, 10_000);
   assert.equal(out.activeBoosts.length, 0);
+});
+
+test('timer_bonus: accumulates turnTimerBonusMs even with no absolute deadline (offline path)', () => {
+  _resetAndRegister();
+  const ctx = {
+    startingSlot: 0,
+    turnTimerBonusMs: 0,
+    activeBoosts: [{ slot: 0, boostId: 'timer_bonus', payload: { seconds: 10 }, turnNumber: 5 }],
+  };
+  const out = runHook(TRIGGERS.ON_TURN_START, ctx);
+  assert.equal(out.turnTimerBonusMs, 10_000);
+  assert.equal(out.turnDeadlineMs, undefined, 'no absolute deadline is invented by the engine');
+  assert.equal(out.activeBoosts.length, 0, 'one-shot boost is consumed');
+});
+
+test('timer_bonus: does NOT fire for the opponent slot', () => {
+  _resetAndRegister();
+  const ctx = {
+    startingSlot: 1,
+    turnTimerBonusMs: 0,
+    activeBoosts: [{ slot: 0, boostId: 'timer_bonus', payload: { seconds: 10 }, turnNumber: 5 }],
+  };
+  const out = runHook(TRIGGERS.ON_TURN_START, ctx);
+  assert.equal(out.turnTimerBonusMs, 0);
+  assert.equal(out.activeBoosts.length, 1, 'boost stays queued until the booster\'s own turn');
 });

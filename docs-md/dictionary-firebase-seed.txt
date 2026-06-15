@@ -1,0 +1,231 @@
+# Dictionary overlay seed — migrate to Firebase
+#
+# These are the curated reject/accept lists removed from the runtime code
+# (src/game/core/hebrewDictionary.js) in June 2026. They are NO LONGER
+# enforced by the code. To restore the previous behavior, add them to the
+# Firebase Realtime Database overlays, which the app already syncs at boot:
+#
+#   REJECTED words -> /dictionaryRejected   (synced into BLOCKED_OVERLAY)
+#                     entry shape: { word: "<word>", rejectedAt: <ts>, source: "manual-migration" }
+#   APPROVED words -> /dictionaryApproved   (synced into DICT)
+#                     entry shape: { word: "<word>", approvedAt: <ts> }
+#
+# Easiest path: open the dictionary admin panel and paste each block, or
+# import via the Firebase console. One word per line below.
+#
+# PRIORITIZE these two rejects — they are content-sensitive and may otherwise
+# become playable depending on dictionary mode:
+#     נאצי        (slur)
+#     ירושלים     (proper noun / place name)
+
+# ============================================================
+# REJECTED  ->  /dictionaryRejected   (175 words)
+# ============================================================
+נאצי
+ירושלים
+עליי
+אותה
+אותו
+אותך
+אותכם
+אותכן
+אותם
+אותן
+אותנו
+אחריה
+אחריהם
+אחריהן
+אחריו
+אחריי
+אחרייך
+אחריך
+אחריכם
+אחריכן
+אחרינו
+איתה
+איתו
+איתי
+איתך
+איתכם
+איתכן
+איתם
+איתן
+איתנו
+אלי
+אליה
+אליהם
+אליהן
+אליו
+אלייך
+אליך
+אליכם
+אליכן
+אלינו
+אצלה
+אצלו
+אצלי
+אצלך
+אצלכם
+אצלכן
+אצלם
+אצלן
+אצלנו
+בלעדי
+בלעדיה
+בלעדיהם
+בלעדיהן
+בלעדיו
+בלעדייך
+בלעדיך
+בלעדיכם
+בלעדיכן
+בלעדינו
+בשבילה
+בשבילהן
+בשבילו
+בשבילי
+בשבילך
+בשבילכם
+בשבילכן
+בשבילם
+בשבילנו
+כמוה
+כמוהו
+כמוך
+כמוכם
+כמוכן
+כמונו
+כמוני
+כמותם
+כמותן
+לידה
+לידו
+לידי
+לידך
+לידכם
+לידכן
+לידם
+לידן
+לידנו
+למענה
+למענו
+למעני
+למענך
+למענכם
+למענכן
+למענם
+למענן
+למעננו
+לפניה
+לפניהם
+לפניהן
+לפניו
+לפניי
+לפנייך
+לפניך
+לפניכם
+לפניכן
+לפנינו
+מאחוריה
+מאחוריהם
+מאחוריהן
+מאחוריו
+מאחוריי
+מאחורייך
+מאחוריך
+מאחוריכם
+מאחוריכן
+מאחורינו
+מולה
+מולו
+מולי
+מולך
+מולכם
+מולכן
+מולם
+מולן
+מולנו
+ממך
+ממכם
+ממכן
+ממנה
+ממנו
+ממני
+נגדה
+נגדו
+נגדי
+נגדך
+נגדכם
+נגדכן
+נגדם
+נגדן
+נגדנו
+עלי
+עליה
+עליהם
+עליהן
+עליו
+עלייך
+עליך
+עליכם
+עליכן
+עלינו
+עמה
+עמהן
+עמו
+עמי
+עמך
+עמכם
+עמכן
+עמם
+עמנו
+שלה
+שלהם
+שלהן
+שלו
+שלי
+שלך
+שלכם
+שלכן
+שלנו
+תוכה
+תוכו
+תוכי
+תוכך
+תוכם
+תוכן
+תוכנו
+
+# ============================================================
+# APPROVED  ->  /dictionaryApproved   (28 words)
+# ============================================================
+# CLASSIC_ALLOW — short particles (18)
+בה
+בהם
+בהן
+בו
+בי
+בך
+בכם
+בכן
+בנו
+לה
+להם
+להן
+לו
+לי
+לך
+לכם
+לכן
+לנו
+# DEFECTIVE_ACCEPT — defective spellings (10)
+כסא
+זכרון
+שלטון
+מסדרון
+ספרון
+פתרון
+עגלון
+חנון
+ישרון
+קטון

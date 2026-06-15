@@ -51,7 +51,10 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
   }
 
   let mode = 'vs';                   // 'vs' or 'bot'
-  let difficulty = 1;                // 0=easy, 1=med, 2=hard
+  let difficulty = 0;                // 0=easy, 1=med, 2=hard — default easy,
+                                     // matching setup.html's active "קל" button
+                                     // (a medium default here silently gave the
+                                     // bot 5-letter words while easy looked picked)
   let botTime = 40;                  // 20 | 40 | 60
   let showBothRacks = false;
 
@@ -143,7 +146,7 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
   }
 
   // ─── Listen for SETUP_OPEN to configure mode-specific visibility ──
-  cleanups.push(bus.on(SETUP_OPEN, ({ mode: nextMode = 'vs', initialDifficulty = 1, initialBotTime = 40 } = {}) => {
+  cleanups.push(bus.on(SETUP_OPEN, ({ mode: nextMode = 'vs', initialDifficulty = 0, initialBotTime = 40 } = {}) => {
     mode = nextMode;
     difficulty = initialDifficulty;
     botTime = [20, 40, 60, 0].includes(initialBotTime) ? initialBotTime : 40;

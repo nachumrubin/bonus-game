@@ -23,7 +23,7 @@ These values are baked into existing game states stored in Firebase. Changing th
 
 ### Dictionary
 - `data/dictionary.base.txt` — do not delete or truncate. Used by 100+ live games at any time.
-- `EXACT_REJECTS`, `CLASSIC_ALLOW`, `DEFECTIVE_ACCEPT` sets in `hebrewDictionary.js` — do not remove entries. Each entry was a deliberate decision.
+- Reject/accept curation lives in **Firebase only** (June 2026): `/dictionaryRejected` → `BLOCKED_OVERLAY` (reject) and `/dictionaryApproved` → `DICT` (accept), synced at boot. The old in-code `EXACT_REJECTS` / `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` sets were removed — do not re-introduce hardcoded word lists; add words via the Firebase overlays / admin panel. (`COMMON_FALSE_POSSESSIVE` remains — it's morphology logic, not a word list.)
 - `isValid()` function contract: must return `boolean`, synchronously, after dict loads. Never make it async.
 
 ### Event/Command Names
@@ -41,7 +41,7 @@ Any change to these areas must have a corresponding unit test:
 1. **`turnManager.js`** — any change to `isGameOver()`, `applyMove()`, `advanceTurn()`
 2. **`scoringEngine.js`** — any change to scoring formula or bingo detection
 3. **`moveValidator.js`** — any change to validation rules or connectivity logic
-4. **`hebrewDictionary.js`** — any change to lemmatization, prefix/suffix stripping, or the EXACT_REJECTS/CLASSIC_ALLOW sets
+4. **`hebrewDictionary.js`** — any change to lemmatization, prefix/suffix stripping, or the Firebase reject/accept overlay handling (`BLOCKED_OVERLAY` / approved-overlay)
 5. **`bonusResolver.js`** — any change to bonus type resolution or mini-game outcomes
 6. **Firebase database rules** (`firebase.database.rules.json`) — all changes must pass `npm run test:emulator`
 7. **`matchmakingService.js`** — compatibility rules (`isCompatible`) require tests before changes

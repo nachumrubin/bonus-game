@@ -674,11 +674,14 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .settings-panels{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;}
 .set-panel{background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:10px 12px;flex:1;min-width:140px;display:flex;flex-direction:column;gap:8px;align-items:center;}
 .set-panel-title{font-size:12px;font-weight:700;color:var(--by);text-align:center;position:relative;display:flex;align-items:center;justify-content:center;gap:5px;}
-.sett-info{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(106,176,216,.25);border:1px solid rgba(106,176,216,.5);color:#8ecfef;font-size:9px;font-weight:900;font-style:normal;cursor:default;position:relative;flex-shrink:0;line-height:1;user-select:none;}
+.sett-info{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(106,176,216,.25);border:1px solid rgba(106,176,216,.5);color:#8ecfef;font-size:9px;font-weight:900;font-style:normal;cursor:pointer;position:relative;flex-shrink:0;line-height:1;user-select:none;}
 @media (hover:hover){.sett-info:hover .sett-tip{opacity:1;pointer-events:auto;}}
 .sett-tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#0f1d26;border:1px solid #6ab0d8;border-radius:7px;padding:8px 11px;font-size:11px;font-weight:400;color:#eaf4fb;white-space:normal;width:min(190px,80vw);line-height:1.5;text-align:right;direction:rtl;opacity:0;pointer-events:none;transition:opacity .18s;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.6);}
 .sett-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#6ab0d8;}
 .sett-tip.tip-visible{position:fixed !important;opacity:1;pointer-events:auto;}
+/* When tapped open (JS positions it as fixed via inline top/left), the CSS
+   arrow can't track the icon, so hide it. */
+.sett-tip.tip-visible::after{display:none;}
 .set-yesno{display:flex;gap:6px;}
 .set-yn{display:flex;align-items:center;gap:4px;padding:5px 10px;border-radius:5px;border:2px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);cursor:pointer;font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;color:rgba(255,255,255,.7);transition:all .1s;}
 .set-yn.active-yes{background:#2a6a2a;border-color:#4a8a4a;color:#8eff8e;}
