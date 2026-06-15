@@ -120,7 +120,7 @@ The pre-existing concurrent-race test ("parity: concurrent claims — only the f
 - B3 → `b3_unscramble_medium`
 - B8 → `b8_crossword_60s`
 - B10 → `b10_crossing_words`
-- B11 → `b11_word_search`
+- B11 → `b11_hidden_word`
 - B12 → `b12_honeycomb`
 
 Each asserts `miniGamePending: true`, the correct `miniGameKey` (so the UI routes to the right component), and `entries.length === 0` (so the engine doesn't queue boosts until the mini-game resolves).

@@ -97,8 +97,9 @@ for (const [type, key] of [
   ['B3',  'b3_unscramble_medium'],
   ['B8',  'b8_crossword_60s'],
   ['B10', 'b10_crossing_words'],
-  ['B11', 'b11_word_search'],
+  ['B11', 'b11_hidden_word'],
   ['B12', 'b12_honeycomb'],
+  ['B14', 'b14_letter_spinner'],
 ]) {
   test(`${type} (mini-game) returns miniGamePending with key '${key}'`, () => {
     const r = resolveBonusActivation({ bonusType: type, slot: 0, turnNumber: 1 });

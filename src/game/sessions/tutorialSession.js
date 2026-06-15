@@ -62,7 +62,7 @@ export function seedTutorialRack(state, slot = 0) {
 // The bonus square the tutorial routes the player onto is BDEFS[10] — the
 // row-5 right-edge slot at (5,10). createInitialState shuffles BONUS_TYPES
 // into bonusAssignment, so without this override the player would land on
-// a random bonus (often תפזורת / word-search, which is a heavy first
+// a random bonus (often a timed mini-game, which is a heavy first
 // experience). Pin the tutorial slot to B3 (4-letter unscramble) so the
 // demo is short and deterministic. Real games are unaffected.
 export const TUTORIAL_BONUS_SLOT = 10;

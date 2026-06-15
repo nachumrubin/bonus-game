@@ -5,6 +5,17 @@
 
 ---
 
+## B11 retune + new B14 mini-game — June 2026
+
+- [x] B11 מילה נסתרת: timer 20s→10s, reward 100→30 (defs, data, gender/desc, guide, capture spec, tests).
+- [x] New B14 **אות פותחת** (letter spinner): spin alphabet → stop on a letter → make words starting with it in 20s, scored by length like כוורת (reuses `wordPoints`). New `letterSpinnerMiniGame.js` + 9 tests; wired into `BONUS_TYPES`/defs/main.js/intro/gender; CSS `.lsbox`; guide figure + `letterspinner.png`.
+- [ ] (pre-existing, unrelated) `src/game/core/gameEngine.test.js` has 2 failing CONFIRM_MOVE rack/dictionary fixture tests (`placed-not-in-rack`) — not in the `test:unit` gate; fix the rack setup when touching that area.
+
+## B11 bonus redesign — June 2026
+
+- [x] Replace תפזורת (word search) with **מילה נסתרת** (hidden word): 4×4 grid, one hidden 3-letter dictionary word, 20s timer; selections validated against the dictionary (not the hidden word) so any real word wins. New `hiddenWordMiniGame.js` + tests; removed `wordSearchMiniGame.js`; rewired B11 (`b11_hidden_word`), intro/gender copy, CSS, docs.
+- [x] Regenerate the guide screenshot `images/guide/minigames/hiddenword.png` (e2e `hiddenword` shot); guide figure now points at it. Also fixed `showBonusOverlay` to hide the `#app-loading` splash that was clipping mini-game captures. Old `wordsearch.png` is now unreferenced (can be deleted).
+
 ## Bot difficulty distinguishability — June 2026
 
 - [x] Make easy/medium/hard clearly distinct — `DIFFICULTY_PROFILES` + `pickMove` in `botSearch.js`; easy is now beginner-level (short words, low picks, weak opener, score ceiling, blunder chance). `main.js` vocab cap 5000→2000 for easy + per-level think time. Calibrated easy≈8 / med≈30 / hard≈34. Tunable constants flagged in GAP_REPORT.

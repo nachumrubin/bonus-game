@@ -2,6 +2,36 @@
 
 ---
 
+## B11 retune + new B14 בונוס "אות פותחת" (letter spinner) — June 2026
+
+**B11 (מילה נסתרת) tuning:** halved the timer **20s → 10s** and dropped the reward **100 → 30** (the challenge is small). Updated `hiddenWordMiniGame.js` defaults, `bonusTileDefs.js` (`tilePts 100→30`), `data.js` (`pts`), `genderText.js` (`descB11`), `GAMEPLAY_RULES.md`, the guide caption, the capture spec, and the `engine-parity-highrisk.test.js` bonusOk fixture (`['B11', 30]`).
+
+**New B14 — "אות פותחת" (letter spinner):** a כוורת-style word game. A box flips rapidly through the alphabet; the player taps it (or "עצור") to stop on a letter, then has **20 seconds** to enter as many valid Hebrew words as possible that **start with** that letter. Scored by length exactly like the honeycomb (`wordPoints`: 2=3, 3=5, 4=8, 5+=10), reward = sum of word scores. Repeats and wrong-start words are rejected; dictionary check via `hebrewDictionary.isValid`.
+
+- **New:** `src/ui/screens/miniGames/letterSpinnerMiniGame.js` (`gradeLetterGuess`, `mountLetterSpinnerMiniGame`, `playLetterSpinnerForBonus`, `HEBREW_ALEPHBET`, `LS_INTENT`) + `letterSpinnerMiniGame.test.js` (9 tests). Reuses `wordPoints` from `honeycombMiniGame.js` (no duplicated scoring).
+- **Wiring:** `bonusTileDefs.js` (B14 def, `miniGameKey b14_letter_spinner`, tilePts 50), `data.js` `BONUS_TYPES` (+B14, pool now 16 entries), `main.js` (import, UI registry, `b14_letter_spinner` case), `bonusIntroScreen.js` (title + desc map), `genderText.js` (`descB14`). New CSS `.lsbox`.
+- **Tests:** `bonusResolver.test.js` (B14 → key), `gameEngine.test.js` (B14 in the across-seeds appears-set), `engine-parity-highrisk.test.js` (B14 added to the skip + bonusOk interactive lists). No engine changes — B14 flows through the generic `minigame` resolver + deferred-score path.
+- **Guide:** captured `images/guide/minigames/letterspinner.png` (play phase) via the capture spec and added a guide figure.
+
+`npm run test:unit` green (178/178). New co-located src tests green (letter-spinner 9, hidden-word 12, bonusResolver 22). Note: `gameEngine.test.js` has 2 **pre-existing** failures (CONFIRM_MOVE rack/dictionary fixtures, `placed-not-in-rack`) that exist on the untouched test and are unrelated to this change — that suite isn't part of the `test:unit` gate.
+
+---
+
+## B11 bonus: replace תפזורת (word search) with מילה נסתרת (hidden word) — June 2026
+
+Replaced the B11 word-search mini-game with a new **hidden-word** game. A 4×4 grid hides one 3-letter dictionary word along a straight/diagonal line; every other cell is a random Hebrew letter, so other valid words can form by chance. The player has **20 seconds** to select any straight/diagonal run.
+
+Key design point per the request: a selection is **validated against the runtime dictionary** (`hebrewDictionary.isValid`), never string-compared to the single hidden word. The hidden word only guarantees at least one solution exists — any real word the player finds (forward or reverse) wins. Award is all-or-nothing: the tile's 100 points on success, 0 otherwise.
+
+- **New:** `src/ui/screens/miniGames/hiddenWordMiniGame.js` (`placeHiddenWord`, `readLine`, `mountHiddenWordMiniGame`, `playHiddenWordForBonus`, `HW_INTENT`) + `hiddenWordMiniGame.test.js` (12 tests, incl. "a valid dictionary word other than the hidden word also wins").
+- **Removed:** `wordSearchMiniGame.js` + its test.
+- **Rewired:** `bonusTileDefs.js` (`miniGameKey: 'b11_word_search' → 'b11_hidden_word'`), `main.js` (import, UI registry, `b11_hidden_word` case passing `wordsOfLength(3)` + the dictionary validator), `bonusIntroScreen.js` (title `⚡ מילה נסתרת!`), `genderText.js` (`descB11`).
+- **CSS:** swapped the `.ws*` word-search grid styles for `.hwgrid` / `.hwcell` (4-col, larger cells, `.hw-sel` / `.hw-hit`).
+- **Tests/docs:** `bonusResolver.test.js` (B11 key), `engine-parity-highrisk.test.js` (builder test + skip-bonus test now reference the hidden-word module), e2e screenshot spec + capture-screenshot skill, `guide-screen.html` caption, `GAMEPLAY_RULES.md`, `GAP_REPORT.md`, `FILE_INDEX.md`. `npm run test:unit` green (178/178); co-located src tests green (hidden-word 12, bonusResolver 20).
+- **Guide screenshot:** regenerated `images/guide/minigames/hiddenword.png` via the capture spec and pointed the guide figure at it (old `wordsearch.png` no longer referenced). While doing so, fixed the spec's `showBonusOverlay` to also hide the `#app-loading` boot splash — in the test harness the "מתחבר…" splash never settles (no Firebase) and was painting the בוסט logo over `#ov-bonus`, clipping every mini-game capture.
+
+---
+
 ## Bot difficulty: make easy/medium/hard clearly distinguishable — June 2026
 
 Users reported the "easy" (קל) bot was also hard. It wasn't actually weak: its vocab cap kept a *frequency-sorted* corpus (the most common, high-value short words), its "bottom-half random" pick still surfaced strong plays, all levels shared a fixed 3s think time, and the **first move ignored difficulty**.

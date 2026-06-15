@@ -146,8 +146,8 @@ Mini-games render into `#ov-bonus` (with `#bchal` as the dynamic body slot) when
 2. Mount the mini-game via `window.__spine.ui.mountFooMiniGame({ bus, rng, ... })`.
 3. **Override the overlay chrome** if you want a specific title/subtitle:
    ```js
-   const t = document.getElementById('bovt'); if (t) t.textContent = 'תפזורת';
-   const d = document.getElementById('bovd'); if (d) d.textContent = 'מצא מילים…';
+   const t = document.getElementById('bovt'); if (t) t.textContent = 'מילה נסתרת';
+   const d = document.getElementById('bovd'); if (d) d.textContent = 'מצא מילה נסתרת…';
    ```
    Some mini-games (unscramble) override `bovt` themselves on mount — that's fine, just don't fight it.
 4. Screenshot `#ov-bonus` as a locator (cleaner edges than the full viewport).

@@ -45,7 +45,7 @@ test('createInitialState seeds bonusAssignment with shuffled unique types incl. 
     for (const entry of s.bonusAssignment) types.add(entry.type);
   }
   // Across enough seeds, the rare end-of-list types should appear at least once.
-  for (const t of ['B11', 'B12', 'B13']) {
+  for (const t of ['B11', 'B12', 'B13', 'B14']) {
     assert.ok(types.has(t), `${t} should appear in some bonus assignment across seeds`);
   }
 });

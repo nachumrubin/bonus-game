@@ -17,9 +17,10 @@ export const BONUS_TYPES = [
   { type: 'B8',  pts: 0,   ic: '⚡' },
   { type: 'B9',  pts: 25,  ic: '⚡' },
   { type: 'B10', pts: 40,  ic: '⚡' },
-  { type: 'B11', pts: 100, ic: '⚡' },
+  { type: 'B11', pts: 30,  ic: '⚡' },
   { type: 'B12', pts: 50,  ic: '⚡' },
   { type: 'B13', pts: 0,   ic: '⚡' },
+  { type: 'B14', pts: 50,  ic: '⚡' },
 ];
 
 // Bonus square positions (index.html:3148). Each entry says which side of the

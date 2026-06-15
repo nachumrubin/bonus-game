@@ -270,12 +270,13 @@ Source: `src/game/boosts/bonusTileDefs.js`, `data.js`, `bonusResolver.js`
 | B8 | 0 | mini-game | Crossword puzzle (60-second timer) |
 | B9 | 25 | auto | +25 points immediately |
 | B10 | 40 | mini-game | Crossing words challenge |
-| B11 | 100 | mini-game | Word search |
+| B11 | 30 | mini-game | Hidden word (4×4 grid, find a hidden 3-letter word in 10s) |
 | B12 | 50 | mini-game | Honeycomb word challenge |
 | B13 | 0 | wheel | Spin for random outcome |
+| B14 | 50 | mini-game | Letter spinner (אות פותחת) — stop on a letter, make words starting with it in 20s; scored by word length like B12 |
 
 ### Bonus Assignment
-`BONUS_TYPES` array has 15 entries (can have duplicates): `2×B1, 2×B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13`. Shuffled at game start and assigned to the 12 (or fewer) bonus slots.
+`BONUS_TYPES` array has 16 entries (can have duplicates): `2×B1, 2×B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14`. Shuffled at game start and assigned to the 12 (or fewer) bonus slots. `createInitialState` de-duplicates by type, shuffles, takes 12, and pads with B9 — so with 14 distinct types most games surface a different subset of the rarer mini-games (B11–B14).
 
 ### B13 Wheel Outcomes
 - `pts_50`: +50 points

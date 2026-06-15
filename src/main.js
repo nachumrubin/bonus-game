@@ -82,10 +82,11 @@ import { mountBoostBadges, BB_INTENT } from './ui/screens/boostBadges.js';
 import { mountUnscrambleMiniGame,    playUnscrambleForBonus    } from './ui/screens/miniGames/unscrambleMiniGame.js';
 import { mountFillMiddleMiniGame,    playFillMiddleForBonus    } from './ui/screens/miniGames/fillMiddleMiniGame.js';
 import { mountWheelMiniGame,         playWheelForBonus         } from './ui/screens/miniGames/wheelMiniGame.js';
-import { mountWordSearchMiniGame,    playWordSearchForBonus    } from './ui/screens/miniGames/wordSearchMiniGame.js';
+import { mountHiddenWordMiniGame,    playHiddenWordForBonus    } from './ui/screens/miniGames/hiddenWordMiniGame.js';
 import { mountCrosswordMiniGame,     playCrosswordForBonus     } from './ui/screens/miniGames/crosswordMiniGame.js';
 import { mountCrossingWordsMiniGame, playCrossingWordsForBonus } from './ui/screens/miniGames/crossingWordsMiniGame.js';
 import { mountHoneycombMiniGame,     playHoneycombForBonus     } from './ui/screens/miniGames/honeycombMiniGame.js';
+import { mountLetterSpinnerMiniGame, playLetterSpinnerForBonus } from './ui/screens/miniGames/letterSpinnerMiniGame.js';
 import { mountScoreBonusAnimation } from './ui/controllers/scoreBonusAnimation.js';
 import { mountProfileScreen, PROFILE_INTENT, PROFILE_RENDER, avatarEmoji } from './ui/screens/profileScreen.js';
 import { mountStatsScreen, STATS_INTENT } from './ui/screens/statsScreen.js';
@@ -292,8 +293,9 @@ async function boot() {
       mountAsyncGamesScreen, mountAsyncHomeButton,
       mountBonusIntroScreen, mountBoostVetoScreen, mountBoostBadges,
       mountUnscrambleMiniGame, mountWheelMiniGame,
-      mountWordSearchMiniGame, mountCrosswordMiniGame,
+      mountHiddenWordMiniGame, mountCrosswordMiniGame,
       mountCrossingWordsMiniGame, mountHoneycombMiniGame,
+      mountLetterSpinnerMiniGame,
       mountFillMiddleMiniGame,
       mountScoreBonusAnimation,
       mountProfileScreen, mountStatsScreen, mountAvatarPickerScreen, mountAvatarUnlockedScreen,
@@ -2725,13 +2727,18 @@ async function boot() {
             controller: ctl,
           });
           return;
-        case 'b11_word_search':
-          // Faithful B11 port: uses the legacy 30-word curated pool baked
-          // into wordSearchMiniGame.js (HEBREW_WORD_POOL), not the runtime
-          // dictionary. This keeps the puzzle hand-tuned to short common
-          // Hebrew words with no final-letter forms.
-          playWordSearchForBonus({
+        case 'b11_hidden_word':
+          // B11 מילה נסתרת: a 4×4 grid hides one 3-letter dictionary word;
+          // the rest is random fill, so other words may form by chance. The
+          // player has 20 seconds to select any straight/diagonal run, which
+          // is validated against the runtime dictionary (not string-compared
+          // to the hidden word) — any real word wins. wordsOfLength(3)
+          // supplies norm'd 3-letter words from hebrewDictionary.DICT to seed
+          // the guaranteed solution.
+          playHiddenWordForBonus({
             bus,
+            words: wordsOfLength(3),
+            validator: (w) => hebrewDictionary.isValid?.(w) ?? hebrewDictionary.DICT.has(w),
             controller: ctl,
           });
           return;
@@ -2742,6 +2749,19 @@ async function boot() {
           // timer. The legacy game allows any letter (not just the 7 in
           // the honeycomb) so we just gate on the morphological isValid.
           playHoneycombForBonus({
+            bus,
+            validator: (w) => hebrewDictionary.isValid?.(w) ?? hebrewDictionary.DICT.has(w),
+            norm:       hebrewDictionary.norm ?? ((x) => x),
+            controller: ctl,
+          });
+          return;
+        case 'b14_letter_spinner':
+          // B14 אות פותחת: spin a box through the alphabet, tap to stop on a
+          // letter, then make as many valid words starting with it as possible
+          // in 20 seconds. Scored by length like the honeycomb (כוורת); the
+          // reward is the sum of word scores. Same dictionary validator + norm
+          // as the other word mini-games.
+          playLetterSpinnerForBonus({
             bus,
             validator: (w) => hebrewDictionary.isValid?.(w) ?? hebrewDictionary.DICT.has(w),
             norm:       hebrewDictionary.norm ?? ((x) => x),
