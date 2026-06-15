@@ -25,9 +25,10 @@ const TITLE_BY_TYPE = {
   B3:  '⚡ אנגרמה!',
   B8:  '⚡ תשבץ!',
   B10: '⚡ מילים מצטלבות!',
-  B11: '⚡ תפזורת!',
+  B11: '⚡ מילה נסתרת!',
   B12: '⚡ כוורת!',
   B13: '🎡 גלגל המזל!',
+  B14: '⚡ אות פותחת!',
 };
 
 // Legacy used the `🎡` Ferris-wheel emoji as the bonus-intro icon for
@@ -45,6 +46,7 @@ function descByType(bonusType) {
     B11: 'descB11',
     B12: 'descB12',
     B13: 'descB13',
+    B14: 'descB14',
   }[bonusType];
   return key ? g(key, getGender()) : 'משחקון בוסט';
 }

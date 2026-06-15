@@ -70,8 +70,8 @@ export const BONUS_TILE_DEFS = {
     autoExtra: 0,
   },
   B11: {
-    type: 'B11', tilePts: 100, category: 'minigame',
-    miniGameKey: 'b11_word_search',
+    type: 'B11', tilePts: 30, category: 'minigame',
+    miniGameKey: 'b11_hidden_word',
     autoExtra: 0,
   },
   B12: {
@@ -82,6 +82,11 @@ export const BONUS_TILE_DEFS = {
   B13: {
     type: 'B13', tilePts: 0, category: 'wheel',
     miniGameKey: 'b13_wheel_of_fortune',
+    autoExtra: 0,
+  },
+  B14: {
+    type: 'B14', tilePts: 50, category: 'minigame',
+    miniGameKey: 'b14_letter_spinner',
     autoExtra: 0,
   },
 };

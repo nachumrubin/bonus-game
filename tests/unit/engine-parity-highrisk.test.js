@@ -16,7 +16,7 @@ function loadModules() {
     import('../../src/game/online/roomService.js'),
     import('../../src/game/online/schema.js'),
     import('../../src/game/sessions/onlineGameSession.js'),
-    import('../../src/ui/screens/miniGames/wordSearchMiniGame.js'),
+    import('../../src/ui/screens/miniGames/hiddenWordMiniGame.js'),
     import('../../src/ui/screens/miniGames/crosswordMiniGame.js'),
     import('../../src/ui/screens/miniGames/crossingWordsMiniGame.js'),
     import('../../src/game/account/dictionaryService.js'),
@@ -24,11 +24,11 @@ function loadModules() {
     import('../../src/game/settings/settingsCompat.js'),
   ]).then(([
     bus, commands, events, board, engine, dict, boosts, mockFirebase,
-    roomService, schema, onlineSession, wordSearch, crossword, crossingWords,
+    roomService, schema, onlineSession, hiddenWord, crossword, crossingWords,
     dictionaryService, ratingService, settingsCompat,
   ]) => ({
     bus, commands, events, board, engine, dict, boosts, mockFirebase,
-    roomService, schema, onlineSession, wordSearch, crossword, crossingWords,
+    roomService, schema, onlineSession, hiddenWord, crossword, crossingWords,
     dictionaryService, ratingService, settingsCompat,
   }));
   return modulesPromise;
@@ -289,12 +289,12 @@ test('legacy bonusSkip: skipped pending bonus is cleared after base move commit'
   assert.equal(state.pendingBonuses.length, 0, 'legacy bonusSkip clears bonusPend and only commits the base move');
 });
 
-// Reported bug: "skipping a תפזורת (B11 word search) still granted 10 bonus
-// points." Skipping resolves the mini-game with extra:0, so the committed
-// score must be ONLY the base word score (here 'בא' = 3+1 = 4) — never base
-// + a phantom bonus. Covers B11 and the other interactive mini-game tiles.
-test('skipping an interactive mini-game (B11 תפזורת etc.) commits only the base word score', async () => {
-  for (const bonusType of ['B11', 'B1', 'B3', 'B8', 'B10', 'B12']) {
+// Reported bug: "skipping a B11 mini-game still granted bonus points."
+// Skipping resolves the mini-game with extra:0, so the committed score must
+// be ONLY the base word score (here 'בא' = 3+1 = 4) — never base + a phantom
+// bonus. Covers B11 and the other interactive mini-game tiles.
+test('skipping an interactive mini-game (B11 מילה נסתרת etc.) commits only the base word score', async () => {
+  for (const bonusType of ['B11', 'B1', 'B3', 'B8', 'B10', 'B12', 'B14']) {
     const { commands, board, dict, state, eng } = await makeEngine({ seed: `skip-${bonusType}` });
     seedDict(dict, ['בא']);
     state.firstMove = false;
@@ -324,8 +324,9 @@ test('legacy bonusOk: interactive B1/B3/B8/B10/B11/B12 success clears pending an
     ['B3', 40],
     ['B8', 20],
     ['B10', 40],
-    ['B11', 100],
+    ['B11', 30],
     ['B12', 50],
+    ['B14', 50],
   ];
 
   for (const [bonusType, extra] of interactive) {
@@ -429,17 +430,16 @@ test('legacy computeExpiredOnlineTurnState/shouldClaimExpiredOnlineTurn: online 
   assert.notEqual(next.status, 'abandoned');
 });
 
-test('legacy buildWordSearch: modular word-search builder keeps grid size, word count, and extract/match behavior', async () => {
-  const { wordSearch } = await loadModules();
-  const words = wordSearch.HEBREW_WORD_POOL.slice(0, 12);
-  const puzzle = wordSearch.placeWords(words, { rng: constantRng(0.1) });
+test('B11 hidden-word builder: 4×4 grid hides one 3-letter word readable along its line', async () => {
+  const { hiddenWord } = await loadModules();
+  const words = ['בית', 'דרך', 'יום', 'אור', 'גשר'];
+  const puzzle = hiddenWord.placeHiddenWord(words, { rng: constantRng(0.1) });
 
-  assert.equal(puzzle.grid.length, 10);
-  assert.equal(puzzle.grid[0].length, 10);
-  assert.equal(puzzle.placements.length, 10);
-  const first = puzzle.placements[0];
-  assert.equal(wordSearch.extractWord(puzzle.grid, first.from, first.to), first.word);
-  assert.equal(wordSearch.matchPlacement(puzzle.placements, first.from, first.to)?.word, first.word);
+  assert.equal(puzzle.grid.length, 4);
+  assert.equal(puzzle.grid[0].length, 4);
+  assert.ok(puzzle.hidden, 'expected a hidden placement');
+  assert.equal(puzzle.hidden.word.length, 3);
+  assert.equal(hiddenWord.readLine(puzzle.grid, puzzle.hidden.from, puzzle.hidden.to), puzzle.hidden.word);
 });
 
 test('legacy buildCrossword: modular crossword draws 20 non-joker tiles and rejects any illegal word on finalize', async () => {

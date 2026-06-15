@@ -22,7 +22,7 @@ async function bootSpine(page) {
   await page.goto('/');
   await page.waitForFunction(() =>
     window.__spine?.enabled === true
-    && typeof window.__spine.ui?.mountWordSearchMiniGame === 'function'
+    && typeof window.__spine.ui?.mountHiddenWordMiniGame === 'function'
     && typeof window.__spine.hebrewDictionary?.isValid === 'function');
   // Mini-games that need a Hebrew word list pull from hebrewDictionary.DICT.
   // The first paint may finish before the dictionary file is downloaded, so
@@ -37,10 +37,14 @@ async function bootSpine(page) {
 
 async function showBonusOverlay(page) {
   await page.evaluate(() => {
-    // Hide the home screen so it doesn't show through translucent overlay parts.
+    // Hide the home screen + the boot splash so neither shows through (the
+    // #app-loading "מתחבר..." splash stays painted over #ov-bonus until the
+    // Firebase connection settles, which never happens in the test harness).
     for (const id of ['sh', 'tut-intro', 'ov-champs', 'ov-settings', 'ov-guide', 'ov-faq']) {
       document.getElementById(id)?.classList.add('hidden');
     }
+    const loader = document.getElementById('app-loading');
+    if (loader) loader.style.display = 'none';
     const ov = document.getElementById('ov-bonus');
     if (ov) ov.classList.remove('hidden');
   });
@@ -87,29 +91,56 @@ async function resetOverlay(page) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 1. תפזורת (word search)
+// 1. מילה נסתרת (hidden word)
 // ─────────────────────────────────────────────────────────────────────
-test('minigame — תפזורת (word search)', async ({ page }) => {
+test('minigame — מילה נסתרת (hidden word)', async ({ page }) => {
   await bootSpine(page);
   await resetOverlay(page);
   await showBonusOverlay(page);
   await page.evaluate(`(function(){
     const rng = ${SEEDED_RNG}(42);
-    // Pick a handful of short, common Hebrew words to ensure the grid
-    // has enough placements to look populated.
-    const dict = [...window.__spine.hebrewDictionary.DICT];
-    const words = dict.filter(w => w.length >= 3 && w.length <= 5).slice(0, 60);
-    window.__activeMiniGame = window.__spine.ui.mountWordSearchMiniGame({
+    const hd = window.__spine.hebrewDictionary;
+    // Seed with 3-letter dictionary words so one is hidden in the 4×4 grid.
+    const words = [...hd.DICT].filter(w => hd.norm(w).length === 3).slice(0, 200);
+    window.__activeMiniGame = window.__spine.ui.mountHiddenWordMiniGame({
       bus: window.__spine.bus,
       words, rng,
-      durationMs: 60_000,   // long enough that the timer reads ~01:00
+      validator: (w) => hd.isValid(w),
+      durationMs: 10_000,
     });
     // Headline + subtitle so the overlay chrome reads naturally.
-    const t = document.getElementById('bovt'); if (t) t.textContent = 'תפזורת';
-    const d = document.getElementById('bovd'); if (d) d.textContent = 'מצא מילים עבריות מוסתרות ברשת';
+    const t = document.getElementById('bovt'); if (t) t.textContent = 'מילה נסתרת';
+    const d = document.getElementById('bovd'); if (d) d.textContent = 'מצא מילה נסתרת ברשת 4×4';
   })()`);
   await page.waitForTimeout(300);
-  await shot(page, 'wordsearch');
+  await shot(page, 'hiddenword');
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// 1b. אות פותחת (letter spinner)
+// ─────────────────────────────────────────────────────────────────────
+test('minigame — אות פותחת (letter spinner)', async ({ page }) => {
+  await bootSpine(page);
+  await resetOverlay(page);
+  await showBonusOverlay(page);
+  await page.evaluate(`(function(){
+    const rng = ${SEEDED_RNG}(9);
+    const hd = window.__spine.hebrewDictionary;
+    window.__activeMiniGame = window.__spine.ui.mountLetterSpinnerMiniGame({
+      bus: window.__spine.bus,
+      validator: (w) => hd.isValid(w),
+      norm: hd.norm,
+      rng,
+      letter: 'ב',           // preset so the capture shows the play phase
+      durationMs: 20_000,
+    });
+    // Populate a few found words so the chips list reads naturally.
+    const words = [...hd.DICT].filter(w => [...w][0] === 'ב' && hd.norm(w).length >= 2).slice(0, 5);
+    for (const w of words) window.__activeMiniGame.submit(w);
+    const t = document.getElementById('bovt'); if (t) t.textContent = 'אות פותחת';
+  })()`);
+  await page.waitForTimeout(300);
+  await shot(page, 'letterspinner');
 });
 
 // ─────────────────────────────────────────────────────────────────────
