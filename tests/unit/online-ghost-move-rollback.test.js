@@ -268,4 +268,90 @@ test('late-commit gate: CONFIRM_MOVE past deadline + grace emits turn-expired an
   assert.equal(sess.state.board[4][5], null, 'no tile placed at (4,5)');
 });
 
+test('forceResync emits GAME_COMPLETED when room was abandoned by watchdog during a simultaneous commit', async () => {
+  // Regression for the "forfeit notification" bug:
+  // When the forfeiting player tries to make a move at the exact moment the
+  // opponent's watchdog commits a forfeit (status:'abandoned'), the sequence is:
+  //   1. Player's commitTransaction fails (stale version — watchdog wrote first)
+  //   2. forceResync() reads the room → sees status:'abandoned' → updates state
+  //   3. forceResync advances lastAppliedVersion to the abandoned version
+  //   4. forceResync emits EV.TURN_CHANGED but (before fix) NOT EV.GAME_COMPLETED
+  //   5. watchRoom fires, but incoming.version <= lastAppliedVersion, so it goes
+  //      through applyTerminalStatusIfNeeded which short-circuits because
+  //      state.status === incoming.status ('abandoned' === 'abandoned')
+  //   6. EV.GAME_COMPLETED is NEVER emitted → game continues on forfeiter's screen
+  const {
+    bus, CMD, EV, createInitialState, makeMockDb, createRoom, readRoom, createOnlineGameSession,
+  } = await loadModules();
+  bus._reset();
+
+  const db = makeMockDb();
+  const engineState = createInitialState({
+    mode: 'friend-live', tileBagSeed: 'forfeit-notify-test',
+    players: PLAYERS, settings: {},
+  });
+  engineState.racks = {
+    0: ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'],
+    1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+  };
+  await createRoom(db, {
+    roomId: 'room', mode: 'friend-live',
+    players: PLAYERS, settings: {}, engineState, serverTimestamp: 1000,
+  });
+  await db.ref('rooms/room').update({ status: 'playing' });
+
+  const room = await readRoom(db, 'room');
+  const sess = await createOnlineGameSession({ bus, db, room, mySlot: 0 });
+  sess.start();
+
+  const completed = [];
+  bus.on(EV.GAME_COMPLETED, p => completed.push(p));
+
+  // Stub: the next transaction fails (watchdog claimed first).
+  // We also directly mutate _data (bypassing watchers) to simulate the
+  // watchdog's abandoned write that forceResync will read via .get().
+  let pendingFails = 1;
+  const realRef = db.ref.bind(db);
+  db.ref = (p) => {
+    const ref = realRef(p);
+    if (p === 'rooms/room' && typeof ref.transaction === 'function') {
+      const realTx = ref.transaction.bind(ref);
+      ref.transaction = (updateFn) => {
+        if (pendingFails > 0) {
+          pendingFails--;
+          // Mutate _data directly (no watcher notification) so forceResync's
+          // readRoom sees 'abandoned' but watchRoom never fires with it.
+          const roomData = db._data.rooms.room;
+          roomData.status = 'abandoned';
+          roomData.abandonedBy = 0;
+          roomData.abandonReason = 'missed-turns';
+          roomData.version = (roomData.version ?? 1) + 1;
+          return Promise.resolve({ committed: false, snapshot: null });
+        }
+        return realTx(updateFn);
+      };
+    }
+    return ref;
+  };
+
+  sess.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1, isJoker: false },
+        { r: 4, c: 5, letter: 'ב', val: 3, isJoker: false },
+      ],
+      swappedTiles: [],
+    },
+  });
+
+  // Let forceResync settle (it awaits a readRoom round-trip).
+  await new Promise(r => setTimeout(r, 30));
+
+  assert.equal(completed.length, 1,
+    'EV.GAME_COMPLETED must fire on the forfeiting player\'s side after a failed commit lands on an abandoned room');
+  assert.equal(completed[0].status, 'abandoned');
+  assert.equal(completed[0].abandonedBy, 0);
+});
+
 test.after(() => { console.info = _origInfo; });

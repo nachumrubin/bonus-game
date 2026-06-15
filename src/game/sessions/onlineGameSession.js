@@ -142,6 +142,7 @@ export async function createOnlineGameSession({
     let incoming = null;
     try { incoming = await readRoom(db, room.roomId); } catch { /* swallow */ }
     if (!incoming) return;
+    const previousStatus = state.status;
     // Replace engine state with the freshly-read authoritative state. We
     // use engineStateFromRoom so every field is rebuilt — board, racks,
     // scores, bag, currentTurnSlot, turnNumber, status, passCount, ... —
@@ -175,6 +176,25 @@ export async function createOnlineGameSession({
       turnNumber: state.turnNumber,
       reason: `force-resync:${reason ?? 'sync-rejected'}`,
     });
+    // If the room transitioned to a terminal status while our commit was in
+    // flight (e.g. the opponent's watchdog wrote status:'abandoned' at the
+    // same moment we tried to commit), the watchRoom snapshot that would
+    // normally fire EV.GAME_COMPLETED arrives AFTER forceResync advances
+    // lastAppliedVersion. The watcher then routes through
+    // applyTerminalStatusIfNeeded, which short-circuits because
+    // state.status already equals incoming.status — so GAME_COMPLETED is
+    // never emitted. Mirror the check here to close that gap.
+    if (isTerminalStatus(state.status) && state.status !== previousStatus) {
+      state.abandonedBy = incoming.abandonedBy ?? state.abandonedBy ?? null;
+      state.abandonReason = incoming.abandonReason ?? state.abandonReason ?? null;
+      bus.emit(EV.GAME_COMPLETED, {
+        status: state.status,
+        winnerSlot: null,
+        scores: { ...state.scores },
+        abandonedBy: state.abandonedBy,
+        abandonReason: state.abandonReason,
+      });
+    }
   }
 
   // ─── Outbound: when the engine confirms a local move, push it to Firebase.
