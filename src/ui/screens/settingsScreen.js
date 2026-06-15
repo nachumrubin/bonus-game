@@ -142,6 +142,53 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
     bus.emit(SETTINGS_CHANGED, { [ctr.key]: next });
   }
 
+  // ─── Info "i" tooltips ──────────────────────────────────
+  // The .sett-info circles only revealed their .sett-tip via a CSS
+  // `@media (hover:hover)` rule — so on touch devices (the app's primary
+  // target) tapping did nothing. Wire tap/click to toggle the tip, positioned
+  // as `fixed` near the icon so it escapes the overlay's `overflow-x:hidden`
+  // clipping. Hover still works on desktop via the existing CSS.
+  let openTip = null;
+  function closeTip() {
+    if (!openTip) return;
+    openTip.classList.remove('tip-visible');
+    openTip.style.left = openTip.style.top = openTip.style.bottom = openTip.style.transform = '';
+    openTip = null;
+  }
+  function openTipFor(icon) {
+    const tip = icon.querySelector?.('.sett-tip');
+    if (!tip) return;
+    closeTip();
+    tip.classList.add('tip-visible');
+    // Neutralize the CSS hover positioning before measuring, then place it.
+    tip.style.left = '0px'; tip.style.top = '0px'; tip.style.bottom = 'auto'; tip.style.transform = 'none';
+    const ir = icon.getBoundingClientRect();
+    const tr = tip.getBoundingClientRect();
+    const vw = globalThis.innerWidth || 360;
+    let left = ir.left + ir.width / 2 - tr.width / 2;
+    left = Math.max(8, Math.min(left, vw - tr.width - 8));
+    let top = ir.top - tr.height - 8;            // prefer above the icon
+    if (top < 8) top = ir.bottom + 8;            // flip below if no room
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(top)}px`;
+    openTip = tip;
+  }
+  for (const icon of overlay.querySelectorAll?.('.sett-info') ?? []) {
+    cleanups.push(on(icon, 'click', (e) => {
+      e.preventDefault?.();
+      e.stopPropagation?.();
+      const tip = icon.querySelector?.('.sett-tip');
+      if (tip && tip === openTip) closeTip();   // tap again to dismiss
+      else openTipFor(icon);
+    }));
+  }
+  // Any tap/click elsewhere (or scroll) dismisses an open tip.
+  const onDocClick = () => closeTip();
+  if (root?.addEventListener) {
+    root.addEventListener('click', onDocClick);
+    cleanups.push(() => root.removeEventListener('click', onDocClick));
+  }
+
   // ─── Close buttons ──────────────────────────────────────
   // Both the bottom "אישור ✓" button and the top-corner "×" close the
   // overlay. They share the legacy onclick="ovClose('ov-settings')", so wire
@@ -152,12 +199,14 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
     closeBtn.removeAttribute('onclick');
     cleanups.push(on(closeBtn, 'click', (e) => {
       e.preventDefault?.();
+      closeTip();
       bus.emit(SETTINGS_INTENT.CLOSE);
       overlay.classList?.add('hidden');
     }));
   }
 
   cleanups.push(bus.on(SETTINGS_OPEN, () => {
+    closeTip();
     const uiPrefs = getUiPrefs?.() ?? {};
     refreshControls(normalizeGameSettings(getSettings?.() ?? {}), uiPrefs);
     applyGenderToRoot(overlay, uiPrefs.gender);

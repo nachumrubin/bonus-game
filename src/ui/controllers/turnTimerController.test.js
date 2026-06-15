@@ -307,6 +307,47 @@ test('menu pause state is cleared by GAME_STARTED — a resumed-saved-game ticks
   ctl.dispose();
 });
 
+test('offline deadline adds a queued timer_bonus (+10s) once and then consumes it', () => {
+  // Repro of the reported bug: a B13 wheel "+10 seconds" boost left
+  // state.turnTimerBonusMs set by the engine, but ensureDeadline ignored it
+  // and the player never actually got the extra seconds.
+  bus._reset();
+  let nowMs = 1_000;
+  const session = {
+    state: {
+      mode: 'offline-solo',
+      status: 'playing',
+      currentTurnSlot: 0,
+      turnNumber: 5,
+      settings: { timelimit: true, botTime: 40 },
+      turnDeadlineMs: 0,
+      turnTimerBonusMs: 10_000, // engine queued +10s for this slot's turn
+    },
+    dispatched: [],
+    dispatch(cmd) { this.dispatched.push(cmd); },
+  };
+  const ctl = createTurnTimerController({
+    bus,
+    root: makeRoot(makeEl(), makeEl()),
+    sessionRef: () => session,
+    now: () => nowMs,
+    setIntervalFn: () => 1,
+    clearIntervalFn: () => {},
+  });
+  // 40s base + 10s bonus = 50s clock from now.
+  assert.equal(session.state.turnDeadlineMs, nowMs + 50_000);
+  // The one-shot bonus is consumed so it can't extend later turns.
+  assert.equal(session.state.turnTimerBonusMs, 0);
+
+  // Next turn (no bonus) gets a plain 40s clock.
+  nowMs = 60_000;
+  session.state.currentTurnSlot = 1;
+  session.state.turnNumber = 6;
+  bus.emit(EV.TURN_CHANGED, {});
+  assert.equal(session.state.turnDeadlineMs, nowMs + 40_000);
+  ctl.dispose();
+});
+
 test('offline turn change resets the deadline (no leftover from previous turn)', () => {
   bus._reset();
   let nowMs = 1_000;

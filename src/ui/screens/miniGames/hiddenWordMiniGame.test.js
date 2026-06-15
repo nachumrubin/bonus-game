@@ -109,6 +109,25 @@ test('mount (no-DOM): a valid dictionary word other than the hidden word also wi
   }
 });
 
+test('mount (no-DOM): a 2-letter run is rejected even if it is a dictionary word', () => {
+  // The challenge demands a word of the hidden word's length (3). A shorter
+  // incidental run (e.g. 2 letters) must NOT win, even if accepted by the dict.
+  bus._reset();
+  const events = [];
+  bus.on(HW_INTENT.RESULT, r => events.push(r));
+  const game = mountHiddenWordMiniGame({
+    bus, words: WORDS, rng: rngSeed(5), doc: null, wordLen: 3,
+    validator: () => true, // accept anything the dictionary is asked about
+  });
+  // A 2-cell horizontal run (length 2) — rejected purely on length.
+  assert.equal(game.submit({ r: 0, c: 0 }, { r: 0, c: 1 }), false);
+  assert.equal(events.length, 0, 'no win emitted for a too-short word');
+  // The 3-letter hidden word still wins.
+  const { from, to } = game._puzzle.hidden;
+  assert.equal(game.submit(from, to), true);
+  assert.equal(events[0].success, true);
+});
+
 test('mount (no-DOM): a non-dictionary selection is rejected and does not finish', () => {
   bus._reset();
   const events = [];

@@ -2,6 +2,65 @@
 
 ---
 
+## Fix: B11 hidden-word accepted too-short words — June 2026
+
+The hidden-word mini-game (B11 מילה נסתרת) demands a 3-letter word, but `checkSelection` accepted any dictionary word of length ≥ 2 — so a 2-letter run like `נצ` won the bonus. Tightened the rule to require the selection to be **exactly `wordLen` letters** (the hidden word's length, 3). Forward/reverse dictionary acceptance is unchanged, so any *3-letter* real word still wins — only the incidental shorter runs are now rejected. Wrong-length taps show `✗ <word> — צריך 3 אותיות`. Added a regression test (a 2-letter run is rejected even when the validator accepts it; the 3-letter hidden word still wins). `npm run test:unit` 178/178; `hiddenWordMiniGame.test.js` 13/13.
+
+---
+
+## Fix: settings "i" info tooltips didn't open on touch — June 2026
+
+The little `.sett-info` "i" circles in the settings overlay only revealed their `.sett-tip` via a CSS `@media (hover:hover)` rule, so on touch devices (the app's primary target) tapping them did nothing — and the existing `.sett-tip.tip-visible` state had no JS toggling it.
+
+`settingsScreen.js` now wires a tap/click handler on every `.sett-info`: it toggles the tip and positions it `fixed` near the icon (clamped into the viewport, flips below if no room above) so it escapes the settings overlay's `overflow-x:hidden` clipping. Tapping the icon again, tapping elsewhere, or opening/closing settings dismisses it. CSS: `.sett-info` cursor → pointer; the CSS arrow is hidden in the JS-positioned (`tip-visible`) state since it can't track the icon. Hover still works on desktop. Verified in-browser (tap → tip `opacity` 0→1, on-screen).
+
+---
+
+## Dictionary: move reject/accept curation to Firebase only — June 2026
+
+Removed the hardcoded curation lists from `src/game/core/hebrewDictionary.js` — `EXACT_REJECTS` (~175 words: inflected prepositions, the proper noun `ירושלים`, the slur `נאצי`), `CLASSIC_ALLOW` (18 short particles), and `DEFECTIVE_ACCEPT` (10 defective spellings). Reject/accept curation now lives **only** in Firebase, via the existing boot-time overlays: `/dictionaryRejected` → `BLOCKED_OVERLAY` (reject) and `/dictionaryApproved` → `DICT` (accept).
+
+- `isValidV2` policy is now: clean → `BLOCKED_OVERLAY` reject → DAWG hit → approved-overlay → invalid. The v1 morphology helpers (`looksLikePrefixedParticle`, `looksLikePossessive`) no longer reference `CLASSIC_ALLOW`. `COMMON_FALSE_POSSESSIVE` is kept — it's morphology logic, not a curated word list.
+- **Migration is NOT applied** (per request — "remove only"). The removed entries are captured one-per-line in **`docs-md/dictionary-firebase-seed.txt`** (REJECTED → `/dictionaryRejected`, APPROVED → `/dictionaryApproved`) to load into Firebase later. ⚠️ Until loaded, those words follow the base dictionary's verdict — prioritize `נאצי` and `ירושלים`.
+- Tests: replaced the 4 list-membership tests in `hebrewDictionary.test.js` with `BLOCKED_OVERLAY`-reject tests (v1 + v2); the approved-overlay accept test already existed.
+- Docs: `docs-md/CLAUDE.md` (hard rule updated — no hardcoded lists), `GAMEPLAY_RULES.md`, `GAP_REPORT.md`.
+- Scope note: the offline `tools/dictionary-build/*` pipeline keeps its own copies (they bake the DAWG binary; not runtime validation) — unchanged.
+
+`npm run test:unit` green (178/178); `hebrewDictionary.test.js` 25/25.
+
+---
+
+## Fix: easy bot default + remove Bubblewrap — June 2026
+
+**Easy bot played 5-letter words.** `searchBotMove` correctly caps easy at `maxWordLen: 3` (verified by repro: difficulty 0 → 2-letter word), so the difficulty reaching the bot wasn't 0. Cause: [setup.html](../partials/screens/setup.html) ships the **קל (easy)** button as active (`class="db a"`), but `setupScreen.js` defaulted `difficulty = 1` and `main.js` opened bot setup with `initialDifficulty: 1` (medium). A player who opened "נגד המחשב" and pressed Play got **medium** while easy looked selected.
+
+Fix: default difficulty is now **0 (easy)** everywhere it's seeded — `setupScreen.js` (`let difficulty = 0`, `SETUP_OPEN` default `initialDifficulty = 0`) and `main.js` (`START_VS_BOT` emits `initialDifficulty: 0`) — so the highlighted button, the internal state, and the played level all agree. Harder levels remain one click away. The `DIFFICULTY_PROFILES` themselves were already correct and unchanged.
+
+**Removed Bubblewrap.** The app is built with the Android Studio project in `android/` (self-contained: own Gradle wrapper, `build.gradle`, keystore, versionCode 10 / versionName 1.2). Deleted the redundant root Bubblewrap working copy — `twa-manifest.json` (tracked) plus the untracked `gradlew`, `gradlew.bat`, `gradle/`, `.gradle/`, `build/`, `app/`, `build.gradle`, `settings.gradle`, `gradle.properties`, `manifest-checksum.txt`, `store_icon.png`. These were also what broke `firebase deploy` (executable `gradlew` forbidden on Spark). `firebase.json` no longer ignores `twa-manifest.json`; `.gitignore` keeps defensive entries for the root Gradle paths in case any tool regenerates them. `FILE_INDEX.md` updated (`twa-manifest.json` row → `android/`).
+
+Regression: `npm run test:unit` green (178/178); bot + difficulty-relevant setup tests pass. (Pre-existing, unrelated: 2 co-located `setupScreen.test.js` title-text assertions fail on HEAD too — title element drift — and the 2 `gameEngine.test.js` rack fixtures; none are in the `test:unit` gate.)
+
+---
+
+## Fix: B13 wheel "+10 seconds" (timer_bonus) added no time — June 2026
+
+Reported from an offline-solo game: a wheel `timer_bonus` (+10s) boost granted no extra seconds. Two compounding bugs:
+
+1. `applyTurnStartEffects` (gameEngine) built the `onTurnStart` ctx **without** `turnDeadlineMs` and never wrote the hook's result back, so `timerBonus.apply` (which extended `ctx.turnDeadlineMs`) no-op'd and was silently consumed.
+2. Even if it had set a deadline, `turnTimerController.ensureDeadline` **recomputes** the offline/optional-mode deadline from scratch each turn (`now() + botTime`), discarding any extension.
+
+Fix (the pure engine can't read wall-clock time, so the bonus is passed as a delta):
+- **`timerBonus.js`** — `apply` now accumulates the seconds into `ctx.turnTimerBonusMs` (still also extends `ctx.turnDeadlineMs` when a caller already holds one).
+- **`gameEngine.js`** — `applyTurnStartEffects` threads `turnTimerBonusMs` through the ctx and records the result on `state.turnTimerBonusMs` (overwrites each turn-start, so it never leaks forward).
+- **`turnTimerController.js`** — the offline/optional deadline branch adds `state.turnTimerBonusMs` to the fresh clock and clears it (one-shot).
+- **`onlineGameSession.js`** — `rawCommitCurrentState` adds `state.turnTimerBonusMs` to the next player's room deadline. The amount is read once *before* the `commitTransaction` callback (which can re-run on contention) and cleared only after the commit resolves, so retries stay idempotent. No Firebase rule change (rules don't bound `turnDeadlineMs`).
+- Tests: new `turnTimerController.test.js` case (+10s applied once then consumed; next turn back to 40s), expanded `plugins.test.js` (accumulator with/without an absolute deadline, opponent-slot gating), and `onlineGameSession.test.js` (mockFirebase: the next player's committed deadline includes the bonus and `turnTimerBonusMs` is consumed once).
+- Docs: `GAMEPLAY_RULES.md`, `docs/db-schema.md` (`turnTimerBonusMs` field), `GAP_REPORT.md`.
+
+`npm run test:unit` green (178/178); co-located online + timer + plugin tests green.
+
+---
+
 ## B11 retune + new B14 בונוס "אות פותחת" (letter spinner) — June 2026
 
 **B11 (מילה נסתרת) tuning:** halved the timer **20s → 10s** and dropped the reward **100 → 30** (the challenge is small). Updated `hiddenWordMiniGame.js` defaults, `bonusTileDefs.js` (`tilePts 100→30`), `data.js` (`pts`), `genderText.js` (`descB11`), `GAMEPLAY_RULES.md`, the guide caption, the capture spec, and the `engine-parity-highrisk.test.js` bonusOk fixture (`['B11', 30]`).

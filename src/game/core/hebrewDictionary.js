@@ -7,10 +7,9 @@
 //      isValid() uses the morphological fallback chain
 //      (candidateLemmas → suffix stripping → spelling variants).
 //   2. v2: loadDictV2() reads ./data/dictionary.v2.bin (a DAWG-encoded
-//      curated lexicon); isValid() consults the DAWG directly with policy
-//      overlays (EXACT_REJECTS / CLASSIC_ALLOW / DEFECTIVE_ACCEPT) and
-//      skips the morphology chain — the curated lexicon already contains
-//      inflected forms.
+//      curated lexicon); isValid() consults the DAWG directly with the Firebase
+//      overlays (BLOCKED_OVERLAY reject / approved-overlay accept) and skips the
+//      morphology chain — the curated lexicon already contains inflected forms.
 //
 // The active path is selected by setDictionaryMode('v1' | 'v2'), called from
 // main.js based on the ?dict=v2 URL flag. The v1 path is the default to
@@ -45,12 +44,15 @@ export function getDictionaryMode() {
   return dictionaryMode;
 }
 
-export const DEFECTIVE_ACCEPT = new Set(["כסא","זכרון","שלטון","מסדרון","ספרון","פתרון","עגלון","חנון","ישרון","קטון"]);
-// EXACT_REJECTS extras added with the dictionary v2 build (June 2026):
-//   - ירושלים: proper-noun place name present in HSpell. Game policy rejects.
-//   - עליי: plene spelling of עלי (already rejected); add the כתיב-מלא variant.
-export const EXACT_REJECTS = new Set(["ירושלים","עליי","אותה","אותו","אותך","אותכם","אותכן","אותם","אותן","אותנו","אחריה","אחריהם","אחריהן","אחריו","אחריי","אחרייך","אחריך","אחריכם","אחריכן","אחרינו","איתה","איתו","איתי","איתך","איתכם","איתכן","איתם","איתן","איתנו","אלי","אליה","אליהם","אליהן","אליו","אלייך","אליך","אליכם","אליכן","אלינו","אצלה","אצלו","אצלי","אצלך","אצלכם","אצלכן","אצלם","אצלן","אצלנו","בלעדי","בלעדיה","בלעדיהם","בלעדיהן","בלעדיו","בלעדייך","בלעדיך","בלעדיכם","בלעדיכן","בלעדינו","בשבילה","בשבילהן","בשבילו","בשבילי","בשבילך","בשבילכם","בשבילכן","בשבילם","בשבילנו","כמוה","כמוהו","כמוך","כמוכם","כמוכן","כמונו","כמוני","כמותם","כמותן","לידה","לידו","לידי","לידך","לידכם","לידכן","לידם","לידן","לידנו","למענה","למענו","למעני","למענך","למענכם","למענכן","למענם","למענן","למעננו","לפניה","לפניהם","לפניהן","לפניו","לפניי","לפנייך","לפניך","לפניכם","לפניכן","לפנינו","מאחוריה","מאחוריהם","מאחוריהן","מאחוריו","מאחוריי","מאחורייך","מאחוריך","מאחוריכם","מאחוריכן","מאחורינו","מולה","מולו","מולי","מולך","מולכם","מולכן","מולם","מולן","מולנו","ממך","ממכם","ממכן","ממנה","ממנו","ממני","נגדה","נגדו","נגדי","נגדך","נגדכם","נגדכן","נגדם","נגדן","נגדנו","עלי","עליה","עליהם","עליהן","עליו","עלייך","עליך","עליכם","עליכן","עלינו","עמה","עמהן","עמו","עמי","עמך","עמכם","עמכן","עמם","עמנו","שלה","שלהם","שלהן","שלו","שלי","שלך","שלכם","שלכן","שלנו","תוכה","תוכו","תוכי","תוכך","תוכם","תוכן","תוכנו","נאצי"]);
-export const CLASSIC_ALLOW = new Set(["בה","בהם","בהן","בו","בי","בך","בכם","בכן","בנו","לה","להם","להן","לו","לי","לך","לכם","לכן","לנו"]);
+// NOTE (June 2026): the curated reject/accept word lists — EXACT_REJECTS,
+// CLASSIC_ALLOW, DEFECTIVE_ACCEPT — were removed from the code. Reject/accept
+// curation now lives ONLY in Firebase, synced at boot:
+//   /dictionaryRejected -> BLOCKED_OVERLAY (reject; overrides any positive hit)
+//   /dictionaryApproved -> DICT            (accept; overlay merged into DICT)
+// The previous entries are preserved in docs-md/dictionary-firebase-seed.txt
+// for one-time loading into those Firebase paths.
+// COMMON_FALSE_POSSESSIVE stays — it's morphology logic (stops real words like
+// מים/חיים/פנים from being mis-read as possessives), not a curated word list.
 export const COMMON_FALSE_POSSESSIVE = new Set(["מים","חיים","פנים","פני","שני","אחי","אחותי","אדוני","גוי","תוי"]);
 export const PREFIXES = new Set(["ו","ה","ב","כ","ל","ש","מ"]);
 export const POSSESSIVE_SUFFIXES = ["יהם","יהן","יכם","יכן","ינו","ייך","יך","יה","יו","כם","כן","נו","יי"];
@@ -217,14 +219,14 @@ export function guessLemmaFromMissing(word) {
 }
 
 export function looksLikePrefixedParticle(word) {
-  if (word.length < 3 || CLASSIC_ALLOW.has(word)) return false;
+  if (word.length < 3) return false;
   if (!PREFIXES.has(word[0])) return false;
   const stripped = word.slice(1);
   return dictHas(stripped) || guessLemmaFromMissing(stripped) !== null;
 }
 
 export function looksLikePossessive(word) {
-  if (COMMON_FALSE_POSSESSIVE.has(word) || CLASSIC_ALLOW.has(word)) return false;
+  if (COMMON_FALSE_POSSESSIVE.has(word)) return false;
   for (const suf of POSSESSIVE_SUFFIXES) {
     if (word.length <= suf.length + 1 || !word.endsWith(suf)) continue;
     const stem = word.slice(0, -suf.length);
@@ -313,14 +315,14 @@ export function isValid(w) {
 //
 // Policy order (first match wins):
 //   1. Clean input to Hebrew letters only; empty → invalid.
-//   2. EXACT_REJECTS hit → invalid (slurs, possessive-suffixed prepositions).
-//   3. CLASSIC_ALLOW hit → valid (short particles like בה, לי, לכם).
-//   4. DEFECTIVE_ACCEPT hit → valid (10 defective spellings the curated list
-//      may or may not contain; pinned for safety).
-//   5. DAWG.has(word) OR DAWG.has(terminal-final variant) → valid.
-//   6. Approved-overlay hit (Firebase-approved words added to DICT after
-//      loadDictV2) → valid.
-//   7. Otherwise invalid.
+//   2. BLOCKED_OVERLAY hit → invalid (Firebase /dictionaryRejected, synced at
+//      boot — this is now the ONLY reject overlay; the in-code EXACT_REJECTS
+//      list was removed and migrated to Firebase).
+//   3. DAWG.has(word) OR DAWG.has(terminal-final variant) → valid.
+//   4. Approved-overlay hit (Firebase /dictionaryApproved merged into DICT
+//      after loadDictV2 — now the ONLY accept overlay; the in-code
+//      CLASSIC_ALLOW / DEFECTIVE_ACCEPT lists were removed and migrated) → valid.
+//   5. Otherwise invalid.
 function isValidV2(rawWord) {
   if (!dawg) {
     validationLogger?.('[isValidV2]', JSON.stringify(rawWord), '->', '✗ INVALID', '| dawg-not-loaded');
@@ -331,17 +333,9 @@ function isValidV2(rawWord) {
     validationLogger?.('[isValidV2]', JSON.stringify(rawWord), '->', '✗ INVALID', '| empty');
     return false;
   }
-  if (EXACT_REJECTS.has(word)) {
-    validationLogger?.('[isValidV2]', JSON.stringify(word), '->', '✗ INVALID', '| exact-reject');
-    return false;
-  }
   if (BLOCKED_OVERLAY.has(word)) {
     validationLogger?.('[isValidV2]', JSON.stringify(word), '->', '✗ INVALID', '| blocked-overlay');
     return false;
-  }
-  if (CLASSIC_ALLOW.has(word) || DEFECTIVE_ACCEPT.has(word)) {
-    validationLogger?.('[isValidV2]', JSON.stringify(word), '->', '✓ VALID', '| policy-allow');
-    return true;
   }
   for (const variant of terminalFinalVariants(word)) {
     if (dawg.has(variant)) {

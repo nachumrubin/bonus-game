@@ -707,12 +707,19 @@ function applyTurnStartEffects(state) {
     state,
     startingSlot,
     activeBoosts: state.activeBoosts,
+    turnTimerBonusMs: 0,
   };
   ctx = runHook(TRIGGERS.ON_TURN_START, ctx) ?? ctx;
   if (Array.isArray(ctx.activeBoosts)) {
     state.activeBoosts.length = 0;
     state.activeBoosts.push(...ctx.activeBoosts);
   }
+  // Record any timer_bonus seconds queued for the slot whose turn is starting.
+  // The pure engine can't build the wall-clock deadline, so it leaves the
+  // amount on state for the timer controller / session to add when it computes
+  // this turn's deadline (then clears it — the bonus is one-shot). Always
+  // overwrite (0 when no bonus) so a previous turn's value never leaks forward.
+  state.turnTimerBonusMs = Number(ctx.turnTimerBonusMs) || 0;
   if (ctx.skipTurn) {
     effects.push({ type: 'skip-turn', slot: startingSlot });
     state.currentTurnSlot = startingSlot === 0 ? 1 : 0;

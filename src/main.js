@@ -753,7 +753,7 @@ async function boot() {
     bus.on(MENU_INTENT.START_VS_BOT, () => {
       showLegacyScreen('ss');
       bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: 'ss-bot' });
-      bus.emit(SETUP_OPEN, { mode: 'bot', initialDifficulty: 1 });
+      bus.emit(SETUP_OPEN, { mode: 'bot', initialDifficulty: 0 });
     });
     bus.on(MENU_INTENT.OPEN_PROFILE, () => {
       showLegacyScreen(activeFbCurrentUser?.uid ? 'sprofile' : 'sauth-login');

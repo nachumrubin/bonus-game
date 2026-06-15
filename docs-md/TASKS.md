@@ -5,6 +5,23 @@
 
 ---
 
+## Dictionary reject/accept lists → Firebase only — June 2026
+
+- [x] Removed in-code `EXACT_REJECTS` / `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` from `hebrewDictionary.js`; reject/accept now via Firebase overlays only (`BLOCKED_OVERLAY` / approved-overlay). Kept `COMMON_FALSE_POSSESSIVE` (morphology). Tests + docs updated.
+- [ ] **Load `docs-md/dictionary-firebase-seed.txt` into Firebase** — REJECTED block → `/dictionaryRejected`, APPROVED block → `/dictionaryApproved`. Until then `נאצי` / `ירושלים` and the inflected prepositions are not blocked by the app. (Use the dictionary admin panel or Firebase console import.)
+- [ ] (optional) Decide whether `tools/dictionary-build/*` should also stop applying its own `EXACT_REJECTS`/`CLASSIC_ALLOW` when the DAWG is next rebuilt.
+
+## Fix: easy-bot default + Bubblewrap removal — June 2026
+
+- [x] Easy bot played 5-letter words: the bot difficulty default was medium (1) while setup.html highlighted easy. Defaulted difficulty to 0 (easy) in `setupScreen.js` + `main.js` `START_VS_BOT`. Profiles unchanged (already correct).
+- [x] Removed Bubblewrap: deleted root TWA/Gradle working copy + `twa-manifest.json`; build via the `android/` Android Studio project. Updated `firebase.json`, `FILE_INDEX.md`.
+- [ ] (pre-existing, unrelated) 2 `setupScreen.test.js` title-text assertions + 2 `gameEngine.test.js` rack fixtures fail on HEAD; not in the `test:unit` gate. Fix when next touching those areas.
+
+## Fix: timer_bonus (+10s wheel) — June 2026
+
+- [x] Offline/optional modes: B13 `timer_bonus` now actually extends the turn clock. Engine records `state.turnTimerBonusMs` in `applyTurnStartEffects`; `turnTimerController.ensureDeadline` adds + consumes it. Plugin accumulates the delta. Tests in `turnTimerController.test.js` + `plugins.test.js`.
+- [x] Online: `onlineGameSession.rawCommitCurrentState` adds `state.turnTimerBonusMs` to the next player's deadline (read once before the txn callback, cleared after the commit resolves → idempotent across retries). Test in `onlineGameSession.test.js` (mockFirebase). No rule change (no upper bound on `turnDeadlineMs`).
+
 ## B11 retune + new B14 mini-game — June 2026
 
 - [x] B11 מילה נסתרת: timer 20s→10s, reward 100→30 (defs, data, gender/desc, guide, capture spec, tests).

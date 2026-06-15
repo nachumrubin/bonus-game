@@ -349,7 +349,13 @@ export function createTurnTimerController({
     // bleed seconds onto the next player.
     const seconds = Number(state.settings?.botTime || state.settings?.turnSeconds || 0);
     if (seconds > 0) {
-      state.turnDeadlineMs = now() + seconds * 1000;
+      // A timer_bonus boost (B13 wheel) queued for the slot whose turn is
+      // starting leaves its seconds on state.turnTimerBonusMs (set by the
+      // engine's applyTurnStartEffects). Add it to this fresh deadline and
+      // consume it — the bonus is one-shot and must not carry to later turns.
+      const bonusMs = Number(state.turnTimerBonusMs) || 0;
+      state.turnDeadlineMs = now() + seconds * 1000 + bonusMs;
+      if (bonusMs > 0) state.turnTimerBonusMs = 0;
       state._turnTimerKey = key;
       timedOutKey = null;
       return state.turnDeadlineMs;

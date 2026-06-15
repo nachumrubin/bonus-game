@@ -107,8 +107,8 @@ Two paths exist; the active one is selected by `setDictionaryMode('v1' | 'v2')`,
   3. Strip verb conjugation suffixes
   4. Strip ה (feminine marker, with heuristics)
   5. All candidates tested with spelling variants (כתיב-חסר and כתיב-מלא)
-- **Explicit rejects:** ~220 possessive pronouns in `EXACT_REJECTS` Set are always invalid
-- **Explicit allows:** `CLASSIC_ALLOW` (~20 short particles) and `DEFECTIVE_ACCEPT` (10 defective spellings) always valid
+- **Explicit rejects:** Firebase `/dictionaryRejected` → `BLOCKED_OVERLAY`, checked before any positive lookup (always invalid). *(The old in-code `EXACT_REJECTS` list was removed June 2026 — see `docs-md/dictionary-firebase-seed.txt` for the migrated words.)*
+- **Explicit allows:** Firebase `/dictionaryApproved` → merged into `DICT`. *(The old in-code `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` lists were removed June 2026 and migrated to that path.)*
 - **External validator:** If `globalThis.HebrewValidator` is loaded and ready, `hv.validate(w)` is called as the primary check; `analyze()` is fallback
 
 ### v2 (DAWG-encoded curated lexicon, behind `?dict=v2`)
@@ -118,10 +118,9 @@ Two paths exist; the active one is selected by `setDictionaryMode('v1' | 'v2')`,
 - Validation: `isValid(word)` → `isValidV2()`, which uses the DAWG directly. **No morphological fallback** — the curated lexicon is responsible for shipping every legal inflection (הטיה) as its own surface form.
 - **Policy order (first match wins):**
   1. Clean input to Hebrew letters only; empty → invalid
-  2. `EXACT_REJECTS` hit → invalid
-  3. `CLASSIC_ALLOW` hit → valid (also `DEFECTIVE_ACCEPT`)
-  4. DAWG lookup (with terminal-final variants) → valid
-  5. DICT approved-overlay hit (Firebase-approved words added after load) → valid
+  2. `BLOCKED_OVERLAY` hit (Firebase `/dictionaryRejected`) → invalid
+  3. DAWG lookup (with terminal-final variants) → valid
+  4. DICT approved-overlay hit (Firebase `/dictionaryApproved` added after load) → valid
   6. Otherwise → invalid
 - **Build pipeline:** `tools/dictionary-build/` — lemma-first, multi-source corroboration (HSpell + Wiktionary + Wikipedia frequency + legacy 40K + Academy), paradigm-gated inflection generation, native-speaker review queue for single-source lemmas, hard quality gates (≥ 99% gold-positive, ≤ 2% gold-negative leak, ≤ 0.5% legacy loss) before the binary ships.
 
@@ -283,7 +282,7 @@ Source: `src/game/boosts/bonusTileDefs.js`, `data.js`, `bonusResolver.js`
 - `pts_1`: +1 point
 - `extra_turn`: Free turn
 - `double_2`: 2× multiplier for 2 turns
-- `timer_bonus`: +10 seconds to deadline
+- `timer_bonus`: +10 seconds to the booster's next turn deadline. The pure engine can't read wall-clock time, so `applyTurnStartEffects` leaves the amount on `state.turnTimerBonusMs` and the clock owner adds it (one-shot): offline/optional via `turnTimerController.ensureDeadline`, online via `onlineGameSession.rawCommitCurrentState` (the committing client writes the next player's room deadline).
 - `skip_turn`: Skip opponent's next turn
 - `tile_swap`: Free tile exchange
 - `cancel_boost`: Cancel opponent's next bonus

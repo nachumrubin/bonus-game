@@ -13,7 +13,7 @@
 | `sw.js` | **Service Worker.** Handles OneSignal push routing, offline cache with auto-invalidating cache name (`boost-{timestamp}`), and notification-click postMessage routing to app. |
 | `styles.css` | **All UI styles** (~90 KB). Dark navy gradient design system with CSS custom properties. Mobile-first, portrait orientation. RTL Hebrew layout. |
 | `manifest.json` | PWA metadata: app name, icons, `orientation: portrait`, `dir: rtl`. |
-| `twa-manifest.json` | Trusted Web Activity config for Android app wrapper. |
+| `android/` | Android Studio project for the TWA wrapper (own Gradle wrapper, `build.gradle`, keystore, versionCode/Name). The app is built here — Bubblewrap is no longer used. |
 | `firebase.json` | Firebase hosting config + emulator config (database port 9000, single-project mode). |
 | `firebase.database.rules.json` | Firebase Realtime Database security rules (7,918 bytes). |
 | `.firebaserc` | Firebase project alias file. |

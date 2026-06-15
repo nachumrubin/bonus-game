@@ -608,6 +608,15 @@ export async function createOnlineGameSession({
     }
   }
   function rawCommitCurrentState({ lastMove = null } = {}) {
+    // A timer_bonus boost (B13 wheel +Ns) queued for the slot whose turn is
+    // starting was recorded on state.turnTimerBonusMs by the engine's
+    // applyTurnStartEffects. The committing client is authoritative for the
+    // next player's deadline, so we add it here. Read it ONCE up front and do
+    // NOT clear it inside the transaction callback — commitTransaction can
+    // re-run the callback on contention, and clearing mid-flight would drop
+    // the bonus on a retry. We clear it only after the commit resolves.
+    const queuedTimerBonusMs = Number(state.turnTimerBonusMs) || 0;
+    let appliedTimerBonus = false;
     return commitTransaction(db, room.roomId, expectedVersion, (currentRoom) => {
       const settings = { ...(state.settings ?? currentRoom.settings ?? {}) };
       const turnChanged = Number(currentRoom.currentTurnSlot ?? 0) !== Number(state.currentTurnSlot ?? 0);
@@ -627,8 +636,9 @@ export async function createOnlineGameSession({
       let turnDeadlineMs = shouldRunTimer ? (state.turnDeadlineMs ?? currentRoom.turnDeadlineMs ?? null) : null;
 
       if (shouldRunTimer && (turnChanged || isExtraTurn) && lastMove?.type !== 'free-exchange') {
-        turnDeadlineMs = Date.now() + turnLimitMsFromSettings(settings);
+        turnDeadlineMs = Date.now() + turnLimitMsFromSettings(settings) + queuedTimerBonusMs;
         state.turnDeadlineMs = turnDeadlineMs;
+        if (queuedTimerBonusMs > 0) appliedTimerBonus = true;
       } else if (!shouldRunTimer) {
         state.turnDeadlineMs = null;
       }
@@ -673,6 +683,13 @@ export async function createOnlineGameSession({
         patch.livePreview = null;
       }
       return patch;
+    }).then((result) => {
+      // One-shot: drop the bonus only after a successful commit wrote it into
+      // the deadline. Guard against clobbering a newer bonus queued meanwhile.
+      if (appliedTimerBonus && (Number(state.turnTimerBonusMs) || 0) === queuedTimerBonusMs) {
+        state.turnTimerBonusMs = 0;
+      }
+      return result;
     });
   }
 }

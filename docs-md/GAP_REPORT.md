@@ -17,6 +17,17 @@
 
 ## Critical Gaps
 
+### 0. `timer_bonus` (B13 wheel +10s) did not extend the turn clock *(Confirmed gap)* — ✅ RESOLVED
+
+**Status:** Resolved (June 2026), offline + online.
+
+Root cause: the engine's `applyTurnStartEffects` built the `onTurnStart` ctx without `turnDeadlineMs` and never wrote the hook result back, so `timerBonus.apply` no-op'd and was silently consumed; and even otherwise, the offline deadline is recomputed from scratch each turn. (Reported via an offline-solo room where a +10s wheel boost added no time.)
+
+Fix (the pure engine can't read wall-clock time, so the bonus is carried as a delta on `state.turnTimerBonusMs`):
+- **Offline/optional modes:** `applyTurnStartEffects` (gameEngine) records the booster's queued seconds on `state.turnTimerBonusMs`; `turnTimerController.ensureDeadline` adds it to the fresh deadline and clears it (one-shot).
+- **Online live modes:** `onlineGameSession.rawCommitCurrentState` adds `state.turnTimerBonusMs` to the next player's deadline. The amount is read once before the `commitTransaction` callback (which may re-run on contention) and cleared only after the commit resolves, so retries stay idempotent. No Firebase **rule** change required — rules impose no upper bound on `turnDeadlineMs` (only the opponent-watchdog branch references it, requiring `> now`).
+- **Tests:** `turnTimerController.test.js`, `plugins.test.js`, and `onlineGameSession.test.js` ("a queued timer_bonus extends the NEXT player's committed deadline and is consumed once") via mockFirebase.
+
 ### 1. OneSignal REST Key Exposed Client-Side *(Security Risk)* — ✅ RESOLVED
 
 **Status:** Resolved (May 2026). All push sends are now brokered through a Cloudflare Worker that holds the REST key as a Cloudflare secret. The client POSTs the notification body to `pushWorkerUrl` with a Firebase ID token in `Authorization: Bearer …`; the worker verifies the token against Google's JWKS, rebuilds the OneSignal body from a trusted server-side template (so headings/contents cannot be injected), and forwards to OneSignal.
@@ -309,8 +320,7 @@ Words submitted to `/dictionaryApproved` are not proven to be used in game valid
 
 ### `hebrewDictionary.js` — ⚠️ remains fragile (data curation), partial mitigation June 2026
 - Complex lemmatization with multiple stripping strategies (v1 path)
-- `EXACT_REJECTS` set (~220 entries) relies on manual curation — a wrong entry silently rejects valid words
-- **Mitigation added (June 2026):** v2 path (behind `?dict=v2`) actively enforces `EXACT_REJECTS` in `isValidV2()`, and the test suite asserts every member rejects. Same for `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` accepting. See [src/game/core/hebrewDictionary.test.js](../src/game/core/hebrewDictionary.test.js).
+- **Reject/accept curation moved to Firebase (June 2026):** the in-code `EXACT_REJECTS` / `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` sets were removed; the only policy overlays are now `BLOCKED_OVERLAY` (Firebase `/dictionaryRejected`) and the approved-overlay (Firebase `/dictionaryApproved`). ⚠️ **Open migration:** the removed entries are NOT yet in Firebase — until they are loaded (see `docs-md/dictionary-firebase-seed.txt`, esp. `נאצי` / `ירושלים`), those words follow the base dictionary's verdict. Tests now assert the overlay path (`BLOCKED_OVERLAY` reject in v1 + v2).
 - **Mitigation added (item 11):** Firebase-approved words now have end-to-end test proving they merge into `DICT` and pass `isValid()` (both v1 and v2 paths)
 - **Open:** Real curated lexicon still TODO — v2 binary currently ships the legacy 40K re-encoded as a placeholder. See TASKS.md "Dictionary v2 rollout".
 

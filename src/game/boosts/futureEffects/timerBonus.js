@@ -21,8 +21,15 @@ export default {
 
   apply(ctx, entry) {
     const ms = (entry.payload?.seconds ?? 0) * 1000;
-    if (!ctx.turnDeadlineMs || ms <= 0) return ctx;
-    return { ...ctx, turnDeadlineMs: ctx.turnDeadlineMs + ms };
+    if (ms <= 0) return ctx;
+    // The pure engine can't read wall-clock time, so it can't build the
+    // absolute deadline. Accumulate the bonus instead; the session / timer
+    // controller adds `turnTimerBonusMs` to the deadline it computes for this
+    // turn (see turnTimerController.ensureDeadline). If a caller already holds
+    // an absolute deadline (a room-authoritative value), extend that too.
+    const next = { ...ctx, turnTimerBonusMs: (ctx.turnTimerBonusMs ?? 0) + ms };
+    if (ctx.turnDeadlineMs) next.turnDeadlineMs = ctx.turnDeadlineMs + ms;
+    return next;
   },
 
   consume() { return null; },
