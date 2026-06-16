@@ -1,4 +1,0 @@
-sources/
-output/*
-!output/.gitkeep
-!output/curation-report.txt

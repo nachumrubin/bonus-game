@@ -5,13 +5,21 @@
 
 ---
 
+## Dictionary: plain text + remove DAWG + remove HSpell pipeline — June 2026
+
+- [x] Switched dictionary from DAWG binary (`dictionary.v2.bin`) to plain sorted text (`dictionary.txt`, 73,173 words).
+- [x] Deleted `src/game/core/dawg.js` and `src/game/core/dawg.test.js`.
+- [x] Deleted `data/dictionary.v2.bin` and `data/dictionary.v2.meta.json`.
+- [x] Deleted `tools/dictionary-build/` (HSpell AGPLv3 pipeline — no longer needed).
+- [x] `hebrewDictionary.js` is now a pure text-based `Set` lookup; no DAWG code remains.
+- [x] `absorb-firebase-dict.mjs` updated to merge words into `dictionary.txt`.
+- [ ] Run `node scripts/absorb-firebase-dict.mjs --commit` locally to absorb any existing Firebase-approved words into `dictionary.txt` and clear the Firebase overlay.
+
 ## Dictionary: v1 removal + Firebase absorption script — June 2026
 
 - [x] Removed v1 dictionary path (`loadDict`, v1 `isValid`, mode switching). `hebrewDictionary.js` is now v2-only.
 - [x] Deleted `data/dictionary.base.txt`, `scripts/add-dictionary-words.js`, `scripts/export-dictionary-file.js`.
-- [x] Added `scripts/absorb-firebase-dict.mjs` — cuts words from `/dictionaryApproved` and pastes into `dictionary.v2.bin`, then deletes from Firebase. Run `node scripts/absorb-firebase-dict.mjs` (dry-run) or `node scripts/absorb-firebase-dict.mjs --commit` (requires `firebase login`).
-- [x] Bot now uses `DICT` (populated from DAWG) instead of legacy frequency-sorted vocabulary.
-- [ ] Run `node scripts/absorb-firebase-dict.mjs --commit` locally to absorb any existing Firebase-approved words into the binary and clear the overlay.
+- [x] Bot now uses `DICT` instead of legacy frequency-sorted vocabulary.
 
 ## Dictionary additions from curated review list — June 2026
 

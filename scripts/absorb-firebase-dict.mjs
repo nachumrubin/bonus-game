@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // absorb-firebase-dict.mjs — "cut" words from /dictionaryApproved in Firebase
-// and "paste" them into the v2 DAWG binary, then remove them from Firebase.
+// and "paste" them into data/dictionary.txt, then remove them from Firebase.
 //
 // Usage:
 //   node scripts/absorb-firebase-dict.mjs           # dry-run (no Firebase delete)
-//   node scripts/absorb-firebase-dict.mjs --commit  # merge into binary + delete from Firebase
+//   node scripts/absorb-firebase-dict.mjs --commit  # merge into text file + delete from Firebase
 //
 // For the Firebase delete step the firebase CLI must be logged in:
 //   firebase login
@@ -16,12 +16,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
-import { buildDawg, serializeDawg, parseDawg } from '../src/game/core/dawg.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..');
-const BIN_PATH = path.join(REPO_ROOT, 'data', 'dictionary.v2.bin');
-const META_PATH = path.join(REPO_ROOT, 'data', 'dictionary.v2.meta.json');
+const DICT_PATH = path.join(REPO_ROOT, 'data', 'dictionary.txt');
 
 const PROD_CONFIG = {
   databaseURL: 'https://boost-8ef11-default-rtdb.firebaseio.com',
@@ -56,21 +54,21 @@ async function main() {
     return;
   }
 
-  // 2. Load current v2 binary
-  console.log('Loading current v2 binary…');
-  const binBuf = fs.readFileSync(BIN_PATH);
-  const dawg = parseDawg(binBuf.buffer);
-  const existingWords = new Set(dawg.words());
-  console.log(`Current v2 binary: ${existingWords.size} words.`);
+  // 2. Load current dictionary.txt
+  console.log('Loading current dictionary.txt…');
+  const existing = new Set(
+    fs.readFileSync(DICT_PATH, 'utf8').split(/\r?\n/).map((l) => l.trim()).filter(Boolean),
+  );
+  console.log(`Current dictionary.txt: ${existing.size} words.`);
 
-  // 3. Find words in Firebase not already in the binary
-  const toAdd = [...firebaseWords].filter((w) => !existingWords.has(w));
+  // 3. Find words in Firebase not already in the text file
+  const toAdd = [...firebaseWords].filter((w) => !existing.has(w));
   const alreadyIn = firebaseWords.size - toAdd.length;
-  console.log(`Already in binary: ${alreadyIn}`);
-  console.log(`New to binary:     ${toAdd.length}`);
+  console.log(`Already in dictionary: ${alreadyIn}`);
+  console.log(`New to dictionary:     ${toAdd.length}`);
 
   if (toAdd.length === 0) {
-    console.log('All Firebase words already in binary.');
+    console.log('All Firebase words already in dictionary.');
   } else {
     console.log('New words:', toAdd.join(', '));
   }
@@ -80,29 +78,11 @@ async function main() {
     return;
   }
 
-  // 4. Merge and rebuild binary
+  // 4. Merge and rewrite dictionary.txt (sorted)
   if (toAdd.length > 0) {
-    const merged = [...new Set([...existingWords, ...toAdd])].sort();
-    console.log(`\nBuilding new DAWG from ${merged.length} words…`);
-    const newDawg = buildDawg(merged);
-    const newBuf = serializeDawg(newDawg);
-
-    // Self-test
-    const parsed = parseDawg(newBuf);
-    let mismatches = 0;
-    for (const w of merged) { if (!parsed.has(w)) mismatches++; }
-    if (mismatches > 0) throw new Error(`Round-trip failure: ${mismatches} words missing`);
-
-    fs.writeFileSync(BIN_PATH, Buffer.from(newBuf));
-    fs.writeFileSync(META_PATH, JSON.stringify({
-      format: 'dawg-v1',
-      wordCount: merged.length,
-      nodeCount: newDawg.nodes.length,
-      byteSize: newBuf.byteLength,
-      source: 'curated-pipeline',
-      builtAt: new Date().toISOString(),
-    }, null, 2) + '\n', 'utf8');
-    console.log(`Binary rebuilt: ${existingWords.size} → ${merged.length} words (${newBuf.byteLength} bytes).`);
+    const merged = [...new Set([...existing, ...toAdd])].sort();
+    fs.writeFileSync(DICT_PATH, merged.join('\n') + '\n', 'utf8');
+    console.log(`dictionary.txt rebuilt: ${existing.size} → ${merged.length} words.`);
   }
 
   // 5. Delete /dictionaryApproved from Firebase via firebase CLI
@@ -123,7 +103,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('\nDone. The binary is now the source of truth for all accepted words.');
+  console.log('\nDone. dictionary.txt is now the source of truth for all accepted words.');
 }
 
 main().catch((err) => {
