@@ -4,7 +4,7 @@
 // unconditionally.
 //
 // On boot, this module:
-//   1. Loads the Hebrew dictionary (./data/dictionary.v2.bin)
+//   1. Loads the Hebrew dictionary (./data/dictionary.txt)
 //   2. Registers all boost plugins on the boostEngine
 //   3. Exposes window.__spine with the live bus, engine factories, and
 //      session adapters — so a tester can drive offline / bot / online
@@ -3936,7 +3936,7 @@ function ensureDictionaryLoaded() {
     return Promise.resolve(hebrewDictionary.DICT.size);
   }
   if (!dictionaryLoadPromise) {
-    dictionaryLoadPromise = hebrewDictionary.loadDictV2()
+    dictionaryLoadPromise = hebrewDictionary.loadDict()
       .then((size) => {
         console.info('[spine] dictionary size:', size);
         return size;

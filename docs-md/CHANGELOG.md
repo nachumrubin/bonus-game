@@ -2,6 +2,23 @@
 
 ---
 
+## Dictionary: switch to plain text; remove DAWG binary and HSpell pipeline — June 2026
+
+Replaced the DAWG binary with a plain sorted text file (`data/dictionary.txt`) and removed the HSpell build toolchain due to AGPLv3 licence concerns:
+
+- **New**: `data/dictionary.txt` — 73,173 Hebrew words, one per line, sorted. Replaces `data/dictionary.v2.bin`.
+- **Deleted**: `data/dictionary.v2.bin`, `data/dictionary.v2.meta.json` (DAWG binary and sidecar).
+- **Deleted**: `src/game/core/dawg.js` and `src/game/core/dawg.test.js` (DAWG encoder/decoder and tests).
+- **Deleted**: `tools/dictionary-build/` — entire HSpell pipeline (AGPLv3 licence concern).
+- **`hebrewDictionary.js`**: removed DAWG dependency; `loadDict` fetches `./data/dictionary.txt` and populates `DICT` (a `Set`). `addWordsFromText` is a plain `DICT.add` loop. `isValid` checks `BLOCKED_OVERLAY` then `DICT.has()` for terminal-final-form variants. No DAWG code remains.
+- **`main.js`**: `ensureDictionaryLoaded` now calls `loadDict()` (was `loadDictV2()`); updated boot comment.
+- **`scripts/absorb-firebase-dict.mjs`**: rewrites to read/write `dictionary.txt` instead of the DAWG binary.
+- **Tests updated**: `hebrewDictionary.test.js` — removed `setDawgForTests`/`dawgFromWords`/DAWG imports; uses `addWordsFromText` + `DICT.clear()`. Three unit tests that loaded `dictionary.v2.bin` now load `dictionary.txt` via `addWordsFromText`.
+
+Unit tests 179/179.
+
+---
+
 ## Dictionary: remove v1 mode; v2 binary is the single source of truth — June 2026
 
 Removed the v1 dictionary path entirely. The v2 DAWG binary (`data/dictionary.v2.bin`) is now the only dictionary source:

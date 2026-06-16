@@ -10,20 +10,17 @@ import {
   dictHas,
   candidateLemmas,
   isValid,
+  addWordsFromText,
   setValidationLogger,
   spellingVariants,
-  setDawgForTests,
   BLOCKED_OVERLAY,
 } from './hebrewDictionary.js';
-import { buildDawg, serializeDawg, parseDawg } from './dawg.js';
 
-function dawgFromWords(words) {
-  const sorted = [...new Set(words)].sort();
-  return parseDawg(serializeDawg(buildDawg(sorted)));
+function loadWords(...words) {
+  addWordsFromText(words.join('\n'));
 }
 
-function resetDawg() {
-  setDawgForTests(null);
+function resetDict() {
   DICT.clear();
 }
 
@@ -80,69 +77,69 @@ test('spellingVariants generates ktiv-male variants by inserting interior ו/י'
   assert.ok(variants.includes('כיסא'), `expected 'כיסא' in ${variants.join(', ')}`);
 });
 
-test('isValid: returns true for exact DAWG hit', () => {
+test('isValid: returns true for exact dict hit', () => {
   try {
-    setDawgForTests(dawgFromWords(['שלום', 'בית', 'ילד']));
+    loadWords('שלום', 'בית', 'ילד');
     assert.equal(isValid('שלום'), true);
     assert.equal(isValid('בית'), true);
     assert.equal(isValid('ילד'), true);
-  } finally { resetDawg(); }
+  } finally { resetDict(); }
 });
 
-test('isValid: returns false for words not in DAWG (no morphology fallback)', () => {
+test('isValid: returns false for words not in dict (no morphology fallback)', () => {
   try {
-    setDawgForTests(dawgFromWords(['הלך']));
+    loadWords('הלך');
     assert.equal(isValid('הלך'), true);
-    assert.equal(isValid('הלכתי'), false, 'inflected form not in DAWG must reject');
+    assert.equal(isValid('הלכתי'), false, 'inflected form not in dict must reject');
     assert.equal(isValid('הולך'), false);
-  } finally { resetDawg(); }
+  } finally { resetDict(); }
 });
 
 test('isValid: terminal final-form variants are accepted', () => {
   try {
-    setDawgForTests(dawgFromWords(['שלום']));
+    loadWords('שלום');
     assert.equal(isValid('שלום'), true);
     assert.equal(isValid('שלומ'), true, 'medial-mem variant should match via final-form fold');
-  } finally { resetDawg(); }
+  } finally { resetDict(); }
 });
 
-test('isValid: BLOCKED_OVERLAY rejects a word even when it is in the DAWG', () => {
+test('isValid: BLOCKED_OVERLAY rejects a word even when it is in the dict', () => {
   try {
-    setDawgForTests(dawgFromWords(['שלום', 'בית']));
-    assert.equal(isValid('בית'), true, 'in-DAWG word valid before blocking');
+    loadWords('שלום', 'בית');
+    assert.equal(isValid('בית'), true, 'in-dict word valid before blocking');
     BLOCKED_OVERLAY.add('בית');
-    assert.equal(isValid('בית'), false, 'BLOCKED_OVERLAY must override a DAWG hit');
-  } finally { BLOCKED_OVERLAY.delete('בית'); resetDawg(); }
+    assert.equal(isValid('בית'), false, 'BLOCKED_OVERLAY must override a dict hit');
+  } finally { BLOCKED_OVERLAY.delete('בית'); resetDict(); }
 });
 
 test('isValid: Firebase-approved overlay (DICT.add after load) is honored', () => {
   try {
-    setDawgForTests(dawgFromWords(['שלום']));
+    loadWords('שלום');
     assert.equal(isValid('מילהחדשה'), false, 'unseen word should reject before approval');
     DICT.add('מילהחדשה');
     assert.equal(isValid('מילהחדשה'), true, 'approved-overlay word must validate');
-  } finally { resetDawg(); }
+  } finally { resetDict(); }
 });
 
 test('isValid: invalid input (non-Hebrew, empty) rejects', () => {
   try {
-    setDawgForTests(dawgFromWords(['שלום']));
+    loadWords('שלום');
     assert.equal(isValid(''), false);
     assert.equal(isValid('   '), false);
     assert.equal(isValid('xyz'), false);
-  } finally { resetDawg(); }
+  } finally { resetDict(); }
 });
 
-test('isValid: rejects when DAWG never loaded', () => {
+test('isValid: rejects when dict is empty', () => {
   try {
-    setDawgForTests(null);
+    DICT.clear();
     assert.equal(isValid('שלום'), false);
-  } finally { resetDawg(); }
+  } finally { resetDict(); }
 });
 
 test('isValid: configurable logger records validations', () => {
   try {
-    setDawgForTests(dawgFromWords(['אב']));
+    loadWords('אב');
     const logs = [];
     setValidationLogger(null);
     assert.equal(isValid('אב'), true);
@@ -153,17 +150,16 @@ test('isValid: configurable logger records validations', () => {
     assert.equal(logs.length, 1);
     assert.equal(logs[0][0], '[isValid]');
     setValidationLogger(null);
-  } finally { resetDawg(); }
+  } finally { resetDict(); }
 });
 
-test('isValid: real bundled binary validates expected words', async () => {
+test('isValid: real bundled text file validates expected words', async () => {
   try {
     const fs = await import('node:fs/promises');
-    const buf = await fs.readFile('data/dictionary.v2.bin');
-    const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-    setDawgForTests(parseDawg(ab));
-    assert.equal(isValid('מפורשת'), true, 'מפורשת should be in v2 binary');
+    const txt = await fs.readFile('data/dictionary.txt', 'utf8');
+    addWordsFromText(txt);
+    assert.equal(isValid('מפורשת'), true, 'מפורשת should be in dictionary.txt');
     assert.equal(isValid('שלום'), true);
     assert.equal(isValid('זזזזזזזזזז'), false);
-  } finally { resetDawg(); }
+  } finally { resetDict(); }
 });
