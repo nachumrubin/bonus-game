@@ -19,9 +19,10 @@ function loadModules() {
     ]);
     // Populate the shared DICT once.
     if (!globalThis.__SIM_DICT_LOADED__) {
-      const dictPath = path.join(__dirname, '..', '..', 'data', 'dictionary.base.txt');
-      const txt = fs.readFileSync(dictPath, 'utf8');
-      dictMod.addWordsFromText(txt);
+      const dictPath = path.join(__dirname, '..', '..', 'data', 'dictionary.v2.bin');
+      const { parseDawg } = await import('../../src/game/core/dawg.js');
+      const rawBuf = fs.readFileSync(dictPath);
+      dictMod.setDawgForTests(parseDawg(rawBuf.buffer.slice(rawBuf.byteOffset, rawBuf.byteOffset + rawBuf.byteLength)));
       globalThis.__SIM_DICT_LOADED__ = true;
     }
     return {

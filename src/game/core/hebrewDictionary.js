@@ -1,47 +1,35 @@
 // Hebrew dictionary + morphological validation.
-// Ported verbatim from index.html:2802-3145 (norm, candidateLemmas, analyze,
-// isValid, plus their supporting tables and helpers).
 //
-// Two validation paths exist:
-//   1. v1 (legacy): loadDict() reads ./data/dictionary.base.txt into DICT;
-//      isValid() uses the morphological fallback chain
-//      (candidateLemmas → suffix stripping → spelling variants).
-//   2. v2: loadDictV2() reads ./data/dictionary.v2.bin (a DAWG-encoded
-//      curated lexicon); isValid() consults the DAWG directly with the Firebase
-//      overlays (BLOCKED_OVERLAY reject / approved-overlay accept) and skips the
-//      morphology chain — the curated lexicon already contains inflected forms.
-//
-// The active path is selected by setDictionaryMode('v1' | 'v2'), called from
-// main.js based on the ?dict=v2 URL flag. The v1 path is the default to
-// preserve existing behavior during the canary.
+// Validation uses the v2 path exclusively: loadDictV2() reads
+// ./data/dictionary.v2.bin (a DAWG-encoded curated lexicon); isValid()
+// consults the DAWG directly with the Firebase overlays (BLOCKED_OVERLAY
+// reject / approved-overlay accept).
 
-import { parseDawg } from './dawg.js';
+import { parseDawg, buildDawg, serializeDawg } from './dawg.js';
 
 export const DICT = new Set();
 export let dictReady = false;
 let validationLogger = null;
 let dawg = null;                  // parseDawg(...) result, populated by loadDictV2
-let dictionaryMode = 'v1';        // 'v1' | 'v2'
 
 // Runtime block-overlay: words admins have explicitly excluded from gameplay.
 // Populated at boot by syncBlockedDictionaryWordsOnce from /dictionaryRejected
-// in Firebase. Checked by isValid (both v1 and v2) before any positive lookup
-// so a blocked word always rejects, even if it's in the DAWG / DICT / lemma
-// chain.
+// in Firebase. Checked by isValid before any positive lookup so a blocked word
+// always rejects, even if it's in the DAWG / DICT.
 export const BLOCKED_OVERLAY = new Set();
 
-export const DICT_BASE_URL = './data/dictionary.base.txt';
 export const DICT_V2_URL = './data/dictionary.v2.bin';
 
-export function setDictionaryMode(mode) {
-  if (mode !== 'v1' && mode !== 'v2') {
-    throw new Error(`unknown dictionary mode: ${mode}`);
-  }
-  dictionaryMode = mode;
-}
-
-export function getDictionaryMode() {
-  return dictionaryMode;
+// addWordsFromText: builds a minimal in-memory DAWG from a newline-separated
+// word list and activates it as the current dictionary. Used by test harnesses
+// that need to seed a small word set without fetching the full binary.
+export function addWordsFromText(txt) {
+  const words = txt.split(/\r?\n/).map((w) => w.trim()).filter(Boolean);
+  if (words.length === 0) return;
+  const sorted = [...new Set(words)].sort();
+  dawg = parseDawg(serializeDawg(buildDawg(sorted)));
+  for (const w of sorted) DICT.add(w);
+  dictReady = true;
 }
 
 // NOTE (June 2026): the curated reject/accept word lists — EXACT_REJECTS,
@@ -58,27 +46,9 @@ export const PREFIXES = new Set(["ו","ה","ב","כ","ל","ש","מ"]);
 export const POSSESSIVE_SUFFIXES = ["יהם","יהן","יכם","יכן","ינו","ייך","יך","יה","יו","כם","כן","נו","יי"];
 export const VERB_SUFFIXES = ["תנה","תם","תן","תי","נו","נה","ים","ות","ת","ה"];
 
-export function addWordsFromText(txt) {
-  txt.split(/\r?\n/).forEach((raw) => {
-    const w = raw.trim();
-    if (w) DICT.add(w);
-  });
-}
-
-export async function loadDict() {
-  const resp = await fetch(DICT_BASE_URL, { cache: 'no-cache' });
-  if (!resp.ok) {
-    throw new Error(`dictionary file fetch failed: ${resp.status}`);
-  }
-  const txt = await resp.text();
-  addWordsFromText(txt);
-  dictReady = true;
-  return DICT.size;
-}
-
 // v2 loader: fetches the DAWG-encoded curated lexicon and populates both the
-// DAWG (for isValid lookups) and the legacy DICT Set (so iteration callers
-// like the mini-game word search and bot word generator keep working).
+// DAWG (for isValid lookups) and the DICT Set (so iteration callers like the
+// mini-game word search and bot word generator keep working).
 export async function loadDictV2(url = DICT_V2_URL) {
   const resp = await fetch(url, { cache: 'no-cache' });
   if (!resp.ok) {
@@ -91,47 +61,6 @@ export async function loadDictV2(url = DICT_V2_URL) {
   for (const w of dawg.words()) DICT.add(w);
   dictReady = true;
   return DICT.size;
-}
-
-// Bot vocabulary: independent of the active dictionary mode, the offline bot
-// always picks candidate words from the legacy 40K list. This keeps bot play
-// strength stable as the player-facing dictionary grows. We fetch the legacy
-// file once per session and cache; the bot uses this list as its candidate
-// universe, while the validator (isValid) still runs against the active
-// dictionary so any word the bot proposes is naturally accepted.
-let legacyBotVocabularyCache = null;
-let legacyBotVocabularyPromise = null;
-
-export async function loadBotLegacyVocabularyOnce(url = DICT_BASE_URL) {
-  if (legacyBotVocabularyCache) return legacyBotVocabularyCache;
-  if (!legacyBotVocabularyPromise) {
-    legacyBotVocabularyPromise = (async () => {
-      const resp = await fetch(url, { cache: 'no-cache' });
-      if (!resp.ok) throw new Error(`legacy bot vocabulary fetch failed: ${resp.status}`);
-      const txt = await resp.text();
-      legacyBotVocabularyCache = txt.split(/\r?\n/).map((w) => w.trim()).filter(Boolean);
-      return legacyBotVocabularyCache;
-    })().catch((e) => { legacyBotVocabularyPromise = null; throw e; });
-  }
-  return legacyBotVocabularyPromise;
-}
-
-// Synchronous accessor for the cached legacy vocabulary. Returns null if
-// loadBotLegacyVocabularyOnce hasn't completed yet — callers should fall back
-// to DICT in that case.
-export function getBotLegacyVocabularyCached() {
-  return legacyBotVocabularyCache;
-}
-
-// Test-only: clear the bot-vocabulary cache so tests can re-seed.
-export function resetBotLegacyVocabularyForTests() {
-  legacyBotVocabularyCache = null;
-  legacyBotVocabularyPromise = null;
-}
-
-// Test-only: pre-seed the cache without doing a fetch.
-export function setBotLegacyVocabularyForTests(words) {
-  legacyBotVocabularyCache = Array.isArray(words) ? [...words] : null;
 }
 
 // Test-only injection point for the DAWG (lets unit tests bypass fetch).
@@ -266,92 +195,42 @@ export function dictHasPlene(word) {
   return null;
 }
 
-// Main entry: analyze a word, return {valid, word, lemma, reason}
-export function analyze(rawWord) {
-  const word = rawWord.trim().split("").filter(ch => ch >= "א" && ch <= "ת").join("");
-  if (!word) return { valid: false, word, lemma: null, reason: "empty" };
-  if (dictHas(word)) return { valid: true, word, lemma: word, reason: "exact-match" };
-  return { valid: false, word, lemma: null, reason: "not-in-b64-dictionary" };
-}
-
-export function isValid(w) {
-  if (dictionaryMode === 'v2') return isValidV2(w);
-
-  // v1 path — unchanged from the original implementation, plus the
-  // BLOCKED_OVERLAY check (admin-removed words always reject).
-  if (BLOCKED_OVERLAY.size > 0) {
-    const cleaned = (w || '').trim().split('').filter((ch) => ch >= 'א' && ch <= 'ת').join('');
-    if (cleaned && BLOCKED_OVERLAY.has(cleaned)) {
-      validationLogger?.('[isValid]', JSON.stringify(w), '->', '✗ INVALID', '| blocked-overlay');
-      return false;
-    }
-  }
-  // Legacy HebrewValidator ultimately accepts exact dictionary hits. Keep that
-  // guarantee here so a stricter/stale validator cannot reject a word that is
-  // present in the active dictionary, such as "מפורשת".
-  const exact = analyze(w);
-  if (exact.valid) {
-    validationLogger?.('[isValid]', JSON.stringify(w), '->', '✓ VALID', '|', exact.reason);
-    return true;
-  }
-
-  // Use HebrewValidator when available (better accuracy)
-  let result, reason;
-  const hv = globalThis.HebrewValidator;
-  if (hv && hv.ready && DICT.size > 0) {
-    const v = hv.validate(w);
-    result = v.valid;
-    reason = v.reason + (v.confidence ? ' [' + v.confidence + ']' : '');
-  } else {
-    result = exact.valid;
-    reason = exact.reason;
-  }
-  validationLogger?.('[isValid]', JSON.stringify(w), '->', result ? '✓ VALID' : '✗ INVALID', '|', reason);
-  return result;
-}
-
-// v2 validation path: DAWG lookup + policy overlays, no morphology fallback.
-// Synchronous, returns boolean — same contract as v1 isValid().
+// isValid: DAWG lookup + policy overlays.
 //
 // Policy order (first match wins):
 //   1. Clean input to Hebrew letters only; empty → invalid.
-//   2. BLOCKED_OVERLAY hit → invalid (Firebase /dictionaryRejected, synced at
-//      boot — this is now the ONLY reject overlay; the in-code EXACT_REJECTS
-//      list was removed and migrated to Firebase).
+//   2. BLOCKED_OVERLAY hit → invalid (Firebase /dictionaryRejected, synced at boot).
 //   3. DAWG.has(word) OR DAWG.has(terminal-final variant) → valid.
 //   4. Approved-overlay hit (Firebase /dictionaryApproved merged into DICT
-//      after loadDictV2 — now the ONLY accept overlay; the in-code
-//      CLASSIC_ALLOW / DEFECTIVE_ACCEPT lists were removed and migrated) → valid.
+//      after loadDictV2) → valid. Allows admin-approved words that haven't
+//      yet been absorbed into the binary via absorb-firebase-dict.mjs.
 //   5. Otherwise invalid.
-function isValidV2(rawWord) {
+export function isValid(rawWord) {
   if (!dawg) {
-    validationLogger?.('[isValidV2]', JSON.stringify(rawWord), '->', '✗ INVALID', '| dawg-not-loaded');
+    validationLogger?.('[isValid]', JSON.stringify(rawWord), '->', '✗ INVALID', '| dawg-not-loaded');
     return false;
   }
   const word = (rawWord || '').trim().split('').filter((ch) => ch >= 'א' && ch <= 'ת').join('');
   if (!word) {
-    validationLogger?.('[isValidV2]', JSON.stringify(rawWord), '->', '✗ INVALID', '| empty');
+    validationLogger?.('[isValid]', JSON.stringify(rawWord), '->', '✗ INVALID', '| empty');
     return false;
   }
   if (BLOCKED_OVERLAY.has(word)) {
-    validationLogger?.('[isValidV2]', JSON.stringify(word), '->', '✗ INVALID', '| blocked-overlay');
+    validationLogger?.('[isValid]', JSON.stringify(word), '->', '✗ INVALID', '| blocked-overlay');
     return false;
   }
   for (const variant of terminalFinalVariants(word)) {
     if (dawg.has(variant)) {
-      validationLogger?.('[isValidV2]', JSON.stringify(word), '->', '✓ VALID', '| dawg-hit');
+      validationLogger?.('[isValid]', JSON.stringify(word), '->', '✓ VALID', '| dawg-hit');
       return true;
     }
   }
-  // Firebase-approved overlay is merged into DICT (see main.js
-  // syncApprovedDictionaryWordsOnce). Honor those even if the binary doesn't
-  // contain them — admin-approved words must always validate.
   for (const variant of terminalFinalVariants(word)) {
     if (DICT.has(variant)) {
-      validationLogger?.('[isValidV2]', JSON.stringify(word), '->', '✓ VALID', '| approved-overlay');
+      validationLogger?.('[isValid]', JSON.stringify(word), '->', '✓ VALID', '| approved-overlay');
       return true;
     }
   }
-  validationLogger?.('[isValidV2]', JSON.stringify(word), '->', '✗ INVALID', '| not-in-dawg');
+  validationLogger?.('[isValid]', JSON.stringify(word), '->', '✗ INVALID', '| not-in-dawg');
   return false;
 }

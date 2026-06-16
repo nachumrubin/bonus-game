@@ -38,9 +38,9 @@ function loadModules() {
       import('../../src/game/sessions/onlineGameSession.js'),
     ]);
     if (!globalThis.__GHOST_MOVE_DICT_LOADED__) {
-      dict.addWordsFromText(fs.readFileSync(
-        path.join(__dirname, '..', '..', 'data', 'dictionary.base.txt'), 'utf8',
-      ));
+      const { parseDawg: _parseDawg } = await import('../../src/game/core/dawg.js');
+      const _rawBuf = fs.readFileSync(path.join(__dirname, '..', '..', 'data', 'dictionary.v2.bin'));
+      dict.setDawgForTests(_parseDawg(_rawBuf.buffer.slice(_rawBuf.byteOffset, _rawBuf.byteOffset + _rawBuf.byteLength)));
       globalThis.__GHOST_MOVE_DICT_LOADED__ = true;
     }
     return {
