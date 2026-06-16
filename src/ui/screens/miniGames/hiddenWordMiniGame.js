@@ -50,6 +50,7 @@ const ALL_DIRECTIONS = [
 
 import { startBonusTimer } from './bonusTimer.js';
 import { g, getGender } from '../../genderText.js';
+import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 
 const DEFAULT_SIZE = 4;
 const DEFAULT_WORD_LEN = 3;
@@ -93,7 +94,7 @@ export function placeHiddenWord(words, {
   const candidates = (Array.isArray(words) ? words : [])
     .filter(w => typeof w === 'string')
     .map(normWord)
-    .filter(w => w.length === wordLen && w.length <= size);
+    .filter(w => w.length === wordLen && w.length <= size && isMiniGameWord(w));
   // Shuffle so the same grid isn't produced every game.
   candidates.sort(() => rng() - 0.5);
 

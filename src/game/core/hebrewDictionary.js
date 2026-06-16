@@ -162,6 +162,22 @@ export function dictHasPlene(word) {
   return null;
 }
 
+// Mini-game word quality filter — rejects words with suspicious letter repetition:
+//   • starts with two identical letters
+//   • ends with two identical letters
+//   • has three or more identical letters in a row anywhere
+// Final-form variants (ך/כ etc.) are normalised to base before checking.
+export function isMiniGameWord(word) {
+  if (!word || word.length < 2) return true;
+  const w = norm(word);
+  if (w[0] === w[1]) return false;
+  if (w[w.length - 1] === w[w.length - 2]) return false;
+  for (let i = 2; i < w.length; i++) {
+    if (w[i] === w[i - 1] && w[i] === w[i - 2]) return false;
+  }
+  return true;
+}
+
 // isValid: DICT lookup + BLOCKED_OVERLAY policy.
 //
 // Policy order (first match wins):

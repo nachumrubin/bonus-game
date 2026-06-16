@@ -13,6 +13,7 @@ import {
   addWordsFromText,
   setValidationLogger,
   spellingVariants,
+  isMiniGameWord,
   BLOCKED_OVERLAY,
 } from './hebrewDictionary.js';
 
@@ -151,6 +152,33 @@ test('isValid: configurable logger records validations', () => {
     assert.equal(logs[0][0], '[isValid]');
     setValidationLogger(null);
   } finally { resetDict(); }
+});
+
+test('isMiniGameWord: rejects words starting with two identical letters', () => {
+  assert.equal(isMiniGameWord('ששון'), false);   // starts שש
+  assert.equal(isMiniGameWord('ממשלה'), false);  // starts מם (same after norm)
+});
+
+test('isMiniGameWord: rejects words ending with two identical letters', () => {
+  assert.equal(isMiniGameWord('שלומם'), false);  // ends מם → ממ after norm
+  assert.equal(isMiniGameWord('כבסס'), false);   // ends סס
+});
+
+test('isMiniGameWord: rejects words with three identical letters in a row', () => {
+  assert.equal(isMiniGameWord('אאא'), false);
+  assert.equal(isMiniGameWord('שלאאאם'), false);
+});
+
+test('isMiniGameWord: accepts normal words', () => {
+  assert.equal(isMiniGameWord('שלום'), true);
+  assert.equal(isMiniGameWord('ילד'), true);
+  assert.equal(isMiniGameWord('ממשלה'), false);  // starts מם
+  assert.equal(isMiniGameWord('בית'), true);
+});
+
+test('isMiniGameWord: final-form folding applies before repetition check', () => {
+  // ם and מ are same base letter — word ending in ...מם should be rejected
+  assert.equal(isMiniGameWord('לחמם'), false);
 });
 
 test('isValid: real bundled text file validates expected words', async () => {
