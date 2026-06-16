@@ -5,6 +5,10 @@
 
 ---
 
+## Dictionary additions from curated review list — June 2026
+
+- [x] Added 10,624 words from `words_sorted_for_review.txt` to `data/dictionary.base.txt`. Dictionary grew from 40,000 to 50,624 words. Report of added words saved to `added-words.txt`.
+
 ## Fix: forfeiting player not notified of game end — June 2026
 
 - [x] `forceResync()` in `onlineGameSession.js` now emits `EV.GAME_COMPLETED` when the resynced room is in a terminal state (abandoned/completed/expired) and the session hadn't already transitioned. Closes the race where the opponent's watchdog-forfeit write races the forfeiting player's last-moment commit.

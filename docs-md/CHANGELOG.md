@@ -2,6 +2,12 @@
 
 ---
 
+## Dictionary: added 10,624 words from curated review list — June 2026
+
+Added 10,624 new Hebrew words to `data/dictionary.base.txt` from a curated word list (`words_sorted_for_review.txt`). Words already present in the dictionary were skipped. Total dictionary size increased from 40,000 to 50,624 words. A report of all added words was generated at `added-words.txt`. Unit tests 179/179.
+
+---
+
 ## Mini-games: full-width "✓" submit below the input — June 2026
 
 In Honeycomb (כוורת) and Letter spinner (אות פותחת), `buildInputRow` now puts the input + ⌫ on one row and the **✓ submit as a full-width button below it** (bigger tap target, easier to finalize a word) instead of a small ✓ squeezed into the input row. Regenerated both guide screenshots; also made the capture `shot()` helper re-hide `#ov-onboarding` / `#app-loading` right before capture (they re-appear on delayed timers). Mini-game tests 19/19.
