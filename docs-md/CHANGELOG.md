@@ -2,6 +2,23 @@
 
 ---
 
+## Mini-games: full-width "✓" submit below the input — June 2026
+
+In Honeycomb (כוורת) and Letter spinner (אות פותחת), `buildInputRow` now puts the input + ⌫ on one row and the **✓ submit as a full-width button below it** (bigger tap target, easier to finalize a word) instead of a small ✓ squeezed into the input row. Regenerated both guide screenshots; also made the capture `shot()` helper re-hide `#ov-onboarding` / `#app-loading` right before capture (they re-appear on delayed timers). Mini-game tests 19/19.
+
+---
+
+## Mini-games: remove early-exit buttons — June 2026
+
+Per request, removed the early-exit buttons from three mini-games (they now end only on their timer, or unmount):
+- **Honeycomb (כוורת)** — removed the "סיים" button. The overlay's OK button is hidden during play and restored as "continue" (`finalize`).
+- **Letter spinner (אות פותחת)** — removed the "סיים" button from the play phase (OK button hidden during play). The spin phase keeps its "עצור ⏹" stop control (still required to pick the letter).
+- **Unscramble (סידור מחדש)** — removed the "דלג" (skip) button and its handler; only "בדוק" (check) remains.
+
+Touched `honeycombMiniGame.js`, `letterSpinnerMiniGame.js`, `unscrambleMiniGame.js` (both the legacy `#ov-bonus` path and the self-host fallback). Regenerated the three guide screenshots (and hardened the capture spec to also hide the `#ov-onboarding` popup). Mini-game tests 32/32; `npm run test:unit` 178/178.
+
+---
+
 ## Fix: B11 hidden-word accepted too-short words — June 2026
 
 The hidden-word mini-game (B11 מילה נסתרת) demands a 3-letter word, but `checkSelection` accepted any dictionary word of length ≥ 2 — so a 2-letter run like `נצ` won the bonus. Tightened the rule to require the selection to be **exactly `wordLen` letters** (the hidden word's length, 3). Forward/reverse dictionary acceptance is unchanged, so any *3-letter* real word still wins — only the incidental shorter runs are now rejected. Wrong-length taps show `✗ <word> — צריך 3 אותיות`. Added a regression test (a 2-letter run is rejected even when the validator accepts it; the 3-letter hidden word still wins). `npm run test:unit` 178/178; `hiddenWordMiniGame.test.js` 13/13.

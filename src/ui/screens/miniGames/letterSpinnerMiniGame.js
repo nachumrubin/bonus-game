@@ -196,8 +196,10 @@ export function mountLetterSpinnerMiniGame({
   // ─── shared play-phase widgets ──────────────────────────
 
   function buildInputRow() {
+    const wrap = doc.createElement('div');
+    wrap.style.cssText = 'margin-bottom:7px;';
     const row = doc.createElement('div');
-    row.style.cssText = 'display:flex;gap:5px;margin-bottom:7px;align-items:center;';
+    row.style.cssText = 'display:flex;gap:5px;margin-bottom:6px;align-items:center;';
 
     inputEl = doc.createElement('input');
     inputEl.type = 'text';
@@ -215,15 +217,18 @@ export function mountLetterSpinnerMiniGame({
     clr.style.cssText = 'padding:8px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#fff;font-size:14px;cursor:pointer;flex-shrink:0;';
     clr.addEventListener('click', () => { inputEl.value = ''; inputEl.focus?.(); });
 
+    // Full-width "✓" submit BELOW the input line — a big, easy tap target to
+    // finalize a word (the input + ⌫ sit on the row above).
     const ok = doc.createElement('button');
     ok.textContent = '✓';
-    ok.style.cssText = 'padding:8px 14px;background:var(--by);border:none;border-radius:4px;font-weight:900;font-size:15px;cursor:pointer;flex-shrink:0;color:#111;';
+    ok.style.cssText = 'width:100%;padding:10px;background:var(--by);border:none;border-radius:6px;font-weight:900;font-size:18px;cursor:pointer;color:#111;';
     ok.addEventListener('click', attemptSubmit);
 
     row.appendChild(inputEl);
     row.appendChild(clr);
-    row.appendChild(ok);
-    return row;
+    wrap.appendChild(row);
+    wrap.appendChild(ok);
+    return wrap;
   }
 
   // Submit a word and reflect the outcome in the play-phase UI. Shared by
@@ -337,8 +342,8 @@ export function mountLetterSpinnerMiniGame({
 
     const prevOnclick = bok.getAttribute?.('onclick');
     bok.removeAttribute?.('onclick');
+    const prevDisplay = bok.style.display;
     const handleSpinStop = (e) => { e?.preventDefault?.(); stopSpin(); };
-    const handleFinish   = (e) => { e?.preventDefault?.(); finalize({ timedOut: false }); };
     bok.textContent = 'עצור ⏹';
     bok.addEventListener('click', handleSpinStop);
 
@@ -346,9 +351,10 @@ export function mountLetterSpinnerMiniGame({
 
     return {
       toPlay() {
+        // No "סיים" button during play — the round ends on the timer (or
+        // unmount). Hide the OK button until finalize shows "continue".
         bok.removeEventListener('click', handleSpinStop);
-        bok.textContent = 'סיים ▶';
-        bok.addEventListener('click', handleFinish);
+        bok.style.display = 'none';
         bovd.textContent = `מילים שמתחילות ב-"${chosenLetter}" — ${Math.floor(durationMs / 1000)} שניות`;
         renderPlayInto(body);
         stopBar = startBonusTimer({ doc, durationMs });
@@ -356,7 +362,7 @@ export function mountLetterSpinnerMiniGame({
       finalize(result) {
         try { stopBar?.(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSpinStop);
-        bok.removeEventListener('click', handleFinish);
+        bok.style.display = prevDisplay ?? '';
         bchal.innerHTML = renderResult(result);
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
@@ -396,14 +402,15 @@ export function mountLetterSpinnerMiniGame({
     }
     card.appendChild(body);
 
-    const submitBtn = doc.createElement('button');
-    submitBtn.textContent = phase === 'spin' ? 'עצור ⏹' : 'סיים ▶';
-    submitBtn.style.cssText = 'margin-top:6px;background:#e8c840;border:none;border-radius:8px;padding:8px 18px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
-    submitBtn.addEventListener('click', () => {
-      if (phase === 'spin') { stopSpin(); submitBtn.textContent = 'סיים ▶'; }
-      else finalize({ timedOut: false });
-    });
-    card.appendChild(submitBtn);
+    // The spin phase needs a "עצור" control to stop the wheel; once stopped
+    // there is no "סיים" button — the round ends on the timer (or unmount).
+    if (phase === 'spin') {
+      const stopBtn = doc.createElement('button');
+      stopBtn.textContent = 'עצור ⏹';
+      stopBtn.style.cssText = 'margin-top:6px;background:#e8c840;border:none;border-radius:8px;padding:8px 18px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
+      stopBtn.addEventListener('click', () => { stopSpin(); stopBtn.remove(); });
+      card.appendChild(stopBtn);
+    }
 
     host.appendChild(card);
     doc.body?.appendChild(host);
