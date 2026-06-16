@@ -7,7 +7,7 @@
 
 ## Dictionary additions from curated review list — June 2026
 
-- [x] Added 10,624 words from `words_sorted_for_review.txt` to `data/dictionary.base.txt`. Dictionary grew from 40,000 to 50,624 words. Report of added words saved to `added-words.txt`.
+- [x] Added words from `words_sorted_for_review.txt`: 10,624 to `dictionary.base.txt` (40K→50K), 10,012 genuinely new words to `dictionary.v2.bin` (63K→73K). DAWG binary rebuilt and self-tested. Report at `added-words.txt`.
 
 ## Fix: forfeiting player not notified of game end — June 2026
 

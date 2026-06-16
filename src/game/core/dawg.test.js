@@ -45,12 +45,12 @@ test('Hebrew round-trip: full 40K legacy dictionary', () => {
 });
 
 test('DAWG suffix sharing compresses Hebrew effectively', () => {
-  // 40K Hebrew words → < 300 KB binary. This is the size budget that drives
+  // 50K Hebrew words → < 350 KB binary. This is the size budget that drives
   // the wire-delivery promise of the v2 dictionary.
   const txt = fs.readFileSync('data/dictionary.base.txt', 'utf8');
   const words = [...new Set(txt.split(/\r?\n/).map((w) => w.trim()).filter(Boolean))].sort();
   const buf = serializeDawg(buildDawg(words));
-  assert.ok(buf.byteLength < 300_000, `binary ${buf.byteLength} bytes exceeds 300 KB budget`);
+  assert.ok(buf.byteLength < 350_000, `binary ${buf.byteLength} bytes exceeds 350 KB budget`);
 });
 
 test('DAWG iteration recovers every input word in sorted order', () => {

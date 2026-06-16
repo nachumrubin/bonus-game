@@ -2,9 +2,16 @@
 
 ---
 
-## Dictionary: added 10,624 words from curated review list — June 2026
+## Dictionary: added 10,012 new words from curated review list — June 2026
 
-Added 10,624 new Hebrew words to `data/dictionary.base.txt` from a curated word list (`words_sorted_for_review.txt`). Words already present in the dictionary were skipped. Total dictionary size increased from 40,000 to 50,624 words. A report of all added words was generated at `added-words.txt`. Unit tests 179/179.
+Added words from `words_sorted_for_review.txt` to both dictionaries:
+- `data/dictionary.base.txt` (v1): grew from 40,000 → 50,624 words (+10,624; includes 714 words that were already in the v2 binary)
+- `data/dictionary.v2.bin` (v2 DAWG): rebuilt from 63,161 → 73,173 words (+10,012 genuinely new words not previously in the binary)
+- `data/dictionary.v2.meta.json`: updated to reflect new word/node/byte counts
+- `src/game/core/dawg.test.js`: updated DAWG size budget from 300 KB to 350 KB to match the expanded 50K-word base list
+- `added-words.txt`: report of the 10,012 words that are genuinely new to the v2 binary
+
+Unit tests 179/179.
 
 ---
 
