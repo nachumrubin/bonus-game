@@ -5,6 +5,10 @@
 
 ---
 
+## Fix: forfeiting player not notified of game end — June 2026
+
+- [x] `forceResync()` in `onlineGameSession.js` now emits `EV.GAME_COMPLETED` when the resynced room is in a terminal state (abandoned/completed/expired) and the session hadn't already transitioned. Closes the race where the opponent's watchdog-forfeit write races the forfeiting player's last-moment commit.
+
 ## Dictionary reject/accept lists → Firebase only — June 2026
 
 - [x] Removed in-code `EXACT_REJECTS` / `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` from `hebrewDictionary.js`; reject/accept now via Firebase overlays only (`BLOCKED_OVERLAY` / approved-overlay). Kept `COMMON_FALSE_POSSESSIVE` (morphology). Tests + docs updated.

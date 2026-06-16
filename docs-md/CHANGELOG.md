@@ -16,6 +16,17 @@ Per request, removed the early-exit buttons from three mini-games (they now end 
 - **Unscramble (סידור מחדש)** — removed the "דלג" (skip) button and its handler; only "בדוק" (check) remains.
 
 Touched `honeycombMiniGame.js`, `letterSpinnerMiniGame.js`, `unscrambleMiniGame.js` (both the legacy `#ov-bonus` path and the self-host fallback). Regenerated the three guide screenshots (and hardened the capture spec to also hide the `#ov-onboarding` popup). Mini-game tests 32/32; `npm run test:unit` 178/178.
+## Fix: forfeiting player not notified when opponent's watchdog commits forfeit simultaneously — June 2026
+
+**Bug:** When an online game was forfeited (player timed out twice in a row), the forfeiting player's client was not shown the game-over screen if they happened to try a move at the exact moment the opponent's watchdog committed `status:'abandoned'` to Firebase.
+
+**Root cause:** `forceResync()` in `onlineGameSession.js` is called when a Firebase commit fails due to a stale version (e.g., the watchdog wrote first). It correctly reads the authoritative room, updates `state.status = 'abandoned'`, and advances `lastAppliedVersion` to the abandoned version. But it only emitted `EV.TURN_CHANGED`, not `EV.GAME_COMPLETED`. When the `watchRoom` snapshot subsequently arrived with the abandoned status, it routed through `applyTerminalStatusIfNeeded`, which short-circuited because `state.status === incoming.status` (already 'abandoned'). As a result, `EV.GAME_COMPLETED` was never emitted — the forfeiting player's screen continued as if the game was still in progress, and the turn appeared to pass to their opponent.
+
+**Fix:** Added a terminal-status check at the end of `forceResync`, mirroring the one already present in the `watchRoom` main path. If `state.status` transitioned to a terminal value during the resync, `EV.GAME_COMPLETED` is now emitted immediately.
+
+**Test coverage:** New test in `tests/unit/online-ghost-move-rollback.test.js`: stubs the transaction to fail and directly mutates `_data` to `abandoned` (bypassing watchers), so the only path to `EV.GAME_COMPLETED` is through `forceResync`. Confirmed the event fires after the fix, did not fire before.
+
+`npm run test:unit` 179/179.
 
 ---
 
