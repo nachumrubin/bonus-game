@@ -5,6 +5,18 @@
 
 ---
 
+## Dictionary: v1 removal + Firebase absorption script — June 2026
+
+- [x] Removed v1 dictionary path (`loadDict`, v1 `isValid`, mode switching). `hebrewDictionary.js` is now v2-only.
+- [x] Deleted `data/dictionary.base.txt`, `scripts/add-dictionary-words.js`, `scripts/export-dictionary-file.js`.
+- [x] Added `scripts/absorb-firebase-dict.mjs` — cuts words from `/dictionaryApproved` and pastes into `dictionary.v2.bin`, then deletes from Firebase. Run `node scripts/absorb-firebase-dict.mjs` (dry-run) or `node scripts/absorb-firebase-dict.mjs --commit` (requires `firebase login`).
+- [x] Bot now uses `DICT` (populated from DAWG) instead of legacy frequency-sorted vocabulary.
+- [ ] Run `node scripts/absorb-firebase-dict.mjs --commit` locally to absorb any existing Firebase-approved words into the binary and clear the overlay.
+
+## Dictionary additions from curated review list — June 2026
+
+- [x] Added words from `words_sorted_for_review.txt`: 10,624 to `dictionary.base.txt` (40K→50K), 10,012 genuinely new words to `dictionary.v2.bin` (63K→73K). DAWG binary rebuilt and self-tested. Report at `added-words.txt`.
+
 ## Fix: forfeiting player not notified of game end — June 2026
 
 - [x] `forceResync()` in `onlineGameSession.js` now emits `EV.GAME_COMPLETED` when the resynced room is in a terminal state (abandoned/completed/expired) and the session hadn't already transitioned. Closes the race where the opponent's watchdog-forfeit write races the forfeiting player's last-moment commit.

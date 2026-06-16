@@ -4,7 +4,7 @@
 // unconditionally.
 //
 // On boot, this module:
-//   1. Loads the Hebrew dictionary (./data/dictionary.base.txt)
+//   1. Loads the Hebrew dictionary (./data/dictionary.v2.bin)
 //   2. Registers all boost plugins on the boostEngine
 //   3. Exposes window.__spine with the live bus, engine factories, and
 //      session adapters — so a tester can drive offline / bot / online
@@ -3135,26 +3135,16 @@ async function boot() {
     }
 
     if (bot) {
-      // The bot always picks from the legacy 40K list (frequency-sorted,
-      // common words first), regardless of which dictionary mode is active.
-      // This keeps bot strength stable as the player-facing dictionary grows.
-      // Validation still runs against the active dictionary via isValid(),
-      // so any word the bot picks is naturally accepted.
-      //
-      //   easy   (0)  → first  2,000 words (and botSearch caps easy to 2-3
-      //                 letter words, so it only ever uses the most common,
-      //                 short, low-value words — a real beginner)
-      //   medium (1)  → first 20,000 words
-      //   hard   (2)  → full  40,000 words
-      const VOCAB_CAPS = [2000, 20000, 40000];
+      // Bot difficulty limits the candidate word pool:
+      //   easy   (0) → first  2,000 words
+      //   medium (1) → first 20,000 words
+      //   hard   (2) → full  73,000+ words
+      // Words are drawn from DICT (populated from the v2 DAWG binary at boot),
+      // iterated in the order they were inserted (lexicographic for DAWG words).
+      const VOCAB_CAPS = [2000, 20000, 73000];
       const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
-      // Legacy vocabulary is preloaded at boot in ensureDictionaryLoaded.
-      // If we get here before it's ready (rare race), fall back to DICT so
-      // the bot still has *something* to play.
-      const legacy = hebrewDictionary.getBotLegacyVocabularyCached();
-      const sourceWords = legacy ?? [...hebrewDictionary.DICT];
       const fullList = [...new Set(
-        sourceWords
+        [...hebrewDictionary.DICT]
           .filter((w) => w.length >= 2 && w.length <= 6)
           .map((w) => hebrewDictionary.norm(w)),
       )];
@@ -3941,37 +3931,14 @@ async function ensureAuthedUser() {
   throw new Error('Firebase auth probe failed even after fresh sign-in');
 }
 
-// v2 (curated HSpell-derived 63K dictionary) became the default in June 2026
-// after the canary at ?dict=v2 ran clean. ?dict=v1 remains as a rollback
-// switch for one release in case a regression surfaces.
-function dictionaryModeFromUrl() {
-  try {
-    const params = new URLSearchParams(globalThis.location?.search || '');
-    return params.get('dict') === 'v1' ? 'v1' : 'v2';
-  } catch {
-    return 'v2';
-  }
-}
-
 function ensureDictionaryLoaded() {
   if (hebrewDictionary.DICT.size > 0) {
     return Promise.resolve(hebrewDictionary.DICT.size);
   }
   if (!dictionaryLoadPromise) {
-    const mode = dictionaryModeFromUrl();
-    hebrewDictionary.setDictionaryMode(mode);
-    const loader = mode === 'v2' ? hebrewDictionary.loadDictV2() : hebrewDictionary.loadDict();
-    dictionaryLoadPromise = loader
+    dictionaryLoadPromise = hebrewDictionary.loadDictV2()
       .then((size) => {
-        console.info('[spine] dictionary size:', size, '(mode:', mode + ')');
-        // Eagerly load the legacy bot vocabulary so the offline bot has a
-        // candidate list ready when a user starts a bot game. Fire-and-forget;
-        // the bot wiring tolerates a still-loading vocabulary by falling back
-        // to DICT, but in practice this resolves long before the user picks
-        // bot mode.
-        hebrewDictionary.loadBotLegacyVocabularyOnce().catch((e) => {
-          console.warn('[spine] bot vocabulary preload failed:', e);
-        });
+        console.info('[spine] dictionary size:', size);
         return size;
       })
       .catch((e) => {

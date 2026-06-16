@@ -37,8 +37,10 @@ function loadModules() {
     if (!globalThis.__ENGINE_RACK_TEST_DICT_LOADED__) {
       const fs = require('node:fs');
       const path = require('node:path');
-      const dictPath = path.join(__dirname, '..', '..', 'data', 'dictionary.base.txt');
-      dict.addWordsFromText(fs.readFileSync(dictPath, 'utf8'));
+      const dictPath = path.join(__dirname, '..', '..', 'data', 'dictionary.v2.bin');
+      const { parseDawg } = await import('../../src/game/core/dawg.js');
+      const rawBuf = fs.readFileSync(dictPath);
+      dict.setDawgForTests(parseDawg(rawBuf.buffer.slice(rawBuf.byteOffset, rawBuf.byteOffset + rawBuf.byteLength)));
       globalThis.__ENGINE_RACK_TEST_DICT_LOADED__ = true;
     }
     return {

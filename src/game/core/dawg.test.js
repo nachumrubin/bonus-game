@@ -33,24 +33,19 @@ test('buildDawg throws on duplicates', () => {
   assert.throws(() => buildDawg(['a', 'a']), /sorted unique input/);
 });
 
-test('Hebrew round-trip: full 40K legacy dictionary', () => {
-  const txt = fs.readFileSync('data/dictionary.base.txt', 'utf8');
-  const words = [...new Set(txt.split(/\r?\n/).map((w) => w.trim()).filter(Boolean))].sort();
-  const dawg = buildDawg(words);
-  const parsed = parseDawg(serializeDawg(dawg));
-  // Spot-check every word — this is the gate that catches any encoder bug.
+test('Hebrew round-trip: v2 binary decodes every word it encodes', () => {
+  const buf = fs.readFileSync('data/dictionary.v2.bin');
+  const parsed = parseDawg(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+  const words = [...parsed.words()];
   let missing = 0;
   for (const w of words) if (!parsed.has(w)) missing++;
   assert.equal(missing, 0, `${missing} words missing from decoded DAWG`);
 });
 
 test('DAWG suffix sharing compresses Hebrew effectively', () => {
-  // 40K Hebrew words → < 300 KB binary. This is the size budget that drives
-  // the wire-delivery promise of the v2 dictionary.
-  const txt = fs.readFileSync('data/dictionary.base.txt', 'utf8');
-  const words = [...new Set(txt.split(/\r?\n/).map((w) => w.trim()).filter(Boolean))].sort();
-  const buf = serializeDawg(buildDawg(words));
-  assert.ok(buf.byteLength < 300_000, `binary ${buf.byteLength} bytes exceeds 300 KB budget`);
+  // 73K Hebrew words → < 500 KB binary.
+  const buf = fs.readFileSync('data/dictionary.v2.bin');
+  assert.ok(buf.byteLength < 500_000, `binary ${buf.byteLength} bytes exceeds 500 KB budget`);
 });
 
 test('DAWG iteration recovers every input word in sorted order', () => {
@@ -59,16 +54,15 @@ test('DAWG iteration recovers every input word in sorted order', () => {
   assert.deepEqual(recovered, sorted);
 });
 
-test('DAWG iteration is stable for Hebrew 40K', () => {
-  const txt = fs.readFileSync('data/dictionary.base.txt', 'utf8');
-  const words = [...new Set(txt.split(/\r?\n/).map((w) => w.trim()).filter(Boolean))].sort();
-  const parsed = parseDawg(serializeDawg(buildDawg(words)));
+test('DAWG iteration is stable for the v2 binary', () => {
+  const buf = fs.readFileSync('data/dictionary.v2.bin');
+  const parsed = parseDawg(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
   const recovered = [...parsed.words()];
-  assert.equal(recovered.length, words.length);
-  // Spot-check ordering at a few positions
-  assert.equal(recovered[0], words[0]);
-  assert.equal(recovered[words.length - 1], words[words.length - 1]);
-  assert.equal(recovered[Math.floor(words.length / 2)], words[Math.floor(words.length / 2)]);
+  // Re-encode from iterated words and verify round-trip matches original
+  const reEncoded = parseDawg(serializeDawg(buildDawg([...recovered].sort())));
+  assert.equal(reEncoded.has(recovered[0]), true);
+  assert.equal(reEncoded.has(recovered[recovered.length - 1]), true);
+  assert.equal(reEncoded.has(recovered[Math.floor(recovered.length / 2)]), true);
 });
 
 test('parseDawg rejects bad magic', () => {

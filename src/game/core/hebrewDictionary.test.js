@@ -5,17 +5,13 @@ import assert from 'node:assert/strict';
 
 import {
   DICT,
-  addWordsFromText,
   norm,
   terminalFinalVariants,
   dictHas,
   candidateLemmas,
-  analyze,
   isValid,
   setValidationLogger,
   spellingVariants,
-  setDictionaryMode,
-  getDictionaryMode,
   setDawgForTests,
   BLOCKED_OVERLAY,
 } from './hebrewDictionary.js';
@@ -26,8 +22,7 @@ function dawgFromWords(words) {
   return parseDawg(serializeDawg(buildDawg(sorted)));
 }
 
-function resetToV1() {
-  setDictionaryMode('v1');
+function resetDawg() {
   setDawgForTests(null);
   DICT.clear();
 }
@@ -42,20 +37,20 @@ test('norm folds final-form letters to base forms', () => {
 test('terminalFinalVariants yields the word plus its final-form variant when applicable', () => {
   assert.deepEqual([...terminalFinalVariants('שלומ')], ['שלומ', 'שלום']);
   assert.deepEqual([...terminalFinalVariants('דרכ')], ['דרכ', 'דרך']);
-  // No final-form mapping for the last char → only the original
   assert.deepEqual([...terminalFinalVariants('כלב')], ['כלב']);
   assert.deepEqual([...terminalFinalVariants('')], []);
 });
 
 test('dictHas accepts both base and final-form variants', () => {
   DICT.clear();
-  addWordsFromText('שלום\nדרך\nכלב\n');
+  DICT.add('שלום'); DICT.add('דרך'); DICT.add('כלב');
   assert.equal(dictHas('שלום'), true);
-  assert.equal(dictHas('שלומ'), true);    // final-form fold should match
+  assert.equal(dictHas('שלומ'), true);
   assert.equal(dictHas('דרך'), true);
   assert.equal(dictHas('דרכ'), true);
   assert.equal(dictHas('כלב'), true);
   assert.equal(dictHas('פיל'), false);
+  DICT.clear();
 });
 
 test('candidateLemmas yields the original word first', () => {
@@ -66,90 +61,12 @@ test('candidateLemmas yields the original word first', () => {
 test('candidateLemmas strips ים plural to give the singular stem', () => {
   const cands = [...candidateLemmas('כלבים')];
   assert.ok(cands.includes('כלב'), `expected 'כלב' in ${cands.join(', ')}`);
-  // also yields the +"ה" variant for feminine forms
   assert.ok(cands.includes('כלבה'));
 });
 
 test('candidateLemmas strips ות plural', () => {
   const cands = [...candidateLemmas('שולחנות')];
   assert.ok(cands.includes('שולחנ'), `expected 'שולחנ' in ${cands.join(', ')}`);
-});
-
-test('analyze returns invalid for empty input', () => {
-  DICT.clear();
-  const r = analyze('');
-  assert.equal(r.valid, false);
-  assert.equal(r.reason, 'empty');
-});
-
-test('analyze returns valid with reason "exact-match" for a known word', () => {
-  DICT.clear();
-  addWordsFromText('שלום\n');
-  const r = analyze('שלום');
-  assert.equal(r.valid, true);
-  assert.equal(r.lemma, 'שלום');
-  assert.equal(r.reason, 'exact-match');
-});
-
-test('analyze handles board-style words without final forms via dictHas', () => {
-  DICT.clear();
-  addWordsFromText('שלום\n');
-  const r = analyze('שלומ'); // board has no final-mem
-  assert.equal(r.valid, true);
-  assert.equal(r.reason, 'exact-match');
-});
-
-test('analyze rejects non-Hebrew input', () => {
-  DICT.clear();
-  addWordsFromText('שלום\n');
-  // Latin chars get filtered by the [א-ת] gate; the remaining word may match
-  const r = analyze('hello');
-  assert.equal(r.valid, false);
-  assert.equal(r.reason, 'empty');
-});
-
-test('isValid is silent by default and can use a configurable logger', () => {
-  DICT.clear();
-  addWordsFromText('אב\n');
-
-  const logs = [];
-  setValidationLogger(null);
-  assert.equal(isValid('אב'), true);
-  assert.deepEqual(logs, []);
-
-  setValidationLogger((...args) => logs.push(args));
-  assert.equal(isValid('גד'), false);
-  assert.equal(logs.length, 1);
-  assert.equal(logs[0][0], '[isValid]');
-  setValidationLogger(null);
-});
-
-test('isValid accepts exact dictionary words even when HebrewValidator rejects them', () => {
-  DICT.clear();
-  addWordsFromText('מפורשת\n');
-
-  const previousValidator = globalThis.HebrewValidator;
-  try {
-    globalThis.HebrewValidator = {
-      ready: true,
-      validate: () => ({ valid: false, reason: 'stub-reject' }),
-    };
-
-    assert.equal(isValid('מפורשת'), true);
-  } finally {
-    if (previousValidator) globalThis.HebrewValidator = previousValidator;
-    else delete globalThis.HebrewValidator;
-  }
-});
-
-test('base dictionary contains the playable word מפורשת', async () => {
-  const fs = await import('node:fs/promises');
-  const text = await fs.readFile('data/dictionary.base.txt', 'utf8');
-  DICT.clear();
-  addWordsFromText(text);
-
-  assert.equal(DICT.has('מפורשת'), true);
-  assert.equal(isValid('מפורשת'), true);
 });
 
 test('spellingVariants generates ktiv-haser variants by stripping interior ו/י', () => {
@@ -163,122 +80,90 @@ test('spellingVariants generates ktiv-male variants by inserting interior ו/י'
   assert.ok(variants.includes('כיסא'), `expected 'כיסא' in ${variants.join(', ')}`);
 });
 
-// ----------------------------------------------------------------------------
-// v2 dictionary path (DAWG-backed, no morphology fallback).
-// Every v2 test resets to v1 in a finally block so subsequent tests in the
-// suite see the default mode.
-// ----------------------------------------------------------------------------
-
-test('v2: isValid returns true for exact DAWG hit', () => {
+test('isValid: returns true for exact DAWG hit', () => {
   try {
     setDawgForTests(dawgFromWords(['שלום', 'בית', 'ילד']));
-    setDictionaryMode('v2');
     assert.equal(isValid('שלום'), true);
     assert.equal(isValid('בית'), true);
     assert.equal(isValid('ילד'), true);
-  } finally { resetToV1(); }
+  } finally { resetDawg(); }
 });
 
-test('v2: isValid returns false for words not in DAWG (no morphology fallback)', () => {
+test('isValid: returns false for words not in DAWG (no morphology fallback)', () => {
   try {
-    // Only the lemma is in the DAWG. v1 would accept הלכתי via suffix
-    // stripping → הלך; v2 should reject because curated lexicon is
-    // responsible for shipping the inflected form directly.
     setDawgForTests(dawgFromWords(['הלך']));
-    setDictionaryMode('v2');
     assert.equal(isValid('הלך'), true);
-    assert.equal(isValid('הלכתי'), false, 'v2 must not infer inflection from lemma');
+    assert.equal(isValid('הלכתי'), false, 'inflected form not in DAWG must reject');
     assert.equal(isValid('הולך'), false);
-  } finally { resetToV1(); }
+  } finally { resetDawg(); }
 });
 
-test('v2: terminal final-form variants are accepted', () => {
+test('isValid: terminal final-form variants are accepted', () => {
   try {
-    setDawgForTests(dawgFromWords(['שלום'])); // base form contains ם
-    setDictionaryMode('v2');
+    setDawgForTests(dawgFromWords(['שלום']));
     assert.equal(isValid('שלום'), true);
     assert.equal(isValid('שלומ'), true, 'medial-mem variant should match via final-form fold');
-  } finally { resetToV1(); }
+  } finally { resetDawg(); }
 });
 
-// The in-code EXACT_REJECTS / CLASSIC_ALLOW / DEFECTIVE_ACCEPT lists were
-// removed (June 2026) — reject/accept curation now lives only in the Firebase
-// overlays (BLOCKED_OVERLAY / approved-overlay). These tests assert the overlay
-// path, which is the single remaining policy mechanism.
-test('v2: BLOCKED_OVERLAY rejects a word even when it is in the DAWG', () => {
+test('isValid: BLOCKED_OVERLAY rejects a word even when it is in the DAWG', () => {
   try {
     setDawgForTests(dawgFromWords(['שלום', 'בית']));
-    setDictionaryMode('v2');
     assert.equal(isValid('בית'), true, 'in-DAWG word valid before blocking');
     BLOCKED_OVERLAY.add('בית');
     assert.equal(isValid('בית'), false, 'BLOCKED_OVERLAY must override a DAWG hit');
-  } finally { BLOCKED_OVERLAY.delete('בית'); resetToV1(); }
+  } finally { BLOCKED_OVERLAY.delete('בית'); resetDawg(); }
 });
 
-test('v1: BLOCKED_OVERLAY rejects a word that is in DICT', () => {
-  try {
-    setDictionaryMode('v1');
-    DICT.add('בית');
-    assert.equal(isValid('בית'), true, 'DICT word valid before blocking');
-    BLOCKED_OVERLAY.add('בית');
-    assert.equal(isValid('בית'), false, 'BLOCKED_OVERLAY must override a DICT hit');
-  } finally { BLOCKED_OVERLAY.delete('בית'); resetToV1(); }
-});
-
-test('v2: Firebase-approved overlay (DICT.add after load) is honored', () => {
+test('isValid: Firebase-approved overlay (DICT.add after load) is honored', () => {
   try {
     setDawgForTests(dawgFromWords(['שלום']));
-    setDictionaryMode('v2');
     assert.equal(isValid('מילהחדשה'), false, 'unseen word should reject before approval');
     DICT.add('מילהחדשה');
     assert.equal(isValid('מילהחדשה'), true, 'approved-overlay word must validate');
-  } finally { resetToV1(); }
+  } finally { resetDawg(); }
 });
 
-test('v2: invalid input (non-Hebrew, empty) rejects', () => {
+test('isValid: invalid input (non-Hebrew, empty) rejects', () => {
   try {
     setDawgForTests(dawgFromWords(['שלום']));
-    setDictionaryMode('v2');
     assert.equal(isValid(''), false);
     assert.equal(isValid('   '), false);
     assert.equal(isValid('xyz'), false);
-  } finally { resetToV1(); }
+  } finally { resetDawg(); }
 });
 
-test('v2: rejects when DAWG never loaded', () => {
+test('isValid: rejects when DAWG never loaded', () => {
   try {
     setDawgForTests(null);
-    setDictionaryMode('v2');
     assert.equal(isValid('שלום'), false);
-  } finally { resetToV1(); }
+  } finally { resetDawg(); }
 });
 
-test('v2: real bundled binary loads and validates expected words', async () => {
+test('isValid: configurable logger records validations', () => {
+  try {
+    setDawgForTests(dawgFromWords(['אב']));
+    const logs = [];
+    setValidationLogger(null);
+    assert.equal(isValid('אב'), true);
+    assert.deepEqual(logs, []);
+
+    setValidationLogger((...args) => logs.push(args));
+    assert.equal(isValid('גד'), false);
+    assert.equal(logs.length, 1);
+    assert.equal(logs[0][0], '[isValid]');
+    setValidationLogger(null);
+  } finally { resetDawg(); }
+});
+
+test('isValid: real bundled binary validates expected words', async () => {
   try {
     const fs = await import('node:fs/promises');
     const buf = await fs.readFile('data/dictionary.v2.bin');
     const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
     setDawgForTests(parseDawg(ab));
-    setDictionaryMode('v2');
-    // The bundled v2 binary is currently the legacy 40K re-encoded.
-    // Anything present in legacy must validate.
-    assert.equal(isValid('מפורשת'), true, 'מפורשת should validate via v2');
+    assert.equal(isValid('מפורשת'), true, 'מפורשת should be in v2 binary');
     assert.equal(isValid('שלום'), true);
-    // Negative
     assert.equal(isValid('זזזזזזזזזז'), false);
-  } finally { resetToV1(); }
-});
-
-test('mode switch: v1 ↔ v2 is clean — v1 tests after v2 still see legacy behavior', () => {
-  // Verify resetToV1 truly puts the module back to v1 behavior.
-  try {
-    setDawgForTests(dawgFromWords(['א']));
-    setDictionaryMode('v2');
-    assert.equal(getDictionaryMode(), 'v2');
-  } finally { resetToV1(); }
-  assert.equal(getDictionaryMode(), 'v1');
-  // v1 path now active — verify analyze() chain still runs by adding a word
-  // and checking exact match works.
-  addWordsFromText('בדיקה\n');
-  assert.equal(isValid('בדיקה'), true);
+  } finally { resetDawg(); }
 });
