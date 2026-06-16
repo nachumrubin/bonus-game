@@ -25,6 +25,7 @@
 
 import { startBonusTimer } from './bonusTimer.js';
 import { g, getGender } from '../../genderText.js';
+import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 
 const DEFAULT_DURATION_MS = 40_000;
 const DEFAULT_PTS = 100;
@@ -46,7 +47,8 @@ export function pickFillableWord(words, {
   const candidates = words.filter(w =>
     typeof w === 'string' &&
     w.length >= minLen && w.length <= maxLen &&
-    w[0] !== w[w.length - 1],
+    w[0] !== w[w.length - 1] &&
+    isMiniGameWord(w),
   );
   if (candidates.length === 0) return null;
   return candidates[Math.floor(rng() * candidates.length)];

@@ -13,6 +13,7 @@
 
 import { CMD } from '../../../events/commands.js';
 import { g, getGender } from '../../genderText.js';
+import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 
 export const UNS_INTENT = Object.freeze({
   RESULT: 'unscramble/result',
@@ -45,7 +46,7 @@ export function shuffleLetters(word, rng = Math.random) {
 // Pick a puzzle word of the given length from the supplied list. Returns
 // null if no word matches. `rng` is injectable.
 export function pickPuzzle(words, len, rng = Math.random) {
-  const matches = words.filter(w => w.length === len);
+  const matches = words.filter(w => w.length === len && isMiniGameWord(w));
   if (matches.length === 0) return null;
   const word = matches[Math.floor(rng() * matches.length)];
   return { word, scrambled: shuffleLetters(word, rng) };

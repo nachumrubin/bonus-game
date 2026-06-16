@@ -27,7 +27,7 @@
 // guess without spinning up DOM.
 
 import { startBonusTimer } from './bonusTimer.js';
-import { isValid as isHebrewWordValid } from '../../../game/core/hebrewDictionary.js';
+import { isValid as isHebrewWordValid, isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 import { g, getGender } from '../../genderText.js';
 
 const BLOCKED_SHARED = new Set(['א', 'ה', 'ו', 'י']);
@@ -62,7 +62,7 @@ export function findCrossingPair(words, {
   blockedShared = BLOCKED_SHARED,
 } = {}) {
   if (!Array.isArray(words)) return null;
-  const candidates = words.filter(w => typeof w === 'string' && w.length >= minLen && w.length <= maxLen);
+  const candidates = words.filter(w => typeof w === 'string' && w.length >= minLen && w.length <= maxLen && isMiniGameWord(w));
   if (candidates.length === 0) return null;
   const wc = candidates.slice(0, poolCap).slice().sort(() => rng() - 0.5);
   for (let i = 0; i < wc.length; i++) {
