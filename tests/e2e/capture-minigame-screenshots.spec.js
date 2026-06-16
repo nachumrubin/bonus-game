@@ -33,6 +33,10 @@ async function bootSpine(page) {
     const d = window.__spine.hebrewDictionary?.DICT;
     return d && typeof d.size === 'number' && d.size > 1000;
   }, null, { timeout: 15_000 });
+  // The boot splash + onboarding welcome popup appear on delayed timers and can
+  // re-show after being hidden. A persistent !important override keeps them out
+  // of every capture regardless of timing.
+  await page.addStyleTag({ content: '#ov-onboarding,#app-loading{display:none!important}' });
 }
 
 async function showBonusOverlay(page) {
@@ -40,7 +44,7 @@ async function showBonusOverlay(page) {
     // Hide the home screen + the boot splash so neither shows through (the
     // #app-loading "מתחבר..." splash stays painted over #ov-bonus until the
     // Firebase connection settles, which never happens in the test harness).
-    for (const id of ['sh', 'tut-intro', 'ov-champs', 'ov-settings', 'ov-guide', 'ov-faq']) {
+    for (const id of ['sh', 'tut-intro', 'ov-champs', 'ov-settings', 'ov-guide', 'ov-faq', 'ov-onboarding']) {
       document.getElementById(id)?.classList.add('hidden');
     }
     const loader = document.getElementById('app-loading');
@@ -51,6 +55,14 @@ async function showBonusOverlay(page) {
 }
 
 async function shot(page, name) {
+  // The onboarding welcome popup (#ov-onboarding) and boot splash appear on
+  // delayed timers and can re-show after showBonusOverlay hid them — hide them
+  // again right before capturing so they never pollute a mini-game shot.
+  await page.evaluate(() => {
+    document.getElementById('ov-onboarding')?.classList.add('hidden');
+    const loader = document.getElementById('app-loading');
+    if (loader) loader.style.display = 'none';
+  });
   const ov = page.locator('#ov-bonus');
   // Some mini-games (wheel) build a self-host outside #ov-bonus; fall back
   // to a full-viewport shot if the overlay locator isn't visible.

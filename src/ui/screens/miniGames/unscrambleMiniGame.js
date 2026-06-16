@@ -136,7 +136,6 @@ export function mountUnscrambleMiniGame({
         <div data-uns="bank"   style="display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;"></div>
         <div style="display:flex;gap:8px;">
           <button data-uns="submit" style="flex:1;background:#e8c840;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:900;color:#000;padding:8px;">בדוק</button>
-          <button data-uns="give-up" style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;color:#fff;padding:8px;">דלג</button>
         </div>
       </div>`;
     const buildTitle = host.querySelector('[data-uns="build-title"]');
@@ -232,7 +231,6 @@ export function mountUnscrambleMiniGame({
   host.querySelector('[data-uns="submit"]')?.addEventListener('click', () => {
     finish(isCorrectAnswer(placedSlots.join(''), puzzle.word, validator));
   });
-  host.querySelector('[data-uns="give-up"]')?.addEventListener('click', () => finish(false));
 
   // Countdown. Also broadcast progress to any online spectator: the
   // opponent's bonusSpectatorScreen reads liveBonus/progress for the

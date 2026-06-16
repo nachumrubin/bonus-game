@@ -2,6 +2,20 @@
 
 ---
 
+## Mini-games: full-width "✓" submit below the input — June 2026
+
+In Honeycomb (כוורת) and Letter spinner (אות פותחת), `buildInputRow` now puts the input + ⌫ on one row and the **✓ submit as a full-width button below it** (bigger tap target, easier to finalize a word) instead of a small ✓ squeezed into the input row. Regenerated both guide screenshots; also made the capture `shot()` helper re-hide `#ov-onboarding` / `#app-loading` right before capture (they re-appear on delayed timers). Mini-game tests 19/19.
+
+---
+
+## Mini-games: remove early-exit buttons — June 2026
+
+Per request, removed the early-exit buttons from three mini-games (they now end only on their timer, or unmount):
+- **Honeycomb (כוורת)** — removed the "סיים" button. The overlay's OK button is hidden during play and restored as "continue" (`finalize`).
+- **Letter spinner (אות פותחת)** — removed the "סיים" button from the play phase (OK button hidden during play). The spin phase keeps its "עצור ⏹" stop control (still required to pick the letter).
+- **Unscramble (סידור מחדש)** — removed the "דלג" (skip) button and its handler; only "בדוק" (check) remains.
+
+Touched `honeycombMiniGame.js`, `letterSpinnerMiniGame.js`, `unscrambleMiniGame.js` (both the legacy `#ov-bonus` path and the self-host fallback). Regenerated the three guide screenshots (and hardened the capture spec to also hide the `#ov-onboarding` popup). Mini-game tests 32/32; `npm run test:unit` 178/178.
 ## Fix: forfeiting player not notified when opponent's watchdog commits forfeit simultaneously — June 2026
 
 **Bug:** When an online game was forfeited (player timed out twice in a row), the forfeiting player's client was not shown the game-over screen if they happened to try a move at the exact moment the opponent's watchdog committed `status:'abandoned'` to Firebase.

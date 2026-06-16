@@ -258,8 +258,10 @@ export function mountHoneycombMiniGame({
   }
 
   function buildInputRow() {
+    const wrap = doc.createElement('div');
+    wrap.style.cssText = 'margin-bottom:7px;';
     const row = doc.createElement('div');
-    row.style.cssText = 'display:flex;gap:5px;margin-bottom:7px;align-items:center;';
+    row.style.cssText = 'display:flex;gap:5px;margin-bottom:6px;align-items:center;';
 
     inputEl = doc.createElement('input');
     inputEl.type = 'text';
@@ -294,15 +296,18 @@ export function mountHoneycombMiniGame({
     clr.style.cssText = 'padding:8px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#fff;font-size:14px;cursor:pointer;flex-shrink:0;';
     clr.addEventListener('click', () => { inputEl.value = ''; inputEl.focus?.(); });
 
+    // Full-width "✓" submit BELOW the input line — a big, easy tap target to
+    // finalize a word (the input + ⌫ sit on the row above).
     const ok = doc.createElement('button');
     ok.textContent = '✓';
-    ok.style.cssText = 'padding:8px 14px;background:var(--by);border:none;border-radius:4px;font-weight:900;font-size:15px;cursor:pointer;flex-shrink:0;color:#111;';
+    ok.style.cssText = 'width:100%;padding:10px;background:var(--by);border:none;border-radius:6px;font-weight:900;font-size:18px;cursor:pointer;color:#111;';
     ok.addEventListener('click', attemptSubmit);
 
     row.appendChild(inputEl);
     row.appendChild(clr);
-    row.appendChild(ok);
-    return row;
+    wrap.appendChild(row);
+    wrap.appendChild(ok);
+    return wrap;
   }
 
   function attemptSubmit() {
@@ -369,18 +374,20 @@ export function mountHoneycombMiniGame({
 
     ovBonus.classList?.remove?.('hidden');
 
+    // No "סיים" early-finish button: the round ends only on the timer (or
+    // unmount). Hide the overlay's OK button during play; finalize() restores
+    // it as the "continue" button once the round resolves.
     const prevOnclick = bok.getAttribute?.('onclick');
     bok.removeAttribute?.('onclick');
-    const handleFinish = (e) => { e?.preventDefault?.(); finalize({ timedOut: false }); };
-    bok.textContent = 'סיים ▶';
-    bok.addEventListener('click', handleFinish);
+    const prevDisplay = bok.style.display;
+    bok.style.display = 'none';
 
     const stopBar = startBonusTimer({ doc, durationMs });
 
     return {
       finalize(result) {
         try { stopBar(); } catch { /* swallow */ }
-        bok.removeEventListener('click', handleFinish);
+        bok.style.display = prevDisplay ?? '';
         bchal.innerHTML = renderResult(result);
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
@@ -426,11 +433,7 @@ export function mountHoneycombMiniGame({
     fbEl.style.cssText = 'text-align:center;font-size:12px;min-height:16px;margin-bottom:6px;';
     card.appendChild(fbEl);
 
-    const submitBtn = doc.createElement('button');
-    submitBtn.textContent = 'סיים ▶';
-    submitBtn.style.cssText = 'background:#e8c840;border:none;border-radius:8px;padding:8px 18px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
-    submitBtn.addEventListener('click', () => finalize({ timedOut: false }));
-    card.appendChild(submitBtn);
+    // No "סיים" button — the round ends on the timer (or unmount).
 
     host.appendChild(card);
     doc.body?.appendChild(host);
