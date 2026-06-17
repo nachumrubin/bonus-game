@@ -12,6 +12,7 @@ import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './menuScreen.js';
 function makeButton({ onclick, id }) {
   const listeners = [];
   const attrs = {};
+  const classes = new Set();
   if (onclick) attrs.onclick = onclick;
   return {
     _attrs: attrs,
@@ -19,6 +20,16 @@ function makeButton({ onclick, id }) {
     _clicked: 0,
     style: {},
     textContent: '',
+    classList: {
+      add: (c) => classes.add(c),
+      remove: (c) => classes.delete(c),
+      contains: (c) => classes.has(c),
+      toggle: (c, force) => {
+        const on = force === undefined ? !classes.has(c) : !!force;
+        if (on) classes.add(c); else classes.delete(c);
+        return on;
+      },
+    },
     getAttribute(name) { return attrs[name] ?? null; },
     setAttribute(name, val) { attrs[name] = val; },
     removeAttribute(name) { delete attrs[name]; },
@@ -156,6 +167,41 @@ test('MENU_REFRESH paints the My-Games bottom-nav badge from `myGamesCount`', ()
   bus.emit(MENU_REFRESH, { myGamesCount: 0 });
   assert.equal(buttons.mgBadge.textContent, '');
   assert.equal(buttons.mgBadge.style.display, 'none');
+});
+
+test('MENU_REFRESH paints the My-Games badge green when it is my turn', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  mountMenuScreen({ root, bus });
+  // My turn somewhere → green class added.
+  bus.emit(MENU_REFRESH, { myGamesCount: 2, myTurnInGame: true });
+  assert.equal(buttons.mgBadge.textContent, '2');
+  assert.equal(buttons.mgBadge.classList.contains('em-nav-badge--myturn'), true);
+  // No longer my turn → green class removed (badge stays red).
+  bus.emit(MENU_REFRESH, { myGamesCount: 2, myTurnInGame: false });
+  assert.equal(buttons.mgBadge.classList.contains('em-nav-badge--myturn'), false);
+  // myTurnInGame omitted → colour untouched.
+  bus.emit(MENU_REFRESH, { myTurnInGame: true });
+  bus.emit(MENU_REFRESH, { myGamesCount: 3 });
+  assert.equal(buttons.mgBadge.classList.contains('em-nav-badge--myturn'), true,
+    'omitting myTurnInGame leaves the colour as-is');
+});
+
+test('bell badge reflects only unreadCount, never the my-turn signal', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  mountMenuScreen({ root, bus });
+  // A my-turn async game must NOT light the bell (empty inbox otherwise).
+  bus.emit(MENU_REFRESH, { myTurnInGame: true, myGamesCount: 1 });
+  assert.equal(buttons.onlineBadge.style.display, undefined,
+    'my-turn signal leaves the bell badge untouched');
+  // Real inbox items (invites + friend requests) light the bell.
+  bus.emit(MENU_REFRESH, { unreadCount: 2 });
+  assert.equal(buttons.onlineBadge.style.display, '');
+  assert.equal(buttons.onlineBadge.textContent, '2');
+  // Cleared inbox hides the bell.
+  bus.emit(MENU_REFRESH, { unreadCount: 0 });
+  assert.equal(buttons.onlineBadge.style.display, 'none');
 });
 
 test('MENU_REFRESH event toggles share button visibility based on isAuthed', () => {

@@ -2,6 +2,37 @@
 
 ---
 
+## UI: turn-glow thickness, My-Games turn colour, bell badge fix — June 2026
+
+Three related home/game UI fixes:
+
+1. **Thicker active-player glow.** The "whose turn" highlight on the score boxes was a thin 1px line. Bumped the active border to 3px and brightened it (`rgba(232,200,64,.95)`), and strengthened the `playerGlowPulse` keyframe spread. Applies to both desktop `.scbox.act` and mobile `.is-pcard.act-cell` in [styles.css](styles.css).
+2. **My-Games badge turns green on your turn.** The bottom-nav 🎮 ("המשחקים שלי") badge was always red. It now turns **green** (`.em-nav-badge--myturn`, [menu-electric.css](menu-electric.css)) when it's the player's turn in at least one active online game, and stays red otherwise. Driven by a new `myTurnInGame` field on `MENU_REFRESH`.
+3. **Bell badge no longer lights for an empty inbox.** The notifications bell (`#online-badge`) was driven by *both* `unreadCount` (invites + friend requests — the only things the inbox shows) *and* `hasOnlineUnread` (= "it's your turn in an async game"). The latter has no inbox entry, so the bell flashed red but clicking it opened an empty window. The bell now reflects **only** `unreadCount`; the my-turn signal was re-routed to the My-Games badge colour (#2 above).
+
+- [src/ui/screens/menuScreen.js](src/ui/screens/menuScreen.js): `render()` drops `hasOnlineUnread`, adds `myTurnInGame` (toggles the green class), and paints the bell from `unreadCount` only.
+- [src/main.js](src/main.js): new `computeMyTurnInGame()`; all `MENU_REFRESH` emits that carry `myGamesCount` now also carry `myTurnInGame`; the async-sessions watcher emits `myTurnInGame` instead of `hasOnlineUnread`.
+- **Follow-up — badge now updates proactively.** Initially the green colour only appeared after opening "המשחקים שלי". Cause: `watchAsyncSessions` only fires on room-INDEX changes (game added/removed); an opponent's move updates `rooms/{roomId}`, not the index, so the badge wasn't recomputed unless the My-Games screen (which attaches per-room `watchRoom` listeners) was open. Added **always-on per-room watchers** (`roomBadgeWatchers` + `syncRoomBadgeWatchers()` / `refreshAsyncBadge()` in [src/main.js](src/main.js)), kept in sync with the session list, so a turn flip repaints the badge anywhere in the app. Torn down/reset on (re)boot alongside `activeSessionsWatch`.
+- Tests: added DOM-stub `classList` support and two cases in [src/ui/screens/menuScreen.test.js](src/ui/screens/menuScreen.test.js) (green-on-my-turn; bell ignores the my-turn signal). Unit tests 179/179.
+
+---
+
+## Bot: fix easy/medium bot passing repeatedly (alphabetical vocab bias) — June 2026
+
+The bot would often pass turn after turn, most visibly on **easy**. Root cause was in the bot vocabulary build in `main.js`, exposed by the switch to the plain-text (alphabetically sorted) dictionary:
+
+- The per-difficulty cap (`fullList.slice(0, cap)`) took a raw **prefix** of an alphabetically sorted list. The first 2,000 words were ~all `א`-words, so the bot's whole vocabulary started with `א` — with no `א` on the board or rack it could not make a single move.
+- The cap was applied **before** `searchBotMove`'s `maxWordLen` filter, so the easy bot (words ≤3 letters) was left with only **87** usable words out of 3,465 short words in the dictionary.
+
+Fix (in `main.js` bot wiring):
+- **Pre-filter to the difficulty's `maxWordLen`** (via `resolveProfile`) before capping, so the cap counts words the bot can actually play. Easy now draws from all 3,465 ≤3-letter words.
+- **Shuffle before slicing** (`shuffle` + `createRng` from `util/rng.js`), so the sample is spread across the whole alphabet instead of clustering on `א`.
+- Hard's cap is now `Infinity` (full vocabulary) instead of a magic `73000`.
+
+Result: easy-bot usable vocabulary went from 87 words (all `א`) to 2,000 words across 25 initial letters. Unit tests 179/179.
+
+---
+
 ## Dictionary: switch to plain text; remove DAWG binary and HSpell pipeline — June 2026
 
 Replaced the DAWG binary with a plain sorted text file (`data/dictionary.txt`) and removed the HSpell build toolchain due to AGPLv3 licence concerns:
