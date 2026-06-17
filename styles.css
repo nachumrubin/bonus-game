@@ -1009,9 +1009,10 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
   box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 4px 12px rgba(0,0,0,.35) !important;
 }
 .scbox.act {
-  border-color: rgba(232,200,64,.62) !important;
+  border-width: 3px !important;
+  border-color: rgba(232,200,64,.95) !important;
   box-shadow:
-    0 0 16px rgba(232,200,64,.25),
+    0 0 18px rgba(232,200,64,.35),
     inset 0 1px 0 rgba(255,255,255,.12),
     0 4px 12px rgba(0,0,0,.35) !important;
 }
@@ -1210,8 +1211,9 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
   box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 3px 8px rgba(0,0,0,.3) !important;
 }
 .is-pcard.act-cell {
-  border-color: rgba(232,200,64,.6) !important;
-  box-shadow: 0 0 14px rgba(232,200,64,.25), inset 0 1px 0 rgba(255,255,255,.12) !important;
+  border-width: 3px !important;
+  border-color: rgba(232,200,64,.95) !important;
+  box-shadow: 0 0 16px rgba(232,200,64,.35), inset 0 1px 0 rgba(255,255,255,.12) !important;
   background: linear-gradient(160deg, rgba(10,28,72,.96), rgba(4,18,50,.99)) !important;
 }
 .is-pcname {
@@ -1375,8 +1377,8 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
    drop-shadow` on the card itself fragments around inner opaque regions
    (border, badges, text), which is why this isn't done in-place. ── */
 @keyframes playerGlowPulse {
-  0%, 100% { box-shadow: 0 0 8px 0 rgba(232,200,64,.30); }
-  50%      { box-shadow: 0 0 24px 5px rgba(232,200,64,.72); }
+  0%, 100% { box-shadow: 0 0 10px 2px rgba(232,200,64,.40); }
+  50%      { box-shadow: 0 0 28px 7px rgba(232,200,64,.82); }
 }
 .scbox.act, .is-pcard.act-cell { position: relative; }
 .scbox.act::before,

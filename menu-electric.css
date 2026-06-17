@@ -762,6 +762,13 @@
   box-sizing: border-box;
 }
 
+/* Turns green when it's the player's turn in at least one of their games
+   (otherwise the badge stays red). Driven by `myTurnInGame` in menuScreen. */
+.em-nav-badge--myturn {
+  background: #1ed760;
+  box-shadow: 0 0 6px rgba(30, 215, 96, 0.9);
+}
+
 /* ─ Animations ───────────────────────────────────────── */
 
 /* Game-mode card float: 2px, barely visible */

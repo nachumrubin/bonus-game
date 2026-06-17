@@ -102,7 +102,7 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
 
   // Initial render — read current state from the spine/debug surface and
   // saved-session globals.
-  function render({ isAuthed, displayName, hasOnlineUnread, unreadCount, rating, avatar, myGamesCount } = {}) {
+  function render({ isAuthed, displayName, unreadCount, rating, avatar, myGamesCount, myTurnInGame } = {}) {
     // The legacy "Resume game" button was removed in favour of the
     // "המשחקים שלי" list, which surfaces both async-online sessions and
     // the local saved game in one place.
@@ -152,26 +152,32 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
       bottomNav.style.display = isAuthed ? '' : 'none';
     }
 
+    // Bell badge (#online-badge) reflects ONLY notification-inbox items:
+    // game invites + friend requests (the `unreadCount`). It must NOT light
+    // up for "it's your turn" async games — those have no entry in the inbox,
+    // so a lit bell over an empty inbox looked like a bug. The my-turn signal
+    // drives the My-Games badge colour instead (myTurnInGame, below).
     const onlineBadge = $('#online-badge', topbarRoot);
-    if (onlineBadge) {
-      if (unreadCount != null) {
-        const count = Number(unreadCount);
-        onlineBadge.style.display = count > 0 ? '' : 'none';
-        onlineBadge.textContent   = count > 0 ? String(count) : '';
-      } else {
-        onlineBadge.style.display = hasOnlineUnread ? '' : 'none';
-      }
+    if (onlineBadge && unreadCount != null) {
+      const count = Number(unreadCount);
+      onlineBadge.style.display = count > 0 ? '' : 'none';
+      onlineBadge.textContent   = count > 0 ? String(count) : '';
     }
 
     // Bottom-nav "My Games" bubble — the count of open games (active async
     // rooms + the local saved offline game, expired rooms excluded). null
     // means "no update this render"; we leave the badge alone in that case.
-    if (myGamesCount != null) {
-      const mgBadge = $('#mg-nav-badge', menuRoot);
-      if (mgBadge) {
+    const mgBadge = $('#mg-nav-badge', menuRoot);
+    if (mgBadge) {
+      if (myGamesCount != null) {
         const n = Number(myGamesCount);
         mgBadge.style.display = n > 0 ? '' : 'none';
         mgBadge.textContent   = n > 0 ? String(n) : '';
+      }
+      // Green when it's the player's turn in at least one game; red otherwise.
+      // null/undefined means "no update this render" — leave the colour as-is.
+      if (myTurnInGame != null) {
+        mgBadge.classList?.toggle('em-nav-badge--myturn', !!myTurnInGame);
       }
     }
   }
@@ -183,7 +189,6 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
   render({
     isAuthed:        !!(globalThis.__spine?.currentUser && !globalThis.__spine.currentUser.isAnonymous),
     displayName:     globalThis.pNames?.[0] ?? null,
-    hasOnlineUnread: false,
   });
 
   const stopHomeGlobe = startGlobe($('#home-globe', menuRoot));

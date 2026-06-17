@@ -5,6 +5,17 @@
 
 ---
 
+## UI: turn glow + My-Games turn colour + bell badge fix — June 2026
+
+- [x] Active-player glow thickened (1px → 3px brighter border + stronger `playerGlowPulse`) for `.scbox.act` and `.is-pcard.act-cell` so whose-turn is obvious.
+- [x] Bottom-nav 🎮 "המשחקים שלי" badge turns green (`.em-nav-badge--myturn`) when it's the player's turn in an active online game; red otherwise. New `myTurnInGame` field on `MENU_REFRESH`.
+- [x] Notifications bell (`#online-badge`) no longer lights from the my-turn signal — it conflated `hasOnlineUnread` (your turn in a game, no inbox entry) with real inbox items, so the bell flashed over an empty window. Bell now reflects only `unreadCount` (invites + friend requests).
+
+## Fix: bot passing repeatedly — alphabetical vocab bias — June 2026
+
+- [x] Easy (and to a lesser extent medium) bot passed turn after turn. The bot vocab cap in `main.js` took a raw prefix of the now alphabetically sorted `dictionary.txt`, so the pool was ~all `א`-words; with no `א` available the bot had no legal move. Compounded by the cap being applied before `searchBotMove`'s `maxWordLen` filter (easy → only 87 usable ≤3-letter words).
+- [x] Fix: pre-filter to `resolveProfile(difficulty).maxWordLen` before capping, and `shuffle` (seeded via `util/rng.js`) before `slice`. Hard cap is now `Infinity`. Easy usable vocab: 87 (all `א`) → 2,000 across 25 initial letters.
+
 ## Dictionary: plain text + remove DAWG + remove HSpell pipeline — June 2026
 
 - [x] Switched dictionary from DAWG binary (`dictionary.v2.bin`) to plain sorted text (`dictionary.txt`, 73,173 words).

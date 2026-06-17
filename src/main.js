@@ -23,6 +23,8 @@ import { registerAllBoosts, _resetAndRegister, BDEFS, BONUS_TYPES } from './game
 
 import { createLocalGameSession } from './game/sessions/localGameSession.js';
 import { attachBotPlayer } from './game/sessions/botGameSession.js';
+import { resolveProfile } from './game/sessions/botSearch.js';
+import { createRng, shuffle } from './util/rng.js';
 import { attachScriptedTutorialBot, seedTutorialRack, seedTutorialBonusAssignment, TUTORIAL_WORDS } from './game/sessions/tutorialSession.js';
 import { createOnlineGameSession } from './game/sessions/onlineGameSession.js';
 
@@ -1420,6 +1422,14 @@ async function boot() {
     // and fires the turn banner whenever the index changes.
     let activeSessionsWatch = null;
     let lastSessions = [];
+    // Always-on per-room watchers so the bottom-nav 🎮 badge (count + the
+    // green "your turn" colour) updates the moment an opponent moves — even
+    // while the user sits on the home screen. `watchAsyncSessions` only fires
+    // when the room INDEX changes (a game is added/removed); a turn flip
+    // updates rooms/{roomId}, not the index, so without these the badge
+    // stayed stale until the user opened "המשחקים שלי". Keyed by roomId so we
+    // can diff cheaply against the current session list.
+    const roomBadgeWatchers = new Map();
 
     // Single source of truth for the bottom-nav 🎮 bubble count: active
     // async online rooms (expired filtered out) + the local saved offline
@@ -1431,6 +1441,60 @@ async function boot() {
       return openOnline + localCount;
     }
 
+    // True when it's the player's turn in at least one active online game.
+    // Drives the green colour of the bottom-nav "My Games" badge (red when
+    // it's not your turn). Local saved games are excluded — "turn" only
+    // applies to online async sessions.
+    function computeMyTurnInGame() {
+      return (Array.isArray(lastSessions) ? lastSessions : [])
+        .some(s => s.isMyTurn && !s.isExpired);
+    }
+
+    function stopRoomBadgeWatchers() {
+      for (const off of roomBadgeWatchers.values()) { try { off(); } catch { /* swallow */ } }
+      roomBadgeWatchers.clear();
+    }
+    // Re-list the async sessions and repaint the bottom-nav badge. Cheap,
+    // idempotent, and safe to call from any room-change fire.
+    async function refreshAsyncBadge() {
+      const uid = activeFbCurrentUser?.uid;
+      if (!uid || !activeFbDb) return;
+      try {
+        lastSessions = await asyncSessionService.listAsyncSessions(activeFbDb, uid);
+      } catch (e) { console.warn('[spine] async badge refresh', e); return; }
+      bus.emit(MENU_REFRESH, {
+        myTurnInGame: computeMyTurnInGame(),
+        myGamesCount: computeMyGamesCount(),
+      });
+      // Keep the open My-Games screen fresh too (its own watchers also do
+      // this, but this covers the case where they aren't attached yet).
+      if (isMyGamesScreenVisible()) refreshMyGamesList();
+      syncRoomBadgeWatchers();
+    }
+    // Attach/detach per-room watchers to match the current non-expired,
+    // non-local session list. Idempotent: keeps existing watchers, adds new
+    // rooms, drops rooms that are gone.
+    function syncRoomBadgeWatchers() {
+      if (!activeFbDb) return;
+      const wanted = new Set(
+        (Array.isArray(lastSessions) ? lastSessions : [])
+          .filter(s => !s.isExpired && !s.isLocal && s.roomId)
+          .map(s => s.roomId),
+      );
+      for (const [rid, off] of roomBadgeWatchers) {
+        if (!wanted.has(rid)) { try { off(); } catch { /* swallow */ } roomBadgeWatchers.delete(rid); }
+      }
+      for (const rid of wanted) {
+        if (roomBadgeWatchers.has(rid)) continue;
+        let primed = false;
+        const off = roomService.watchRoom(activeFbDb, rid, () => {
+          if (!primed) { primed = true; return; } // skip the immediate priming fire
+          refreshAsyncBadge();
+        });
+        roomBadgeWatchers.set(rid, off);
+      }
+    }
+
     // gameFlowController and other modules emit MENU_REFRESH with
     // `hasSavedGame: true|false` when the local-save state flips (after
     // save-and-exit, or after a game ends). They don't know about
@@ -1440,13 +1504,17 @@ async function boot() {
     // our own emit below DOES include `myGamesCount`, so it won't re-trigger.
     bus.on(MENU_REFRESH, (payload = {}) => {
       if ('hasSavedGame' in payload && !('myGamesCount' in payload)) {
-        bus.emit(MENU_REFRESH, { myGamesCount: computeMyGamesCount() });
+        bus.emit(MENU_REFRESH, {
+          myGamesCount: computeMyGamesCount(),
+          myTurnInGame: computeMyTurnInGame(),
+        });
       }
     });
 
     function bootAsyncSessionsFor(uid) {
       if (!uid || !activeFbDb) return;
       try { activeSessionsWatch?.(); } catch {}
+      stopRoomBadgeWatchers();
       activeSessionsWatch = asyncSessionService.watchAsyncSessions(activeFbDb, uid, (sessions) => {
         lastSessions = sessions;
         // Refresh menu's "you have N async games" badge AND the bottom-nav
@@ -1454,10 +1522,17 @@ async function boot() {
         // saved offline game if one exists. Expired games are NOT counted
         // — watchAsyncSessions already filters them by default.
         bus.emit(MENU_REFRESH, {
-          hasOnlineUnread: sessions.some(s => s.isMyTurn),
+          // My-Games badge turns green when it's the player's turn somewhere.
+          // (This used to feed the bell badge via `hasOnlineUnread`, which lit
+          // the bell over an empty notification inbox — see menuScreen.)
+          myTurnInGame: sessions.some(s => s.isMyTurn),
           hasSavedGame: sessions.length > 0,
           myGamesCount: computeMyGamesCount(),
         });
+        // Sync always-on per-room watchers so a later turn flip (which does
+        // NOT change the index this watcher listens to) still repaints the
+        // badge wherever the user is.
+        syncRoomBadgeWatchers();
         // Live-refresh the My-Games screen if it's the one on screen. The
         // screen was previously rendered only on open (MENU_INTENT.OPEN_MY_GAMES)
         // and after dismiss/poke, so an opponent move that arrived while the
@@ -1616,7 +1691,10 @@ async function boot() {
       // appear on the screen (so they can be dismissed) but they shouldn't
       // inflate the "open games" badge.
       const openCount = sessions.filter(s => !s.isExpired).length;
-      bus.emit(MENU_REFRESH, { myGamesCount: openCount });
+      bus.emit(MENU_REFRESH, {
+        myGamesCount: openCount,
+        myTurnInGame: sessions.some(s => s.isMyTurn && !s.isExpired),
+      });
       // Keep the live room watchers in sync with the rows currently shown.
       watchMyGamesRooms(onlineRoomIds);
     }
@@ -3136,19 +3214,29 @@ async function boot() {
 
     if (bot) {
       // Bot difficulty limits the candidate word pool:
-      //   easy   (0) → first  2,000 words
-      //   medium (1) → first 20,000 words
-      //   hard   (2) → full  73,000+ words
-      // Words are drawn from DICT (populated from the v2 DAWG binary at boot),
-      // iterated in the order they were inserted (lexicographic for DAWG words).
-      const VOCAB_CAPS = [2000, 20000, 73000];
+      //   easy   (0) → 2,000 words of length ≤3
+      //   medium (1) → 20,000 words of length ≤5
+      //   hard   (2) → full vocabulary of length ≤6
+      // Two things matter here, learned the hard way:
+      //   1. Cap on words the difficulty can actually USE. searchBotMove
+      //      filters candidates by profile.maxWordLen, so capping the raw
+      //      pool first (e.g. 2,000 words ≤6 letters) leaves the easy bot
+      //      with only a handful of ≤3-letter words to play. We pre-filter
+      //      to maxWordLen so the cap counts usable words.
+      //   2. Shuffle before slicing. DICT is alphabetical, so a raw prefix
+      //      is ~all א-words — the easy bot then can't move at all unless an
+      //      א is on the board/rack. A random sample spreads the vocabulary
+      //      across the whole alphabet.
+      const profile = resolveProfile(difficulty);
+      const VOCAB_CAPS = [2000, 20000, Infinity];
       const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
       const fullList = [...new Set(
         [...hebrewDictionary.DICT]
-          .filter((w) => w.length >= 2 && w.length <= 6)
+          .filter((w) => w.length >= 2 && w.length <= profile.maxWordLen)
           .map((w) => hebrewDictionary.norm(w)),
       )];
-      const wordList = fullList.slice(0, cap);
+      shuffle(fullList, createRng(Date.now() ^ (Math.random() * 0xffffffff)));
+      const wordList = Number.isFinite(cap) ? fullList.slice(0, cap) : fullList;
       // Per-level "thinking" delay — cosmetic only (does not affect move
       // strength), but reinforces the feel: easy answers fast, hard lingers.
       const THINK_MS = [1000, 3000, 5000];
@@ -3243,7 +3331,10 @@ async function boot() {
   // bus event reaches no listener and the bottom-nav bubble stays hidden
   // until the user opens "המשחקים שלי" (refreshMyGamesList re-emits).
   // Seed the badge now with whatever we can read synchronously.
-  bus.emit(MENU_REFRESH, { myGamesCount: computeMyGamesCount() });
+  bus.emit(MENU_REFRESH, {
+    myGamesCount: computeMyGamesCount(),
+    myTurnInGame: computeMyTurnInGame(),
+  });
   const setup = mountSetupScreen({
     bus,
     getDisplayName: () => {
