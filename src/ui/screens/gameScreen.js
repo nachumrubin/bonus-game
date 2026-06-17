@@ -110,26 +110,18 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   const glowingTiles = new Map();
 
   // The `.last-move` green tile-fill highlights the tiles the previous
-  // player just placed. We expire it at count-up completion so the
-  // highlight matches the rest of the scoring animation lifecycle (the
-  // user explicitly asked for parity — without this, the green stayed
-  // visible until the next move was committed).
+  // player just placed. The highlight persists until the next move is
+  // committed (by either player) so the player can always see what was
+  // last played, even if they weren't watching.
   let lastMoveSignature = null;
-  let lastMoveExpireAt = 0;
+  let lastMoveActive = false;
   function noteLastMoveForHighlight(v) {
     const placed = v?.lastMove?.placed ?? [];
     const sig = `${v?.lastMove?.slot ?? ''}|` +
       placed.map(p => `${p.r},${p.c}`).sort().join(',');
     if (sig === lastMoveSignature) return;
     lastMoveSignature = sig;
-    if (!placed.length) { lastMoveExpireAt = 0; return; }
-    const wordCount  = Array.isArray(v?.lastMove?.wordTiles) ? v.lastMove.wordTiles.length : 0;
-    const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
-    // chip-arrives-at-panel + count-up peak
-    const total = scoreAnimationLandingMs(wordCount, bonusExtra) + 900;
-    lastMoveExpireAt = Date.now() + total;
-    // Re-render once the highlight expires so the green tiles revert.
-    setTimeout(() => { try { renderBoard(controller.view); } catch { /* swallow */ } }, total + 50);
+    lastMoveActive = placed.length > 0;
   }
 
   // Shared score-merge-sequence landing time (when the red sum chip lands
@@ -143,7 +135,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     return mergeEnd + SCORE_MERGE_HOLD_AFTER_MS + SCORE_MERGE_SUM_FLIGHT_MS;
   }
   function lastMoveHighlightActive() {
-    return lastMoveExpireAt > 0 && Date.now() < lastMoveExpireAt;
+    return lastMoveActive;
   }
   function registerWordGlow(payload, durationMs) {
     const coords = uniqueTileCoords(payload?.wordTiles, payload?.placed);
@@ -931,11 +923,12 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const opponentPreviewTile = (!placedHere && !committed && isOpponentPreview(v, br, bc))
         ? previewTileAt(v, br, bc)
         : null;
-      bsq.classList?.remove('bsq-tile-host', 'np', 'selected-placed', 'spine-live-preview');
+      bsq.classList?.remove('bsq-tile-host', 'np', 'selected-placed', 'spine-live-preview', 'last-move');
       const iconEl = bsq.querySelector?.('.bsq-ic, .bsq-tile-wrap');
       const tileTarget = bsq.querySelector?.('.bsq-tile-wrap');
       if (committed) {
         bsq.classList?.add('bsq-tile-host');
+        if (lastMoveCoords.has(`${br},${bc}`)) bsq.classList?.add('last-move');
         ensureBsqTileWrap(bsq).innerHTML = tileHTML(committed, /*isPlaced=*/false);
       } else if (placedHere) {
         bsq.classList?.add('bsq-tile-host', 'np');

@@ -303,7 +303,7 @@ When all are absent: flush the pending score-commit animation. This is the known
 
 ### Score Count-Up Gating
 - Active-slot glow holds until count-up finishes
-- Last-move highlight expires after count-up finishes
+- Last-move highlight persists until the next move is committed (either player)
 - Count-up is held if bonus overlay is open
 
 ---
