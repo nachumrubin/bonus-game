@@ -169,9 +169,16 @@ export function createGameController({ bus, session, mySlot = null }) {
     // reasons (has-gaps, not-connected, word-too-short, …) leave the move
     // in place so the user can correct it and re-submit.
     if (reason === 'word-not-in-dictionary') {
+      // Capture the turn at rejection time. If the turn-timer fires and
+      // auto-passes during the 1100 ms shake animation, we must NOT issue
+      // a second PASS_TURN — that would advance the turn an extra time and
+      // give the player (or bot) a free extra turn.
+      const rejectedTurnKey = `${session.state?.turnNumber}:${session.state?.currentTurnSlot}`;
       setTimeout(() => {
         view.placed = [];
         _onChange();
+        const nowKey = `${session.state?.turnNumber}:${session.state?.currentTurnSlot}`;
+        if (nowKey !== rejectedTurnKey) return;
         try { session.dispatch({ type: CMD.PASS_TURN, payload: { reason: 'illegal-word' } }); }
         catch (e) { console.warn('[gameController] auto-pass after illegal word failed', e); }
       }, 1100);
