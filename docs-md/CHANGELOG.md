@@ -2,6 +2,29 @@
 
 ---
 
+## UI: persist last-played-word highlight for both players — June 2026
+
+The `.last-move` green highlight on newly-placed tiles was previously tied to
+the score count-up animation and expired ~1–2 seconds after a move was committed.
+This meant the opponent's tiles had no lasting visual marker when the player
+returned to the board after a notification.
+
+**Change:** The highlight now persists until the *next* move is committed (by
+either player). When the signature of `view.lastMove.placed` changes, the green
+highlight simply moves to the new tiles. Exchanges and passes (no placed tiles)
+clear the highlight.
+
+- Removed `lastMoveExpireAt` time-based gate and the `setTimeout` re-render from
+  `noteLastMoveForHighlight()` in [src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js).
+- Replaced with a simple boolean `lastMoveActive` flag.
+- Also extended `last-move` class support to perimeter bonus-square (`.bsq`) tiles
+  so off-grid placements are highlighted too (the CSS rule `.bsq.last-move` already
+  existed but was never applied).
+- Updated [docs/ui-rules.md](docs/ui-rules.md) Score Count-Up Gating section.
+- No game-engine changes; all 179 unit tests pass.
+
+---
+
 ## UI: turn-glow thickness, My-Games turn colour, bell badge fix — June 2026
 
 Three related home/game UI fixes:
