@@ -2,6 +2,25 @@
 
 ---
 
+## Fix: illegal-word + timer-zero race gives player an extra turn — June 2026
+
+When a player confirmed an illegal word at the exact moment the turn timer hit
+zero, two independent `PASS_TURN` commands were dispatched:
+
+1. The turn-timer controller fired `PASS_TURN { reason: 'timeout' }` → turn advanced to opponent/bot.
+2. The 1100 ms shake-animation timer (scheduled when `INVALID_MOVE_REJECTED` fired) also
+   fired `PASS_TURN { reason: 'illegal-word' }` → turn advanced a second time, back to the player.
+
+The result was the player getting a free extra turn instead of losing it.
+
+**Fix** (`src/ui/controllers/gameController.js`): Capture the `turnNumber:currentTurnSlot`
+key at the moment of rejection. The 1100 ms setTimeout now compares the current key
+against the captured one before dispatching and silently returns if they differ — meaning
+the turn already advanced and no second pass should be issued. Works for both bot games
+(where `mySlot` is null) and online games.
+
+---
+
 ## UI: persist last-played-word highlight for both players — June 2026
 
 The `.last-move` green highlight on newly-placed tiles was previously tied to
