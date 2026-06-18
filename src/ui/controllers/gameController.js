@@ -115,8 +115,14 @@ export function createGameController({ bus, session, mySlot = null }) {
   syncFromState();
 
   const subs = [];
+  // Set to true by MOVE_CONFIRMED / MOVE_SCORE_COMMITTED / OPPONENT_MOVED
+  // (all tile-placement paths) so TURN_CHANGED can tell whether tiles were
+  // actually placed this turn. If it fires false, the turn was a pass,
+  // exchange, or timeout — clear the last-move highlight accordingly.
+  let tilesMoved = false;
   subs.push(bus.on(EV.GAME_STARTED, () => { syncFromState(); _onChange(); }));
   subs.push(bus.on(EV.MOVE_CONFIRMED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra }) => {
+    tilesMoved = true;
     syncFromState();
     view.lastMove = {
       slot, score, words, wordTiles: wordTiles ?? [], placed: placed ?? [],
@@ -130,6 +136,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     _onChange();
   }));
   subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra }) => {
+    tilesMoved = true;
     syncFromState();
     view.lastMove = {
       slot, score, words, wordTiles: wordTiles ?? [], placed: placed ?? [],
@@ -140,6 +147,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     _onChange();
   }));
   subs.push(bus.on(EV.OPPONENT_MOVED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra }) => {
+    tilesMoved = true;
     syncFromState();
     view.lastMove = {
       slot, score, words, wordTiles: wordTiles ?? [], placed: placed ?? [],
@@ -159,6 +167,12 @@ export function createGameController({ bus, session, mySlot = null }) {
     view.placed = [];
     view.swappedTiles = [];
     view.pendingLock = null;
+    // Clear the last-move highlight when no tiles were placed this turn
+    // (pass, exchange, timeout). If tilesMoved is true, MOVE_CONFIRMED or
+    // OPPONENT_MOVED already set view.lastMove with the new coords so the
+    // highlight should stay.
+    if (!tilesMoved && view.lastMove) view.lastMove = { ...view.lastMove, placed: [] };
+    tilesMoved = false;
     _onChange();
   }));
   subs.push(bus.on(EV.INVALID_MOVE_REJECTED, ({ reason }) => {
