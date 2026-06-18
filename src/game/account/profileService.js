@@ -34,6 +34,7 @@ export const EMPTY_STATS = Object.freeze({
   comebackWins: 0, lastMoveWins: 0, closeWins: 0,
   boostImpactWins: 0,
   fastestWinMs: 0, longestWord: '', longestWordLength: 0,
+  friendsCount: 0, uniqueWordsCount: 0, beatNumberOne: 0,
   recentGames: [], boostUsage: {}, rivalStats: {}, wordCounts: {}, weekdayStats: {},
   moveSpeedStats: {},
 });
@@ -225,6 +226,8 @@ export function computeLiveGameStatsDelta({
   const bonusCount = boostHits.length;
   const boostUsage = mergeBoostUsage(currentStats.boostUsage, boostHits);
   const wordStats = mergeWordStats(currentStats, words);
+  const prevWordCounts = currentStats.wordCounts ?? {};
+  const newUniqueWords = new Set(words.filter(w => w && !(w in prevWordCounts))).size;
   const recentGames = appendRecentGame(currentStats.recentGames, {
     ts: now,
     mode,
@@ -258,6 +261,7 @@ export function computeLiveGameStatsDelta({
     totalScore: myScore,
     bonusesTriggered: bonusCount,
     wordsPlayed: words.length,
+    uniqueWordsCount: newUniqueWords,
     totalMoves: myMoves.length,
     totalTilesPlayed: tileCount,
     totalMoveTimeMs: 0,

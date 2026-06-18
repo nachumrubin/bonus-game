@@ -189,10 +189,12 @@ Surfaced during the May 2026 stats simplification audit. Each is a UI-visible ad
 
 - [ ] **Bingo count** — biggest gap. Tally `BINGO_BONUS` triggers per game and surface in Records tab.
 - [ ] **Highest single-word score** — derive from move history, store on profile, surface in Records.
-- [ ] **Unique words discovered (vocabulary size)** — count of `wordCounts{}` keys; surface in Records.
+- [x] **Unique words discovered (vocabulary size / מילון מהלך)** — `uniqueWordsCount` is now tracked in `computeLiveGameStatsDelta` as a numeric increment of new words per game (June 2026).
 - [ ] **Win rate by first/second to move** — already trackable from move metadata.
 - [ ] **Hour-of-day stats / power hour** — extend the existing `weekdayStats` model.
 - [~] **Earned titles** ("Comeback King", "Bingo Hunter", etc.) — named achievements with Hebrew titles now exist in `ACHIEVEMENTS` table (`avatarScreens.js`). The stat-based conditions are wired; purely narrative titles (Comeback King etc.) require additional stats (comeback tracking, bingo count) not yet collected. See TASKS.md bingo-count and highest-single-word items above.
+- [x] **חבר של כולם (friendsCount)** — synced from Firebase friends list via `activeFriendsWatch` (June 2026).
+- [x] **האחד (beatNumberOne)** — tracked at game end when result=win, opponent was pre-game #1, and ≥1000 total players (June 2026).
 - [ ] **Move timing** — `totalMoveTimeMs` is hardcoded to 0 in `profileService.js:251`. Either wire it up (per-move timestamps in the event stream) or remove the field entirely.
 - [ ] **Storage cleanup** — once the new layout settles, remove orphan fields (`boostImpactWins`, `totalMoveTimeMs`, etc.) from `EMPTY_STATS` and add a one-time cleanup migration.
 

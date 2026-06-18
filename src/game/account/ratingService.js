@@ -83,6 +83,17 @@ export async function listTopRatings(db, { limit = RATINGS_LIMIT } = {}) {
   return rankRatings(snap?.val ? snap.val() : null, { limit });
 }
 
+// Returns the #1 player's UID and total registered player count.
+// Used to gate the beatNumberOne achievement.
+export async function getLeaderboardMeta(db) {
+  if (!db) return { topUid: null, totalPlayers: 0 };
+  const snap = await db.ref(RATINGS_PATH).get().catch(() => null);
+  const raw = snap?.val ? snap.val() : null;
+  if (!raw) return { topUid: null, totalPlayers: 0 };
+  const ranked = rankRatings(raw, { limit: 1 });
+  return { topUid: ranked[0]?.uid ?? null, totalPlayers: Object.keys(raw).length };
+}
+
 export async function upsertRatingLeaderboardEntry(db, {
   uid,
   profile,
