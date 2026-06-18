@@ -8,6 +8,7 @@ import {
   listTopRatings,
   rankRatings,
   upsertRatingLeaderboardEntry,
+  getLeaderboardMeta,
 } from './ratingService.js';
 
 test('expectedScore: equal ratings → 0.5', () => {
@@ -137,4 +138,23 @@ test('applyEloForFinishedGame: rejects same uid / missing uids / bad result', as
   await db.ref('users/a/profile').set({ rating: 1000 });
   await db.ref('users/b/profile').set({ rating: 1000 });
   assert.equal((await applyEloForFinishedGame(db, { myUid: 'a', oppUid: 'b', result: 'xx' })).reason, 'bad-result');
+});
+
+test('getLeaderboardMeta: returns topUid and totalPlayers', async () => {
+  const db = makeMockDb();
+  await db.ref('globalRatings').set({
+    p1: { uid: 'p1', name: 'Alice', rating: 1500, updatedAt: 1 },
+    p2: { uid: 'p2', name: 'Bob',   rating: 1300, updatedAt: 1 },
+    p3: { uid: 'p3', name: 'Carol', rating: 1200, updatedAt: 1 },
+  });
+  const meta = await getLeaderboardMeta(db);
+  assert.equal(meta.topUid, 'p1');
+  assert.equal(meta.totalPlayers, 3);
+});
+
+test('getLeaderboardMeta: returns null topUid and 0 when leaderboard is empty', async () => {
+  const db = makeMockDb();
+  const meta = await getLeaderboardMeta(db);
+  assert.equal(meta.topUid, null);
+  assert.equal(meta.totalPlayers, 0);
 });

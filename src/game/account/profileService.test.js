@@ -224,3 +224,60 @@ test('bumpStats: can replace bounded rich-stat collections', async () => {
   assert.deepEqual(stats.recentGames, [{ result: 'win' }]);
   assert.deepEqual(stats.boostUsage, { B9: 2 });
 });
+
+test('computeLiveGameStatsDelta: counts uniqueWordsCount for new words only', () => {
+  const baseState = {
+    mode: 'friend-live',
+    scores: { 0: 30, 1: 20 },
+    players: { 0: { uid: 'u1' }, 1: { uid: 'u2' } },
+    moveHistory: [
+      { slot: 0, tiles: [{ r: 0, c: 0, letter: 'א' }], words: ['שלום', 'גם'], score: 30, ts: 1000 },
+    ],
+  };
+  // No prior word history → both words are new
+  const d1 = computeLiveGameStatsDelta({
+    state: baseState,
+    room: { mode: 'friend-live', players: baseState.players },
+    mySlot: 0,
+    currentStats: {},
+  });
+  assert.equal(d1.uniqueWordsCount, 2);
+
+  // One word already seen → only the other counts
+  const d2 = computeLiveGameStatsDelta({
+    state: baseState,
+    room: { mode: 'friend-live', players: baseState.players },
+    mySlot: 0,
+    currentStats: { wordCounts: { שלום: 3 } },
+  });
+  assert.equal(d2.uniqueWordsCount, 1);
+
+  // All words already seen → zero new
+  const d3 = computeLiveGameStatsDelta({
+    state: baseState,
+    room: { mode: 'friend-live', players: baseState.players },
+    mySlot: 0,
+    currentStats: { wordCounts: { שלום: 1, גם: 2 } },
+  });
+  assert.equal(d3.uniqueWordsCount, 0);
+});
+
+test('computeLiveGameStatsDelta: deduplicates repeated words within one game', () => {
+  const state = {
+    mode: 'random-live',
+    scores: { 0: 40, 1: 10 },
+    players: { 0: { uid: 'u1' }, 1: { uid: 'u2' } },
+    moveHistory: [
+      { slot: 0, tiles: [{ r: 0, c: 0, letter: 'א' }], words: ['שלום', 'שלום'], score: 20, ts: 1 },
+      { slot: 0, tiles: [{ r: 1, c: 0, letter: 'ב' }], words: ['שלום'], score: 20, ts: 2 },
+    ],
+  };
+  const d = computeLiveGameStatsDelta({
+    state,
+    room: { mode: 'random-live', players: state.players },
+    mySlot: 0,
+    currentStats: {},
+  });
+  // 'שלום' appears 3 times but is only 1 unique new word
+  assert.equal(d.uniqueWordsCount, 1);
+});

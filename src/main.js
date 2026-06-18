@@ -2056,6 +2056,12 @@ async function boot() {
       activeFriendsWatch = friendsService.watchFriends(fbDb, uid, (friends) => {
         lastFriends = friends;
 
+        // Sync friendsCount achievement stat whenever the friends list changes
+        const newFriendsCount = friends.length;
+        if (newFriendsCount !== (lastProfile?.stats?.friendsCount ?? 0)) {
+          profileService.bumpStats(fbDb, uid, { friendsCount: { set: newFriendsCount } }).catch(() => {});
+        }
+
         // Remove presence watchers for friends no longer in the list
         const newUids = new Set(friends.map(f => f.uid));
         for (const [fuid, unsub] of activePresenceUnsubs) {
@@ -2527,6 +2533,14 @@ async function boot() {
           botTime: session?.state?.settings?.botTime ?? null,
         });
         if (statsDelta) profileService.bumpStats(fbDb, fbUser.uid, statsDelta).catch(() => {});
+
+        // beatNumberOne: only when ≥1000 registered players and opponent was ranked #1 pre-game
+        const MIN_PLAYERS_FOR_THE_ONE = 1000;
+        if (result === 'win' && oppUid && oppUid !== fbUser.uid
+            && ag.preGameTotalPlayers >= MIN_PLAYERS_FOR_THE_ONE
+            && ag.preGameTopUid && oppUid === ag.preGameTopUid) {
+          profileService.bumpStats(fbDb, fbUser.uid, { beatNumberOne: 1 }).catch(() => {});
+        }
       }
 
       // Rating (only when both players have profiles, AND at least one move
@@ -3125,16 +3139,23 @@ async function boot() {
     const _myUidForRating  = room.players?.[mySlot]?.uid ?? null;
     let preGameMyRating  = null;
     let preGameOppRating = null;
+    let preGameTopUid = null;
+    let preGameTotalPlayers = 0;
     if (_myUidForRating && _oppUidForRating) {
-      [preGameMyRating, preGameOppRating] = await Promise.all([
+      const [myR, oppR, leaderboardMeta] = await Promise.all([
         ratingService.readRating(db, _myUidForRating).catch(() => null),
         ratingService.readRating(db, _oppUidForRating).catch(() => null),
+        ratingService.getLeaderboardMeta(db).catch(() => ({ topUid: null, totalPlayers: 0 })),
       ]);
+      preGameMyRating = myR;
+      preGameOppRating = oppR;
+      preGameTopUid = leaderboardMeta.topUid;
+      preGameTotalPlayers = leaderboardMeta.totalPlayers;
     }
 
     globalThis.__spine.activeGame = {
       session, controller, animationController, screen, bonusFlow, timeoutWatchdog, reactionCtrl, online: true, isAsync, mySlot,
-      preGameMyRating, preGameOppRating,
+      preGameMyRating, preGameOppRating, preGameTopUid, preGameTotalPlayers,
       end() {
         screen.unmount();
         animationController.dispose();

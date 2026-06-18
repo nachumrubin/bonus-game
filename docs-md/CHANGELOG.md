@@ -2,6 +2,36 @@
 
 ---
 
+## Feat: wire up friendsCount, uniqueWordsCount, beatNumberOne achievements — June 2026
+
+Three previously-defined but untracked achievement stats are now live:
+
+**חבר של כולם (friendsCount ≥ 20)**
+- Whenever `friends/{uid}` changes (friend added or removed), `bumpStats` is called with `{ friendsCount: { set: friends.length } }`.
+- This keeps the stat in sync with the actual Firebase friends list.
+- Location: `src/main.js`, inside the `activeFriendsWatch` callback.
+
+**מילון מהלך (uniqueWordsCount ≥ 1000)**
+- Computed in `computeLiveGameStatsDelta` after each live game.
+- Counts words played in this game that were **not already in `currentStats.wordCounts`**, deduplicating repeats within the same game via a `Set`.
+- Stored as a plain numeric increment so it accumulates correctly even after `wordCounts` is trimmed to 30 entries.
+- Location: `src/game/account/profileService.js`.
+
+**האחד (beatNumberOne ≥ 1) — guarded by 1000-player minimum**
+- At game start, the full `globalRatings` collection is read once (alongside the existing pre-game rating reads) via the new `getLeaderboardMeta(db)` helper in `ratingService.js`.
+- `getLeaderboardMeta` returns `{ topUid, totalPlayers }` from a single Firebase read.
+- At game end, if the result was `win`, the opponent was the pre-game #1 rated player, AND there are ≥ 1000 registered players total, `beatNumberOne` is incremented by 1.
+- The 1000-player guard prevents the achievement from being trivially earned on a small-user-count deployment.
+- Location: `src/main.js` (game-start and game-end handlers); `src/game/account/ratingService.js` (new helper).
+
+**Schema change:** `EMPTY_STATS` in `profileService.js` gains three new numeric fields: `friendsCount`, `uniqueWordsCount`, `beatNumberOne` (all default 0). Existing profiles without these fields are handled gracefully via `base[k] ?? 0` in `bumpStats`.
+
+**Tests added:**
+- `profileService.test.js`: two new tests for `uniqueWordsCount` in `computeLiveGameStatsDelta`
+- `ratingService.test.js`: two new tests for `getLeaderboardMeta`
+
+---
+
 ## Fix: illegal-word + timer-zero race gives player an extra turn — June 2026
 
 When a player confirmed an illegal word at the exact moment the turn timer hit
@@ -2082,7 +2112,8 @@ Why per-entry, not the queue parent: the database rules grant `.write` only at t
 **Stat wiring status:**
 - `highestMoveScore` (#2) is already tracked by `profileService.computeStatsDelta` — this achievement starts unlocking immediately for any player who has ever scored ≥100 in a single move.
 - `longestStreak` (#4, #6) is already tracked.
-- `cleanWins`, `friendsCount`, `fastGamePlayed`, `uniqueWordsCount`, `noLossWeekStreaks`, `beatNumberOne` are new stat names that will display as 0/N progress until separate work wires them up.
+- `friendsCount`, `uniqueWordsCount`, `beatNumberOne` — now wired (June 2026, see entry above).
+- `cleanWins`, `fastGamePlayed`, `noLossWeekStreaks` are new stat names that will display as 0/N progress until separate work wires them up.
 
 **Tests added:**
 - `src/ui/screens/avatarScreens.test.js` — new test pins all 9 new achievement ids and verifies `word_genius` is wired to `highestMoveScore` min 100. The existing "AV_RENDER paints all avatars + count" test was generalized from a hard-coded `/10` to `/${SPINE_AVATARS.length}` so it tracks future expansions.
