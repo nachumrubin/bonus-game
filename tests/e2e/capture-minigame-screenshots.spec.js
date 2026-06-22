@@ -5,7 +5,7 @@
 // RNG (mulberry32) so re-runs produce visually identical captures.
 //
 // Output → images/guide/minigames/*.png. Referenced from
-// partials/screens/guide-screen.html in the "בונוסים ומיני-משחקים"
+// partials/screens/guide-screen.html in the "בוסטים ומיני-משחקים"
 // section.
 
 const { test, expect } = require('@playwright/test');

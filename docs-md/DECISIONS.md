@@ -5,6 +5,36 @@
 
 ---
 
+## D-avatar-store: separate coin-bought avatar collection, client-authoritative economy — June 2026
+
+**Decision:** The avatar **store** is a NEW collection of 36 avatars (`images/icons/avatars/`,
+common/rare/epic/legendary) bought with a coin currency. It **coexists** with — does not replace — the existing
+achievement-unlock avatars (`SPINE_AVATARS`); both share the single `equippedAvatar`. Coins are earned three ways
+(NOT win/loss): a one-time starter grant, daily login + streak, and achievement completions. Pricing is flat per
+tier (`rare 250 / epic 700 / legendary 2500`), "grindy/prestige" tuned so a legendary is a long-haul goal.
+
+**Persistence:** four new profile-ROOT fields (`coins`, `ownedAvatars`, `lastLoginDate`, `loginStreak`) under
+`/users/{uid}/profile`, siblings of `rating`/`stats`. No Firebase rule change — `/users/$uid` already grants the
+owner write with no child `.validate`. Purchases use a single whole-profile transaction (`purchaseAvatar`) so the
+coins-check and `ownedAvatars` append can't race; daily reward is idempotent per day via a same-day guard inside
+the transaction.
+
+**Client-authoritative tradeoff (accepted for v1):** because the client writes its own profile, coins and owned
+avatars are fully client-trusted — a determined user could self-grant. Cheat-proof purchases would require a
+server holding authority (Cloudflare Worker / Cloud Function, like the existing `worker/` push pattern). Deferred;
+the store is cosmetic-only, so the abuse ceiling is low. A second deferred hardening is a `claimedAchievements[]`
+list checked inside the transaction to make achievement coin rewards idempotent across devices/tabs.
+
+**Render boundary:** `avatarEmoji()` (profileScreen.js) passes store ids through unchanged instead of collapsing
+unknown values to 👑, so an equipped store avatar survives into online `player.avatar`; `avatarIconSrc()` resolves
+store ids → PNG so it renders on profile, game screen, and opponent cards.
+
+**Evidence:** `src/ui/screens/avatarStore.js`, `avatarStoreScreen.js`; `profileService.js`
+(`purchaseAvatar`/`bumpCoins`/`claimDailyReward`); `main.js` (`bootProfileFor` daily claim + `diffNewlyUnlocked`
+coin loop). Tests: `avatarStore.test.js`, `avatarStoreScreen.test.js`, extended `profileService.test.js`.
+
+---
+
 ## D-matchmaking-claim: pair has one driver (lower uid) that claims both queue nodes — June 2026
 
 **Decision:** In `matchmakingService.tryPair`, a matched pair has exactly one **driver** — the **lower-uid** side. The driver claims **both** queue nodes (its own first, then the partner's) via per-node transactions; the higher-uid side returns `matched:false` and waits for its `activeRoom` to flip.

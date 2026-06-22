@@ -67,7 +67,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260617174059';
+var CACHE_NAME = 'boost-20260622215634';
 var ASSETS = [
   './',
   './index.html',
@@ -76,11 +76,49 @@ var ASSETS = [
   './icon.svg',
   './icon-512.png',
   './data/dictionary.base.txt',
+  // Main-screen icon set (home play buttons, global top bar, bottom nav).
+  // 5_references.png is a reference contact-sheet, not used in the app.
+  './images/icons/bell.png',
+  './images/icons/sound_on.png',
+  './images/icons/sound_off.png',
+  './images/icons/settings.png',
+  './images/icons/help.png',
+  './images/icons/home.png',
+  './images/icons/globe.png',
+  './images/icons/1v1.png',
+  './images/icons/bot.png',
+  './images/icons/my_games.png',
+  './images/icons/friends.png',
+  './images/icons/acheivments.png',
+  './images/icons/statistics.png',
+  './images/icons/lock.png',
+  // Achievement trophy-room icons — one per achievement, named by Hebrew title.
+  // A 404 here is harmless (per-asset add().catch + emoji fallback at runtime).
+  './images/icons/acheivements/צעדים ראשונים.png',
+  './images/icons/acheivements/מנצח.png',
+  './images/icons/acheivements/שחקן מנוסה.png',
+  './images/icons/acheivements/רצף מנצחים.png',
+  './images/icons/acheivements/שועל ותיק.png',
+  './images/icons/acheivements/גאון מילים.png',
+  './images/icons/acheivements/חבר של כולם.png',
+  './images/icons/acheivements/ותיק.png',
+  './images/icons/acheivements/אמן המילים.png',
+  './images/icons/acheivements/בלתי מנוצח.png',
+  './images/icons/acheivements/ברק חי.png',
+  './images/icons/acheivements/אגדה.png',
+  './images/icons/acheivements/אלוף.png',
+  './images/icons/acheivements/בלתי נתפס.png',
+  './images/icons/acheivements/מילון מהלך.png',
+  './images/icons/acheivements/על-אנושי.png',
+  './images/icons/acheivements/האחד.png',
   './jocker.PNG',
+  './images/icons/gold coin.png',
   './assets/music/inspire-action.mp3',
   './src/ui/screenPartials.js',
   './src/ui/screenPartialManifest.js',
   './partials/screens/avatar-gallery-screen.html',
+  './partials/screens/avatar-store-screen.html',
+  './partials/screens/avatar-store-confirm-overlay.html',
   './partials/screens/avatar-unlock-overlay.html',
   './partials/screens/back-confirm-overlay.html',
   './partials/screens/bonus-challenge.html',
@@ -88,6 +126,7 @@ var ASSETS = [
   './partials/screens/boost-veto-notice.html',
   './partials/screens/champions-standalone-from-home-screen.html',
   './partials/screens/coin-toss.html',
+  './partials/screens/daily-reward-overlay.html',
   './partials/screens/end.html',
   './partials/screens/exchange.html',
   './partials/screens/friends-screen.html',
@@ -114,6 +153,9 @@ var ASSETS = [
   './partials/screens/tutorial-intro-modal.html',
   './partials/screens/tutorial-overlay-elements.html',
   './partials/screens/tutorial-prompt-shown-to-new-users-on-first-game-mode-entry.html',
+  // NOTE: the 36 store-avatar PNGs in ./images/icons/avatars/ (~19 MB) are
+  // deliberately NOT precached — the runtime fetch handler caches them on
+  // demand the first time they're viewed, so we avoid bloating install.
 ];  // sw.js intentionally excluded — browser fetches it fresh
 
 self.addEventListener('install', function(e){

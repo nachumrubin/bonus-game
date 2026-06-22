@@ -6,7 +6,7 @@
 //   menu.unmount();
 //
 import { $, on } from '../domHelpers.js';
-import { startGlobe } from '../globeRenderer.js';
+import { avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const MENU_INTENT = Object.freeze({
@@ -59,6 +59,14 @@ function ratingTierEmoji(rating) {
   if (rating >= 950)  return '🥇';
   if (rating >= 800)  return '🥈';
   return '🪙';
+}
+
+// Render the equipped avatar as its achievement trophy icon when one exists,
+// otherwise the plain emoji/glyph. `value` may be an avatar id or an emoji.
+function setAvatarDisplay(el, value) {
+  const src = avatarIconSrc(value);
+  if (src) el.innerHTML = `<img class="em-avatar-img" src="${src}" alt="">`;
+  else el.textContent = value;
 }
 
 export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
@@ -122,8 +130,8 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     // avatar when explicitly provided.
     const avatarEl = $('#home-avatar-ic', topbarRoot);
     if (avatarEl) {
-      if (avatar) avatarEl.textContent = avatar;
-      else if (isAuthed === false) avatarEl.textContent = '👤';
+      if (avatar) setAvatarDisplay(avatarEl, avatar);
+      else if (isAuthed === false) avatarEl.innerHTML = `<img class="em-avatar-img" src="${ANON_AVATAR_SRC}" alt="">`;
     }
 
     // Bell — show only when authenticated (guests have no invites to receive)
@@ -191,11 +199,8 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     displayName:     globalThis.pNames?.[0] ?? null,
   });
 
-  const stopHomeGlobe = startGlobe($('#home-globe', menuRoot));
-
   return {
     unmount() {
-      stopHomeGlobe();
       for (const off of cleanups) try { off(); } catch { /* swallow */ }
       cleanups.length = 0;
     },
@@ -206,10 +211,10 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
 registerOnboardingContent('sh', {
   icon: '🎉',
   title: 'ברוך הבא לבוסט!',
-  intro: 'בוסט הוא משחק מילים בעברית בנוסח שבץ-נא, עם טוויסט: לאורך המשחק תפתחו מיני-משחקים שמעניקים נקודות בונוס.',
+  intro: 'בוסט הוא משחק מילים בעברית, עם טוויסט: לאורך המשחק תפתחו מיני-משחקים שמעניקים נקודות בוסט.',
   bullets: [
-    '🔤 שבץ-נא בעברית — סדרו אותיות למילים על הלוח וצברו נקודות',
-    '⚡ בוסטים — מיני-משחקים שמזכים אתכם בנקודות בונוס',
+    '🔤 מילים בעברית — סדרו אותיות למילים על הלוח וצברו נקודות',
+    '⚡ בוסטים — מיני-משחקים שמזכים אתכם בנקודות בוסט',
     '📊 סטטיסטיקות ותובנות — עקבו אחרי ההתקדמות והשתפרו',
     '🎮 מצבי משחק — ברשת, מול חבר על אותו מכשיר, או נגד המחשב',
   ],

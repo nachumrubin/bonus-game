@@ -102,6 +102,18 @@ Help dropdown / Guide / FAQ (top-bar `?` button):
 #ov-faq                — FAQ overlay (collapsible <details> Q&As)
 .guide-section         — accordion section (used inside both #ov-guide and #ov-faq)
 
+App boot loader tip carousel (inside #app-loading, wired by wireAppLoading() in main.js):
+#app-loading           — full-screen boot overlay; removed from DOM 600 ms after .is-hidden is added
+#app-loading-text      — rotating Hebrew status line (מתחבר… → כמעט מוכן…)
+#app-loading-tips      — tip carousel wrapper; display:none until loadingTipsService resolves
+#app-loading-tip-prev  — previous-tip nav button (❯, right-pointing, left side in LTR row)
+#app-loading-tip-next  — next-tip nav button (❮, left-pointing, right side in LTR row)
+#app-loading-tip-title — tip category label (e.g. "טיפ למתחילים", "הידעת?")
+#app-loading-tip-text  — tip body text
+#app-loading-tip-dots  — pagination dot container; children are .app-loading-tip-dot spans
+Storage keys (loadingTipsService.js): 'boost_tips_history' (JSON array, last 10 shown tip IDs),
+  'boost_tips_games_played' (integer, cached from profile.stats.gamesPlayed)
+
 Onboarding overlay (per-screen first-visit tooltips):
 #ov-onboarding         — full-screen dark backdrop (.ov class); hidden by default; z-index 500
 #onb-icon              — large emoji icon (populated by onboardingController.js)
@@ -117,6 +129,56 @@ Onboarding overlay (per-screen first-visit tooltips):
 Storage key: 'spine.onboarding.dismissed' (JSON array of permanently-dismissed screen IDs)
 Event: ONBOARDING_SCREEN_ENTER ('onboarding/screenEnter') — emitted by showLegacyScreen()
 ```
+
+### Achievements Screen — trophy room (`#sav-gallery`, June 2026 redesign)
+
+Source: `partials/screens/avatar-gallery-screen.html`, `src/ui/screens/avatarScreens.js`, `styles.css` (`.ach-*`).
+
+A collectible trophy room: scrollable shelves of 3 tiles, one tile per **achievement** (June 2026: trophies are
+now decoupled from avatars — completing one awards **coins**, not an avatar, and tapping one no longer equips
+anything). Painted on `AV_RENDER` (`{ stats, ownedAvatars, coinRewardByTier }`).
+
+Load-bearing IDs (do not rename without updating `avatarScreens.js`):
+```
+#sav-gallery        — screen container
+#av-gallery-count   — "<n> מתוך <total> הושגו" header subtitle
+#av-locked-hint     — transient hint shown when a tile is tapped (desc + coin prize)
+#av-gallery-grid    — shelves rendered here (HTML built by paint())
+```
+Each tile is `<button class="ach-iccell" data-ach-id="{achievementId}" [data-locked="1"]>` (icon + title +
+`.ach-badge` progress pill + `.ach-reward` coin-prize chip). The click handler reads `data-ach-id` / `data-locked`
+and shows a hint with the description + coin prize — it does **not** emit `AV_INTENT.EQUIP`/`SELECT` anymore. Icon
+art: `images/icons/acheivements/<titleHe>.png`; achievements without a loadable file (e.g. the purchase trophies)
+fall back to the achievement's `emoji`. Locked/incomplete tiles use `.is-locked` (desaturated icon + `.ach-lock`);
+newly-completed tiles get `.ach-iccell--just-unlocked` (pop/glow animation). Conditions are stat thresholds
+(`{stat,min}`) or store-ownership rules (`ownedCount` / `ownedInCategory` / `ownedCategories`). The completion
+overlay (`#ov-avatar-unlocked`) shows the trophy + coin prize (`#av-unlock-name`, `#av-unlock-coins`,
+`#av-unlock-cond`).
+
+### Avatar Store (`#savatar-store`, June 2026)
+
+Source: `partials/screens/avatar-store-screen.html`, `src/ui/screens/avatarStoreScreen.js`,
+`src/ui/screens/avatarStore.js` (catalog), `styles.css` (`.store-*`). A SEPARATE collection from the
+achievements trophy room — 36 purchasable avatars (`images/icons/avatars/<id>.png`) across common/rare/epic/
+legendary, bought with coins. Painted on `STORE_RENDER` (`{ coins, ownedAvatars, equippedAvatar }`); opened via
+`PROFILE_INTENT.OPEN_STORE` → `STORE_INTENT.OPEN` (anonymous users routed to the account-upgrade prompt).
+
+Load-bearing IDs (do not rename without updating `avatarStoreScreen.js`):
+```
+#savatar-store         — screen container (also in screenTransitions.js SCREEN_IDS)
+#store-coin-balance    — coin balance number in the header
+#store-back-btn        — back → STORE_INTENT.CLOSE
+#store-hint            — transient "not enough coins" hint
+#store-grid            — category sections rendered here by paint()
+#ov-store-confirm      — purchase-confirm overlay
+  #store-confirm-avatar, #store-confirm-price, #store-confirm-yes, #store-confirm-no
+#ov-daily-reward       — daily login reward overlay
+  #daily-reward-coins, #daily-reward-streak, #daily-reward-ok
+```
+Each tile is `<button class="store-tile" data-store-id="{id}" data-action="equip|buy|tooexpensive">`. Click:
+`equip` → `STORE_INTENT.EQUIP`; `buy` → open confirm → `STORE_INTENT.CONFIRM_PURCHASE`; `tooexpensive` → hint.
+Equipped store avatars render everywhere via `avatarIconSrc()` (resolves store ids → PNG); `avatarEmoji()` passes
+store ids through so they survive into online `player.avatar`.
 
 ### Stats Screen (4-tab layout, June 2026 insights addition)
 
@@ -381,6 +443,8 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#home-elo-bolt`: tier emoji (🪙/🥈/🥇/💎); set by `ratingTierEmoji()` in `menuScreen.js`
 - `#online-badge`: shows count of pending game invites + friend requests; located inside `#btn-notifications-home`. Controlled by `MENU_REFRESH` `unreadCount` field.
 - `#btn-notifications-home`: notification bell in top bar (Electric Menu redesign). Clicking emits `MENU_INTENT.OPEN_NOTIFICATIONS` → opens `#snotif`.
+
+**Icon assets (June 2026):** The home play buttons and the global top bar use PNG icons from `images/icons/` instead of emoji/SVG. Top-bar buttons hold `<img class="em-icon-img">`; home play circles hold `<img class="home-circle-img">`; bottom-nav buttons hold `<img class="em-nav-icon em-nav-icon-img">`. The music toggle icon `#topbar-music-ic` is an `<img>` whose `src` is swapped by `syncMusicTopbarIcon()` in `main.js` (`sound_on.png` ↔ `sound_off.png`). The old spinning `#home-globe` canvas was removed (replaced by `globe.png`); `globeRenderer.startGlobe` is still used only by the online-lobby `#ol-globe`.
 
 ### Notifications Inbox Screen (`#snotif`)
 

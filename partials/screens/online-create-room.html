@@ -1,29 +1,53 @@
-﻿<!-- ONLINE: CREATE ROOM -->
+<!-- ONLINE: CREATE ROOM -->
 <div id="ov-create-room" class="ov hidden">
-  <div class="ovc"><div class="ovh"></div>
-    <div class="ovic">🏠</div><div class="ovt">פתיחת משחק חדש</div>
-    <div class="ovd">בחר הגדרות ושלח את הקוד לחבר</div>
-    <div id="cr-name-row" class="sf" style="margin-bottom:8px"><label style="font-size:10px;color:rgba(255,255,255,.5);display:block;margin-bottom:3px">השם שלך</label>
-      <input class="ri" id="cr-name" type="text" placeholder="השם שלך" maxlength="10">
-    </div>
-    <div style="margin-bottom:8px">
-      <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:4px">סוג משחק</div>
-      <div style="display:flex;gap:6px;">
-        <button id="cr-mode-live" class="sopt-btn active" style="flex:1;font-size:11px" onclick="crSetMode('live')">⚡ לייב</button>
-        <button id="cr-mode-async" class="sopt-btn" style="flex:1;font-size:11px" onclick="crSetMode('async')">📬 אסינכרוני</button>
+  <div class="ovc mf-ovc">
+    <div class="mf-icon-hero">🏠</div>
+    <div class="mf-body">
+      <div class="mf-title">פתיחת משחק חדש</div>
+      <div class="mf-desc" data-gm="בחר הגדרות ושלח את הקוד לחבר" data-gf="בחרי הגדרות ושלחי קוד לחבר">בחר הגדרות ושלח את הקוד לחבר</div>
+
+      <div id="cr-name-row" class="mf-name-row">
+        <label class="mf-input-lbl">השם שלך</label>
+        <input class="ri" id="cr-name" type="text" placeholder="השם שלך" maxlength="10">
       </div>
-    </div>
-    <div id="cr-speed-row" style="margin-bottom:8px">
-      <div style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:4px">קצב משחק (שניות)</div>
-      <div style="display:flex;gap:6px;">
-        <button id="cr-spd-20" class="sopt-btn" style="flex:1;font-size:11px">⚡ בזק (20)</button>
-        <button id="cr-spd-40" class="sopt-btn active" style="flex:1;font-size:11px">🎯 רגיל (40)</button>
-        <button id="cr-spd-60" class="sopt-btn" style="flex:1;font-size:11px">🐢 איטי (60)</button>
+
+      <div class="mf-section-lbl">סוג משחק</div>
+      <div class="mf-opt-row">
+        <button id="cr-mode-live" class="mf-opt-card active" onclick="crSetMode('live')">
+          <span class="mf-opt-icon">⚡</span>
+          <span class="mf-opt-label">לייב</span>
+          <span class="mf-opt-sub">זמן אמת</span>
+        </button>
+        <button id="cr-mode-async" class="mf-opt-card" onclick="crSetMode('async')">
+          <span class="mf-opt-icon">📬</span>
+          <span class="mf-opt-label">אסינכרוני</span>
+          <span class="mf-opt-sub">לא בזמן אמת</span>
+        </button>
       </div>
-    </div>
-    <div class="ovbtns">
-      <button class="ovb p" onclick="crConfirm()">פתח משחק</button>
-      <button class="ovb s" onclick="ovClose('ov-create-room')">ביטול</button>
+
+      <div id="cr-speed-row">
+        <div class="mf-section-lbl">קצב משחק</div>
+        <div class="mf-opt-row">
+          <button id="cr-spd-20" class="mf-opt-card">
+            <span class="mf-opt-icon">⚡</span>
+            <span class="mf-opt-label">בזק</span>
+            <span class="mf-opt-sub">20 שניות</span>
+          </button>
+          <button id="cr-spd-40" class="mf-opt-card active">
+            <span class="mf-opt-icon">🎯</span>
+            <span class="mf-opt-label">רגיל</span>
+            <span class="mf-opt-sub">40 שניות</span>
+          </button>
+          <button id="cr-spd-60" class="mf-opt-card">
+            <span class="mf-opt-icon">🐢</span>
+            <span class="mf-opt-label">איטי</span>
+            <span class="mf-opt-sub">60 שניות</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="mf-cta green" onclick="crConfirm()">▶ פתח משחק</button>
+      <button class="mf-cancel" onclick="ovClose('ov-create-room')">ביטול</button>
     </div>
   </div>
 </div>

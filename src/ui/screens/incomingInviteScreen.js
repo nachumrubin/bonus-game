@@ -19,6 +19,7 @@
 // followup createRoom(host+guest) on accept.
 
 import { $, on, setText } from '../domHelpers.js';
+import { setAvatarEl } from './avatarScreens.js';
 
 export const II_INTENT = Object.freeze({
   ACCEPT: 'incomingInvite/accept',
@@ -80,7 +81,7 @@ export function mountIncomingInviteScreen({ root = globalThis.document, bus } = 
 
   const offOpen = bus.on(II_OPEN, (invite = {}) => {
     pendingInvite = invite;
-    if (avatarEl) setText(avatarEl, invite.fromAvatar || '👤');
+    if (avatarEl) setAvatarEl(avatarEl, invite.fromAvatar, { fallback: '👤' });
     if (bodyEl) {
       const modeLabel = MODE_LABEL[invite.mode] ?? '';
       const fromName = invite.fromName ?? 'שחקן';

@@ -1,31 +1,33 @@
-﻿<!-- GAME -->
+<!-- GAME -->
 <div id="sg" class="screen hidden">
   <div class="gr">
-    <!-- top bar -->
-    <div class="tbar">
-      <button class="tb" id="btn-pause" onclick="pauseGame()" style="display:none"><span class="tb-ic">⏸️</span><span class="tb-tx">הפסקה</span></button>
-      <button class="tb" id="btn-async-home" onclick="goHome()" style="display:none"><span class="tb-ic">🏠</span><span class="tb-tx">בית</span></button>
-      <button class="tb" onclick="openSettings()"><span class="tb-ic">⚙️</span><span class="tb-tx">הגדרות</span></button>
-      <button class="tb" id="btn-exchange">החלפת<br>אות</button>
-      <button class="tb" id="btn-shailta" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
-      
-      <button class="tb" onclick="openEndMenu()"><span class="tb-ic">🏁</span><span class="tb-tx">סיום</span></button>
-      <button class="tb" id="btn-claim-stall-end" style="display:none"><span class="tb-ic">🏆</span><span class="tb-tx">סיים<br>וזכה</span></button>
-      <button class="tb music-btn" id="music-toggle" onclick="toggleMusic()"><span class="tb-ic">🎵</span><span class="tb-tx">מוזיקה</span></button>
 
-      <!-- Live connectivity indicator (online games only). Hidden by default;
-           connectivityIndicator.js toggles .is-visible / .is-online /
-           .is-offline based on Firebase WebSocket state. Green when good,
-           red+blinking when the local connection is down. -->
+    <!-- ── Top strip: all controls spread across the bar ── -->
+    <div class="gm-topbar">
+
+      <!-- Secondary controls (visibility toggled by JS) -->
+      <button class="tb gm-qbtn" id="btn-pause" onclick="pauseGame()" style="display:none">השהה</button>
+      <button class="tb gm-qbtn" id="btn-async-home" onclick="goHome()" style="display:none">בית</button>
+      <button class="tb gm-qbtn" onclick="openSettings()">הגדרות</button>
+      <button class="tb gm-qbtn" onclick="openEndMenu()">סיים/השהה</button>
+      <button class="tb gm-qbtn music-btn" id="music-toggle" onclick="toggleMusic()"><span class="tb-ic" aria-hidden="true">🎵</span><span class="tb-tx">שמע</span></button>
+
+      <!-- Gameplay quick-access (always visible) -->
+      <button class="tb gm-qbtn" id="btn-exchange">החלפת אות</button>
+      <button class="tb gm-qbtn" id="btn-shailta" onclick="openShailta()"><span class="tb-ic">📖</span><span class="tb-tx">שאילתה</span></button>
+      <button class="tb gm-qbtn" id="btn-claim-stall-end" style="display:none"><span class="tb-ic">🏆</span><span class="tb-tx">סיים<br>וזכה</span></button>
+
+      <div style="flex:1"></div>
+
+      <!-- Connectivity indicator (online games only) -->
       <div id="net-status" class="net-status" role="status" aria-live="polite">
         <svg class="net-status-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-          <!-- Wifi arcs + dot. currentColor lets CSS control the fill. -->
           <path fill="currentColor" d="M12 4C7.6 4 3.6 5.7.5 8.5l1.4 1.4C4.6 7.4 8.1 6 12 6s7.4 1.4 10.1 3.9l1.4-1.4C20.4 5.7 16.4 4 12 4zm0 4C8.7 8 5.7 9.3 3.4 11.4l1.4 1.4C6.8 11 9.3 10 12 10s5.2 1 7.2 2.8l1.4-1.4C18.3 9.3 15.3 8 12 8zm0 4c-2.2 0-4.2.9-5.7 2.3l1.4 1.4C8.9 14.7 10.4 14 12 14s3.1.7 4.3 1.7l1.4-1.4C16.2 12.9 14.2 12 12 12zm0 4c-1.1 0-2 .4-2.8 1.1l1.4 1.4C11 18.2 11.5 18 12 18s1 .2 1.4.5l1.4-1.4C14 16.4 13.1 16 12 16zm0 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
         </svg>
       </div>
 
-      <!-- Bag display in top bar -->
-      <div id="bag-char" style="line-height:1;text-align:center;cursor:default;flex:1.4;min-width:0;" title="שקית האותיות">
+      <!-- Bag tile count -->
+      <div id="bag-char" style="line-height:1;text-align:center;cursor:default;" title="שקית האותיות">
         <div id="bag-display" style="display:flex;flex-direction:row;align-items:center;justify-content:space-around;background:rgba(0,0,0,.3);border:2px solid rgba(255,255,255,.2);border-radius:3px;width:100%;height:100%;box-sizing:border-box;overflow:hidden;gap:2px;padding:0 2px;">
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;">
             <span style="font-family:'Heebo',sans-serif;font-size:8px;font-weight:900;color:rgba(255,255,255,.5);letter-spacing:.5px;line-height:1;">קופה</span>
@@ -33,47 +35,70 @@
           </div>
         </div>
       </div>
-    </div>
-    <!-- status -->
-    <div class="sbar" id="sbar" data-gm="בחר אות מהמגש ולחץ על משבצת" data-gf="בחרי אות מהמגש ולחצי על משבצת">בחר אות מהמגש ולחץ על משבצת</div>
-    <div id="turn-banner" style="display:none;text-align:center;font-size:13px;font-weight:900;padding:3px 8px;flex-shrink:0;letter-spacing:.5px;"></div>
-    <div id="turn-timer" class="turn-timer">
-      <span class="tt-label">טיימר תור</span>
-      <span class="tt-value" id="turn-timer-value">--</span>
-    </div>
 
-    <!-- MOBILE INFO STRIP — replaces side panels on small screens -->
+    </div><!-- /.gm-topbar -->
+
+    <!-- ── VS Match Header — player cards + circular timer ── -->
     <div class="info-strip" id="info-strip">
+
       <!-- P1 score card -->
       <div class="is-cell is-pcard" id="is-sb1">
         <div class="is-pcname" id="is-sn1">שחקן 1</div>
-        <div class="is-pcav" id="is-av1">👑</div>
-        <div class="is-val" style="color:var(--p1)" id="is-sv1">0</div>
-        <div class="is-pclbl">נקודות</div>
+        <div class="gm-card-mid">
+          <div class="is-pcav" id="is-av1">👑</div>
+          <div class="gm-card-info">
+            <div class="is-val" style="color:var(--p1)" id="is-sv1">0</div>
+            <div class="is-pclbl">נקודות</div>
+            <button class="rxn-btn" id="rxn-btn-slot0" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
+          </div>
+        </div>
         <div class="is-pclocks" id="is-locks-1"></div>
-        <button class="rxn-btn" id="rxn-btn-slot0" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
       </div>
+
+      <!-- VS + circular timer center column -->
+      <div class="gm-vs-center">
+        <div class="gm-vs-badge">VS</div>
+        <div id="turn-timer" class="turn-timer">
+          <!-- SVG shrinking ring — arc animates from full to empty as turn timer runs -->
+          <svg class="tt-ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="tt-ring-track" cx="50" cy="50" r="44"/>
+            <circle class="tt-ring-arc" cx="50" cy="50" r="44"/>
+          </svg>
+          <span class="tt-value" id="turn-timer-value">--</span>
+        </div>
+      </div>
+
       <!-- P2 score card -->
       <div class="is-cell is-pcard" id="is-sb2">
         <div class="is-pcname" id="is-sn2">שחקן 2</div>
-        <div class="is-pcav" id="is-av2">👤</div>
-        <div class="is-val" style="color:var(--p2)" id="is-sv2">0</div>
-        <div class="is-pclbl">נקודות</div>
+        <div class="gm-card-mid">
+          <div class="gm-card-info">
+            <div class="is-val" style="color:var(--p2)" id="is-sv2">0</div>
+            <div class="is-pclbl">נקודות</div>
+            <button class="rxn-btn" id="rxn-btn-slot1" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
+          </div>
+          <div class="is-pcav" id="is-av2"><img class="av-img" src="images/icons/anonymous player.png" alt=""></div>
+        </div>
         <div class="is-pclocks" id="is-locks-2"></div>
-        <button class="rxn-btn" id="rxn-btn-slot1" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
       </div>
-    </div>
-    <!-- Reaction overlay (backdrop + centered modal panel, filled by reactionController) -->
+
+    </div><!-- /#info-strip -->
+
+    <!-- Reaction overlay (backdrop + panel, filled by reactionController) -->
     <div id="rxn-overlay" class="rxn-overlay" aria-hidden="true" style="display:none">
       <div id="rxn-panel" class="rxn-panel" dir="rtl" role="dialog" aria-modal="true"></div>
     </div>
+
+    <!-- Status text + hidden turn banner -->
+    <div class="sbar" id="sbar" data-gm="בחר אות מהמגש ולחץ על משבצת" data-gf="בחרי אות מהמגש ולחצי על משבצת">בחר אות מהמגש ולחץ על משבצת</div>
+    <div id="turn-banner" style="display:none;text-align:center;font-size:13px;font-weight:900;padding:3px 8px;flex-shrink:0;letter-spacing:.5px;"></div>
+
     <!-- main game area -->
     <div class="game-area">
-      <!-- left panel: scores + P1 waiting tiles -->
+      <!-- left panel: scores + P1 waiting tiles (hidden, IDs kept for JS) -->
       <div class="left-panel">
         <div class="scbox act" id="sb1"><div class="scname" id="sn1">שחקן 1</div><div class="scval" style="color:var(--p1)" id="sv1">0</div></div>
         <div class="scbox" id="sb2"><div class="scname" id="sn2">שחקן 2</div><div class="scval" style="color:var(--p2)" id="sv2">0</div></div>
-        <!-- P1 waiting tiles appear here when it's P2's turn -->
         <div id="ss-label-p1" style="font-size:8px;font-weight:900;color:var(--p1);text-align:center;padding:2px 0 1px;opacity:.85;display:none;"></div>
         <div class="ss-tiles" id="ss-tiles-p1"></div>
       </div>
@@ -85,9 +110,8 @@
           <div id="board-border"></div>
         </div>
       </div>
-      <!-- right panel: controls + P2 waiting tiles -->
+      <!-- right panel: controls + P2 waiting tiles (hidden, IDs kept for JS) -->
       <div class="right-panel">
-        <!-- direction buttons hidden -->
         <div class="pb" style="display:none"><div class="pl">כיוון</div><div class="dpair"><button class="dm a" id="bh" onclick="setDir('H')">→ אופקי</button><button class="dm" id="bv" onclick="setDir('V')">↕ אנכי</button></div></div>
         <div class="pb">
           <div class="pl">נעילות</div>
@@ -97,14 +121,12 @@
           <div class="pl">תור</div>
           <div id="turn-name" style="font-size:9px;color:rgba(255,255,255,.8);text-align:center;font-weight:700;word-break:break-all;"></div>
         </div>
-        <!-- P2 waiting tiles appear here when it's P1's turn -->
         <div id="ss-label-p2" style="font-size:8px;font-weight:900;color:var(--p2);text-align:center;padding:2px 0 1px;opacity:.85;display:none;"></div>
         <div class="ss-tiles" id="ss-tiles-p2"></div>
       </div>
     </div>
 
-    <!-- Inactive player's rack — shown above the active rack only in
-         hot-seat 2P with settings.showBothRacks=true. Hidden otherwise. -->
+    <!-- Inactive player's rack — shown above active rack only when showBothRacks=true -->
     <div id="brack2-row" class="brack2-row" style="display:none;">
       <span id="brack2-label" class="brack2-label"></span>
       <div id="brack2" class="brack2"></div>
@@ -116,5 +138,6 @@
       <button class="bplay" id="btn-recall" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2);" data-gm-html="בטל<br>↩" data-gf-html="בטלי<br>↩">בטל<br>↩</button>
       <button class="bplay" id="btn-play" data-gm-html="שבץ<br>✓" data-gf-html="שבצי<br>✓">שבץ<br>✓</button>
     </div>
+
   </div>
 </div>

@@ -209,13 +209,22 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
 
 ```
 {
+  // The editable profile lives under /users/{uid}/profile (displayName,
+  // equippedAvatar, rating, stats, createdAt, and the economy fields below).
   displayName?: string,
-  avatar?: string,
+  avatar?: string,           // legacy; equippedAvatar is the current field
+  equippedAvatar?: string,   // achievement avatar id, store avatar id, or emoji
   stats?: {
     gamesPlayed: number,
     gamesWon: number,
     // other stats fields: Unknown / needs verification
   },
+  // Avatar-store economy (added June 2026; see profileService.js). Profile
+  // ROOT fields, NOT under stats. Client-authoritative for v1.
+  coins?: number,            // spendable balance (starter grant seeds 150)
+  ownedAvatars?: string[],   // purchased store ids only (common are free/implicit)
+  lastLoginDate?: string,    // 'YYYY-MM-DD' of last claimed daily reward
+  loginStreak?: number,      // consecutive-day login streak
   activeRoom?: string,       // roomId of current live game (or null)
   asyncRooms?: {             // per-user index of async games
     [roomId: string]: {

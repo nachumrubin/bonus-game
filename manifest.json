@@ -1,7 +1,7 @@
 {
-  "name": "בוסט — שבץ נא",
+  "name": "בוסט",
   "short_name": "בוסט",
-  "description": "משחק שבץ נא ישראלי עם בוסטים",
+  "description": "משחק מילים ישראלי עם בוסטים",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",

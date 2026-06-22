@@ -1,10 +1,38 @@
-﻿<!-- COIN TOSS / FIRST TURN -->
+<!-- COIN TOSS / FIRST TURN -->
 <div id="scoin" class="screen hidden">
   <div class="coin-wrap">
+
+    <!-- Ambient background rays -->
+    <div class="coin-bg" aria-hidden="true">
+      <div class="coin-ray coin-ray--1"></div>
+      <div class="coin-ray coin-ray--2"></div>
+      <div class="coin-ray coin-ray--3"></div>
+      <span class="coin-star"></span>
+      <span class="coin-star"></span>
+      <span class="coin-star"></span>
+      <span class="coin-star"></span>
+      <span class="coin-star"></span>
+    </div>
+
+    <!-- Title block -->
     <div class="coin-title">הגרלת שחקן פותח</div>
     <div class="coin-sub" id="coin-sub">מטילים מטבע...</div>
-    <div class="coin-disc" id="coin-disc">🪙</div>
+
+    <!-- Hero: glow ring + floating coin -->
+    <div class="coin-hero-wrap">
+      <div class="coin-glow-ring" aria-hidden="true"></div>
+      <div class="coin-float">
+        <div class="coin-disc" id="coin-disc">🪙</div>
+      </div>
+    </div>
+
+    <!-- Result -->
     <div class="coin-msg" id="coin-msg">בהצלחה!</div>
-    <button id="coin-enter" class="coin-enter" type="button" onclick="enterGameAfterCoinToss()" disabled>לחצו כדי להיכנס למשחק</button>
+
+    <!-- CTA -->
+    <button id="coin-enter" class="coin-enter" type="button" onclick="enterGameAfterCoinToss()" disabled>
+      כניסה למשחק ←
+    </button>
+
   </div>
 </div>

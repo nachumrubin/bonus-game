@@ -9,6 +9,9 @@ import {
   checkUsernameAvailable, claimUsername,
   lookupUidByUsername, lookupUidByUserId,
   bumpStats, EMPTY_STATS, RATING_START, DEFAULT_AVATAR,
+  STARTER_GRANT, DAILY_BASE, DAILY_STREAK_INCREMENT, DAILY_STREAK_CAP,
+  normalizeProfileEconomy, bumpCoins, purchaseAvatar,
+  computeDailyReward, claimDailyReward, isYesterday, ymd,
 } from './profileService.js';
 
 test('buildInitialProfile: includes defaults', () => {
@@ -280,4 +283,112 @@ test('computeLiveGameStatsDelta: deduplicates repeated words within one game', (
   });
   // 'שלום' appears 3 times but is only 1 unique new word
   assert.equal(d.uniqueWordsCount, 1);
+});
+
+// ── Avatar-store economy ─────────────────────────────────────
+
+test('buildInitialProfile: seeds the economy fields with the starter grant', () => {
+  const p = buildInitialProfile({ displayName: 'נחום', userId: '123456' });
+  assert.equal(p.coins, STARTER_GRANT);
+  assert.deepEqual(p.ownedAvatars, []);
+  assert.equal(p.lastLoginDate, null);
+  assert.equal(p.loginStreak, 0);
+});
+
+test('normalizeProfileEconomy: safe defaults for a legacy profile', () => {
+  assert.deepEqual(normalizeProfileEconomy(null), { coins: 0, ownedAvatars: [], lastLoginDate: null, loginStreak: 0 });
+  assert.deepEqual(
+    normalizeProfileEconomy({ coins: '40', ownedAvatars: ['rare_1'], lastLoginDate: '2026-06-22', loginStreak: 3 }),
+    { coins: 40, ownedAvatars: ['rare_1'], lastLoginDate: '2026-06-22', loginStreak: 3 },
+  );
+  // junk fields → zero/empty
+  assert.deepEqual(normalizeProfileEconomy({ coins: -5, ownedAvatars: 'x' }).ownedAvatars, []);
+  assert.equal(normalizeProfileEconomy({ coins: -5 }).coins, 0);
+});
+
+test('bumpCoins: adds and subtracts atomically, flooring at zero', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 100 });
+  assert.equal(await bumpCoins(db, 'u1', 50), 150);
+  assert.equal(await bumpCoins(db, 'u1', -40), 110);
+  assert.equal(await bumpCoins(db, 'u1', -999), 0); // floor
+});
+
+test('purchaseAvatar: success deducts coins and records ownership', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 500, ownedAvatars: ['rare_1'] });
+  // epic costs 700 but the player only has 500 → insufficient, no charge
+  const r = await purchaseAvatar(db, 'u1', 'epic_2', 700);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'insufficient');
+
+  const r2 = await purchaseAvatar(db, 'u1', 'rare_3', 250);
+  assert.equal(r2.ok, true);
+  assert.equal(r2.coins, 250);
+  assert.deepEqual(r2.ownedAvatars, ['rare_1', 'rare_3']);
+  const p = await readProfile(db, 'u1');
+  assert.equal(p.coins, 250);
+  assert.deepEqual(p.ownedAvatars, ['rare_1', 'rare_3']);
+});
+
+test('purchaseAvatar: rejects an already-owned avatar without charging', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 1000, ownedAvatars: ['epic_1'] });
+  const r = await purchaseAvatar(db, 'u1', 'epic_1', 700);
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'already-owned');
+  const p = await readProfile(db, 'u1');
+  assert.equal(p.coins, 1000); // untouched
+});
+
+test('computeDailyReward: first claim, consecutive growth, cap, gap reset, same-day no-op', () => {
+  // first ever
+  assert.deepEqual(computeDailyReward(null, 0, '2026-06-22'),
+    { coinsAwarded: DAILY_BASE, newStreak: 1, alreadyClaimedToday: false });
+  // consecutive day → streak 2, base + 1*increment
+  assert.deepEqual(computeDailyReward('2026-06-21', 1, '2026-06-22'),
+    { coinsAwarded: DAILY_BASE + DAILY_STREAK_INCREMENT, newStreak: 2, alreadyClaimedToday: false });
+  // beyond the cap: coins stop growing, streak keeps counting
+  const atCap = computeDailyReward('2026-06-21', DAILY_STREAK_CAP + 4, '2026-06-22');
+  assert.equal(atCap.coinsAwarded, DAILY_BASE + DAILY_STREAK_INCREMENT * (DAILY_STREAK_CAP - 1));
+  assert.equal(atCap.newStreak, DAILY_STREAK_CAP + 5);
+  // gap (missed a day) → reset to 1
+  assert.deepEqual(computeDailyReward('2026-06-19', 9, '2026-06-22'),
+    { coinsAwarded: DAILY_BASE, newStreak: 1, alreadyClaimedToday: false });
+  // same day → no-op
+  assert.deepEqual(computeDailyReward('2026-06-22', 4, '2026-06-22'),
+    { coinsAwarded: 0, newStreak: 4, alreadyClaimedToday: true });
+});
+
+test('isYesterday: across month boundary', () => {
+  assert.equal(isYesterday('2026-05-31', '2026-06-01'), true);
+  assert.equal(isYesterday('2026-06-01', '2026-06-01'), false);
+  assert.equal(isYesterday('2026-06-01', '2026-06-03'), false);
+});
+
+test('ymd: zero-pads month and day', () => {
+  assert.equal(ymd(new Date(2026, 0, 5)), '2026-01-05');
+});
+
+test('claimDailyReward: grants once per day, idempotent on a repeat boot', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 0, lastLoginDate: null, loginStreak: 0 });
+  const first = await claimDailyReward(db, 'u1', '2026-06-22');
+  assert.equal(first.coinsAwarded, DAILY_BASE);
+  assert.equal(first.newStreak, 1);
+  let p = await readProfile(db, 'u1');
+  assert.equal(p.coins, DAILY_BASE);
+  assert.equal(p.lastLoginDate, '2026-06-22');
+
+  // Second call same day must not double-grant.
+  const again = await claimDailyReward(db, 'u1', '2026-06-22');
+  assert.equal(again.alreadyClaimedToday, true);
+  assert.equal(again.coinsAwarded, 0);
+  p = await readProfile(db, 'u1');
+  assert.equal(p.coins, DAILY_BASE); // unchanged
+
+  // Next day → streak 2, larger reward.
+  const day2 = await claimDailyReward(db, 'u1', '2026-06-23');
+  assert.equal(day2.newStreak, 2);
+  assert.equal(day2.coinsAwarded, DAILY_BASE + DAILY_STREAK_INCREMENT);
 });

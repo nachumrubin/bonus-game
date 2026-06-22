@@ -73,13 +73,13 @@ test('II_OPEN with async mode shows async label', () => {
   assert.match(els.body.textContent, /אסינכרוני/);
 });
 
-test('II_OPEN without avatar clears previous avatar to default', () => {
+test('II_OPEN without avatar clears previous avatar to anonymous player image', () => {
   bus._reset();
   const { root, els } = makeDom();
   mountIncomingInviteScreen({ root, bus });
   bus.emit(II_OPEN, { fromName: 'A', fromAvatar: '⭐', mode: 'friend-live' });
   bus.emit(II_OPEN, { fromName: 'B', mode: 'friend-live' });
-  assert.equal(els.avatar.textContent, '👤');
+  assert.match(els.avatar.innerHTML ?? '', /anonymous player/);
 });
 
 test('accept emits ACCEPT with the pending invite payload', () => {

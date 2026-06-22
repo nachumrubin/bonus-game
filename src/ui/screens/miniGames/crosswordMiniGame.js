@@ -23,6 +23,7 @@
 //   CW_INTENT.RESULT
 
 import { startBonusTimer } from './bonusTimer.js';
+import { confettiBurst } from './bonusFx.js';
 import { g, getGender } from '../../genderText.js';
 
 const DEFAULT_DURATION_MS = 60_000;
@@ -353,7 +354,7 @@ export function mountCrosswordMiniGame({
 
   function attachLegacy() {
     bovic.textContent = '⚡';
-    bovt.textContent  = 'בוסט שבץ נא אישי!';
+    bovt.textContent  = 'בוסט אישי!';
     bovd.textContent  = `ב-${Math.floor(durationMs/1000)} שניות הרכב מילים מהאותיות שלך — כל אות שימושית פעם אחת בלבד!`;
     bchal.innerHTML = '';
 
@@ -393,10 +394,16 @@ export function mountCrosswordMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
         bchal.innerHTML = renderResult(result);
+        if (isCleanWin(result)) confettiBurst(ovBonus?.querySelector?.('.ovc'));
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
     };
+  }
+
+  function isCleanWin(result) {
+    return Object.keys(result.illegal ?? {}).length === 0
+        && Object.keys(result.legal ?? {}).length > 0;
   }
 
   function renderResult(result) {
@@ -404,17 +411,18 @@ export function mountCrosswordMiniGame({
     const illegalWords = Object.keys(result.illegal);
     const total = legalWords.length + illegalWords.length;
     if (total === 0) {
-      return `<div style="text-align:center;padding:8px 0;">
-        <div style="font-size:26px">😔</div>
-        <div style="font-size:13px;color:#ff8e8e;margin-top:4px">ללא מילים — ללא בוסט</div>
+      return `<div class="bz-result is-soft">
+        <div class="bz-result-emoji">😌</div>
+        <div class="bz-result-headline">ללא מילים — ללא בוסט</div>
+        <div class="bz-result-sub">המשך לשחק ולחפש הזדמנויות נוספות.</div>
       </div>`;
     }
     const emoji   = illegalWords.length === 0 ? '🎉' : (legalWords.length > 0 ? '⚠️' : '😔');
-    const headColor = illegalWords.length === 0 ? '#8eff8e' : '#ff8e8e';
+    const headColor = illegalWords.length === 0 ? '#7dffa6' : '#ffb38a';
     const headline = illegalWords.length === 0
       ? `כל הכבוד! ${legalWords.length} מילים חוקיות`
       : 'יש מילות ✗ — הבוסט מתאפס (0 נקודות)';
-    let h = `<div style="text-align:center;margin-bottom:6px"><div style="font-size:24px">${emoji}</div><div style="font-size:13px;font-weight:900;color:${headColor};margin:3px 0">${headline}</div></div>`;
+    let h = `<div style="text-align:center;margin-bottom:8px"><div style="font-size:34px">${emoji}</div><div style="font-size:14px;font-weight:900;color:${headColor};margin:4px 0">${headline}</div></div>`;
     h += `<div style="background:rgba(0,0,0,.22);border-radius:6px;padding:5px 10px;font-size:12px;color:#eee;line-height:1.7;">`;
     legalWords.forEach(w => {
       h += `<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);padding:1px 0">
@@ -436,14 +444,19 @@ export function mountCrosswordMiniGame({
 
   function attachSelf() {
     const host = doc.createElement('div');
-    host.className = 'spine-mini-overlay';
-    host.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(6,19,61,.92);padding:20px;font-family:Heebo,sans-serif;';
+    host.className = 'spine-mini-overlay bz-overlay';
     const card = doc.createElement('div');
-    card.style.cssText = 'background:#0d2068;border-radius:14px;padding:18px;max-width:380px;color:#fff;text-align:center;';
+    card.className = 'bz-card';
+    card.style.maxWidth = '380px';
+
+    const bolt = doc.createElement('div');
+    bolt.className = 'bz-bolt';
+    bolt.textContent = '⚡';
+    card.appendChild(bolt);
 
     const title = doc.createElement('div');
-    title.style.cssText = 'font-size:16px;font-weight:900;margin-bottom:4px;';
-    title.textContent = '⚡ שבץ נא אישי';
+    title.className = 'bz-title';
+    title.textContent = 'בוסט אישי!';
     card.appendChild(title);
 
     statusLine = doc.createElement('div');
@@ -460,7 +473,8 @@ export function mountCrosswordMiniGame({
     card.appendChild(poolEl);
 
     const submitBtn = doc.createElement('button');
-    submitBtn.style.cssText = 'margin-top:8px;background:#e8c840;border:none;border-radius:8px;padding:8px 18px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
+    submitBtn.className = 'bz-btn bz-btn-gold';
+    submitBtn.style.cssText = 'margin-top:10px;';
     submitBtn.textContent = 'סיים ▶';
     submitBtn.addEventListener('click', () => finalize({ timedOut: false }));
     card.appendChild(submitBtn);

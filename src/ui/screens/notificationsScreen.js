@@ -5,6 +5,7 @@
 // this module is pure presentational + intent-emitting.
 
 import { $, on } from '../domHelpers.js';
+import { avatarMarkup, setAvatarEl } from './avatarScreens.js';
 import { MENU_INTENT } from './menuScreen.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
@@ -33,17 +34,8 @@ function escapeHtml(s) {
     .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
-const AVATAR_ID_TO_EMOJI = {
-  crown:'👑', star:'⭐', fire:'🔥', diamond:'💎', shark:'🦈',
-  dragon:'🐉', tiger:'🐯', alien:'👾', wizard:'🧙', robot:'🤖',
-  rocket:'🚀', knight:'🛡️', ninja:'🥷', genius:'🧠', vampire:'🧛',
-};
-function resolveAvatar(raw, fallback) {
-  return AVATAR_ID_TO_EMOJI[raw] ?? raw ?? fallback;
-}
-
 function buildInviteHtml(invite) {
-  const avatar = escapeHtml(resolveAvatar(invite.fromAvatar, '🎮'));
+  const avatar = avatarMarkup(invite.fromAvatar, { fallback: '🎮' });
   const name   = escapeHtml(invite.fromName ?? 'שחקן');
   const mode   = escapeHtml(MODE_LABEL[invite.mode] ?? 'משחק');
   const id     = escapeHtml(invite.inviteId);
@@ -61,7 +53,7 @@ function buildInviteHtml(invite) {
 }
 
 function buildFriendRequestHtml(req) {
-  const avatar = escapeHtml(resolveAvatar(req.fromAvatar, '👤'));
+  const avatar = avatarMarkup(req.fromAvatar, { fallback: '👤' });
   const name   = escapeHtml(req.fromName ?? req.fromUid ?? 'שחקן');
   const uid    = escapeHtml(req.fromUid);
   return (
@@ -174,7 +166,7 @@ export function mountNotifBanner({ root = globalThis.document, bus } = {}) {
   }));
 
   cleanups.push(bus.on(NOTIF_BANNER_SHOW, ({ avatar, text, action } = {}) => {
-    if (avatarEl) avatarEl.textContent = avatar ?? '🔔';
+    if (avatarEl) setAvatarEl(avatarEl, avatar, { fallback: '🔔' });
     if (textEl)   textEl.textContent   = text   ?? '';
     currentAction = action ?? 'dismiss';
     globalThis.clearTimeout?.(dismissTimer);

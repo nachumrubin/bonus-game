@@ -9,6 +9,7 @@
 // is computed pure-ly via `isAvatarUnlocked(avatar, stats)`.
 
 import { $, on, setText } from '../domHelpers.js';
+import { isStoreAvatarId, storeAvatarSrc, findStoreAvatar, COIN_ICON_HTML } from './avatarStore.js';
 
 export const AV_INTENT = Object.freeze({
   SELECT:     'avatar/select',
@@ -44,10 +45,18 @@ export const SPINE_AVATARS = [
   { id: 'books',     emoji: '📚', nameHe: 'ספרים',     rarity: 'legend', unlock: { stat: 'uniqueWordsCount', min: 1000 } },
   { id: 'hero',      emoji: '🦸', nameHe: 'גיבור-על',  rarity: 'legend', unlock: { stat: 'noLossWeekStreaks',min: 1    } },
   { id: 'target',    emoji: '🎯', nameHe: 'מטרה',      rarity: 'legend', unlock: { stat: 'beatNumberOne',    min: 1    } },
+  { id: 'ambassador',emoji: '🤩', nameHe: 'שגריר',    rarity: 'gold',   unlock: { stat: 'invitesSent',      min: 5    } },
 ];
 
-// Named achievements — each maps a milestone to a reward avatar.
-// Free avatars (crown, star) are displayed in a separate starter row.
+// Named achievements — collectible "trophies". Completing one awards COINS
+// (by tier — see profileService.ACHIEVEMENT_COIN_REWARD), NOT an avatar; avatars
+// come exclusively from the store now. Each entry has a `condition`:
+//   { stat, min }                              — numeric profile-stat threshold
+//   { type:'ownedCount', min }                 — total purchased store avatars
+//   { type:'ownedCategories', categories:[…] } — owns ≥1 from each listed category
+//   { type:'ownedInCategory', category, min }  — owns ≥min from one category
+// `rewardAvatarId` (legacy) only drives the trophy-icon emoji fallback; ownership
+// achievements use `emoji` instead. `tier` drives the coin reward.
 export const ACHIEVEMENTS = [
   { id: 'first_steps',  titleHe: 'צעדים ראשונים', descHe: 'שחק 5 משחקים',                                       condition: { stat: 'gamesPlayed',      min: 5    }, rewardAvatarId: 'fire',      tier: 'bronze' },
   { id: 'winner',       titleHe: 'מנצח',           descHe: 'ניצח 5 משחקים',                                       condition: { stat: 'gamesWon',         min: 5    }, rewardAvatarId: 'shark',     tier: 'bronze' },
@@ -65,15 +74,21 @@ export const ACHIEVEMENTS = [
   { id: 'untouchable',  titleHe: 'בלתי נתפס',      descHe: 'נצח 25 משחקים ברצף',                                  condition: { stat: 'longestStreak',    min: 25   }, rewardAvatarId: 'trophy',    tier: 'legend' },
   { id: 'dictionary',   titleHe: 'מילון מהלך',      descHe: 'השתמש ב-1000 מילים שונות',                            condition: { stat: 'uniqueWordsCount', min: 1000 }, rewardAvatarId: 'books',     tier: 'legend' },
   { id: 'superhuman',   titleHe: 'על-אנושי',        descHe: 'שבוע שלם בלי הפסד',                                   condition: { stat: 'noLossWeekStreaks',min: 1    }, rewardAvatarId: 'hero',      tier: 'legend' },
-  { id: 'the_one',      titleHe: 'האחד',            descHe: 'נצח את שחקן המקום הראשון',                            condition: { stat: 'beatNumberOne',    min: 1    }, rewardAvatarId: 'target',    tier: 'legend' },
+  { id: 'the_one',      titleHe: 'האחד',            descHe: 'נצח את שחקן המקום הראשון',                            condition: { stat: 'beatNumberOne',    min: 1    }, rewardAvatarId: 'target',     tier: 'legend' },
+  { id: 'recruiter',   titleHe: 'חבר מביא חבר',  descHe: 'הזמן 5 חברים לבוסט',                                  condition: { stat: 'invitesSent',      min: 5    }, rewardAvatarId: 'ambassador', tier: 'gold'   },
+  // Avatar-store / purchasing achievements (June 2026). No reward avatar — these
+  // are pure trophies that pay out coins; condition reads profile.ownedAvatars.
+  { id: 'first_buy',   titleHe: 'קנייה ראשונה',  descHe: 'רכוש את האווטאר הראשון שלך בחנות',                    condition: { type: 'ownedCount', min: 1 },                              emoji: '🛍️', tier: 'bronze' },
+  { id: 'collector',   titleHe: 'אספן',           descHe: 'החזק לפחות אווטאר אחד מכל קטגוריה (נדיר, אפי, אגדי)', condition: { type: 'ownedCategories', categories: ['rare','epic','legendary'] }, emoji: '🗂️', tier: 'gold'   },
+  { id: 'legend_owner',titleHe: 'בעל אגדה',       descHe: 'רכוש אווטאר אגדי מהחנות',                             condition: { type: 'ownedInCategory', category: 'legendary', min: 1 },  emoji: '💫', tier: 'legend' },
 ];
 
-const TIER_COLOR = {
-  bronze: '#c87840', silver: '#9090a0', gold: '#d4a820', legend: '#9a50e8',
-};
-const TIER_LABEL_HE = { bronze: 'ארד', silver: 'כסף', gold: 'זהב', legend: 'אגדה' };
-
-const FREE_AVATAR_BG = '#3a4cf9';
+// Trophy-room icon art lives in images/icons/acheivements/, one PNG per
+// achievement named exactly after its Hebrew title (`titleHe`). The path is
+// derived from the title (URL-encoded at render time); if a file is missing
+// the tile falls back to the reward avatar's emoji via the img onerror.
+const ACH_ICON_DIR = 'images/icons/acheivements/';
+const ACH_LOCK_ICON = 'images/icons/lock.png';
 
 export function findAvatar(id) {
   return SPINE_AVATARS.find(a => a.id === id) ?? null;
@@ -81,6 +96,69 @@ export function findAvatar(id) {
 
 export function findAchievementByRewardId(avatarId) {
   return ACHIEVEMENTS.find(a => a.rewardAvatarId === avatarId) ?? null;
+}
+
+// Resolve an avatar (id like 'robot' OR its emoji '🤖') to the achievement
+// trophy-icon PNG that represents it, so the equipped avatar displays as the
+// collected achievement art instead of the legacy emoji. Returns null for
+// avatars with no achievement (the free crown/star) or unknown values — caller
+// then falls back to the emoji.
+export const BOT_AVATAR_SRC = 'images/icons/bot.png';
+
+export function avatarIconSrc(value) {
+  if (value == null) return null;
+  if (value === 'bot') return BOT_AVATAR_SRC;
+  // Store avatars (common_/rare_/epic_/legendary_) are image-only — resolve
+  // their PNG here so an equipped store avatar shows everywhere avatars render
+  // (profile, game screen, opponent cards) via setAvatarEl/avatarMarkup.
+  const storeSrc = storeAvatarSrc(value);
+  if (storeSrc) return storeSrc;
+  const av = SPINE_AVATARS.find(a => a.id === value)
+    ?? SPINE_AVATARS.find(a => a.emoji === value);
+  if (!av) return null;
+  const ach = findAchievementByRewardId(av.id);
+  if (!ach) return null;
+  return encodeURI(ACH_ICON_DIR + ach.titleHe + '.png');
+}
+
+function escapeAvatar(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+export const ANON_AVATAR_SRC = 'images/icons/anonymous player.png';
+
+// Emoji/text fallback for an avatar value (id → emoji, else the raw value, else
+// the fallback). Mirrors the per-screen resolveAvatar() helpers.
+export function avatarText(value, fallback = '👤') {
+  const av = SPINE_AVATARS.find(a => a.id === value);
+  if (av) return av.emoji;
+  // Store ids have no emoji; if the PNG is unavailable, degrade to the generic
+  // person icon rather than printing the raw id (e.g. 'rare_3').
+  if (isStoreAvatarId(value)) return fallback;
+  return (value != null && value !== '') ? value : fallback;
+}
+
+// Avatar as an HTML string: the achievement trophy <img> when the avatar maps
+// to one, else the escaped emoji/text. `className` controls the img sizing
+// (defaults to `.av-img`, which scales with the container font-size).
+export function avatarMarkup(value, { fallback = '👤', className = 'av-img' } = {}) {
+  const src = avatarIconSrc(value);
+  if (src) return `<img class="${className}" src="${src}" alt="">`;
+  const text = avatarText(value, fallback);
+  if (text === '👤') return `<img class="${className}" src="${ANON_AVATAR_SRC}" alt="">`;
+  return escapeAvatar(text);
+}
+
+// Same, but writes into an existing element (img via innerHTML, else emoji
+// via textContent).
+export function setAvatarEl(el, value, { fallback = '👤', className = 'av-img' } = {}) {
+  if (!el) return;
+  const src = avatarIconSrc(value);
+  if (src) { el.innerHTML = `<img class="${className}" src="${src}" alt="">`; return; }
+  const text = avatarText(value, fallback);
+  if (text === '👤') el.innerHTML = `<img class="${className}" src="${ANON_AVATAR_SRC}" alt="">`;
+  else el.textContent = text;
 }
 
 // Returns 0–1 representing how close the player is to completing an achievement.
@@ -109,6 +187,51 @@ export function diffNewlyUnlocked(prevStats = {}, nextStats = {}) {
   return out;
 }
 
+// ── Achievement evaluation (trophy-centric, decoupled from avatars) ─────────
+// `data` is a profile-like { stats, ownedAvatars }. Returns { current, target }
+// for the achievement's condition (stat threshold or store-ownership rule).
+export function achievementMetric(ach, data = {}) {
+  const c = ach?.condition ?? {};
+  const owned = Array.isArray(data.ownedAvatars) ? data.ownedAvatars : [];
+  if (c.stat) {
+    return { current: data.stats?.[c.stat] ?? 0, target: c.min ?? 0 };
+  }
+  if (c.type === 'ownedCount') {
+    return { current: owned.length, target: c.min ?? 1 };
+  }
+  if (c.type === 'ownedInCategory') {
+    const n = owned.filter(id => findStoreAvatar(id)?.category === c.category).length;
+    return { current: n, target: c.min ?? 1 };
+  }
+  if (c.type === 'ownedCategories') {
+    const cats = new Set(owned.map(id => findStoreAvatar(id)?.category).filter(Boolean));
+    const have = (c.categories ?? []).filter(cat => cats.has(cat)).length;
+    return { current: have, target: (c.categories ?? []).length };
+  }
+  return { current: 0, target: 1 };
+}
+
+export function isAchievementComplete(ach, data = {}) {
+  const { current, target } = achievementMetric(ach, data);
+  return current >= target;
+}
+
+// 0–1 progress fraction toward an achievement (any condition type).
+export function achievementProgressPct(ach, data = {}) {
+  const { current, target } = achievementMetric(ach, data);
+  return target > 0 ? Math.min(1, current / target) : 1;
+}
+
+// Pure: achievements newly completed between two profile-like snapshots
+// ({ stats, ownedAvatars }). Drives coin payout + the completion popup.
+export function diffNewlyCompletedAchievements(prev = {}, next = {}) {
+  const out = [];
+  for (const ach of ACHIEVEMENTS) {
+    if (!isAchievementComplete(ach, prev) && isAchievementComplete(ach, next)) out.push(ach);
+  }
+  return out;
+}
+
 // ── Avatar picker screen ───────────────────────────────────
 
 export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}) {
@@ -129,67 +252,102 @@ export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}
     }));
   }
 
-  function paint({ stats, equippedAvatar } = {}) {
-    if (!grid) return;
-    const unlocked = SPINE_AVATARS.filter(a => isAvatarUnlocked(a, stats));
-    if (countEl) setText(countEl, `${unlocked.length}/${SPINE_AVATARS.length}`);
+  // Latest economy context from AV_RENDER (coin reward per tier comes from
+  // profileService.ACHIEVEMENT_COIN_REWARD, passed in so this UI module stays
+  // decoupled from the game/account layer).
+  let coinRewardByTier = {};
 
-    const FREE_AVATARS = SPINE_AVATARS.filter(a => a.rarity === 'free');
-    const starterRow = FREE_AVATARS.map(a => {
-      const isEquipped = a.id === equippedAvatar;
-      return `<button class="ach-starter-btn" data-av-id="${a.id}" `
-        + `style="background:${FREE_AVATAR_BG};border:${isEquipped ? '3px solid #fff' : '2px solid rgba(255,255,255,.2)'};`
-        + `border-radius:10px;padding:6px 10px;cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;gap:2px;">`
-        + `<span style="font-size:26px;line-height:1;">${a.emoji}</span>`
-        + `<span style="font-size:10px;color:#fff;font-weight:700;">${a.nameHe}</span>`
-        + `</button>`;
-    }).join('');
-
-    const achCards = ACHIEVEMENTS.map(ach => {
-      const av = findAvatar(ach.rewardAvatarId);
-      const isUnlocked = av ? isAvatarUnlocked(av, stats) : false;
-      const isEquipped = ach.rewardAvatarId === equippedAvatar;
-      const pct = isUnlocked ? 1 : progressPct(ach, stats);
-      const curVal = Math.min(stats[ach.condition.stat] ?? 0, ach.condition.min);
-      const tierColor = TIER_COLOR[ach.tier] ?? '#888';
-      const cardBorder = isEquipped ? '2px solid #fff' : isUnlocked ? `2px solid ${tierColor}` : '2px solid rgba(255,255,255,.1)';
-      return `<button class="ach-card" data-av-id="${ach.rewardAvatarId}" ${!isUnlocked ? 'data-locked="1"' : ''} `
-        + `style="opacity:${isUnlocked ? 1 : 0.6};border:${cardBorder};">`
-        + `<div class="ach-card-left"><span class="ach-card-emoji">${av?.emoji ?? '?'}</span></div>`
-        + `<div class="ach-card-body">`
-        + `  <div class="ach-card-title">${ach.titleHe}${isEquipped ? ' ✓' : ''}</div>`
-        + `  <div class="ach-card-desc">${ach.descHe}</div>`
-        + `  <div class="ach-progress"><div class="ach-progress-fill" style="width:${Math.round(pct * 100)}%;background:${tierColor};"></div></div>`
-        + `  <div class="ach-card-meta"><span style="color:${tierColor};">${curVal}/${ach.condition.min}</span>`
-        + `    <span class="ach-tier-chip" style="background:${tierColor};">${TIER_LABEL_HE[ach.tier] ?? ach.tier}</span>`
-        + (isUnlocked ? `    <span style="font-size:10px;color:rgba(255,255,255,.6);">הצטייד</span>` : '')
-        + `  </div>`
-        + `</div>`
-        + `</button>`;
-    }).join('');
-
-    grid.innerHTML = `<div class="ach-starter-row">${starterRow}</div>${achCards}`;
+  function rewardFor(ach) {
+    return Number(coinRewardByTier?.[ach.tier]) || 0;
   }
 
+  // One collectible TROPHY tile per achievement. Trophies are view-only — they
+  // no longer equip an avatar; completing one pays out coins. Each tile shows
+  // progress (cur/target) and the coin prize. (data-ach-id, not an avatar id.)
+  function cellHtml(ach, data) {
+    const complete = isAchievementComplete(ach, data);
+    const { current, target } = achievementMetric(ach, data);
+    const badge = `${Math.min(current, target)}/${target}`;
+    const emoji = ach.emoji ?? findAvatar(ach.rewardAvatarId)?.emoji ?? '🏆';
+    const icon = `<img class="ach-ic-img" src="${encodeURI(ACH_ICON_DIR + ach.titleHe + '.png')}" alt="">`
+      + `<span class="ach-ic-emoji" style="display:none">${emoji}</span>`;
+    const cls = ['ach-iccell'];
+    if (!complete) cls.push('is-locked');
+    return `<button class="${cls.join(' ')}" data-ach-id="${ach.id}"${complete ? '' : ' data-locked="1"'}>`
+      + `<span class="ach-ic">${icon}`
+      + (complete ? '' : `<img class="ach-lock" src="${ACH_LOCK_ICON}" alt="" aria-hidden="true">`)
+      + `</span>`
+      + `<span class="ach-lbl-title">${ach.titleHe}</span>`
+      + `<span class="ach-badge ${complete ? 'is-gold' : 'is-gray'}">${badge}</span>`
+      + `<span class="ach-reward">${COIN_ICON_HTML} ${rewardFor(ach)}</span>`
+      + `</button>`;
+  }
+
+  let prevCompletedIds = null;
+  let lastData = { stats: {}, ownedAvatars: [] };
+
+  function paint({ stats = {}, ownedAvatars = [], coinRewardByTier: rewards } = {}) {
+    if (rewards) coinRewardByTier = rewards;
+    lastData = { stats: stats ?? {}, ownedAvatars: Array.isArray(ownedAvatars) ? ownedAvatars : [] };
+    if (!grid) return;
+    const completed = ACHIEVEMENTS.filter(a => isAchievementComplete(a, lastData));
+    if (countEl) setText(countEl, `${completed.length} מתוך ${ACHIEVEMENTS.length} הושגו`);
+
+    const cells = ACHIEVEMENTS.map(ach => cellHtml(ach, lastData));
+    // Pad the final shelf to a full row of 3 so columns stay aligned.
+    while (cells.length % 3 !== 0) {
+      cells.push('<span class="ach-iccell ach-iccell--empty" aria-hidden="true"></span>');
+    }
+
+    let html = '';
+    for (let i = 0; i < cells.length; i += 3) {
+      html += '<div class="ach-shelf"><div class="ach-plank"></div>'
+        + '<div class="ach-shelf-cells">' + cells.slice(i, i + 3).join('') + '</div></div>';
+    }
+    grid.innerHTML = html;
+
+    // Completion animation: animate tiles that just completed since the
+    // previous paint. Skip the first paint so we don't flash everything.
+    const nowCompleted = new Set(completed.map(a => a.id));
+    if (prevCompletedIds) {
+      for (const id of nowCompleted) {
+        if (!prevCompletedIds.has(id)) {
+          grid.querySelector?.(`.ach-iccell[data-ach-id="${id}"]`)
+            ?.classList?.add?.('ach-iccell--just-unlocked');
+        }
+      }
+    }
+    prevCompletedIds = nowCompleted;
+
+    // Fall back to the emoji if an icon PNG is missing/not-yet-added.
+    for (const img of grid.querySelectorAll?.('.ach-ic-img') ?? []) {
+      img.onerror = () => {
+        img.style.display = 'none';
+        const em = img.parentElement?.querySelector?.('.ach-ic-emoji');
+        if (em) em.style.display = 'flex';
+      };
+    }
+  }
+
+  // Tapping a trophy shows its description + coin prize (no equip).
   if (grid) {
     cleanups.push(on(grid, 'click', (e) => {
       const t = e.target;
       const btn = t?.tagName === 'BUTTON' ? t : t?.closest?.('button');
       if (!btn) return;
-      const id = btn.getAttribute?.('data-av-id');
+      const id = btn.getAttribute?.('data-ach-id');
       if (!id) return;
-      if (btn.getAttribute('data-locked')) {
-        const ach = findAchievementByRewardId(id);
-        if (hintEl && ach) {
-          setText(hintEl, `נעול — ${ach.descHe}`);
-          hintEl.style.opacity = '1';
-          setTimeout(() => { if (hintEl) hintEl.style.opacity = '0'; }, 1800);
-        }
-        bus.emit(AV_INTENT.SELECT, { id, locked: true });
-        return;
-      }
-      bus.emit(AV_INTENT.SELECT, { id, locked: false });
-      bus.emit(AV_INTENT.EQUIP,  { id });
+      const ach = ACHIEVEMENTS.find(a => a.id === id);
+      if (!ach || !hintEl) return;
+      const reward = rewardFor(ach);
+      const complete = !btn.getAttribute('data-locked');
+      // innerHTML (not setText) so the inline coin <img> renders; the text comes
+      // from our own ACHIEVEMENTS data (no user input).
+      hintEl.innerHTML = complete
+        ? `${ach.titleHe} — הושלם! פרס: ${reward} ${COIN_ICON_HTML}`
+        : `נעול — ${ach.descHe} · פרס: ${reward} ${COIN_ICON_HTML}`;
+      hintEl.style.opacity = '1';
+      setTimeout(() => { if (hintEl) hintEl.style.opacity = '0'; }, 2200);
     }));
   }
 
@@ -209,10 +367,12 @@ export function mountAvatarUnlockedScreen({ root = globalThis.document, bus } = 
   if (!bus) throw new Error('mountAvatarUnlockedScreen: bus required');
 
   const overlay = $('#ov-avatar-unlocked', root);
-  // The legacy markup contains its own emoji/title spans. We don't depend
-  // on specific child IDs — we just toggle visibility and let the legacy
-  // updateBody fn (if available) populate, but if we get a full payload
-  // we'll write to an inner span we can rely on existing.
+  // Achievement-completion popup: shows the trophy, its title/description, and
+  // the coin prize earned. Inner spans are optional (populated when present).
+  const icEl    = $('#av-unlock-ic', root);
+  const nameEl  = $('#av-unlock-name', root);
+  const coinsEl = $('#av-unlock-coins', root);
+  const condEl  = $('#av-unlock-cond', root);
   const cleanups = [];
 
   const acks = bus.on(AV_INTENT.UNLOCK_ACK, () => {
@@ -220,11 +380,16 @@ export function mountAvatarUnlockedScreen({ root = globalThis.document, bus } = 
   });
   cleanups.push(acks);
 
-  cleanups.push(bus.on(AV_UNLOCK_OPEN, ({ avatar } = {}) => {
+  cleanups.push(bus.on(AV_UNLOCK_OPEN, ({ achievement, coins } = {}) => {
     if (!overlay) return;
     overlay.classList?.remove?.('hidden');
-    if (overlay.dataset) overlay.dataset.avatarId = avatar?.id ?? '';
-    else overlay.setAttribute?.('data-avatar-id', avatar?.id ?? '');
+    const achId = achievement?.id ?? '';
+    if (overlay.dataset) overlay.dataset.achId = achId;
+    else overlay.setAttribute?.('data-ach-id', achId);
+    if (icEl)    setText(icEl, achievement?.emoji ?? findAvatar(achievement?.rewardAvatarId)?.emoji ?? '🏆');
+    if (nameEl)  setText(nameEl, achievement?.titleHe ?? '');
+    if (coinsEl) coinsEl.innerHTML = coins ? `+${coins} ${COIN_ICON_HTML}` : '';
+    if (condEl)  setText(condEl, achievement?.descHe ?? '');
   }));
   cleanups.push(bus.on(AV_UNLOCK_CLOSE, () => overlay?.classList?.add?.('hidden')));
 

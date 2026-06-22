@@ -8,7 +8,7 @@
 export const SCREEN_IDS = Object.freeze([
   'sh', 'ss', 'sg', 'so', 'scoin',
   'sprofile', 'sfriends', 'snotif', 'schamps',
-  'sauth-signup', 'sauth-login', 'sav-gallery', 'sstats',
+  'sauth-signup', 'sauth-login', 'sav-gallery', 'savatar-store', 'sstats',
   'smygames',
 ]);
 

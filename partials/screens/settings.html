@@ -1,83 +1,157 @@
-﻿<!-- SETTINGS -->
+<!-- SETTINGS -->
 <div id="ov-settings" class="ov hidden" onclick="if(event.target===this)ovClose('ov-settings')">
-  <div class="ovc" style="position:relative">
-    <button id="sett-close-x" aria-label="סגור" onclick="ovClose('ov-settings')" style="position:absolute;top:8px;left:12px;background:none;border:none;font-size:24px;line-height:1;color:rgba(255,255,255,.5);cursor:pointer;padding:2px 6px;z-index:2;">×</button>
-    <div class="ovt" style="margin-bottom:10px">⚙️ הגדרות</div>
-    <div class="settings-panels">
-      <!-- Panel 4: music -->
-      <div class="set-panel">
-        <div class="set-panel-title">מוזיקה <span class="sett-info">i<span class="sett-tip">הפעלת מוסיקת רקע במהלך המשחק</span></span></div>
+  <div class="ovc sett-ovc" style="position:relative">
+
+    <!-- Close X -->
+    <button id="sett-close-x" class="sett-close-btn" aria-label="סגור" onclick="ovClose('ov-settings')">×</button>
+
+    <!-- Sticky header -->
+    <div class="sett-header">
+      <img class="screen-hd-icon" src="images/icons/settings.png" alt="">
+      <div class="ovt" style="margin-bottom:0">הגדרות</div>
+    </div>
+
+    <!-- ── Section 1: Audio ─────────────────────────── -->
+    <div class="sett-section">
+      <div class="sett-sec-hdr">
+        <div class="sett-sec-line"></div>
+        <span class="sett-sec-lbl">🎵 שמע</span>
+        <div class="sett-sec-line"></div>
+      </div>
+
+      <div class="sett-row">
+        <div class="sett-row-info">
+          <img class="ui-icon" src="images/icons/sound_on.png" alt="">
+          <span class="sett-row-lbl">מוזיקה</span>
+          <span class="sett-info">i<span class="sett-tip">הפעלת מוסיקת רקע במהלך המשחק</span></span>
+        </div>
         <div class="set-yesno">
-          <div class="set-yn active-yes" id="sett-music-yes" onclick="settToggle('music',true)">🎵 כן</div>
-          <div class="set-yn" id="sett-music-no"  onclick="settToggle('music',false)">🔇 לא</div>
+          <div class="set-yn active-yes" id="sett-music-yes" onclick="settToggle('music',true)">כן</div>
+          <div class="set-yn" id="sett-music-no" onclick="settToggle('music',false)">לא</div>
         </div>
       </div>
-      <!-- Panel 6: sound effects -->
-      <div class="set-panel">
-        <div class="set-panel-title">אפקטי קול <span class="sett-info">i<span class="sett-tip">צלילים קצרים לאירועי משחק (מילה לא תקינה, בונוס, סוף המשחק)</span></span></div>
+
+      <div class="sett-row">
+        <div class="sett-row-info">
+          <img class="ui-icon" src="images/icons/sound_on.png" alt="">
+          <span class="sett-row-lbl">אפקטי קול</span>
+          <span class="sett-info">i<span class="sett-tip">צלילים קצרים לאירועי משחק (מילה לא תקינה, בוסט, סוף המשחק)</span></span>
+        </div>
         <div class="set-yesno">
-          <div class="set-yn active-yes" id="sett-soundfx-yes">🔊 כן</div>
-          <div class="set-yn" id="sett-soundfx-no">🔇 לא</div>
+          <div class="set-yn active-yes" id="sett-soundfx-yes">כן</div>
+          <div class="set-yn" id="sett-soundfx-no">לא</div>
         </div>
       </div>
-      <!-- Panel 7: vibration -->
-      <div class="set-panel">
-        <div class="set-panel-title">רטט <span class="sett-info">i<span class="sett-tip">רטט קצר במכשירים תומכים לאירועי משחק עיקריים</span></span></div>
+    </div>
+
+    <!-- ── Section 2: Gameplay ──────────────────────── -->
+    <div class="sett-section">
+      <div class="sett-sec-hdr">
+        <div class="sett-sec-line"></div>
+        <span class="sett-sec-lbl">🎮 משחק</span>
+        <div class="sett-sec-line"></div>
+      </div>
+
+      <div class="sett-row">
+        <div class="sett-row-info">
+          <span class="sett-row-lbl">רטט</span>
+          <span class="sett-info">i<span class="sett-tip">רטט קצר במכשירים תומכים לאירועי משחק עיקריים</span></span>
+        </div>
         <div class="set-yesno">
-          <div class="set-yn active-yes" id="sett-vibration-yes">📳 כן</div>
-          <div class="set-yn" id="sett-vibration-no">🚫 לא</div>
+          <div class="set-yn active-yes" id="sett-vibration-yes">כן</div>
+          <div class="set-yn" id="sett-vibration-no">לא</div>
         </div>
       </div>
-      <!-- Panel: gender address -->
-      <div class="set-panel">
-        <div class="set-panel-title">באיזה לשון לפנות אליך? <span class="sett-info">i<span class="sett-tip">פניות בהתראות ובמשחק יותאמו ללשון שתבחר</span></span></div>
+
+      <div class="sett-row">
+        <div class="sett-row-info">
+          <span class="sett-row-lbl">באיזה לשון לפנות אליך?</span>
+          <span class="sett-info">i<span class="sett-tip">פניות בהתראות ובמשחק יותאמו ללשון שתבחר</span></span>
+        </div>
         <div class="set-yesno">
           <div class="set-yn active-yes" id="sett-gender-zachar">זכר</div>
           <div class="set-yn" id="sett-gender-nekeiva">נקבה</div>
         </div>
-        <div id="sett-gender-preview" style="font-size:10px;color:rgba(255,255,255,.4);margin-top:6px;text-align:center;" data-gm='לדוגמה: "שבץ ✓", "בטל ↩", "לחץ"' data-gf='לדוגמה: "שבצי ✓", "בטלי ↩", "לחצי"'>לדוגמה: "שבץ ✓", "בטל ↩", "לחץ"</div>
+      </div>
+      <div id="sett-gender-preview" class="sett-gender-preview" data-gm='לדוגמה: "שבץ ✓", "בטל ↩", "לחץ"' data-gf='לדוגמה: "שבצי ✓", "בטלי ↩", "לחצי"'>לדוגמה: "שבץ ✓", "בטל ↩", "לחץ"</div>
+
+      <div class="sett-row">
+        <div class="sett-row-info sett-row-info--stack">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <img class="ui-icon" src="images/icons/bell.png" alt="">
+            <span class="sett-row-lbl">התראות משחקים</span>
+            <span class="sett-info">i<span class="sett-tip">קבל התראה כשתורך במשחק אסינכרוני ​או כשיריב מצטרף למשחקך</span></span>
+          </div>
+          <div class="sett-notif-detail">דלוק / אשרות דיסקן</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span id="sett-notif-status" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4)">כבוי</span>
+          <button id="sett-notif-button" class="sett-notif-btn" onclick="requestNotifPermission()">הפעל</button>
+        </div>
       </div>
     </div>
-    <!-- Notifications -->
-    <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <div class="set-panel-title" style="margin-bottom:2px;">🔔 התראות משחק <span class="sett-info">i<span class="sett-tip">קבל התראה כשתורך במשחק אסינכרוני ​או כשיריב מצטרף למשחקך</span></span></div>
-        <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px">דורש אישור דפדפן</div>
+
+    <!-- ── Section 3: Utilities ─────────────────────── -->
+    <div class="sett-section">
+      <div class="sett-sec-hdr">
+        <div class="sett-sec-line"></div>
+        <span class="sett-sec-lbl">🧠 כלי עזר</span>
+        <div class="sett-sec-line"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="sett-notif-status" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4)">כבוי</span>
-        <button id="sett-notif-button" onclick="requestNotifPermission()" style="padding:7px 14px;border-radius:6px;border:none;background:linear-gradient(180deg,#4a7fc1,#2a5a9a);color:#fff;font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">הפעל</button>
+
+      <div class="sett-tool-lbl">
+        <img class="ui-icon" src="images/icons/search.png" alt="">
+        שאלמה — בדיקת מילה
+        <span class="sett-info">i<span class="sett-tip">בדוק אם מילה קיימת במילון המשחק בלי לפתוח משחק חדש</span></span>
       </div>
-    </div>
-    <!-- Dictionary Management — full width below panels -->
-    <div style="width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
-      <div class="set-panel-title" style="margin-bottom:10px;">🔎 שאילתה — בדיקת מילה <span class="sett-info">i<span class="sett-tip">בדוק אם מילה קיימת במילון המשחק בלי לפתוח משחק חדש</span></span></div>
-      <div class="shin-wrap"><input class="shin" id="settings-shin" type="text" maxlength="40" placeholder="הקלד מילה..." data-gm-placeholder="הקלד מילה..." data-gf-placeholder="הקלידי מילה..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+      <div class="shin-wrap">
+        <input class="shin" id="settings-shin" type="text" maxlength="40"
+          placeholder="הקלד מילה..."
+          data-gm-placeholder="הקלד מילה..."
+          data-gf-placeholder="הקלידי מילה..."
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      </div>
       <div class="shres" id="settings-shres"></div>
-      <button onclick="checkSettingsShailta()" style="width:100%;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#f8d86a,#d59c28);border:2px solid #a97918;color:#2a1d05;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #76530f;" data-gm="בדוק ✓" data-gf="בדקי ✓">בדוק ✓</button>
+      <button onclick="checkSettingsShailta()" class="sett-check-btn" data-gm="בדוק ✓" data-gf="בדקי ✓">בדוק ✓</button>
     </div>
-    <!-- Dictionary management panel — admin-only. main.js toggles its visibility
-         based on the Firebase admins/{uid} check (see setDictMgmtVisible).
-         Admins write directly to /dictionaryApproved (add) or /dictionaryRejected
-         (remove); there is no staging through /dictionarySuggestions. -->
-    <div id="dict-mgmt-panel" style="display:none;width:100%;background:rgba(0,0,0,.2);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:12px 14px;margin-bottom:12px;">
-      <div class="set-panel-title" style="margin-bottom:10px;">📖 ניהול מילון <span class="sett-info">i<span class="sett-tip">הוסף מילה חדשה למילון או הסר מילה קיימת. השינוי מיידי</span></span></div>
 
-      <!-- Add directly -->
-      <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:4px;">➕ הוספה למילון</div>
-      <input id="dict-word-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" data-gm-placeholder="הכנס מילה / מילים מופרדות בפסיק" data-gf-placeholder="הכניסי מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
-      <button onclick="suggestDictionaryWord()" style="width:100%;margin-top:8px;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#3a8a5a,#286a3a);border:2px solid #1a4a2a;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #103a1a;" data-gm="➕ הוסף למילון" data-gf="➕ הוסיפי למילון">➕ הוסף למילון</button>
-      <div id="dict-word-status" style="margin-top:8px;font-size:12px;min-height:18px;color:#9fd4f5;text-align:center;"></div>
+    <!-- ── Section 4: Dictionary management (admin-only) ── -->
+    <div id="dict-mgmt-panel" class="sett-section" style="display:none">
+      <div class="sett-sec-hdr">
+        <div class="sett-sec-line"></div>
+        <span class="sett-sec-lbl">📚 ניהול מילון <span class="sett-info">i<span class="sett-tip">הוסף מילה חדשה למילון או הסר מילה קיימת. השינוי מיידי</span></span></span>
+        <div class="sett-sec-line"></div>
+      </div>
 
-      <!-- Divider -->
-      <div style="height:1px;background:rgba(255,255,255,.1);margin:14px 0;"></div>
+      <div class="sett-dict-card sett-dict-card--add">
+        <div class="sett-dict-card-hdr">➕ הוסף למילון</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;">הוספה למילון</div>
+        <input id="dict-word-input" class="sett-dict-input" type="text" maxlength="120"
+          placeholder="הכנס מילה / מילים מופרדות בפסיק"
+          data-gm-placeholder="הכנס מילה / מילים מופרדות בפסיק"
+          data-gf-placeholder="הכניסי מילה / מילים מופרדות בפסיק"
+          oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
+        <button onclick="suggestDictionaryWord()" class="sett-dict-btn sett-dict-btn--add" data-gm="הוסף למילון" data-gf="הוסיפי למילון">הוסף למילון</button>
+        <div id="dict-word-status" class="sett-dict-status"></div>
+      </div>
 
-      <!-- Remove directly -->
-      <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:4px;">🗑️ הסרה מהמילון</div>
-      <input id="dict-remove-input" type="text" maxlength="120" placeholder="הכנס מילה / מילים מופרדות בפסיק" data-gm-placeholder="הכנס מילה / מילים מופרדות בפסיק" data-gf-placeholder="הכניסי מילה / מילים מופרדות בפסיק" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid #5d7f92;background:#0f1d26;color:#eaf4fb;font-family:'Heebo',sans-serif;font-size:14px;direction:rtl;outline:none;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
-      <button onclick="suggestDictionaryRemoval()" style="width:100%;margin-top:8px;padding:11px;border-radius:8px;border:none;background:linear-gradient(180deg,#a0463a,#7a2a2a);border:2px solid #5a1a1a;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #3a0a0a;" data-gm="🗑️ הסר מהמילון" data-gf="🗑️ הסירי מהמילון">🗑️ הסר מהמילון</button>
-      <div id="dict-remove-status" style="margin-top:8px;font-size:12px;min-height:18px;color:#9fd4f5;text-align:center;"></div>
+      <div class="sett-dict-card sett-dict-card--remove">
+        <div class="sett-dict-card-hdr">🗑 הסר מהמילון</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;">הסרה מהמילון</div>
+        <input id="dict-remove-input" class="sett-dict-input" type="text" maxlength="120"
+          placeholder="הכנס מילה / מילים מופרדות בפסיק"
+          data-gm-placeholder="הכנס מילה / מילים מופרדות בפסיק"
+          data-gf-placeholder="הכניסי מילה / מילים מופרדות בפסיק"
+          oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
+        <button onclick="suggestDictionaryRemoval()" class="sett-dict-btn sett-dict-btn--remove" data-gm="הסר מהמילון" data-gf="הסירי מהמילון">הסר מהמילון</button>
+        <div id="dict-remove-status" class="sett-dict-status"></div>
+      </div>
     </div>
-    <div class="ovbtns"><button class="ovb p" onclick="ovClose('ov-settings')">אישור ✓</button></div>
+
+    <!-- ── Footer ────────────────────────────────────── -->
+    <div class="ovbtns sett-footer">
+      <button class="ovb p sett-confirm-btn" onclick="ovClose('ov-settings')">אישור ✓</button>
+    </div>
+
   </div>
 </div>

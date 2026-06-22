@@ -18,12 +18,41 @@ function escapeHtml(s) {
     .replaceAll('\'', '&#39;');
 }
 
-export function buildChampionsHtml(entries = []) {
-  if (!entries.length) return '<div class="champs-empty">עדיין אין שחקנים מדורגים</div>';
+const MEDALS = [
+  '<img src="images/icons/gold medal.png" alt="מקום ראשון" class="champ-medal-icon">',
+  '<img src="images/icons/silver medal.png" alt="מקום שני" class="champ-medal-icon">',
+  '<img src="images/icons/bronze medal.png" alt="מקום שלישי" class="champ-medal-icon">',
+];
+
+export function buildChampionsHtml(entries = [], { myUid = null, myPosition = null, myEntry = null } = {}) {
+  if (!entries.length && !myEntry) return '<div class="champs-empty">עדיין אין שחקנים מדורגים</div>';
+
+  const rows = entries.map((entry, i) => {
+    const pos = i + 1;
+    const isMe = myUid != null && entry.uid === myUid;
+    // Show the position number for the current user so they can identify their rank;
+    // show medal icons for everyone else in the top 3.
+    const rankCell = MEDALS[i] ?? pos;
+    return `<tr data-champ-uid="${escapeHtml(entry.uid)}"${isMe ? ' class="champ-me"' : ''}>`
+      + `<td>${rankCell}</td>`
+      + `<td>${escapeHtml(entry.name)}</td>`
+      + `<td>${Number(entry.rating) || 0}</td>`
+      + `</tr>`;
+  }).join('');
+
+  // Append separator + user row when they are outside the displayed top-N.
+  let outsideRow = '';
+  if (myEntry && myPosition != null) {
+    outsideRow = `<tr class="champ-outside-sep"><td colspan="3"></td></tr>`
+      + `<tr data-champ-uid="${escapeHtml(myEntry.uid)}" class="champ-me champ-me--outside">`
+      + `<td>${myPosition}</td>`
+      + `<td>${escapeHtml(myEntry.name)}</td>`
+      + `<td>${Number(myEntry.rating) || 0}</td>`
+      + `</tr>`;
+  }
+
   return '<table class="champs-table"><thead><tr><th>#</th><th>שם</th><th>דירוג</th></tr></thead><tbody>'
-    + entries.map((entry, i) =>
-      `<tr data-champ-uid="${escapeHtml(entry.uid)}"><td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${Number(entry.rating) || 0}</td></tr>`,
-    ).join('')
+    + rows + outsideRow
     + '</tbody></table>';
 }
 
@@ -51,8 +80,8 @@ export function mountChampionsScreen({ root = globalThis.document, bus } = {}) {
     bus.emit(CHAMPS_INTENT.OPEN, {});
   }));
 
-  cleanups.push(bus.on(CHAMPS_RENDER, ({ entries = [], target = 'all' } = {}) => {
-    const html = buildChampionsHtml(entries);
+  cleanups.push(bus.on(CHAMPS_RENDER, ({ entries = [], myUid = null, myPosition = null, myEntry = null, target = 'all' } = {}) => {
+    const html = buildChampionsHtml(entries, { myUid, myPosition, myEntry });
     if (target === 'home' || target === 'all') paint(homeWrap, html);
     if (target === 'end' || target === 'all') paint(endWrap, html);
   }));

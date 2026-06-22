@@ -1,60 +1,120 @@
-﻿<!-- Friend detail overlay (position:fixed, lives outside screen div) -->
+<!-- Friend detail overlay (position:fixed, lives outside screen div) -->
 <div id="ov-friend-detail" class="ov hidden">
-  <div class="ovc" style="width:min(320px,92vw);max-height:88svh;overflow-y:auto;gap:0;padding:0;">
-    <div style="display:flex;align-items:center;gap:10px;padding:16px 16px 12px;">
-      <div id="fd-avatar" style="font-size:28px;line-height:1;">👤</div>
-      <div style="flex:1;min-width:0;">
-        <div id="fd-name" style="font-size:15px;font-weight:900;color:#fff;"></div>
-        <div id="fd-rating" style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;"></div>
+  <div class="ovc fd-ovc">
+
+    <!-- Top bar: close button + overflow menu -->
+    <div class="fd-topbar">
+      <button id="fd-close" class="fd-topbtn" aria-label="סגור">✕</button>
+      <div class="fd-topbar-spacer"></div>
+      <div class="fd-overflow-wrap">
+        <button id="fd-overflow-btn" class="fd-topbtn" aria-label="אפשרויות">⋮</button>
+        <div id="fd-overflow-menu" class="fd-overflow-menu hidden">
+          <button data-fd-remove="1" class="fd-overflow-item fd-overflow-danger">🗑 הסר חבר</button>
+          <button class="fd-overflow-item fd-overflow-dim">🚫 חסום שחקן</button>
+          <button class="fd-overflow-item fd-overflow-dim">⚑ דווח</button>
+        </div>
       </div>
-      <button id="fd-close" aria-label="סגור" style="background:none;border:none;font-size:22px;color:rgba(255,255,255,.45);cursor:pointer;padding:0 4px;line-height:1;">×</button>
     </div>
-    <div style="padding:10px 16px 12px;border-top:1px solid rgba(255,255,255,.07);">
-      <div style="font-size:10px;color:rgba(255,200,100,.8);font-weight:700;margin-bottom:6px;letter-spacing:.3px;">📊 סטטיסטיקה ביניכם</div>
-      <div id="fd-stats" style="font-size:12px;color:rgba(255,255,255,.75);line-height:1.6;"></div>
+
+    <!-- Hero: avatar with crown, name, rating, between-stats badge -->
+    <div class="fd-hero">
+      <div class="fd-av-section">
+        <div class="fd-crown">👑</div>
+        <div class="fd-av-ring">
+          <div id="fd-avatar"><img class="av-img" src="images/icons/anonymous player.png" alt=""></div>
+        </div>
+      </div>
+      <div id="fd-name" class="fd-name-text"></div>
+      <div id="fd-rating" class="fd-rating-chip"></div>
+      <div class="fd-between-badge">📊 סטטיסטיקה ביניכם</div>
     </div>
-    <div style="padding:10px 16px 12px;border-top:1px solid rgba(255,255,255,.07);">
-      <div style="font-size:10px;color:rgba(255,200,100,.8);font-weight:700;margin-bottom:6px;letter-spacing:.3px;">⏱ 5 המשחקים האחרונים</div>
-      <div id="fd-recent"></div>
+
+    <!-- Stats widget — filled by JS -->
+    <div id="fd-stats" class="fd-stats-row"></div>
+
+    <!-- Recent games card -->
+    <div class="fd-card">
+      <div class="fd-card-title">⏱ 5 המשחקים האחרונים</div>
+      <div id="fd-recent" class="fd-recent-list"></div>
     </div>
-    <div style="padding:10px 16px 14px;border-top:1px solid rgba(255,255,255,.07);">
-      <div style="font-size:10px;color:rgba(255,200,100,.8);font-weight:700;margin-bottom:8px;letter-spacing:.3px;">🎮 משחקים פעילים</div>
+
+    <!-- Active games card -->
+    <div class="fd-card">
+      <div class="fd-card-title">🎮 משחקים פעילים</div>
       <div id="fd-active-games"></div>
     </div>
+
+    <!-- Primary CTA — always visible -->
+    <button data-fd-invite="1" class="fd-invite-btn">✉ הזמן למשחק</button>
+
   </div>
 </div>
 
 <!-- FRIENDS SCREEN -->
-<div id="sfriends" class="screen hidden">
-  <div class="sbox" style="max-width:320px;gap:10px;overflow-y:auto;max-height:calc(100svh - var(--em-topbar-h) - 16px);">
-    <div class="stitle">👥 חברים</div>
-    <!-- My user ID -->
-    <div style="background:rgba(0,0,0,.25);border-radius:8px;padding:10px;text-align:center;">
-      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:5px;">המזהה שלך — שתף כדי שחברים יוסיפו אותך</div>
-      <div id="fr-my-id" style="font-family:monospace;font-size:22px;font-weight:900;color:var(--by,#f5c518);letter-spacing:5px;cursor:pointer;" onclick="copyUserId()">------</div>
-      <div id="fr-copy-status" style="font-size:10px;color:#7fff7f;min-height:14px;margin-top:3px;"></div>
+<div id="sfriends" class="screen hidden" dir="rtl">
+  <div class="fr-wrap">
+
+    <!-- Header -->
+    <div class="fr-screen-header">
+      <img class="screen-hd-icon" src="images/icons/friends.png" alt="">
+      <div class="stitle">חברים</div>
     </div>
+
+    <!-- My Code Hero Card -->
+    <div class="fr-code-card">
+      <div class="fr-code-label">הקוד שלי</div>
+      <div id="fr-my-id" class="fr-code-number">------</div>
+      <div id="fr-copy-status" class="fr-copy-status"></div>
+      <button id="fr-copy-btn" class="fr-copy-btn">📋 העתק קוד</button>
+    </div>
+
     <!-- Pending requests -->
     <div id="fr-requests-wrap" style="display:none;">
-      <div style="font-size:11px;color:rgba(255,200,100,.85);font-weight:700;margin-bottom:5px;">⏳ בקשות ממתינות</div>
+      <div class="section-title-bar">⏳ בקשות ממתינות</div>
       <div id="fr-requests-list"></div>
     </div>
-    <!-- Add friend -->
-    <div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:5px;">הוסף לפי מזהה</div>
-      <div style="display:flex;gap:6px;">
-        <input class="ri" id="add-friend-input" type="text" placeholder="הזן מזהה (6 תווים)..." maxlength="6" style="flex:3;min-width:0;font-size:14px;letter-spacing:3px;text-transform:uppercase;" autocomplete="off" oninput="this.value=this.value.toUpperCase()">
-        <button class="bd g" style="flex:1;min-width:0;font-size:13px;padding:8px 6px;" onclick="sendFriendRequest()">הוסף</button>
+
+    <!-- Add Friend -->
+    <div class="fr-add-section glass-panel">
+      <div class="fr-add-label">הוסף חבר</div>
+      <div class="fr-add-row">
+        <input class="ri fr-add-input" id="add-friend-input" type="text"
+               placeholder="הזן קוד חבר (6 תווים)" maxlength="6"
+               autocomplete="off" oninput="this.value=this.value.toUpperCase()">
+        <button class="fr-add-btn" onclick="sendFriendRequest()">+</button>
       </div>
-      <div id="add-friend-status" style="font-size:11px;text-align:center;min-height:14px;margin-top:4px;"></div>
+      <div id="add-friend-status" class="fr-add-status"></div>
     </div>
+
     <!-- Friends list -->
     <div>
-      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:5px;">חברים <span id="fr-friends-count">(0)</span></div>
+      <div class="section-title-bar">👥 החברים שלי <span id="fr-friends-count">(0)</span></div>
       <div id="fr-friends-list">
-        <div style="font-size:11px;color:rgba(255,255,255,.3);text-align:center;padding:8px 0;">אין חברים עדיין</div>
+        <div class="fr-empty">אין חברים עדיין</div>
       </div>
     </div>
-    <button class="bd" style="font-size:12px;" onclick="openProfileOrAuth()">← חזרה לפרופיל</button>
+
+    <!-- Invite + achievement progress card -->
+    <button class="fr-invite-card" type="button" data-fr-invite-contacts="1">
+      <span class="fr-invite-icon">🎁</span>
+      <div class="fr-invite-body">
+        <div class="fr-invite-title">הזמן חברים</div>
+        <div class="fr-invite-achieve">
+          <div class="fr-ia-shield">🏅</div>
+          <div class="fr-ia-info">
+            <div class="fr-ia-title">חבר מביא חבר</div>
+            <div class="fr-ia-desc">הזמן 5 חברים לבוסט</div>
+            <div class="fr-ia-bar-wrap"><div id="fr-referral-bar" class="fr-ia-bar-fill" style="width:0%"></div></div>
+          </div>
+          <div id="fr-referral-count" class="fr-ia-count">0/5</div>
+        </div>
+      </div>
+      <span class="fr-invite-chev">‹</span>
+    </button>
+    <div id="fr-invite-status" class="fr-invite-status" aria-live="polite"></div>
+
+    <!-- Back -->
+    <button class="fr-back-btn" onclick="openProfileOrAuth()">← חזרה לפרופיל</button>
+
   </div>
 </div>

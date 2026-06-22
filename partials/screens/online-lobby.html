@@ -1,25 +1,25 @@
-﻿<!-- ONLINE LOBBY -->
+<!-- ONLINE LOBBY -->
 <div id="so" class="screen hidden">
   <div class="online-wrap">
-    <div class="online-title">
-      <canvas id="ol-globe" class="globe3d" aria-hidden="true"></canvas>
-      משחק אונליין
+    <div class="ol-hero">
+      <img id="ol-globe" class="ol-globe" src="images/icons/globe.png" alt="" aria-hidden="true">
+      <div class="ol-title">משחק אונליין</div>
+      <div class="ol-subtitle" data-gm="בחר כיצד תרצה לשחק" data-gf="בחרי כיצד תרצי לשחק">בחר כיצד תרצה לשחק</div>
     </div>
-    <div class="online-subtitle" data-gm="בחר כיצד תרצה לשחק" data-gf="בחרי כיצד תרצי לשחק">בחר כיצד תרצה לשחק</div>
     <div style="width:100%">
       <button class="omode-btn" onclick="onlineCreateRoom()">
-        <span class="omode-ic">🏠</span>
+        <span class="omode-ic"><img class="ui-icon" src="images/icons/home.png" alt=""></span>
         <span><span class="omode-label" data-gm="פתח משחק חדש" data-gf="פתחי משחק חדש">פתח משחק חדש</span><span class="omode-desc" data-gm="בחר הגדרות ושלח קוד לחבר" data-gf="בחרי הגדרות ושלחי קוד לחבר">בחר הגדרות ושלח קוד לחבר</span></span>
       </button>
       <button class="omode-btn" onclick="onlineJoinByCode()">
-        <span class="omode-ic">🔑</span>
+        <span class="omode-ic"><img class="ui-icon" src="images/icons/key.png" alt=""></span>
         <span><span class="omode-label" data-gm="הצטרף לפי קוד" data-gf="הצטרפי לפי קוד">הצטרף לפי קוד</span><span class="omode-desc" data-gm="הזן קוד שקיבלת מחבר" data-gf="הזיני קוד שקיבלת מחבר">הזן קוד שקיבלת מחבר</span></span>
       </button>
       <button class="omode-btn" onclick="onlineMatchmaking()">
-        <span class="omode-ic">🎲</span>
+        <span class="omode-ic"><img class="ui-icon" src="images/icons/dice.png" alt=""></span>
         <span><span class="omode-label" data-gm="חפש יריב אקראי" data-gf="חפשי יריב אקראי">חפש יריב אקראי</span><span class="omode-desc" data-gm="התחבר לשחקן זמין" data-gf="התחברי לשחקן זמין">התחבר לשחקן זמין</span></span>
       </button>
     </div>
-    <button class="bd" style="width:100%;font-size:12px" onclick="goHome()">← חזרה</button>
+    <button class="mf-cancel" style="margin-top:4px" onclick="goHome()">← חזרה</button>
   </div>
 </div>

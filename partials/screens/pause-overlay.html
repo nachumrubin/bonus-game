@@ -1,12 +1,60 @@
-﻿<!-- PAUSE OVERLAY -->
-<div id="ov-pause" class="ov hidden" style="background:rgba(0,0,0,.85);">
-  <div class="ovc" style="text-align:center;">
-    <div style="font-size:36px;margin-bottom:6px;">⏸️</div>
-    <div class="ovt">המשחק מושהה</div>
-    <div class="ovd" id="pause-player-name"></div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
-      <button class="ovb p" style="padding:12px;font-size:14px;" onclick="resumeGame()" data-gm="▶ המשך משחק" data-gf="▶ המשיכי משחק">▶ המשך משחק</button>
-      <button class="ovb s" style="padding:10px;font-size:13px;" onclick="savePauseAndHome()">צא לתפריט</button>
+<!-- PAUSE / EXIT DIALOG -->
+<div id="ov-pause" class="ov hidden">
+  <div class="ovc pause-ovc">
+
+    <!-- Close = resume -->
+    <button class="pause-close-btn" onclick="resumeGame()" aria-label="חזור למשחק">×</button>
+
+    <!-- Hourglass hero -->
+    <div class="pause-hero" aria-hidden="true">
+      <div class="pause-hg-ring"></div>
+      <img class="pause-hg" src="images/icons/hourglass.png" alt="">
+    </div>
+
+    <!-- Title -->
+    <div class="pause-title">סיום המשחק</div>
+    <div class="pause-sub">מה תרצה לעשות?</div>
+
+    <!-- Hidden — kept for JS (pauseScreen.js uses setText on this) -->
+    <div id="pause-player-name" style="display:none;"></div>
+
+    <!-- Action buttons -->
+    <div class="pause-actions">
+
+      <!-- 1. Return to game (primary) -->
+      <button class="pause-action pause-action--primary" onclick="resumeGame()">
+        <div class="pause-action-icon">
+          <img src="images/icons/play.png" alt="" class="ui-icon">
+        </div>
+        <div class="pause-action-body">
+          <span class="pause-action-label" data-gm="חזור למשחק" data-gf="חזרי למשחק">חזור למשחק</span>
+          <span class="pause-action-sub" data-gm="המשך לשחק עכשיו" data-gf="המשיכי לשחק עכשיו">המשך לשחק עכשיו</span>
+        </div>
+      </button>
+
+      <!-- 2. Pause & save (recommended) -->
+      <button class="pause-action pause-action--save" onclick="savePauseAndHome()">
+        <div class="pause-action-icon pause-action-icon--save">
+          <img src="images/icons/pause.png" alt="" class="ui-icon">
+        </div>
+        <div class="pause-action-body">
+          <span class="pause-action-label">השהה ושמור</span>
+          <span class="pause-action-sub">חזור למשחק מאוחר יותר</span>
+        </div>
+        <div class="pause-action-badge">★ מומלץ</div>
+      </button>
+
+      <!-- 3. Leave without saving (destructive) -->
+      <button class="pause-action pause-action--quit" onclick="discardPauseAndHome()">
+        <div class="pause-action-icon pause-action-icon--quit">
+          <img src="images/icons/logout.png" alt="" class="ui-icon">
+        </div>
+        <div class="pause-action-body">
+          <span class="pause-action-label">צא ללא שמירה</span>
+          <span class="pause-action-sub">ההתקדמות תאבד</span>
+        </div>
+      </button>
+
     </div>
   </div>
 </div>

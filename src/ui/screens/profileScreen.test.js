@@ -49,7 +49,7 @@ function makeDom() {
     streak:  makeEl(),
     saveBtn:    makeBtn({ onclick: 'saveDisplayName()' }),
     cancelBtn:  makeBtn({ onclick: 'cancelNameEdit()' }),
-    avatarBtn:  makeBtn({ onclick: 'showAvatarGallery()' }),
+    avatarBtn:  makeBtn({ onclick: 'showAvatarStore()' }),
     friendsBtn: makeBtn({ onclick: 'showFriendsScreen()' }),
     statsBtn:   makeBtn({ onclick: 'showStatsScreen()' }),
     logoutBtn:  makeBtn({ onclick: 'logoutUser()' }),
@@ -74,7 +74,7 @@ function makeDom() {
         case '#stat-streak':             return els.streak;
         case 'button[onclick="saveDisplayName()"]':  return els.saveBtn;
         case 'button[onclick="cancelNameEdit()"]':   return els.cancelBtn;
-        case 'button[onclick="showAvatarGallery()"]':return els.avatarBtn;
+        case 'button[onclick="showAvatarStore()"]':  return els.avatarBtn;
         case 'button[onclick="showFriendsScreen()"]':return els.friendsBtn;
         case 'button[onclick="showStatsScreen()"]':  return els.statsBtn;
         case 'button[onclick="logoutUser()"]':       els.logoutBtn; return els.logoutBtn;
@@ -101,6 +101,14 @@ test('avatarEmoji: pass-through for already-resolved emoji values', () => {
   assert.equal(avatarEmoji(undefined), '👑');
 });
 
+test('avatarEmoji: passes store-avatar ids through (room/queue boundary)', () => {
+  // Store avatars are image-only; the id must survive into player.avatar so the
+  // opponent resolves it to a PNG. Without this it would collapse to 👑.
+  assert.equal(avatarEmoji('rare_3'), 'rare_3');
+  assert.equal(avatarEmoji('legendary_1'), 'legendary_1');
+  assert.equal(avatarEmoji('common_16'), 'common_16');
+});
+
 test('deriveStats: empty profile → all zeros', () => {
   assert.deepEqual(deriveStats({}), {
     gamesPlayed: 0, gamesWon: 0, winRate: 0,
@@ -122,7 +130,9 @@ test('PROFILE_RENDER paints avatar/name/stats and toggles upgrade button', () =>
     isAnonymous: true,
     email: 'me@example.com',
   });
-  assert.equal(els.avatar.textContent, '🐉');
+  // 'dragon' is the veteran achievement reward → avatar renders as its trophy
+  // icon (an <img>), not the legacy 🐉 emoji.
+  assert.match(els.avatar.innerHTML ?? '', /images\/icons\/acheivements\//);
   assert.equal(els.name.textContent,   'נחום');
   assert.equal(els.played.textContent, '10');
   assert.equal(els.wins.textContent,   '4');
@@ -162,13 +172,14 @@ test('clicking name emits EDIT_NAME and shows the edit input', () => {
   assert.equal(els.nameInp.value, 'נחום');
 });
 
-test('save / cancel / avatars / friends / stats / logout / back all emit intents', () => {
+test('save / cancel / store / friends / stats / logout / back all emit intents', () => {
   bus._reset();
   const { root, els } = makeDom();
   const got = [];
   bus.on(PROFILE_INTENT.SAVE_NAME,        () => got.push('save'));
   bus.on(PROFILE_INTENT.CANCEL_EDIT_NAME, () => got.push('cancel'));
-  bus.on(PROFILE_INTENT.OPEN_AVATARS,     () => got.push('avatars'));
+  // The avatar ring now opens the store (not the achievements gallery).
+  bus.on(PROFILE_INTENT.OPEN_STORE,       () => got.push('store'));
   bus.on(PROFILE_INTENT.OPEN_FRIENDS,     () => got.push('friends'));
   bus.on(PROFILE_INTENT.OPEN_STATS,       () => got.push('stats'));
   bus.on(PROFILE_INTENT.LOGOUT,           () => got.push('logout'));
@@ -183,7 +194,7 @@ test('save / cancel / avatars / friends / stats / logout / back all emit intents
   els.logoutBtn.fireClick();
   els.backBtn.fireClick();
   els.upgrade.fireClick();
-  assert.deepEqual(got, ['save','cancel','avatars','friends','stats','logout','back','upgrade']);
+  assert.deepEqual(got, ['save','cancel','store','friends','stats','logout','back','upgrade']);
 });
 
 test('showError paints the error label', () => {

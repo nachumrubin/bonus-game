@@ -7,161 +7,69 @@
       <img src="logo_no_mascot.png" alt="בוסט">
     </div>
 
-    <!-- ─ Floating Platforms ─────────────────────── -->
-    <div class="em-platforms">
+    <!-- ─ Game Mode Cards ────────────────────────── -->
+    <div class="hm-cards">
 
-      <!-- Primary circle: Online -->
-      <div class="em-platform-row em-platform-row--primary">
-        <button class="em-circle-btn em-circle-btn--online" id="btn-online-lobby" onclick="showOnlineLobby()">
-          <div class="em-circle-icon">
-            <canvas id="home-globe" class="home-globe"></canvas>
-          </div>
-          <div class="em-circle-text">
-            <span class="em-circle-title">משחק ברשת</span>
-            <span class="em-circle-sub" data-gm="שחק מול שחקנים מכל הארץ" data-gf="שחקי מול שחקנים מכל הארץ">שחק מול שחקנים מכל הארץ</span>
-          </div>
-        </button>
-      </div>
-
-      <!-- Secondary circles: 2P + Bot -->
-      <div class="em-platform-row em-platform-row--secondary">
-
-        <!-- RIGHT: שני שחקנים -->
-        <div class="em-platform-col em-platform-col--2p">
-          <button class="em-circle-btn" onclick="startSetup('vs')">
-            <div class="em-circle-icon">
-              <!-- Two upper-body silhouettes, bright traces ride directly on each edge -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 40" class="home-icon-svg">
-                <defs>
-                  <filter id="hm-2p-glow" x="-60%" y="-60%" width="220%" height="220%">
-                    <feGaussianBlur stdDeviation="1.3" result="blur"/>
-                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                  </filter>
-                  <filter id="hm-2p-bright" x="-100%" y="-100%" width="300%" height="300%">
-                    <feGaussianBlur stdDeviation="2.4" result="blur"/>
-                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                  </filter>
-                </defs>
-                <!-- Back person — upper body silhouette -->
-                <circle cx="28" cy="13" r="7.5" fill="#1e3a8a" stroke="#60a5fa" stroke-width="1.2"/>
-                <path d="M15,38 C15,28 41,28 41,38" fill="#1e3a8a" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="round"/>
-                <!-- Front person — upper body silhouette -->
-                <circle cx="16" cy="16" r="8" fill="#2563eb" stroke="#bfdbfe" stroke-width="1.4" filter="url(#hm-2p-glow)"/>
-                <path d="M3,40 C3,29 29,29 29,40" fill="#1d4ed8" stroke="#bfdbfe" stroke-width="1.4" stroke-linecap="round"/>
-                <!-- Back person head — bright trace (glow halo + crisp core) -->
-                <circle cx="28" cy="13" r="7.5" fill="none" stroke="rgba(56,189,248,0.50)" stroke-width="3.5"
-                        stroke-dasharray="28 19" filter="url(#hm-2p-glow)">
-                  <animate attributeName="stroke-dashoffset" values="47;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
-                </circle>
-                <circle cx="28" cy="13" r="7.5" fill="none" stroke="rgba(186,230,255,0.92)" stroke-width="1.3"
-                        stroke-dasharray="28 19" filter="url(#hm-2p-bright)">
-                  <animate attributeName="stroke-dashoffset" values="47;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
-                </circle>
-                <!-- Back person body — bright trace -->
-                <path d="M15,38 C15,28 41,28 41,38" fill="none" stroke="rgba(56,189,248,0.45)" stroke-width="3.5"
-                      stroke-dasharray="20 15" stroke-linecap="round" filter="url(#hm-2p-glow)">
-                  <animate attributeName="stroke-dashoffset" values="35;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
-                </path>
-                <path d="M15,38 C15,28 41,28 41,38" fill="none" stroke="rgba(186,230,255,0.88)" stroke-width="1.3"
-                      stroke-dasharray="20 15" stroke-linecap="round" filter="url(#hm-2p-bright)">
-                  <animate attributeName="stroke-dashoffset" values="35;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
-                </path>
-                <!-- Front person head — bright trace (faster, brighter) -->
-                <circle cx="16" cy="16" r="8" fill="none" stroke="rgba(56,189,248,0.65)" stroke-width="4"
-                        stroke-dasharray="32 18" filter="url(#hm-2p-glow)">
-                  <animate attributeName="stroke-dashoffset" values="50;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
-                </circle>
-                <circle cx="16" cy="16" r="8" fill="none" stroke="rgba(224,242,254,0.98)" stroke-width="1.5"
-                        stroke-dasharray="32 18" filter="url(#hm-2p-bright)">
-                  <animate attributeName="stroke-dashoffset" values="50;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
-                </circle>
-                <!-- Front person body — bright trace -->
-                <path d="M3,40 C3,29 29,29 29,40" fill="none" stroke="rgba(56,189,248,0.60)" stroke-width="4"
-                      stroke-dasharray="22 15" stroke-linecap="round" filter="url(#hm-2p-glow)">
-                  <animate attributeName="stroke-dashoffset" values="37;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
-                </path>
-                <path d="M3,40 C3,29 29,29 29,40" fill="none" stroke="rgba(224,242,254,0.95)" stroke-width="1.5"
-                      stroke-dasharray="22 15" stroke-linecap="round" filter="url(#hm-2p-bright)">
-                  <animate attributeName="stroke-dashoffset" values="37;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
-                </path>
-              </svg>
-            </div>
-            <div class="em-circle-text">
-              <span class="em-circle-title">שני שחקנים</span>
-              <span class="em-circle-sub">על מכשיר אחד</span>
-            </div>
-          </button>
+      <!-- Online -->
+      <button class="hm-card hm-card--online" id="btn-online-lobby" onclick="showOnlineLobby()">
+        <div class="hm-card-icon">
+          <img src="images/icons/globe.png" alt="">
         </div>
-
-        <!-- LEFT: נגד המחשב -->
-        <div class="em-platform-col em-platform-col--bot">
-          <button class="em-circle-btn" onclick="startSetup('bot')">
-            <div class="em-circle-icon">
-              <!-- Robot icon with antenna electrical pulse -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 44" class="home-icon-svg">
-                <defs>
-                  <filter id="hm-bot-glow" x="-60%" y="-60%" width="220%" height="220%">
-                    <feGaussianBlur stdDeviation="1.4" result="blur"/>
-                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                  </filter>
-                  <filter id="hm-bot-glow-strong" x="-100%" y="-100%" width="300%" height="300%">
-                    <feGaussianBlur stdDeviation="2.2" result="blur"/>
-                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                  </filter>
-                </defs>
-                <line x1="20" y1="3" x2="20" y2="12" stroke="#60a5fa" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
-                <circle cx="20" cy="3" r="2.5" fill="#38bdf8" filter="url(#hm-bot-glow)"/>
-                <circle cx="20" cy="12" r="2" fill="#e0f2fe" filter="url(#hm-bot-glow-strong)">
-                  <animate attributeName="cy"      values="12;3;3"     keyTimes="0;0.65;1" dur="1.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.15 1;0 0 1 1"/>
-                  <animate attributeName="r"       values="2;0.8;0"    keyTimes="0;0.65;1" dur="1.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.15 1;0 0 1 1"/>
-                  <animate attributeName="opacity" values="1;1;0"      keyTimes="0;0.65;1" dur="1.8s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;0 0 1 1"/>
-                </circle>
-                <rect x="6" y="12" width="28" height="18" rx="5" fill="#1e40af" stroke="#60a5fa" stroke-width="1.5"/>
-                <rect x="10" y="16" width="6" height="6" rx="1.5" fill="#7dd3fc" filter="url(#hm-bot-glow)"/>
-                <rect x="24" y="16" width="6" height="6" rx="1.5" fill="#7dd3fc" filter="url(#hm-bot-glow)"/>
-                <rect x="12" y="25" width="16" height="2.5" rx="1.25" fill="#93c5fd"/>
-                <circle cx="5" cy="21" r="3" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1"/>
-                <circle cx="35" cy="21" r="3" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1"/>
-                <rect x="8" y="30" width="24" height="13" rx="4" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1.5"/>
-                <rect x="13" y="33" width="14" height="5" rx="2" fill="#172554" stroke="#38bdf8" stroke-width="0.8" opacity="0.9"/>
-                <circle cx="16" cy="40" r="1.5" fill="#38bdf8" filter="url(#hm-bot-glow)"/>
-                <circle cx="20" cy="40" r="1.5" fill="#38bdf8" filter="url(#hm-bot-glow)"/>
-                <circle cx="24" cy="40" r="1.5" fill="#38bdf8" filter="url(#hm-bot-glow)"/>
-              </svg>
-            </div>
-            <div class="em-circle-text">
-              <span class="em-circle-title">נגד המחשב</span>
-              <span class="em-circle-sub" data-gm="בחר מתוך שלוש רמות קושי" data-gf="בחרי מתוך שלוש רמות קושי">בחר מתוך שלוש רמות קושי</span>
-            </div>
-          </button>
+        <div class="hm-card-body">
+          <span class="hm-card-title">משחק ברשת</span>
+          <span class="hm-card-sub">שחק מול שחקנים אמיתיים ברחבי העולם</span>
         </div>
+        <div class="hm-card-chev">❯</div>
+      </button>
 
-      </div><!-- /secondary row -->
+      <!-- Bot -->
+      <button class="hm-card hm-card--bot" onclick="startSetup('bot')">
+        <div class="hm-card-icon">
+          <img src="images/icons/bot.png" alt="">
+        </div>
+        <div class="hm-card-body">
+          <span class="hm-card-title">נגד המחשב</span>
+          <span class="hm-card-sub">התאמן מול הבוט ושפר את יכולתך</span>
+        </div>
+        <div class="hm-card-chev">❯</div>
+      </button>
 
-    </div><!-- /em-platforms -->
+      <!-- 2P -->
+      <button class="hm-card hm-card--2p" onclick="startSetup('vs')">
+        <div class="hm-card-icon">
+          <img src="images/icons/1v1.png" alt="">
+        </div>
+        <div class="hm-card-body">
+          <span class="hm-card-title">שני שחקנים</span>
+          <span class="hm-card-sub">שחק עם חבר על אותו מכשיר</span>
+        </div>
+        <div class="hm-card-chev">❯</div>
+      </button>
+
+    </div><!-- /hm-cards -->
 
     <!-- ─ Bottom Navigation ───────────────────────── -->
     <!-- RTL flex-row: first item = RIGHT, last item = LEFT -->
     <nav id="home-bottom-nav" class="em-bottom-nav" aria-label="ניווט">
 
       <button class="em-nav-item em-nav-item--mygames" onclick="openMyGames()">
-        <span class="em-nav-icon">🎮</span>
+        <img class="em-nav-icon em-nav-icon-img" src="images/icons/my_games.png" alt="">
         <span class="em-nav-badge" id="mg-nav-badge" style="display:none" aria-live="polite"></span>
         <span class="em-nav-label">המשחקים שלי</span>
       </button>
 
       <button class="em-nav-item" onclick="openFriends()">
-        <span class="em-nav-icon">👫</span>
+        <img class="em-nav-icon em-nav-icon-img" src="images/icons/friends.png" alt="">
         <span class="em-nav-label">חברים</span>
       </button>
 
       <button class="em-nav-item" onclick="showAvatarGallery()">
-        <span class="em-nav-icon">🏆</span>
+        <img class="em-nav-icon em-nav-icon-img" src="images/icons/acheivments.png" alt="">
         <span class="em-nav-label">הישגים</span>
       </button>
 
       <button class="em-nav-item" onclick="openStats()">
-        <span class="em-nav-icon">📊</span>
+        <img class="em-nav-icon em-nav-icon-img" src="images/icons/statistics.png" alt="">
         <span class="em-nav-label">סטטיסטיקות</span>
       </button>
 
@@ -169,7 +77,7 @@
 
     <!-- Credit -->
     <div class="credit">
-      <a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260617174059
+      <a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260622215634
       <br>
       <span dir="ltr">Music: "Inspire Action" by <a href="https://freemusicarchive.org/music/ura-megis/" target="_blank" rel="noopener">Yuri Megis</a> · <a href="https://freemusicarchive.org/music/ura-megis/single/inspire-action-1/" target="_blank" rel="noopener">Free Music Archive</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></span>
     </div>

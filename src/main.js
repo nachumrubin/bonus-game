@@ -95,10 +95,16 @@ import { mountStatsScreen, STATS_INTENT } from './ui/screens/statsScreen.js';
 import {
   mountAvatarPickerScreen, mountAvatarUnlockedScreen,
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
-  diffNewlyUnlocked, findAvatar,
+  diffNewlyCompletedAchievements, findAvatar,
 } from './ui/screens/avatarScreens.js';
+import {
+  mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER,
+  DAILY_REWARD_SHOW, DAILY_REWARD_ACK,
+} from './ui/screens/avatarStoreScreen.js';
+import { priceFor } from './ui/screens/avatarStore.js';
 import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe } from './ui/screens/authScreens.js';
 import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER } from './ui/screens/friendsScreen.js';
+import { runInviteFlow, INVITE_REQUIRED } from './ui/inviteFriends.js';
 import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
 import { mountChampionsScreen, CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR } from './ui/screens/championsScreen.js';
 import { mountDictionaryScreen, DICT_INTENT, DICT_RENDER } from './ui/screens/dictionaryScreen.js';
@@ -115,6 +121,120 @@ import { mountResignConfirmScreen, RESIGN_INTENT, RESIGN_OPEN, RESIGN_CLOSE } fr
 import * as notificationService from './notifications/notificationService.js';
 import * as inAppNotificationService from './notifications/inAppNotificationService.js';
 import { mountReactionController } from './reactions/reactionController.js';
+import * as loadingTipsService from './ui/loadingTipsService.js';
+
+// Start fetching tips at module-parse time, parallel to auth, so the card
+// is ready to show as soon as the DOM is available rather than after boot().
+const tipsPreload = loadingTipsService.loadTips();
+
+// App-loading overlay: hide once Firebase auth has resolved. The auth handler
+// emits MENU_REFRESH with isAuthed: true|false on resolution (either after a
+// profile load on sign-in, or via the teardownAuth path on sign-out /
+// never-signed-in). Either is the "menu now has its real state" signal, so we
+// drop the loader at that moment.
+//
+// Safety net: 6 s after boot, hide regardless — if Firebase silently failed to
+// initialise (no network, blocked domain) the user must still see the menu
+// rather than be stuck on the loader forever.
+//
+// Loading-text cycle: the overlay shows a rotating Hebrew status line
+// (מתחבר... → טוען נתונים... → מכין מילים... → כמעט מוכן...) so the loader feels
+// responsive even when auth takes a beat.
+//
+// This runs at module-parse time (this module is a deferred <script type=
+// "module"> at the end of <body>, so the inline #app-loading markup already
+// exists). Running it here — rather than inside boot() — means the tips
+// carousel appears at the START of the intro animation, not after boot()'s
+// long async init chain completes.
+function wireAppLoading() {
+  const doc = globalThis.document;
+  const el = doc?.getElementById?.('app-loading');
+  if (!el) return;
+  const textEl = doc.getElementById?.('app-loading-text');
+  const messages = ['מתחבר...', 'טוען נתונים...', 'מכין מילים...', 'כמעט מוכן...'];
+  let textIdx = 0;
+  const textTimer = setInterval(() => {
+    if (!textEl || el.classList.contains('is-hidden')) return;
+    textIdx = (textIdx + 1) % messages.length;
+    textEl.style.opacity = '0';
+    setTimeout(() => {
+      if (!textEl) return;
+      textEl.textContent = messages[textIdx];
+      textEl.style.opacity = '1';
+    }, 220);
+  }, 1400);
+
+  // Tips carousel — uses the pre-fetched promise started at module-parse time.
+  let sessionTips = [];
+  tipsPreload.then(allTips => {
+    if (!allTips?.length || el.classList.contains('is-hidden')) return;
+    sessionTips = loadingTipsService.selectSessionTips(allTips);
+    if (!sessionTips.length) return;
+
+    const tipsWrap = doc.getElementById('app-loading-tips');
+    const titleEl  = doc.getElementById('app-loading-tip-title');
+    const tipText  = doc.getElementById('app-loading-tip-text');
+    const dotsEl   = doc.getElementById('app-loading-tip-dots');
+    const prevBtn  = doc.getElementById('app-loading-tip-prev');
+    const nextBtn  = doc.getElementById('app-loading-tip-next');
+    if (!tipsWrap || !titleEl || !tipText || !dotsEl) return;
+
+    // Build pagination dots.
+    dotsEl.innerHTML = '';
+    sessionTips.forEach(() => {
+      const dot = doc.createElement('span');
+      dot.className = 'app-loading-tip-dot';
+      dotsEl.appendChild(dot);
+    });
+    const dots = Array.from(dotsEl.children);
+
+    let currentIdx = 0;
+
+    function showTip(idx) {
+      const tip = sessionTips[idx];
+      titleEl.textContent = tip.title;
+      tipText.textContent  = tip.text;
+      dots.forEach((d, i) => d.classList.toggle('is-active', i === idx));
+    }
+
+    showTip(0);
+    tipsWrap.style.display = '';
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        currentIdx = (currentIdx - 1 + sessionTips.length) % sessionTips.length;
+        showTip(currentIdx);
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        currentIdx = (currentIdx + 1) % sessionTips.length;
+        showTip(currentIdx);
+      });
+    }
+  }).catch(() => {});
+
+  let hidden = false;
+  let off = null;
+  function hide() {
+    if (hidden) return;
+    hidden = true;
+    el.classList.add('is-hidden');
+    clearInterval(textTimer);
+    if (sessionTips.length) {
+      loadingTipsService.recordShownTips(sessionTips.map(t => t.id));
+    }
+    // Remove after the fade transition so it can't intercept clicks
+    // even if `pointer-events:none` fails.
+    setTimeout(() => el.remove?.(), 600);
+    if (off) { try { off(); } catch {} off = null; }
+  }
+  off = bus.on(MENU_REFRESH, (payload = {}) => {
+    if (typeof payload.isAuthed === 'boolean') hide();
+  });
+  setTimeout(hide, 6000);
+}
+wireAppLoading();
 
 const params = new URLSearchParams(globalThis.location?.search ?? '');
 let activeFbDb = null;
@@ -264,7 +384,13 @@ async function boot() {
   audioService.init({ storage: globalThis.localStorage, doc: globalThis.document });
   function syncMusicTopbarIcon() {
     const ic = globalThis.document?.getElementById?.('topbar-music-ic');
-    if (ic) ic.textContent = audioService.isEnabled() ? '🎵' : '🔇';
+    if (!ic) return;
+    const on = audioService.isEnabled();
+    if (ic.tagName === 'IMG') {
+      ic.src = on ? 'images/icons/sound_on.png' : 'images/icons/sound_off.png';
+    } else {
+      ic.textContent = on ? '🎵' : '🔇';
+    }
   }
   syncMusicTopbarIcon();
   feedbackService.init({ storage: globalThis.localStorage, doc: globalThis.document, bus });
@@ -300,7 +426,7 @@ async function boot() {
       mountLetterSpinnerMiniGame,
       mountFillMiddleMiniGame,
       mountScoreBonusAnimation,
-      mountProfileScreen, mountStatsScreen, mountAvatarPickerScreen, mountAvatarUnlockedScreen,
+      mountProfileScreen, mountStatsScreen, mountAvatarPickerScreen, mountAvatarUnlockedScreen, mountAvatarStoreScreen,
       mountAuthScreens, mountFriendsScreen, mountNotificationsScreen, mountChampionsScreen, mountDictionaryScreen, mountTutorialScreen,
       createTutorialController,
       createBonusActivationController,
@@ -787,8 +913,8 @@ async function boot() {
       // the URL into the clipboard with a toast confirmation.
       const url = String(globalThis.location?.href ?? '').split('#')[0];
       const data = {
-        title: 'בוסט — שבץ נא',
-        text: 'בוא לשחק איתי בבוסט שבץ נא!',
+        title: 'בוסט',
+        text: 'בוא לשחק איתי בבוסט!',
         url,
       };
       const nav = globalThis.navigator;
@@ -1623,7 +1749,7 @@ async function boot() {
         isMyTurn: true, // a saved local game is always "yours" to resume
         isExpired: false,
         opponentName: p1.displayName ?? (saved.bot ? 'המחשב' : 'שחקן 2'),
-        opponentAvatar: p1.avatar ?? (saved.bot ? '🤖' : null),
+        opponentAvatar: p1.avatar ?? (saved.bot ? 'bot' : null),
         myScore: Number(scores[0] ?? 0),
         opponentScore: Number(scores[1] ?? 0),
         lastUpdated: Number(saved.savedAt) || 0,
@@ -1987,6 +2113,10 @@ async function boot() {
     function bootProfileFor(uid) {
       const fbDb = activeFbDb;
       if (!fbDb || !uid) return;
+      // Daily login reward is claimed once per boot, the first time the profile
+      // resolves (so the profile node exists for the transaction). The
+      // same-day guard inside claimDailyReward makes a repeat boot a no-op.
+      let dailyRewardChecked = false;
       try { activeProfileWatch?.();  } catch {}
       try { activeRequestsWatch?.(); } catch {}
       try { activeFriendsWatch?.();  } catch {}
@@ -1997,13 +2127,33 @@ async function boot() {
 
       activeProfileWatch = profileService.watchProfile(fbDb, uid, (profile) => {
         const prev = lastProfile;
-        // Detect new avatar unlocks before we overwrite lastProfile
-        if (prev?.stats && profile?.stats) {
-          const newly = diffNewlyUnlocked(prev.stats, profile.stats);
-          for (const a of newly) bus.emit(AV_UNLOCK_OPEN, { avatar: a });
+        // Detect newly completed achievements before we overwrite lastProfile.
+        // Each pays out tier-scaled coins and pops the completion overlay. Fires
+        // only on the false→true transition between consecutive snapshots, and is
+        // skipped on the first watch fire (prev=null), so already-earned
+        // achievements don't re-pay on reload. Conditions read both stats and
+        // ownedAvatars (purchase achievements).
+        if (prev && profile) {
+          const newly = diffNewlyCompletedAchievements(
+            { stats: prev.stats, ownedAvatars: prev.ownedAvatars },
+            { stats: profile.stats, ownedAvatars: profile.ownedAvatars },
+          );
+          for (const ach of newly) {
+            const reward = profileService.ACHIEVEMENT_COIN_REWARD[ach.tier] ?? 0;
+            if (reward) profileService.bumpCoins(fbDb, uid, reward).catch(() => {});
+            bus.emit(AV_UNLOCK_OPEN, { achievement: ach, coins: reward });
+          }
         }
         lastProfile = profile;
         globalThis.__spine.currentProfile = profile;
+        // Daily login reward — once per boot, gated to signed-in users.
+        if (profile && !dailyRewardChecked && !activeFbCurrentUser?.isAnonymous) {
+          dailyRewardChecked = true;
+          profileService.claimDailyReward(fbDb, uid)
+            .then((r) => { if (r?.coinsAwarded > 0) bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak }); })
+            .catch((e) => console.warn('[spine] daily reward', e));
+        }
+        loadingTipsService.cacheGamesPlayed(profile?.stats?.gamesPlayed ?? 0);
         const fbUser = activeFbCurrentUser;
         const _dn = profile?.displayName ?? fbUser?.displayName;
         if (_dn) settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: _dn });
@@ -2012,18 +2162,27 @@ async function boot() {
           isAnonymous: !!fbUser?.isAnonymous,
           email: fbUser?.email ?? '',
         });
+        const economy = profileService.normalizeProfileEconomy(profile);
         bus.emit(MENU_REFRESH, {
           isAuthed: !!fbUser?.uid && !fbUser?.isAnonymous,
           displayName: profile?.displayName ?? fbUser?.displayName ?? '',
           rating: profile?.rating ?? null,
           avatar: avatarEmoji(profile?.equippedAvatar) || null,
+          coins: economy.coins,
         });
         bus.emit(AV_RENDER, {
           stats: profile?.stats ?? {},
+          ownedAvatars: economy.ownedAvatars,
+          coinRewardByTier: profileService.ACHIEVEMENT_COIN_REWARD,
+        });
+        bus.emit(STORE_RENDER, {
+          coins: economy.coins,
+          ownedAvatars: economy.ownedAvatars,
           equippedAvatar: profile?.equippedAvatar ?? null,
         });
         bus.emit(FRIENDS_RENDER, {
           myUserId: profile?.userId ?? '------',
+          invitesSent: profile?.stats?.invitesSent ?? 0,
         });
         if (profile) {
           ratingService.upsertRatingLeaderboardEntry(fbDb, {
@@ -2097,6 +2256,9 @@ async function boot() {
     bus.on(PROFILE_INTENT.OPEN_AVATARS, () => {
       showLegacyScreen('sav-gallery');
     });
+    bus.on(PROFILE_INTENT.OPEN_STORE, () => {
+      bus.emit(STORE_INTENT.OPEN, {});
+    });
     bus.on(PROFILE_INTENT.OPEN_FRIENDS, () => {
       showLegacyScreen('sfriends');
     });
@@ -2160,6 +2322,36 @@ async function boot() {
     });
     bus.on(AV_INTENT.CLOSE, () => {
       showLegacyScreen('sprofile');
+    });
+
+    // ── Avatar store intents ──
+    bus.on(STORE_INTENT.OPEN, () => {
+      const fbUser = activeFbCurrentUser;
+      // Coins/store require a real account — anonymous profiles aren't persisted.
+      if (!fbUser?.uid || fbUser.isAnonymous) {
+        globalThis.document?.getElementById?.('ov-guest-upgrade')?.classList?.remove?.('hidden');
+        return;
+      }
+      showLegacyScreen('savatar-store');
+    });
+    bus.on(STORE_INTENT.CLOSE, () => {
+      showLegacyScreen('sprofile');
+    });
+    // Equipping a store avatar reuses the avatar-equip path (writes equippedAvatar).
+    bus.on(STORE_INTENT.EQUIP, ({ id }) => bus.emit(AV_INTENT.EQUIP, { id }));
+    bus.on(STORE_INTENT.CONFIRM_PURCHASE, async ({ id }) => {
+      const fbDb = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      if (!fbDb || !fbUser?.uid || !id) return;
+      const r = await profileService.purchaseAvatar(fbDb, fbUser.uid, id, priceFor(id));
+      if (r?.ok) {
+        // Auto-equip the freshly bought avatar; the profile watch repaints the store.
+        try { await profileService.updateProfile(fbDb, fbUser.uid, { equippedAvatar: id }); }
+        catch (e) { console.warn('[spine] store equip after buy', e); }
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'האווטאר נרכש! 🎉', avatar: id });
+      } else if (r?.reason === 'insufficient') {
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'אין מספיק מטבעות', avatar: '🪙' });
+      }
     });
 
     // ── Friends intents ──
@@ -2279,6 +2471,39 @@ async function boot() {
         if (n) _crName.value = n;
       }
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.remove?.('hidden');
+    });
+
+    // Referral invite: pick contacts (or share/copy as fallback) and send them
+    // the Play Store link. Inviting INVITE_REQUIRED contacts bumps the
+    // `invitesSent` stat, which unlocks the "חבר מביא חבר" achievement.
+    bus.on(FRIENDS_INTENT.INVITE_CONTACTS, async () => {
+      let result;
+      try {
+        result = await runInviteFlow({});
+      } catch {
+        result = { status: 'cancelled', count: 0 };
+      }
+      const flash = (msg) => {
+        bus.emit(FRIENDS_RENDER, { inviteStatus: msg });
+        setTimeout(() => bus.emit(FRIENDS_RENDER, { inviteStatus: '' }), 2500);
+      };
+      if (result.status === 'too-few') {
+        flash(`בחר לפחות ${INVITE_REQUIRED} אנשי קשר`);
+        return;
+      }
+      if (result.status === 'unsupported') {
+        flash('שיתוף אינו נתמך במכשיר זה');
+        return;
+      }
+      if (result.status === 'sent' || result.status === 'shared' || result.status === 'copied') {
+        const fbDb   = activeFbDb;
+        const fbUser = activeFbCurrentUser;
+        if (fbDb && fbUser?.uid && result.count > 0) {
+          profileService.bumpStats(fbDb, fbUser.uid, { invitesSent: result.count })
+            .catch(() => {});
+        }
+        flash(result.status === 'copied' ? 'הקישור הועתק!' : 'ההזמנה נשלחה! 🎉');
+      }
     });
 
     bus.on(FRIENDS_INTENT.COPY_MY_ID, async () => {
@@ -2473,8 +2698,9 @@ async function boot() {
         return;
       }
       try {
-        const entries = await ratingService.listTopRatings(fbDb);
-        bus.emit(CHAMPS_RENDER, { entries, target });
+        const myUid = activeFbCurrentUser?.uid ?? null;
+        const { entries, myPosition, myEntry } = await ratingService.resolveLeaderboard(fbDb, { myUid });
+        bus.emit(CHAMPS_RENDER, { entries, myUid, myPosition, myEntry, target });
       } catch (e) {
         console.warn('[spine] champions list', e);
         bus.emit(CHAMPS_ERROR, { target });
@@ -2605,7 +2831,7 @@ async function boot() {
     if (typeof showSc === 'function') {
       try { showSc(id); return; } catch { /* swallow */ }
     }
-    const screens = ['sh', 'ss', 'sg', 'so', 'scoin', 'sprofile', 'sfriends', 'snotif', 'schamps', 'sauth-signup', 'sauth-login', 'sav-gallery', 'sstats', 'smygames'];
+    const screens = ['sh', 'ss', 'sg', 'so', 'scoin', 'sprofile', 'sfriends', 'snotif', 'schamps', 'sauth-signup', 'sauth-login', 'sav-gallery', 'savatar-store', 'sstats', 'smygames'];
     for (const s of screens) {
       const el = globalThis.document?.getElementById?.(s);
       if (!el) continue;
@@ -2922,7 +3148,7 @@ async function boot() {
           slot: onlineMySlot,
           kind: 'award',
           bonusType: null,
-          title: boostId === 'auto_extra_score' ? '🎉 בונוס!' : '⚡ בוסט!',
+          title: boostId === 'auto_extra_score' ? '🎉 בוסט!' : '⚡ בוסט!',
           desc: extra ? `+${extra} נקודות` : null,
           icon: '🎁',
         });
@@ -3222,8 +3448,8 @@ async function boot() {
           mode,
           tileBagSeed,
           players: {
-            0: { uid: 'p0', displayName: p1Name },
-            1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? '🤖' : null },
+            0: { uid: 'p0', displayName: p1Name, avatar: avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar) || null },
+            1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? 'bot' : null },
           },
           startingSlot,
           settings,
@@ -3384,6 +3610,7 @@ async function boot() {
   const statsScreen        = mountStatsScreen({ bus });
   const avatarPicker       = mountAvatarPickerScreen({ bus });
   const avatarUnlocked     = mountAvatarUnlockedScreen({ bus });
+  const avatarStore        = mountAvatarStoreScreen({ bus });
   const authScreens        = mountAuthScreens({ bus });
   const friendsScreen      = mountFriendsScreen({ bus });
   const notificationsScreen = mountNotificationsScreen({ bus });
@@ -3486,54 +3713,12 @@ async function boot() {
 
   console.info('[spine] ready. Try window.__spine.bootOffline2P() or .bootOfflineBot()');
 
-  // App-loading overlay: hide once Firebase auth has resolved. The auth
-  // handler emits MENU_REFRESH with isAuthed: true|false on resolution
-  // (either after a profile load on sign-in, or via the teardownAuth
-  // path on sign-out / never-signed-in). Either is the "menu now has its
-  // real state" signal, so we drop the loader at that moment.
-  //
-  // Safety net: 6 s after boot, hide regardless — if Firebase silently
-  // failed to initialise (no network, blocked domain) the user must
-  // still see the menu rather than be stuck on the loader forever.
-  //
-  // Loading-text cycle: the overlay shows a rotating Hebrew status line
-  // (מתחבר... → טוען נתונים... → מכין מילים... → כמעט מוכן...) so the
-  // loader feels responsive even when auth takes a beat.
-  (function wireAppLoading() {
-    const doc = globalThis.document;
-    const el = doc?.getElementById?.('app-loading');
-    if (!el) return;
-    const textEl = doc.getElementById?.('app-loading-text');
-    const messages = ['מתחבר...', 'טוען נתונים...', 'מכין מילים...', 'כמעט מוכן...'];
-    let textIdx = 0;
-    const textTimer = setInterval(() => {
-      if (!textEl || el.classList.contains('is-hidden')) return;
-      textIdx = (textIdx + 1) % messages.length;
-      textEl.style.opacity = '0';
-      setTimeout(() => {
-        if (!textEl) return;
-        textEl.textContent = messages[textIdx];
-        textEl.style.opacity = '1';
-      }, 220);
-    }, 1400);
-
-    let hidden = false;
-    let off = null;
-    function hide() {
-      if (hidden) return;
-      hidden = true;
-      el.classList.add('is-hidden');
-      clearInterval(textTimer);
-      // Remove after the fade transition so it can't intercept clicks
-      // even if `pointer-events:none` fails.
-      setTimeout(() => el.remove?.(), 600);
-      if (off) { try { off(); } catch {} off = null; }
-    }
-    off = bus.on(MENU_REFRESH, (payload = {}) => {
-      if (typeof payload.isAuthed === 'boolean') hide();
-    });
-    setTimeout(hide, 6000);
-  })();
+  // App-loading overlay wiring (text cycle, tips carousel, hide-on-auth) is
+  // set up at module-parse time via wireAppLoading() — see near the top of
+  // this file. It must NOT live here: boot() awaits a long chain of init
+  // before reaching this point, which would delay the tips until the intro
+  // animation is nearly over. The overlay markup is inline in index.html so
+  // it's available the instant this module runs.
 
   // Auto-boot a demo session if requested (?demo=...)
   const demo = params.get('demo');
@@ -3644,6 +3829,9 @@ function installCutoverGlobals() {
   };
   globalThis.showAvatarGallery = globalThis.showAvatarGallery ?? function showAvatarGallery() {
     bus.emit(PROFILE_INTENT.OPEN_AVATARS, {});
+  };
+  globalThis.showAvatarStore = globalThis.showAvatarStore ?? function showAvatarStore() {
+    bus.emit(PROFILE_INTENT.OPEN_STORE, {});
   };
   globalThis.showFriendsScreen = globalThis.showFriendsScreen ?? function showFriendsScreen() {
     bus.emit(PROFILE_INTENT.OPEN_FRIENDS, {});

@@ -12,6 +12,7 @@
 // presentational + intent-emitting.
 
 import { $, on, setText } from '../domHelpers.js';
+import { avatarMarkup, setAvatarEl } from './avatarScreens.js';
 import { g, getGender } from '../genderText.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
@@ -24,8 +25,13 @@ export const FRIENDS_INTENT = Object.freeze({
   BACK:           'friendsUi/back',
   OPEN_DETAIL:    'friendsUi/openDetail',
   INVITE_FRIEND:  'friendsUi/inviteFriend',
+  INVITE_CONTACTS:'friendsUi/inviteContacts',
   ENTER_GAME:     'friendsUi/enterGame',
 });
+
+// How many contacts must be invited to earn the "חבר מביא חבר" achievement.
+// Mirrors INVITE_REQUIRED in inviteFriends.js — keep the two in sync.
+export const REFERRAL_GOAL = 5;
 
 export const FRIENDS_RENDER        = 'friendsUi/render';
 export const FRIENDS_DETAIL_RENDER = 'friendsUi/detailRender';
@@ -36,14 +42,6 @@ function escapeHtml(s) {
     .replaceAll('"','&quot;').replaceAll('\'','&#39;');
 }
 
-const AVATAR_ID_TO_EMOJI = {
-  crown:'👑', star:'⭐', fire:'🔥', diamond:'💎', shark:'🦈',
-  dragon:'🐉', tiger:'🐯', alien:'👾', wizard:'🧙', robot:'🤖',
-  rocket:'🚀', knight:'🛡️', ninja:'🥷', genius:'🧠', vampire:'🧛',
-};
-function resolveAvatar(raw, fallback) {
-  return AVATAR_ID_TO_EMOJI[raw] ?? raw ?? fallback;
-}
 
 export function buildRequestsHtml(requests = []) {
   if (!requests.length) return '';
@@ -74,68 +72,92 @@ export function formatLastSeen(ts, now = Date.now()) {
 
 export function buildFriendsListHtml(friends = []) {
   if (!friends.length) {
-    return `<div style="font-size:11px;color:rgba(255,255,255,.3);text-align:center;padding:8px 0;">אין חברים עדיין</div>`;
+    return `<div class="fr-empty">אין חברים עדיין</div>`;
   }
   return friends.map(f => {
     const online    = !!f.connected;
     const lastSeen  = !online && f.lastSeen ? formatLastSeen(f.lastSeen) : '';
     const ratingStr = f.rating != null ? String(f.rating) : '—';
     const dotClass  = online ? 'fr-online-dot fr-online-dot--on' : 'fr-online-dot';
-    return `<div data-fr-row="${escapeHtml(f.uid)}" style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.06);">`
-      + `<div style="font-size:20px;line-height:1;">${escapeHtml(resolveAvatar(f.avatar, '👤'))}</div>`
-      + `<div style="flex:1;min-width:0;">`
-      +   `<div style="font-size:12px;color:#fff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(f.name ?? '?')}</div>`
-      +   `<div style="font-size:10px;color:rgba(255,255,255,.45);">⭐ ${escapeHtml(ratingStr)}</div>`
+    const statusText = online
+      ? '🟢 מחובר כעת'
+      : lastSeen ? `🟡 נראה לאחרונה ${escapeHtml(lastSeen)}` : '';
+    return `<div class="fr-friend-card" data-fr-row="${escapeHtml(f.uid)}">`
+      + `<div class="fr-av-wrap">`
+      +   `<div class="fr-av-frame">${avatarMarkup(f.avatar, { fallback: '👤' })}</div>`
+      +   `<span class="${dotClass}" aria-hidden="true"></span>`
       + `</div>`
-      + `<div style="font-size:9px;color:rgba(255,255,255,.4);text-align:center;min-width:42px;">${escapeHtml(lastSeen)}</div>`
-      + `<span class="${dotClass}" aria-hidden="true"></span>`
-      + `<button data-fr-remove="${escapeHtml(f.uid)}" aria-label="הסר" style="background:none;border:none;font-size:14px;color:rgba(255,255,255,.35);cursor:pointer;padding:0 2px;">×</button>`
+      + `<div class="fr-friend-info">`
+      +   `<div class="fr-friend-name">${escapeHtml(f.name ?? '?')}</div>`
+      +   `<div class="fr-rating">⭐ ${escapeHtml(ratingStr)}</div>`
+      +   `<div class="fr-friend-status">${statusText}</div>`
+      + `</div>`
+      + `<div class="fr-game-col">`
+      +   `<button class="fr-game-btn" data-fr-menu="${escapeHtml(f.uid)}" aria-label="הזמן למשחק">🎮</button>`
+      +   `<div class="fr-game-lbl">הזמן למשחק</div>`
+      + `</div>`
+      + `<button class="fr-menu-btn" data-fr-menu="${escapeHtml(f.uid)}" aria-label="תפריט">⋮</button>`
       + `</div>`;
   }).join('');
 }
 
 function buildDetailStatsHtml(rival) {
   if (!rival || !rival.played) {
-    return `<span style="color:rgba(255,255,255,.3);">אין היסטוריה משותפת עדיין</span>`;
+    return `<div class="fd-stats-empty">אין היסטוריה משותפת עדיין</div>`;
   }
-  const pct = Math.round((rival.won / rival.played) * 100);
-  return `משחקים: ${rival.played} &nbsp;|&nbsp; ניצחת: ${rival.won} &nbsp;|&nbsp; הפסדת: ${rival.lost}<br>`
-    + `אחוז ניצחון: <b>${pct}%</b>`;
+  const col = (icon, val, lbl, valClass = '') =>
+    `<div class="fd-stat-col">`
+    + `<div class="fd-sc-icon">${icon}</div>`
+    + `<div class="fd-sc-val${valClass ? ` ${valClass}` : ''}">${val}</div>`
+    + `<div class="fd-sc-lbl">${lbl}</div>`
+    + `</div>`;
+  return col('🎮', rival.played, 'משחקים', 'fd-sc-val-gold')
+    + `<div class="fd-stat-col fd-stat-mid">`
+    + `<div class="fd-sc-icon">🏆</div>`
+    + `<div class="fd-sc-val fd-sc-val-green">${rival.won}</div>`
+    + `<div class="fd-sc-lbl">ניצחונות</div>`
+    + `</div>`
+    + col('🛡', rival.lost, 'הפסדות');
 }
 
 function buildDetailRecentHtml(games) {
   if (!games.length) {
-    return `<span style="color:rgba(255,255,255,.3);">אין משחקים קודמים</span>`;
+    return `<div class="fd-recent-empty">אין משחקים קודמים עדיין</div>`;
   }
-  return games.map(g => {
-    const icon = g.result === 'win' ? '✅' : g.result === 'loss' ? '❌' : '🤝';
+  return games.map(game => {
+    const isWin  = game.result === 'win';
+    const isLoss = game.result === 'loss';
+    const resultClass = isWin ? 'fd-game-win' : isLoss ? 'fd-game-loss' : 'fd-game-draw';
+    const resultIcon  = isWin ? '✓' : isLoss ? '✗' : '=';
     // direction:ltr locks the visual order so it always reads
-    // "mine : theirs ✓" left-to-right regardless of the parent's RTL flow.
-    // Gold (var(--by)) on the user's score makes "mine" unambiguous even
-    // when their score is the lower number (e.g. a forfeit/timeout win).
-    return `<div style="display:flex;gap:8px;padding:3px 0;font-size:12px;direction:ltr;justify-content:flex-end;align-items:baseline;">`
-      + `<span style="color:var(--by,#f5c518);font-weight:900;">${g.score}</span>`
-      + `<span style="color:rgba(255,255,255,.35);">:</span>`
-      + `<span style="color:rgba(255,255,255,.6);">${g.opponentScore}</span>`
-      + `<span>${icon}</span>`
+    // "mine : theirs" left-to-right regardless of the parent's RTL flow.
+    // Gold on the user's score makes "mine" unambiguous even when it's lower.
+    const timeStr = game.ts ? formatLastSeen(game.ts) : '';
+    return `<div class="fd-game-row">`
+      + `<div class="fd-game-result ${resultClass}">${resultIcon}</div>`
+      + `<div class="fd-game-scores">`
+      + `<span class="fd-score-mine">${game.score}</span>`
+      + `<span class="fd-score-sep">:</span>`
+      + `<span class="fd-score-theirs">${game.opponentScore}</span>`
+      + `</div>`
+      + `<div class="fd-game-time">${escapeHtml(timeStr)}</div>`
       + `</div>`;
   }).join('');
 }
 
 function buildDetailActiveGamesHtml(activeGames, myUid) {
   if (!activeGames.length) {
-    return `<button data-fd-invite="1" style="width:100%;padding:8px;border:none;border-radius:8px;`
-      + `background:#1ed760;color:#000;font-family:Heebo,sans-serif;font-size:12px;font-weight:900;cursor:pointer;">`
-      + `${g('inviteToGame', getGender())}</button>`;
+    return `<div class="fd-active-empty">`
+      + `<div class="fd-active-empty-icon">🎮</div>`
+      + `<div id="fd-active-empty-text"></div>`
+      + `</div>`;
   }
   return activeGames.map(({ roomId, room }) => {
     const mySlot = room.players?.[0]?.uid === myUid ? 0 : 1;
     const modeLabel = room.mode?.endsWith('-async') ? '🔄 אסינכרוני' : '⚡ חי';
-    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">`
-      + `<span style="flex:1;font-size:11px;color:rgba(255,255,255,.55);">${modeLabel}</span>`
-      + `<button data-fd-enter="${escapeHtml(roomId)}" data-fd-slot="${mySlot}" `
-      + `style="padding:6px 12px;border:none;border-radius:6px;background:#f5c518;`
-      + `color:#000;font-family:Heebo,sans-serif;font-size:11px;font-weight:900;cursor:pointer;">🕹 כנס</button>`
+    return `<div class="fd-active-row">`
+      + `<span class="fd-active-mode">${modeLabel}</span>`
+      + `<button data-fd-enter="${escapeHtml(roomId)}" data-fd-slot="${mySlot}" class="fd-enter-btn">🕹 כנס</button>`
       + `</div>`;
   }).join('');
 }
@@ -159,6 +181,10 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
   if (myIdEl) {
     cleanups.push(on(myIdEl, 'click', () => bus.emit(FRIENDS_INTENT.COPY_MY_ID, {})));
   }
+  const copyBtn = $('#fr-copy-btn', root);
+  if (copyBtn) {
+    cleanups.push(on(copyBtn, 'click', () => bus.emit(FRIENDS_INTENT.COPY_MY_ID, {})));
+  }
   if (sendBtn) {
     sendBtn.removeAttribute?.('onclick');
     cleanups.push(on(sendBtn, 'click', (e) => {
@@ -181,9 +207,11 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
         const accept = btn.getAttribute?.('data-fr-accept');
         const reject = btn.getAttribute?.('data-fr-reject');
         const remove = btn.getAttribute?.('data-fr-remove');
+        const menu   = btn.getAttribute?.('data-fr-menu');
         if (accept) bus.emit(FRIENDS_INTENT.ACCEPT_REQUEST, { fromUid: accept });
         if (reject) bus.emit(FRIENDS_INTENT.REJECT_REQUEST, { fromUid: reject });
         if (remove) bus.emit(FRIENDS_INTENT.REMOVE_FRIEND,  { friendUid: remove });
+        if (menu)   bus.emit(FRIENDS_INTENT.OPEN_DETAIL,    { friendUid: menu });
         return;
       }
       // Row click (no button) → open friend detail
@@ -198,18 +226,31 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
   delegateClick(friendsList);
 
   // Friend detail overlay
-  const detailOv  = $('#ov-friend-detail', root);
-  const fdClose   = $('#fd-close', root);
-  const fdGames   = $('#fd-active-games', root);
+  const detailOv      = $('#ov-friend-detail', root);
+  const fdClose       = $('#fd-close', root);
+  const fdGames       = $('#fd-active-games', root);
+  const fdOverflowBtn = $('#fd-overflow-btn', root);
+  const fdOverflowMenu= $('#fd-overflow-menu', root);
 
   if (fdClose) {
     cleanups.push(on(fdClose, 'click', () => {
       detailOv?.classList?.add('hidden');
     }));
   }
+
+  if (fdOverflowBtn && fdOverflowMenu) {
+    cleanups.push(on(fdOverflowBtn, 'click', (e) => {
+      e.stopPropagation();
+      fdOverflowMenu.classList.toggle('hidden');
+    }));
+  }
+
   if (detailOv) {
     cleanups.push(on(detailOv, 'click', (e) => {
       if (e.target === detailOv) detailOv.classList?.add('hidden');
+      if (fdOverflowMenu && !fdOverflowMenu.classList.contains('hidden')) {
+        fdOverflowMenu.classList.add('hidden');
+      }
     }));
     cleanups.push(on(detailOv, 'click', (e) => {
       const btn = e.target?.tagName === 'BUTTON' ? e.target : e.target?.closest?.('button');
@@ -220,6 +261,11 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
         const avatar = detailOv.dataset.friendAvatar;
         detailOv.classList?.add('hidden');
         bus.emit(FRIENDS_INTENT.INVITE_FRIEND, { uid, name, avatar });
+      }
+      if (btn.hasAttribute('data-fd-remove')) {
+        const uid = detailOv.dataset.friendUid;
+        detailOv.classList?.add('hidden');
+        bus.emit(FRIENDS_INTENT.REMOVE_FRIEND, { friendUid: uid });
       }
       const enterRoomId = btn.getAttribute('data-fd-enter');
       if (enterRoomId) {
@@ -238,9 +284,30 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
       setText(reqBadge, String(requests.length));
     }
   }
+  const referralBar    = $('#fr-referral-bar',    root);
+  const referralCount  = $('#fr-referral-count',  root);
+  const inviteStatusEl = $('#fr-invite-status',   root);
+  const inviteCard     = $('[data-fr-invite-contacts]', root);
+
+  if (inviteCard) {
+    cleanups.push(on(inviteCard, 'click', (e) => {
+      e?.preventDefault?.();
+      bus.emit(FRIENDS_INTENT.INVITE_CONTACTS, {});
+    }));
+  }
+
   function paintFriends(friends = []) {
     if (friendsList) friendsList.innerHTML = buildFriendsListHtml(friends);
     if (friendsCount) setText(friendsCount, `(${friends.length})`);
+  }
+
+  // Referral progress tracks invites sent (not real friends) — the achievement
+  // is earned by inviting REFERRAL_GOAL contacts.
+  function paintReferral(invitesSent = 0) {
+    const sent = Math.max(0, Number(invitesSent) || 0);
+    const n = Math.min(sent, REFERRAL_GOAL);
+    if (referralBar)   referralBar.style.width = `${(n / REFERRAL_GOAL) * 100}%`;
+    if (referralCount) setText(referralCount, `${n}/${REFERRAL_GOAL}`);
   }
 
   cleanups.push(bus.on(FRIENDS_DETAIL_RENDER, ({ friend, rivalEntry, vsRecent = [], activeGames = [], myUid } = {}) => {
@@ -256,23 +323,29 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     const statsEl   = $('#fd-stats', root);
     const recentEl  = $('#fd-recent', root);
 
-    if (avatarEl)  avatarEl.textContent  = resolveAvatar(friend.avatar, '👤');
+    if (avatarEl)  setAvatarEl(avatarEl, friend.avatar, { fallback: '👤' });
     if (nameEl)    nameEl.textContent    = friend.name ?? '?';
     if (ratingEl)  ratingEl.textContent  = friend.rating != null ? `⭐ ${friend.rating}` : '';
     if (statsEl)   statsEl.innerHTML     = buildDetailStatsHtml(rivalEntry);
     if (recentEl)  recentEl.innerHTML    = buildDetailRecentHtml(vsRecent);
-    if (fdGames)   fdGames.innerHTML     = buildDetailActiveGamesHtml(activeGames, myUid);
+    if (fdGames) {
+      fdGames.innerHTML = buildDetailActiveGamesHtml(activeGames, myUid);
+      const emptyTextEl = fdGames.querySelector?.('#fd-active-empty-text');
+      if (emptyTextEl) emptyTextEl.textContent = `אין לך כרגע משחקים פתוחים עם ${friend.name ?? '?'}`;
+    }
 
     detailOv.classList?.remove('hidden');
   }));
 
-  cleanups.push(bus.on(FRIENDS_RENDER, ({ myUserId, requests, friends, copyStatus, addStatus: addS } = {}) => {
+  cleanups.push(bus.on(FRIENDS_RENDER, ({ myUserId, requests, friends, copyStatus, addStatus: addS, invitesSent, inviteStatus } = {}) => {
     if (myIdEl && myUserId) setText(myIdEl, myUserId);
     if (Array.isArray(requests)) paintRequests(requests);
     if (Array.isArray(friends))  paintFriends(friends);
+    if (invitesSent !== undefined) paintReferral(invitesSent);
     const copyEl = $('#fr-copy-status', root);
     if (copyEl && copyStatus !== undefined) setText(copyEl, copyStatus ?? '');
     if (addStatus && addS !== undefined) setText(addStatus, addS ?? '');
+    if (inviteStatusEl && inviteStatus !== undefined) setText(inviteStatusEl, inviteStatus ?? '');
   }));
 
   return {

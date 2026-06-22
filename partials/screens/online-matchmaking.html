@@ -1,47 +1,82 @@
-﻿<!-- ONLINE: MATCHMAKING -->
+<!-- ONLINE: MATCHMAKING -->
 <div id="ov-matchmaking" class="ov hidden">
-  <div class="ovc"><div class="ovh"></div>
-    <div class="ovic">🎲</div><div class="ovt">חיפוש יריב</div>
-    <div id="mm-name-row" class="sf" style="margin-bottom:8px"><label style="font-size:10px;color:rgba(255,255,255,.5);display:block;margin-bottom:3px">השם שלך</label>
-      <input class="ri" id="mm-name" type="text" value="שחקן" maxlength="10">
-    </div>
-    <div class="mm-prefs">
-      <div class="mm-pref-row">
-        <span>סוג משחק</span>
-        <div style="display:flex;gap:4px;">
-          <button id="mm-mode-live" class="sopt-btn active" style="font-size:10px" onclick="mmSetMode('live')">לייב</button>
-          <button id="mm-mode-async" class="sopt-btn" style="font-size:10px" onclick="mmSetMode('async')">אסינכרוני</button>
+  <div class="ovc mf-ovc">
+    <div class="mf-icon-hero">🎲</div>
+    <div class="mf-body">
+      <div class="mf-title">חיפוש יריב אקראי</div>
+      <div class="mf-desc" data-gm="בחר את העדפות המשחק שלך" data-gf="בחרי את העדפות המשחק שלך">בחר את העדפות המשחק שלך</div>
+
+      <div id="mm-name-row" class="mf-name-row">
+        <label class="mf-input-lbl">השם שלך</label>
+        <input class="ri" id="mm-name" type="text" value="שחקן" maxlength="10">
+      </div>
+
+      <div class="mf-section-lbl">סוג משחק</div>
+      <div class="mf-opt-row">
+        <button id="mm-mode-live" class="mf-opt-card active" onclick="mmSetMode('live')">
+          <span class="mf-opt-icon">⚡</span>
+          <span class="mf-opt-label">לייב</span>
+          <span class="mf-opt-sub">זמן אמת</span>
+        </button>
+        <button id="mm-mode-async" class="mf-opt-card" onclick="mmSetMode('async')">
+          <span class="mf-opt-icon">📬</span>
+          <span class="mf-opt-label">אסינכרוני</span>
+          <span class="mf-opt-sub">לא בזמן אמת</span>
+        </button>
+      </div>
+
+      <div id="mm-speed-row">
+        <div class="mf-section-lbl">קצב משחק</div>
+        <div class="mf-opt-row">
+          <button id="mm-spd-20" class="mf-opt-card">
+            <span class="mf-opt-icon">⚡</span>
+            <span class="mf-opt-label">בזק</span>
+            <span class="mf-opt-sub">20 שניות</span>
+          </button>
+          <button id="mm-spd-40" class="mf-opt-card active">
+            <span class="mf-opt-icon">🎯</span>
+            <span class="mf-opt-label">רגיל</span>
+            <span class="mf-opt-sub">40 שניות</span>
+          </button>
+          <button id="mm-spd-60" class="mf-opt-card">
+            <span class="mf-opt-icon">🐢</span>
+            <span class="mf-opt-label">איטי</span>
+            <span class="mf-opt-sub">60 שניות</span>
+          </button>
         </div>
       </div>
-      <div class="mm-pref-row" id="mm-speed-row">
-        <span>קצב משחק (שניות)</span>
-        <div style="display:flex;gap:4px;">
-          <button id="mm-spd-20" class="sopt-btn" style="font-size:10px">⚡ בזק (20)</button>
-          <button id="mm-spd-40" class="sopt-btn active" style="font-size:10px">🎯 רגיל (40)</button>
-          <button id="mm-spd-60" class="sopt-btn" style="font-size:10px">🐢 איטי (60)</button>
+
+      <div id="mm-rating-row" style="display:none">
+        <div class="mf-section-lbl">טווח דירוג</div>
+        <div class="mf-opt-row">
+          <button id="mm-rr-any" class="mf-opt-card active" onclick="mmSetRatingRange(null)">
+            <span class="mf-opt-icon">🌐</span>
+            <span class="mf-opt-label">כולם</span>
+          </button>
+          <button id="mm-rr-100" class="mf-opt-card" onclick="mmSetRatingRange(100)">
+            <span class="mf-opt-label">±100</span>
+          </button>
+          <button id="mm-rr-200" class="mf-opt-card" onclick="mmSetRatingRange(200)">
+            <span class="mf-opt-label">±200</span>
+          </button>
+          <button id="mm-rr-500" class="mf-opt-card" onclick="mmSetRatingRange(500)">
+            <span class="mf-opt-label">±500</span>
+          </button>
         </div>
       </div>
-      <label class="mm-strict">
+
+      <label class="mf-strict-row">
         <input type="checkbox" id="mm-strict-chk" checked style="accent-color:var(--by)">
         <span>חיפוש מדויק בלבד</span>
       </label>
-      <div class="mm-pref-row" id="mm-rating-row" style="margin-top:6px">
-        <span>טווח דירוג</span>
-        <div style="display:flex;gap:4px;">
-          <button id="mm-rr-any" class="sopt-btn active" style="font-size:10px" onclick="mmSetRatingRange(null)">כולם</button>
-          <button id="mm-rr-100" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(100)">±100</button>
-          <button id="mm-rr-200" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(200)">±200</button>
-          <button id="mm-rr-500" class="sopt-btn" style="font-size:10px" onclick="mmSetRatingRange(500)">±500</button>
-        </div>
+
+      <div id="mm-status" style="display:none" class="mf-search-status">
+        <div class="mf-dots"><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div></div>
+        <div id="mm-status-text" class="mf-search-text">מחפש יריב...</div>
       </div>
-    </div>
-    <div id="mm-status" style="display:none" class="waiting-spinner">
-      <div class="spinner-dots"><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div></div>
-      <div class="wsub" id="mm-status-text">מחפש יריב...</div>
-    </div>
-    <div class="ovbtns" style="margin-top:10px">
-      <button class="ovb p" id="mm-search-btn">חפש יריב</button>
-      <button class="ovb s" onclick="mmCancel()">ביטול</button>
+
+      <button class="mf-cta green" id="mm-search-btn">🎲 חפש יריב</button>
+      <button class="mf-cancel" onclick="mmCancel()">ביטול</button>
     </div>
   </div>
 </div>

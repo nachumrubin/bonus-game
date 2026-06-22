@@ -17,7 +17,7 @@ export const BV_CLOSE = 'boostVeto/close';
 
 function describe(payload = {}) {
   const opponent = payload.opponentName ?? 'היריב';
-  if (payload.boostId === 'auto_extra_score') return `${opponent} ביטל את הבונוס שלך`;
+  if (payload.boostId === 'auto_extra_score') return `${opponent} ביטל את הבוסט שלך`;
   if (payload.boostId)                        return `${opponent} ביטל את ${payload.boostId}`;
   return `${opponent} ביטל את הבוסט שלך`;
 }

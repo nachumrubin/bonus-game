@@ -119,11 +119,11 @@ export function mountWheelMiniGame({
   }
 
   // ── DOM mount ──
+  // Premium chrome (overlay, card, buttons, wheel rim/hub/pointer) lives in
+  // the .bz-* classes in menu-electric.css; only the dynamic bits — the
+  // conic-gradient segments and the final rotation — stay inline here.
   const host = doc.createElement('div');
-  host.className = 'spine-wheel-overlay';
-  host.style.cssText =
-    'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;'
-    + 'background:rgba(6,19,61,.92);font-family:Heebo,sans-serif;padding:20px;';
+  host.className = 'spine-wheel-overlay bz-overlay';
 
   const targetIdx = WHEEL_OUTCOMES.findIndex(o => o.id === chosen.id);
   const segCount = WHEEL_OUTCOMES.length;
@@ -152,37 +152,31 @@ export function mountWheelMiniGame({
     return `<div style="position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;
        transform:rotate(${centerDeg}deg);pointer-events:none;">
       <div style="margin-top:18px;transform:rotate(180deg);display:flex;flex-direction:column;align-items:center;
-        gap:1px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.55);">
-        <div style="font-size:15px;line-height:1;">${icon}</div>
-        <div style="font-size:9.5px;font-weight:700;white-space:nowrap;letter-spacing:-.2px;">${text}</div>
+        gap:2px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7);">
+        <div style="font-size:20px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));">${icon}</div>
+        <div style="font-size:10px;font-weight:800;white-space:nowrap;letter-spacing:-.2px;">${text}</div>
       </div>
     </div>`;
   }).join('');
 
   host.innerHTML = `
-    <div style="background:#0d2068;border-radius:14px;padding:24px;max-width:320px;color:#fff;text-align:center;">
-      <div style="font-size:30px;margin-bottom:6px;line-height:1;">🎡</div>
-      <div style="font-size:18px;font-weight:900;color:#ffe870;margin-bottom:4px;">גלגל המזל!</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:12px;" id="spine-wheel-press-hint"></div>
-      <div style="position:relative;width:240px;height:240px;margin:0 auto 14px;">
-        <div data-wheel="dial" style="position:absolute;inset:0;border-radius:50%;overflow:hidden;
-             background:conic-gradient(${conicStops});
-             box-shadow:0 4px 18px rgba(0,0,0,.55), 0 0 0 4px #1a2a4a;
-             transition:transform ${spinDurationMs}ms cubic-bezier(0.18, 0.89, 0.32, 1.27);cursor:pointer;">
+    <div class="bz-card">
+      <div class="bz-burst" data-wheel="burst"></div>
+      <div class="bz-bolt">🎡</div>
+      <div class="bz-title">גלגל המזל!</div>
+      <div class="bz-sub" id="spine-wheel-press-hint"></div>
+      <div class="bz-wheel-wrap">
+        <div class="bz-wheel-rim"></div>
+        <div data-wheel="dial" class="bz-wheel" style="background:conic-gradient(${conicStops});
+             transition:transform ${spinDurationMs}ms cubic-bezier(0.18, 0.89, 0.32, 1.27);">
           ${labelHtml}
         </div>
-        <!-- Center hub -->
-        <div data-wheel="hub" style="position:absolute;top:50%;left:50%;width:34px;height:34px;
-             margin:-17px 0 0 -17px;border-radius:50%;background:#0d1b2a;
-             border:2px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;
-             color:rgba(255,255,255,.85);font-weight:900;font-size:14px;pointer-events:none;">▶</div>
-        <!-- Pointer -->
-        <div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);
-             border-left:11px solid transparent;border-right:11px solid transparent;
-             border-top:20px solid #ffe870;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));"></div>
+        <div class="bz-wheel-gloss"></div>
+        <div data-wheel="hub" class="bz-wheel-hub">▶</div>
+        <div class="bz-wheel-pointer"></div>
       </div>
-      <div data-wheel="result" style="font-size:14px;font-weight:900;color:#ffe870;min-height:18px;margin-bottom:14px;"></div>
-      <button data-wheel="spin" style="background:#e8c840;border:none;border-radius:8px;padding:10px 20px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;"></button>
+      <div data-wheel="result" class="bz-wheel-result"></div>
+      <button data-wheel="spin" class="bz-btn bz-btn-gold"></button>
     </div>`;
 
   doc.body?.appendChild(host);
@@ -191,6 +185,7 @@ export function mountWheelMiniGame({
   const dial     = host.querySelector('[data-wheel="dial"]');
   const hub      = host.querySelector('[data-wheel="hub"]');
   const out      = host.querySelector('[data-wheel="result"]');
+  const burst    = host.querySelector('[data-wheel="burst"]');
   const pressHint = host.querySelector('#spine-wheel-press-hint');
   if (spinBtn)   spinBtn.textContent   = g('spinBtn', getGender());
   if (pressHint) pressHint.textContent = g('pressWheel', getGender());
@@ -213,6 +208,8 @@ export function mountWheelMiniGame({
     setTimeout(() => {
       if (out) out.textContent = labelFor(chosen);
       if (hub) hub.textContent = '✓';
+      // Reward "explosion" — gold bloom over the card the moment it lands.
+      if (burst) burst.classList.add('is-on');
       try {
         bus?.emit?.('liveBonus/progress', { secsLeft: 0, label: labelFor(chosen) });
       } catch { /* swallow */ }
