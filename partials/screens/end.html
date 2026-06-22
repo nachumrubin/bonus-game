@@ -1,15 +1,43 @@
-﻿<!-- END -->
+<!-- END -->
 <div id="ov-end" class="ov hidden">
-  <div class="ovc"><div class="ovh"></div>
-    <div class="wc" id="wc">🏆</div><div class="wn" id="wn"></div><div class="ws" id="wws"></div>
-    <div class="fsc">
-      <div class="fsc-c"><div class="fsc-n" id="en1"></div><div class="fsc-v" style="color:var(--p1)" id="es1">0</div><div class="elo-delta" id="elo-delta-1"></div></div>
-      <div class="fsc-c"><div class="fsc-n" id="en2"></div><div class="fsc-v" style="color:var(--p2)" id="es2">0</div><div class="elo-delta" id="elo-delta-2"></div></div>
+  <div class="ovc end-ovc">
+    <div class="end-trophy-hero">
+      <div class="end-trophy-glow"></div>
+      <img class="end-trophy-img" src="images/icons/trophy.png" alt="">
+      <div class="end-sparkles">
+        <span class="end-sp end-sp--a"></span>
+        <span class="end-sp end-sp--b"></span>
+        <span class="end-sp end-sp--c"></span>
+        <span class="end-sp end-sp--d"></span>
+      </div>
     </div>
-    <div style="margin-top:10px"><div class="ovd" style="margin-bottom:6px">טבלת דירוגים — 10 השחקנים המובילים</div><div id="champions-wrap"></div></div>
+    <div class="end-victory-title" id="wn"></div>
+    <div class="end-victory-sub" id="wws"></div>
+    <div class="end-cards">
+      <div class="end-card" id="end-card-0">
+        <div class="end-card-av" id="end-av0"></div>
+        <div class="end-card-name" id="en1">שחקן 1</div>
+        <div class="end-card-score" id="es1">0</div>
+        <div class="elo-delta" id="elo-delta-1"></div>
+      </div>
+      <div class="end-card" id="end-card-1">
+        <div class="end-card-av" id="end-av1"></div>
+        <div class="end-card-name" id="en2">שחקן 2</div>
+        <div class="end-card-score" id="es2">0</div>
+        <div class="elo-delta" id="elo-delta-2"></div>
+      </div>
+    </div>
+    <div class="end-lb">
+      <div class="end-lb-hdr">
+        <div class="end-lb-hdr-line"></div>
+        <span class="end-lb-hdr-txt">טבלת דירוגים — 10 השחקנים המובילים</span>
+        <div class="end-lb-hdr-line"></div>
+      </div>
+      <div id="champions-wrap"></div>
+    </div>
     <div class="ovbtns">
-      <button class="ovb p" onclick="rematch()">🔄 שוב</button>
-      <button class="ovb s" onclick="goHome()">🏠 בית</button>
+      <button class="ovb s" onclick="goHome()"><img class="ui-icon" src="images/icons/home.png" alt=""> בית</button>
+      <button class="ovb p end-btn-rematch" onclick="rematch()"><img class="ui-icon" src="images/icons/rematch.png" alt=""> שוב</button>
     </div>
   </div>
 </div>

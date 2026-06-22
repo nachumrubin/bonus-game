@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>בוסט — שבץ נא</title>
+<title>בוסט</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <!-- PWA -->
 <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20260616213001">
+<meta name="version" content="20260622215634">
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -23,8 +23,8 @@
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
-<link rel="stylesheet" href="styles.css?v=20260616213001">
-<link rel="stylesheet" href="menu-electric.css?v=20260616213001">
+<link rel="stylesheet" href="styles.css?v=20260622215634">
+<link rel="stylesheet" href="menu-electric.css?v=20260622215634">
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
 </head>
@@ -57,6 +57,21 @@
     </div>
     <div class="app-loading-text" id="app-loading-text">מתחבר...</div>
   </div>
+  <!-- Tip card — hidden until loadingTipsService resolves -->
+  <div class="app-loading-tips" id="app-loading-tips" style="display:none" aria-live="polite">
+    <div class="app-loading-tip-row">
+      <button class="app-loading-tip-nav" id="app-loading-tip-prev" aria-label="טיפ קודם">❯</button>
+      <div class="app-loading-tip-card">
+        <div class="app-loading-tip-icon-wrap" aria-hidden="true">
+          <div class="app-loading-tip-icon">💡</div>
+        </div>
+        <div class="app-loading-tip-title" id="app-loading-tip-title"></div>
+        <div class="app-loading-tip-text" id="app-loading-tip-text"></div>
+      </div>
+      <button class="app-loading-tip-nav" id="app-loading-tip-next" aria-label="טיפ הבא">❮</button>
+    </div>
+    <div class="app-loading-tip-dots" id="app-loading-tip-dots"></div>
+  </div>
 </div>
 
 <!-- Global top bar — shown on all screens except the game board (#sg).
@@ -64,25 +79,25 @@
 <header id="global-topbar" class="em-topbar" style="display:none">
   <div class="em-topbar-icons">
     <button class="em-icon-btn" id="btn-notifications-home" onclick="openNotifications()">
-      <span class="em-icon-btn-inner">🔔</span>
+      <img class="em-icon-img" src="images/icons/bell.png" alt="התראות">
       <span class="em-icon-badge" id="online-badge" style="display:none"></span>
     </button>
     <button class="em-icon-btn" id="topbar-music-btn">
-      <span class="em-icon-btn-inner" id="topbar-music-ic">🎵</span>
+      <img class="em-icon-img" id="topbar-music-ic" src="images/icons/sound_on.png" alt="מוזיקה">
     </button>
     <button class="em-icon-btn" onclick="openSettings()">
-      <span class="em-icon-btn-inner">⚙️</span>
+      <img class="em-icon-img" src="images/icons/settings.png" alt="הגדרות">
     </button>
     <button id="topbar-help-btn" class="em-icon-btn" onclick="showTutorialIntro()">
-      <span class="em-help-q">?</span>
+      <img class="em-icon-img" src="images/icons/help.png" alt="עזרה">
     </button>
     <button id="topbar-home-btn" class="em-icon-btn" onclick="goHome()">
-      <span class="em-icon-btn-inner">🏠</span>
+      <img class="em-icon-img" src="images/icons/home.png" alt="בית">
     </button>
   </div>
   <button class="em-profile-btn" id="btn-profile-home" onclick="openProfileOrAuth()">
     <div class="em-avatar-wrap">
-      <span id="home-avatar-ic">👤</span>
+      <span id="home-avatar-ic"><img class="em-avatar-img" src="images/icons/anonymous player.png" alt=""></span>
     </div>
     <div class="em-profile-info">
       <span class="em-player-name" id="home-user-label">כניסה / הרשמה</span>
@@ -106,7 +121,7 @@
   <div class="rotate-block-icon">📱↻</div>
   <div class="rotate-block-text">סובב את המכשיר למצב לאורך</div>
 </div>
-<script type="module" src="src/ui/screenPartials.js?v=20260616213001"></script>
-<script type="module" src="src/main.js?v=20260616213001"></script>
+<script type="module" src="src/ui/screenPartials.js?v=20260622215634"></script>
+<script type="module" src="src/main.js?v=20260622215634"></script>
 </body>
 </html>

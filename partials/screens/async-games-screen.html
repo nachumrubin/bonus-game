@@ -1,18 +1,25 @@
 <!-- MY ASYNC GAMES SCREEN -->
 <div id="smygames" class="screen hidden">
   <div class="mg-shell">
+
     <header class="mg-header">
       <button class="mg-back" onclick="goHome()" aria-label="חזרה">←</button>
       <div class="mg-title">
+        <img class="mg-title-icon" src="images/icons/my_games.png" alt="">
         <span class="mg-title-text">המשחקים שלי</span>
       </div>
       <div class="mg-header-spacer" aria-hidden="true"></div>
     </header>
+
+    <div class="mg-title-divider" aria-hidden="true"></div>
+
     <div id="mg-empty" class="mg-empty" style="display:none;">
-      <div class="mg-empty-icon" aria-hidden="true">🎮</div>
+      <img class="mg-empty-icon" src="images/icons/my_games.png" alt="">
       <div class="mg-empty-title">אין משחקים פעילים</div>
-      <div class="mg-empty-sub">התחל משחק חדש ברשת.</div>
+      <div class="mg-empty-sub">פתח משחק אסינכרוני כדי לראות אותו כאן.</div>
     </div>
+
     <div id="mg-list" class="mg-cards"></div>
+
   </div>
 </div>

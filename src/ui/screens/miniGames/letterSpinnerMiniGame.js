@@ -25,6 +25,7 @@
 
 import { startBonusTimer } from './bonusTimer.js';
 import { wordPoints } from './honeycombMiniGame.js';
+import { showBonusResult } from './bonusFx.js';
 import { g, getGender } from '../../genderText.js';
 
 // No final-letter forms — a word never opens with a sofit letter.
@@ -214,14 +215,15 @@ export function mountLetterSpinnerMiniGame({
 
     const clr = doc.createElement('button');
     clr.textContent = '⌫';
-    clr.style.cssText = 'padding:8px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#fff;font-size:14px;cursor:pointer;flex-shrink:0;';
+    clr.style.cssText = 'flex-shrink:0;height:46px;padding:0 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:11px;color:#fff;font-size:16px;cursor:pointer;';
     clr.addEventListener('click', () => { inputEl.value = ''; inputEl.focus?.(); });
 
     // Full-width "✓" submit BELOW the input line — a big, easy tap target to
     // finalize a word (the input + ⌫ sit on the row above).
     const ok = doc.createElement('button');
     ok.textContent = '✓';
-    ok.style.cssText = 'width:100%;padding:10px;background:var(--by);border:none;border-radius:6px;font-weight:900;font-size:18px;cursor:pointer;color:#111;';
+    ok.className = 'bz-btn bz-btn-gold';
+    ok.style.cssText = 'width:100%;font-size:18px;';
     ok.addEventListener('click', attemptSubmit);
 
     row.appendChild(inputEl);
@@ -266,7 +268,7 @@ export function mountLetterSpinnerMiniGame({
   function addChip(entry) {
     if (!chipsEl || !entry) return;
     const chip = doc.createElement('span');
-    chip.style.cssText = 'font-size:11px;background:rgba(0,160,70,.3);border:1px solid rgba(0,180,70,.45);border-radius:3px;padding:2px 6px;color:#7eff9e;';
+    chip.className = 'bz-chip';
     chip.textContent = entry.word + ' +' + entry.points;
     chipsEl.appendChild(chip);
     chipsEl.scrollTop = chipsEl.scrollHeight;
@@ -363,35 +365,42 @@ export function mountLetterSpinnerMiniGame({
         try { stopBar?.(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSpinStop);
         bok.style.display = prevDisplay ?? '';
-        bchal.innerHTML = renderResult(result);
+        renderSpinnerResult(bchal, result, ovBonus?.querySelector?.('.ovc'));
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
     };
   }
 
-  function renderResult(result) {
-    const emoji = result.earnedPts >= 30 ? '🎉' : result.earnedPts >= 10 ? '😊' : '⏰';
-    const color = result.earnedPts > 0 ? '#8eff8e' : 'rgba(255,255,255,.6)';
-    return `<div style="text-align:center;padding:10px 0">
-      <div style="font-size:30px;margin-bottom:6px">${emoji}</div>
-      <div style="font-size:15px;font-weight:900;color:${color};margin-bottom:4px">
-        ${result.foundCount} מילים — ${result.earnedPts} נקודות</div>
-    </div>`;
+  // Premium success/failure screen (confetti + count-up on a win).
+  function renderSpinnerResult(containerEl, result, cardEl) {
+    const win = result.earnedPts > 0;
+    showBonusResult(containerEl, {
+      success: win,
+      emoji: result.earnedPts >= 30 ? '🎉' : result.earnedPts >= 10 ? '😊' : '😌',
+      headline: result.foundCount ? `${result.foundCount} מילים` : 'אין מילים הפעם',
+      points: win ? result.earnedPts : null,
+      sub: win ? '' : 'המשך לשחק ולחפש הזדמנויות נוספות.',
+      cardEl,
+    });
   }
 
   // ─── self-hosted overlay (tests / isolated harness) ─────
 
   function attachSelf() {
     const host = doc.createElement('div');
-    host.className = 'spine-mini-overlay';
-    host.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(6,19,61,.92);padding:20px;font-family:Heebo,sans-serif;';
+    host.className = 'spine-mini-overlay bz-overlay';
     const card = doc.createElement('div');
-    card.style.cssText = 'background:#0d2068;border-radius:14px;padding:18px;max-width:340px;color:#fff;text-align:center;';
+    card.className = 'bz-card';
+
+    const bolt = doc.createElement('div');
+    bolt.className = 'bz-bolt';
+    bolt.textContent = '🎰';
+    card.appendChild(bolt);
 
     const title = doc.createElement('div');
-    title.style.cssText = 'font-size:16px;font-weight:900;margin-bottom:8px;';
-    title.textContent = '⚡ אות פותחת';
+    title.className = 'bz-title';
+    title.textContent = 'אות פותחת!';
     card.appendChild(title);
 
     const body = doc.createElement('div');
@@ -407,7 +416,8 @@ export function mountLetterSpinnerMiniGame({
     if (phase === 'spin') {
       const stopBtn = doc.createElement('button');
       stopBtn.textContent = 'עצור ⏹';
-      stopBtn.style.cssText = 'margin-top:6px;background:#e8c840;border:none;border-radius:8px;padding:8px 18px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
+      stopBtn.className = 'bz-btn bz-btn-gold';
+      stopBtn.style.cssText = 'margin-top:8px;';
       stopBtn.addEventListener('click', () => { stopSpin(); stopBtn.remove(); });
       card.appendChild(stopBtn);
     }

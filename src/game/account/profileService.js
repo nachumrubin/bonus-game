@@ -25,6 +25,20 @@ export const PROFILE_EVT = Object.freeze({
 export const DEFAULT_AVATAR = 'crown';
 export const RATING_START   = 800;
 
+// ── Avatar-store economy (coins) ──────────────────────────────────────────
+// All tunable. "Grindy / prestige" tuning — a legendary avatar is a long-haul
+// goal. Coins are earned three ways: a one-time starter grant on sign-up, a
+// daily login + consecutive-day streak bonus, and achievement completions.
+// Spent in the avatar store (src/ui/screens/avatarStore.js). These live at the
+// profile root (siblings of `rating`/`stats`), never inside `stats`.
+export const STARTER_GRANT          = 150;
+export const DAILY_BASE             = 20;
+export const DAILY_STREAK_INCREMENT = 10;
+export const DAILY_STREAK_CAP       = 10; // streak-day after which the daily bonus stops growing
+export const ACHIEVEMENT_COIN_REWARD = Object.freeze({
+  bronze: 50, silver: 100, gold: 250, legend: 750,
+});
+
 export const EMPTY_STATS = Object.freeze({
   gamesPlayed: 0, gamesWon: 0, gamesLost: 0, gamesDraw: 0,
   highScore: 0, totalScore: 0, currentStreak: 0, longestStreak: 0,
@@ -34,7 +48,7 @@ export const EMPTY_STATS = Object.freeze({
   comebackWins: 0, lastMoveWins: 0, closeWins: 0,
   boostImpactWins: 0,
   fastestWinMs: 0, longestWord: '', longestWordLength: 0,
-  friendsCount: 0, uniqueWordsCount: 0, beatNumberOne: 0,
+  friendsCount: 0, uniqueWordsCount: 0, beatNumberOne: 0, invitesSent: 0,
   recentGames: [], boostUsage: {}, rivalStats: {}, wordCounts: {}, weekdayStats: {},
   moveSpeedStats: {},
 });
@@ -52,7 +66,25 @@ export function buildInitialProfile({ displayName, userId, avatar = DEFAULT_AVAT
     equippedAvatar: avatar,
     rating: RATING_START,
     stats: { ...EMPTY_STATS },
+    // Avatar-store economy. A new player starts with the one-time grant so the
+    // store feels reachable from day one. `ownedAvatars` holds purchased store
+    // ids only (common store avatars are free / implicitly owned).
+    coins: STARTER_GRANT,
+    ownedAvatars: [],
+    lastLoginDate: null, // 'YYYY-MM-DD' of the last claimed daily reward
+    loginStreak: 0,
     createdAt: Date.now(),
+  };
+}
+
+// Pure: safe-read the economy fields from a (possibly legacy) profile that may
+// predate this feature. Use this everywhere economy state is consumed.
+export function normalizeProfileEconomy(profile) {
+  return {
+    coins: Math.max(0, Math.floor(Number(profile?.coins) || 0)),
+    ownedAvatars: Array.isArray(profile?.ownedAvatars) ? profile.ownedAvatars.slice() : [],
+    lastLoginDate: typeof profile?.lastLoginDate === 'string' ? profile.lastLoginDate : null,
+    loginStreak: Math.max(0, Math.floor(Number(profile?.loginStreak) || 0)),
   };
 }
 
@@ -159,6 +191,112 @@ export async function bumpStats(db, uid, delta) {
     bus.emit(PROFILE_EVT.STATS_CHANGED, { uid, stats: result.snapshot?.val?.() ?? null });
   }
   return result?.snapshot?.val?.() ?? null;
+}
+
+// ── Avatar-store economy I/O ──────────────────────────────────────────────
+
+// Add (or subtract, for spends) coins atomically. Floors at zero. Emits
+// PROFILE_EVT.CHANGED. Returns the new balance, or null on no-op.
+export async function bumpCoins(db, uid, amount) {
+  if (!uid || !amount) return null;
+  const ref = db.ref(`${PATH.users}/${uid}/profile/coins`);
+  const result = await ref.transaction((current) => Math.max(0, (current ?? 0) + amount));
+  if (result?.committed) {
+    bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: result.snapshot?.val?.() ?? null } });
+  }
+  return result?.snapshot?.val?.() ?? null;
+}
+
+// Atomically purchase a store avatar: verify it isn't already owned and the
+// player can afford it, then deduct coins and append to ownedAvatars in a
+// single transaction on the whole profile node (so coins-check and append
+// can't race). `price` should come from the catalog (priceFor(id)), never a
+// client-supplied value. Returns { ok, reason?, coins, ownedAvatars }.
+export async function purchaseAvatar(db, uid, avatarId, price) {
+  if (!uid)      return { ok: false, reason: 'no-uid' };
+  if (!avatarId) return { ok: false, reason: 'no-avatar' };
+  const cost = Math.max(0, Math.floor(Number(price) || 0));
+  let reason = null;
+  const result = await profileRef(db, uid).transaction((p) => {
+    if (!p) { reason = 'no-profile'; return; }
+    const owned = Array.isArray(p.ownedAvatars) ? p.ownedAvatars : [];
+    if (owned.includes(avatarId)) { reason = 'already-owned'; return; }
+    const coins = Number(p.coins) || 0;
+    if (coins < cost) { reason = 'insufficient'; return; }
+    return { ...p, coins: coins - cost, ownedAvatars: [...owned, avatarId] };
+  });
+  if (result?.committed) {
+    const v = result.snapshot?.val?.() ?? null;
+    bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: v?.coins, ownedAvatars: v?.ownedAvatars } });
+    return { ok: true, coins: v?.coins ?? 0, ownedAvatars: v?.ownedAvatars ?? [] };
+  }
+  const snap = result?.snapshot?.val?.() ?? null;
+  return {
+    ok: false,
+    reason: reason ?? 'aborted',
+    coins: Number(snap?.coins) || 0,
+    ownedAvatars: Array.isArray(snap?.ownedAvatars) ? snap.ownedAvatars : [],
+  };
+}
+
+// Pure: format a Date as a local 'YYYY-MM-DD' string (the daily-reward key).
+export function ymd(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// Pure: is `prev` ('YYYY-MM-DD') exactly one calendar day before `today`?
+export function isYesterday(prev, today) {
+  if (!prev || !today) return false;
+  const p = new Date(`${prev}T00:00:00`);
+  const t = new Date(`${today}T00:00:00`);
+  if (Number.isNaN(p.getTime()) || Number.isNaN(t.getTime())) return false;
+  return Math.round((t - p) / 86400000) === 1;
+}
+
+// Pure: given the last claim date + current streak, what daily reward (if any)
+// is owed today? Consecutive day → streak+1; any gap or first-ever → 1; same
+// day → no-op. The streak keeps growing for display, but the coin bonus is
+// capped at DAILY_STREAK_CAP days.
+export function computeDailyReward(lastLoginDate, loginStreak, today) {
+  const streak = Math.max(0, Math.floor(Number(loginStreak) || 0));
+  if (lastLoginDate === today) {
+    return { coinsAwarded: 0, newStreak: streak, alreadyClaimedToday: true };
+  }
+  const newStreak = isYesterday(lastLoginDate, today) ? streak + 1 : 1;
+  const cappedDay = Math.min(newStreak, DAILY_STREAK_CAP);
+  const coinsAwarded = DAILY_BASE + DAILY_STREAK_INCREMENT * (cappedDay - 1);
+  return { coinsAwarded, newStreak, alreadyClaimedToday: false };
+}
+
+// Claim today's daily login reward. Idempotent within a day via the
+// same-day guard INSIDE the transaction (two boots can't double-grant).
+// Returns { coinsAwarded, newStreak, alreadyClaimedToday }.
+export async function claimDailyReward(db, uid, today = ymd()) {
+  if (!uid) return { coinsAwarded: 0, newStreak: 0, alreadyClaimedToday: false };
+  let outcome = { coinsAwarded: 0, newStreak: 0, alreadyClaimedToday: false };
+  const result = await profileRef(db, uid).transaction((p) => {
+    if (!p) return; // no profile yet — nothing to claim
+    const res = computeDailyReward(p.lastLoginDate ?? null, p.loginStreak ?? 0, today);
+    outcome = res;
+    if (res.alreadyClaimedToday) return; // abort — no write
+    return {
+      ...p,
+      coins: (Number(p.coins) || 0) + res.coinsAwarded,
+      lastLoginDate: today,
+      loginStreak: res.newStreak,
+    };
+  });
+  if (result?.committed) {
+    const v = result.snapshot?.val?.() ?? null;
+    bus.emit(PROFILE_EVT.CHANGED, {
+      uid,
+      patch: { coins: v?.coins, lastLoginDate: v?.lastLoginDate, loginStreak: v?.loginStreak },
+    });
+  }
+  return outcome;
 }
 
 // Pure: derive the result label ('win'/'loss'/'draw') from a finished

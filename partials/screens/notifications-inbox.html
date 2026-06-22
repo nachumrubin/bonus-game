@@ -1,22 +1,31 @@
 <!-- NOTIFICATIONS INBOX -->
 <div id="snotif" class="screen hidden">
-  <div class="sbox" style="max-width:340px;gap:12px;overflow-y:auto;max-height:calc(100svh - var(--em-topbar-h) - 16px);">
-    <div class="stitle">🔔 הזמנות</div>
+  <div class="nf-shell">
 
-    <div id="notif-empty" style="text-align:center;padding:24px 0;color:rgba(255,255,255,.4);font-size:13px;">
-      אין הזמנות ממתינות
+    <!-- Screen header -->
+    <header class="nf-header">
+      <img class="nf-header-icon" src="images/icons/bell.png" alt="">
+      <h1 class="nf-title">הזמנות</h1>
+      <div class="nf-divider" aria-hidden="true"></div>
+    </header>
+
+    <!-- Empty state -->
+    <div id="notif-empty" class="nf-empty-card">
+      <div class="nf-empty-title">אין הזמנות חדשות</div>
+      <div class="nf-empty-check">אתם מעודכנים ✔</div>
     </div>
 
     <!-- Game invites -->
-    <div id="notif-invites-wrap" style="display:none;">
-      <div style="font-size:11px;color:rgba(255,200,100,.85);font-weight:700;margin-bottom:6px;">🎮 הזמנות למשחק</div>
-      <div id="notif-invites-list"></div>
+    <div id="notif-invites-wrap" class="nf-section" style="display:none;">
+      <div class="nf-section-hdr">🎮 הזמנות למשחק</div>
+      <div id="notif-invites-list" class="nf-list"></div>
     </div>
 
     <!-- Friend requests -->
-    <div id="notif-friends-wrap" style="display:none;">
-      <div style="font-size:11px;color:rgba(255,200,100,.85);font-weight:700;margin-bottom:6px;">👥 בקשות חברות</div>
-      <div id="notif-friends-list"></div>
+    <div id="notif-friends-wrap" class="nf-section" style="display:none;">
+      <div class="nf-section-hdr">👥 בקשות חברות</div>
+      <div id="notif-friends-list" class="nf-list"></div>
     </div>
+
   </div>
 </div>

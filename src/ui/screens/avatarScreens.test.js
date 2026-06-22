@@ -5,9 +5,14 @@ import * as bus from '../../events/bus.js';
 import {
   SPINE_AVATARS, ACHIEVEMENTS,
   findAvatar, findAchievementByRewardId, isAvatarUnlocked, diffNewlyUnlocked, progressPct,
+  achievementMetric, isAchievementComplete, achievementProgressPct, diffNewlyCompletedAchievements,
+  avatarIconSrc, avatarText,
   mountAvatarPickerScreen, mountAvatarUnlockedScreen,
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
 } from './avatarScreens.js';
+
+// Coin reward map (mirrors profileService.ACHIEVEMENT_COIN_REWARD) passed via AV_RENDER.
+const TIER_REWARD = { bronze: 50, silver: 100, gold: 250, legend: 750 };
 
 test('SPINE_AVATARS contains the expected ids', () => {
   const ids = SPINE_AVATARS.map(a => a.id);
@@ -105,7 +110,7 @@ function makeBtn() {
 function makePickerRoot() {
   const grid = makeGrid();
   const count = { textContent: '' };
-  const hint  = { textContent: '', style: { opacity: '0' } };
+  const hint  = { textContent: '', innerHTML: '', style: { opacity: '0' } };
   const back  = makeBtn();
   return {
     grid, count, hint, back,
@@ -121,49 +126,52 @@ function makePickerRoot() {
   };
 }
 
-test('AvatarPicker: AV_RENDER paints all avatars + count', () => {
+test('AvatarPicker: AV_RENDER paints a trophy tile per achievement + count + coin prize', () => {
   bus._reset();
   const { root, grid, count } = makePickerRoot();
   mountAvatarPickerScreen({ root, bus });
-  bus.emit(AV_RENDER, { stats: { gamesPlayed: 100, gamesWon: 50, highScore: 250, longestStreak: 5 }, equippedAvatar: 'crown' });
-  for (const a of SPINE_AVATARS) {
-    assert.match(grid.innerHTML, new RegExp(`data-av-id="${a.id}"`));
+  bus.emit(AV_RENDER, { stats: { gamesPlayed: 100, gamesWon: 50, highScore: 250, longestStreak: 5 }, ownedAvatars: [], coinRewardByTier: TIER_REWARD });
+  // One tile per achievement (data-ach-id = achievement id, not an avatar id).
+  for (const ach of ACHIEVEMENTS) {
+    assert.match(grid.innerHTML, new RegExp(`data-ach-id="${ach.id}"`));
   }
-  assert.match(count.textContent, new RegExp(`/${SPINE_AVATARS.length}`));
+  // No avatar-equip wiring leaks into the markup.
+  assert.doesNotMatch(grid.innerHTML, /data-av-id=/);
+  // Coin-prize chip is shown (e.g. a gold-tier 250) with the coin image.
+  assert.match(grid.innerHTML, /ach-reward/);
+  assert.match(grid.innerHTML, /gold coin\.png/);
+  assert.match(grid.innerHTML, /250/);
+  assert.match(count.textContent, new RegExp(`מתוך ${ACHIEVEMENTS.length} הושגו`));
 });
 
-test('AvatarPicker: clicking unlocked emits SELECT + EQUIP', () => {
+test('AvatarPicker: clicking a trophy never equips an avatar (no EQUIP/SELECT)', () => {
   bus._reset();
   const { root, grid } = makePickerRoot();
-  const events = [];
-  bus.on(AV_INTENT.SELECT, (p) => events.push(['select', p.id, p.locked]));
-  bus.on(AV_INTENT.EQUIP,  (p) => events.push(['equip',  p.id]));
+  bus.on(AV_INTENT.EQUIP,  () => assert.fail('trophies must not equip'));
+  bus.on(AV_INTENT.SELECT, () => assert.fail('trophies must not emit SELECT'));
   mountAvatarPickerScreen({ root, bus });
-  bus.emit(AV_RENDER, { stats: { gamesPlayed: 999, gamesWon: 999, highScore: 999, longestStreak: 999 }, equippedAvatar: 'crown' });
-  // Simulate clicking the dragon button
+  bus.emit(AV_RENDER, { stats: { gamesPlayed: 999, gamesWon: 999 }, ownedAvatars: [], coinRewardByTier: TIER_REWARD });
   grid.fireClick({
     tagName: 'BUTTON',
-    getAttribute: (k) => k === 'data-av-id' ? 'dragon' : null,
+    getAttribute: (k) => k === 'data-ach-id' ? 'veteran' : null,
     closest() { return this; },
   });
-  assert.deepEqual(events, [['select','dragon',false], ['equip','dragon']]);
+  // (no assertion failure means no equip/select fired)
 });
 
-test('AvatarPicker: clicking locked shows hint and emits SELECT(locked=true)', () => {
+test('AvatarPicker: clicking a locked trophy shows a hint with description + coin prize', () => {
   bus._reset();
   const { root, grid, hint } = makePickerRoot();
-  let lockedEvents = 0;
-  bus.on(AV_INTENT.SELECT, (p) => { if (p.locked) lockedEvents++; });
-  bus.on(AV_INTENT.EQUIP, () => assert.fail('should not equip locked'));
   mountAvatarPickerScreen({ root, bus });
-  bus.emit(AV_RENDER, { stats: { gamesPlayed: 0 }, equippedAvatar: 'crown' });
+  bus.emit(AV_RENDER, { stats: { gamesPlayed: 0 }, ownedAvatars: [], coinRewardByTier: TIER_REWARD });
   grid.fireClick({
     tagName: 'BUTTON',
-    getAttribute: (k) => ({ 'data-av-id': 'dragon', 'data-locked': '1' }[k] ?? null),
+    getAttribute: (k) => ({ 'data-ach-id': 'veteran', 'data-locked': '1' }[k] ?? null),
     closest() { return this; },
   });
-  assert.equal(lockedEvents, 1);
   assert.equal(hint.style.opacity, '1');
+  assert.match(hint.innerHTML, /נעול/);
+  assert.match(hint.innerHTML, /gold coin\.png/); // coin image, not emoji
 });
 
 test('AvatarPicker: back button emits CLOSE', () => {
@@ -176,25 +184,25 @@ test('AvatarPicker: back button emits CLOSE', () => {
   assert.equal(n, 1);
 });
 
-test('AvatarUnlocked: AV_UNLOCK_OPEN unhides + records the avatar id', () => {
+test('AvatarUnlocked: AV_UNLOCK_OPEN unhides + records the achievement id', () => {
   bus._reset();
   const overlay = makeOverlay();
   const root = { querySelector: (sel) => sel === '#ov-avatar-unlocked' ? overlay : null };
   mountAvatarUnlockedScreen({ root, bus });
-  bus.emit(AV_UNLOCK_OPEN, { avatar: { id: 'dragon', emoji: '🐉' } });
+  bus.emit(AV_UNLOCK_OPEN, { achievement: { id: 'veteran', titleHe: 'ותיק', tier: 'gold' }, coins: 250 });
   assert.equal(overlay.classList.contains('hidden'), false);
-  assert.equal(overlay.dataset.avatarId, 'dragon');
+  assert.equal(overlay.dataset.achId, 'veteran');
 });
 
 test('AvatarUnlocked: UNLOCK_ACK + AV_UNLOCK_CLOSE rehide', () => {
   bus._reset();
   const overlay = makeOverlay();
-  const root = { querySelector: () => overlay };
+  const root = { querySelector: (sel) => sel === '#ov-avatar-unlocked' ? overlay : null };
   mountAvatarUnlockedScreen({ root, bus });
-  bus.emit(AV_UNLOCK_OPEN, { avatar: { id: 'fire' } });
+  bus.emit(AV_UNLOCK_OPEN, { achievement: { id: 'first_buy' }, coins: 50 });
   bus.emit(AV_INTENT.UNLOCK_ACK, {});
   assert.equal(overlay.classList.contains('hidden'), true);
-  bus.emit(AV_UNLOCK_OPEN, { avatar: { id: 'fire' } });
+  bus.emit(AV_UNLOCK_OPEN, { achievement: { id: 'first_buy' }, coins: 50 });
   bus.emit(AV_UNLOCK_CLOSE, {});
   assert.equal(overlay.classList.contains('hidden'), true);
 });
@@ -202,4 +210,76 @@ test('AvatarUnlocked: UNLOCK_ACK + AV_UNLOCK_CLOSE rehide', () => {
 test('throws if bus missing', () => {
   assert.throws(() => mountAvatarPickerScreen({}), /bus required/);
   assert.throws(() => mountAvatarUnlockedScreen({}), /bus required/);
+});
+
+test('avatarIconSrc: resolves store-avatar ids to their PNG, achievement/emoji unchanged', () => {
+  assert.equal(avatarIconSrc('rare_3'), 'images/icons/avatars/rare_3.png');
+  assert.equal(avatarIconSrc('legendary_2'), 'images/icons/avatars/legendary_2.png');
+  assert.equal(avatarIconSrc('common_1'), 'images/icons/avatars/common_1.png');
+  // Achievement avatar still maps to the trophy art (not the store dir).
+  assert.ok(avatarIconSrc('dragon')?.includes('acheivements'));
+  // Free avatar with no achievement → null (emoji fallback handled by caller).
+  assert.equal(avatarIconSrc('crown'), null);
+});
+
+test('avatarText: store ids degrade to the generic fallback, not the raw id', () => {
+  assert.equal(avatarText('rare_3'), '👤');
+  assert.equal(avatarText('legendary_1', '🎮'), '🎮');
+  // Achievement id still returns its emoji.
+  assert.equal(avatarText('dragon'), '🐉');
+});
+
+// ── Purchase achievements + achievement evaluation ───────────
+
+test('ACHIEVEMENTS includes the purchase trophies (first_buy, collector, legend_owner)', () => {
+  const byId = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
+  for (const id of ['first_buy', 'collector', 'legend_owner']) {
+    assert.ok(byId.has(id), `missing achievement: ${id}`);
+    assert.ok(byId.get(id).emoji, `purchase achievement ${id} needs an emoji fallback`);
+    assert.equal(byId.get(id).rewardAvatarId, undefined, `${id} must not reward an avatar`);
+  }
+});
+
+test('achievementMetric: stat condition reads profile.stats', () => {
+  const veteran = ACHIEVEMENTS.find(a => a.id === 'veteran'); // gamesPlayed >= 40
+  assert.deepEqual(achievementMetric(veteran, { stats: { gamesPlayed: 25 } }), { current: 25, target: 40 });
+  assert.equal(isAchievementComplete(veteran, { stats: { gamesPlayed: 40 } }), true);
+  assert.equal(achievementProgressPct(veteran, { stats: { gamesPlayed: 20 } }), 0.5);
+});
+
+test('achievementMetric: ownedCount (first_buy) counts purchased avatars', () => {
+  const firstBuy = ACHIEVEMENTS.find(a => a.id === 'first_buy');
+  assert.equal(isAchievementComplete(firstBuy, { ownedAvatars: [] }), false);
+  assert.equal(isAchievementComplete(firstBuy, { ownedAvatars: ['rare_1'] }), true);
+});
+
+test('achievementMetric: ownedInCategory (legend_owner) needs a legendary', () => {
+  const legend = ACHIEVEMENTS.find(a => a.id === 'legend_owner');
+  assert.equal(isAchievementComplete(legend, { ownedAvatars: ['rare_1', 'epic_2'] }), false);
+  assert.equal(isAchievementComplete(legend, { ownedAvatars: ['legendary_3'] }), true);
+});
+
+test('achievementMetric: ownedCategories (collector) needs one of each tier', () => {
+  const collector = ACHIEVEMENTS.find(a => a.id === 'collector');
+  assert.deepEqual(achievementMetric(collector, { ownedAvatars: ['rare_1', 'epic_2'] }), { current: 2, target: 3 });
+  assert.equal(isAchievementComplete(collector, { ownedAvatars: ['rare_1', 'epic_2'] }), false);
+  assert.equal(isAchievementComplete(collector, { ownedAvatars: ['rare_1', 'epic_2', 'legendary_1'] }), true);
+  // common avatars don't count toward the purchasable-tier requirement
+  assert.equal(isAchievementComplete(collector, { ownedAvatars: ['common_1', 'common_2'] }), false);
+});
+
+test('diffNewlyCompletedAchievements: fires on a purchase that crosses a threshold', () => {
+  const prev = { stats: {}, ownedAvatars: ['rare_1', 'epic_2'] };
+  const next = { stats: {}, ownedAvatars: ['rare_1', 'epic_2', 'legendary_1'] };
+  const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
+  assert.ok(ids.includes('collector'));     // now owns all three tiers
+  assert.ok(ids.includes('legend_owner'));  // now owns a legendary
+  assert.ok(!ids.includes('first_buy'));    // already owned avatars before
+});
+
+test('diffNewlyCompletedAchievements: stat-based achievements still fire', () => {
+  const prev = { stats: { gamesPlayed: 4 }, ownedAvatars: [] };
+  const next = { stats: { gamesPlayed: 5 }, ownedAvatars: [] };
+  const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
+  assert.ok(ids.includes('first_steps')); // gamesPlayed >= 5
 });

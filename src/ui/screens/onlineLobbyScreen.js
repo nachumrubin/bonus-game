@@ -1,10 +1,8 @@
 // onlineLobbyScreen — Phase 1 migration of #so (online lobby).
 //
 // Replaces inline onclicks with bus-driven listeners.
-// Also drives the canvas globe animation in the title.
 
 import { $, on } from '../domHelpers.js';
-import { startGlobe } from '../globeRenderer.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const LOBBY_INTENT = Object.freeze({
@@ -45,10 +43,7 @@ export function mountOnlineLobbyScreen({ root = globalThis.document, bus } = {})
     }));
   }
 
-  const stopGlobe = startGlobe(root?.getElementById?.('ol-globe'));
-
   function unmount() {
-    stopGlobe();
     for (const off of cleanups) try { off(); } catch { /* swallow */ }
     cleanups.length = 0;
   }

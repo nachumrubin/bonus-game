@@ -13,7 +13,8 @@
 // main.js subscribes to these to drive profileService / friendsService / auth flows.
 
 import { $, on, setText } from '../domHelpers.js';
-import { SPINE_AVATARS } from './avatarScreens.js';
+import { SPINE_AVATARS, avatarIconSrc } from './avatarScreens.js';
+import { isStoreAvatarId } from './avatarStore.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const PROFILE_INTENT = Object.freeze({
@@ -21,6 +22,7 @@ export const PROFILE_INTENT = Object.freeze({
   CANCEL_EDIT_NAME: 'profile/cancelEditName',
   SAVE_NAME:        'profile/saveName',
   OPEN_AVATARS:     'profile/openAvatars',
+  OPEN_STORE:       'profile/openStore',
   OPEN_FRIENDS:     'profile/openFriends',
   OPEN_STATS:       'profile/openStats',
   UPGRADE_ACCOUNT:  'profile/upgradeAccount',
@@ -45,6 +47,11 @@ export function avatarEmoji(value) {
   if (typeof value !== 'string') return AVATAR_EMOJI.crown;
   if (AVATAR_EMOJI[value]) return AVATAR_EMOJI[value];
   if (KNOWN_AVATAR_EMOJIS.has(value)) return value;
+  // Store avatars are image-only and have no emoji. Pass the id through
+  // unchanged so it survives into room/queue player objects (player.avatar);
+  // consumers resolve it to its PNG via avatarIconSrc. Without this the id
+  // would collapse to 👑 at the room boundary and never show on opponents.
+  if (isStoreAvatarId(value)) return value;
   return AVATAR_EMOJI.crown;
 }
 
@@ -117,7 +124,8 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
 
   bindClick('button[onclick="saveDisplayName()"]', PROFILE_INTENT.SAVE_NAME);
   bindClick('button[onclick="cancelNameEdit()"]',  PROFILE_INTENT.CANCEL_EDIT_NAME);
-  bindClick('[onclick="showAvatarGallery()"]', PROFILE_INTENT.OPEN_AVATARS);
+  // The avatar ring (div) and the labeled store button both open the store.
+  bindClick('[onclick="showAvatarStore()"]', PROFILE_INTENT.OPEN_STORE);
   bindClick('button[onclick="showFriendsScreen()"]', PROFILE_INTENT.OPEN_FRIENDS);
   bindClick('button[onclick="showStatsScreen()"]',   PROFILE_INTENT.OPEN_STATS);
   bindClick('button[onclick="logoutUser()"]',        PROFILE_INTENT.LOGOUT);
@@ -129,7 +137,11 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
 
   function render({ profile, isAnonymous, email } = {}) {
     if (!profile) return;
-    if (avatarEl)  setText(avatarEl, avatarEmoji(profile.equippedAvatar));
+    if (avatarEl) {
+      const iconSrc = avatarIconSrc(profile.equippedAvatar);
+      if (iconSrc) avatarEl.innerHTML = `<img class="pf-avatar-img" src="${iconSrc}" alt="">`;
+      else setText(avatarEl, avatarEmoji(profile.equippedAvatar));
+    }
     if (nameEl)    setText(nameEl,   profile.displayName ?? '');
     if (emailEl) setText(emailEl, email ?? '');
     if (upgradeBtn) upgradeBtn.style.display = isAnonymous ? '' : 'none';
@@ -157,7 +169,7 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
 
 // Keep this in sync with profile-screen.html.
 registerOnboardingContent('sprofile', {
-  icon: '👤',
+  icon: '<img class="screen-hd-icon" src="images/icons/anonymous player.png" alt="">',
   title: 'הפרופיל שלי',
   bullets: [
     '✏️ לחץ על השם לעריכה',

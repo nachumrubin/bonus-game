@@ -83,6 +83,35 @@ export async function listTopRatings(db, { limit = RATINGS_LIMIT } = {}) {
   return rankRatings(snap?.val ? snap.val() : null, { limit });
 }
 
+// Like listTopRatings but also returns the connected user's rank and entry
+// when they fall outside the top-N list.
+// Returns: { entries, myPosition (1-based | null), myEntry (only when outside top-N | null) }
+export async function resolveLeaderboard(db, { limit = RATINGS_LIMIT, myUid = null } = {}) {
+  if (!db) throw new Error('resolveLeaderboard: db required');
+  const snap = await db.ref(RATINGS_PATH).get();
+  const raw = snap?.val ? snap.val() : null;
+
+  const all = (raw && typeof raw === 'object' ? Object.entries(raw) : [])
+    .map(([uid, entry]) => normalizeRatingEntry(entry, uid))
+    .filter(Boolean)
+    .sort((a, b) => (b.rating - a.rating) || (b.updatedAt - a.updatedAt) || String(a.name).localeCompare(String(b.name)));
+
+  const entries = all.slice(0, limit);
+
+  let myPosition = null;
+  let myEntry = null;
+  if (myUid) {
+    const myIdx = all.findIndex(e => e.uid === myUid);
+    if (myIdx >= 0) {
+      myPosition = myIdx + 1;
+      // Only return myEntry when the user is outside the displayed top-N rows
+      if (myIdx >= limit) myEntry = all[myIdx];
+    }
+  }
+
+  return { entries, myPosition, myEntry };
+}
+
 // Returns the #1 player's UID and total registered player count.
 // Used to gate the beatNumberOne achievement.
 export async function getLeaderboardMeta(db) {

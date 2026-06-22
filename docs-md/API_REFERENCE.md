@@ -440,6 +440,45 @@ showBrowserNotification(opts: {
 
 ## Account Services (`src/game/account/`)
 
+### profileService.js — avatar-store economy (June 2026)
+```typescript
+// Profile gains four ROOT fields (siblings of `rating`/`stats`), seeded by
+// buildInitialProfile: coins, ownedAvatars, lastLoginDate, loginStreak.
+// Constants (tunable): STARTER_GRANT=150, DAILY_BASE=20, DAILY_STREAK_INCREMENT=10,
+// DAILY_STREAK_CAP=10, ACHIEVEMENT_COIN_REWARD={bronze:50,silver:100,gold:250,legend:750}.
+
+normalizeProfileEconomy(profile): { coins, ownedAvatars, lastLoginDate, loginStreak }  // pure, safe defaults
+
+bumpCoins(db, uid, amount): Promise<number|null>          // atomic; floors at 0; emits PROFILE_EVT.CHANGED
+
+purchaseAvatar(db, uid, avatarId, price):                 // single whole-profile transaction
+  Promise<{ ok: boolean, reason?: 'no-uid'|'no-avatar'|'no-profile'|'already-owned'|'insufficient',
+            coins: number, ownedAvatars: string[] }>
+
+computeDailyReward(lastLoginDate, loginStreak, today):    // pure
+  { coinsAwarded: number, newStreak: number, alreadyClaimedToday: boolean }
+claimDailyReward(db, uid, today?): Promise<same>          // idempotent per day (guard inside txn)
+ymd(date?): string            // local 'YYYY-MM-DD'
+isYesterday(prev, today): boolean
+```
+
+### avatarStore.js — store catalog (pure, no DOM/Firebase)
+```typescript
+STORE_PRICES = { common:0, rare:250, epic:700, legendary:2500 }   // flat per tier, tunable
+STORE_AVATARS: Array<{ id, category, src, price }>                // 36 entries
+findStoreAvatar(id) | isStoreAvatarId(id) | storeAvatarSrc(id) | priceFor(id)
+isOwned(id, ownedAvatars=[]): boolean        // common always owned
+storeAvatarsByCategory(): { common, rare, epic, legendary }
+```
+
+### avatarStoreScreen.js — store UI
+```typescript
+mountAvatarStoreScreen({ root?, bus }): { paint, unmount }
+STORE_INTENT = { OPEN, EQUIP, PURCHASE, CONFIRM_PURCHASE, CANCEL_PURCHASE, CLOSE }
+STORE_RENDER  // { coins, ownedAvatars, equippedAvatar }
+DAILY_REWARD_SHOW | DAILY_REWARD_ACK
+```
+
 ### playerInsights.js
 ```typescript
 // Pure derivation of personalised stats analytics. Consumes the same

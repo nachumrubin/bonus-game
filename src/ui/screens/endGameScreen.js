@@ -8,6 +8,8 @@
 import { $, on, setText } from '../domHelpers.js';
 import { EV } from '../../events/eventTypes.js';
 import { RATING_EVT } from '../../game/account/ratingService.js';
+import { setAvatarEl } from './avatarScreens.js';
+import { CHAMPS_RENDER } from './championsScreen.js';
 
 export const END_INTENT = Object.freeze({
   REMATCH: 'end/rematch',
@@ -62,12 +64,20 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     renderEloDeltas(payload);
   }));
 
+  // Highlight the logged-in user's row in the leaderboard once data arrives.
+  cleanups.push(bus.on(CHAMPS_RENDER, () => {
+    setTimeout(highlightMyChampRow, 0);
+  }));
+
   function render({ winnerSlot, scores = { 0: 0, 1: 0 }, players, abandonedBy, abandonReason } = {}) {
     clearEloDeltas();
     setText($('#es1', overlay), String(scores[0] ?? 0));
     setText($('#es2', overlay), String(scores[1] ?? 0));
     setText($('#en1', overlay), players?.[0]?.displayName ?? 'שחקן 1');
     setText($('#en2', overlay), players?.[1]?.displayName ?? 'שחקן 2');
+
+    setAvatarEl($('#end-av0', overlay), players?.[0]?.avatar ?? null, { fallback: '👑', className: 'av-img' });
+    setAvatarEl($('#end-av1', overlay), players?.[1]?.avatar ?? null, { fallback: '👑', className: 'av-img' });
 
     const wn = $('#wn', overlay);
     const ws = $('#wws', overlay);
@@ -86,6 +96,8 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
           ? winnerSlot
           : (score0 === score1 ? null : (score0 > score1 ? 0 : 1)));
 
+    applyCardStates(effectiveWinner);
+
     if (effectiveWinner == null) {
       setText(wn, 'המשחק הסתיים בתיקו');
       // Note the walkout when the draw came from a player leaving at a tie.
@@ -98,6 +110,38 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     const name = players?.[effectiveWinner]?.displayName ?? `שחקן ${effectiveWinner + 1}`;
     setText(wn, `${name} ניצח!`);
     setText(ws, abandonMessage({ abandonedBy, abandonReason, mySlot, scores }));
+  }
+
+  function applyCardStates(effectiveWinner) {
+    const card0 = $('#end-card-0', overlay);
+    const card1 = $('#end-card-1', overlay);
+    for (const card of [card0, card1]) {
+      if (!card) continue;
+      card.classList.remove('is-winner', 'is-loser', 'is-draw');
+    }
+    if (effectiveWinner == null) {
+      card0?.classList?.add('is-draw');
+      card1?.classList?.add('is-draw');
+    } else if (effectiveWinner === 0) {
+      card0?.classList?.add('is-winner');
+      card1?.classList?.add('is-loser');
+    } else {
+      card0?.classList?.add('is-loser');
+      card1?.classList?.add('is-winner');
+    }
+  }
+
+  function highlightMyChampRow() {
+    const mySlot = globalThis.__spine?.activeGame?.session?.mySlot;
+    const session = globalThis.__spine?.activeGame?.session;
+    const myUid = session?.state?.players?.[mySlot]?.uid ?? null;
+    if (!myUid) return;
+    const wrap = $('#champions-wrap', overlay);
+    if (!wrap) return;
+    for (const tr of wrap.querySelectorAll('tr[data-champ-uid]')) {
+      const isMe = tr.getAttribute('data-champ-uid') === myUid;
+      tr.classList.toggle('champ-me', isMe);
+    }
   }
 
   function abandonMessage({ abandonedBy, abandonReason, mySlot, scores }) {

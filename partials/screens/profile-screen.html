@@ -1,16 +1,28 @@
-﻿<!-- PROFILE SCREEN -->
+<!-- PROFILE SCREEN -->
 <div id="sprofile" class="screen hidden">
-  <div class="sbox" style="max-width:320px;gap:12px;">
-    <div class="stitle">👤 הפרופיל שלי</div>
-    <div style="text-align:center;">
-      <div id="profile-avatar-display" style="font-size:72px;line-height:1;cursor:pointer;" onclick="showAvatarGallery()">👑</div>
-      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;">לחץ לשינוי אווטאר</div>
+  <div class="pf-card">
+
+    <!-- Title with flanking lines -->
+    <div class="pf-header">
+      <div class="pf-header-line"></div>
+      <div class="pf-header-title">הפרופיל שלי</div>
+      <div class="pf-header-line"></div>
     </div>
-    <div style="text-align:center;">
-      <div id="profile-name-display" style="font-size:20px;font-weight:900;color:var(--by,#f5c518);cursor:pointer;" onclick="startNameEdit()"></div>
-      <div style="font-size:10px;color:rgba(255,255,255,.35);margin-top:2px;">לחץ לעריכה</div>
-      <div id="profile-name-edit" style="display:none;margin-top:6px;">
-        <input id="profile-name-input" class="ri" type="text" maxlength="15" style="text-align:center;font-size:15px;">
+
+    <!-- Avatar (tap → avatar store) -->
+    <div class="pf-av-section" onclick="showAvatarStore()">
+      <div class="pf-av-ring">
+        <div id="profile-avatar-display">👑</div>
+      </div>
+      <div class="pf-av-hint">לחץ לשינוי אוואטאר</div>
+    </div>
+
+    <!-- Name -->
+    <div class="pf-name-section">
+      <div id="profile-name-display" class="pf-name-val" onclick="startNameEdit()"></div>
+      <div class="pf-name-hint">לחץ לעריכה</div>
+      <div id="profile-name-edit" class="pf-name-edit" style="display:none;">
+        <input id="profile-name-input" class="ri" type="text" maxlength="15" style="text-align:center;font-size:15px;width:100%;">
         <div id="profile-name-error" style="font-size:11px;color:#ff8e8e;min-height:14px;text-align:center;margin-top:2px;"></div>
         <div style="display:flex;gap:6px;margin-top:6px;">
           <button class="bd g" style="flex:1;font-size:12px" onclick="saveDisplayName()">שמור</button>
@@ -18,18 +30,64 @@
         </div>
       </div>
     </div>
-    <div style="background:rgba(0,0,0,.2);border-radius:8px;padding:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-      <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">משחקים</div><div id="stat-played" style="font-size:22px;font-weight:900;color:var(--by,#f5c518)">0</div></div>
-      <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">ניצחונות</div><div id="stat-wins" style="font-size:22px;font-weight:900;color:#8eff8e">0</div></div>
-      <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">אחוז ניצחון</div><div id="stat-winrate" style="font-size:22px;font-weight:900;color:#8eff8e">0%</div></div>
-      <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">שיא אישי</div><div id="stat-highscore" style="font-size:22px;font-weight:900;color:var(--by,#f5c518)">0</div></div>
-      <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">שיא רצף 🏅</div><div id="stat-longeststreak" style="font-size:22px;font-weight:900;color:rgba(255,255,255,.85)">0</div></div>
-      <div style="text-align:center;"><div style="font-size:10px;color:rgba(255,255,255,.5)">רצף נוכחי 🔥</div><div id="stat-streak" style="font-size:22px;font-weight:900;color:var(--lcd,#c8ff00)">0</div></div>
+
+    <!-- Stats grid -->
+    <div class="pf-stats">
+      <div class="pf-stat-col">
+        <div class="pf-sc-lbl">אחוז ניצחון</div>
+        <div class="pf-sc-ic"><img src="images/icons/statistics.png" alt=""></div>
+        <div class="pf-sc-main pf-green" id="stat-winrate">0%</div>
+        <div class="pf-sc-sublbl">רצף נוכחי 🔥</div>
+        <div class="pf-sc-sub pf-orange" id="stat-streak">0</div>
+      </div>
+      <div class="pf-stat-col pf-stat-mid">
+        <div class="pf-sc-lbl">נצחונות</div>
+        <div class="pf-sc-ic"><img src="images/icons/trophy.png" alt=""></div>
+        <div class="pf-sc-main pf-green" id="stat-wins">0</div>
+        <div class="pf-sc-sublbl">שיא רצף</div>
+        <div class="pf-sc-sub" id="stat-longeststreak">0</div>
+      </div>
+      <div class="pf-stat-col">
+        <div class="pf-sc-lbl">משחקים</div>
+        <div class="pf-sc-ic"><img src="images/icons/my_games.png" alt=""></div>
+        <div class="pf-sc-main pf-gold" id="stat-played">0</div>
+        <div class="pf-sc-sublbl">שיא אישי</div>
+        <div class="pf-sc-sub pf-gold" id="stat-highscore">0</div>
+      </div>
     </div>
-    <div id="profile-email-display" style="font-size:10px;color:rgba(255,255,255,.35);text-align:center;"></div>
-    <button class="bd" style="position:relative;" onclick="showFriendsScreen()">👥 חברים<span id="friends-req-badge" style="display:none;position:absolute;top:5px;right:8px;background:#f5c518;color:#000;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:900;line-height:1.4;"></span></button>
-    <button class="bd" style="background:linear-gradient(180deg,#2d6080,#1a3a55);border-color:#1a3a55;color:#fff;" onclick="showStatsScreen()">📊 סטטיסטיקות מלאות</button>
-    <button id="btn-upgrade-account" class="bd b" style="display:none;" onclick="showSc('sauth-signup')">✨ צור חשבון — שמור את ההתקדמות</button>
-    <button class="bd" style="background:linear-gradient(180deg,#c85050,#8a2a2a);border-color:#6a1a1a;color:#fff;" onclick="logoutUser()">התנתקות 🚪</button>
+
+    <!-- Email -->
+    <div id="profile-email-display" class="pf-email"></div>
+
+    <!-- Navigation buttons -->
+    <div class="pf-btns">
+      <button class="pf-btn pf-btn-gold" onclick="showAvatarStore()">
+        <span class="pf-btn-ic"><img src="images/icons/gold coin.png" alt=""></span>
+        <span class="pf-btn-txt">חנות אווטארים</span>
+        <span class="pf-btn-chev">‹</span>
+      </button>
+      <button class="pf-btn pf-btn-blue" style="position:relative;" onclick="showFriendsScreen()">
+        <span class="pf-btn-ic"><img src="images/icons/friends.png" alt=""></span>
+        <span class="pf-btn-txt">חברים</span>
+        <span class="pf-btn-chev">‹</span>
+        <span id="friends-req-badge" style="display:none;position:absolute;top:8px;left:36px;background:#f5c518;color:#000;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:900;line-height:1.4;"></span>
+      </button>
+      <button class="pf-btn pf-btn-dark" onclick="showStatsScreen()">
+        <span class="pf-btn-ic"><img src="images/icons/statistics.png" alt=""></span>
+        <span class="pf-btn-txt">סטטיסטיקות מלאות</span>
+        <span class="pf-btn-chev">‹</span>
+      </button>
+      <button id="btn-upgrade-account" class="pf-btn pf-btn-gold" style="display:none;" onclick="showSc('sauth-signup')">
+        <span class="pf-btn-ic" style="font-size:18px;">✨</span>
+        <span class="pf-btn-txt">צור חשבון — שמור את ההתקדמות</span>
+        <span class="pf-btn-chev">‹</span>
+      </button>
+      <button class="pf-btn pf-btn-red" onclick="logoutUser()">
+        <span class="pf-btn-ic"><img src="images/icons/logout.png" alt=""></span>
+        <span class="pf-btn-txt">התנתקות</span>
+        <span class="pf-btn-chev">‹</span>
+      </button>
+    </div>
+
   </div>
 </div>

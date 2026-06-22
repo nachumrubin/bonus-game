@@ -1,9 +1,199 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Avatar store + coin economy — June 2026
+
+- [x] Achievements decoupled from avatars → coin trophies: tapping no longer equips; coin prize shown per tile +
+  hint + completion overlay; trophy-centric eval (`diffNewlyCompletedAchievements`); `data-ach-id` tiles
+- [x] 3 purchase achievements (`first_buy`, `collector`, `legend_owner`) with `ownedCount`/`ownedInCategory`/
+  `ownedCategories` conditions
+- [x] Pure catalog `src/ui/screens/avatarStore.js` — 36 avatars across common/rare/epic/legendary + helpers
+- [x] Profile economy fields (`coins`, `ownedAvatars`, `lastLoginDate`, `loginStreak`) + `bumpCoins`,
+  `purchaseAvatar`, `computeDailyReward`/`claimDailyReward`, `normalizeProfileEconomy` in `profileService.js`
+- [x] Earning: starter grant (sign-up), daily login + streak (boot), achievement-completion coins (diff loop)
+- [x] Store UI: `#savatar-store` screen + `#ov-store-confirm` + `#ov-daily-reward`; entry from profile screen
+- [x] Render-helper integration so equipped store avatars show everywhere (incl. opponent cards) — `avatarEmoji`
+  pass-through + `avatarIconSrc` store-id resolution
+- [x] Anonymous users gated to the account-upgrade prompt; PNGs excluded from sw.js precache
+- [ ] **Hardening (not v1):** make purchases server-authoritative (Cloudflare Worker / Cloud Function) so coins
+  can't be self-granted client-side
+- [ ] **Hardening (not v1):** record `claimedAchievements[]` checked inside the transaction so achievement coin
+  rewards are fully idempotent across devices/tabs
+- [ ] Optional: surface a coin badge in the bottom nav (coins already flow through `MENU_REFRESH`)
+
+## In-game UI bug fixes — June 2026
+
+- [x] Pause/exit overlay no longer shows twice — `BACK_INTENT.PAUSE_AND_SAVE` performs save-and-exit directly instead of re-opening the identical `#ov-pause` overlay (`gameFlowController.js` shared `saveAndExit` helper)
+- [x] "תור נוסף!" reward shows `images/icons/extra turn.png` instead of a tinted 🎯 glyph (`describeBoost` + `showBonusAwardOverlay` in `gameScreen.js`)
+
+## Bonus/challenge popups — premium redesign — June 2026
+
+- [x] Phase 1: shared premium chrome (CSS) for `#ov-bonus-intro`, `#ov-bonus`, `.bonus-award-card` — container, lightning header, gold title, cyan glowing progress bar, System-C buttons, huge gold reward numbers, hidden-word grid, 250ms entrance
+- [x] Reusable premium primitives in `menu-electric.css` (`.bz-overlay`, `.bz-card`, `.bz-bolt`, `.bz-title`, `.bz-sub`, `.bz-btn`/`-gold`/`-blue`/`-green`, `.bz-burst`) — adopt these in each game instead of inline cssText
+- [x] Phase 3 (shared FX): `src/ui/screens/miniGames/bonusFx.js` — `confettiBurst`, `countUp`, `showBonusResult` (premium success/failure screens); CSS for confetti, `.bz-result*`, `.bz-chip`, premium `.ut`/`.lsbox`/`.ri`. 9 tests in `tests/unit/bonus-fx.test.js`
+- [x] Phase 2: per-game premium passes (all complete — each keeps its mount contract + `*.test.js` green):
+  - [x] Lucky Wheel (`wheelMiniGame.js`) — glossy wheel + gold rim, bigger slot icons, glowing pointer, premium hub, gold spin button, reward-explosion bloom
+  - [x] Word Bee / honeycomb (`honeycombMiniGame.js`) — gold center + ceramic outer tiles, reward chips, celebration/encouragement end states
+  - [x] Hidden Word (`hiddenWordMiniGame.js`) — premium self-host, gold button, `showBonusResult` (grid already premium)
+  - [x] Personal Boost / crossword (`crosswordMiniGame.js`) — premium card + result header, confetti on clean win, friendly fail
+  - [x] Crossing Words (`crossingWordsMiniGame.js`) — premium self-host, green check, `.bz-result` win/soft screens
+  - [x] Fill-Middle (`fillMiddleMiniGame.js`) — ceramic `.ut` tiles, green check, `.bz-result` + confetti
+  - [x] Unscramble (`unscrambleMiniGame.js`) — premium card, cyan timer bar, ceramic tiles, `.bz-result` win + confetti
+  - [x] Letter Spinner (`letterSpinnerMiniGame.js`) — premium `.lsbox`, gold buttons, reward chips, `showBonusResult`
+- [ ] Future polish: per-game combo indicators, live word-validation flourishes, and richer hint-reveal animations (functional gaps, not blockers)
+
+## Invite-contacts referral flow — June 2026
+
+- [x] `src/ui/inviteFriends.js` — Contacts Picker → SMS, with share-sheet / clipboard fallback (`runInviteFlow`)
+- [x] "חבר מביא חבר" achievement re-keyed `friendsCount min:10` → `invitesSent min:5` (avatar + achievement)
+- [x] `invitesSent` stat added to `EMPTY_STATS`; bumped on successful invite
+- [x] Friends-screen referral card made clickable (`INVITE_CONTACTS`); progress bar tracks invites, shows `/5`
+- [x] `#fr-invite-status` flash messages; `.fr-invite-status` CSS
+- [x] 14 unit tests in `tests/unit/invite-friends.test.js`
+- [ ] Replace `PLAY_STORE_URL` placeholder package id with the real listing URL at publish
+- [ ] Fallback paths (share/clipboard) grant the achievement on a single completed action since recipients can't be counted — revisit if abuse becomes a concern
+
+## Loading-screen Tips system — June 2026
+
+- [x] `data/tips.json` — 23 tips across beginner / intermediate / advanced / didYouKnow
+- [x] `src/ui/loadingTipsService.js` — weighted selection, history, games-played cache
+- [x] `index.html` — tip card HTML (icon, title, text, nav arrows, dots) in `#app-loading`
+- [x] `src/main.js` — carousel wired in `wireAppLoading()`; `cacheGamesPlayed` on profile load
+- [x] `styles.css` — `.app-loading-tips` / `.app-loading-tip-*` glass-card design
+- [x] 17 unit tests in `src/ui/loadingTipsService.test.js`
+- [ ] Future: admin/dev tip management screen (`ניהול טיפים`) — view/enable/disable/edit tips without code changes
+- [ ] Future: migrate `tips.json` to Firestore `/tips` collection for remote management
+
+## Secondary Screens — premium Boost redesign — June 2026
+
+- [x] My Games: System C back button (30 px, less dominant)
+- [x] My Games: Poke button (👋) restyled as 44 px circular badge
+- [x] My Games: Score pill visual weight reduced; name bumped to 15 px
+- [x] My Games: Empty state → premium dark-glass card with icon, title, subtitle
+- [x] My Games: Header icon + gradient divider
+- [x] Coin Toss: Premium container with radial gradient background + ambient rays + star dots
+- [x] Coin Toss: `.coin-float` gentle bob animation (3.2 s, independent of flip)
+- [x] Coin Toss: Glow ring aura around coin (`.coin-glow-ring`)
+- [x] Coin Toss: Gold gradient text for `.coin-msg`; premium disabled state for CTA
+- [x] Notifications: `nf-shell` scrollable container replacing `.sbox`
+- [x] Notifications: `nf-header` with bell icon + gradient divider
+- [x] Notifications: Premium empty-state card with bell icon + "אתם מעודכנים ✔"
+- [x] Notifications: `nf-section-hdr` gold sub-headers for game/friend sections
+
+## Settings Screen — premium 4-section redesign — June 2026
+
+- [x] Replace `.set-panel` grid with scrollable `.sett-section` column layout
+- [x] Sticky `.sett-header` with icon + title + close × button
+- [x] Section 1 (🎵 שמע): music + sound FX as `.sett-row` rows with gradient-line header
+- [x] Section 2 (🎮 משחק): vibration, gender address, notifications as rows
+- [x] Section 3 (🧠 כלי עזר): word checker as premium tool block
+- [x] Section 4 (📚 ניהול מילון, admin-only, hidden): green add card + red remove card
+- [x] Blue active state for `.set-yn.active-yes` (override of default gold `var(--by)`)
+- [x] Footer CTA `.sett-confirm-btn` with enhanced glow
+- [x] All IDs and onclick attributes preserved; `settingsScreen.js` wiring unchanged
+
+## Victory Screen — premium celebration redesign — June 2026
+
+- [x] Trophy hero section with radial glow and CSS sparkle dots
+- [x] Gold gradient victory headline + subtitle
+- [x] Premium player cards with winner (cyan/gold) / loser (pink) / draw states
+- [x] Avatar rendering via `setAvatarEl` (bot.png for bot, achievement PNG or emoji for user)
+- [x] Leaderboard header with gradient side lines + cyan node text
+- [x] Medal emojis (🥇🥈🥉) for top-3 leaderboard rows
+- [x] Current-user row highlight (`.champ-me`, gold tint) via `CHAMPS_RENDER` post-processing
+- [x] Entry animations: trophy bounce-in, title/cards/lb staggered fade-up (total ~500 ms)
+
+## Home Screen — premium action cards — June 2026
+
+- [x] Replace circular floating-platform buttons with three stacked System C action cards
+- [x] Card layout: PNG icon (left) + title/subtitle (center, RTL) + glowing circular chevron (right)
+- [x] Color variants: online = cyan, bot = blue, 2p = purple
+- [x] Staggered entrance animation per card (200–300 ms)
+- [x] Short-display responsive tweak (subtitle hidden at ≤ 620 px height)
+
 > Derived from: `SPINE_TODO.md`, `docs/legacy-vs-new-gap-report.md`, `docs/legacy-gameplay-parity-gap-report.md`, source code analysis
 > All items are evidence-based — not invented.
 
 ---
+
+## Match Flow System — premium redesign — June 2026
+
+- [x] `mf-*` CSS system in `menu-electric.css`: hero icon, opt-cards (.active + .a), mf-cta, mf-cancel, mf-code-input, animated dots
+- [x] Online Lobby: floating animated globe, ol-hero header, larger omode-btn icon badges
+- [x] Create Room overlay: hero icon, card-based mode + speed selectors, green CTA
+- [x] Join Code overlay: hero icon, large monospace code input, clear hierarchy
+- [x] Matchmaking overlay: hero icon, card-based mode + speed + rating selectors, animated search dots
+- [x] Partner Search overlay: pulsing dice icon, animated dots, glass player cards, my-card heartbeat glow
+- [x] Setup screen: difficulty + speed + racks all converted to mf-opt-card; mf-setup-header title area
+
+## Friend detail popup — premium visual redesign — June 2026
+
+- [x] Avatar hero with 110 px glow ring + crown on top; name as large centered heading
+- [x] 3-column stat widget (🎮 משחקים / 🏆 ניצחונות / 🛡 הפסדות) replacing plain text; win-rate removed
+- [x] Recent games: colored win/loss indicator circle + ltr score display + time-ago string
+- [x] Active games empty state: icon + friend's name in message; no conditional invite button
+- [x] Permanent green CTA "✉ הזמן למשחק" at bottom of overlay
+- [x] Overflow menu (⋮) with הסר חבר + future slots; removed large red remove button
+- [x] Wider popup: min(360px, 94vw)
+
+## UI modernization: secondary screens — June 2026
+
+- [x] Replace 👤 emoji with `anonymous player.png` everywhere (centralized in `avatarMarkup`/`setAvatarEl`; menuScreen sign-out; index.html initial HTML)
+- [x] Bot player avatar → `bot.png` via special `'bot'` avatar ID; matchmaking slot reel → achievement PNG icons via avatar IDs
+- [x] Sliced 8 new icons from `more_navigation_buttons.png` (trophy, dice, key, logout, rematch, pause, play, search)
+- [x] CSS: `.glass-panel`, `.ui-icon`, `.screen-hd-icon`, `.section-title-bar` utility classes; upgraded `.sbox`, `.stat-card`, `.fun-card`, `.fsc-c`, `.omode-btn`, `.set-panel`, `.set-yn`
+- [x] Settings screen: PNG icons (settings, sound_on/off, bell, search), glass-panel sections
+- [x] Statistics screen: statistics.png header, sopt-btn tabs, glass-panel hero, section-title-bar labels
+- [x] Profile screen: title cleanup, glass-panel stats grid, PNG button icons, profileScreen.js onboarding icon
+- [x] End game: trophy.png + rematch.png + home.png icons
+- [x] Pause overlay: pause.png header, play.png resume button (gender-safe span wrapper)
+- [x] Online lobby: home.png / key.png / dice.png in .omode-ic spans
+- [x] Async games: my_games.png empty-state icon
+- [x] Setup screen: remove 👤 text from rack toggle
+
+## Redesign: Achievements screen → trophy room — June 2026
+
+- [x] Rebuilt `#sav-gallery` as a collectible trophy room: gold title + side lines, scrollable shelves of 3 (glossy plank + cyan underglow), big icon + title + gold/gray progress pill. Removed cards/progress-bars/tier-chips/starter selector.
+- [x] Locked = real icon desaturated/darkened + padlock (not hidden); unlock pop/glow/lock-break animation; tap-to-equip preserved.
+- [x] 10 achievement icons mapped from `images/icons/acheivements/`; rest fall back to emoji until added (`ACH_ICON_BY_AVATAR_ID`).
+- [x] Dropped crown/star fillers (room shows the 17 achievements; header `<n> מתוך 17`).
+- [x] All 17 icons now match their Hebrew title → icon path derived from `ach.titleHe` (no explicit map). `שחקן מנוסה` added; filename typos fixed. sw.js precache updated.
+- [x] Locked overlay uses the gold padlock `images/icons/lock.png` instead of the 🔒 emoji.
+- [x] Icons normalized to one size (object-fit box) and bottom-aligned + plank overlap so they sit on the shelves.
+- [x] Equipped avatar now displays the achievement trophy icon (topbar + profile) via `avatarIconSrc`, replacing the legacy emoji.
+- [x] Extended to the rest of the app via shared `avatarMarkup`/`setAvatarEl` + `.av-img`: in-game player/opponent strip, friends list+detail, notification cards+banner, incoming-invite, matchmaking my/matched avatar, stats hero+rivals. Removed duplicated per-screen avatar→emoji tables. (Decorative slot-reel stays emoji; My-Games has no avatars.)
+
+## UI: setup + online-lobby mode icons use the new PNGs — June 2026
+
+- [x] Pre-game setup header icons (`#stitle-icon-vs` → 1v1.png, `#stitle-icon-bot` → bot.png) replace the old inline SVGs; span IDs kept so `setupScreen.js` toggling is unchanged.
+- [x] Online lobby title globe: `<canvas id="ol-globe">` → `<img>` globe.png; removed the last `globeRenderer.startGlobe` use and **deleted `src/ui/globeRenderer.js`** (now unused).
+
+## Fix: bottom nav overlapping mode circles on wide/short screens — June 2026
+
+- [x] On aspect ≥ ~0.56 the circles are height-limited (23svh) and the cluster overflowed under the bottom nav (tablets + wide-short phones like 412×690/732). Fixed via `@media (min-aspect-ratio: 13/25)`: trim the logo + tighten gaps + center the cluster. Circles NOT shrunk. Tall phones (≤0.51) untouched. Verified positive nav clearance across a viewport matrix.
+
+## UI: equal/level/tight game-mode cluster — June 2026
+
+- [x] All three mode circles equal size (unified `--circle-mode`); online centered on top (removed left shift); bottom two on the same level (removed per-column offsets + `align-items: flex-start`); horizontal + vertical gaps tightened.
+- [x] Icons enlarged to nearly fill each circle (container `0.58×`, `.home-circle-img` scale `1.62`; online globe `1.45` so its pedestal clears the title). Titles stay fully visible in the bottom band.
+
+## UI: top-bar nav icons from navigation_buttons.png — June 2026
+
+- [x] Sliced the `navigation_buttons.png` sheet into the six top-bar icons (home/help/settings/sound_on/sound_off/bell), overwriting the existing filenames so no markup change was needed. (Updated sheet was non-transparent 4+3 layout → circular alpha mask extraction; plain bell used over the red-dot variant.)
+- [x] Simplified `.em-icon-btn--home-active` to a circular cyan glow (the new icons are their own round buttons, so the old square gradient background was redundant).
+- [x] Scaled top-bar buttons ~1.4× (`--topbar-btn` + matching `--em-topbar-h` term).
+- [x] Scaled bottom-nav icons 2× (`.em-nav-icon-img` × 1.15 → × 2.3); labels/padding left at base so icons dominate over text.
+
+## UI: home-screen v1.1 polish (icon presence + cluster) — June 2026
+
+- [x] Top-nav action icons enlarged ~17% (`.em-icon-img` 82%→96%), capsule height/spacing unchanged.
+- [x] Bottom-nav icons enlarged 15% (`.em-nav-icon-img` × 1.15), labels/alignment unchanged.
+- [x] Removed the three game-mode subtitles; titles only. Cluster pulled up toward the logo (`.em-platforms` flex-start), lower pair pulled toward centre (reduced row gap + 2P offset), and spread vertically into the freed space for breathing room.
+
+## UI: main-screen icon swap to new PNG set — June 2026
+
+- [x] Replaced home-screen + global-topbar emoji/SVG/canvas icons with the new 3D PNGs in `images/icons/` (bell, sound_on/off, settings, help, home, globe, 1v1, bot, my_games, friends, acheivments, statistics). See CHANGELOG.
+- [x] Precached the 13 used `images/icons/*.png` in the `sw.js` `ASSETS` list so the home screen renders offline from install (rather than only after first runtime fetch). Cache-name bump left to `stamp-build` at deploy.
+- [x] Toned down `.em-icon-btn` (`menu-electric.css`): the top-bar button is now a transparent tap target at rest (faint disk on hover only) so it no longer competes with the icons' own pedestal/glow. The `.em-icon-btn--home-active` "current page" indicator keeps its filled glow.
 
 ## UI: turn glow + My-Games turn colour + bell badge fix — June 2026
 

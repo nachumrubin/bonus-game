@@ -12,6 +12,7 @@
 // and degrades gracefully when there's no document (returns a stub).
 
 import { CMD } from '../../../events/commands.js';
+import { confettiBurst } from './bonusFx.js';
 import { g, getGender } from '../../genderText.js';
 import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 
@@ -115,29 +116,22 @@ export function mountUnscrambleMiniGame({
 
   // ── DOM mount ──
   const host = doc.createElement('div');
-  host.className = 'spine-mini-overlay';
-  host.style.cssText =
-    'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;'
-    + 'background:rgba(6,19,61,.92);padding:20px;font-family:Heebo,sans-serif;';
+  host.className = 'spine-mini-overlay bz-overlay';
 
   const placedSlots = puzzle.word.split('').map(() => '');
 
   function render() {
     host.innerHTML = `
-      <div style="background:#0d2068;border-radius:14px;padding:24px;max-width:340px;width:100%;color:#fff;text-align:center;">
-        <div style="font-size:44px;margin-bottom:6px;">⚡</div>
-        <div style="font-size:18px;font-weight:900;margin-bottom:4px;" data-uns="build-title"></div>
-        <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:8px;">
+      <div class="bz-card">
+        <div class="bz-bolt">🔤</div>
+        <div class="bz-title" data-uns="build-title"></div>
+        <div class="bz-sub">
           <span data-uns="timer">${Math.floor(cfg.durationMs/1000)}</span> שניות · עד ${cfg.earnedPts} נקודות
         </div>
-        <div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden;margin-bottom:14px;">
-          <div data-uns="bar" style="height:100%;width:100%;background:#e8c840;border-radius:3px;transition:width ${cfg.durationMs}ms linear, background .5s;"></div>
-        </div>
+        <div class="tw" style="margin-bottom:14px;"><div data-uns="bar" class="tbar2" style="width:100%;transition:width ${cfg.durationMs}ms linear, background .5s;"></div></div>
         <div data-uns="answer" style="display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;"></div>
         <div data-uns="bank"   style="display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;"></div>
-        <div style="display:flex;gap:8px;">
-          <button data-uns="submit" style="flex:1;background:#e8c840;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:900;color:#000;padding:8px;">בדוק</button>
-        </div>
+        <button data-uns="submit" class="bz-btn bz-btn-green" style="width:100%;">בדוק ✓</button>
       </div>`;
     const buildTitle = host.querySelector('[data-uns="build-title"]');
     if (buildTitle) buildTitle.textContent = g('buildWord', getGender());
@@ -159,7 +153,9 @@ export function mountUnscrambleMiniGame({
     wrap.innerHTML = '';
     placedSlots.forEach((ch, i) => {
       const slot = doc.createElement('div');
-      slot.style.cssText = 'width:36px;height:42px;border:2px solid #e8c840;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;background:rgba(255,255,255,.05);cursor:pointer;';
+      slot.style.cssText = ch
+        ? 'width:40px;height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#3a2400;cursor:pointer;background:linear-gradient(180deg,#ffe884,#ffc31f);box-shadow:inset 0 2px 0 rgba(255,255,255,.8),0 0 12px rgba(255,200,40,.6);'
+        : 'width:40px;height:44px;border:2px dashed rgba(140,180,230,.45);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;background:rgba(255,255,255,.04);cursor:pointer;box-shadow:inset 0 0 12px rgba(0,60,140,.25);';
       slot.textContent = ch;
       slot.addEventListener('click', () => {
         if (!ch) return;
@@ -181,7 +177,7 @@ export function mountUnscrambleMiniGame({
     scrambled.forEach((ch, i) => {
       const tile = doc.createElement('button');
       tile.textContent = ch;
-      tile.style.cssText = 'width:36px;height:42px;border:none;border-radius:6px;background:#e8c840;color:#000;font-family:inherit;font-size:20px;font-weight:900;cursor:pointer;';
+      tile.style.cssText = 'width:40px;height:44px;border:1px solid rgba(120,90,30,.4);border-radius:9px;background:linear-gradient(180deg,#fbf4dd,#ddcfa6);color:#1a1206;font-family:inherit;font-size:20px;font-weight:900;cursor:pointer;box-shadow:inset 0 2px 0 rgba(255,255,255,.7),inset 0 -3px 5px rgba(120,90,30,.28),0 3px 6px rgba(0,0,0,.4);';
       tile.addEventListener('click', () => {
         const empty = placedSlots.findIndex(x => x === '');
         if (empty < 0) return;
@@ -209,16 +205,19 @@ export function mountUnscrambleMiniGame({
   function showResultView(success) {
     if (!host?.parentNode) return;
     const ok = success
-      ? `<div style="font-size:22px;font-weight:900;color:#8eff8e;margin-bottom:4px;">כל הכבוד! +${cfg.earnedPts} נקודות</div>`
-      : `<div style="font-size:18px;font-weight:900;color:#ff8888;margin-bottom:4px;">לא נכון</div>`;
+      ? `<div class="bz-result-headline">כל הכבוד!</div><div class="bz-result-big">+${cfg.earnedPts} נק'</div>`
+      : `<div class="bz-result-headline">לא נכון</div>`;
     host.innerHTML = `
-      <div style="background:#0d2068;border-radius:14px;padding:24px;max-width:340px;width:100%;color:#fff;text-align:center;">
-        <div style="font-size:44px;margin-bottom:8px;">${success ? '🎉' : '⏰'}</div>
-        ${ok}
-        <div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px;">המילה הנכונה היא:</div>
-        <div style="font-size:30px;font-weight:900;color:#e8c840;letter-spacing:2px;margin-bottom:16px;">${puzzle.word}</div>
-        <button data-uns="continue" style="width:100%;background:#e8c840;border:none;border-radius:8px;font-family:inherit;font-size:14px;font-weight:900;color:#000;padding:10px;"></button>
+      <div class="bz-card">
+        <div class="bz-result ${success ? 'is-win' : 'is-soft'}">
+          <div class="bz-result-emoji">${success ? '🎉' : '😌'}</div>
+          ${ok}
+          <div class="bz-result-sub">המילה הנכונה היא:</div>
+          <div style="font-size:30px;font-weight:900;color:#ffd23f;letter-spacing:2px;margin:6px 0 16px;filter:drop-shadow(0 0 10px rgba(255,190,40,.5));">${puzzle.word}</div>
+          <button data-uns="continue" class="bz-btn bz-btn-gold" style="width:100%;"></button>
+        </div>
       </div>`;
+    if (success) confettiBurst(host.querySelector('.bz-card'));
     const contBtn = host.querySelector('[data-uns="continue"]');
     if (contBtn) contBtn.textContent = g('continueMiniGame', getGender());
     contBtn?.addEventListener('click', () => {

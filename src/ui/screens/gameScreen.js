@@ -25,6 +25,7 @@
 // the existing CSS keyframes and layout rules apply unchanged.
 
 import { $, on, setText, setClass } from '../domHelpers.js';
+import { setAvatarEl } from './avatarScreens.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
@@ -685,8 +686,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       setText($('#sn2', root), p1.displayName);
       setText($('#is-sn2', root), p1.displayName);
     }
-    if (p0?.avatar) setText($('#is-av1', root), p0.avatar);
-    if (p1?.avatar) setText($('#is-av2', root), p1.avatar);
+    if (p0?.avatar) setAvatarEl($('#is-av1', root), p0.avatar, { fallback: '👑' });
+    if (p1?.avatar) setAvatarEl($('#is-av2', root), p1.avatar, { fallback: '👤' });
     // Desktop side-panel boxes use `.scbox.act`; the mobile info-strip cards
     // use `.is-pcard.act-cell` (different class name, see styles.css). When
     // a scoring sequence is in flight we keep the previous player's glow lit
@@ -1236,7 +1237,7 @@ function makeExchangeConfirmButton(root, count) {
   const btn = doc?.createElement?.('button') ?? makeStubButton();
   btn.type = 'button';
   btn.className = 'ovb p';
-  btn.textContent = count ? `החלף (${count})` : 'החלף';
+  btn.textContent = count ? `🔄 החלף (${count})` : '🔄 החלף';
   btn.style.marginInlineStart = '8px';
   return btn;
 }
@@ -1380,7 +1381,8 @@ function lockInventoryForView(view) {
 
 function lockSummaryText(inventory) {
   const locks = [...(inventory ?? [])].filter(n => Number.isInteger(Number(n)) && Number(n) > 0);
-  return locks.length ? locks.map(n => `🔒${n}`).join(' ') : '';
+  if (!locks.length) return '';
+  return locks.map(n => `🔒${n}`).join('  ');
 }
 
 function flashClass(el, cls, durationMs) {
@@ -1710,7 +1712,7 @@ function describeBoost(boostId, payload, extra) {
         sub:   'הנקודות יתווספו עם אישור',
       };
     case 'extra_turn':
-      return { title: 'תור נוסף!', bigText: '🎯', sub: 'תקבל תור נוסף ברצף' };
+      return { title: 'תור נוסף!', image: 'images/icons/extra turn.png', sub: 'תקבל תור נוסף ברצף' };
     case 'multiply_next_turns': {
       const mult  = Number(p.multiplier ?? 2);
       const turns = Number(p.turnsRemaining ?? 1);
@@ -1722,7 +1724,7 @@ function describeBoost(boostId, payload, extra) {
     }
     case 'timer_bonus':
       return {
-        title: 'בונוס זמן ⏱',
+        title: 'בוסט זמן ⏱',
         bigText: `+${Number(p.seconds ?? 0)} שניות`,
         sub: 'יתווסף לזמן התור הבא',
       };
@@ -1759,10 +1761,13 @@ function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bo
     'transition:transform .35s cubic-bezier(.22,1.4,.36,1)',
     'min-width:240px','max-width:340px','pointer-events:auto',
   ].join(';');
+  const bigBlock = info.image
+    ? `<div class="ovd" style="margin-bottom:4px;"><img src="${escapeForOverlay(info.image)}" alt="${escapeForOverlay(info.title)}" style="width:72px;height:72px;object-fit:contain;"></div>`
+    : `<div class="ovd" style="font-size:32px;font-weight:900;color:var(--by);margin-bottom:4px;">${escapeForOverlay(info.bigText)}</div>`;
   card.innerHTML = `
     <div class="ovic">⚡</div>
     <div class="ovt">${escapeForOverlay(info.title)}</div>
-    <div class="ovd" style="font-size:32px;font-weight:900;color:var(--by);margin-bottom:4px;">${escapeForOverlay(info.bigText)}</div>
+    ${bigBlock}
     ${info.sub ? `<div class="ovd" style="margin-bottom:12px;">${escapeForOverlay(info.sub)}</div>` : ''}
     <div class="ovd" style="margin-bottom:12px;font-size:11px;opacity:.6;">${isOpponent ? 'הבוט' : `שחקן ${(slot ?? 0) + 1}`}</div>
     <div class="ovbtns"><button type="button" class="ovb p" data-bonus-ok>אישור ✓</button></div>

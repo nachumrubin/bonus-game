@@ -1,121 +1,92 @@
-﻿<!-- SETUP -->
+<!-- SETUP -->
 <div id="ss" class="screen hidden">
   <div class="sbox">
-    <div class="stitle" id="stitle" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+    <div class="mf-setup-header" id="stitle">
       <!-- Mode icons — toggled by setupScreen.js on SETUP_OPEN -->
       <span id="stitle-icon-vs" style="display:none;line-height:0;">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 40" height="28">
-          <defs>
-            <filter id="ss-2p-glow" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="1.3" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <filter id="ss-2p-bright" x="-100%" y="-100%" width="300%" height="300%">
-              <feGaussianBlur stdDeviation="2.4" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-          </defs>
-          <circle cx="28" cy="13" r="7.5" fill="#1e3a8a" stroke="#60a5fa" stroke-width="1.2"/>
-          <path d="M15,38 C15,28 41,28 41,38" fill="#1e3a8a" stroke="#60a5fa" stroke-width="1.2" stroke-linecap="round"/>
-          <circle cx="16" cy="16" r="8" fill="#2563eb" stroke="#bfdbfe" stroke-width="1.4" filter="url(#ss-2p-glow)"/>
-          <path d="M3,40 C3,29 29,29 29,40" fill="#1d4ed8" stroke="#bfdbfe" stroke-width="1.4" stroke-linecap="round"/>
-          <circle cx="28" cy="13" r="7.5" fill="none" stroke="rgba(56,189,248,0.50)" stroke-width="3.5"
-                  stroke-dasharray="28 19" filter="url(#ss-2p-glow)">
-            <animate attributeName="stroke-dashoffset" values="47;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
-          </circle>
-          <circle cx="28" cy="13" r="7.5" fill="none" stroke="rgba(186,230,255,0.92)" stroke-width="1.3"
-                  stroke-dasharray="28 19" filter="url(#ss-2p-bright)">
-            <animate attributeName="stroke-dashoffset" values="47;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
-          </circle>
-          <path d="M15,38 C15,28 41,28 41,38" fill="none" stroke="rgba(56,189,248,0.45)" stroke-width="3.5"
-                stroke-dasharray="20 15" stroke-linecap="round" filter="url(#ss-2p-glow)">
-            <animate attributeName="stroke-dashoffset" values="35;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
-          </path>
-          <path d="M15,38 C15,28 41,28 41,38" fill="none" stroke="rgba(186,230,255,0.88)" stroke-width="1.3"
-                stroke-dasharray="20 15" stroke-linecap="round" filter="url(#ss-2p-bright)">
-            <animate attributeName="stroke-dashoffset" values="35;0" dur="3s" repeatCount="indefinite" calcMode="linear"/>
-          </path>
-          <circle cx="16" cy="16" r="8" fill="none" stroke="rgba(56,189,248,0.65)" stroke-width="4"
-                  stroke-dasharray="32 18" filter="url(#ss-2p-glow)">
-            <animate attributeName="stroke-dashoffset" values="50;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
-          </circle>
-          <circle cx="16" cy="16" r="8" fill="none" stroke="rgba(224,242,254,0.98)" stroke-width="1.5"
-                  stroke-dasharray="32 18" filter="url(#ss-2p-bright)">
-            <animate attributeName="stroke-dashoffset" values="50;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
-          </circle>
-          <path d="M3,40 C3,29 29,29 29,40" fill="none" stroke="rgba(56,189,248,0.60)" stroke-width="4"
-                stroke-dasharray="22 15" stroke-linecap="round" filter="url(#ss-2p-glow)">
-            <animate attributeName="stroke-dashoffset" values="37;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
-          </path>
-          <path d="M3,40 C3,29 29,29 29,40" fill="none" stroke="rgba(224,242,254,0.95)" stroke-width="1.5"
-                stroke-dasharray="22 15" stroke-linecap="round" filter="url(#ss-2p-bright)">
-            <animate attributeName="stroke-dashoffset" values="37;0" dur="2.2s" repeatCount="indefinite" calcMode="linear"/>
-          </path>
-        </svg>
+        <img src="images/icons/1v1.png" alt="" style="height:40px;width:auto;display:block;">
       </span>
       <span id="stitle-icon-bot" style="display:none;line-height:0;">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 44" height="28">
-          <defs>
-            <filter id="ss-bot-glow" x="-60%" y="-60%" width="220%" height="220%">
-              <feGaussianBlur stdDeviation="1.4" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <filter id="ss-bot-glow-strong" x="-100%" y="-100%" width="300%" height="300%">
-              <feGaussianBlur stdDeviation="2.2" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-          </defs>
-          <line x1="20" y1="3" x2="20" y2="12" stroke="#60a5fa" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
-          <circle cx="20" cy="3" r="2.5" fill="#38bdf8" filter="url(#ss-bot-glow)"/>
-          <circle cx="20" cy="12" r="2" fill="#e0f2fe" filter="url(#ss-bot-glow-strong)">
-            <animate attributeName="cy"      values="12;3;3"  keyTimes="0;0.65;1" dur="1.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.15 1;0 0 1 1"/>
-            <animate attributeName="r"       values="2;0.8;0" keyTimes="0;0.65;1" dur="1.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.3 0 0.15 1;0 0 1 1"/>
-            <animate attributeName="opacity" values="1;1;0"   keyTimes="0;0.65;1" dur="1.8s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;0 0 1 1"/>
-          </circle>
-          <rect x="6" y="12" width="28" height="18" rx="5" fill="#1e40af" stroke="#60a5fa" stroke-width="1.5"/>
-          <rect x="10" y="16" width="6" height="6" rx="1.5" fill="#7dd3fc" filter="url(#ss-bot-glow)"/>
-          <rect x="24" y="16" width="6" height="6" rx="1.5" fill="#7dd3fc" filter="url(#ss-bot-glow)"/>
-          <rect x="12" y="25" width="16" height="2.5" rx="1.25" fill="#93c5fd"/>
-          <circle cx="5" cy="21" r="3" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1"/>
-          <circle cx="35" cy="21" r="3" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1"/>
-          <rect x="8" y="30" width="24" height="13" rx="4" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1.5"/>
-          <rect x="13" y="33" width="14" height="5" rx="2" fill="#172554" stroke="#38bdf8" stroke-width="0.8" opacity="0.9"/>
-          <circle cx="16" cy="40" r="1.5" fill="#38bdf8" filter="url(#ss-bot-glow)"/>
-          <circle cx="20" cy="40" r="1.5" fill="#38bdf8" filter="url(#ss-bot-glow)"/>
-          <circle cx="24" cy="40" r="1.5" fill="#38bdf8" filter="url(#ss-bot-glow)"/>
-        </svg>
+        <img src="images/icons/bot.png" alt="" style="height:40px;width:auto;display:block;">
       </span>
-      <span id="stitle-text">הגדרות</span>
+      <span id="stitle-text" class="mf-setup-title">הגדרות</span>
     </div>
-    <div class="sf"><label>שם שחקן 1</label><input id="ip1" type="text" value="שחקן 1" maxlength="10"></div>
-    <div class="sf" id="p2f"><label>שם שחקן 2</label><input id="ip2" type="text" value="שחקן 2" maxlength="10"></div>
-    <div class="sf" id="dff" style="display:none">
-      <label>רמת קושי</label>
-      <div class="drow">
-        <button class="db a" onclick="setDiff(0,this)">קל</button>
-        <button class="db" onclick="setDiff(1,this)">בינוני</button>
-        <button class="db" onclick="setDiff(2,this)">קשה</button>
+
+    <div class="sf" style="margin-bottom:14px">
+      <label>שם שחקן 1</label>
+      <input id="ip1" type="text" value="שחקן 1" maxlength="10">
+    </div>
+    <div class="sf" id="p2f" style="margin-bottom:14px">
+      <label>שם שחקן 2</label>
+      <input id="ip2" type="text" value="שחקן 2" maxlength="10">
+    </div>
+
+    <div id="dff" style="display:none;margin-bottom:14px">
+      <div class="mf-section-lbl">רמת קושי</div>
+      <div class="mf-opt-row" style="margin-bottom:0">
+        <button class="mf-opt-card a" onclick="setDiff(0,this)">
+          <span class="mf-opt-icon"><img src="images/icons/green bot.png" alt="קל" class="ui-icon"></span>
+          <span class="mf-opt-label">קל</span>
+          <span class="mf-opt-sub">למתחילים</span>
+        </button>
+        <button class="mf-opt-card" onclick="setDiff(1,this)">
+          <span class="mf-opt-icon"><img src="images/icons/yellow bot.png" alt="בינוני" class="ui-icon"></span>
+          <span class="mf-opt-label">בינוני</span>
+          <span class="mf-opt-sub">לאתגר מאוזן</span>
+        </button>
+        <button class="mf-opt-card" onclick="setDiff(2,this)">
+          <span class="mf-opt-icon"><img src="images/icons/red bot.png" alt="קשה" class="ui-icon"></span>
+          <span class="mf-opt-label">קשה</span>
+          <span class="mf-opt-sub">לאתגר אמיתי</span>
+        </button>
       </div>
     </div>
-    <div class="sf">
-      <label>קצב משחק (שניות)</label>
-      <div class="drow">
-        <button class="db" id="ss-spd-20">⚡ בזק (20)</button>
-        <button class="db a" id="ss-spd-40">🎯 רגיל (40)</button>
-        <button class="db" id="ss-spd-60">🐢 איטי (60)</button>
-        <button class="db" id="ss-spd-0">∞ ללא</button>
+
+    <div style="margin-bottom:14px">
+      <div class="mf-section-lbl">קצב משחק</div>
+      <div class="mf-opt-row" style="margin-bottom:0">
+        <button id="ss-spd-20" class="mf-opt-card">
+          <span class="mf-opt-icon">⚡</span>
+          <span class="mf-opt-label">בזק</span>
+          <span class="mf-opt-sub">20 שנ'</span>
+        </button>
+        <button id="ss-spd-40" class="mf-opt-card a">
+          <span class="mf-opt-icon">🎯</span>
+          <span class="mf-opt-label">רגיל</span>
+          <span class="mf-opt-sub">40 שנ'</span>
+        </button>
+        <button id="ss-spd-60" class="mf-opt-card">
+          <span class="mf-opt-icon">🐢</span>
+          <span class="mf-opt-label">איטי</span>
+          <span class="mf-opt-sub">60 שנ'</span>
+        </button>
+        <button id="ss-spd-0" class="mf-opt-card">
+          <span class="mf-opt-icon">∞</span>
+          <span class="mf-opt-label">ללא</span>
+          <span class="mf-opt-sub">ללא הגבלה</span>
+        </button>
       </div>
     </div>
-    <div class="sf" id="ss-racks-row">
-      <label>הצג מגש שני השחקנים</label>
-      <div class="drow">
-        <button class="db" id="ss-racks-both">👁 פעיל</button>
-        <button class="db a" id="ss-racks-mine">👤 כבוי</button>
+
+    <div id="ss-racks-row" style="margin-bottom:14px">
+      <div class="mf-section-lbl">הצג מגש שני השחקנים</div>
+      <div class="mf-opt-row" style="margin-bottom:0">
+        <button id="ss-racks-both" class="mf-opt-card">
+          <span class="mf-opt-icon">👁</span>
+          <span class="mf-opt-label">פעיל</span>
+          <span class="mf-opt-sub">גם מגש יריב</span>
+        </button>
+        <button id="ss-racks-mine" class="mf-opt-card a">
+          <span class="mf-opt-icon">🔒</span>
+          <span class="mf-opt-label">כבוי</span>
+          <span class="mf-opt-sub">מגש שלי בלבד</span>
+        </button>
       </div>
     </div>
-    <div style="display:flex;gap:6px;">
-      <button class="bd" style="flex:1;font-size:12px" onclick="goHome()">← חזרה</button>
-      <button class="bd g" style="flex:2;font-size:13px" onclick="startGame()" data-gm="▶ שחק!" data-gf="▶ שחקי!">▶ שחק!</button>
+
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="mf-cancel" style="flex:1" onclick="goHome()">← חזרה</button>
+      <button class="mf-cta green" style="flex:2;margin-bottom:0" onclick="startGame()" data-gm="▶ שחק!" data-gf="▶ שחקי!">▶ שחק!</button>
     </div>
   </div>
 </div>

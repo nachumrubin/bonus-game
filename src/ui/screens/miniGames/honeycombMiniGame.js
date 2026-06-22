@@ -31,6 +31,7 @@
 //   HC_INTENT.RESULT
 
 import { startBonusTimer } from './bonusTimer.js';
+import { showBonusResult } from './bonusFx.js';
 import { g, getGender } from '../../genderText.js';
 
 const DEFAULT_DURATION_MS = 40_000;
@@ -231,14 +232,17 @@ export function mountHoneycombMiniGame({
     puzzle.letters.forEach((lt, i) => {
       const d = doc.createElement('div');
       const isC = i === 0;
-      // Resting + pressed background colours per hex role. The pressed
-      // shade is ~20% darker so the click registers visually.
-      const restBg    = isC ? '#ffe870' : '#c8d8ed';
-      const pressedBg = isC ? '#d8b830' : '#92a4be';
+      // Resting + pressed background colours per hex role. Center = gold,
+      // outer = white ceramic Boost tile. The pressed shade is darker so the
+      // click registers visually (the flash sets backgroundColor directly, so
+      // these stay solid colours; depth comes from the inset shadows below).
+      const restBg    = isC ? '#ffe27a' : '#eef3fb';
+      const pressedBg = isC ? '#e8b62f' : '#c9d6ea';
       d.style.cssText = `position:absolute;left:${HEX_POSITIONS[i].l}px;top:${HEX_POSITIONS[i].t}px;width:${HEX_W}px;height:${HEX_H}px;`
         + 'clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);'
         + `background:${restBg};display:flex;align-items:center;justify-content:center;`
-        + `font-size:22px;font-weight:900;color:${isC ? '#111' : '#1a2a4a'};cursor:pointer;user-select:none;`
+        + `font-size:23px;font-weight:900;color:${isC ? '#3a2400' : '#16233f'};cursor:pointer;user-select:none;`
+        + 'box-shadow:inset 0 3px 0 rgba(255,255,255,.6), inset 0 -5px 7px rgba(0,0,0,.22);'
         + 'transition:background-color .08s ease-out;';
       d.textContent = lt;
       // Register the first hex carrying each letter so subsequent
@@ -293,14 +297,15 @@ export function mountHoneycombMiniGame({
 
     const clr = doc.createElement('button');
     clr.textContent = '⌫';
-    clr.style.cssText = 'padding:8px 12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:4px;color:#fff;font-size:14px;cursor:pointer;flex-shrink:0;';
+    clr.style.cssText = 'flex-shrink:0;height:46px;padding:0 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:11px;color:#fff;font-size:16px;cursor:pointer;';
     clr.addEventListener('click', () => { inputEl.value = ''; inputEl.focus?.(); });
 
     // Full-width "✓" submit BELOW the input line — a big, easy tap target to
     // finalize a word (the input + ⌫ sit on the row above).
     const ok = doc.createElement('button');
     ok.textContent = '✓';
-    ok.style.cssText = 'width:100%;padding:10px;background:var(--by);border:none;border-radius:6px;font-weight:900;font-size:18px;cursor:pointer;color:#111;';
+    ok.className = 'bz-btn bz-btn-gold';
+    ok.style.cssText = 'width:100%;font-size:18px;';
     ok.addEventListener('click', attemptSubmit);
 
     row.appendChild(inputEl);
@@ -337,7 +342,7 @@ export function mountHoneycombMiniGame({
   function addChip(entry) {
     if (!chipsEl) return;
     const chip = doc.createElement('span');
-    chip.style.cssText = 'font-size:11px;background:rgba(0,160,70,.3);border:1px solid rgba(0,180,70,.45);border-radius:3px;padding:2px 6px;color:#7eff9e;';
+    chip.className = 'bz-chip';
     chip.textContent = entry.word + ' +' + entry.points;
     chipsEl.appendChild(chip);
     chipsEl.scrollTop = chipsEl.scrollHeight;
@@ -388,37 +393,45 @@ export function mountHoneycombMiniGame({
       finalize(result) {
         try { stopBar(); } catch { /* swallow */ }
         bok.style.display = prevDisplay ?? '';
-        bchal.innerHTML = renderResult(result);
+        renderHoneycombResult(bchal, result, ovBonus?.querySelector?.('.ovc'));
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
     };
   }
 
-  function renderResult(result) {
-    const emoji = result.earnedPts >= 30 ? '🎉' : result.earnedPts >= 10 ? '😊' : '⏰';
-    const color = result.earnedPts > 0 ? '#8eff8e' : 'rgba(255,255,255,.6)';
-    return `<div style="text-align:center;padding:10px 0">
-      <div style="font-size:30px;margin-bottom:6px">${emoji}</div>
-      <div style="font-size:15px;font-weight:900;color:${color};margin-bottom:4px">
-        ${result.foundCount} מילים — ${result.earnedPts} נקודות</div>
-    </div>`;
+  // Premium success/failure screen (confetti + count-up on a win, calm
+  // encouragement otherwise). Shared by the legacy + self-overlay paths.
+  function renderHoneycombResult(containerEl, result, cardEl) {
+    const win = result.earnedPts > 0;
+    showBonusResult(containerEl, {
+      success: win,
+      emoji: result.earnedPts >= 30 ? '🎉' : result.earnedPts >= 10 ? '😊' : '😌',
+      headline: result.foundCount ? `${result.foundCount} מילים` : 'אין מילים הפעם',
+      points: win ? result.earnedPts : null,
+      sub: win ? '' : 'המשך לשחק ולחפש הזדמנויות נוספות.',
+      cardEl,
+    });
   }
 
   function attachSelf() {
     const host = doc.createElement('div');
-    host.className = 'spine-mini-overlay';
-    host.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(6,19,61,.92);padding:20px;font-family:Heebo,sans-serif;';
+    host.className = 'spine-mini-overlay bz-overlay';
     const card = doc.createElement('div');
-    card.style.cssText = 'background:#0d2068;border-radius:14px;padding:18px;max-width:340px;color:#fff;text-align:center;';
+    card.className = 'bz-card';
+
+    const bolt = doc.createElement('div');
+    bolt.className = 'bz-bolt';
+    bolt.textContent = '🐝';
+    card.appendChild(bolt);
 
     const title = doc.createElement('div');
-    title.style.cssText = 'font-size:16px;font-weight:900;margin-bottom:4px;';
-    title.textContent = '⚡ דבורת המילים';
+    title.className = 'bz-title';
+    title.textContent = 'דבורת המילים!';
     card.appendChild(title);
 
     scoreEl = doc.createElement('div');
-    scoreEl.style.cssText = 'font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px;';
+    scoreEl.className = 'bz-sub';
     scoreEl.textContent = '0 נקודות';
     card.appendChild(scoreEl);
 

@@ -1,5 +1,6 @@
 import { $, $$, on, setText } from '../domHelpers.js';
-import { PROFILE_RENDER, avatarEmoji } from './profileScreen.js';
+import { PROFILE_RENDER } from './profileScreen.js';
+import { avatarMarkup, setAvatarEl } from './avatarScreens.js';
 import { deriveInsights } from '../../game/account/playerInsights.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
@@ -65,7 +66,7 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
     if (!screenEl || !profile) return;
     const stats = deriveStatsView(profile);
     paintInsightsPanel(profile, root);
-    text('#st-hero-av', avatarEmoji(profile.equippedAvatar));
+    setAvatarEl($('#st-hero-av', root), profile.equippedAvatar, { fallback: '👑' });
     text('#st-hero-name', profile.displayName ?? 'שחקן בוסט');
     text('#st-hero-tier', stats.tier.label);
     setTierClass($('#st-hero-tier', root), stats.tier.className);
@@ -263,7 +264,7 @@ function rivalsHtml(rivals = {}) {
   if (!entries.length) return '<div class="champs-empty">אין עדיין יריבים חיים</div>';
   return entries.map(r => {
     const wr = r.played ? Math.round(((Number(r.won) || 0) / r.played) * 100) : 0;
-    return `<div class="fun-card"><div class="fun-card-icon">${escapeHtml(r.avatar ?? '👤')}</div><div class="fun-card-info"><div class="fun-card-lbl">${escapeHtml(r.name ?? r.uid ?? '?')}</div><div class="fun-card-val">${r.won ?? 0}-${r.lost ?? 0}-${r.draw ?? 0} · ${wr}%</div></div></div>`;
+    return `<div class="fun-card"><div class="fun-card-icon">${avatarMarkup(r.avatar, { fallback: '👤' })}</div><div class="fun-card-info"><div class="fun-card-lbl">${escapeHtml(r.name ?? r.uid ?? '?')}</div><div class="fun-card-val">${r.won ?? 0}-${r.lost ?? 0}-${r.draw ?? 0} · ${wr}%</div></div></div>`;
   }).join('');
 }
 

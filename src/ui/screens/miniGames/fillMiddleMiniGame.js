@@ -24,6 +24,7 @@
 //   FM_INTENT.RESULT
 
 import { startBonusTimer } from './bonusTimer.js';
+import { confettiBurst } from './bonusFx.js';
 import { g, getGender } from '../../genderText.js';
 import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 
@@ -276,6 +277,7 @@ export function mountFillMiddleMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
         bchal.innerHTML = renderResult(result);
+        if (result.success) confettiBurst(ovBonus?.querySelector?.('.ovc'));
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
@@ -284,18 +286,22 @@ export function mountFillMiddleMiniGame({
 
   function attachSelf() {
     const host = doc.createElement('div');
-    host.className = 'spine-mini-overlay';
-    host.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(6,19,61,.92);padding:20px;font-family:Heebo,sans-serif;';
+    host.className = 'spine-mini-overlay bz-overlay';
     const card = doc.createElement('div');
-    card.style.cssText = 'background:#0d2068;border-radius:14px;padding:18px;max-width:340px;color:#fff;text-align:center;';
+    card.className = 'bz-card';
+
+    const bolt = doc.createElement('div');
+    bolt.className = 'bz-bolt';
+    bolt.textContent = '⚡';
+    card.appendChild(bolt);
 
     const title = doc.createElement('div');
-    title.style.cssText = 'font-size:16px;font-weight:900;margin-bottom:4px;';
-    title.textContent = '⚡ ' + g('fillMissing', getGender());
+    title.className = 'bz-title';
+    title.textContent = g('fillMissing', getGender());
     card.appendChild(title);
 
     const sub = doc.createElement('div');
-    sub.style.cssText = 'font-size:11px;color:rgba(255,255,255,.55);margin-bottom:8px;';
+    sub.className = 'bz-sub';
     sub.textContent = `${first} … ${last} · ${Math.floor(durationMs/1000)} שניות · +${pts} נקודות`;
     card.appendChild(sub);
 
@@ -307,7 +313,8 @@ export function mountFillMiddleMiniGame({
     card.appendChild(poolRow);
 
     const submitBtn = doc.createElement('button');
-    submitBtn.style.cssText = 'margin-top:8px;background:#e8c840;border:none;border-radius:8px;padding:8px 18px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
+    submitBtn.className = 'bz-btn bz-btn-green';
+    submitBtn.style.cssText = 'margin-top:10px;';
     submitBtn.textContent = 'בדוק ✓';
     submitBtn.addEventListener('click', () => {
       if (typed.includes(null)) return;
@@ -375,25 +382,25 @@ export function mountFillMiddleMiniGame({
   function renderResult(result) {
     const answerLabel = `המילה הייתה: <strong style="font-size:22px;color:var(--by);display:block;margin-top:4px;letter-spacing:3px;">${answer}</strong>`;
     if (!result.attempt) {
-      return `<div style="text-align:center;padding:8px 0;">
-        <div style="font-size:32px;margin-bottom:6px;">⏰</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:4px;">הזמן נגמר!</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.6);">${answerLabel}</div>
+      return `<div class="bz-result is-soft">
+        <div class="bz-result-emoji">⏰</div>
+        <div class="bz-result-headline">הזמן נגמר!</div>
+        <div class="bz-result-sub">${answerLabel}</div>
       </div>`;
     }
     if (result.success) {
       const same = result.attempt === answer;
-      return `<div style="text-align:center;padding:8px 0;">
-        <div style="font-size:32px;margin-bottom:6px;">✅</div>
-        <div style="font-size:20px;font-weight:900;color:#8eff8e;margin-bottom:4px;letter-spacing:2px;">${result.attempt}</div>
-        ${same ? '' : `<div style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:2px;">${answerLabel}</div>`}
-        <div style="font-size:13px;color:#8eff8e;margin-top:4px;">כל הכבוד! +${result.earnedPts} נקודות 🎉</div>
+      return `<div class="bz-result is-win">
+        <div class="bz-result-emoji">🎉</div>
+        <div class="bz-result-headline" style="letter-spacing:2px;">${result.attempt}</div>
+        <div class="bz-result-big">+${result.earnedPts} נק'</div>
+        ${same ? '' : `<div class="bz-result-sub">${answerLabel}</div>`}
       </div>`;
     }
-    return `<div style="text-align:center;padding:8px 0;">
-      <div style="font-size:32px;margin-bottom:6px;">❌</div>
-      <div style="font-size:15px;color:#ff8e8e;margin-bottom:6px;letter-spacing:2px;">${result.attempt} — לא מילה תקפה</div>
-      <div style="font-size:13px;color:rgba(255,255,255,.65);">${answerLabel}</div>
+    return `<div class="bz-result is-soft">
+      <div class="bz-result-emoji">😌</div>
+      <div class="bz-result-headline" style="letter-spacing:2px;">${result.attempt} — לא מילה תקפה</div>
+      <div class="bz-result-sub">${answerLabel}</div>
     </div>`;
   }
 }

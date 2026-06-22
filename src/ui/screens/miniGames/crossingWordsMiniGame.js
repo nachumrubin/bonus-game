@@ -27,6 +27,7 @@
 // guess without spinning up DOM.
 
 import { startBonusTimer } from './bonusTimer.js';
+import { confettiBurst } from './bonusFx.js';
 import { isValid as isHebrewWordValid, isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 import { g, getGender } from '../../genderText.js';
 
@@ -273,6 +274,7 @@ export function mountCrossingWordsMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
         bchal.innerHTML = renderResult(result);
+        if (result.success) confettiBurst(ovBonus?.querySelector?.('.ovc'));
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
@@ -288,37 +290,38 @@ export function mountCrossingWordsMiniGame({
     const correctWordsHtml = `<span style="font-weight:900;color:var(--by);">${correct.h}</span> · <span style="font-weight:900;color:var(--by);">${correct.v}</span>`;
 
     if (!result.attempt) {
-      return `<div style="text-align:center;padding:8px 0;">
-        <div style="font-size:32px;margin-bottom:6px;">⏰</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:6px;">הזמן נגמר!</div>
-        <div style="font-size:14px;color:rgba(255,255,255,.85);">התשובה: ${correctWordsHtml}</div>
+      return `<div class="bz-result is-soft">
+        <div class="bz-result-emoji">⏰</div>
+        <div class="bz-result-headline">הזמן נגמר!</div>
+        <div class="bz-result-sub">התשובה: ${correctWordsHtml}</div>
       </div>`;
     }
     if (result.success) {
       const made = fill(result.attempt);
-      return `<div style="text-align:center;padding:8px 0;">
-        <div style="font-size:32px;margin-bottom:6px;">✅</div>
-        <div style="font-size:18px;font-weight:900;color:#8eff8e;margin-bottom:4px;">${made.h} · ${made.v}</div>
-        <div style="font-size:13px;color:#8eff8e;margin-top:4px;">כל הכבוד! הצלחת! 🎉</div>
+      return `<div class="bz-result is-win">
+        <div class="bz-result-emoji">🎉</div>
+        <div class="bz-result-headline">${made.h} · ${made.v}</div>
+        <div class="bz-result-big">+${pts} נק'</div>
+        <div class="bz-result-sub">כל הכבוד! הצלחת!</div>
       </div>`;
     }
     const made = fill(result.attempt);
-    return `<div style="text-align:center;padding:8px 0;">
-      <div style="font-size:32px;margin-bottom:6px;">❌</div>
-      <div style="font-size:15px;color:#ff8e8e;margin-bottom:6px;">${made.h} · ${made.v} — לא תקין</div>
-      <div style="font-size:13px;color:rgba(255,255,255,.75);">התשובה הנכונה: ${correctWordsHtml}</div>
+    return `<div class="bz-result is-soft">
+      <div class="bz-result-emoji">😌</div>
+      <div class="bz-result-headline">${made.h} · ${made.v} — לא תקין</div>
+      <div class="bz-result-sub">התשובה הנכונה: ${correctWordsHtml}</div>
     </div>`;
   }
 
   function attachSelf() {
     const host = doc.createElement('div');
-    host.className = 'spine-mini-overlay';
-    host.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(6,19,61,.92);padding:20px;font-family:Heebo,sans-serif;';
+    host.className = 'spine-mini-overlay bz-overlay';
     const card = doc.createElement('div');
-    card.style.cssText = 'background:#0d2068;border-radius:14px;padding:18px;max-width:340px;color:#fff;text-align:center;';
+    card.className = 'bz-card';
     card.innerHTML = `
-      <div style="font-size:16px;font-weight:900;margin-bottom:4px;">⚡ שתי מילים חוצות</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:8px;">${Math.floor(durationMs / 1000)} שניות · +${pts} נקודות</div>
+      <div class="bz-bolt">✚</div>
+      <div class="bz-title">שתי מילים חוצות!</div>
+      <div class="bz-sub">${Math.floor(durationMs / 1000)} שניות · +${pts} נקודות</div>
     `;
     const { wrap, input } = buildMiniGrid({ withInput: true });
     card.appendChild(wrap);
@@ -326,8 +329,8 @@ export function mountCrossingWordsMiniGame({
     inputRow.style.cssText = 'margin-top:10px;display:flex;gap:6px;justify-content:center;';
     const submitBtn = doc.createElement('button');
     submitBtn.setAttribute('data-cw', 'submit');
-    submitBtn.style.cssText = 'background:#e8c840;border:none;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
-    submitBtn.textContent = 'בדוק';
+    submitBtn.className = 'bz-btn bz-btn-green';
+    submitBtn.textContent = 'בדוק ✓';
     inputRow.appendChild(submitBtn);
     card.appendChild(inputRow);
     host.appendChild(card);

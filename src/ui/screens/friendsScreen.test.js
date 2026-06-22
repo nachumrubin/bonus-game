@@ -28,12 +28,13 @@ test('buildFriendsListHtml: empty placeholder', () => {
   assert.match(html, /אין חברים/);
 });
 
-test('buildFriendsListHtml: renders avatar + name + remove button', () => {
+test('buildFriendsListHtml: renders avatar + name + menu button', () => {
+  // '🦈' is the winner achievement reward → avatar renders as its trophy icon.
   const html = buildFriendsListHtml([{ uid: 'u1', name: 'נחום', avatar: '🦈' }]);
   assert.match(html, /data-fr-row="u1"/);
-  assert.match(html, /🦈/);
+  assert.match(html, /images\/icons\/acheivements\//);
   assert.match(html, /נחום/);
-  assert.match(html, /data-fr-remove="u1"/);
+  assert.match(html, /data-fr-menu="u1"/);
 });
 
 function makeWrap() {
@@ -156,15 +157,15 @@ test('FRIENDS_DETAIL_RENDER resolves an avatar id to its emoji (no literal "crow
   assert.equal(els.fdName.textContent, 'הודיה');
 });
 
-test('FRIENDS_DETAIL_RENDER passes a raw emoji avatar through unchanged', () => {
+test('FRIENDS_DETAIL_RENDER shows anonymous player image when avatar is the default', () => {
   bus._reset();
   const { root, els } = makeRoot();
   mountFriendsScreen({ root, bus });
   bus.emit(FRIENDS_DETAIL_RENDER, {
-    friend: { uid: 'u9', name: 'דנה', avatar: '🦈' },
+    friend: { uid: 'u9', name: 'דנה', avatar: '👤' },
     rivalEntry: null, vsRecent: [], activeGames: [], myUid: 'me',
   });
-  assert.equal(els.fdAvatar.textContent, '🦈');
+  assert.match(els.fdAvatar.innerHTML ?? '', /anonymous player/);
 });
 
 test('FRIENDS_RENDER with no requests hides the wrap and the badge', () => {

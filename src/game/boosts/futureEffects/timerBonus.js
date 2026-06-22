@@ -11,7 +11,7 @@ import { TRIGGERS } from '../../core/boostEngine.js';
 
 export default {
   id: 'timer_bonus',
-  name: 'בונוס זמן',
+  name: 'בוסט זמן',
   description: 'מקבל שניות נוספות בתור הבא',
   trigger: TRIGGERS.ON_TURN_START,
 

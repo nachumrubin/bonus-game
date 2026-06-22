@@ -21,6 +21,12 @@ export function createTurnTimerController({
   // fresh turn re-arms ticks even if the previous turn fired them already.
   let lastTickKey = null;
   let lastTickSec = null;
+  // JS-driven SVG ring: tracks turn key + captured total duration so we can
+  // compute stroke-dashoffset = (1 - remaining/total) * 277 each tick.
+  // No CSS animation — dashoffset is set via inline style, which freezes
+  // automatically during pause paths (controller returns early, no JS update).
+  let lastRingTurnKey = null;
+  let ringTurnDurationMs = 0;
   // While >0, the timer is frozen: display shows the full per-turn allowance
   // and the auto-pass dispatch is suppressed. Bonus flows (mini-games, +N
   // overlays, wheel) bump this on start and decrement on completion so the
@@ -269,12 +275,31 @@ export function createTurnTimerController({
     if (!state || state.status !== 'playing' || !deadline) {
       setText(timerEl, '--');
       wrap?.classList?.remove('urgent', 'warn', 'crit', 'active');
+      const idleArc = wrap?.querySelector?.('.tt-ring-arc');
+      if (idleArc) idleArc.style.strokeDashoffset = '0';
       return;
     }
 
     const remainingMs = deadline - now();
     const secs = Math.max(0, Math.ceil(remainingMs / 1000));
+    const turnKey = `${state.turnNumber}:${state.currentTurnSlot}`;
     setText(timerEl, String(secs));
+
+    // Capture total turn duration on the first tick of each new turn so that
+    // the ring offset is calibrated to the actual allowed time, not a hardcoded 60s.
+    if (lastRingTurnKey !== turnKey) {
+      lastRingTurnKey = turnKey;
+      ringTurnDurationMs = Math.max(1000, deadline - now());
+    }
+
+    // Drive stroke-dashoffset via JS: freezes automatically during bonus/menu
+    // pause because those paths return early without calling this code.
+    const arc = wrap?.querySelector?.('.tt-ring-arc');
+    if (arc && ringTurnDurationMs > 0) {
+      const pct = Math.max(0, Math.min(1, remainingMs / ringTurnDurationMs));
+      arc.style.strokeDashoffset = String(Math.round(277 * (1 - pct)));
+    }
+
     wrap?.classList?.add?.('active');
     wrap?.classList?.toggle?.('urgent', secs <= 10);
     wrap?.classList?.toggle?.('crit', secs <= 5);
@@ -282,7 +307,6 @@ export function createTurnTimerController({
 
     // Emit a 'timer/tick' for the final 3,2,1 seconds — only on transitions
     // (not every 250 ms poll) and only once per turn at each value.
-    const turnKey = `${state.turnNumber}:${state.currentTurnSlot}`;
     if (lastTickKey !== turnKey) {
       lastTickKey = turnKey;
       lastTickSec = null;
@@ -295,9 +319,8 @@ export function createTurnTimerController({
     }
 
     if (remainingMs <= 0) {
-      const key = `${state.turnNumber}:${state.currentTurnSlot}`;
-      if (timedOutKey !== key) {
-        timedOutKey = key;
+      if (timedOutKey !== turnKey) {
+        timedOutKey = turnKey;
         session.dispatch?.({
           type: CMD.PASS_TURN,
           payload: { reason: 'timeout' },

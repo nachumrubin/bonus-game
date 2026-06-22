@@ -1,0 +1,193 @@
+[
+  {
+    "id": "first_word_center",
+    "title": "טיפ למתחילים",
+    "text": "המילה הראשונה לא יכולה לשבת על משבצת בוסט.",
+    "category": "beginner",
+    "enabled": true,
+    "weight": 10,
+    "maxGamesPlayed": 15
+  },
+  {
+    "id": "longer_words_score",
+    "title": "טיפ למתחילים",
+    "text": "מילים ארוכות יותר מניבות יותר נקודות. נסו למצוא את המילה הכי ארוכה על הלוח!",
+    "category": "beginner",
+    "enabled": true,
+    "weight": 10,
+    "maxGamesPlayed": 20
+  },
+  {
+    "id": "lightning_tiles",
+    "title": "טיפ למתחילים",
+    "text": "משבצות ברק מעניקות יתרונות מיוחדים. חפשו אותן במהלך המשחק!",
+    "category": "beginner",
+    "enabled": true,
+    "weight": 9,
+    "maxGamesPlayed": 20
+  },
+  {
+    "id": "rack_exchange",
+    "title": "טיפ למתחילים",
+    "text": "לא מוצאים מילה? ניתן להחליף אות מהמגש. תאבדו תור אחד אבל תקבלו אות טובה יותר.",
+    "category": "beginner",
+    "enabled": true,
+    "weight": 8,
+    "maxGamesPlayed": 20
+  },
+  {
+    "id": "bingo_bonus",
+    "title": "טיפ למתחילים",
+    "text": "שימוש בכל 8 האותיות במגש בתור אחד מעניק בוסט ענק של 50 נקודות!",
+    "category": "beginner",
+    "enabled": true,
+    "weight": 9
+  },
+  {
+    "id": "extend_existing",
+    "title": "טיפ אסטרטגי",
+    "text": "נסו להאריך מילים שכבר קיימות על הלוח. מילה קצרה + הארכה = נקודות לשתי מילים בבת אחת.",
+    "category": "intermediate",
+    "enabled": true,
+    "weight": 9,
+    "minGamesPlayed": 5
+  },
+  {
+    "id": "common_suffixes",
+    "title": "טיפ אסטרטגי",
+    "text": "חפשו סיומות נפוצות כמו ים, ות, ית — הן יאפשרו לכם לבנות מילים גם מאותיות קשות.",
+    "category": "intermediate",
+    "enabled": true,
+    "weight": 8,
+    "minGamesPlayed": 5
+  },
+  {
+    "id": "two_short_words",
+    "title": "טיפ אסטרטגי",
+    "text": "לפעמים שתי מילים קצרות שוות יותר ממילה אחת ארוכה — חשבו על כל הלוח ולא רק על המגש.",
+    "category": "intermediate",
+    "enabled": true,
+    "weight": 7,
+    "minGamesPlayed": 5
+  },
+  {
+    "id": "save_useful_tiles",
+    "title": "טיפ אסטרטגי",
+    "text": "שמרו אותיות שימושיות כמו ו, י, ה לתורות הבאים. לא כל מה שיש לנו צריך לצאת בבת אחת.",
+    "category": "intermediate",
+    "enabled": true,
+    "weight": 7,
+    "minGamesPlayed": 8
+  },
+  {
+    "id": "perpendicular_words",
+    "title": "טיפ אסטרטגי",
+    "text": "כשאתם מניחים מילה, בדקו שגם המילים האנכיות שנוצרות עקב כך הן תקינות.",
+    "category": "intermediate",
+    "enabled": true,
+    "weight": 8,
+    "minGamesPlayed": 10
+  },
+  {
+    "id": "lightning_decisive",
+    "title": "טיפ מתקדם",
+    "text": "נצלו ג'וקרים כדי ליצור מהלכים מכריעים — שמרו אותן לתורות שבהם תוכלו למקסם את הרווח.",
+    "category": "advanced",
+    "enabled": true,
+    "weight": 8,
+    "minGamesPlayed": 20
+  },
+  {
+    "id": "rating_consistency",
+    "title": "טיפ מתקדם",
+    "text": "דירוג גבוה מושג באמצעות יציבות ולא רק ניצחונות גדולים. הפסד קרוב עדיף על נשירה מוקדמת.",
+    "category": "advanced",
+    "enabled": true,
+    "weight": 7,
+    "minGamesPlayed": 30
+  },
+  {
+    "id": "block_opponent",
+    "title": "טיפ מתקדם",
+    "text": "חסמו את ריבועי הבוסט היקרים לפני שהיריב מגיע אליהם — הגנה שווה כמו התקפה.",
+    "category": "advanced",
+    "enabled": true,
+    "weight": 7,
+    "minGamesPlayed": 20
+  },
+  {
+    "id": "track_remaining_tiles",
+    "title": "טיפ מתקדם",
+    "text": "שחקנים מנוסים עוקבים אחרי האותיות שנותרו בשקית. מספר האותיות מוצג בראש המסך.",
+    "category": "advanced",
+    "enabled": true,
+    "weight": 6,
+    "minGamesPlayed": 30
+  },
+  {
+    "id": "did_you_know_pause",
+    "title": "הידעת?",
+    "text": "ניתן להשהות משחק ולחזור אליו מאוחר יותר — כולל משחקים מקוונים אסינכרוניים.",
+    "category": "didYouKnow",
+    "enabled": true,
+    "weight": 8
+  },
+  {
+    "id": "did_you_know_invite_achievement",
+    "title": "הידעת?",
+    "text": "הזמנת חברים פותחת הישגים חדשים! היכנסו לעמוד החברים כדי להזמין.",
+    "category": "didYouKnow",
+    "enabled": true,
+    "weight": 8
+  },
+  {
+    "id": "did_you_know_my_games",
+    "title": "הידעת?",
+    "text": "ניתן לראות את כל המשחקים הממתינים במסך ״המשחקים שלי״ בתחתית המסך הראשי.",
+    "category": "didYouKnow",
+    "enabled": true,
+    "weight": 9
+  },
+  {
+    "id": "did_you_know_streak",
+    "title": "הידעת?",
+    "text": "רצף ניצחונות נשמר בפרופיל האישי שלך. כמה ניצחונות רצופים תוכלו לצבור?",
+    "category": "didYouKnow",
+    "enabled": true,
+    "weight": 7
+  },
+  {
+    "id": "did_you_know_bot",
+    "title": "הידעת?",
+    "text": "ניתן לשחק מול המחשב בכמה רמות קושי שונות — מתאים לתרגול לפני משחקים אמיתיים.",
+    "category": "didYouKnow",
+    "enabled": true,
+    "weight": 8,
+    "maxGamesPlayed": 30
+  },
+  {
+    "id": "did_you_know_stats",
+    "title": "הידעת?",
+    "text": "דף הסטטיסטיקות מציג את הניקוד הגבוה שלכם, אחוז הניצחונות, ועוד נתונים מרתקים.",
+    "category": "didYouKnow",
+    "enabled": true,
+    "weight": 7
+  },
+  {
+    "id": "did_you_know_boosts",
+    "title": "הידעת?",
+    "text": "בוסטים מתעוררים כשמניחים אות על משבצת ברק. חלק מהבוסטים הם מיני-משחקים שמזכים בנקודות נוספות!",
+    "category": "didYouKnow",
+    "enabled": true,
+    "weight": 9,
+    "maxGamesPlayed": 10
+  },
+  {
+    "id": "did_you_know_achievements",
+    "title": "הידעת?",
+    "text": "יש הישגים נסתרים שמחכים לכם לגלות. בדקו את עמוד ההישגים אחרי כל משחק.",
+    "category": "didYouKnow",
+    "enabled": true,
+    "weight": 6
+  }
+]

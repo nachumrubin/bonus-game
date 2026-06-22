@@ -54,7 +54,7 @@ test('tutorial game events emit guided tips through bonus-square demo', () => {
   assert.ok(tips[1].selectors.includes('#bsq-10'));
   assert.ok(tips[1].selectors.includes('#brack[letter=י]'));
   // Completion tip auto-closes (no buttons exist to dismiss it).
-  assert.match(tips[2].text, /הפעלת בונוס/);
+  assert.match(tips[2].text, /הפעלת בוסט/);
   assert.ok(tips[2].autoCloseMs > 0, 'completion tip auto-closes');
   // The clear between firstMoveTip and bonusSquareTip fires explicitly.
   assert.ok(clears.length >= 1);

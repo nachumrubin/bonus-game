@@ -49,6 +49,7 @@ const ALL_DIRECTIONS = [
 ];
 
 import { startBonusTimer } from './bonusTimer.js';
+import { showBonusResult } from './bonusFx.js';
 import { g, getGender } from '../../genderText.js';
 import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 
@@ -305,16 +306,16 @@ export function mountHiddenWordMiniGame({
       finalize(result) {
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleEarly);
-        const emoji = result.success ? '🎉' : '⏰';
-        const color = result.success ? '#8eff8e' : 'rgba(255,255,255,.6)';
-        const line = result.success
-          ? `מצאת את המילה "${result.word}"`
-          : `לא נמצאה מילה — המילה הנסתרת הייתה "${result.hiddenWord}"`;
-        bchal.innerHTML = `<div style="text-align:center;padding:10px 0">
-          <div style="font-size:32px;margin-bottom:6px">${emoji}</div>
-          <div style="font-size:15px;font-weight:900;color:${color};margin-bottom:5px">${line}</div>
-          <div style="font-size:14px;color:var(--by);font-weight:700">+${result.earnedPts} נקודות</div>
-        </div>`;
+        showBonusResult(bchal, {
+          success: result.success,
+          emoji: result.success ? '🎉' : '😌',
+          headline: result.success
+            ? `מצאת את המילה "${result.word}"`
+            : `המילה הנסתרת הייתה "${result.hiddenWord}"`,
+          points: result.success ? result.earnedPts : null,
+          sub: result.success ? '' : 'ללא מילה — ללא בוסט. נסה שוב בהזדמנות הבאה.',
+          cardEl: ovBonus?.querySelector?.('.ovc'),
+        });
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
@@ -323,23 +324,24 @@ export function mountHiddenWordMiniGame({
 
   function attachSelf() {
     const host = doc.createElement('div');
-    host.className = 'spine-mini-overlay hw-self-overlay';
-    host.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(6,19,61,.92);padding:20px;font-family:Heebo,sans-serif;';
+    host.className = 'spine-mini-overlay hw-self-overlay bz-overlay';
     doc.body?.appendChild(host);
 
     const inner = doc.createElement('div');
-    inner.style.cssText = 'background:#0d2068;border-radius:14px;padding:18px;max-width:340px;color:#fff;text-align:center;';
+    inner.className = 'bz-card';
     inner.innerHTML = `
-      <div style="font-size:16px;font-weight:900;margin-bottom:2px;">⚡ מילה נסתרת</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.65);margin-bottom:8px;">מצא מילה באורך ${wordLen} אותיות</div>`;
+      <div class="bz-bolt">🔍</div>
+      <div class="bz-title">מילה נסתרת!</div>
+      <div class="bz-sub">מצא מילה באורך ${wordLen} אותיות</div>`;
     const statusHost = doc.createElement('div');
     statusHost.style.cssText = 'text-align:center;font-size:13px;font-weight:700;color:rgba(255,255,255,.7);min-height:20px;margin-bottom:4px;';
     statusEl = statusHost;
     inner.appendChild(statusHost);
     inner.appendChild(buildGridEl(doc));
     const doneBtn = doc.createElement('button');
-    doneBtn.style.cssText = 'margin-top:12px;background:#e8c840;border:none;border-radius:8px;padding:8px 18px;font-family:inherit;font-size:14px;font-weight:900;color:#000;cursor:pointer;';
-    doneBtn.textContent = 'סיים';
+    doneBtn.className = 'bz-btn bz-btn-gold';
+    doneBtn.style.cssText = 'margin-top:12px;';
+    doneBtn.textContent = 'סיים ▶';
     doneBtn.addEventListener('click', finish);
     inner.appendChild(doneBtn);
     host.appendChild(inner);

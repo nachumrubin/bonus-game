@@ -1,11 +1,14 @@
-﻿<!-- ACHIEVEMENTS SCREEN -->
+<!-- ACHIEVEMENTS SCREEN — collectible trophy room -->
 <div id="sav-gallery" class="screen hidden">
-  <div style="width:100%;max-width:360px;display:flex;flex-direction:column;height:100%;padding:16px 12px;box-sizing:border-box;">
-    <div style="display:flex;align-items:center;margin-bottom:4px;">
-      <div style="font-size:25px;font-weight:900;color:var(--by,#f5c518);flex:1;text-align:center;">🏆 הישגים שלי</div>
+  <div class="ach-room">
+    <div class="ach-rt-head">
+      <i class="ach-rt-deco"></i>
+      <span class="ach-rt-title">🏆 הישגים</span>
+      <i class="ach-rt-deco"></i>
     </div>
-    <div id="av-gallery-count" style="text-align:center;font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px;"></div>
-    <div id="av-locked-hint" style="text-align:center;font-size:12px;color:rgba(255,255,255,.7);background:rgba(0,0,0,.35);border-radius:6px;padding:6px 10px;margin-bottom:8px;min-height:28px;transition:opacity .4s;opacity:0;"></div>
-    <div id="av-gallery-grid" style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;padding-bottom:8px;"></div>
+    <div class="ach-rt-sub" id="av-gallery-count">0 מתוך 17 הושגו</div>
+    <div id="av-locked-hint" class="ach-hint"></div>
+    <!-- Trophy shelves (rows of 3) are rendered here by avatarScreens.js -->
+    <div id="av-gallery-grid" class="ach-grid"></div>
   </div>
 </div>

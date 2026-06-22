@@ -108,13 +108,18 @@ export function createGameFlowController({
   }));
 
   cleanups.push(bus.on(PAUSE_INTENT.RESUME, () => hideOverlay('ov-pause')));
-  cleanups.push(bus.on(PAUSE_INTENT.SAVE_AND_EXIT, () => {
+  // Save the current game (offline) or resign (live online) and return home.
+  // Shared by the pause overlay's "השהה ושמור" and the back-confirm overlay's
+  // identical "השהה ושמור" — the latter used to re-open the (visually identical)
+  // pause overlay, so the user had to click the same button twice.
+  function saveAndExit(hideOverlayId) {
     const ag = activeGameRef();
     if (ag?.online && !ag?.isAsync) {
-      hideOverlay('ov-pause');
+      hideOverlay(hideOverlayId);
       ag.session?.dispatch?.({ type: CMD.RESIGN_GAME, payload: { slot: ag.session.mySlot } });
       return;
     }
+    hideOverlay(hideOverlayId);
     // Offline 2P / vs-Bot: serialize the engine state to localStorage so
     // the home-screen "המשך משחק" button can rebuild the session later.
     const state = ag?.session?.state;
@@ -130,7 +135,8 @@ export function createGameFlowController({
     endActiveGame();
     showScreen('sh');
     if (saved) bus.emit(MENU_REFRESH, { hasSavedGame: true });
-  }));
+  }
+  cleanups.push(bus.on(PAUSE_INTENT.SAVE_AND_EXIT, () => saveAndExit('ov-pause')));
   cleanups.push(bus.on(PAUSE_INTENT.QUIT_NO_SAVE, () => {
     const ag = activeGameRef();
     if (ag?.online && !ag?.isAsync) {
@@ -149,10 +155,7 @@ export function createGameFlowController({
   }));
 
   cleanups.push(bus.on(BACK_INTENT.STAY, () => hideOverlay('ov-back-confirm')));
-  cleanups.push(bus.on(BACK_INTENT.PAUSE_AND_SAVE, () => {
-    hideOverlay('ov-back-confirm');
-    bus.emit(PAUSE_OPEN, currentPlayerPayload());
-  }));
+  cleanups.push(bus.on(BACK_INTENT.PAUSE_AND_SAVE, () => saveAndExit('ov-back-confirm')));
   cleanups.push(bus.on(BACK_INTENT.LEAVE, () => {
     const ag = activeGameRef();
     if (ag?.online) {

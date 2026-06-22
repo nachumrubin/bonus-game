@@ -14,6 +14,7 @@
 // Mode mapping: legacy 'live' / 'async' → spine 'random-live' / 'random-async'.
 
 import { $, on } from '../domHelpers.js';
+import { avatarMarkup, setAvatarEl } from './avatarScreens.js';
 import { loadUiPreferences } from '../../game/settings/settingsCompat.js';
 
 export const MM_INTENT = Object.freeze({
@@ -72,20 +73,21 @@ export const PS_INTENT = Object.freeze({
 });
 
 const SLOT_PROFILES = [
-  { av: '👑', nm: 'דניאל' }, { av: '🔥', nm: 'שרה' },
-  { av: '💎', nm: 'יוסי' }, { av: '🦈', nm: 'מרים' },
-  { av: '🐉', nm: 'אלי' }, { av: '🐯', nm: 'רונית' },
-  { av: '👾', nm: 'דוד' }, { av: '🧙', nm: 'תמר' },
-  { av: '🤖', nm: 'משה' }, { av: '🚀', nm: 'לילך' },
-  { av: '🛡️', nm: 'ניר' }, { av: '🥷', nm: 'עינת' },
-  { av: '🧠', nm: 'אמיר' }, { av: '🧛', nm: 'נועה' },
-  { av: '⭐', nm: 'גיל' },
+  { av: 'fire',      nm: 'שרה'   }, { av: 'shark',     nm: 'מרים'  },
+  { av: 'diamond',   nm: 'יוסי'  }, { av: 'tiger',     nm: 'רונית' },
+  { av: 'fox',       nm: 'נועה'  }, { av: 'bulb',      nm: 'אמיר'  },
+  { av: 'handshake', nm: 'גיל'   }, { av: 'dragon',    nm: 'אלי'   },
+  { av: 'wizard',    nm: 'תמר'   }, { av: 'shield',    nm: 'ניר'   },
+  { av: 'bolt',      nm: 'לילך'  }, { av: 'alien',     nm: 'דוד'   },
+  { av: 'robot',     nm: 'משה'   }, { av: 'trophy',    nm: 'עינת'  },
+  { av: 'books',     nm: 'דניאל' }, { av: 'hero',      nm: 'אורה'  },
+  { av: 'target',    nm: 'ענת'   },
 ];
 
 const ITEM_H = 68;
 
 function makeItem({ av, nm }) {
-  return `<div class="ps-slot-item"><div class="ps-slot-av">${av}</div><div class="ps-slot-nm">${nm}</div></div>`;
+  return `<div class="ps-slot-item"><div class="ps-slot-av">${avatarMarkup(av, { fallback: '👑', className: 'av-img' })}</div><div class="ps-slot-nm">${nm}</div></div>`;
 }
 
 export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = {}) {
@@ -122,7 +124,7 @@ export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = 
   }
 
   function showOverlay({ name, avatar } = {}) {
-    if (myAvEl) myAvEl.textContent = avatar || '👑';
+    if (myAvEl) setAvatarEl(myAvEl, avatar, { fallback: '👑' });
     if (myNmEl) myNmEl.textContent = name   || 'שחקן';
     startSpin();
     ov?.classList.remove('hidden');
@@ -141,7 +143,7 @@ export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = 
     if (!reelEl) return;
     reelEl.classList.remove('ps-spinning');
     reelEl.style.animation = 'none';
-    reelEl.innerHTML = makeItem({ av: avatar || '👑', nm: name || 'שחקן' });
+    reelEl.innerHTML = makeItem({ av: avatarMarkup(avatar, { fallback: '👑' }), nm: name || 'שחקן' });
     void reelEl.offsetHeight; // force reflow before adding animation
     reelEl.classList.add('ps-landing');
     slotCard?.classList.add('ps-found');

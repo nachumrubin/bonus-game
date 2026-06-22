@@ -2,8 +2,14 @@
 <div id="sstats" class="screen hidden" dir="rtl">
   <div class="stats-wrap">
 
+    <!-- Screen title -->
+    <div style="text-align:center;padding:14px 0 8px;">
+      <img class="screen-hd-icon" src="images/icons/statistics.png" alt="">
+      <div class="stitle">הסטטיסטיקות שלי</div>
+    </div>
+
     <!-- Hero summary card -->
-    <div class="stats-hero" style="margin-top:14px;flex-direction:column;align-items:stretch;gap:10px;">
+    <div class="stats-hero glass-panel" style="margin-top:0;flex-direction:column;align-items:stretch;gap:10px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span class="boost-pulse" id="st-hero-av" style="font-size:26px;line-height:1;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(0,194,255,.4));">🏆</span>
         <div class="stats-hero-name" id="st-hero-name" style="margin-bottom:0;flex:1 1 auto;min-width:0;">שחקן בוסט</div>
@@ -24,10 +30,10 @@
 
     <!-- Tab bar -->
     <div class="stats-tabbar">
-      <button class="stats-tab active" onclick="_statsTab('insights',this)">תובנות</button>
-      <button class="stats-tab" onclick="_statsTab('progress',this)">התקדמות</button>
-      <button class="stats-tab" onclick="_statsTab('records',this)">שיאים</button>
-      <button class="stats-tab" onclick="_statsTab('rivals',this)">יריבים</button>
+      <button class="stats-tab sopt-btn active" onclick="_statsTab('insights',this)">תובנות</button>
+      <button class="stats-tab sopt-btn" onclick="_statsTab('progress',this)">התקדמות</button>
+      <button class="stats-tab sopt-btn" onclick="_statsTab('records',this)">שיאים</button>
+      <button class="stats-tab sopt-btn" onclick="_statsTab('rivals',this)">יריבים</button>
     </div>
 
     <!-- Tab content -->
@@ -47,31 +53,31 @@
         </div>
 
         <!-- Insights About You -->
-        <div class="stats-sec-lbl">🧠 תובנות עליך</div>
+        <div class="section-title-bar">תובנות עליך</div>
         <div class="ins-cards" id="ins-cards"></div>
 
         <!-- Performance Trends -->
-        <div class="stats-sec-lbl">📈 מגמות</div>
+        <div class="section-title-bar">מגמות</div>
         <div class="ins-trends" id="ins-trends"></div>
 
         <!-- This Week Snapshot -->
-        <div class="stats-sec-lbl">📅 השבוע שלך</div>
+        <div class="section-title-bar">השבוע שלך</div>
         <div class="ins-week" id="ins-week"></div>
 
         <!-- Word Intelligence -->
-        <div class="stats-sec-lbl">📚 ניתוח מילים</div>
+        <div class="section-title-bar">ניתוח מילים</div>
         <div class="ins-words" id="ins-words"></div>
 
         <!-- Play Style bars -->
-        <div class="stats-sec-lbl">⚙ סגנון משחק</div>
+        <div class="section-title-bar">סגנון משחק</div>
         <div class="ins-style" id="ins-style"></div>
 
         <!-- Opponent insights -->
-        <div class="stats-sec-lbl">👥 היריבים שלך</div>
+        <div class="section-title-bar">היריבים שלך</div>
         <div class="ins-opps" id="ins-opps"></div>
 
         <!-- Milestones -->
-        <div class="stats-sec-lbl">🎯 היעד הבא</div>
+        <div class="section-title-bar">היעד הבא</div>
         <div class="ins-milestones" id="ins-milestones"></div>
 
         <!-- Did You Know -->
@@ -94,7 +100,7 @@
         </div>
 
         <!-- Skill rating -->
-        <div class="stats-sec-lbl">דירוג מיומנות</div>
+        <div class="section-title-bar">דירוג מיומנות</div>
         <div class="stat-card" style="margin-bottom:10px;text-align:right;padding:14px 16px;">
           <div style="margin-bottom:8px;">
             <div class="stat-card-lbl" style="text-align:right;margin-bottom:2px;">דירוג ELO</div>
@@ -149,7 +155,7 @@
       <!-- ── TAB 2: שיאים (Records) ── -->
       <div id="st-panel-records" class="stats-panel">
 
-        <div class="stats-sec-lbl">שיאים אישיים</div>
+        <div class="section-title-bar">שיאים אישיים</div>
 
         <div class="fun-card">
           <div class="fun-card-icon">💯</div>
@@ -208,13 +214,13 @@
       <div id="st-panel-rivals" class="stats-panel">
 
         <!-- Rivals -->
-        <div class="stats-sec-lbl">היריבים שלך</div>
+        <div class="section-title-bar">היריבים שלך</div>
         <div id="st-rivals-content">
           <!-- Filled by JS -->
         </div>
 
         <!-- Boost summary -->
-        <div class="stats-sec-lbl">שימוש בבוסטים</div>
+        <div class="section-title-bar">שימוש בבוסטים</div>
         <div class="stats-grid cols3" style="margin-bottom:10px;">
           <div class="stat-card">
             <div class="stat-card-icon boost-pulse">⚡</div>
@@ -234,7 +240,7 @@
         </div>
 
         <!-- Favorite boost -->
-        <div class="stats-sec-lbl">הבוסט האהוב</div>
+        <div class="section-title-bar">הבוסט האהוב</div>
         <div class="boost-fav-card">
           <div class="boost-fav-icon boost-pulse" id="st-boost-fav-icon">💡</div>
           <div class="boost-fav-info">
@@ -245,7 +251,7 @@
         </div>
 
         <!-- Clutch cluster -->
-        <div class="stats-sec-lbl">קלאץ׳ / קאמבק</div>
+        <div class="section-title-bar">קלאץ׳ / קאמבק</div>
         <div class="stats-grid cols3">
           <div class="stat-card">
             <div class="stat-card-icon">💪</div>
