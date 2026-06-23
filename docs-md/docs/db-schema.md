@@ -324,7 +324,7 @@ for every suggester whose suggestion matches, then the entry is marked `approved
   [pushKey: string]: {
     word: string,
     normalizedWord: string,
-    type: 'add',
+    type: 'add' | 'remove',   // 'add' = suggest adding; 'remove' = suggest removing
     status: 'pending' | 'approved',
     suggestedBy: string[],    // array of uid strings; multiple users can suggest the same word
     createdAt: ServerTimestamp

@@ -119,10 +119,11 @@
     <div id="user-suggest-panel" class="sett-section" style="display:none">
       <div class="sett-sec-hdr">
         <div class="sett-sec-line"></div>
-        <span class="sett-sec-lbl">💡 הצע מילה למילון <span class="sett-info">i<span class="sett-tip">הצע מילה שחסרה במילון. מילות הצעה שייבדקו ויאושרו על ידי מנהל</span></span></span>
+        <span class="sett-sec-lbl">💡 הצעות מילון <span class="sett-info">i<span class="sett-tip">הצע מילה חסרה או דווח על מילה שגויה. ההצעות ייבדקו ויאושרו על ידי מנהל</span></span></span>
         <div class="sett-sec-line"></div>
       </div>
       <div class="sett-dict-card sett-dict-card--add">
+        <div class="sett-dict-card-hdr">➕ הצע מילה חדשה</div>
         <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;">מילים שיאושרו יזכו אותך בהישג "תורם מילים"</div>
         <input id="user-suggest-input" class="sett-dict-input" type="text" maxlength="60"
           placeholder="הכנס מילה בעברית"
@@ -131,6 +132,17 @@
           oninput="this.value=this.value.replace(/[^א-ת]/g,'')">
         <button onclick="userSuggestDictionaryWord()" class="sett-dict-btn sett-dict-btn--add" data-gm="הצע מילה" data-gf="הציעי מילה">הצע מילה</button>
         <div id="user-suggest-status" class="sett-dict-status"></div>
+      </div>
+      <div class="sett-dict-card sett-dict-card--remove">
+        <div class="sett-dict-card-hdr">🗑 הצע הסרת מילה</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;">מילים שיוסרו יזכו אותך בהישג "תורם מילים"</div>
+        <input id="user-suggest-removal-input" class="sett-dict-input" type="text" maxlength="60"
+          placeholder="הכנס מילה להסרה"
+          data-gm-placeholder="הכנס מילה להסרה"
+          data-gf-placeholder="הכניסי מילה להסרה"
+          oninput="this.value=this.value.replace(/[^א-ת]/g,'')">
+        <button onclick="userSuggestDictionaryRemoval()" class="sett-dict-btn sett-dict-btn--remove" data-gm="הצע הסרה" data-gf="הציעי הסרה">הצע הסרה</button>
+        <div id="user-suggest-removal-status" class="sett-dict-status"></div>
       </div>
     </div>
 

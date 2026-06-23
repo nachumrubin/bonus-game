@@ -154,10 +154,12 @@ function wordsFromRecord(record) {
 
 // Submit a user word suggestion to /dictionarySuggestions. Any authenticated
 // user can call this — the actual approval lives with the admin.
+// type: 'add' (suggest adding a missing word) | 'remove' (suggest removing a word)
 // Returns { ok, reason? }.
 export async function submitWordSuggestion(db, {
   word,
   uid,
+  type = 'add',
   now = Date.now(),
   serverTimestamp = null,
 } = {}) {
@@ -166,8 +168,6 @@ export async function submitWordSuggestion(db, {
   const normalized = cleanDictionaryWord(word);
   if (!normalized) return { ok: false, reason: 'empty' };
 
-  // Check if this word is already in the approved dictionary to avoid
-  // duplicate suggestions for already-accepted words.
   const [approvedSnap, rejectedSnap] = await Promise.all([
     db.ref(DICTIONARY_APPROVED_PATH).get(),
     db.ref(DICTIONARY_REJECTED_PATH).get(),
@@ -175,15 +175,21 @@ export async function submitWordSuggestion(db, {
   const approvedWords = wordsFromRecord(approvedSnap?.val ? approvedSnap.val() : null);
   const rejectedWords = wordsFromRecord(rejectedSnap?.val ? rejectedSnap.val() : null);
 
-  if (approvedWords.has(normalized)) return { ok: false, reason: 'already-in-dictionary' };
-  if (rejectedWords.has(normalized)) return { ok: false, reason: 'word-is-blocked' };
+  if (type === 'add') {
+    if (approvedWords.has(normalized)) return { ok: false, reason: 'already-in-dictionary' };
+    if (rejectedWords.has(normalized)) return { ok: false, reason: 'word-is-blocked' };
+  } else {
+    // type === 'remove': word is already blocked — no point suggesting removal
+    if (rejectedWords.has(normalized)) return { ok: false, reason: 'word-already-removed' };
+  }
 
-  // Check if this user already suggested this exact word (pending).
+  // Check if this user already has a pending suggestion of the same type for this word.
   const suggestionsSnap = await db.ref(DICTIONARY_SUGGESTIONS_PATH).get();
   const existing = Object.values(suggestionsSnap?.val ? (suggestionsSnap.val() ?? {}) : {});
   const alreadySuggested = existing.some(
     (s) => cleanDictionaryWord(s?.word ?? '') === normalized &&
       s?.status === 'pending' &&
+      s?.type === type &&
       (Array.isArray(s?.suggestedBy) ? s.suggestedBy.includes(uid) : s?.suggestedBy === uid),
   );
   if (alreadySuggested) return { ok: false, reason: 'already-suggested' };
@@ -192,7 +198,7 @@ export async function submitWordSuggestion(db, {
   await db.ref(DICTIONARY_SUGGESTIONS_PATH).push().set({
     word: normalized,
     normalizedWord: normalized,
-    type: 'add',
+    type,
     status: 'pending',
     suggestedBy: [uid],
     createdAt: stamp,
@@ -200,12 +206,13 @@ export async function submitWordSuggestion(db, {
   return { ok: true, word: normalized };
 }
 
-// Given a list of words that were just approved by an admin, scan
+// Given a list of words that were just approved/actioned by an admin, scan
 // /dictionarySuggestions for pending suggestions of those words.
-// Returns an array of { word, uid } pairs — one entry per user per word
+// Pass { type: 'add' | 'remove' } to restrict to one suggestion type.
+// Returns an array of { key, word, uid } pairs — one entry per user per word
 // who suggested it. The caller is responsible for bumping wordsAccepted
 // and marking suggestions approved.
-export async function findPendingSuggestionsForWords(db, words) {
+export async function findPendingSuggestionsForWords(db, words, { type } = {}) {
   if (!db) throw new Error('findPendingSuggestionsForWords: db required');
   if (!words?.length) return [];
   const wordSet = new Set(words.map(cleanDictionaryWord).filter(Boolean));
@@ -217,6 +224,7 @@ export async function findPendingSuggestionsForWords(db, words) {
   for (const [key, s] of entries) {
     const w = cleanDictionaryWord(s?.word ?? '');
     if (!wordSet.has(w) || s?.status !== 'pending') continue;
+    if (type !== undefined && s?.type !== type) continue;
     const suggesters = Array.isArray(s.suggestedBy) ? s.suggestedBy : (s.suggestedBy ? [s.suggestedBy] : []);
     for (const uid of suggesters) {
       if (uid) credits.push({ key, word: w, uid });

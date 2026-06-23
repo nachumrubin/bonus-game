@@ -2018,7 +2018,7 @@ async function boot() {
 
       // Award wordsAccepted credit to any user who previously suggested
       // one of the newly-added words (drives the word_contributor achievement).
-      awardSuggestionCreditsForWords(db, result.added).catch((e) => {
+      awardSuggestionCreditsForWords(db, result.added, 'add').catch((e) => {
         console.warn('[spine] suggestion credit award', e);
       });
     } catch (e) {
@@ -2068,6 +2068,12 @@ async function boot() {
       bus.emit(DICT_RENDER.REMOVAL_STATUS, { message, isError: false });
       const input = globalThis.document?.getElementById?.('dict-remove-input');
       if (input) input.value = '';
+
+      // Award wordsAccepted credit to any user who previously suggested
+      // removal of one of these words (drives the word_contributor achievement).
+      awardSuggestionCreditsForWords(db, result.removed, 'remove').catch((e) => {
+        console.warn('[spine] removal suggestion credit award', e);
+      });
     } catch (e) {
       console.warn('[spine] dictionary remove', e);
       bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'ההסרה נכשלה', isError: true });
@@ -2123,13 +2129,60 @@ async function boot() {
     }
   });
 
-  // When the admin approves words, credit all users who had a pending
+  // User removal suggestion — any authenticated (non-anonymous) user can
+  // suggest a word for removal from the dictionary, for admin review.
+  bus.on(DICT_INTENT.USER_SUGGEST_REMOVAL, async ({ word = '' } = {}) => {
+    if (!word) {
+      bus.emit(DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS, { message: 'נא להזין מילה', isError: true });
+      return;
+    }
+    const uid = activeFbCurrentUser?.uid;
+    if (!uid || activeFbCurrentUser?.isAnonymous) {
+      bus.emit(DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS, { message: 'יש להתחבר', isError: true });
+      return;
+    }
+    bus.emit(DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS, { message: 'שולח...', isError: false });
+    try {
+      const db = await getDictionaryDb();
+      const result = await dictionaryService.submitWordSuggestion(db, {
+        word,
+        uid,
+        type: 'remove',
+        serverTimestamp: () => firebaseTimestamp(),
+      });
+      if (!result.ok) {
+        const msgMap = {
+          'empty':                'נא להזין מילה',
+          'not-authenticated':    'יש להתחבר',
+          'word-already-removed': `"${word}" כבר הוסרה מהמילון`,
+          'already-suggested':    `כבר הצעת הסרת "${word}" בעבר`,
+        };
+        bus.emit(DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS, {
+          message: msgMap[result.reason] ?? 'ההצעה נכשלה',
+          isError: true,
+        });
+        return;
+      }
+      bus.emit(DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS, {
+        message: `"${result.word}" נשלחה לבדיקה ✓`,
+        isError: false,
+      });
+      const input = globalThis.document?.getElementById?.('user-suggest-removal-input');
+      if (input) input.value = '';
+    } catch (e) {
+      console.warn('[spine] user suggest removal', e);
+      bus.emit(DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS, { message: 'ההצעה נכשלה', isError: true });
+    }
+  });
+
+  // When the admin approves/actions words, credit all users who had a pending
   // suggestion for those words (bumps wordsAccepted stat, which drives the
-  // word_contributor achievement). Runs best-effort — a failure here should
-  // never block or roll back the dictionary write.
-  async function awardSuggestionCreditsForWords(db, words) {
+  // word_contributor achievement). Pass type to only credit the right kind.
+  // Runs best-effort — a failure here should never block or roll back the
+  // dictionary write.
+  async function awardSuggestionCreditsForWords(db, words, type) {
     if (!words?.length) return;
-    const credits = await dictionaryService.findPendingSuggestionsForWords(db, words);
+    const credits = await dictionaryService.findPendingSuggestionsForWords(db, words, { type });
     if (!credits.length) return;
 
     // Aggregate total credits per uid (one word approved = one credit each).
