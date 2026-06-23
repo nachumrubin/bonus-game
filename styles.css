@@ -60,7 +60,8 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 .hbtns .bd::after{content:"‹";position:absolute;left:clamp(11px,3.5vw,17px);top:50%;transform:translateY(-52%) scaleX(1.16);font-size:clamp(26px,4.8svh,36px);font-weight:300;color:rgba(255,255,255,.9);text-shadow:0 2px 6px rgba(0,0,0,.38);transition:transform .18s ease;pointer-events:none;}
 .hbtns .bd:hover::after{transform:translate(-3px,-52%) scaleX(1.16);}
 /* Icon badge (right side in RTL) */
-.bd-icon{position:absolute;right:clamp(9px,2.6vw,13px);top:50%;transform:translateY(-50%);width:clamp(32px,5.2svh,42px);height:clamp(32px,5.2svh,42px);border-radius:50%;display:grid;place-items:center;font-size:clamp(16px,2.7svh,21px);background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.24);box-shadow:inset 0 0 10px rgba(255,255,255,.18),0 3px 7px rgba(0,0,0,.22);}
+.bd-icon{position:absolute;right:clamp(9px,2.6vw,13px);top:50%;transform:translateY(-50%);width:clamp(32px,5.2svh,42px);height:clamp(32px,5.2svh,42px);border-radius:0;display:grid;place-items:center;font-size:clamp(16px,2.7svh,21px);background:transparent;border:0;box-shadow:none;overflow:visible;}
+.bd-icon img,.bd-icon .ui-icon{width:100%;height:100%;object-fit:contain;}
 /* Text block */
 .bd-text{position:relative;z-index:1;display:flex;flex-direction:column;text-align:right;}
 .bd-title{display:block;font-size:clamp(15px,4.1vw,20px);font-weight:700;line-height:1.05;letter-spacing:-.02em;text-shadow:0 2px 5px rgba(0,0,0,.28);}
@@ -781,7 +782,7 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .jt{aspect-ratio:1;background:var(--tile);border:2px solid var(--tborder);border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:clamp(12px,2.8vw,17px);font-weight:900;color:#111;box-shadow:0 2px 0 var(--tshadow);transition:all .1s;}
 .jt:hover{background:#ffe870;border-color:#c0a800;transform:scale(1.08);}
 .jt-v{font-size:7px;color:#555;line-height:1;}
-/* שאילתה */
+/* מילון */
 .shin-wrap{position:relative;margin-bottom:8px;}
 .shin{width:100%;box-sizing:border-box;padding:10px 12px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);border-radius:6px;color:#fff;font-size:18px;font-family:'Heebo',sans-serif;direction:rtl;outline:none;text-align:center;letter-spacing:3px;}
 .shin:focus{border-color:var(--by);}
@@ -4040,13 +4041,14 @@ button[aria-disabled="true"] {
 .pf-btn::before{content:'';position:absolute;inset:0;top:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.10),transparent);border-radius:inherit;pointer-events:none;}
 .pf-btn:active{transform:scale(.97);filter:brightness(.88);}
 .pf-btn-ic{
-  width:44px;height:44px;border-radius:50%;flex-shrink:0;
-  background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.22),rgba(0,0,0,.38));
-  border:1px solid rgba(255,255,255,.18);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 8px rgba(0,0,0,.4);
+  width:54px;height:54px;border-radius:0;flex-shrink:0;
+  background:transparent;
+  border:0;
+  box-shadow:none;
   display:flex;align-items:center;justify-content:center;
+  overflow:visible;
 }
-.pf-btn-ic img{width:24px;height:24px;object-fit:contain;filter:drop-shadow(0 1px 4px rgba(0,0,0,.45));}
+.pf-btn-ic img{width:100%;height:100%;object-fit:contain;filter:none;display:block;}
 .pf-btn-txt{flex:1;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,.4);}
 .pf-btn-chev{font-size:24px;opacity:.50;flex-shrink:0;line-height:1;width:20px;text-align:center;}
 .pf-btn-blue{background:linear-gradient(180deg,#3060d8,#1a3a9a);border:1.5px solid rgba(120,170,255,.38);color:#fff;box-shadow:0 4px 0 #0c1e66,0 8px 28px rgba(30,80,200,.38);}

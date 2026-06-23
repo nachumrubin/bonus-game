@@ -34,6 +34,7 @@ test('buildFriendsListHtml: renders avatar + name + menu button', () => {
   assert.match(html, /data-fr-row="u1"/);
   assert.match(html, /images\/icons\/acheivements\//);
   assert.match(html, /נחום/);
+  assert.match(html, /images\/icons\/remote\.png/);
   assert.match(html, /data-fr-menu="u1"/);
 });
 

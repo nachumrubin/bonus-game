@@ -566,7 +566,7 @@ async function boot() {
   }
   // Toggle the entire dictionary-management panel (add + remove suggestion
   // inputs plus the admin-only הגדרות מתקדמות button). Non-admins see no
-  // panel at all; the שאילתה word-check panel above it stays visible to all.
+  // panel at all; the dictionary word-check panel above it stays visible to all.
   function setDictMgmtVisible(visible) {
     const panel = globalThis.document?.getElementById?.('dict-mgmt-panel');
     if (panel) panel.style.display = visible ? '' : 'none';
