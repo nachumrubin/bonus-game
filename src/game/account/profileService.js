@@ -49,6 +49,7 @@ export const EMPTY_STATS = Object.freeze({
   boostImpactWins: 0,
   fastestWinMs: 0, longestWord: '', longestWordLength: 0,
   friendsCount: 0, uniqueWordsCount: 0, beatNumberOne: 0, invitesSent: 0,
+  wordsAccepted: 0,
   recentGames: [], boostUsage: {}, rivalStats: {}, wordCounts: {}, weekdayStats: {},
   moveSpeedStats: {},
 });

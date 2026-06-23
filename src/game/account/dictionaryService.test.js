@@ -9,6 +9,9 @@ import {
   removeWordsFromDictionary,
   syncApprovedDictionaryWordsOnce,
   syncBlockedDictionaryWordsOnce,
+  submitWordSuggestion,
+  findPendingSuggestionsForWords,
+  markSuggestionsApproved,
 } from './dictionaryService.js';
 
 test('cleanDictionaryWord and parseSuggestedWords keep Hebrew words only and dedupe', () => {
@@ -142,4 +145,81 @@ test('syncBlockedDictionaryWordsOnce: BLOCKED_OVERLAY makes isValid reject the w
   // Cleanup
   BLOCKED_OVERLAY.delete(word);
   DICT.delete(word);
+});
+
+// ── User word suggestions ──────────────────────────────────────────────────
+
+test('submitWordSuggestion writes a pending suggestion for an authenticated user', async () => {
+  const db = makeMockDb();
+  const result = await submitWordSuggestion(db, { word: 'חדשה', uid: 'u1', now: 1000 });
+  assert.equal(result.ok, true);
+  assert.equal(result.word, 'חדשה');
+  const entries = Object.values(db._data.dictionarySuggestions ?? {});
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].word, 'חדשה');
+  assert.equal(entries[0].status, 'pending');
+  assert.deepEqual(entries[0].suggestedBy, ['u1']);
+});
+
+test('submitWordSuggestion rejects when no uid provided', async () => {
+  const db = makeMockDb();
+  const result = await submitWordSuggestion(db, { word: 'חדשה' });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'not-authenticated');
+});
+
+test('submitWordSuggestion rejects empty or non-Hebrew word', async () => {
+  const db = makeMockDb();
+  const result = await submitWordSuggestion(db, { word: 'abc123', uid: 'u1' });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'empty');
+});
+
+test('submitWordSuggestion rejects word already in /dictionaryApproved', async () => {
+  const db = makeMockDb();
+  await db.ref('dictionaryApproved/קיים').set({ word: 'קיים' });
+  const result = await submitWordSuggestion(db, { word: 'קיים', uid: 'u1' });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'already-in-dictionary');
+});
+
+test('submitWordSuggestion rejects duplicate suggestion from same user', async () => {
+  const db = makeMockDb();
+  await submitWordSuggestion(db, { word: 'חדשה', uid: 'u1' });
+  const result = await submitWordSuggestion(db, { word: 'חדשה', uid: 'u1' });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'already-suggested');
+});
+
+test('findPendingSuggestionsForWords returns credits for matching pending suggestions', async () => {
+  const db = makeMockDb();
+  await db.ref('dictionarySuggestions/s1').set({
+    word: 'חדשה', normalizedWord: 'חדשה', status: 'pending', suggestedBy: ['u1', 'u2'], type: 'add', createdAt: 1,
+  });
+  await db.ref('dictionarySuggestions/s2').set({
+    word: 'אחרת', normalizedWord: 'אחרת', status: 'pending', suggestedBy: ['u1'], type: 'add', createdAt: 2,
+  });
+  const credits = await findPendingSuggestionsForWords(db, ['חדשה']);
+  assert.equal(credits.length, 2);
+  const uids = credits.map((c) => c.uid).sort();
+  assert.deepEqual(uids, ['u1', 'u2']);
+  assert.ok(credits.every((c) => c.word === 'חדשה'));
+});
+
+test('findPendingSuggestionsForWords ignores already-approved suggestions', async () => {
+  const db = makeMockDb();
+  await db.ref('dictionarySuggestions/s1').set({
+    word: 'חדשה', normalizedWord: 'חדשה', status: 'approved', suggestedBy: ['u1'], type: 'add', createdAt: 1,
+  });
+  const credits = await findPendingSuggestionsForWords(db, ['חדשה']);
+  assert.equal(credits.length, 0);
+});
+
+test('markSuggestionsApproved updates status to approved', async () => {
+  const db = makeMockDb();
+  await db.ref('dictionarySuggestions/s1').set({
+    word: 'חדשה', status: 'pending', suggestedBy: ['u1'],
+  });
+  await markSuggestionsApproved(db, ['s1']);
+  assert.equal(db._data.dictionarySuggestions.s1.status, 'approved');
 });

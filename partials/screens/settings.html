@@ -115,7 +115,26 @@
       <button onclick="checkSettingsShailta()" class="sett-check-btn" data-gm="בדוק ✓" data-gf="בדקי ✓">בדוק ✓</button>
     </div>
 
-    <!-- ── Section 4: Dictionary management (admin-only) ── -->
+    <!-- ── Section 4: Word suggestion (all authenticated users) ── -->
+    <div id="user-suggest-panel" class="sett-section" style="display:none">
+      <div class="sett-sec-hdr">
+        <div class="sett-sec-line"></div>
+        <span class="sett-sec-lbl">💡 הצע מילה למילון <span class="sett-info">i<span class="sett-tip">הצע מילה שחסרה במילון. מילות הצעה שייבדקו ויאושרו על ידי מנהל</span></span></span>
+        <div class="sett-sec-line"></div>
+      </div>
+      <div class="sett-dict-card sett-dict-card--add">
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;">מילים שיאושרו יזכו אותך בהישג "תורם מילים"</div>
+        <input id="user-suggest-input" class="sett-dict-input" type="text" maxlength="60"
+          placeholder="הכנס מילה בעברית"
+          data-gm-placeholder="הכנס מילה בעברית"
+          data-gf-placeholder="הכניסי מילה בעברית"
+          oninput="this.value=this.value.replace(/[^א-ת]/g,'')">
+        <button onclick="userSuggestDictionaryWord()" class="sett-dict-btn sett-dict-btn--add" data-gm="הצע מילה" data-gf="הציעי מילה">הצע מילה</button>
+        <div id="user-suggest-status" class="sett-dict-status"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 5: Dictionary management (admin-only) ── -->
     <div id="dict-mgmt-panel" class="sett-section" style="display:none">
       <div class="sett-sec-hdr">
         <div class="sett-sec-line"></div>

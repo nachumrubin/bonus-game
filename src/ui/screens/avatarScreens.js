@@ -80,7 +80,8 @@ export const ACHIEVEMENTS = [
   // are pure trophies that pay out coins; condition reads profile.ownedAvatars.
   { id: 'first_buy',   titleHe: 'קנייה ראשונה',  descHe: 'רכוש את האווטאר הראשון שלך בחנות',                    condition: { type: 'ownedCount', min: 1 },                              emoji: '🛍️', tier: 'bronze' },
   { id: 'collector',   titleHe: 'אספן',           descHe: 'החזק לפחות אווטאר אחד מכל קטגוריה (נדיר, אפי, אגדי)', condition: { type: 'ownedCategories', categories: ['rare','epic','legendary'] }, emoji: '🗂️', tier: 'gold'   },
-  { id: 'legend_owner',titleHe: 'בעל אגדה',       descHe: 'רכוש אווטאר אגדי מהחנות',                             condition: { type: 'ownedInCategory', category: 'legendary', min: 1 },  emoji: '💫', tier: 'legend' },
+  { id: 'legend_owner',    titleHe: 'בעל אגדה',       descHe: 'רכוש אווטאר אגדי מהחנות',                             condition: { type: 'ownedInCategory', category: 'legendary', min: 1 },  emoji: '💫', tier: 'legend' },
+  { id: 'word_contributor', titleHe: 'תורם מילים', descHe: 'הצע 20 מילים שהתקבלו למילון', condition: { stat: 'wordsAccepted', min: 20 }, emoji: '📖', tier: 'gold' },
 ];
 
 // Trophy-room icon art lives in images/icons/acheivements/, one PNG per

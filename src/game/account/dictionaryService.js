@@ -1,21 +1,24 @@
-// Dictionary admin operations.
+// Dictionary admin + user-suggestion operations.
 //
 // The admin panel writes directly to two Firebase paths:
 //   /dictionaryApproved  — words explicitly added to the dictionary
 //   /dictionaryRejected  — words explicitly excluded from gameplay
 //
+// Regular users can suggest words via:
+//   /dictionarySuggestions — pending user suggestions, reviewed by admins
+//
+// When an admin approves a word, findPendingSuggestionsForWords() is used
+// to look up which users suggested it so their wordsAccepted stat can be
+// bumped (driving the word_contributor achievement).
+//
 // At boot, the runtime mirrors both paths into in-memory overlays
 // (hebrewDictionary.DICT and hebrewDictionary.BLOCKED_OVERLAY) via the
 // sync* functions below. isValid() consults BLOCKED_OVERLAY before any
 // positive lookup so admin removals override DAWG/DICT hits.
-//
-// History: a suggest→review pipeline used to live here, routed through a
-// /dictionarySuggestions Firebase path. It was removed in June 2026 when
-// the dictionary panel became admin-only and the staging step lost its
-// purpose. See CHANGELOG entries dated June 2026.
 
-export const DICTIONARY_APPROVED_PATH = 'dictionaryApproved';
-export const DICTIONARY_REJECTED_PATH = 'dictionaryRejected';
+export const DICTIONARY_APPROVED_PATH    = 'dictionaryApproved';
+export const DICTIONARY_REJECTED_PATH    = 'dictionaryRejected';
+export const DICTIONARY_SUGGESTIONS_PATH = 'dictionarySuggestions';
 
 export function cleanDictionaryWord(raw) {
   return String(raw ?? '').replace(/[^א-ת]/g, '').trim();
@@ -146,5 +149,86 @@ function wordsFromRecord(record) {
     Object.values(record ?? {})
       .map((entry) => cleanDictionaryWord(entry?.word ?? entry?.normalizedWord ?? ''))
       .filter(Boolean),
+  );
+}
+
+// Submit a user word suggestion to /dictionarySuggestions. Any authenticated
+// user can call this — the actual approval lives with the admin.
+// Returns { ok, reason? }.
+export async function submitWordSuggestion(db, {
+  word,
+  uid,
+  now = Date.now(),
+  serverTimestamp = null,
+} = {}) {
+  if (!db) throw new Error('submitWordSuggestion: db required');
+  if (!uid) return { ok: false, reason: 'not-authenticated' };
+  const normalized = cleanDictionaryWord(word);
+  if (!normalized) return { ok: false, reason: 'empty' };
+
+  // Check if this word is already in the approved dictionary to avoid
+  // duplicate suggestions for already-accepted words.
+  const [approvedSnap, rejectedSnap] = await Promise.all([
+    db.ref(DICTIONARY_APPROVED_PATH).get(),
+    db.ref(DICTIONARY_REJECTED_PATH).get(),
+  ]);
+  const approvedWords = wordsFromRecord(approvedSnap?.val ? approvedSnap.val() : null);
+  const rejectedWords = wordsFromRecord(rejectedSnap?.val ? rejectedSnap.val() : null);
+
+  if (approvedWords.has(normalized)) return { ok: false, reason: 'already-in-dictionary' };
+  if (rejectedWords.has(normalized)) return { ok: false, reason: 'word-is-blocked' };
+
+  // Check if this user already suggested this exact word (pending).
+  const suggestionsSnap = await db.ref(DICTIONARY_SUGGESTIONS_PATH).get();
+  const existing = Object.values(suggestionsSnap?.val ? (suggestionsSnap.val() ?? {}) : {});
+  const alreadySuggested = existing.some(
+    (s) => cleanDictionaryWord(s?.word ?? '') === normalized &&
+      s?.status === 'pending' &&
+      (Array.isArray(s?.suggestedBy) ? s.suggestedBy.includes(uid) : s?.suggestedBy === uid),
+  );
+  if (alreadySuggested) return { ok: false, reason: 'already-suggested' };
+
+  const stamp = typeof serverTimestamp === 'function' ? serverTimestamp() : now;
+  await db.ref(DICTIONARY_SUGGESTIONS_PATH).push().set({
+    word: normalized,
+    normalizedWord: normalized,
+    type: 'add',
+    status: 'pending',
+    suggestedBy: [uid],
+    createdAt: stamp,
+  });
+  return { ok: true, word: normalized };
+}
+
+// Given a list of words that were just approved by an admin, scan
+// /dictionarySuggestions for pending suggestions of those words.
+// Returns an array of { word, uid } pairs — one entry per user per word
+// who suggested it. The caller is responsible for bumping wordsAccepted
+// and marking suggestions approved.
+export async function findPendingSuggestionsForWords(db, words) {
+  if (!db) throw new Error('findPendingSuggestionsForWords: db required');
+  if (!words?.length) return [];
+  const wordSet = new Set(words.map(cleanDictionaryWord).filter(Boolean));
+
+  const snap = await db.ref(DICTIONARY_SUGGESTIONS_PATH).get();
+  const entries = Object.entries(snap?.val ? (snap.val() ?? {}) : {});
+
+  const credits = [];
+  for (const [key, s] of entries) {
+    const w = cleanDictionaryWord(s?.word ?? '');
+    if (!wordSet.has(w) || s?.status !== 'pending') continue;
+    const suggesters = Array.isArray(s.suggestedBy) ? s.suggestedBy : (s.suggestedBy ? [s.suggestedBy] : []);
+    for (const uid of suggesters) {
+      if (uid) credits.push({ key, word: w, uid });
+    }
+  }
+  return credits;
+}
+
+// Mark a batch of suggestion entries (by key) as approved in Firebase.
+export async function markSuggestionsApproved(db, keys) {
+  if (!db || !keys?.length) return;
+  await Promise.all(
+    keys.map((key) => db.ref(`${DICTIONARY_SUGGESTIONS_PATH}/${key}/status`).set('approved')),
   );
 }
