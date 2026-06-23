@@ -1,5 +1,19 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Statistics screen — June 2026
+
+- [x] Fix: expanded collapsible "act" sections were clipped/unscrollable —
+  added `min-height: 0` to `.stats-feed` so its `overflow-y: auto` engages
+  inside the `overflow: hidden` `.stats-wrap` flex column
+- [x] Accordion sections — only one open at a time
+- [x] Clearer play-style bar values (real numbers instead of scaled bar %)
+- [x] Removed duplicate rows from ניתוח מילים (longest word / best move score)
+- [x] Replaced הבוסט האהוב with האות המועדפת (favorite starting letter), backed by
+  a new `startingLetterCounts` stat
+- [ ] **Art:** create Boost-family icons for the stats screen — section headers +
+  weekly KPIs + favorite-letter card, to replace the current emoji. Tracked in
+  `docs/asset_inventory.md` → Missing.
+
 ## Dictionary suggestions + word_contributor achievement — June 2026
 
 - [x] Raise app loading intro time to ≥10 s (was 6 s)
@@ -38,7 +52,7 @@
 ## In-game UI bug fixes — June 2026
 
 - [x] Pause/exit overlay no longer shows twice — `BACK_INTENT.PAUSE_AND_SAVE` performs save-and-exit directly instead of re-opening the identical `#ov-pause` overlay (`gameFlowController.js` shared `saveAndExit` helper)
-- [x] "תור נוסף!" reward shows `images/icons/extra turn.png` instead of a tinted 🎯 glyph (`describeBoost` + `showBonusAwardOverlay` in `gameScreen.js`)
+- [x] "תור נוסף!" reward shows `assets/rewards/extra turn.png` instead of a tinted 🎯 glyph (`describeBoost` + `showBonusAwardOverlay` in `gameScreen.js`)
 
 ## Bonus/challenge popups — premium redesign — June 2026
 
@@ -169,10 +183,10 @@
 
 - [x] Rebuilt `#sav-gallery` as a collectible trophy room: gold title + side lines, scrollable shelves of 3 (glossy plank + cyan underglow), big icon + title + gold/gray progress pill. Removed cards/progress-bars/tier-chips/starter selector.
 - [x] Locked = real icon desaturated/darkened + padlock (not hidden); unlock pop/glow/lock-break animation; tap-to-equip preserved.
-- [x] 10 achievement icons mapped from `images/icons/acheivements/`; rest fall back to emoji until added (`ACH_ICON_BY_AVATAR_ID`).
+- [x] 10 achievement icons mapped from `assets/achievements/`; rest fall back to emoji until added (`ACH_ICON_BY_AVATAR_ID`).
 - [x] Dropped crown/star fillers (room shows the 17 achievements; header `<n> מתוך 17`).
 - [x] All 17 icons now match their Hebrew title → icon path derived from `ach.titleHe` (no explicit map). `שחקן מנוסה` added; filename typos fixed. sw.js precache updated.
-- [x] Locked overlay uses the gold padlock `images/icons/lock.png` instead of the 🔒 emoji.
+- [x] Locked overlay uses the gold padlock `assets/ui/lock.png` instead of the 🔒 emoji.
 - [x] Icons normalized to one size (object-fit box) and bottom-aligned + plank overlap so they sit on the shelves.
 - [x] Equipped avatar now displays the achievement trophy icon (topbar + profile) via `avatarIconSrc`, replacing the legacy emoji.
 - [x] Extended to the rest of the app via shared `avatarMarkup`/`setAvatarEl` + `.av-img`: in-game player/opponent strip, friends list+detail, notification cards+banner, incoming-invite, matchmaking my/matched avatar, stats hero+rivals. Removed duplicated per-screen avatar→emoji tables. (Decorative slot-reel stays emoji; My-Games has no avatars.)
@@ -206,8 +220,8 @@
 
 ## UI: main-screen icon swap to new PNG set — June 2026
 
-- [x] Replaced home-screen + global-topbar emoji/SVG/canvas icons with the new 3D PNGs in `images/icons/` (bell, sound_on/off, settings, help, home, globe, 1v1, bot, my_games, friends, acheivments, statistics). See CHANGELOG.
-- [x] Precached the 13 used `images/icons/*.png` in the `sw.js` `ASSETS` list so the home screen renders offline from install (rather than only after first runtime fetch). Cache-name bump left to `stamp-build` at deploy.
+- [x] Replaced home-screen + global-topbar emoji/SVG/canvas icons with the new 3D PNGs in `assets/` (`assets/navigation/`, `assets/icons/`, `assets/avatars/`). See CHANGELOG.
+- [x] Precached the 13 used home/topbar asset PNGs in the `sw.js` `ASSETS` list so the home screen renders offline from install (rather than only after first runtime fetch). Cache-name bump left to `stamp-build` at deploy.
 - [x] Toned down `.em-icon-btn` (`menu-electric.css`): the top-bar button is now a transparent tap target at rest (faint disk on hover only) so it no longer competes with the icons' own pedestal/glow. The `.em-icon-btn--home-active` "current page" indicator keeps its filled glow.
 
 ## UI: turn glow + My-Games turn colour + bell badge fix — June 2026

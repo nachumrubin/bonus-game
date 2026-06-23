@@ -213,11 +213,11 @@ test('throws if bus missing', () => {
 });
 
 test('avatarIconSrc: resolves store-avatar ids to their PNG, achievement/emoji unchanged', () => {
-  assert.equal(avatarIconSrc('rare_3'), 'images/icons/avatars/rare_3.png');
-  assert.equal(avatarIconSrc('legendary_2'), 'images/icons/avatars/legendary_2.png');
-  assert.equal(avatarIconSrc('common_1'), 'images/icons/avatars/common_1.png');
+  assert.equal(avatarIconSrc('rare_3'), 'assets/avatars/rare_3.png');
+  assert.equal(avatarIconSrc('legendary_2'), 'assets/avatars/legendary_2.png');
+  assert.equal(avatarIconSrc('common_1'), 'assets/avatars/common_1.png');
   // Achievement avatar still maps to the trophy art (not the store dir).
-  assert.ok(avatarIconSrc('dragon')?.includes('acheivements'));
+  assert.ok(avatarIconSrc('dragon')?.includes('assets/achievements/'));
   // Free avatar with no achievement → null (emoji fallback handled by caller).
   assert.equal(avatarIconSrc('crown'), null);
 });

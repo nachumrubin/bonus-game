@@ -169,7 +169,7 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
 
 // Keep this in sync with profile-screen.html.
 registerOnboardingContent('sprofile', {
-  icon: '<img class="screen-hd-icon" src="images/icons/anonymous player.png" alt="">',
+  iconHtml: '<img class="screen-hd-icon" src="assets/avatars/anonymous player.png" alt="">',
   title: 'הפרופיל שלי',
   bullets: [
     '✏️ לחץ על השם לעריכה',

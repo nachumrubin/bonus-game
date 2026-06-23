@@ -2,23 +2,23 @@
 //
 // The store is a SEPARATE collection from the achievement-unlock avatars in
 // avatarScreens.js (SPINE_AVATARS). These 36 avatars live as PNGs under
-// images/icons/avatars/ and are bought with coins:
+// assets/avatars/ and are bought with coins:
 //   common_1..16   — free to everyone (price 0, always "owned")
 //   rare_1..8      — purchasable
 //   epic_1..8      — purchasable
 //   legendary_1..4 — purchasable (the prestige tier)
 //
 // A store-avatar id (e.g. 'rare_3') is the filename stem, so it round-trips
-// to images/icons/avatars/<id>.png. The shared render helpers in
+// to assets/avatars/<id>.png. The shared render helpers in
 // avatarScreens.js (avatarIconSrc/avatarText) resolve these ids so an equipped
 // store avatar displays everywhere (profile, game screen, opponent cards).
 
-export const AVATAR_DIR = 'images/icons/avatars/';
+export const AVATAR_DIR = 'assets/avatars/';
 
 // The coin-currency icon. Used everywhere a coin amount is shown (store prices,
 // balances, achievement prizes, daily reward). `.coin-ic` sizes it to 1em so it
 // sits inline with the adjacent number.
-export const COIN_ICON_SRC = 'images/icons/gold coin.png';
+export const COIN_ICON_SRC = 'assets/rewards/gold coin.png';
 export const COIN_ICON_HTML = `<img src="${COIN_ICON_SRC}" class="coin-ic" alt="">`;
 
 // Flat per-tier prices. Tunable — "grindy / prestige" economy: a legendary is

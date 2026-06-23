@@ -1712,7 +1712,7 @@ function describeBoost(boostId, payload, extra) {
         sub:   'הנקודות יתווספו עם אישור',
       };
     case 'extra_turn':
-      return { title: 'תור נוסף!', image: 'images/icons/extra turn.png', sub: 'תקבל תור נוסף ברצף' };
+      return { title: 'תור נוסף!', image: 'assets/rewards/extra turn.png', sub: 'תקבל תור נוסף ברצף' };
     case 'multiply_next_turns': {
       const mult  = Number(p.multiplier ?? 2);
       const turns = Number(p.turnsRemaining ?? 1);

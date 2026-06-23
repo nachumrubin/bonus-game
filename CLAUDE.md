@@ -25,6 +25,11 @@ This file is auto-loaded by Claude Code at session start. Read it fully before w
 | Known risks and fragile modules | `docs-md/GAP_REPORT.md` |
 | Recent architectural decisions | `docs-md/DECISIONS.md` |
 
+**For UI or asset-pipeline work:** use the project skill
+`.claude/skills/boost-development-workflow/SKILL.md`. It defines the Boost
+developer/art-director split, missing-asset workflow, and required
+`docs/asset_inventory.md` updates.
+
 ---
 
 ## Hard Rules (Non-Negotiable)

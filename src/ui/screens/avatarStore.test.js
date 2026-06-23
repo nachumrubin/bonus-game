@@ -16,12 +16,12 @@ test('STORE_AVATARS has 36 entries with the expected per-category counts', () =>
   assert.equal(byCat.legendary.length, 4);
 });
 
-test('ids round-trip to lowercase PNG paths under images/icons/avatars/', () => {
-  assert.equal(storeAvatarSrc('common_1'), 'images/icons/avatars/common_1.png');
-  assert.equal(storeAvatarSrc('rare_8'), 'images/icons/avatars/rare_8.png');
+test('ids round-trip to lowercase PNG paths under assets/avatars/', () => {
+  assert.equal(storeAvatarSrc('common_1'), 'assets/avatars/common_1.png');
+  assert.equal(storeAvatarSrc('rare_8'), 'assets/avatars/rare_8.png');
   // legendary filenames are lowercase
-  assert.equal(storeAvatarSrc('legendary_3'), 'images/icons/avatars/legendary_3.png');
-  assert.equal(storeAvatarSrc('legendary_4'), 'images/icons/avatars/legendary_4.png');
+  assert.equal(storeAvatarSrc('legendary_3'), 'assets/avatars/legendary_3.png');
+  assert.equal(storeAvatarSrc('legendary_4'), 'assets/avatars/legendary_4.png');
   assert.equal(storeAvatarSrc('nope'), null);
 });
 

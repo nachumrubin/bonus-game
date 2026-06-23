@@ -16,7 +16,7 @@ const _registry = new Map();
  * co-located and is registered at import time.
  *
  * @param {string} screenId   DOM id of the screen container (e.g. 'sh')
- * @param {{ icon: string, title: string, bullets: string[] }} content
+ * @param {{ icon?: string, iconHtml?: string, title: string, bullets: string[] }} content
  */
 export function registerOnboardingContent(screenId, content) {
   _registry.set(screenId, content);
@@ -90,7 +90,10 @@ export function mountOnboardingController({
 
     if (!overlay) return;
 
-    if (iconEl)  iconEl.textContent  = content.icon;
+    if (iconEl) {
+      if (content.iconHtml) iconEl.innerHTML = content.iconHtml;
+      else iconEl.textContent = content.icon ?? '';
+    }
     if (titleEl) titleEl.textContent = content.title;
     // Optional lead-in paragraph (e.g. "what is this app"). Toggle the
     // `hidden` class so screens that omit it don't leave a stray gap.

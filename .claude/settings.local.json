@@ -5,6 +5,8 @@
       "Bash",
       "Skill(capture-screenshot)",
       "Skill(capture-screenshot:*)",
+      "Skill(boost-development-workflow)",
+      "Skill(boost-development-workflow:*)",
       "PowerShell(& magick identify \"c:\\\\Users\\\\Admin\\\\Documents\\\\GitHub\\\\bonus-game\\\\images\\\\icons\\\\more_navigation_buttons.png\")"
     ],
     "defaultMode": "acceptEdits"
