@@ -67,7 +67,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260623034906';
+var CACHE_NAME = 'boost-20260623200000';
 var ASSETS = [
   './',
   './index.html',
@@ -78,41 +78,41 @@ var ASSETS = [
   './data/dictionary.base.txt',
   // Main-screen icon set (home play buttons, global top bar, bottom nav).
   // 5_references.png is a reference contact-sheet, not used in the app.
-  './images/icons/bell.png',
-  './images/icons/sound_on.png',
-  './images/icons/sound_off.png',
-  './images/icons/settings.png',
-  './images/icons/help.png',
-  './images/icons/home.png',
-  './images/icons/globe.png',
-  './images/icons/1v1.png',
-  './images/icons/bot.png',
-  './images/icons/my_games.png',
-  './images/icons/friends.png',
-  './images/icons/acheivments.png',
-  './images/icons/statistics.png',
-  './images/icons/lock.png',
+  './assets/navigation/bell.png',
+  './assets/navigation/sound_on.png',
+  './assets/navigation/sound_off.png',
+  './assets/navigation/settings.png',
+  './assets/navigation/help.png',
+  './assets/navigation/home.png',
+  './assets/icons/globe.png',
+  './assets/icons/1v1.png',
+  './assets/avatars/bot.png',
+  './assets/navigation/my_games.png',
+  './assets/icons/friends.png',
+  './assets/icons/acheivments.png',
+  './assets/icons/statistics.png',
+  './assets/ui/lock.png',
   // Achievement trophy-room icons — one per achievement, named by Hebrew title.
   // A 404 here is harmless (per-asset add().catch + emoji fallback at runtime).
-  './images/icons/acheivements/צעדים ראשונים.png',
-  './images/icons/acheivements/מנצח.png',
-  './images/icons/acheivements/שחקן מנוסה.png',
-  './images/icons/acheivements/רצף מנצחים.png',
-  './images/icons/acheivements/שועל ותיק.png',
-  './images/icons/acheivements/גאון מילים.png',
-  './images/icons/acheivements/חבר של כולם.png',
-  './images/icons/acheivements/ותיק.png',
-  './images/icons/acheivements/אמן המילים.png',
-  './images/icons/acheivements/בלתי מנוצח.png',
-  './images/icons/acheivements/ברק חי.png',
-  './images/icons/acheivements/אגדה.png',
-  './images/icons/acheivements/אלוף.png',
-  './images/icons/acheivements/בלתי נתפס.png',
-  './images/icons/acheivements/מילון מהלך.png',
-  './images/icons/acheivements/על-אנושי.png',
-  './images/icons/acheivements/האחד.png',
+  './assets/achievements/צעדים ראשונים.png',
+  './assets/achievements/מנצח.png',
+  './assets/achievements/שחקן מנוסה.png',
+  './assets/achievements/רצף מנצחים.png',
+  './assets/achievements/שועל ותיק.png',
+  './assets/achievements/גאון מילים.png',
+  './assets/achievements/חבר של כולם.png',
+  './assets/achievements/ותיק.png',
+  './assets/achievements/אמן המילים.png',
+  './assets/achievements/בלתי מנוצח.png',
+  './assets/achievements/ברק חי.png',
+  './assets/achievements/אגדה.png',
+  './assets/achievements/אלוף.png',
+  './assets/achievements/בלתי נתפס.png',
+  './assets/achievements/מילון מהלך.png',
+  './assets/achievements/על-אנושי.png',
+  './assets/achievements/האחד.png',
   './jocker.PNG',
-  './images/icons/gold coin.png',
+  './assets/rewards/gold coin.png',
   './assets/music/inspire-action.mp3',
   './src/ui/screenPartials.js',
   './src/ui/screenPartialManifest.js',
@@ -153,7 +153,7 @@ var ASSETS = [
   './partials/screens/tutorial-intro-modal.html',
   './partials/screens/tutorial-overlay-elements.html',
   './partials/screens/tutorial-prompt-shown-to-new-users-on-first-game-mode-entry.html',
-  // NOTE: the 36 store-avatar PNGs in ./images/icons/avatars/ (~19 MB) are
+  // NOTE: the 36 store-avatar PNGs in ./assets/avatars/ (~19 MB) are
   // deliberately NOT precached — the runtime fetch handler caches them on
   // demand the first time they're viewed, so we avoid bloating install.
 ];  // sw.js intentionally excluded — browser fetches it fresh

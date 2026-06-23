@@ -32,9 +32,9 @@ test('buildFriendsListHtml: renders avatar + name + menu button', () => {
   // '🦈' is the winner achievement reward → avatar renders as its trophy icon.
   const html = buildFriendsListHtml([{ uid: 'u1', name: 'נחום', avatar: '🦈' }]);
   assert.match(html, /data-fr-row="u1"/);
-  assert.match(html, /images\/icons\/acheivements\//);
+  assert.match(html, /assets\/achievements\//);
   assert.match(html, /נחום/);
-  assert.match(html, /images\/icons\/remote\.png/);
+  assert.match(html, /assets\/ui\/remote\.png/);
   assert.match(html, /data-fr-menu="u1"/);
 });
 

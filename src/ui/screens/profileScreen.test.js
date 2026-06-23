@@ -132,7 +132,7 @@ test('PROFILE_RENDER paints avatar/name/stats and toggles upgrade button', () =>
   });
   // 'dragon' is the veteran achievement reward → avatar renders as its trophy
   // icon (an <img>), not the legacy 🐉 emoji.
-  assert.match(els.avatar.innerHTML ?? '', /images\/icons\/acheivements\//);
+  assert.match(els.avatar.innerHTML ?? '', /assets\/achievements\//);
   assert.equal(els.name.textContent,   'נחום');
   assert.equal(els.played.textContent, '10');
   assert.equal(els.wins.textContent,   '4');

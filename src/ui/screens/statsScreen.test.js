@@ -65,6 +65,9 @@ function makeDom() {
     },
     querySelectorAll(sel) {
       if (sel === '.st-section-header') return sectionHeaders;
+      if (sel === '.st-section-card') {
+        return ['st-sec-form', 'st-sec-achievements', 'st-sec-style', 'st-sec-rivals'].map(id => ids[id]);
+      }
       return [];
     },
   };
@@ -85,6 +88,30 @@ test('deriveStatsView: computes primary display fields', () => {
   assert.equal(view.avgScore, 100);
   assert.equal(view.favoriteBoost.label, '25 נקודות');
   assert.equal(view.longestWord, 'שלום');
+});
+
+test('deriveStatsView: favorite starting letter prefers startingLetterCounts', () => {
+  const view = deriveStatsView({
+    stats: { startingLetterCounts: { ש: 6, מ: 2, א: 2 } },
+  });
+  assert.equal(view.favoriteStartLetter.letter, 'ש');
+  assert.equal(view.favoriteStartLetter.count, 6);
+  assert.equal(view.favoriteStartLetter.pct, 60);
+});
+
+test('deriveStatsView: favorite starting letter falls back to wordCounts', () => {
+  const view = deriveStatsView({
+    stats: { wordCounts: { שלום: 3, שמש: 1, מים: 1 } },
+  });
+  // ש begins 4 of 5 word-instances → 80%.
+  assert.equal(view.favoriteStartLetter.letter, 'ש');
+  assert.equal(view.favoriteStartLetter.count, 4);
+  assert.equal(view.favoriteStartLetter.pct, 80);
+});
+
+test('deriveStatsView: no words → no favorite starting letter', () => {
+  const view = deriveStatsView({ stats: {} });
+  assert.equal(view.favoriteStartLetter, null);
 });
 
 test('mountStatsScreen: paints profile stats and handles controls', () => {
@@ -119,6 +146,12 @@ test('mountStatsScreen: paints profile stats and handles controls', () => {
   sectionHeaders[1].fireClick(); // achievements header
   assert.equal(ids['st-sec-achievements'].classList.contains('open'), true);
   sectionHeaders[1].fireClick(); // toggle closed again
+  assert.equal(ids['st-sec-achievements'].classList.contains('open'), false);
+
+  // Accordion: opening one section closes any other open section
+  sectionHeaders[1].fireClick(); // open achievements
+  sectionHeaders[2].fireClick(); // open style → should close achievements
+  assert.equal(ids['st-sec-style'].classList.contains('open'), true);
   assert.equal(ids['st-sec-achievements'].classList.contains('open'), false);
 
   share.fireClick();

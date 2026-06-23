@@ -29,7 +29,7 @@ export const STORE_RENDER = 'store/render';
 export const DAILY_REWARD_SHOW = 'dailyReward/show';
 export const DAILY_REWARD_ACK  = 'dailyReward/ack';
 
-const FALLBACK_AVATAR_SRC = 'images/icons/anonymous player.png';
+const FALLBACK_AVATAR_SRC = 'assets/avatars/anonymous player.png';
 
 export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountAvatarStoreScreen: bus required');
@@ -123,7 +123,7 @@ export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {})
 
   function openConfirm(id) {
     pendingId = id;
-    if (confirmImg) confirmImg.innerHTML = `<img src="images/icons/avatars/${id}.png" alt="" class="store-confirm-img">`;
+    if (confirmImg) confirmImg.innerHTML = `<img src="assets/avatars/${id}.png" alt="" class="store-confirm-img">`;
     if (confirmPrice) confirmPrice.innerHTML = `${priceFor(id)} ${COIN_ICON_HTML}`;
     confirmOv?.classList?.remove('hidden');
   }

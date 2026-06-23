@@ -176,12 +176,12 @@ curl -s https://api.openai.com/v1/images/generations \
 Then download the image:
 
 ```bash
-curl -s "<IMAGE_URL>" -o images/icons/<icon-name>.png
+curl -s "<IMAGE_URL>" -o assets/icons/<icon-name>.png
 ```
 
 ### Step 4 — Save
 
-Save the icon to `images/icons/<icon-name>.png` (create the directory if needed).
+Save the icon to `assets/icons/<icon-name>.png` (create the directory if needed).
 
 Use kebab-case filenames matching the object: `clock-icon.png`, `shield-icon.png`, etc.
 
@@ -200,7 +200,7 @@ If no image generation API is configured, output:
 
 1. The filled-in generation prompt, formatted in a copyable block.
 2. Instructions telling the user to paste it into their preferred tool.
-3. The recommended save path: `images/icons/<icon-name>.png`.
+3. The recommended save path: `assets/icons/<icon-name>.png`.
 
 ---
 
@@ -208,7 +208,7 @@ If no image generation API is configured, output:
 
 | Field | Convention |
 |---|---|
-| Directory | `images/icons/` |
+| Directory | `assets/icons/` |
 | Filename | `<object>-icon.png` in kebab-case |
 | Size | 1024×1024 source, displayed at 64×64 in-app |
 | Format | PNG with transparency |

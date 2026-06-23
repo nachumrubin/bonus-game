@@ -84,12 +84,12 @@ export const ACHIEVEMENTS = [
   { id: 'word_contributor', titleHe: 'תורם מילים', descHe: 'הצע 20 מילים שהתקבלו למילון', condition: { stat: 'wordsAccepted', min: 20 }, emoji: '📖', tier: 'gold' },
 ];
 
-// Trophy-room icon art lives in images/icons/acheivements/, one PNG per
+// Trophy-room icon art lives in assets/achievements/, one PNG per
 // achievement named exactly after its Hebrew title (`titleHe`). The path is
 // derived from the title (URL-encoded at render time); if a file is missing
 // the tile falls back to the reward avatar's emoji via the img onerror.
-const ACH_ICON_DIR = 'images/icons/acheivements/';
-const ACH_LOCK_ICON = 'images/icons/lock.png';
+const ACH_ICON_DIR = 'assets/achievements/';
+const ACH_LOCK_ICON = 'assets/ui/lock.png';
 
 export function findAvatar(id) {
   return SPINE_AVATARS.find(a => a.id === id) ?? null;
@@ -104,7 +104,7 @@ export function findAchievementByRewardId(avatarId) {
 // collected achievement art instead of the legacy emoji. Returns null for
 // avatars with no achievement (the free crown/star) or unknown values — caller
 // then falls back to the emoji.
-export const BOT_AVATAR_SRC = 'images/icons/bot.png';
+export const BOT_AVATAR_SRC = 'assets/avatars/bot.png';
 
 export function avatarIconSrc(value) {
   if (value == null) return null;
@@ -127,7 +127,7 @@ function escapeAvatar(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-export const ANON_AVATAR_SRC = 'images/icons/anonymous player.png';
+export const ANON_AVATAR_SRC = 'assets/avatars/anonymous player.png';
 
 // Emoji/text fallback for an avatar value (id → emoji, else the raw value, else
 // the fallback). Mirrors the per-screen resolveAvatar() helpers.

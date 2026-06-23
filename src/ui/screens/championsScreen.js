@@ -19,9 +19,9 @@ function escapeHtml(s) {
 }
 
 const MEDALS = [
-  '<img src="images/icons/gold medal.png" alt="מקום ראשון" class="champ-medal-icon">',
-  '<img src="images/icons/silver medal.png" alt="מקום שני" class="champ-medal-icon">',
-  '<img src="images/icons/bronze medal.png" alt="מקום שלישי" class="champ-medal-icon">',
+  '<img src="assets/rewards/gold medal.png" alt="מקום ראשון" class="champ-medal-icon">',
+  '<img src="assets/rewards/silver medal.png" alt="מקום שני" class="champ-medal-icon">',
+  '<img src="assets/rewards/bronze medal.png" alt="מקום שלישי" class="champ-medal-icon">',
 ];
 
 export function buildChampionsHtml(entries = [], { myUid = null, myPosition = null, myEntry = null } = {}) {

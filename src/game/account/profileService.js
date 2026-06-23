@@ -51,7 +51,7 @@ export const EMPTY_STATS = Object.freeze({
   friendsCount: 0, uniqueWordsCount: 0, beatNumberOne: 0, invitesSent: 0,
   wordsAccepted: 0,
   recentGames: [], boostUsage: {}, rivalStats: {}, wordCounts: {}, weekdayStats: {},
-  moveSpeedStats: {},
+  moveSpeedStats: {}, startingLetterCounts: {},
 });
 
 function profileRef(db, uid)     { return db.ref(`${PATH.users}/${uid}/profile`); }
@@ -419,6 +419,7 @@ export function computeLiveGameStatsDelta({
     boostUsage: { set: boostUsage },
     rivalStats: { set: rivalStats },
     wordCounts: { set: wordStats.wordCounts },
+    startingLetterCounts: { set: wordStats.startingLetterCounts },
     weekdayStats: { set: weekdayStats },
     moveSpeedStats: { set: moveSpeedStats },
   };
@@ -456,11 +457,16 @@ function mergeBoostUsage(current = {}, hits = []) {
 
 function mergeWordStats(currentStats = {}, words = []) {
   const wordCounts = { ...(currentStats.wordCounts ?? {}) };
+  // Per starting-letter tally — unlike wordCounts (trimmed to the top words),
+  // this is a complete count of how many words you've built from each letter.
+  const startingLetterCounts = { ...(currentStats.startingLetterCounts ?? {}) };
   let longestWord = String(currentStats.longestWord ?? '');
   let longestWordLength = Number(currentStats.longestWordLength) || longestWord.length;
   for (const word of words) {
     if (!word) continue;
     wordCounts[word] = (Number(wordCounts[word]) || 0) + 1;
+    const first = word[0];
+    if (first) startingLetterCounts[first] = (Number(startingLetterCounts[first]) || 0) + 1;
     if (word.length > longestWordLength) {
       longestWord = word;
       longestWordLength = word.length;
@@ -470,6 +476,7 @@ function mergeWordStats(currentStats = {}, words = []) {
     longestWord,
     longestWordLength,
     wordCounts: trimObjectByValue(wordCounts, 30),
+    startingLetterCounts,
   };
 }
 

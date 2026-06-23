@@ -1,0 +1,4 @@
+interface:
+  display_name: "Boost Development Workflow"
+  short_description: "Build Boost UI while tracking external assets"
+  default_prompt: "Use $boost-development-workflow to implement a Boost screen and update the asset inventory."

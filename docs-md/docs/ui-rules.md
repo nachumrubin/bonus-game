@@ -148,7 +148,7 @@ Load-bearing IDs (do not rename without updating `avatarScreens.js`):
 Each tile is `<button class="ach-iccell" data-ach-id="{achievementId}" [data-locked="1"]>` (icon + title +
 `.ach-badge` progress pill + `.ach-reward` coin-prize chip). The click handler reads `data-ach-id` / `data-locked`
 and shows a hint with the description + coin prize — it does **not** emit `AV_INTENT.EQUIP`/`SELECT` anymore. Icon
-art: `images/icons/acheivements/<titleHe>.png`; achievements without a loadable file (e.g. the purchase trophies)
+art: `assets/achievements/<titleHe>.png`; achievements without a loadable file (e.g. the purchase trophies)
 fall back to the achievement's `emoji`. Locked/incomplete tiles use `.is-locked` (desaturated icon + `.ach-lock`);
 newly-completed tiles get `.ach-iccell--just-unlocked` (pop/glow animation). Conditions are stat thresholds
 (`{stat,min}`) or store-ownership rules (`ownedCount` / `ownedInCategory` / `ownedCategories`). The completion
@@ -159,7 +159,7 @@ overlay (`#ov-avatar-unlocked`) shows the trophy + coin prize (`#av-unlock-name`
 
 Source: `partials/screens/avatar-store-screen.html`, `src/ui/screens/avatarStoreScreen.js`,
 `src/ui/screens/avatarStore.js` (catalog), `styles.css` (`.store-*`). A SEPARATE collection from the
-achievements trophy room — 36 purchasable avatars (`images/icons/avatars/<id>.png`) across common/rare/epic/
+achievements trophy room — 36 purchasable avatars (`assets/avatars/<id>.png`) across common/rare/epic/
 legendary, bought with coins. Painted on `STORE_RENDER` (`{ coins, ownedAvatars, equippedAvatar }`); opened via
 `PROFILE_INTENT.OPEN_STORE` → `STORE_INTENT.OPEN` (anonymous users routed to the account-upgrade prompt).
 
@@ -444,7 +444,7 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#online-badge`: shows count of pending game invites + friend requests; located inside `#btn-notifications-home`. Controlled by `MENU_REFRESH` `unreadCount` field.
 - `#btn-notifications-home`: notification bell in top bar (Electric Menu redesign). Clicking emits `MENU_INTENT.OPEN_NOTIFICATIONS` → opens `#snotif`.
 
-**Icon assets (June 2026):** The home play buttons and the global top bar use PNG icons from `images/icons/` instead of emoji/SVG. Top-bar buttons hold `<img class="em-icon-img">`; home play circles hold `<img class="home-circle-img">`; bottom-nav buttons hold `<img class="em-nav-icon em-nav-icon-img">`. The music toggle icon `#topbar-music-ic` is an `<img>` whose `src` is swapped by `syncMusicTopbarIcon()` in `main.js` (`sound_on.png` ↔ `sound_off.png`). The old spinning `#home-globe` canvas was removed (replaced by `globe.png`); `globeRenderer.startGlobe` is still used only by the online-lobby `#ol-globe`.
+**Icon assets (June 2026):** The home play buttons and the global top bar use PNG icons from `assets/` instead of emoji/SVG. Top-bar buttons hold `<img class="em-icon-img">`; home play circles hold `<img class="home-circle-img">`; bottom-nav buttons hold `<img class="em-nav-icon em-nav-icon-img">`. The music toggle icon `#topbar-music-ic` is an `<img>` whose `src` is swapped by `syncMusicTopbarIcon()` in `main.js` (`assets/navigation/sound_on.png` ↔ `assets/navigation/sound_off.png`). The old spinning `#home-globe` canvas was removed (replaced by `assets/icons/globe.png`); `globeRenderer.startGlobe` is still used only by the online-lobby `#ol-globe`.
 
 ### Notifications Inbox Screen (`#snotif`)
 

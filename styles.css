@@ -8,6 +8,8 @@
   --p1:#e74c8b; --p2:#f5a623;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+*{scrollbar-width:none!important;-ms-overflow-style:none!important;}
+*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}
 html,body{width:100%;height:100%;overflow:hidden;background:#02061e;}
 body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 
@@ -3331,8 +3333,10 @@ button[aria-disabled="true"] {
 /* Scrollable story feed */
 .stats-feed {
   flex: 1;
+  min-height: 0; /* allow flex item to shrink so overflow-y:auto can scroll (else content is clipped by .stats-wrap) */
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   padding: 0 14px 28px;
   display: flex;
   flex-direction: column;
@@ -3396,6 +3400,7 @@ button[aria-disabled="true"] {
   border: 1px solid rgba(0,180,255,.22);
   border-radius: 14px;
   overflow: hidden;
+  flex-shrink: 0; /* don't let the flex column squeeze cards — overflow the feed and let it scroll instead */
 }
 .st-section-header {
   display: flex;

@@ -288,34 +288,44 @@ function buildPlayStyle(stats, recent) {
   const slow      = stats.moveSpeedStats?.['60']?.played ?? 0;
   const speedTotal = fast + med + slow;
 
+  // Each bar carries:
+  //   pct       → bar width (a 0–100 strength score, relative to a sensible max)
+  //   valueText → the real, human-readable number shown as the headline
+  //   hint      → one line explaining what that number means
+  const bonusPct = moves > 0 ? round1((bonuses / moves) * 100) : 0;
+  const fastPct = speedTotal > 0 ? Math.round((fast / speedTotal) * 100) : 0;
+  const consistency = recent.length >= 4 ? scoreConsistency(recent) : null;
   return [
     {
       label: 'שימוש בבוסטים',
       pct: scaleBar(moves > 0 ? bonuses / moves : 0, 0, 0.10),
-      hint: moves > 0 ? `${round1((bonuses / moves) * 100)}% מהמהלכים שלך כוללים בוסט` : '',
+      valueText: moves > 0 ? `${bonusPct}%` : '—',
+      hint: 'מהמהלכים שלך כוללים בוסט',
     },
     {
       label: 'מילים ארוכות',
       pct: scaleBar(longestWordLen, 3, 9),
-      hint: longestWordLen ? `מילה ארוכה ביותר: ${longestWordLen} אותיות` : '',
+      valueText: longestWordLen ? `${longestWordLen} אותיות` : '—',
+      hint: 'אורך המילה הארוכה ביותר ששיחקת',
     },
     {
       label: 'עקביות',
-      pct: scaleBar(recent.length >= 4 ? scoreConsistency(recent) : 0.4, 0, 1),
-      hint: 'יציבות הציונים ב-' + recent.length + ' המשחקים האחרונים',
+      pct: scaleBar(consistency ?? 0.4, 0, 1),
+      valueText: consistency != null ? `${Math.round(consistency * 100)}%` : '—',
+      hint: `יציבות הציונים ב-${recent.length} המשחקים האחרונים`,
     },
     {
       label: 'מהירות',
       pct: scaleBar(speedTotal > 0 ? fast / speedTotal : 0.33, 0, 1),
-      hint: speedTotal > 0
-        ? `${Math.round((fast / speedTotal) * 100)}% מהמשחקים שלך במצב מהיר`
-        : 'משחק עיקרי במצב רגיל',
+      valueText: speedTotal > 0 ? `${fastPct}%` : '—',
+      hint: speedTotal > 0 ? 'מהמשחקים שלך במצב מהיר' : 'משחק עיקרי במצב רגיל',
     },
     {
       label: 'נטיית סיכון',
       pct: scaleBar(won > 0 ? comebacks / won : 0, 0, 0.5),
+      valueText: `${comebacks}`,
       hint: comebacks > 0
-        ? `${comebacks} ניצחונות בקאמבק מתוך ${won} ניצחונות`
+        ? `ניצחונות בקאמבק מתוך ${won} ניצחונות`
         : 'מעט קאמבקים מתועדים',
     },
   ];

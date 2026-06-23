@@ -96,9 +96,10 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
     text('#st-closewins', stats.closeWins);
 
     // Act 4 — Style
-    text('#st-boost-fav-icon', stats.favoriteBoost ? '⚡' : '💡');
-    text('#st-boost-fav-name', stats.favoriteBoost?.label ?? '—');
-    text('#st-boost-fav-pct', stats.favoriteBoost ? `${stats.favoriteBoost.pct}% מהבוסטים שלך` : '—');
+    const fav = stats.favoriteStartLetter;
+    text('#st-boost-fav-icon', fav ? fav.letter : '🔤');
+    text('#st-boost-fav-name', fav ? `האות ${fav.letter}` : '—');
+    text('#st-boost-fav-pct', fav ? `${fav.count} מילים (${fav.pct}% מהמילים שלך)` : 'טרם נמדד');
 
     // Act 5 — Rivals
     html('#st-rivals-content', stats.rivalsHtml);
@@ -145,6 +146,7 @@ export function deriveStatsView(profile = {}) {
   const rating = Number(profile.rating) || 0;
   const recent = Array.isArray(s.recentGames) ? s.recentGames : [];
   const favoriteBoost = favoriteBoostFor(s.boostUsage, Number(s.bonusesTriggered) || 0);
+  const favoriteStartLetter = favoriteStartLetterFor(s.startingLetterCounts, s.wordCounts);
   const repeated = repeatedWordFor(s.wordCounts);
   const bestDay = bestDayFor(s.weekdayStats);
   const favoriteSpeed = favoriteSpeedFor(s.moveSpeedStats);
@@ -178,6 +180,7 @@ export function deriveStatsView(profile = {}) {
     boostsPerGame: played > 0 ? format1((Number(s.bonusesTriggered) || 0) / played) : 0,
     boostWinRate: boostedWinRate(recent),
     favoriteBoost,
+    favoriteStartLetter,
     rivalsHtml: rivalsHtml(s.rivalStats),
     longestWord: s.longestWord || '—',
     repeatedWord: repeated,
@@ -188,7 +191,12 @@ export function deriveStatsView(profile = {}) {
 }
 
 function toggleSection(id, root) {
-  $(`#st-sec-${id}`, root)?.classList?.toggle('open');
+  const target = $(`#st-sec-${id}`, root);
+  if (!target) return;
+  const willOpen = !target.classList?.contains('open');
+  // Accordion: only one section open at a time. Close the rest before opening.
+  for (const card of $$('.st-section-card', root)) card.classList?.remove('open');
+  if (willOpen) target.classList?.add('open');
 }
 
 function rivalsTeaser(rivalStats = {}) {
@@ -225,6 +233,29 @@ function favoriteSpeedFor(moveSpeedStats = {}) {
   const [key, val] = best;
   const wr = val.played > 0 ? Math.round((val.won / val.played) * 100) : 0;
   return `${SPEED_LABELS[key] ?? key} · ${wr}%`;
+}
+
+// Favorite starting letter: the letter you've built the most words from.
+// Prefer the dedicated startingLetterCounts tally; fall back to deriving it
+// from wordCounts for profiles saved before that tally existed.
+function favoriteStartLetterFor(startingLetterCounts, wordCounts = {}) {
+  let counts = startingLetterCounts;
+  if (!counts || !Object.keys(counts).length) {
+    counts = {};
+    for (const [word, n] of Object.entries(wordCounts ?? {})) {
+      const first = word?.[0];
+      if (first) counts[first] = (Number(counts[first]) || 0) + (Number(n) || 0);
+    }
+  }
+  const entries = Object.entries(counts).sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0));
+  if (!entries.length || !(Number(entries[0][1]) > 0)) return null;
+  const total = entries.reduce((sum, [, n]) => sum + (Number(n) || 0), 0);
+  const [letter, count] = entries[0];
+  return {
+    letter,
+    count: Number(count) || 0,
+    pct: total > 0 ? Math.round((Number(count) / total) * 100) : 0,
+  };
 }
 
 function favoriteBoostFor(usage = {}, total) {
@@ -392,10 +423,10 @@ function weekKpi(icon, label, value) {
 }
 
 function renderWordIntel(w = {}) {
+  // Note: longest word + best move score live in "השיאים שלי" — don't repeat
+  // them here. This section focuses on word-shape averages instead.
   const rows = [
     { icon: '📚', label: 'אורך מילה ממוצע',   val: w.avgWordLength ? String(w.avgWordLength) : 'טרם נמדד' },
-    { icon: '🔤', label: 'המילה הארוכה ביותר', val: w.longestWord ? `${w.longestWord} (${w.longestWordLen})` : 'טרם הושג' },
-    { icon: '💯', label: 'המהלך הטוב ביותר',  val: w.bestMoveScore ? `${w.bestMoveScore} נקודות` : 'טרם הושג' },
     { icon: '⚡', label: 'נקודות למהלך (ממוצע)', val: w.avgPointsPerMove ? `${w.avgPointsPerMove}` : 'טרם נמדד' },
     { icon: '🎯', label: 'אורך המילה השכיח',  val: w.mostUsedLength ? `${w.mostUsedLength} אותיות` : 'טרם נמדד' },
   ];
@@ -414,7 +445,7 @@ function renderPlayStyle(bars = []) {
     + '<div class="ins-style-row">'
     +   '<div class="ins-style-meta">'
     +     `<span class="ins-style-lbl">${escapeHtml(b.label)}</span>`
-    +     `<span class="ins-style-pct">${escapeHtml(String(b.pct))}%</span>`
+    +     `<span class="ins-style-pct">${escapeHtml(b.valueText ?? `${b.pct}%`)}</span>`
     +   '</div>'
     +   '<div class="ins-style-bar">'
     +     `<div class="ins-style-bar-fill" style="width:${Number(b.pct) || 0}%"></div>`

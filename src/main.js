@@ -387,7 +387,7 @@ async function boot() {
     if (!ic) return;
     const on = audioService.isEnabled();
     if (ic.tagName === 'IMG') {
-      ic.src = on ? 'images/icons/sound_on.png' : 'images/icons/sound_off.png';
+      ic.src = on ? 'assets/navigation/sound_on.png' : 'assets/navigation/sound_off.png';
     } else {
       ic.textContent = on ? '🎵' : '🔇';
     }

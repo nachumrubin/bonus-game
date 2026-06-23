@@ -7,7 +7,7 @@
 
 ## D-avatar-store: separate coin-bought avatar collection, client-authoritative economy — June 2026
 
-**Decision:** The avatar **store** is a NEW collection of 36 avatars (`images/icons/avatars/`,
+**Decision:** The avatar **store** is a NEW collection of 36 avatars (`assets/avatars/`,
 common/rare/epic/legendary) bought with a coin currency. It **coexists** with — does not replace — the existing
 achievement-unlock avatars (`SPINE_AVATARS`); both share the single `equippedAvatar`. Coins are earned three ways
 (NOT win/loss): a one-time starter grant, daily login + streak, and achievement completions. Pricing is flat per
