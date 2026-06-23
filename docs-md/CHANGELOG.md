@@ -2,6 +2,43 @@
 
 ---
 
+## Statistics screen modernization — June 2026
+
+Replaced the 4-tab statistics layout (Insights / Progress / Records / Rivals) with a single narrative story feed, guided by the question: *"Does this stat add anything important to the player's story?"*
+
+**Design principle:** The screen now answers five story questions — Identity, Form, Achievements, Style, Rivalries — rather than dumping data across tabs.
+
+**HTML (`partials/screens/stats-screen.html`):**
+- Removed `.stats-tabbar`, all four `.stats-panel` wrappers, and the `onclick="_statsTab()"` buttons
+- Added three hero KPIs in the existing `.stats-hero` band: ELO Rating · Win Rate · Streak (ELO was previously buried in the Progress tab)
+- Added `.st-archetype-card` below hero (replaces `#st-panel-insights .ins-archetype`)
+- Added `.stats-feed` scrollable container with four `.st-section-card` divs (Form · Achievements · Style · Rivals)
+- Form section opens by default (`.open`); the other three are collapsed
+- Each section header carries `data-section` attribute for JS binding; shows teaser stat when collapsed
+- Removed: "Did You Know?", milestone ladder, Opponent Insights grid, strongest weekday, favorite game speed, most-repeated word, total tiles/moves, boost-total / boost-avg / boost-winrate counters
+- Clutch stats (comeback wins, last-move wins, close wins) moved into the Achievements section — they tell a dramatic story
+
+**JS (`src/ui/screens/statsScreen.js`):**
+- Removed `_statsTab` global and `switchTab` / `tabFromButton` helpers
+- Added `_statsToggle(id)` global and `toggleSection(id, root)` helper (toggles `.open` on the section card)
+- `mountStatsScreen()` now binds `.st-section-header` click events instead of `.stats-tab`
+- `paint()` restructured into acts; ELO rating now painted into hero band
+- `paint()` adds teaser text to section headers (e.g. "3 משחקים השבוע", "שיא: 300")
+- `rivalsHtml()` trimmed to top 3 rivals (was 5)
+- Onboarding content updated to reflect new screen structure
+- Added `rivalsTeaser()` helper for the rivals section collapsed label
+
+**CSS (`styles.css`):**
+- `#st-panel-insights ` prefix replaced with `#sstats ` across all 65 `ins-*` CSS rules, so they apply anywhere inside the stats screen rather than just inside the old Insights tab
+- Added `/* STATS MODERNIZATION — June 2026 */` block with new rules: `.stats-feed`, `.st-archetype-card` (and sub-elements), `.st-section-card`, `.st-section-header`, `.st-section-hd-icon/title/teaser/chevron`, `.st-section-body` with CSS `max-height` expand/collapse transition
+
+**Tests (`src/ui/screens/statsScreen.test.js`):**
+- Updated `makeDom()` to provide `.st-section-header` elements with `dataset.section` and `.st-sec-{id}` section card elements; removed old tab/panel mocks
+- Updated assertions to use IDs that exist in the new layout (removed `st-played`, `st-boost-total` assertions)
+- Tab-click test replaced with section-header toggle test
+
+---
+
 ## Dictionary suggestions + word_contributor achievement — June 2026
 
 Four related changes shipped together:

@@ -32,12 +32,11 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
   const cleanups = [];
   let lastPayload = {};
 
-  for (const btn of $$('.stats-tab', root)) {
-    btn.removeAttribute?.('onclick');
-    cleanups.push(on(btn, 'click', (e) => {
+  for (const header of $$('.st-section-header', root)) {
+    cleanups.push(on(header, 'click', (e) => {
       e?.preventDefault?.();
-      const tab = tabFromButton(btn);
-      switchTab(tab, btn, root);
+      const id = header.dataset?.section;
+      if (id) toggleSection(id, root);
     }));
   }
 
@@ -54,7 +53,7 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
     paint(lastPayload);
     bus.emit(STATS_INTENT.REFRESH, {});
   };
-  win._statsTab = (tab, el) => switchTab(tab, el, root);
+  win._statsToggle = (id) => toggleSection(id, root);
   win._statsShare = () => shareStats(win, lastPayload.profile);
 
   cleanups.push(bus.on(PROFILE_RENDER, (payload = {}) => {
@@ -66,21 +65,19 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
     if (!screenEl || !profile) return;
     const stats = deriveStatsView(profile);
     paintInsightsPanel(profile, root);
+
+    // Act 1 — Identity
     setAvatarEl($('#st-hero-av', root), profile.equippedAvatar, { fallback: '👑' });
     text('#st-hero-name', profile.displayName ?? 'שחקן בוסט');
     text('#st-hero-tier', stats.tier.label);
     setTierClass($('#st-hero-tier', root), stats.tier.className);
+    text('#st-rating', stats.rating);
     text('#st-hero-wr', `${stats.winRate}%`);
     text('#st-hero-streak', `${stats.currentStreak} 🔥`);
     text('#st-hero-insight', stats.insight);
 
-    // Progress tab
+    // Act 2 — Form
     paintSparkline(stats.recentGames, root);
-    text('#st-rating', stats.rating);
-    width('#st-tier-bar', stats.tierProgress);
-    text('#st-highscore', stats.highScore);
-    text('#st-avg', stats.avgScore);
-    text('#st-played', stats.gamesPlayed);
     text('#st-won', stats.gamesWon);
     text('#st-lost', stats.gamesLost);
     text('#st-draw', stats.gamesDraw);
@@ -88,26 +85,30 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
     width('#st-bar-l', stats.lossPct);
     width('#st-bar-d', stats.drawPct);
 
-    // Records tab
+    // Act 3 — Achievements
+    text('#st-highscore', stats.highScore);
     text('#st-fun-bestmove', stats.highestMoveScore);
     text('#st-fun-longest', stats.longestWord);
     text('#st-fun-streak', stats.longestStreak);
     text('#st-fun-comeback', stats.bestComeback);
-    text('#st-fun-repeated', stats.repeatedWord);
-    text('#st-fun-bestday', stats.bestDay);
-    text('#st-fun-speed', stats.favoriteSpeed);
-
-    // Rivals & Boosts tab
-    html('#st-rivals-content', stats.rivalsHtml);
-    text('#st-boost-total', stats.bonusesTriggered);
-    text('#st-boost-avg', stats.boostsPerGame);
-    text('#st-boost-winrate', stats.boostWinRate);
-    text('#st-boost-fav-icon', stats.favoriteBoost ? '⚡' : '💡');
-    text('#st-boost-fav-name', stats.favoriteBoost?.label ?? '—');
-    text('#st-boost-fav-pct', stats.favoriteBoost ? `${stats.favoriteBoost.pct}% מהבוסטים שלך` : '—');
     text('#st-comeback', stats.comebackWins);
     text('#st-lastmove', stats.lastMoveWins);
     text('#st-closewins', stats.closeWins);
+
+    // Act 4 — Style
+    text('#st-boost-fav-icon', stats.favoriteBoost ? '⚡' : '💡');
+    text('#st-boost-fav-name', stats.favoriteBoost?.label ?? '—');
+    text('#st-boost-fav-pct', stats.favoriteBoost ? `${stats.favoriteBoost.pct}% מהבוסטים שלך` : '—');
+
+    // Act 5 — Rivals
+    html('#st-rivals-content', stats.rivalsHtml);
+
+    // Section header teaser text (shown when collapsed)
+    const ins = deriveInsights(profile, Date.now());
+    text('#st-form-teaser', ins.weekSnapshot?.played ? `${ins.weekSnapshot.played} משחקים השבוע` : '');
+    text('#st-ach-teaser', stats.highScore ? `שיא: ${stats.highScore}` : '');
+    text('#st-style-teaser', ins.archetype?.label ?? '');
+    text('#st-rivals-teaser', rivalsTeaser(profile.stats?.rivalStats));
 
     // Legacy compat hidden nodes
     text('#st-streak', stats.currentStreak);
@@ -124,6 +125,7 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
       for (const off of cleanups) try { off(); } catch {}
       cleanups.length = 0;
       if (win._statsRefresh) win._statsRefresh = function _statsRefresh() {};
+      if (win._statsToggle) win._statsToggle = function _statsToggle() {};
       if (win._statsShare) win._statsShare = function _statsShare() {};
     },
     refresh: () => paint(lastPayload),
@@ -185,20 +187,15 @@ export function deriveStatsView(profile = {}) {
   };
 }
 
-function tabFromButton(btn) {
-  const text = btn?.textContent ?? '';
-  if (text.includes('תובנות')) return 'insights';
-  if (text.includes('שיאים')) return 'records';
-  if (text.includes('יריבים')) return 'rivals';
-  if (text.includes('התקדמות')) return 'progress';
-  return 'insights';
+function toggleSection(id, root) {
+  $(`#st-sec-${id}`, root)?.classList?.toggle('open');
 }
 
-function switchTab(tab, el, root) {
-  for (const btn of $$('.stats-tab', root)) btn.classList?.remove('active');
-  for (const panel of $$('.stats-panel', root)) panel.classList?.remove('active');
-  el?.classList?.add('active');
-  $(`#st-panel-${tab}`, root)?.classList?.add('active');
+function rivalsTeaser(rivalStats = {}) {
+  const entries = Object.values(rivalStats ?? {}).sort((a, b) => (Number(b.played) || 0) - (Number(a.played) || 0));
+  if (!entries.length) return '';
+  const top = entries[0];
+  return `${top.name ?? '?'} · ${top.won ?? 0}-${top.lost ?? 0}`;
 }
 
 function paintSparkline(games, root = globalThis.document) {
@@ -260,7 +257,7 @@ function boostedWinRate(recent = []) {
 }
 
 function rivalsHtml(rivals = {}) {
-  const entries = Object.values(rivals ?? {}).sort((a, b) => (Number(b.played) || 0) - (Number(a.played) || 0)).slice(0, 5);
+  const entries = Object.values(rivals ?? {}).sort((a, b) => (Number(b.played) || 0) - (Number(a.played) || 0)).slice(0, 3);
   if (!entries.length) return '<div class="champs-empty">אין עדיין יריבים חיים</div>';
   return entries.map(r => {
     const wr = r.played ? Math.round(((Number(r.won) || 0) / r.played) * 100) : 0;
@@ -494,14 +491,13 @@ function escapeHtml(s) {
     .replaceAll('\'', '&#39;');
 }
 
-// Keep this in sync with stats-screen.html tab names.
 registerOnboardingContent('sstats', {
   icon: '📊',
   title: 'סטטיסטיקות',
   bullets: [
-    '💡 תובנות — ניתוח אישי של סגנון המשחק שלך',
-    '📈 התקדמות — דירוג ELO, שיא ניקוד ואחוז ניצחון',
-    '🏆 שיאים — הכי הרבה נקודות במהלך אחד, המילה הארוכה ביותר ועוד',
-    '🤺 יריבים — שימוש בבוסטים, ניצחונות בקאמבק, משחקים צמודים',
+    '🆔 זהות — דירוג ELO, אחוז ניצחון, רצף ואבטיפוס שחקן',
+    '📈 ביצועים — סנפשוט שבועי, ספרקליין ומגמות',
+    '🏆 שיאים — שיא ניקוד, המילה הארוכה, קאמבקים וניצחונות קלאץ׳',
+    '🤺 יריבים — מי מנצח אתכם ומי מפסיד',
   ],
 });

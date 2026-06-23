@@ -8,13 +8,16 @@ import { deriveStatsView, mountStatsScreen } from './statsScreen.js';
 function makeEl({ textContent = '' } = {}) {
   const listeners = [];
   const classes = new Set();
+  const dataset = {};
   return {
     textContent,
     innerHTML: '',
     style: { display: '', width: '' },
+    dataset,
     classList: {
       add: (...names) => names.forEach(n => classes.add(n)),
       remove: (...names) => names.forEach(n => classes.delete(n)),
+      toggle: (name) => classes.has(name) ? classes.delete(name) : classes.add(name),
       contains: (name) => classes.has(name),
     },
     addEventListener(ev, fn) { listeners.push({ ev, fn }); },
@@ -33,26 +36,25 @@ function makeDom() {
   const ids = {};
   for (const id of [
     'sstats', 'st-hero-av', 'st-hero-name', 'st-hero-tier', 'st-hero-wr', 'st-hero-streak', 'st-hero-insight',
-    'st-sparkline', 'st-rating', 'st-tier-bar',
-    'st-highscore', 'st-avg', 'st-played',
+    'st-sparkline', 'st-rating',
+    'st-highscore', 'st-fun-bestmove', 'st-fun-longest', 'st-fun-streak', 'st-fun-comeback',
     'st-won', 'st-lost', 'st-draw', 'st-bar-w', 'st-bar-l', 'st-bar-d',
-    'st-fun-bestmove', 'st-fun-longest', 'st-fun-streak', 'st-fun-comeback', 'st-fun-repeated', 'st-fun-bestday',
-    'st-rivals-content', 'st-boost-total', 'st-boost-avg', 'st-boost-winrate',
+    'st-rivals-content',
     'st-boost-fav-icon', 'st-boost-fav-name', 'st-boost-fav-pct',
     'st-comeback', 'st-lastmove', 'st-closewins',
     'st-streak', 'st-words', 'stats-wr-pct',
+    'ins-arch-icon', 'ins-arch-label', 'ins-arch-blurb',
+    'ins-week', 'ins-trends', 'ins-style', 'ins-words',
+    'st-form-teaser', 'st-ach-teaser', 'st-style-teaser', 'st-rivals-teaser',
+    'st-sec-form', 'st-sec-achievements', 'st-sec-style', 'st-sec-rivals',
   ]) ids[id] = makeEl();
 
-  const tabs = [
-    makeEl({ textContent: 'תקדמות' }),
-    makeEl({ textContent: 'שיאים' }),
-    makeEl({ textContent: 'יריבים ובוסטים' }),
-  ];
-  const panels = ['progress', 'records', 'rivals'].map(id => {
+  const sectionHeaders = ['form', 'achievements', 'style', 'rivals'].map(sec => {
     const el = makeEl();
-    ids[`st-panel-${id}`] = el;
+    el.dataset.section = sec;
     return el;
   });
+
   const share = makeEl();
 
   const root = {
@@ -62,12 +64,11 @@ function makeDom() {
       return null;
     },
     querySelectorAll(sel) {
-      if (sel === '.stats-tab') return tabs;
-      if (sel === '.stats-panel') return panels;
+      if (sel === '.st-section-header') return sectionHeaders;
       return [];
     },
   };
-  return { root, ids, tabs, panels, share };
+  return { root, ids, sectionHeaders, share };
 }
 
 test('deriveStatsView: computes primary display fields', () => {
@@ -88,7 +89,7 @@ test('deriveStatsView: computes primary display fields', () => {
 
 test('mountStatsScreen: paints profile stats and handles controls', () => {
   bus._reset();
-  const { root, ids, tabs, share } = makeDom();
+  const { root, ids, sectionHeaders, share } = makeDom();
   mountStatsScreen({ root, bus, win: { navigator: { clipboard: { writeText() {} } } } });
 
   bus.emit(PROFILE_RENDER, {
@@ -108,15 +109,18 @@ test('mountStatsScreen: paints profile stats and handles controls', () => {
   });
 
   assert.equal(ids['st-hero-name'].textContent, 'Tester');
-  assert.equal(ids['st-played'].textContent, '8');
+  assert.equal(ids['st-rating'].textContent, '1000');
   assert.equal(ids['st-won'].textContent, '4');
   assert.equal(ids['st-highscore'].textContent, '300');
   assert.equal(ids['st-fun-bestmove'].textContent, '92');
-  assert.equal(ids['st-boost-total'].textContent, '6');
   assert.equal(ids['st-fun-longest'].textContent, 'מבחן');
 
-  tabs[1].fireClick();
-  assert.equal(ids['st-panel-records'].classList.contains('active'), true);
+  // Clicking a section header toggles the .open class on the section card
+  sectionHeaders[1].fireClick(); // achievements header
+  assert.equal(ids['st-sec-achievements'].classList.contains('open'), true);
+  sectionHeaders[1].fireClick(); // toggle closed again
+  assert.equal(ids['st-sec-achievements'].classList.contains('open'), false);
+
   share.fireClick();
 });
 
@@ -125,7 +129,7 @@ test('mountStatsScreen: missing rich stats render intentionally empty', () => {
   const { root, ids } = makeDom();
   mountStatsScreen({ root, bus, win: {} });
   bus.emit(PROFILE_RENDER, { profile: { displayName: 'New', stats: {} } });
-  assert.equal(ids['st-played'].textContent, '0');
+  assert.equal(ids['st-highscore'].textContent, '0');
   assert.equal(ids['st-fun-longest'].textContent, '—');
   assert.equal(ids['st-fun-comeback'].textContent, '—');
 });

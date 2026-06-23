@@ -385,6 +385,7 @@ The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG
 - ✅ Electric Floating Platforms Stage 3 depth pass — floating illusion via offset shadow, curved organic lightning, particle field, compressed layout, blue ELO badge, enlarged online icon
 - ✅ Electric Floating Platforms Stage 4 gap-report pass — viewport-fit=cover, near-black background, 3D slab bottom face, icon depth with specular highlight, logo glow, nav 28px icons + active pill, lightning pulse + particle drift animations
 - ✅ Stats screen simplification — cut ~10 low-value stats, collapsed 5 tabs to 3 (תקדמות / שיאים / יריבים ובוסטים). UI-only; storage unchanged.
+- ✅ Stats screen modernization — replaced 4-tab layout with a 5-act narrative story feed (Identity · Form · Achievements · Style · Rivalries). ELO rating moved to hero band. Archetype card always visible. Collapsible section cards with teaser text. Removed "Did You Know?", milestone ladder, opponent insights grid, accumulation counters. Clutch stats promoted to Achievements. Rivals trimmed to top 3.
 
 ---
 
