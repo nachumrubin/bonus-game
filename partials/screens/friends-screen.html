@@ -16,10 +16,9 @@
       </div>
     </div>
 
-    <!-- Hero: avatar with crown, name, rating, between-stats badge -->
+    <!-- Hero: avatar, name, rating, between-stats badge -->
     <div class="fd-hero">
       <div class="fd-av-section">
-        <div class="fd-crown">👑</div>
         <div class="fd-av-ring">
           <div id="fd-avatar"><img class="av-img" src="images/icons/anonymous player.png" alt=""></div>
         </div>
@@ -81,7 +80,9 @@
         <input class="ri fr-add-input" id="add-friend-input" type="text"
                placeholder="הזן קוד חבר (6 תווים)" maxlength="6"
                autocomplete="off" oninput="this.value=this.value.toUpperCase()">
-        <button class="fr-add-btn" onclick="sendFriendRequest()">+</button>
+        <button class="fr-add-btn" onclick="sendFriendRequest()" aria-label="הוסף חבר">
+          <img class="fr-action-icon" src="images/icons/+.png" alt="">
+        </button>
       </div>
       <div id="add-friend-status" class="fr-add-status"></div>
     </div>

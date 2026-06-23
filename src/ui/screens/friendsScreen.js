@@ -93,7 +93,7 @@ export function buildFriendsListHtml(friends = []) {
       +   `<div class="fr-friend-status">${statusText}</div>`
       + `</div>`
       + `<div class="fr-game-col">`
-      +   `<button class="fr-game-btn" data-fr-menu="${escapeHtml(f.uid)}" aria-label="הזמן למשחק">🎮</button>`
+      +   `<button class="fr-game-btn" data-fr-menu="${escapeHtml(f.uid)}" aria-label="הזמן למשחק"><img class="fr-action-icon" src="images/icons/remote.png" alt=""></button>`
       +   `<div class="fr-game-lbl">הזמן למשחק</div>`
       + `</div>`
       + `<button class="fr-menu-btn" data-fr-menu="${escapeHtml(f.uid)}" aria-label="תפריט">⋮</button>`
@@ -117,7 +117,7 @@ function buildDetailStatsHtml(rival) {
     + `<div class="fd-sc-val fd-sc-val-green">${rival.won}</div>`
     + `<div class="fd-sc-lbl">ניצחונות</div>`
     + `</div>`
-    + col('🛡', rival.lost, 'הפסדות');
+    + col('🛡', rival.lost, 'הפסדים');
 }
 
 function buildDetailRecentHtml(games) {

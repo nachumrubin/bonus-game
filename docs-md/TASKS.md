@@ -128,7 +128,7 @@
 ## Friend detail popup — premium visual redesign — June 2026
 
 - [x] Avatar hero with 110 px glow ring + crown on top; name as large centered heading
-- [x] 3-column stat widget (🎮 משחקים / 🏆 ניצחונות / 🛡 הפסדות) replacing plain text; win-rate removed
+- [x] 3-column stat widget (🎮 משחקים / 🏆 ניצחונות / 🛡 הפסדים) replacing plain text; win-rate removed
 - [x] Recent games: colored win/loss indicator circle + ltr score display + time-ago string
 - [x] Active games empty state: icon + friend's name in message; no conditional invite button
 - [x] Permanent green CTA "✉ הזמן למשחק" at bottom of overlay
