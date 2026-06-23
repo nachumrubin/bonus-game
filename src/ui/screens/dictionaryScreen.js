@@ -2,19 +2,21 @@ import { $, on, setText } from '../domHelpers.js';
 import { cleanDictionaryWord, parseSuggestedWords } from '../../game/account/dictionaryService.js';
 
 export const DICT_INTENT = Object.freeze({
-  OPEN_QUERY:     'dictionary/query/open',
-  CLOSE_QUERY:    'dictionary/query/close',
-  CHECK_QUERY:    'dictionary/query/check',
-  SUBMIT_SUGGEST: 'dictionary/suggest/submit',  // admin direct-add (legacy intent name)
-  SUBMIT_REMOVAL: 'dictionary/removal/submit',  // admin direct-remove
-  USER_SUGGEST:   'dictionary/user-suggest/submit', // user suggestion (pending admin review)
+  OPEN_QUERY:            'dictionary/query/open',
+  CLOSE_QUERY:           'dictionary/query/close',
+  CHECK_QUERY:           'dictionary/query/check',
+  SUBMIT_SUGGEST:        'dictionary/suggest/submit',         // admin direct-add (legacy intent name)
+  SUBMIT_REMOVAL:        'dictionary/removal/submit',         // admin direct-remove
+  USER_SUGGEST:          'dictionary/user-suggest/submit',    // user add-suggestion (pending admin review)
+  USER_SUGGEST_REMOVAL:  'dictionary/user-suggest-removal/submit', // user remove-suggestion
 });
 
 export const DICT_RENDER = Object.freeze({
-  QUERY_RESULT:         'dictionary/query/result',
-  SUGGESTION_STATUS:    'dictionary/suggest/status',
-  REMOVAL_STATUS:       'dictionary/removal/status',
-  USER_SUGGEST_STATUS:  'dictionary/user-suggest/status',
+  QUERY_RESULT:                 'dictionary/query/result',
+  SUGGESTION_STATUS:            'dictionary/suggest/status',
+  REMOVAL_STATUS:               'dictionary/removal/status',
+  USER_SUGGEST_STATUS:          'dictionary/user-suggest/status',
+  USER_SUGGEST_REMOVAL_STATUS:  'dictionary/user-suggest-removal/status',
 });
 
 export function formatQueryResult({ word, valid, reason } = {}) {
@@ -40,6 +42,7 @@ export function mountDictionaryScreen({ root = globalThis.document, bus } = {}) 
   patchClick('button[onclick="suggestDictionaryWord()"]', root, () => submitSuggestions());
   patchClick('button[onclick="suggestDictionaryRemoval()"]', root, () => submitRemovalSuggestions());
   patchClick('button[onclick="userSuggestDictionaryWord()"]', root, () => submitUserSuggestion());
+  patchClick('button[onclick="userSuggestDictionaryRemoval()"]', root, () => submitUserSuggestionRemoval());
 
   const queryInput = $('#shin', root);
   cleanups.push(on(queryInput, 'keydown', (e) => {
@@ -93,6 +96,12 @@ export function mountDictionaryScreen({ root = globalThis.document, bus } = {}) 
     if (el?.style) el.style.color = isError ? '#ff9c9c' : '#9fd4f5';
   }));
 
+  cleanups.push(bus.on(DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS, ({ message = '', isError = false } = {}) => {
+    const el = $('#user-suggest-removal-status', root);
+    setText(el, message);
+    if (el?.style) el.style.color = isError ? '#ff9c9c' : '#9fd4f5';
+  }));
+
   function checkQuery(inputId, resultId, { clearAfterCheck = false } = {}) {
     const input = root.querySelector?.(`#${inputId}`);
     const result = root.querySelector?.(`#${resultId}`);
@@ -123,6 +132,12 @@ export function mountDictionaryScreen({ root = globalThis.document, bus } = {}) 
     const input = $('#user-suggest-input', root);
     const word = cleanDictionaryWord(input?.value);
     bus.emit(DICT_INTENT.USER_SUGGEST, { word });
+  }
+
+  function submitUserSuggestionRemoval() {
+    const input = $('#user-suggest-removal-input', root);
+    const word = cleanDictionaryWord(input?.value);
+    bus.emit(DICT_INTENT.USER_SUGGEST_REMOVAL, { word });
   }
 
   function patchClick(selector, scope, handler) {

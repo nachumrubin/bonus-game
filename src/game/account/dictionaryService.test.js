@@ -223,3 +223,62 @@ test('markSuggestionsApproved updates status to approved', async () => {
   await markSuggestionsApproved(db, ['s1']);
   assert.equal(db._data.dictionarySuggestions.s1.status, 'approved');
 });
+
+// ── User removal suggestions ───────────────────────────────────────────────
+
+test('submitWordSuggestion with type remove writes a pending remove suggestion', async () => {
+  const db = makeMockDb();
+  const result = await submitWordSuggestion(db, { word: 'שלום', uid: 'u1', type: 'remove', now: 2000 });
+  assert.equal(result.ok, true);
+  assert.equal(result.word, 'שלום');
+  const entries = Object.values(db._data.dictionarySuggestions ?? {});
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].type, 'remove');
+  assert.equal(entries[0].status, 'pending');
+});
+
+test('submitWordSuggestion remove rejects word already in rejectedWords', async () => {
+  const db = makeMockDb();
+  await db.ref('dictionaryRejected/r1').set({ word: 'חסום' });
+  const result = await submitWordSuggestion(db, { word: 'חסום', uid: 'u1', type: 'remove' });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'word-already-removed');
+});
+
+test('submitWordSuggestion remove rejects duplicate from same user', async () => {
+  const db = makeMockDb();
+  await submitWordSuggestion(db, { word: 'שלום', uid: 'u1', type: 'remove' });
+  const result = await submitWordSuggestion(db, { word: 'שלום', uid: 'u1', type: 'remove' });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'already-suggested');
+});
+
+test('submitWordSuggestion add and remove are independent — same word can have both types', async () => {
+  const db = makeMockDb();
+  const r1 = await submitWordSuggestion(db, { word: 'שלום', uid: 'u1', type: 'add' });
+  const r2 = await submitWordSuggestion(db, { word: 'שלום', uid: 'u1', type: 'remove' });
+  assert.equal(r1.ok, true);
+  assert.equal(r2.ok, true);
+  const entries = Object.values(db._data.dictionarySuggestions ?? {});
+  assert.equal(entries.length, 2);
+});
+
+test('findPendingSuggestionsForWords with type filter only returns matching type', async () => {
+  const db = makeMockDb();
+  await db.ref('dictionarySuggestions/s1').set({
+    word: 'שלום', normalizedWord: 'שלום', status: 'pending', suggestedBy: ['u1'], type: 'add', createdAt: 1,
+  });
+  await db.ref('dictionarySuggestions/s2').set({
+    word: 'שלום', normalizedWord: 'שלום', status: 'pending', suggestedBy: ['u2'], type: 'remove', createdAt: 2,
+  });
+  const addCredits = await findPendingSuggestionsForWords(db, ['שלום'], { type: 'add' });
+  assert.equal(addCredits.length, 1);
+  assert.equal(addCredits[0].uid, 'u1');
+
+  const removeCredits = await findPendingSuggestionsForWords(db, ['שלום'], { type: 'remove' });
+  assert.equal(removeCredits.length, 1);
+  assert.equal(removeCredits[0].uid, 'u2');
+
+  const allCredits = await findPendingSuggestionsForWords(db, ['שלום']);
+  assert.equal(allCredits.length, 2);
+});

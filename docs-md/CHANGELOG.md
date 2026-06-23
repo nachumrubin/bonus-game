@@ -4,7 +4,7 @@
 
 ## Dictionary suggestions + word_contributor achievement — June 2026
 
-Three related changes shipped together:
+Four related changes shipped together:
 
 **1. App intro/loading screen minimum time raised to 10 seconds**
 
@@ -13,49 +13,54 @@ loading overlay now stays visible for at least 10 s before the fallback timer fi
 hides immediately when `MENU_REFRESH` with `isAuthed` fires, so a fast boot is unaffected for
 returning users).
 
-**2. User word-suggestion feature restored**
+**2. User word-suggestion feature restored (add + remove)**
 
-The suggest→review pipeline (removed June 2026) is back for regular users. Any signed-in
-non-anonymous player sees a new "💡 הצע מילה למילון" panel in Settings (section 4, above the
-admin-only panel). Submitted suggestions land in `/dictionarySuggestions/{pushKey}` as pending
-entries with `{ word, normalizedWord, suggestedBy: [uid], status: 'pending', type: 'add', createdAt }`.
+The suggest→review pipeline is back for regular users with two directions:
+- **Add**: suggest a missing word be added to the dictionary
+- **Remove**: suggest a word be removed from the dictionary
 
-- **`src/game/account/dictionaryService.js`** — 3 new exports:
-  - `submitWordSuggestion(db, { word, uid, now?, serverTimestamp? })` — validates + writes a
-    pending suggestion; returns `{ ok, reason? }`. Guards: not-authenticated, empty word,
-    already-in-dictionary, already-suggested (same uid + same word + status pending).
-  - `findPendingSuggestionsForWords(db, words)` — given a list of admin-approved words, returns
-    `[{ key, word, uid }]` for every user who had a pending suggestion for those words.
-  - `markSuggestionsApproved(db, keys)` — sets `status = 'approved'` on a batch of suggestion
-    entries by push-key.
-  - New constant: `DICTIONARY_SUGGESTIONS_PATH = 'dictionarySuggestions'`.
-- **`partials/screens/settings.html`** — new section 4 `#user-suggest-panel` (hidden by default,
-  shown via JS). Contains `#user-suggest-input` + `button[onclick="userSuggestDictionaryWord()"]`
-  + `#user-suggest-status`.
-- **`src/ui/screens/dictionaryScreen.js`** — added `DICT_INTENT.USER_SUGGEST` and
-  `DICT_RENDER.USER_SUGGEST_STATUS`; wired `button[onclick="userSuggestDictionaryWord()"]` and
-  `#user-suggest-status`.
-- **`src/main.js`** — `setUserSuggestVisible()` helper; shows on `bootCrossCuttingFor` (any
-  non-anonymous uid), hides on `teardownCrossCuttingAuth`. New `DICT_INTENT.USER_SUGGEST` handler
-  calls `submitWordSuggestion`. New `awardSuggestionCreditsForWords(db, words)` helper called after
-  every successful admin add: finds pending suggestions → bumps `wordsAccepted` stat for each
-  suggester → marks suggestions approved.
-- **`firebase.database.rules.json`** — restored `dictionarySuggestions` path:
-  `.read` admin-only; `$id { .read: auth != null, .write: auth != null && !data.exists() }`.
-- **`tests/unit/firebase-rules.test.js`** — updated assertion: the suggestion path now MUST
-  exist (was checking it was removed).
+Any signed-in non-anonymous player sees a "💡 הצעות מילון" panel in Settings (section 4, above
+the admin-only panel) with two cards.
 
-**3. New achievement: "תורם מילים" (word_contributor, 500 coins)**
+Entries land in `/dictionarySuggestions/{pushKey}` as:
+`{ word, normalizedWord, suggestedBy: [uid], status: 'pending', type: 'add'|'remove', createdAt }`.
 
-Players who have 20 accepted word suggestions (`stats.wordsAccepted >= 20`) earn 500 coins.
-If ≥2 users suggest the same word and it gets approved, each gets +1 `wordsAccepted` credit.
+- **`src/game/account/dictionaryService.js`**:
+  - `submitWordSuggestion(db, { word, uid, type?, now?, serverTimestamp? })` — validates + writes a
+    pending suggestion; `type` defaults to `'add'`. Add-type guards: not-authenticated, empty,
+    already-in-dictionary, word-is-blocked. Remove-type guards: not-authenticated, empty,
+    word-already-removed. Both: already-suggested (same uid + type + word + pending).
+  - `findPendingSuggestionsForWords(db, words, { type? })` — optional type filter restricts results
+    to suggestions of that type only. Add-admin action passes `type:'add'`; remove-admin passes
+    `type:'remove'`.
+  - `markSuggestionsApproved(db, keys)` — unchanged.
+  - `DICTIONARY_SUGGESTIONS_PATH` constant — unchanged.
+- **`partials/screens/settings.html`** — section 4 `#user-suggest-panel` now has two cards:
+  `sett-dict-card--add` (`#user-suggest-input`, `#user-suggest-status`) and
+  `sett-dict-card--remove` (`#user-suggest-removal-input`, `#user-suggest-removal-status`).
+- **`src/ui/screens/dictionaryScreen.js`** — added `DICT_INTENT.USER_SUGGEST_REMOVAL` and
+  `DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS`; wired `button[onclick="userSuggestDictionaryRemoval()"]`
+  and `#user-suggest-removal-status`.
+- **`src/main.js`** — new `DICT_INTENT.USER_SUGGEST_REMOVAL` handler calls `submitWordSuggestion`
+  with `type:'remove'`. `awardSuggestionCreditsForWords(db, words, type)` now accepts a type param
+  and passes it to `findPendingSuggestionsForWords` so only the matching suggestion type gets
+  credited. Both admin add (`SUBMIT_SUGGEST`) and admin remove (`SUBMIT_REMOVAL`) handlers now
+  call `awardSuggestionCreditsForWords` with the appropriate type.
+- **`firebase.database.rules.json`** — restored `dictionarySuggestions` path (unchanged, append-only
+  for any auth user; rules cover both add and remove suggestion types).
 
-- **`src/ui/screens/avatarScreens.js`** `ACHIEVEMENTS` — added `{ id: 'word_contributor', titleHe: 'תורם מילים', tier: 'gold', condition: { stat: 'wordsAccepted', min: 20 }, emoji: '📖' }`. Coin reward: 250 (gold tier).
-- **`src/game/account/profileService.js`** `EMPTY_STATS` — added `wordsAccepted: 0`.
+**3. New achievement: "תורם מילים" (word_contributor)**
 
-New tests: 7 in `dictionaryService.test.js` (submitWordSuggestion, findPendingSuggestionsForWords,
-markSuggestionsApproved), 4 in `avatarScreens.test.js` (word_contributor presence + threshold
-crossing). All pass; `test:unit` 202/202.
+Players who have 20 accepted word suggestions (`stats.wordsAccepted >= 20`) earn 250 coins (gold
+tier). Both add-suggestion and remove-suggestion credits count toward this achievement. If ≥2 users
+suggest the same word (in the same direction) and it gets approved/actioned, each gets +1 credit.
+
+- **`src/ui/screens/avatarScreens.js`** `ACHIEVEMENTS` — `{ id: 'word_contributor', tier: 'gold', condition: { stat: 'wordsAccepted', min: 20 }, emoji: '📖' }`.
+- **`src/game/account/profileService.js`** `EMPTY_STATS` — `wordsAccepted: 0`.
+
+New tests: 7 existing + 5 new in `dictionaryService.test.js` (remove type happy path, already-removed
+guard, duplicate-remove guard, add+remove independence, type filter), 4 in `avatarScreens.test.js`.
+All pass; `test:unit` 202/202.
 
 ## Achievements decoupled from avatars → coin trophies — June 2026
 
