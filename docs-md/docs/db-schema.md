@@ -312,26 +312,27 @@ string   // value is just the username
 
 ---
 
-## `/dictionarySuggestions` *(removed June 2026)*
+## `/dictionarySuggestions`
 
-This path used to stage user-suggested words for admin review. It was removed when the dictionary panel became admin-only and the staging step lost its purpose. Admins now write directly to `/dictionaryApproved` (add) or `/dictionaryRejected` (remove). The Firebase rule for this path has been removed (default-deny) and the service functions that read/wrote it (`submitDictionarySuggestions`, `submitDictionaryRemovalSuggestions`, `buildPendingSuggestions`, `applyDictionaryDecision`, `listPendingDictionarySuggestions`) no longer exist. Any leftover entries in production can be safely cleared with `firebase database:remove /dictionarySuggestions`.
-
-Historical structure (kept here only for reference if you find legacy data in a stale database export):
+Restored June 2026 (was removed earlier in June 2026). Any authenticated non-anonymous user can
+append a suggestion entry. Admins have read access over all entries. When an admin adds a word via
+the direct-add flow, `findPendingSuggestionsForWords` scans this path and `wordsAccepted` is bumped
+for every suggester whose suggestion matches, then the entry is marked `approved`.
 
 ```
 {
-  [key: string]: {
+  [pushKey: string]: {
     word: string,
     normalizedWord: string,
-    type: 'add' | 'remove',    // missing on legacy entries → treated as 'add'
-    status: 'pending' | 'approved' | 'rejected',
-    createdAt: ServerTimestamp,
-    reviewedAt?: ServerTimestamp
+    type: 'add',
+    status: 'pending' | 'approved',
+    suggestedBy: string[],    // array of uid strings; multiple users can suggest the same word
+    createdAt: ServerTimestamp
   }
 }
 ```
 
-The admin queue ([dictionaryService.js](../../src/game/account/dictionaryService.js) `buildPendingSuggestions`) does not gate `'remove'` entries on approval status — those entries explicitly target words that *are* approved.
+Firebase rules: `.read` requires `admins/{uid} === true`; `$id { .read: auth != null, .write: auth != null && !data.exists() }` (append-only for any auth user).
 
 ---
 

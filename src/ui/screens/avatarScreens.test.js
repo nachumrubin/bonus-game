@@ -283,3 +283,28 @@ test('diffNewlyCompletedAchievements: stat-based achievements still fire', () =>
   const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
   assert.ok(ids.includes('first_steps')); // gamesPlayed >= 5
 });
+
+test('ACHIEVEMENTS includes word_contributor (wordsAccepted >= 20, gold tier)', () => {
+  const byId = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
+  assert.ok(byId.has('word_contributor'), 'missing word_contributor achievement');
+  const wc = byId.get('word_contributor');
+  assert.equal(wc.condition.stat, 'wordsAccepted');
+  assert.equal(wc.condition.min, 20);
+  assert.equal(wc.tier, 'gold');
+  assert.ok(wc.emoji, 'word_contributor needs an emoji fallback');
+  assert.equal(wc.rewardAvatarId, undefined, 'word_contributor must not reward an avatar');
+});
+
+test('word_contributor: fires at 20 wordsAccepted', () => {
+  const prev = { stats: { wordsAccepted: 19 }, ownedAvatars: [] };
+  const next = { stats: { wordsAccepted: 20 }, ownedAvatars: [] };
+  const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
+  assert.ok(ids.includes('word_contributor'));
+});
+
+test('word_contributor: does not fire below threshold', () => {
+  const prev = { stats: { wordsAccepted: 0 }, ownedAvatars: [] };
+  const next = { stats: { wordsAccepted: 19 }, ownedAvatars: [] };
+  const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
+  assert.ok(!ids.includes('word_contributor'));
+});

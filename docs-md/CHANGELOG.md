@@ -2,6 +2,61 @@
 
 ---
 
+## Dictionary suggestions + word_contributor achievement — June 2026
+
+Three related changes shipped together:
+
+**1. App intro/loading screen minimum time raised to 10 seconds**
+
+`src/main.js` `wireAppLoading()`: `setTimeout(hide, 6000)` → `setTimeout(hide, 10000)`. The
+loading overlay now stays visible for at least 10 s before the fallback timer fires (it still
+hides immediately when `MENU_REFRESH` with `isAuthed` fires, so a fast boot is unaffected for
+returning users).
+
+**2. User word-suggestion feature restored**
+
+The suggest→review pipeline (removed June 2026) is back for regular users. Any signed-in
+non-anonymous player sees a new "💡 הצע מילה למילון" panel in Settings (section 4, above the
+admin-only panel). Submitted suggestions land in `/dictionarySuggestions/{pushKey}` as pending
+entries with `{ word, normalizedWord, suggestedBy: [uid], status: 'pending', type: 'add', createdAt }`.
+
+- **`src/game/account/dictionaryService.js`** — 3 new exports:
+  - `submitWordSuggestion(db, { word, uid, now?, serverTimestamp? })` — validates + writes a
+    pending suggestion; returns `{ ok, reason? }`. Guards: not-authenticated, empty word,
+    already-in-dictionary, already-suggested (same uid + same word + status pending).
+  - `findPendingSuggestionsForWords(db, words)` — given a list of admin-approved words, returns
+    `[{ key, word, uid }]` for every user who had a pending suggestion for those words.
+  - `markSuggestionsApproved(db, keys)` — sets `status = 'approved'` on a batch of suggestion
+    entries by push-key.
+  - New constant: `DICTIONARY_SUGGESTIONS_PATH = 'dictionarySuggestions'`.
+- **`partials/screens/settings.html`** — new section 4 `#user-suggest-panel` (hidden by default,
+  shown via JS). Contains `#user-suggest-input` + `button[onclick="userSuggestDictionaryWord()"]`
+  + `#user-suggest-status`.
+- **`src/ui/screens/dictionaryScreen.js`** — added `DICT_INTENT.USER_SUGGEST` and
+  `DICT_RENDER.USER_SUGGEST_STATUS`; wired `button[onclick="userSuggestDictionaryWord()"]` and
+  `#user-suggest-status`.
+- **`src/main.js`** — `setUserSuggestVisible()` helper; shows on `bootCrossCuttingFor` (any
+  non-anonymous uid), hides on `teardownCrossCuttingAuth`. New `DICT_INTENT.USER_SUGGEST` handler
+  calls `submitWordSuggestion`. New `awardSuggestionCreditsForWords(db, words)` helper called after
+  every successful admin add: finds pending suggestions → bumps `wordsAccepted` stat for each
+  suggester → marks suggestions approved.
+- **`firebase.database.rules.json`** — restored `dictionarySuggestions` path:
+  `.read` admin-only; `$id { .read: auth != null, .write: auth != null && !data.exists() }`.
+- **`tests/unit/firebase-rules.test.js`** — updated assertion: the suggestion path now MUST
+  exist (was checking it was removed).
+
+**3. New achievement: "תורם מילים" (word_contributor, 500 coins)**
+
+Players who have 20 accepted word suggestions (`stats.wordsAccepted >= 20`) earn 500 coins.
+If ≥2 users suggest the same word and it gets approved, each gets +1 `wordsAccepted` credit.
+
+- **`src/ui/screens/avatarScreens.js`** `ACHIEVEMENTS` — added `{ id: 'word_contributor', titleHe: 'תורם מילים', tier: 'gold', condition: { stat: 'wordsAccepted', min: 20 }, emoji: '📖' }`. Coin reward: 250 (gold tier).
+- **`src/game/account/profileService.js`** `EMPTY_STATS` — added `wordsAccepted: 0`.
+
+New tests: 7 in `dictionaryService.test.js` (submitWordSuggestion, findPendingSuggestionsForWords,
+markSuggestionsApproved), 4 in `avatarScreens.test.js` (word_contributor presence + threshold
+crossing). All pass; `test:unit` 202/202.
+
 ## Achievements decoupled from avatars → coin trophies — June 2026
 
 Follow-up to the avatar store: the achievements gallery (`#sav-gallery`) is now a pure **trophy** room. Tapping a

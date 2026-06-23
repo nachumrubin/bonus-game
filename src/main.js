@@ -232,7 +232,7 @@ function wireAppLoading() {
   off = bus.on(MENU_REFRESH, (payload = {}) => {
     if (typeof payload.isAuthed === 'boolean') hide();
   });
-  setTimeout(hide, 6000);
+  setTimeout(hide, 10000);
 }
 wireAppLoading();
 
@@ -524,6 +524,9 @@ async function boot() {
     // button (so they never hit the admin-login password prompt either).
     refreshAdminUiFor(uid).catch((e) => console.warn('[spine] admin check', e));
 
+    // Show the user word-suggestion panel for any non-anonymous signed-in user.
+    setUserSuggestVisible(!activeFbCurrentUser?.isAnonymous);
+
     if (!recoveredSessionForUid.has(uid)) {
       recoveredSessionForUid.add(uid);
       attemptSavedOnlineRecovery(uid).catch((e) => console.warn('[spine] saved-session recovery', e));
@@ -549,6 +552,7 @@ async function boot() {
     activePresenceUid = null;
     sessionPersistence.clearActiveOnlineSession(globalThis.localStorage);
     setDictMgmtVisible(false);
+    setUserSuggestVisible(false);
   }
 
   // /admins/{uid} controls whether the settings overlay surfaces the
@@ -569,6 +573,13 @@ async function boot() {
   // panel at all; the dictionary word-check panel above it stays visible to all.
   function setDictMgmtVisible(visible) {
     const panel = globalThis.document?.getElementById?.('dict-mgmt-panel');
+    if (panel) panel.style.display = visible ? '' : 'none';
+  }
+
+  // Show/hide the user word-suggestion panel — visible for any authenticated
+  // (non-anonymous) user. The admin dict-mgmt panel is a separate toggle.
+  function setUserSuggestVisible(visible) {
+    const panel = globalThis.document?.getElementById?.('user-suggest-panel');
     if (panel) panel.style.display = visible ? '' : 'none';
   }
 
@@ -2004,6 +2015,12 @@ async function boot() {
       bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message, isError: false });
       const input = globalThis.document?.getElementById?.('dict-word-input');
       if (input) input.value = '';
+
+      // Award wordsAccepted credit to any user who previously suggested
+      // one of the newly-added words (drives the word_contributor achievement).
+      awardSuggestionCreditsForWords(db, result.added).catch((e) => {
+        console.warn('[spine] suggestion credit award', e);
+      });
     } catch (e) {
       console.warn('[spine] dictionary add', e);
       bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'ההוספה נכשלה', isError: true });
@@ -2056,6 +2073,87 @@ async function boot() {
       bus.emit(DICT_RENDER.REMOVAL_STATUS, { message: 'ההסרה נכשלה', isError: true });
     }
   });
+
+  // User word suggestion — any authenticated (non-anonymous) user can
+  // suggest a word for admin review. The suggestion is written to
+  // /dictionarySuggestions as a pending entry. When an admin later
+  // approves the word, awardSuggestionCreditsForWords() credits the
+  // suggester's wordsAccepted stat (→ word_contributor achievement).
+  bus.on(DICT_INTENT.USER_SUGGEST, async ({ word = '' } = {}) => {
+    if (!word) {
+      bus.emit(DICT_RENDER.USER_SUGGEST_STATUS, { message: 'נא להזין מילה', isError: true });
+      return;
+    }
+    const uid = activeFbCurrentUser?.uid;
+    if (!uid || activeFbCurrentUser?.isAnonymous) {
+      bus.emit(DICT_RENDER.USER_SUGGEST_STATUS, { message: 'יש להתחבר', isError: true });
+      return;
+    }
+    bus.emit(DICT_RENDER.USER_SUGGEST_STATUS, { message: 'שולח...', isError: false });
+    try {
+      const db = await getDictionaryDb();
+      const result = await dictionaryService.submitWordSuggestion(db, {
+        word,
+        uid,
+        serverTimestamp: () => firebaseTimestamp(),
+      });
+      if (!result.ok) {
+        const msgMap = {
+          'empty':               'נא להזין מילה',
+          'not-authenticated':   'יש להתחבר',
+          'already-in-dictionary': `"${word}" כבר נמצאת במילון`,
+          'word-is-blocked':     `"${word}" חסומה ואינה ניתנת להוספה`,
+          'already-suggested':   `כבר הצעת את "${word}" בעבר`,
+        };
+        bus.emit(DICT_RENDER.USER_SUGGEST_STATUS, {
+          message: msgMap[result.reason] ?? 'ההצעה נכשלה',
+          isError: true,
+        });
+        return;
+      }
+      bus.emit(DICT_RENDER.USER_SUGGEST_STATUS, {
+        message: `"${result.word}" נשלחה לבדיקה ✓`,
+        isError: false,
+      });
+      const input = globalThis.document?.getElementById?.('user-suggest-input');
+      if (input) input.value = '';
+    } catch (e) {
+      console.warn('[spine] user suggest', e);
+      bus.emit(DICT_RENDER.USER_SUGGEST_STATUS, { message: 'ההצעה נכשלה', isError: true });
+    }
+  });
+
+  // When the admin approves words, credit all users who had a pending
+  // suggestion for those words (bumps wordsAccepted stat, which drives the
+  // word_contributor achievement). Runs best-effort — a failure here should
+  // never block or roll back the dictionary write.
+  async function awardSuggestionCreditsForWords(db, words) {
+    if (!words?.length) return;
+    const credits = await dictionaryService.findPendingSuggestionsForWords(db, words);
+    if (!credits.length) return;
+
+    // Aggregate total credits per uid (one word approved = one credit each).
+    const perUid = new Map();
+    const seenWordUid = new Set();
+    for (const { key, word, uid } of credits) {
+      const wuKey = `${uid}:${word}`;
+      if (seenWordUid.has(wuKey)) continue;
+      seenWordUid.add(wuKey);
+      perUid.set(uid, (perUid.get(uid) ?? 0) + 1);
+    }
+
+    const approvedKeys = [...new Set(credits.map((c) => c.key))];
+    await Promise.all([
+      ...Array.from(perUid.entries()).map(([uid, count]) =>
+        profileService.bumpStats(db, uid, { wordsAccepted: count }).catch((e) => {
+          console.warn('[spine] wordsAccepted bump for', uid, e);
+        }),
+      ),
+      dictionaryService.markSuggestionsApproved(db, approvedKeys).catch((e) => {
+        console.warn('[spine] markSuggestionsApproved', e);
+      }),
+    ]);
+  }
 
   async function getDictionaryDb() {
     if (activeFbDb) return activeFbDb;

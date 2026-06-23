@@ -1,5 +1,20 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Dictionary suggestions + word_contributor achievement — June 2026
+
+- [x] Raise app loading intro time to ≥10 s (was 6 s)
+- [x] Restore `/dictionarySuggestions` Firebase path + rules (user append-only, admin read)
+- [x] `submitWordSuggestion` — any signed-in user can suggest a word for admin review
+- [x] `findPendingSuggestionsForWords` + `markSuggestionsApproved` — give credit when admin approves
+- [x] `setUserSuggestVisible` in main.js — shows suggestion panel for any non-anonymous user
+- [x] Settings section "💡 הצע מילה למילון" (`#user-suggest-panel`) with input + status
+- [x] `wordsAccepted` stat added to `EMPTY_STATS` in `profileService.js`
+- [x] `word_contributor` achievement (20 accepted suggestions → 250 coins, gold tier)
+- [ ] **Hardening:** admin UI to list/review pending suggestions from `/dictionarySuggestions`
+  (current admin flow still direct-add; suggestions are credited retroactively when a word matches)
+- [ ] **Hardening:** prevent a user from spamming suggestions to farm the achievement —
+  consider rate-limiting per-session or a daily cap on submissions
+
 ## Avatar store + coin economy — June 2026
 
 - [x] Achievements decoupled from avatars → coin trophies: tapping no longer equips; coin prize shown per tile +
