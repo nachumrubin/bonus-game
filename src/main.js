@@ -388,6 +388,13 @@ async function boot() {
     const on = audioService.isEnabled();
     if (ic.tagName === 'IMG') {
       ic.src = on ? 'assets/navigation/sound_on.png' : 'assets/navigation/sound_off.png';
+      ic.onerror = () => {
+        const span = globalThis.document.createElement('span');
+        span.id = 'topbar-music-ic';
+        span.className = ic.className;
+        span.textContent = on ? '🎵' : '🔇';
+        ic.replaceWith(span);
+      };
     } else {
       ic.textContent = on ? '🎵' : '🔇';
     }

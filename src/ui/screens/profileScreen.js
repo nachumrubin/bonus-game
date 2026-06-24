@@ -139,8 +139,13 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
     if (!profile) return;
     if (avatarEl) {
       const iconSrc = avatarIconSrc(profile.equippedAvatar);
-      if (iconSrc) avatarEl.innerHTML = `<img class="pf-avatar-img" src="${iconSrc}" alt="">`;
-      else setText(avatarEl, avatarEmoji(profile.equippedAvatar));
+      if (iconSrc) {
+        avatarEl.innerHTML = `<img class="pf-avatar-img" src="${iconSrc}" alt="">`;
+        const img = avatarEl.firstElementChild;
+        if (img) img.onerror = () => setText(avatarEl, isStoreAvatarId(profile.equippedAvatar) ? '👑' : (avatarEmoji(profile.equippedAvatar) || '👑'));
+      } else {
+        setText(avatarEl, avatarEmoji(profile.equippedAvatar));
+      }
     }
     if (nameEl)    setText(nameEl,   profile.displayName ?? '');
     if (emailEl) setText(emailEl, email ?? '');
