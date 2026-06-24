@@ -2,6 +2,26 @@
 
 ---
 
+## Fix icon visibility after assets migration — June 2026
+
+After icons were moved from `images/icons/` to `assets/` subdirectories, the
+service-worker precache list (`sw.js`) was still missing 15 of those assets,
+meaning they would fail to load offline and could appear broken if the first
+network fetch raced against a fresh deployment.
+
+Added all missing icons to the ASSETS precache in `sw.js`:
+- `assets/navigation/friends_nav.png`, `statistics_nav.png`, `search.png`
+- `assets/ui/store.png`, `logout.png`, `hourglass.png`, `play.png`, `pause.png`,
+  `rematch.png`, `+.png`, `key.png`
+- `assets/rewards/trophy.png`
+- `assets/avatars/bot.png`, `green bot.png`, `red bot.png`, `yellow bot.png`,
+  `anonymous player.png`
+- Reorganised comment headers for clarity (navigation / home cards / profile / in-game / rewards / bots)
+
+Bumped build timestamp to `20260624075823` via `stamp-build.js`.
+
+---
+
 ## Achievement icons: 4 store/contributor trophies — June 2026
 
 Added the real trophy art for the four achievements that were still showing emoji
