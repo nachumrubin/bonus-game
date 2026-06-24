@@ -13,7 +13,7 @@
 // main.js subscribes to these to drive profileService / friendsService / auth flows.
 
 import { $, on, setText } from '../domHelpers.js';
-import { SPINE_AVATARS, avatarIconSrc } from './avatarScreens.js';
+import { SPINE_AVATARS, avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
 import { isStoreAvatarId } from './avatarStore.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
@@ -142,9 +142,14 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
       if (iconSrc) {
         avatarEl.innerHTML = `<img class="pf-avatar-img" src="${iconSrc}" alt="">`;
         const img = avatarEl.firstElementChild;
-        if (img) img.onerror = () => setText(avatarEl, isStoreAvatarId(profile.equippedAvatar) ? '👑' : (avatarEmoji(profile.equippedAvatar) || '👑'));
+        if (img) img.onerror = () => { avatarEl.innerHTML = `<img class="pf-avatar-img" src="${ANON_AVATAR_SRC}" alt="">`; };
       } else {
-        setText(avatarEl, avatarEmoji(profile.equippedAvatar));
+        const emoji = avatarEmoji(profile.equippedAvatar);
+        if (emoji && emoji !== AVATAR_EMOJI.crown) {
+          setText(avatarEl, emoji);
+        } else {
+          avatarEl.innerHTML = `<img class="pf-avatar-img" src="${ANON_AVATAR_SRC}" alt="">`;
+        }
       }
     }
     if (nameEl)    setText(nameEl,   profile.displayName ?? '');
