@@ -67,7 +67,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260624024509';
+var CACHE_NAME = 'boost-20260624075823';
 var ASSETS = [
   './',
   './index.html',
@@ -76,22 +76,44 @@ var ASSETS = [
   './icon.svg',
   './icon-512.png',
   './data/dictionary.base.txt',
-  // Main-screen icon set (home play buttons, global top bar, bottom nav).
-  // 5_references.png is a reference contact-sheet, not used in the app.
+  // Navigation / top-bar icons.
   './assets/navigation/bell.png',
   './assets/navigation/sound_on.png',
   './assets/navigation/sound_off.png',
   './assets/navigation/settings.png',
   './assets/navigation/help.png',
   './assets/navigation/home.png',
+  './assets/navigation/my_games.png',
+  './assets/navigation/friends_nav.png',
+  './assets/navigation/statistics_nav.png',
+  './assets/navigation/search.png',
+  // Home-screen play-mode cards.
   './assets/icons/globe.png',
   './assets/icons/1v1.png',
-  './assets/avatars/bot.png',
-  './assets/navigation/my_games.png',
+  './assets/icons/dice.png',
   './assets/icons/friends.png',
   './assets/icons/acheivments.png',
   './assets/icons/statistics.png',
+  // Profile-screen button icons.
+  './assets/ui/store.png',
+  './assets/ui/logout.png',
   './assets/ui/lock.png',
+  // In-game / end-game UI icons.
+  './assets/ui/hourglass.png',
+  './assets/ui/play.png',
+  './assets/ui/pause.png',
+  './assets/ui/rematch.png',
+  './assets/ui/+.png',
+  './assets/ui/key.png',
+  // Reward / medal icons.
+  './assets/rewards/trophy.png',
+  './assets/rewards/gold coin.png',
+  // Bot and anonymous-player avatars (used in game screen and top bar).
+  './assets/avatars/bot.png',
+  './assets/avatars/green bot.png',
+  './assets/avatars/red bot.png',
+  './assets/avatars/yellow bot.png',
+  './assets/avatars/anonymous player.png',
   // Achievement trophy-room icons — one per achievement, named by Hebrew title.
   // A 404 here is harmless (per-asset add().catch + emoji fallback at runtime).
   './assets/achievements/צעדים ראשונים.png',
@@ -116,7 +138,6 @@ var ASSETS = [
   './assets/achievements/קנייה ראשונה.png',
   './assets/achievements/תורם מילים.png',
   './jocker.PNG',
-  './assets/rewards/gold coin.png',
   './assets/music/inspire-action.mp3',
   './src/ui/screenPartials.js',
   './src/ui/screenPartialManifest.js',
