@@ -2,6 +2,19 @@
 
 ---
 
+## Fix icon load failure fallbacks after assets migration — June 2026
+
+Added graceful error fallbacks for two icons that have no onerror handler:
+
+- **Sound/music button** (`src/main.js` `syncMusicTopbarIcon`): if the PNG fails to
+  load, the `<img>` element is replaced by a `<span>` with the matching emoji (🎵 or 🔇)
+  so the topbar button remains functional.
+- **Profile avatar** (`src/ui/screens/profileScreen.js`): when a store avatar PNG
+  (e.g. `assets/avatars/common_3.png`) fails to load, the avatar div falls back to the
+  crown emoji `👑` instead of showing an empty dark circle.
+
+---
+
 ## Fix icon visibility after assets migration — June 2026
 
 After icons were moved from `images/icons/` to `assets/` subdirectories, the
