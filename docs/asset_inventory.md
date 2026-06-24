@@ -26,8 +26,10 @@ Tier 3 — favorite-letter card:
 * assets/achievements/אגדה.png
 * assets/achievements/אלוף.png
 * assets/achievements/אמן המילים.png
+* assets/achievements/אספן.png
 * assets/achievements/בלתי מנוצח.png
 * assets/achievements/בלתי נתפס.png
+* assets/achievements/בעל אגדה.png
 * assets/achievements/ברק חי.png
 * assets/achievements/גאון מילים.png
 * assets/achievements/האחד.png
@@ -38,9 +40,11 @@ Tier 3 — favorite-letter card:
 * assets/achievements/מנצח.png
 * assets/achievements/על-אנושי.png
 * assets/achievements/צעדים ראשונים.png
+* assets/achievements/קנייה ראשונה.png
 * assets/achievements/רצף מנצחים.png
 * assets/achievements/שועל ותיק.png
 * assets/achievements/שחקן מנוסה.png
+* assets/achievements/תורם מילים.png
 * assets/avatars/anonymous player.png
 * assets/avatars/bot.png
 * assets/avatars/common_1.png
