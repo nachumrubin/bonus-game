@@ -2,6 +2,18 @@
 
 ---
 
+## Achievement icons: 4 store/contributor trophies — June 2026
+
+Added the real trophy art for the four achievements that were still showing emoji
+placeholders: `אספן` (collector), `בעל אגדה` (legend_owner), `קנייה ראשונה`
+(first_buy), `תורם מילים` (word_contributor). The achievements screen already
+derives each tile's PNG path from its Hebrew title, so dropping the files into
+`assets/achievements/` replaces the placeholders automatically. Added the four to
+the `sw.js` precache list, re-stamped the build, and moved them to Existing in
+`docs/asset_inventory.md`.
+
+---
+
 ## Statistics screen refinements — June 2026
 
 - **Accordion sections:** opening one collapsible "act" now closes the others, so

@@ -67,7 +67,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260623200000';
+var CACHE_NAME = 'boost-20260624024509';
 var ASSETS = [
   './',
   './index.html',
@@ -111,6 +111,10 @@ var ASSETS = [
   './assets/achievements/מילון מהלך.png',
   './assets/achievements/על-אנושי.png',
   './assets/achievements/האחד.png',
+  './assets/achievements/אספן.png',
+  './assets/achievements/בעל אגדה.png',
+  './assets/achievements/קנייה ראשונה.png',
+  './assets/achievements/תורם מילים.png',
   './jocker.PNG',
   './assets/rewards/gold coin.png',
   './assets/music/inspire-action.mp3',
