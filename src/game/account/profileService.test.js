@@ -12,6 +12,7 @@ import {
   STARTER_GRANT, DAILY_BASE, DAILY_STREAK_INCREMENT, DAILY_STREAK_CAP,
   normalizeProfileEconomy, bumpCoins, purchaseAvatar,
   computeDailyReward, claimDailyReward, isYesterday, ymd,
+  MAX_COIN_BALANCE, clampCoins, clampCoinsBalance,
 } from './profileService.js';
 
 test('buildInitialProfile: includes defaults', () => {
@@ -312,6 +313,35 @@ test('bumpCoins: adds and subtracts atomically, flooring at zero', async () => {
   assert.equal(await bumpCoins(db, 'u1', 50), 150);
   assert.equal(await bumpCoins(db, 'u1', -40), 110);
   assert.equal(await bumpCoins(db, 'u1', -999), 0); // floor
+});
+
+test('bumpCoins: clamps the balance at MAX_COIN_BALANCE', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: MAX_COIN_BALANCE - 100 });
+  assert.equal(await bumpCoins(db, 'u1', 5000), MAX_COIN_BALANCE); // capped, not 104,900
+});
+
+test('clampCoins: coerces to an in-range integer balance', () => {
+  assert.equal(clampCoins(1185490), MAX_COIN_BALANCE);
+  assert.equal(clampCoins(-5), 0);
+  assert.equal(clampCoins('250'), 250);
+  assert.equal(clampCoins(12.9), 12);
+  assert.equal(clampCoins(undefined), 0);
+});
+
+test('normalizeProfileEconomy: clamps a corrupted (over-cap) balance', () => {
+  assert.equal(normalizeProfileEconomy({ coins: 1185490 }).coins, MAX_COIN_BALANCE);
+});
+
+test('clampCoinsBalance: pulls an over-cap balance down to the cap; no-op otherwise', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 1185490 });
+  assert.equal(await clampCoinsBalance(db, 'u1'), MAX_COIN_BALANCE);
+  assert.equal((await readProfile(db, 'u1')).coins, MAX_COIN_BALANCE);
+  // Already at/under cap → transaction aborts, balance untouched.
+  await updateProfile(db, 'u2', { coins: 500 });
+  assert.equal(await clampCoinsBalance(db, 'u2'), null); // not committed
+  assert.equal((await readProfile(db, 'u2')).coins, 500);
 });
 
 test('purchaseAvatar: success deducts coins and records ownership', async () => {

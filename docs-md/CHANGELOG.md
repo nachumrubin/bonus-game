@@ -2,6 +2,53 @@
 
 ---
 
+## Coin-balance safety cap — June 2026
+
+Added a hard ceiling on coin balances after a profile was found holding
+1,185,490 coins — impossible from the intended economy (lifetime max ≈ 10,800
+from the starter grant + all achievements, plus ≤110/day from daily login), so
+the value was written out-of-band.
+
+- `profileService.MAX_COIN_BALANCE = 100_000` + pure `clampCoins(value)` helper.
+- Clamped every coin path: `bumpCoins` and `claimDailyReward` (writes) and
+  `normalizeProfileEconomy` (read), so no grant can push past the cap and the UI
+  never shows an absurd value.
+- `clampCoinsBalance(db, uid)` self-heals an already-corrupted balance: on boot,
+  the first time `main.js` sees `coins > MAX_COIN_BALANCE` for the signed-in user
+  it pulls the balance down to the cap (runs as the user, so DB rules allow the
+  self-write). This auto-resets any inflated account next time it loads.
+- `scripts/set-coins.mjs` — admin helper (Firebase Admin SDK) to set a specific
+  user's balance to an exact value, for a precise manual reset.
+
+---
+
+## Avatar collection replaced (v2) — June 2026
+
+Swapped the entire 36-avatar store collection for a new 40-avatar set living
+under `assets/avatars_v2/<category>/` with descriptive filenames. New per-tier
+counts: common 16, rare 8, **epic 11 (was 8), legendary 5 (was 4)**.
+
+- `avatarStore.js`: `STORE_TIERS` now lists explicit source files per tier;
+  `AVATAR_DIR` → `assets/avatars_v2/`. The catalog id stays a clean numeric stem
+  (`common_1`, `rare_3`, …) decoupled from the file, so ids still round-trip
+  through Firebase profiles / DOM attributes while filenames stay descriptive.
+  `STORE_AVATARS.src` is now `encodeURI`-d so names with spaces / Hebrew /
+  mixed-case extensions load in `<img>`.
+- `avatarStoreScreen.js`: the buy-confirm image now resolves via
+  `storeAvatarSrc(id)` instead of building `assets/avatars/${id}.png` (which
+  would break with the new subfolder layout).
+- Deleted the old 36 store PNGs from `assets/avatars/` (kept `bot.png`, the
+  colored bots, and `anonymous player.png`).
+- Store avatars remain deliberately out of the SW precache (lazy-cached on
+  demand); updated the note and re-stamped the build. Updated
+  `docs/asset_inventory.md`.
+
+Note: equipped/owned avatars are addressed by numeric id, and the id→avatar
+mapping changed, so a previously equipped store avatar now points at a different
+image. Acceptable — the app is not in production.
+
+---
+
 ## Achievement icons: 4 store/contributor trophies — June 2026
 
 Added the real trophy art for the four achievements that were still showing emoji

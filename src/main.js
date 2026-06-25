@@ -2143,17 +2143,22 @@ async function boot() {
     }
     bus.emit(DICT_RENDER.USER_SUGGEST_REMOVAL_STATUS, { message: 'שולח...', isError: false });
     try {
+      if (hebrewDictionary.DICT.size === 0) {
+        await ensureDictionaryLoaded();
+      }
       const db = await getDictionaryDb();
       const result = await dictionaryService.submitWordSuggestion(db, {
         word,
         uid,
         type: 'remove',
+        isValidWord: (w) => hebrewDictionary.isValid?.(w) ?? false,
         serverTimestamp: () => firebaseTimestamp(),
       });
       if (!result.ok) {
         const msgMap = {
           'empty':                'נא להזין מילה',
           'not-authenticated':    'יש להתחבר',
+          'not-in-dictionary':    `"${word}" לא נמצאה במילון`,
           'word-already-removed': `"${word}" כבר הוסרה מהמילון`,
           'already-suggested':    `כבר הצעת הסרת "${word}" בעבר`,
         };
@@ -2268,6 +2273,7 @@ async function boot() {
       // resolves (so the profile node exists for the transaction). The
       // same-day guard inside claimDailyReward makes a repeat boot a no-op.
       let dailyRewardChecked = false;
+      let coinsClampChecked = false;
       try { activeProfileWatch?.();  } catch {}
       try { activeRequestsWatch?.(); } catch {}
       try { activeFriendsWatch?.();  } catch {}
@@ -2303,6 +2309,14 @@ async function boot() {
           profileService.claimDailyReward(fbDb, uid)
             .then((r) => { if (r?.coinsAwarded > 0) bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak }); })
             .catch((e) => console.warn('[spine] daily reward', e));
+        }
+        // Self-heal a corrupted (out-of-band-inflated) coin balance down to the
+        // cap — once per boot, the first time we see an over-cap value. Runs as
+        // the signed-in user, so DB rules permit the self-write.
+        if (profile && !coinsClampChecked && Number(profile.coins) > profileService.MAX_COIN_BALANCE) {
+          coinsClampChecked = true;
+          profileService.clampCoinsBalance(fbDb, uid)
+            .catch((e) => console.warn('[spine] coin clamp', e));
         }
         loadingTipsService.cacheGamesPlayed(profile?.stats?.gamesPlayed ?? 0);
         const fbUser = activeFbCurrentUser;

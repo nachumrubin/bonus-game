@@ -2,23 +2,9 @@
 
 ## Missing
 
-Statistics-screen icons — proposed to replace the current emoji with the Boost
-glowing-sphere family (see boost-icon-designer skill). 1024×1024 transparent PNG.
-
-Tier 1 — section headers:
-* assets/icons/stats-performance-icon.png — rising trend line (replaces 📈 הביצועים שלי)
-* assets/icons/stats-records-icon.png — trophy (replaces 🏆 השיאים שלי)
-* assets/icons/stats-style-icon.png — artist's palette (replaces 🎨 סגנון המשחק שלי)
-* assets/icons/stats-rivals-icon.png — crossed swords (replaces 🤺 היריבים שלי)
-
-Tier 2 — weekly KPI chips (השבוע שלך):
-* assets/icons/stats-average-icon.png — bar chart (replaces 📊 ממוצע)
-* assets/icons/stats-streak-icon.png — flame (replaces 🔥 רצף)
-* assets/icons/stats-wins-icon.png — laurel/medal (replaces 🏆 ניצחונות)
-* assets/icons/stats-games-icon.png — game controller (replaces 🎮 משחקים)
-
-Tier 3 — favorite-letter card:
-* assets/icons/stats-letter-icon.png — Hebrew letter glyph (replaces 🔤 האות המועדפת)
+* None
+  (stats-letter-icon.png was proposed for the favorite-letter card, but that card
+  renders the actual Hebrew letter dynamically — no static icon needed.)
 
 ## Existing
 
@@ -47,45 +33,49 @@ Tier 3 — favorite-letter card:
 * assets/achievements/תורם מילים.png
 * assets/avatars/anonymous player.png
 * assets/avatars/bot.png
-* assets/avatars/common_1.png
-* assets/avatars/common_10.png
-* assets/avatars/common_11.png
-* assets/avatars/common_12.png
-* assets/avatars/common_13.png
-* assets/avatars/common_14.png
-* assets/avatars/common_15.png
-* assets/avatars/common_16.png
-* assets/avatars/common_2.png
-* assets/avatars/common_3.png
-* assets/avatars/common_4.png
-* assets/avatars/common_5.png
-* assets/avatars/common_6.png
-* assets/avatars/common_7.png
-* assets/avatars/common_8.png
-* assets/avatars/common_9.png
-* assets/avatars/epic_1.png
-* assets/avatars/epic_2.png
-* assets/avatars/epic_3.png
-* assets/avatars/epic_4.png
-* assets/avatars/epic_5.png
-* assets/avatars/epic_6.png
-* assets/avatars/epic_7.png
-* assets/avatars/epic_8.png
 * assets/avatars/green bot.png
-* assets/avatars/legendary_1.png
-* assets/avatars/legendary_2.png
-* assets/avatars/legendary_3.png
-* assets/avatars/legendary_4.png
-* assets/avatars/rare_1.png
-* assets/avatars/rare_2.png
-* assets/avatars/rare_3.png
-* assets/avatars/rare_4.png
-* assets/avatars/rare_5.png
-* assets/avatars/rare_6.png
-* assets/avatars/rare_7.png
-* assets/avatars/rare_8.png
 * assets/avatars/red bot.png
 * assets/avatars/yellow bot.png
+* assets/avatars_v2/common/basketball_player.png
+* assets/avatars_v2/common/common_1_1.png
+* assets/avatars_v2/common/common_1_2.png
+* assets/avatars_v2/common/common_1_3.png
+* assets/avatars_v2/common/common_1_4.png
+* assets/avatars_v2/common/common_2_split.png
+* assets/avatars_v2/common/doctor.png
+* assets/avatars_v2/common/fire_dep.png
+* assets/avatars_v2/common/gamer.png
+* assets/avatars_v2/common/hacker.png
+* assets/avatars_v2/common/police.png
+* assets/avatars_v2/common/shef.png
+* assets/avatars_v2/common/soccer_fan.png
+* assets/avatars_v2/common/soccer_player.png
+* assets/avatars_v2/common/soldier.png
+* assets/avatars_v2/common/su_shef.png
+* assets/avatars_v2/rare/david_ben_gur.png
+* assets/avatars_v2/rare/golda.png
+* assets/avatars_v2/rare/hertzel.png
+* assets/avatars_v2/rare/ilan_ramon.png
+* assets/avatars_v2/rare/miriam_peretz.png
+* assets/avatars_v2/rare/moshe dayan.png
+* assets/avatars_v2/rare/ofra_haza.png
+* assets/avatars_v2/rare/rabin.png
+* assets/avatars_v2/rare/rare_1_bottom_left.png
+* assets/avatars_v2/rare/rare_1_bottom_right.png
+* assets/avatars_v2/rare/rare_1_top_left.png
+* assets/avatars_v2/rare/rare_1_top_right.png
+* assets/avatars_v2/epic/avraham.png
+* assets/avatars_v2/epic/esther.PNG
+* assets/avatars_v2/epic/jacob.PNG
+* assets/avatars_v2/epic/rachel.png
+* assets/avatars_v2/epic/ruth.PNG
+* assets/avatars_v2/epic/shmoel.png
+* assets/avatars_v2/epic/מרדכי היהודי.PNG
+* assets/avatars_v2/legendary/aharon.png
+* assets/avatars_v2/legendary/david.png
+* assets/avatars_v2/legendary/joseph.png
+* assets/avatars_v2/legendary/moses.png
+* assets/avatars_v2/legendary/samson.png
 * assets/icons/1v1.png
 * assets/icons/5_references.png
 * assets/icons/acheivments.png
@@ -93,6 +83,14 @@ Tier 3 — favorite-letter card:
 * assets/icons/friends.png
 * assets/icons/globe.png
 * assets/icons/statistics.png
+* assets/icons/stats-average-icon.png
+* assets/icons/stats-games-icon.png
+* assets/icons/stats-performance-icon.png
+* assets/icons/stats-records-icon.png
+* assets/icons/stats-rivals-icon.png
+* assets/icons/stats-streak-icon.png
+* assets/icons/stats-style-icon.png
+* assets/icons/stats-wins-icon.png
 * assets/navigation/bell.png
 * assets/navigation/friends_nav.png
 * assets/navigation/help.png

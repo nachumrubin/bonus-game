@@ -7,28 +7,29 @@ import {
   storeAvatarsByCategory,
 } from './avatarStore.js';
 
-test('STORE_AVATARS has 36 entries with the expected per-category counts', () => {
-  assert.equal(STORE_AVATARS.length, 36);
+test('STORE_AVATARS has 40 entries with the expected per-category counts', () => {
+  assert.equal(STORE_AVATARS.length, 40);
   const byCat = storeAvatarsByCategory();
   assert.equal(byCat.common.length, 16);
-  assert.equal(byCat.rare.length, 8);
-  assert.equal(byCat.epic.length, 8);
-  assert.equal(byCat.legendary.length, 4);
+  assert.equal(byCat.rare.length, 12);
+  assert.equal(byCat.epic.length, 7);
+  assert.equal(byCat.legendary.length, 5);
 });
 
-test('ids round-trip to lowercase PNG paths under assets/avatars/', () => {
-  assert.equal(storeAvatarSrc('common_1'), 'assets/avatars/common_1.png');
-  assert.equal(storeAvatarSrc('rare_8'), 'assets/avatars/rare_8.png');
-  // legendary filenames are lowercase
-  assert.equal(storeAvatarSrc('legendary_3'), 'assets/avatars/legendary_3.png');
-  assert.equal(storeAvatarSrc('legendary_4'), 'assets/avatars/legendary_4.png');
+test('ids map to URL-encoded PNG paths under assets/avatars_v2/<category>/', () => {
+  assert.equal(storeAvatarSrc('common_1'), 'assets/avatars_v2/common/basketball_player.png');
+  assert.equal(storeAvatarSrc('rare_4'), 'assets/avatars_v2/rare/ilan_ramon.png');
+  assert.equal(storeAvatarSrc('rare_12'), 'assets/avatars_v2/rare/rare_1_top_right.png');
+  // filenames with spaces / Hebrew / mixed-case extension are URL-encoded
+  assert.equal(storeAvatarSrc('epic_7'), 'assets/avatars_v2/epic/%D7%9E%D7%A8%D7%93%D7%9B%D7%99%20%D7%94%D7%99%D7%94%D7%95%D7%93%D7%99.PNG');
+  assert.equal(storeAvatarSrc('legendary_4'), 'assets/avatars_v2/legendary/moses.png');
   assert.equal(storeAvatarSrc('nope'), null);
 });
 
 test('isStoreAvatarId / findStoreAvatar recognise catalog ids only', () => {
   assert.equal(isStoreAvatarId('epic_2'), true);
   assert.equal(isStoreAvatarId('crown'), false); // achievement avatar, not store
-  assert.equal(isStoreAvatarId('legendary_5'), false); // out of range
+  assert.equal(isStoreAvatarId('legendary_6'), false); // out of range (5 legendaries)
   assert.equal(findStoreAvatar('epic_2')?.category, 'epic');
   assert.equal(findStoreAvatar('crown'), null);
 });
