@@ -193,7 +193,14 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   cleanups.push(bus.on(ADMIN_RENDER.DATA, (data = {}) => paint(data)));
 
   // After approve/reject, reload data to refresh counts + list.
-  cleanups.push(bus.on(ADMIN_RENDER.SUGGESTION_DONE, () => bus.emit(ADMIN_INTENT.LOAD, {})));
+  // Debounced so that bulk approvals (N events fired rapidly) only trigger
+  // one LOAD after all parallel Firebase writes have landed, preventing a
+  // stale early-LOAD result from overwriting the correct final count.
+  let _loadDebounce = null;
+  cleanups.push(bus.on(ADMIN_RENDER.SUGGESTION_DONE, () => {
+    clearTimeout(_loadDebounce);
+    _loadDebounce = setTimeout(() => bus.emit(ADMIN_INTENT.LOAD, {}), 400);
+  }));
 
   // ── Paint ──────────────────────────────────────────────────────────────────
   function paint({

@@ -2360,6 +2360,18 @@ async function boot() {
             hebrewDictionary.BLOCKED_OVERLAY.delete(w);
           }
           await awardSuggestionCreditsForWords(db, [word], 'add');
+        } else {
+          // Word was skipped — log the reason for diagnosis.
+          const skipReason = result.skipped?.[0]?.reason ?? 'unknown';
+          console.warn('[spine] admin approve suggestion: word skipped', word, skipReason);
+          if (skipReason === 'already-approved') {
+            // Word was directly added before this suggestion was approved.
+            // The dictionary count already includes it, but we should still
+            // credit the user who suggested it.
+            await awardSuggestionCreditsForWords(db, [word], 'add').catch((e) =>
+              console.warn('[spine] admin approve suggestion: credit award failed', e)
+            );
+          }
         }
       }
       // Directly mark this specific suggestion key as approved regardless of
