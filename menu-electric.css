@@ -201,7 +201,7 @@
      formula mirrors this middle term — keep them in sync. */
   --topbar-btn:        clamp(39px, min(10.5vw, 6.3svh), 84px);
   --topbar-font:       calc(var(--topbar-btn) * 0.45);
-  --topbar-gap:        calc(var(--topbar-btn) * 0.14);
+  --topbar-gap:        calc(var(--topbar-btn) * 0.07);
   --topbar-avatar:     clamp(42px, min(11vw, 6.6svh), 88px);
   --topbar-avatar-em:  calc(var(--topbar-avatar) * 0.50);
   --topbar-name:       clamp(12px, min(3.2vw, 2svh), 22px);
@@ -240,7 +240,7 @@
   border: 1px solid rgba(0, 135, 255, 0.18);
   /* Pill curvature follows the button radius so it stays a pill */
   border-radius: calc(var(--topbar-btn) * 0.68);
-  padding: calc(var(--topbar-btn) * 0.10) calc(var(--topbar-btn) * 0.14);
+  padding: calc(var(--topbar-btn) * 0.10) calc(var(--topbar-btn) * 0.09);
 }
 
 .em-icon-btn {
@@ -293,6 +293,13 @@
   height: 96%;
   object-fit: contain;
   pointer-events: none;
+}
+
+/* Admin icon has more transparent padding than other 3-D nav icons — scale
+   it up so its visual weight matches the rest of the pill. */
+#topbar-admin-btn .em-icon-img {
+  width: 120%;
+  height: 120%;
 }
 
 .em-help-q {
