@@ -160,6 +160,7 @@ export async function submitWordSuggestion(db, {
   word,
   uid,
   type = 'add',
+  isValidWord = null,
   now = Date.now(),
   serverTimestamp = null,
 } = {}) {
@@ -167,6 +168,7 @@ export async function submitWordSuggestion(db, {
   if (!uid) return { ok: false, reason: 'not-authenticated' };
   const normalized = cleanDictionaryWord(word);
   if (!normalized) return { ok: false, reason: 'empty' };
+  const suggestionType = type === 'remove' ? 'remove' : 'add';
 
   const [approvedSnap, rejectedSnap] = await Promise.all([
     db.ref(DICTIONARY_APPROVED_PATH).get(),
@@ -175,12 +177,15 @@ export async function submitWordSuggestion(db, {
   const approvedWords = wordsFromRecord(approvedSnap?.val ? approvedSnap.val() : null);
   const rejectedWords = wordsFromRecord(rejectedSnap?.val ? rejectedSnap.val() : null);
 
-  if (type === 'add') {
+  if (suggestionType === 'add') {
     if (approvedWords.has(normalized)) return { ok: false, reason: 'already-in-dictionary' };
     if (rejectedWords.has(normalized)) return { ok: false, reason: 'word-is-blocked' };
   } else {
     // type === 'remove': word is already blocked — no point suggesting removal
     if (rejectedWords.has(normalized)) return { ok: false, reason: 'word-already-removed' };
+    if (typeof isValidWord !== 'function' || !isValidWord(normalized)) {
+      return { ok: false, reason: 'not-in-dictionary' };
+    }
   }
 
   // Check if this user already has a pending suggestion of the same type for this word.
@@ -189,7 +194,7 @@ export async function submitWordSuggestion(db, {
   const alreadySuggested = existing.some(
     (s) => cleanDictionaryWord(s?.word ?? '') === normalized &&
       s?.status === 'pending' &&
-      s?.type === type &&
+      (s?.type ?? 'add') === suggestionType &&
       (Array.isArray(s?.suggestedBy) ? s.suggestedBy.includes(uid) : s?.suggestedBy === uid),
   );
   if (alreadySuggested) return { ok: false, reason: 'already-suggested' };
@@ -198,7 +203,7 @@ export async function submitWordSuggestion(db, {
   await db.ref(DICTIONARY_SUGGESTIONS_PATH).push().set({
     word: normalized,
     normalizedWord: normalized,
-    type,
+    type: suggestionType,
     status: 'pending',
     suggestedBy: [uid],
     createdAt: stamp,
@@ -224,7 +229,8 @@ export async function findPendingSuggestionsForWords(db, words, { type } = {}) {
   for (const [key, s] of entries) {
     const w = cleanDictionaryWord(s?.word ?? '');
     if (!wordSet.has(w) || s?.status !== 'pending') continue;
-    if (type !== undefined && s?.type !== type) continue;
+    const suggestionType = s?.type ?? 'add';
+    if (type !== undefined && suggestionType !== type) continue;
     const suggesters = Array.isArray(s.suggestedBy) ? s.suggestedBy : (s.suggestedBy ? [s.suggestedBy] : []);
     for (const uid of suggesters) {
       if (uid) credits.push({ key, word: w, uid });

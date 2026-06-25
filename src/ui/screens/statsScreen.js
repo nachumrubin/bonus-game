@@ -407,16 +407,16 @@ function renderTrends(t = {}) {
 function renderWeekSnapshot(w = {}) {
   return ''
     + '<div class="ins-week-grid">'
-    +   weekKpi('🎮', 'משחקים', w.played ?? 0)
-    +   weekKpi('🏆', 'ניצחונות', w.won ?? 0)
-    +   weekKpi('🔥', 'רצף', w.bestStreak ?? 0)
-    +   weekKpi('📊', 'ממוצע', w.avgScore ?? 0)
+    +   weekKpi('stats-games-icon', 'משחקים', w.played ?? 0)
+    +   weekKpi('stats-wins-icon', 'ניצחונות', w.won ?? 0)
+    +   weekKpi('stats-streak-icon', 'רצף', w.bestStreak ?? 0)
+    +   weekKpi('stats-average-icon', 'ממוצע', w.avgScore ?? 0)
     + '</div>';
 }
-function weekKpi(icon, label, value) {
+function weekKpi(iconName, label, value) {
   return ''
     + '<div class="ins-week-kpi">'
-    + `<div class="ins-week-kpi-icon" aria-hidden="true">${escapeHtml(icon)}</div>`
+    + `<img class="ins-week-kpi-icon" src="assets/icons/${iconName}.png" alt="" aria-hidden="true">`
     + `<div class="ins-week-kpi-val">${escapeHtml(String(value))}</div>`
     + `<div class="ins-week-kpi-lbl">${escapeHtml(label)}</div>`
     + '</div>';

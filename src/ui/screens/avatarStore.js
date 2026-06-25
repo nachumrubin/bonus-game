@@ -1,19 +1,22 @@
 // Avatar store catalog — pure data + helpers, no Firebase / no DOM.
 //
 // The store is a SEPARATE collection from the achievement-unlock avatars in
-// avatarScreens.js (SPINE_AVATARS). These 36 avatars live as PNGs under
-// assets/avatars/ and are bought with coins:
-//   common_1..16   — free to everyone (price 0, always "owned")
-//   rare_1..8      — purchasable
-//   epic_1..8      — purchasable
-//   legendary_1..4 — purchasable (the prestige tier)
+// avatarScreens.js (SPINE_AVATARS). These 40 avatars live as PNGs under
+// assets/avatars_v2/<category>/ and are bought with coins:
+//   common (16)   — free to everyone (price 0, always "owned")
+//   rare (12)     — purchasable
+//   epic (7)      — purchasable
+//   legendary (5) — purchasable (the prestige tier)
 //
-// A store-avatar id (e.g. 'rare_3') is the filename stem, so it round-trips
-// to assets/avatars/<id>.png. The shared render helpers in
-// avatarScreens.js (avatarIconSrc/avatarText) resolve these ids so an equipped
-// store avatar displays everywhere (profile, game screen, opponent cards).
+// The catalog id is a clean numeric stem (e.g. 'rare_3'), decoupled from the
+// file on disk — STORE_TIERS maps each id to a descriptive filename (which may
+// contain spaces / Hebrew / mixed-case extensions). Keeping ids numeric means
+// they round-trip safely through Firebase profiles and DOM data-attributes.
+// The shared render helpers in avatarScreens.js (avatarIconSrc/avatarText)
+// resolve these ids via storeAvatarSrc() so an equipped store avatar displays
+// everywhere (profile, game screen, opponent cards).
 
-export const AVATAR_DIR = 'assets/avatars/';
+export const AVATAR_DIR = 'assets/avatars_v2/';
 
 // The coin-currency icon. Used everywhere a coin amount is shown (store prices,
 // balances, achievement prizes, daily reward). `.coin-ic` sizes it to 1em so it
@@ -38,27 +41,62 @@ export const CATEGORY_LABELS = Object.freeze({
   legendary: 'אגדי',
 });
 
-// Category → { count, prefix, price }. Prefix + index (1..count) builds the id.
+// Category → { prefix, price, files }. The id is `${prefix}${index+1}`; the file
+// at that index supplies the artwork (kept under assets/avatars_v2/<category>/).
+// Reordering/removing a file shifts the numeric ids — fine while not in
+// production. Adding files just extends the tier.
 export const STORE_TIERS = Object.freeze({
-  common:    { count: 16, prefix: 'common_',    price: STORE_PRICES.common },
-  rare:      { count: 8,  prefix: 'rare_',       price: STORE_PRICES.rare },
-  epic:      { count: 8,  prefix: 'epic_',       price: STORE_PRICES.epic },
-  legendary: { count: 4,  prefix: 'legendary_',  price: STORE_PRICES.legendary },
+  common: {
+    prefix: 'common_',
+    price: STORE_PRICES.common,
+    files: [
+      'basketball_player.png', 'common_1_1.png', 'common_1_2.png', 'common_1_3.png',
+      'common_1_4.png', 'common_2_split.png', 'doctor.png', 'fire_dep.png',
+      'gamer.png', 'hacker.png', 'police.png', 'shef.png',
+      'soccer_fan.png', 'soccer_player.png', 'soldier.png', 'su_shef.png',
+    ],
+  },
+  rare: {
+    prefix: 'rare_',
+    price: STORE_PRICES.rare,
+    files: [
+      'david_ben_gur.png', 'golda.png', 'hertzel.png', 'ilan_ramon.png',
+      'miriam_peretz.png', 'moshe dayan.png', 'ofra_haza.png', 'rabin.png',
+      'rare_1_bottom_left.png', 'rare_1_bottom_right.png', 'rare_1_top_left.png',
+      'rare_1_top_right.png',
+    ],
+  },
+  epic: {
+    prefix: 'epic_',
+    price: STORE_PRICES.epic,
+    files: [
+      'avraham.png', 'esther.PNG', 'jacob.PNG', 'rachel.png', 'ruth.PNG', 'shmoel.png',
+      'מרדכי היהודי.PNG',
+    ],
+  },
+  legendary: {
+    prefix: 'legendary_',
+    price: STORE_PRICES.legendary,
+    files: [
+      'aharon.png', 'david.png', 'joseph.png', 'moses.png', 'samson.png',
+    ],
+  },
 });
 
 // Order categories appear in the store (common first, legendary last).
 export const STORE_CATEGORY_ORDER = Object.freeze(['common', 'rare', 'epic', 'legendary']);
 
-// The 36-entry catalog: { id, category, src, price }.
+// The avatar catalog: { id, category, src, price }. `src` is URL-encoded so
+// descriptive filenames with spaces / Hebrew / mixed-case load in <img>.
 export const STORE_AVATARS = Object.freeze(
   STORE_CATEGORY_ORDER.flatMap((category) => {
     const tier = STORE_TIERS[category];
-    return Array.from({ length: tier.count }, (_, i) => {
+    return tier.files.map((file, i) => {
       const id = `${tier.prefix}${i + 1}`;
       return Object.freeze({
         id,
         category,
-        src: `${AVATAR_DIR}${id}.png`,
+        src: encodeURI(`${AVATAR_DIR}${category}/${file}`),
         price: tier.price,
       });
     });

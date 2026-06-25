@@ -39,6 +39,19 @@ export const ACHIEVEMENT_COIN_REWARD = Object.freeze({
   bronze: 50, silver: 100, gold: 250, legend: 750,
 });
 
+// Hard ceiling on a coin balance. Buying the ENTIRE avatar catalog costs ~22k,
+// and a daily-active player accrues at most ~110/day, so no legitimate balance
+// comes anywhere near this. The cap is a safety net: it stops a buggy or
+// out-of-band write from ballooning a balance to absurd values (e.g. a manual
+// DB edit), and `clampCoinsBalance` self-heals any account that's already over
+// the cap the next time it loads. Tunable.
+export const MAX_COIN_BALANCE = 100_000;
+
+// Pure: coerce any value to a valid, in-range coin balance (integer, 0..MAX).
+export function clampCoins(value) {
+  return Math.min(MAX_COIN_BALANCE, Math.max(0, Math.floor(Number(value) || 0)));
+}
+
 export const EMPTY_STATS = Object.freeze({
   gamesPlayed: 0, gamesWon: 0, gamesLost: 0, gamesDraw: 0,
   highScore: 0, totalScore: 0, currentStreak: 0, longestStreak: 0,
@@ -82,7 +95,7 @@ export function buildInitialProfile({ displayName, userId, avatar = DEFAULT_AVAT
 // predate this feature. Use this everywhere economy state is consumed.
 export function normalizeProfileEconomy(profile) {
   return {
-    coins: Math.max(0, Math.floor(Number(profile?.coins) || 0)),
+    coins: clampCoins(profile?.coins),
     ownedAvatars: Array.isArray(profile?.ownedAvatars) ? profile.ownedAvatars.slice() : [],
     lastLoginDate: typeof profile?.lastLoginDate === 'string' ? profile.lastLoginDate : null,
     loginStreak: Math.max(0, Math.floor(Number(profile?.loginStreak) || 0)),
@@ -201,11 +214,25 @@ export async function bumpStats(db, uid, delta) {
 export async function bumpCoins(db, uid, amount) {
   if (!uid || !amount) return null;
   const ref = db.ref(`${PATH.users}/${uid}/profile/coins`);
-  const result = await ref.transaction((current) => Math.max(0, (current ?? 0) + amount));
+  const result = await ref.transaction((current) => clampCoins((current ?? 0) + amount));
   if (result?.committed) {
     bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: result.snapshot?.val?.() ?? null } });
   }
   return result?.snapshot?.val?.() ?? null;
+}
+
+// Self-heal a corrupted (out-of-band-inflated) balance: if the stored coins
+// exceed MAX_COIN_BALANCE, pull them down to the cap; otherwise no-op (the
+// transaction aborts). Safe to call on every boot — runs as the signed-in user
+// (DB rules allow writing your own profile). Returns the resulting balance.
+export async function clampCoinsBalance(db, uid) {
+  if (!uid) return null;
+  const ref = db.ref(`${PATH.users}/${uid}/profile/coins`);
+  const result = await ref.transaction((current) =>
+    Number(current) > MAX_COIN_BALANCE ? MAX_COIN_BALANCE : undefined);
+  if (!result?.committed) return null; // already in range — nothing healed
+  bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: result.snapshot?.val?.() ?? null } });
+  return result.snapshot?.val?.() ?? null;
 }
 
 // Atomically purchase a store avatar: verify it isn't already owned and the
@@ -285,7 +312,7 @@ export async function claimDailyReward(db, uid, today = ymd()) {
     if (res.alreadyClaimedToday) return; // abort — no write
     return {
       ...p,
-      coins: (Number(p.coins) || 0) + res.coinsAwarded,
+      coins: clampCoins((Number(p.coins) || 0) + res.coinsAwarded),
       lastLoginDate: today,
       loginStreak: res.newStreak,
     };

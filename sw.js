@@ -67,7 +67,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260624075823';
+var CACHE_NAME = 'boost-20260625032849';
 var ASSETS = [
   './',
   './index.html',
@@ -98,22 +98,15 @@ var ASSETS = [
   './assets/ui/store.png',
   './assets/ui/logout.png',
   './assets/ui/lock.png',
-  // In-game / end-game UI icons.
-  './assets/ui/hourglass.png',
-  './assets/ui/play.png',
-  './assets/ui/pause.png',
-  './assets/ui/rematch.png',
-  './assets/ui/+.png',
-  './assets/ui/key.png',
-  // Reward / medal icons.
-  './assets/rewards/trophy.png',
-  './assets/rewards/gold coin.png',
-  // Bot and anonymous-player avatars (used in game screen and top bar).
-  './assets/avatars/bot.png',
-  './assets/avatars/green bot.png',
-  './assets/avatars/red bot.png',
-  './assets/avatars/yellow bot.png',
-  './assets/avatars/anonymous player.png',
+  // Statistics-screen icons (section headers + weekly KPI chips).
+  './assets/icons/stats-performance-icon.png',
+  './assets/icons/stats-records-icon.png',
+  './assets/icons/stats-style-icon.png',
+  './assets/icons/stats-rivals-icon.png',
+  './assets/icons/stats-average-icon.png',
+  './assets/icons/stats-streak-icon.png',
+  './assets/icons/stats-wins-icon.png',
+  './assets/icons/stats-games-icon.png',
   // Achievement trophy-room icons — one per achievement, named by Hebrew title.
   // A 404 here is harmless (per-asset add().catch + emoji fallback at runtime).
   './assets/achievements/צעדים ראשונים.png',
@@ -178,7 +171,7 @@ var ASSETS = [
   './partials/screens/tutorial-intro-modal.html',
   './partials/screens/tutorial-overlay-elements.html',
   './partials/screens/tutorial-prompt-shown-to-new-users-on-first-game-mode-entry.html',
-  // NOTE: the 36 store-avatar PNGs in ./assets/avatars/ (~19 MB) are
+  // NOTE: the 40 store-avatar PNGs in ./assets/avatars_v2/<category>/ are
   // deliberately NOT precached — the runtime fetch handler caches them on
   // demand the first time they're viewed, so we avoid bloating install.
 ];  // sw.js intentionally excluded — browser fetches it fresh

@@ -12,7 +12,7 @@
 import { $, on, setText } from '../domHelpers.js';
 import {
   STORE_CATEGORY_ORDER, CATEGORY_LABELS, STORE_PRICES,
-  storeAvatarsByCategory, isOwned, priceFor, COIN_ICON_HTML,
+  storeAvatarsByCategory, isOwned, priceFor, storeAvatarSrc, COIN_ICON_HTML,
 } from './avatarStore.js';
 
 export const STORE_INTENT = Object.freeze({
@@ -123,7 +123,7 @@ export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {})
 
   function openConfirm(id) {
     pendingId = id;
-    if (confirmImg) confirmImg.innerHTML = `<img src="assets/avatars/${id}.png" alt="" class="store-confirm-img">`;
+    if (confirmImg) confirmImg.innerHTML = `<img src="${storeAvatarSrc(id)}" alt="" class="store-confirm-img">`;
     if (confirmPrice) confirmPrice.innerHTML = `${priceFor(id)} ${COIN_ICON_HTML}`;
     confirmOv?.classList?.remove('hidden');
   }

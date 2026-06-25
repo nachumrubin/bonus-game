@@ -1,5 +1,28 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Coin economy — June 2026
+
+- [x] Hard cap on coin balances (`MAX_COIN_BALANCE = 100_000`) enforced on all
+  read/write paths; self-heal on boot for over-cap accounts
+- [x] `scripts/set-coins.mjs` admin reset helper
+- [ ] **Run the reset for הודיה** (balance 1,185,490): either let the boot
+  self-heal pull it to the cap on her next login, or run
+  `node scripts/set-coins.mjs --name "הודיה" --coins <n>` with a service-account
+  key for an exact value. (Needs `npm i firebase-admin` + GOOGLE_APPLICATION_CREDENTIALS.)
+- [ ] **Investigate the source** of the out-of-band write (no code path can
+  produce it) — likely a manual Firebase console edit or a one-off script.
+
+## Avatar collection v2 — June 2026
+
+- [x] Replace 36-avatar store set with 40 new avatars under `assets/avatars_v2/`
+  (common 16, rare 8, epic 11, legendary 5)
+- [x] Rewrite `avatarStore.js` catalog (id→file map, encoded src), fix store
+  confirm-image path, delete old PNGs, update tests + SW + asset_inventory
+- [ ] **Art polish:** some v2 filenames are batch-export artifacts
+  (`common_1_1`, `rare_1_top_left`, `common_2_split`). Consider renaming to
+  descriptive names for maintainability (ids are numeric so renames only touch
+  the `STORE_TIERS.files` list).
+
 ## Statistics screen — June 2026
 
 - [x] Fix: expanded collapsible "act" sections were clipped/unscrollable —
@@ -10,9 +33,10 @@
 - [x] Removed duplicate rows from ניתוח מילים (longest word / best move score)
 - [x] Replaced הבוסט האהוב with האות המועדפת (favorite starting letter), backed by
   a new `startingLetterCounts` stat
-- [ ] **Art:** create Boost-family icons for the stats screen — section headers +
-  weekly KPIs + favorite-letter card, to replace the current emoji. Tracked in
-  `docs/asset_inventory.md` → Missing.
+- [x] **Art:** Boost-family icons for the stats screen — 4 section headers + 4
+  weekly KPI chips created and wired into `stats-screen.html` / `statsScreen.js`
+  (replaced the emoji), precached in `sw.js`. The favorite-letter card keeps its
+  dynamic Hebrew-letter glyph, so no static icon was needed there.
 
 ## Dictionary suggestions + word_contributor achievement — June 2026
 

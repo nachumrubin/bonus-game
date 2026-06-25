@@ -3414,6 +3414,9 @@ button[aria-disabled="true"] {
 .st-section-header:active { opacity: .85; }
 .st-section-hd-icon {
   font-size: 18px;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
   flex-shrink: 0;
   filter: drop-shadow(0 0 6px rgba(0,180,255,.55));
 }
@@ -3564,7 +3567,7 @@ button[aria-disabled="true"] {
   border:1px solid rgba(232,200,64,.18);
   border-radius:12px;
 }
-#sstats .ins-week-kpi-icon{font-size:18px;line-height:1;}
+#sstats .ins-week-kpi-icon{font-size:18px;line-height:1;width:26px;height:26px;object-fit:contain;display:inline-block;}
 #sstats .ins-week-kpi-val{
   font-size:18px;font-weight:900;color:#fff;margin-top:3px;
   font-variant-numeric:tabular-nums;

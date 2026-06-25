@@ -2,36 +2,50 @@
 
 ---
 
-## Fix icon load failure fallbacks after assets migration — June 2026
+## Coin-balance safety cap — June 2026
 
-Added graceful error fallbacks for two icons that have no onerror handler:
+Added a hard ceiling on coin balances after a profile was found holding
+1,185,490 coins — impossible from the intended economy (lifetime max ≈ 10,800
+from the starter grant + all achievements, plus ≤110/day from daily login), so
+the value was written out-of-band.
 
-- **Sound/music button** (`src/main.js` `syncMusicTopbarIcon`): if the PNG fails to
-  load, the `<img>` element is replaced by a `<span>` with the matching emoji (🎵 or 🔇)
-  so the topbar button remains functional.
-- **Profile avatar** (`src/ui/screens/profileScreen.js`): when a store avatar PNG
-  (e.g. `assets/avatars/common_3.png`) fails to load, the avatar div falls back to the
-  crown emoji `👑` instead of showing an empty dark circle.
+- `profileService.MAX_COIN_BALANCE = 100_000` + pure `clampCoins(value)` helper.
+- Clamped every coin path: `bumpCoins` and `claimDailyReward` (writes) and
+  `normalizeProfileEconomy` (read), so no grant can push past the cap and the UI
+  never shows an absurd value.
+- `clampCoinsBalance(db, uid)` self-heals an already-corrupted balance: on boot,
+  the first time `main.js` sees `coins > MAX_COIN_BALANCE` for the signed-in user
+  it pulls the balance down to the cap (runs as the user, so DB rules allow the
+  self-write). This auto-resets any inflated account next time it loads.
+- `scripts/set-coins.mjs` — admin helper (Firebase Admin SDK) to set a specific
+  user's balance to an exact value, for a precise manual reset.
 
 ---
 
-## Fix icon visibility after assets migration — June 2026
+## Avatar collection replaced (v2) — June 2026
 
-After icons were moved from `images/icons/` to `assets/` subdirectories, the
-service-worker precache list (`sw.js`) was still missing 15 of those assets,
-meaning they would fail to load offline and could appear broken if the first
-network fetch raced against a fresh deployment.
+Swapped the entire 36-avatar store collection for a new 40-avatar set living
+under `assets/avatars_v2/<category>/` with descriptive filenames. New per-tier
+counts: common 16, rare 8, **epic 11 (was 8), legendary 5 (was 4)**.
 
-Added all missing icons to the ASSETS precache in `sw.js`:
-- `assets/navigation/friends_nav.png`, `statistics_nav.png`, `search.png`
-- `assets/ui/store.png`, `logout.png`, `hourglass.png`, `play.png`, `pause.png`,
-  `rematch.png`, `+.png`, `key.png`
-- `assets/rewards/trophy.png`
-- `assets/avatars/bot.png`, `green bot.png`, `red bot.png`, `yellow bot.png`,
-  `anonymous player.png`
-- Reorganised comment headers for clarity (navigation / home cards / profile / in-game / rewards / bots)
+- `avatarStore.js`: `STORE_TIERS` now lists explicit source files per tier;
+  `AVATAR_DIR` → `assets/avatars_v2/`. The catalog id stays a clean numeric stem
+  (`common_1`, `rare_3`, …) decoupled from the file, so ids still round-trip
+  through Firebase profiles / DOM attributes while filenames stay descriptive.
+  `STORE_AVATARS.src` is now `encodeURI`-d so names with spaces / Hebrew /
+  mixed-case extensions load in `<img>`.
+- `avatarStoreScreen.js`: the buy-confirm image now resolves via
+  `storeAvatarSrc(id)` instead of building `assets/avatars/${id}.png` (which
+  would break with the new subfolder layout).
+- Deleted the old 36 store PNGs from `assets/avatars/` (kept `bot.png`, the
+  colored bots, and `anonymous player.png`).
+- Store avatars remain deliberately out of the SW precache (lazy-cached on
+  demand); updated the note and re-stamped the build. Updated
+  `docs/asset_inventory.md`.
 
-Bumped build timestamp to `20260624075823` via `stamp-build.js`.
+Note: equipped/owned avatars are addressed by numeric id, and the id→avatar
+mapping changed, so a previously equipped store avatar now points at a different
+image. Acceptable — the app is not in production.
 
 ---
 
