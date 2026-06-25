@@ -30,6 +30,9 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   let activeFilter = 'all';
   // All players (for search re-rendering)
   let allPlayers = [];
+  // Approved/blocked word arrays for the health modal
+  let approvedWordsCache = [];
+  let blockedWordsCache  = [];
 
   // ── Tab switching ──────────────────────────────────────────────────────────
   const tabBtns = Array.from(screenEl.querySelectorAll('.adm-tab'));
@@ -145,6 +148,47 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     cleanups.push(on(playerSearch, 'input', () => renderFilteredPlayers()));
   }
 
+  // ── Word list modal ────────────────────────────────────────────────────────
+  const wordModal    = $('#adm-word-modal', screenEl);
+  const wordModalList  = $('#adm-word-modal-list', screenEl);
+  const wordModalTitle = $('#adm-word-modal-title', screenEl);
+  const wordModalClose = $('#adm-word-modal-close', screenEl);
+
+  function openWordModal(words, title) {
+    if (!wordModal || !wordModalList || !wordModalTitle) return;
+    wordModalTitle.textContent = title;
+    if (words.length === 0) {
+      wordModalList.innerHTML = '<div class="adm-word-modal-empty">אין מילים</div>';
+    } else {
+      wordModalList.innerHTML = words
+        .map((w) => `<span class="adm-word-pill">${esc(w)}</span>`)
+        .join('');
+    }
+    wordModal.style.display = '';
+  }
+
+  function closeWordModal() {
+    if (wordModal) wordModal.style.display = 'none';
+  }
+
+  if (wordModalClose) cleanups.push(on(wordModalClose, 'click', closeWordModal));
+  if (wordModal) {
+    cleanups.push(on(wordModal, 'click', (e) => {
+      if (e.target === wordModal) closeWordModal();
+    }));
+  }
+
+  const healthApproveBtn = $('#adm-health-btn-approved', screenEl);
+  const healthBlockedBtn = $('#adm-health-btn-blocked',  screenEl);
+  if (healthApproveBtn) {
+    cleanups.push(on(healthApproveBtn, 'click', () =>
+      openWordModal(approvedWordsCache, `✅ מילים שאושרו (${approvedWordsCache.length})`)));
+  }
+  if (healthBlockedBtn) {
+    cleanups.push(on(healthBlockedBtn, 'click', () =>
+      openWordModal(blockedWordsCache, `🚫 מילים חסומות (${blockedWordsCache.length})`)));
+  }
+
   // ── Data render ────────────────────────────────────────────────────────────
   cleanups.push(bus.on(ADMIN_RENDER.DATA, (data = {}) => paint(data)));
 
@@ -159,6 +203,8 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     pendingCount = null,
     approvedCount = null,
     blockedCount = null,
+    approvedWords = [],
+    blockedWords = [],
     tierCounts = null,
     onlineNow = null,
     queueDepth = null,
@@ -166,6 +212,8 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     suggestions = [],
     loadedAt = null,
   } = {}) {
+    approvedWordsCache = approvedWords;
+    blockedWordsCache  = blockedWords;
     // Stats cards
     setVal('#adm-stat-total',   totalPlayers);
     setVal('#adm-stat-week',    activeThisWeek);

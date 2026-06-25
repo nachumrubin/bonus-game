@@ -27,12 +27,12 @@ test('firebase rules include dictionary moderation protections', () => {
 
   // /dictionarySuggestions was restored (June 2026 re-enablement) to allow
   // any authenticated user to submit word suggestions for admin review.
-  // Admins still write directly to approved/rejected for immediate changes.
+  // Admins can also update existing suggestions (to approve/reject them).
   assert.ok(rules.dictionarySuggestions, 'dictionarySuggestions path should exist');
   assert.equal(
     rules.dictionarySuggestions.$id['.write'],
-    'auth != null && !data.exists()',
-    'suggestion writes should be append-only for any authenticated user'
+    "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)",
+    'suggestion writes should be append-only for users; admins can also update existing entries'
   );
 
   assert.ok(rules.dictionaryApproved, 'dictionaryApproved path should exist');

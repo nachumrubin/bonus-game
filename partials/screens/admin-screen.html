@@ -45,17 +45,17 @@
         </div>
       </div>
 
-      <!-- Dictionary health -->
+      <!-- Dictionary health (values are clickable → word list modal) -->
       <div class="adm-sec-hdr">בריאות המילון</div>
       <div class="adm-dict-health">
-        <div class="adm-health-item adm-health-item--approved">
+        <button class="adm-health-item adm-health-item--approved adm-health-item--btn" id="adm-health-btn-approved">
           <span class="adm-health-val" id="adm-health-approved">—</span>
-          <span class="adm-health-lbl">מילים אושרו</span>
-        </div>
-        <div class="adm-health-item adm-health-item--blocked">
+          <span class="adm-health-lbl">מילים אושרו ↗</span>
+        </button>
+        <button class="adm-health-item adm-health-item--blocked adm-health-item--btn" id="adm-health-btn-blocked">
           <span class="adm-health-val" id="adm-health-blocked">—</span>
-          <span class="adm-health-lbl">מילים חסומות</span>
-        </div>
+          <span class="adm-health-lbl">מילים חסומות ↗</span>
+        </button>
       </div>
 
       <!-- Tier distribution -->
@@ -156,5 +156,16 @@
     <!-- Back button -->
     <button id="adm-back-btn" class="adm-back-btn">← חזרה לבית</button>
 
+  </div>
+
+  <!-- Word list modal (shown when health card is clicked) -->
+  <div id="adm-word-modal" class="adm-word-modal" style="display:none" role="dialog" aria-modal="true">
+    <div class="adm-word-modal-inner">
+      <div class="adm-word-modal-hdr">
+        <span id="adm-word-modal-title" class="adm-word-modal-title"></span>
+        <button id="adm-word-modal-close" class="adm-word-modal-close" aria-label="סגור">✕</button>
+      </div>
+      <div id="adm-word-modal-list" class="adm-word-modal-list"></div>
+    </div>
   </div>
 </div>
