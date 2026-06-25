@@ -2288,8 +2288,10 @@ async function boot() {
       // Dictionary health
       const approvedVal = approvedSnap?.val ? approvedSnap.val() ?? {} : {};
       const rejectedVal = rejectedSnap?.val ? rejectedSnap.val() ?? {} : {};
-      const approvedCount = Object.keys(approvedVal).length;
-      const blockedCount  = Object.keys(rejectedVal).length;
+      const approvedWords = Object.keys(approvedVal).sort();
+      const blockedWords  = Object.keys(rejectedVal).sort();
+      const approvedCount = approvedWords.length;
+      const blockedCount  = blockedWords.length;
 
       // Online now: presence entries with connected===true OR lastSeen within the heartbeat window
       const presenceVal = presenceSnap?.val ? presenceSnap.val() ?? {} : {};
@@ -2310,6 +2312,8 @@ async function boot() {
         pendingCount,
         approvedCount,
         blockedCount,
+        approvedWords,
+        blockedWords,
         tierCounts,
         onlineNow,
         queueDepth,
@@ -2355,6 +2359,11 @@ async function boot() {
           await awardSuggestionCreditsForWords(db, [word], 'add');
         }
       }
+      // Directly mark this specific suggestion key as approved regardless of
+      // whether awardSuggestionCreditsForWords found a matching pending record.
+      await db.ref(`dictionarySuggestions/${key}/status`).set('approved').catch((e) => {
+        console.warn('[spine] admin mark suggestion approved', e);
+      });
       bus.emit(ADMIN_RENDER.SUGGESTION_DONE, {});
     } catch (e) {
       console.warn('[spine] admin approve suggestion', e);
