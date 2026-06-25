@@ -71,6 +71,10 @@
 * assets/avatars_v2/epic/ruth.PNG
 * assets/avatars_v2/epic/shmoel.png
 * assets/avatars_v2/epic/מרדכי היהודי.PNG
+* assets/avatars_v2/epic/joshua.png
+* assets/avatars_v2/epic/rambam.png
+* assets/avatars_v2/epic/adam.png
+* assets/avatars_v2/epic/yehuda_hamaccabi.png
 * assets/avatars_v2/legendary/aharon.png
 * assets/avatars_v2/legendary/david.png
 * assets/avatars_v2/legendary/joseph.png
