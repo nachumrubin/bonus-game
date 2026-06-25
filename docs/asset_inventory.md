@@ -64,9 +64,9 @@
 * assets/avatars_v2/rare/rare_1_bottom_right.png
 * assets/avatars_v2/rare/rare_1_top_left.png
 * assets/avatars_v2/rare/rare_1_top_right.png
-* assets/avatars_v2/epic/avraham.png
 * assets/avatars_v2/epic/esther.PNG
 * assets/avatars_v2/epic/jacob.PNG
+* assets/avatars_v2/epic/rachel.png
 * assets/avatars_v2/epic/ruth.PNG
 * assets/avatars_v2/epic/shmoel.png
 * assets/avatars_v2/epic/מרדכי היהודי.PNG
