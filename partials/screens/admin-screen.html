@@ -29,11 +29,19 @@
         </div>
         <div class="adm-stat-card">
           <div class="adm-stat-val" id="adm-stat-month">—</div>
-          <div class="adm-stat-lbl">פעילים החודש</div>
+          <div class="adm-stat-lbl">פעילים 30 יום</div>
         </div>
         <div class="adm-stat-card">
           <div class="adm-stat-val" id="adm-stat-pending">—</div>
           <div class="adm-stat-lbl">הצעות ממתינות</div>
+        </div>
+        <div class="adm-stat-card adm-stat-card--online">
+          <div class="adm-stat-val" id="adm-stat-online">—</div>
+          <div class="adm-stat-lbl">מחוברים עכשיו</div>
+        </div>
+        <div class="adm-stat-card adm-stat-card--queue">
+          <div class="adm-stat-val" id="adm-stat-queue">—</div>
+          <div class="adm-stat-lbl">ממתינים לחיפוש</div>
         </div>
       </div>
 
@@ -67,6 +75,20 @@
 
     <!-- ── Players Panel ───────────────────────────── -->
     <div id="adm-panel-players" class="adm-panel" role="tabpanel" style="display:none">
+
+      <!-- Search input -->
+      <div class="adm-search-row">
+        <input id="adm-player-search" class="adm-search-input" type="text"
+          placeholder="🔍 חיפוש שחקן לפי שם..."
+          autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+
+      <!-- Top 10 leaderboard -->
+      <div class="adm-sec-hdr">🏆 TOP 10</div>
+      <div class="adm-top10" id="adm-top10-list"></div>
+
+      <!-- Full player table -->
+      <div class="adm-sec-hdr">כל השחקנים</div>
       <div id="adm-players-loading" class="adm-loading">טוען שחקנים...</div>
       <table class="adm-table" id="adm-players-table" style="display:none">
         <thead>
@@ -86,6 +108,23 @@
 
       <!-- Pending suggestions -->
       <div class="adm-sec-hdr">הצעות ממתינות לאישור</div>
+
+      <!-- Filter bar -->
+      <div class="adm-sugg-filters" id="adm-sugg-filters">
+        <button class="adm-filter-btn adm-filter-btn--active" data-adm-filter="all">הכל</button>
+        <button class="adm-filter-btn adm-filter-btn--add" data-adm-filter="add">➕ הוספות</button>
+        <button class="adm-filter-btn adm-filter-btn--remove" data-adm-filter="remove">🗑 הסרות</button>
+      </div>
+
+      <!-- Bulk actions -->
+      <div class="adm-bulk-bar" id="adm-bulk-bar" style="display:none">
+        <label class="adm-select-all-label">
+          <input type="checkbox" id="adm-select-all">
+          <span>בחר הכל</span>
+        </label>
+        <button id="adm-bulk-approve-btn" class="adm-bulk-approve-btn" disabled>✓ אשר נבחרים</button>
+      </div>
+
       <div id="adm-sugg-loading" class="adm-loading">טוען הצעות...</div>
       <div id="adm-sugg-empty" class="adm-empty" style="display:none">אין הצעות ממתינות ✓</div>
       <div id="adm-sugg-list"></div>

@@ -2242,13 +2242,17 @@ async function boot() {
       const now = Date.now();
       const weekAgo  = now - 7  * 24 * 3600_000;
       const monthAgo = now - 30 * 24 * 3600_000;
+      const onlineThreshold = now - 5 * 60 * 1000; // 5-minute heartbeat window
 
-      // /globalRatings is publicly readable — no special admin rule needed.
-      const [ratingsSnap, suggSnap, approvedSnap, rejectedSnap] = await Promise.all([
+      // /globalRatings is publicly readable. /presence and /matchmakingQueue
+      // are readable by any authenticated user — no new rules needed.
+      const [ratingsSnap, suggSnap, approvedSnap, rejectedSnap, presenceSnap, queueSnap] = await Promise.all([
         db.ref('globalRatings').get(),
         db.ref('dictionarySuggestions').get(),
         db.ref('dictionaryApproved').get(),
         db.ref('dictionaryRejected').get(),
+        db.ref('presence').get(),
+        db.ref('matchmakingQueue').get(),
       ]);
 
       // Players from globalRatings
@@ -2282,6 +2286,18 @@ async function boot() {
       const approvedCount = Object.keys(approvedVal).length;
       const blockedCount  = Object.keys(rejectedVal).length;
 
+      // Online now: presence entries with connected===true OR lastSeen within the heartbeat window
+      const presenceVal = presenceSnap?.val ? presenceSnap.val() ?? {} : {};
+      const onlineNow = Object.values(presenceVal).filter((p) =>
+        p?.connected === true || (typeof p?.lastSeen === 'number' && p.lastSeen > onlineThreshold)
+      ).length;
+
+      // Queue depth: count all uid entries across all modes in matchmakingQueue
+      const queueVal = queueSnap?.val ? queueSnap.val() ?? {} : {};
+      const queueDepth = Object.values(queueVal).reduce((acc, mode) => {
+        return acc + (mode && typeof mode === 'object' ? Object.keys(mode).length : 0);
+      }, 0);
+
       bus.emit(ADMIN_RENDER.DATA, {
         totalPlayers,
         activeThisWeek,
@@ -2290,6 +2306,8 @@ async function boot() {
         approvedCount,
         blockedCount,
         tierCounts,
+        onlineNow,
+        queueDepth,
         players,
         suggestions,
         loadedAt: now,

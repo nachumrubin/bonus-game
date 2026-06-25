@@ -24,8 +24,12 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   if (!screenEl) return { unmount() {} };
 
   const cleanups = [];
-  // Cache the last-loaded suggestions so approve/reject buttons can look up word+type by key.
+  // Cache the last-loaded suggestions so approve/reject/bulk buttons can look up by key.
   let lastSuggestions = [];
+  // Current filter: 'all' | 'add' | 'remove'
+  let activeFilter = 'all';
+  // All players (for search re-rendering)
+  let allPlayers = [];
 
   // ── Tab switching ──────────────────────────────────────────────────────────
   const tabBtns = Array.from(screenEl.querySelectorAll('.adm-tab'));
@@ -90,6 +94,57 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     }
   }));
 
+  // ── Suggestion type filter ─────────────────────────────────────────────────
+  const filtersEl = $('#adm-sugg-filters', screenEl);
+  if (filtersEl) {
+    filtersEl.onclick = (e) => {
+      const btn = e.target.closest('[data-adm-filter]');
+      if (!btn) return;
+      activeFilter = btn.dataset.admFilter;
+      filtersEl.querySelectorAll('.adm-filter-btn').forEach((b) =>
+        b.classList.toggle('adm-filter-btn--active', b === btn)
+      );
+      renderFilteredSuggestions();
+    };
+  }
+
+  // ── Select-all checkbox ────────────────────────────────────────────────────
+  const selectAllCb = $('#adm-select-all', screenEl);
+  if (selectAllCb) {
+    cleanups.push(on(selectAllCb, 'change', () => {
+      const checked = selectAllCb.checked;
+      screenEl.querySelectorAll('.adm-sugg-cb').forEach((cb) => { cb.checked = checked; });
+      updateBulkBtn();
+    }));
+  }
+
+  // ── Bulk approve ───────────────────────────────────────────────────────────
+  const bulkApproveBtn = $('#adm-bulk-approve-btn', screenEl);
+  if (bulkApproveBtn) {
+    cleanups.push(on(bulkApproveBtn, 'click', () => {
+      const keys = Array.from(screenEl.querySelectorAll('.adm-sugg-cb:checked'))
+        .map((cb) => cb.dataset.admKey);
+      if (!keys.length) return;
+      keys.forEach((key) => {
+        const sugg = lastSuggestions.find((s) => s.key === key);
+        if (sugg) bus.emit(ADMIN_INTENT.APPROVE_SUGGESTION, { key: sugg.key, word: sugg.word, type: sugg.type });
+      });
+    }));
+  }
+
+  function updateBulkBtn() {
+    if (!bulkApproveBtn) return;
+    const n = screenEl.querySelectorAll('.adm-sugg-cb:checked').length;
+    bulkApproveBtn.disabled = n === 0;
+    bulkApproveBtn.textContent = n > 0 ? `✓ אשר ${n} נבחרים` : '✓ אשר נבחרים';
+  }
+
+  // ── Player search ──────────────────────────────────────────────────────────
+  const playerSearch = $('#adm-player-search', screenEl);
+  if (playerSearch) {
+    cleanups.push(on(playerSearch, 'input', () => renderFilteredPlayers()));
+  }
+
   // ── Data render ────────────────────────────────────────────────────────────
   cleanups.push(bus.on(ADMIN_RENDER.DATA, (data = {}) => paint(data)));
 
@@ -105,6 +160,8 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     approvedCount = null,
     blockedCount = null,
     tierCounts = null,
+    onlineNow = null,
+    queueDepth = null,
     players = [],
     suggestions = [],
     loadedAt = null,
@@ -114,6 +171,8 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     setVal('#adm-stat-week',    activeThisWeek);
     setVal('#adm-stat-month',   activeThisMonth);
     setVal('#adm-stat-pending', pendingCount);
+    setVal('#adm-stat-online',  onlineNow);
+    setVal('#adm-stat-queue',   queueDepth);
 
     // Dictionary health
     setVal('#adm-health-approved', approvedCount);
@@ -135,14 +194,42 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
       }
     }
 
-    paintPlayers(players);
+    allPlayers = players;
+    paintTop10(players);
+    renderFilteredPlayers();
+
     lastSuggestions = suggestions;
-    paintSuggestions(suggestions);
+    renderFilteredSuggestions();
   }
 
   function setVal(id, val) {
     const el = $(id, screenEl);
     if (el && val != null) el.textContent = Number(val).toLocaleString('he');
+  }
+
+  // ── Top 10 section ─────────────────────────────────────────────────────────
+  function paintTop10(players) {
+    const top10El = $('#adm-top10-list', screenEl);
+    if (!top10El) return;
+    const top = players.slice(0, 10);
+    const medals = ['🥇', '🥈', '🥉'];
+    top10El.innerHTML = top.map((p, i) => {
+      const medal = medals[i] ?? `${i + 1}.`;
+      return `<div class="adm-top10-row">
+        <span class="adm-top10-medal">${medal}</span>
+        <span class="adm-top10-name">${esc(p.name ?? '—')}</span>
+        <span class="adm-top10-rating">${p.rating != null ? Number(p.rating).toLocaleString('he') : '—'}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Player table with search ───────────────────────────────────────────────
+  function renderFilteredPlayers() {
+    const query = (playerSearch?.value ?? '').trim().toLowerCase();
+    const filtered = query
+      ? allPlayers.filter((p) => (p.name ?? '').toLowerCase().includes(query))
+      : allPlayers;
+    paintPlayers(filtered);
   }
 
   function paintPlayers(players) {
@@ -168,31 +255,50 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     }).join('');
   }
 
+  // ── Suggestions with filter + checkboxes ──────────────────────────────────
+  function renderFilteredSuggestions() {
+    const pending = lastSuggestions.filter((s) => s.status === 'pending');
+    const filtered = activeFilter === 'all'
+      ? pending
+      : pending.filter((s) => s.type === activeFilter);
+    paintSuggestions(filtered);
+  }
+
   function paintSuggestions(suggestions) {
     const loadingEl = $('#adm-sugg-loading', screenEl);
     const emptyEl   = $('#adm-sugg-empty',   screenEl);
     const listEl    = $('#adm-sugg-list',     screenEl);
+    const bulkBar   = $('#adm-bulk-bar',      screenEl);
     if (!listEl) return;
 
     if (loadingEl) loadingEl.style.display = 'none';
 
-    const pending = suggestions.filter((s) => s.status === 'pending');
-    if (pending.length === 0) {
-      if (emptyEl) emptyEl.style.display = '';
+    if (suggestions.length === 0) {
+      if (emptyEl)  emptyEl.style.display  = '';
+      if (bulkBar)  bulkBar.style.display  = 'none';
       listEl.innerHTML = '';
       listEl.onclick = null;
       return;
     }
     if (emptyEl) emptyEl.style.display = 'none';
+    if (bulkBar) bulkBar.style.display = '';
 
-    listEl.innerHTML = pending.map((s) => {
-      const isRemove   = s.type === 'remove';
-      const typeLabel  = isRemove ? '🗑 הסרה' : '➕ הוספה';
-      const typeCls    = isRemove ? 'adm-sugg--remove' : 'adm-sugg--add';
+    // Reset select-all
+    if (selectAllCb) selectAllCb.checked = false;
+
+    listEl.innerHTML = suggestions.map((s) => {
+      const isRemove  = s.type === 'remove';
+      const typeLabel = isRemove ? '🗑 הסרה' : '➕ הוספה';
+      const typeCls   = isRemove ? 'adm-sugg--remove' : 'adm-sugg--add';
       const voterCount = Array.isArray(s.suggestedBy) ? s.suggestedBy.length : 1;
-      const dateStr    = s.createdAt ? new Date(s.createdAt).toLocaleDateString('he-IL') : '';
+      const dateStr   = s.createdAt ? new Date(s.createdAt).toLocaleDateString('he-IL') : '';
       return `<div class="adm-sugg-row ${typeCls}" data-adm-key="${esc(s.key)}">
-        <div class="adm-sugg-word">${esc(s.word)}</div>
+        <div class="adm-sugg-top">
+          <label class="adm-sugg-cb-wrap">
+            <input type="checkbox" class="adm-sugg-cb" data-adm-key="${esc(s.key)}">
+          </label>
+          <div class="adm-sugg-word">${esc(s.word)}</div>
+        </div>
         <div class="adm-sugg-meta">
           <span class="adm-sugg-type">${typeLabel}</span>
           <span class="adm-sugg-voters">${voterCount} הצע${voterCount === 1 ? 'ה' : 'ות'}</span>
@@ -205,6 +311,7 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
       </div>`;
     }).join('');
 
+    // Delegate clicks for approve/reject and checkbox changes for bulk
     listEl.onclick = (e) => {
       const approveKey = e.target.closest?.('[data-adm-approve]')?.dataset?.admApprove;
       const rejectKey  = e.target.closest?.('[data-adm-reject]')?.dataset?.admReject;
@@ -215,6 +322,9 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
         bus.emit(ADMIN_INTENT.REJECT_SUGGESTION, { key: rejectKey });
       }
     };
+    listEl.addEventListener('change', (e) => {
+      if (e.target.classList.contains('adm-sugg-cb')) updateBulkBtn();
+    });
   }
 
   function esc(str) {
