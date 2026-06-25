@@ -2,7 +2,7 @@
 // from the topbar pause button or a "back during async game" intent).
 // Three actions: resume, save-and-exit, quit-without-save.
 
-import { $, on, setText } from '../domHelpers.js';
+import { $, $$, on, setText } from '../domHelpers.js';
 import { applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 
@@ -32,14 +32,16 @@ export function mountPauseScreen({ root = globalThis.document, bus } = {}) {
   ];
 
   for (const def of buttons) {
-    const btn = $(def.sel, overlay);
-    if (!btn) continue;
-    btn.removeAttribute('onclick');
-    cleanups.push(on(btn, 'click', (e) => {
-      e.preventDefault?.();
-      bus.emit(def.intent);
-      if (def.close) overlay.classList?.add('hidden');
-    }));
+    // querySelectorAll so both the X close-button and the primary action button
+    // get wired — both share the same onclick attribute value in the HTML.
+    for (const btn of $$(def.sel, overlay)) {
+      btn.removeAttribute('onclick');
+      cleanups.push(on(btn, 'click', (e) => {
+        e.preventDefault?.();
+        bus.emit(def.intent);
+        if (def.close) overlay.classList?.add('hidden');
+      }));
+    }
   }
 
   // Showing the pause overlay must actually freeze the game (turn timer +
