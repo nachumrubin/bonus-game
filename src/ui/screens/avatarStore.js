@@ -5,7 +5,7 @@
 // assets/avatars_v2/<category>/ and are bought with coins:
 //   common (16)   — free to everyone (price 0, always "owned")
 //   rare (12)     — purchasable
-//   epic (11)     — purchasable
+//   epic (10)     — purchasable
 //   legendary (5) — purchasable (the prestige tier)
 //
 // The catalog id is a clean numeric stem (e.g. 'rare_3'), decoupled from the
@@ -70,7 +70,7 @@ export const STORE_TIERS = Object.freeze({
     prefix: 'epic_',
     price: STORE_PRICES.epic,
     files: [
-      'avraham.png', 'esther.PNG', 'jacob.PNG', 'rachel.png', 'ruth.PNG', 'shmoel.png',
+      'avraham.png', 'esther.PNG', 'jacob.PNG', 'ruth.PNG', 'shmoel.png',
       'מרדכי היהודי.PNG', 'joshua.png', 'rambam.png', 'adam.png', 'yehuda_hamaccabi.png',
     ],
   },
