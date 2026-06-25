@@ -76,21 +76,27 @@ var ASSETS = [
   './icon.svg',
   './icon-512.png',
   './data/dictionary.base.txt',
-  // Main-screen icon set (home play buttons, global top bar, bottom nav).
-  // 5_references.png is a reference contact-sheet, not used in the app.
+  // Navigation / top-bar icons.
   './assets/navigation/bell.png',
   './assets/navigation/sound_on.png',
   './assets/navigation/sound_off.png',
   './assets/navigation/settings.png',
   './assets/navigation/help.png',
   './assets/navigation/home.png',
+  './assets/navigation/my_games.png',
+  './assets/navigation/friends_nav.png',
+  './assets/navigation/statistics_nav.png',
+  './assets/navigation/search.png',
+  // Home-screen play-mode cards.
   './assets/icons/globe.png',
   './assets/icons/1v1.png',
-  './assets/avatars/bot.png',
-  './assets/navigation/my_games.png',
+  './assets/icons/dice.png',
   './assets/icons/friends.png',
   './assets/icons/acheivments.png',
   './assets/icons/statistics.png',
+  // Profile-screen button icons.
+  './assets/ui/store.png',
+  './assets/ui/logout.png',
   './assets/ui/lock.png',
   // Statistics-screen icons (section headers + weekly KPI chips).
   './assets/icons/stats-performance-icon.png',
@@ -125,7 +131,6 @@ var ASSETS = [
   './assets/achievements/קנייה ראשונה.png',
   './assets/achievements/תורם מילים.png',
   './jocker.PNG',
-  './assets/rewards/gold coin.png',
   './assets/music/inspire-action.mp3',
   './src/ui/screenPartials.js',
   './src/ui/screenPartialManifest.js',
