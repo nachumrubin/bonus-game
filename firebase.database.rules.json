@@ -147,6 +147,7 @@
       }
     },
     "matchmakingQueue": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "$mode": {
         ".read": "auth != null",
         "$uid": {
@@ -155,6 +156,7 @@
       }
     },
     "presence": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid"

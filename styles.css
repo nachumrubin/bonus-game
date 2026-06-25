@@ -4211,6 +4211,7 @@ button[aria-disabled="true"] {
 .adm-wrap::-webkit-scrollbar{display:none;}
 .adm-header{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0 4px;}
 .adm-header-icon{font-size:36px;line-height:1;}
+.adm-header-img{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(100,180,255,.5));}
 .adm-header-title{font-size:22px;font-weight:900;color:#fff;text-shadow:0 0 18px rgba(255,200,50,.5);}
 .adm-tabs{display:flex;gap:6px;border-bottom:1px solid rgba(0,180,255,.2);padding-bottom:0;}
 .adm-tab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;padding:8px 4px 9px;cursor:pointer;transition:color .15s,border-color .15s;font-family:inherit;}
