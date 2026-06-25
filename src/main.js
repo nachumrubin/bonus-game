@@ -2244,15 +2244,20 @@ async function boot() {
       const monthAgo = now - 30 * 24 * 3600_000;
       const onlineThreshold = now - 5 * 60 * 1000; // 5-minute heartbeat window
 
-      // /globalRatings is publicly readable. /presence and /matchmakingQueue
-      // are readable by any authenticated user — no new rules needed.
-      const [ratingsSnap, suggSnap, approvedSnap, rejectedSnap, presenceSnap, queueSnap] = await Promise.all([
+      // Core reads — all have top-level read rules, so these must all succeed.
+      const [ratingsSnap, suggSnap, approvedSnap, rejectedSnap] = await Promise.all([
         db.ref('globalRatings').get(),
         db.ref('dictionarySuggestions').get(),
         db.ref('dictionaryApproved').get(),
         db.ref('dictionaryRejected').get(),
-        db.ref('presence').get(),
-        db.ref('matchmakingQueue').get(),
+      ]);
+
+      // Optional reads — top-level read only allowed for admins (rules added).
+      // Each is individually guarded so a transient permission error on one
+      // doesn't break the entire stats load.
+      const [presenceSnap, queueSnap] = await Promise.all([
+        db.ref('presence').get().catch(() => null),
+        db.ref('matchmakingQueue').get().catch(() => null),
       ]);
 
       // Players from globalRatings
