@@ -146,39 +146,6 @@
       </div>
     </div>
 
-    <!-- ── Section 5: Dictionary management (admin-only) ── -->
-    <div id="dict-mgmt-panel" class="sett-section" style="display:none">
-      <div class="sett-sec-hdr">
-        <div class="sett-sec-line"></div>
-        <span class="sett-sec-lbl">📚 ניהול מילון <span class="sett-info">i<span class="sett-tip">הוסף מילה חדשה למילון או הסר מילה קיימת. השינוי מיידי</span></span></span>
-        <div class="sett-sec-line"></div>
-      </div>
-
-      <div class="sett-dict-card sett-dict-card--add">
-        <div class="sett-dict-card-hdr">➕ הוסף למילון</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;">הוספה למילון</div>
-        <input id="dict-word-input" class="sett-dict-input" type="text" maxlength="120"
-          placeholder="הכנס מילה / מילים מופרדות בפסיק"
-          data-gm-placeholder="הכנס מילה / מילים מופרדות בפסיק"
-          data-gf-placeholder="הכניסי מילה / מילים מופרדות בפסיק"
-          oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
-        <button onclick="suggestDictionaryWord()" class="sett-dict-btn sett-dict-btn--add" data-gm="הוסף למילון" data-gf="הוסיפי למילון">הוסף למילון</button>
-        <div id="dict-word-status" class="sett-dict-status"></div>
-      </div>
-
-      <div class="sett-dict-card sett-dict-card--remove">
-        <div class="sett-dict-card-hdr">🗑 הסר מהמילון</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:6px;">הסרה מהמילון</div>
-        <input id="dict-remove-input" class="sett-dict-input" type="text" maxlength="120"
-          placeholder="הכנס מילה / מילים מופרדות בפסיק"
-          data-gm-placeholder="הכנס מילה / מילים מופרדות בפסיק"
-          data-gf-placeholder="הכניסי מילה / מילים מופרדות בפסיק"
-          oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
-        <button onclick="suggestDictionaryRemoval()" class="sett-dict-btn sett-dict-btn--remove" data-gm="הסר מהמילון" data-gf="הסירי מהמילון">הסר מהמילון</button>
-        <div id="dict-remove-status" class="sett-dict-status"></div>
-      </div>
-    </div>
-
     <!-- ── Footer ────────────────────────────────────── -->
     <div class="ovbtns sett-footer">
       <button class="ovb p sett-confirm-btn" onclick="ovClose('ov-settings')">אישור ✓</button>

@@ -9,7 +9,7 @@ export const SCREEN_IDS = Object.freeze([
   'sh', 'ss', 'sg', 'so', 'scoin',
   'sprofile', 'sfriends', 'snotif', 'schamps',
   'sauth-signup', 'sauth-login', 'sav-gallery', 'savatar-store', 'sstats',
-  'smygames',
+  'smygames', 'sadmin',
 ]);
 
 // State held across calls so a stale menu-enter timer from a previous

@@ -228,32 +228,85 @@ The settings overlay has **two** close affordances, both with `onclick="ovClose(
 
 `settingsScreen.js` wires **all** matching buttons via `overlay.querySelectorAll('button[onclick="ovClose(\'ov-settings\')"]')` (not just the first) so each emits `SETTINGS_INTENT.CLOSE` and hides the overlay. If you add another close control, give it the same `onclick` and it will be wired automatically.
 
-### Settings Screen — Dictionary Management Panel (admin-only, direct-action)
+### Settings Screen — Dictionary Management Panel
 
-```
-#dict-mgmt-panel       — entire admin-only panel. Hidden (display:none) by default;
-                          main.js setDictMgmtVisible() reveals it when admins/{uid}===true.
-#dict-word-input       — add input
-#dict-word-status      — add status line
-#dict-remove-input     — remove input
-#dict-remove-status    — remove status line
-```
+The `#dict-mgmt-panel` admin-only section (direct add/remove words) was **removed from settings in June 2026** and moved to the dedicated Admin screen (`#sadmin`). Settings no longer has any admin-specific section; the settings overlay is the same for all users.
 
-Button selectors (DOM rewired by `dictionaryScreen.js` `patchClick`):
-
-```
-button[onclick="suggestDictionaryWord()"]      — emits DICT_INTENT.SUBMIT_SUGGEST (now does direct add)
-button[onclick="suggestDictionaryRemoval()"]   — emits DICT_INTENT.SUBMIT_REMOVAL (now does direct remove)
-```
-
-The `suggestDictionaryWord` / `suggestDictionaryRemoval` function names are historical from when these triggered the suggest→review flow. They now trigger direct add/remove via main.js handlers that call `addWordsToDictionary` / `removeWordsFromDictionary`.
-
-Do not move the inputs/buttons outside `#dict-mgmt-panel` — the visibility check is what enforces admin-only access; pulling a child input outside the panel would leak it to all users.
-
-Removed June 2026:
+Removed June 2026 from settings:
 - `#btn-dict-advanced` (admin-queue entry point — flow collapsed into direct action).
 - Overlays `#ov-dict-login` / `#ov-dict-admin` / `#ov-dict-confirm` (legacy review-queue UI).
 - Bus intents/renders `DICT_INTENT.OPEN_ADMIN_LOGIN` / `ADMIN_SIGN_IN` / `ADMIN_SIGN_OUT` / `ADMIN_CLOSE` / `ADMIN_APPROVE` / `ADMIN_REJECT` / `ADMIN_CONFIRM` / `ADMIN_CANCEL` and `DICT_RENDER.ADMIN_LOGIN_ERROR` / `ADMIN_OPEN` / `ADMIN_RENDER` / `ADMIN_CONFIRM`.
+- `#dict-mgmt-panel`, `#dict-word-input`, `#dict-word-status`, `#dict-remove-input`, `#dict-remove-status`, `setDictMgmtVisible()`.
+
+---
+
+### Admin Screen (`#sadmin`, June 2026)
+
+Source: `partials/screens/admin-screen.html`, `src/ui/screens/adminScreen.js`
+
+Admin-only monitoring and management screen. Access via `#topbar-admin-btn` in the global topbar (hidden for non-admins; shown when `admins/{uid}===true`). Screen ID `sadmin` in `SCREEN_IDS`.
+
+```
+#topbar-admin-btn      — topbar admin button (display:none by default; shown by setAdminBtnVisible() in main.js)
+#sadmin                — admin screen container
+```
+
+Three tabs (wired by `adminScreen.js` `switchTab()`):
+
+**Tab: סטטיסטיקות (stats)**
+```
+#adm-stat-total        — total registered players card value
+#adm-stat-week         — players active this week card value
+#adm-stat-month        — players active this month card value
+#adm-stat-pending      — pending word suggestions card value
+#adm-health-approved   — approved words count
+#adm-health-blocked    — blocked words count
+#adm-tier-bronze       — bronze tier player count
+#adm-tier-silver       — silver tier player count
+#adm-tier-gold         — gold tier player count
+#adm-tier-diamond      — diamond tier player count
+#adm-refresh-btn       — emits ADMIN_INTENT.LOAD to re-fetch all data
+```
+
+**Tab: שחקנים (players)**
+```
+#adm-players-loading   — loading spinner (hidden when data arrives)
+#adm-players-table     — player table wrapper
+#adm-players-body      — <tbody> painted by paintPlayers()
+```
+
+**Tab: מילים (words)**
+```
+#adm-sugg-loading      — loading spinner
+#adm-sugg-empty        — "no pending suggestions" message
+#adm-sugg-list         — list of .adm-sugg-row elements; click delegation reads data-key/data-action
+#adm-dict-word-input   — direct-add word input
+#adm-dict-word-status  — direct-add status text
+#adm-dict-add-btn      — emits DICT_INTENT.SUBMIT_SUGGEST
+#adm-dict-remove-input — direct-remove word input
+#adm-dict-remove-status — direct-remove status text
+#adm-dict-remove-btn   — emits DICT_INTENT.SUBMIT_REMOVAL
+```
+
+Back button:
+```
+#adm-back-btn          — emits ADMIN_INTENT.BACK → main.js calls showLegacyScreen('sh')
+```
+
+Bus events (exported from `adminScreen.js`):
+```javascript
+ADMIN_INTENT.LOAD                — fetch data from Firebase; handled in main.js
+ADMIN_INTENT.APPROVE_SUGGESTION  — { key, word, type }; handled in main.js
+ADMIN_INTENT.REJECT_SUGGESTION   — { key }; handled in main.js
+ADMIN_INTENT.BACK                — navigate to home screen
+ADMIN_RENDER.DATA                — { totalPlayers, activeThisWeek, activeThisMonth,
+                                     tierCounts, pendingSuggestionsCount,
+                                     approvedCount, blockedCount,
+                                     players, suggestions }
+ADMIN_RENDER.SUGGESTION_DONE     — triggers ADMIN_INTENT.LOAD to refresh suggestions list
+```
+
+CSS: `.adm-*` classes in `styles.css`.
 
 ---
 

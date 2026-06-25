@@ -2,6 +2,37 @@
 
 ---
 
+## Admin monitoring dashboard — June 2026
+
+Added a dedicated admin panel (`#sadmin`) with app-usage statistics, a full
+player table, and a word-suggestion approval workflow. The dictionary
+management controls (direct add/remove words) were moved from the Settings
+overlay into this new screen, and the Settings overlay `#dict-mgmt-panel`
+section was removed entirely.
+
+- `partials/screens/admin-screen.html` — new admin screen with 3 tabs:
+  Stats, Players (full `/globalRatings` table), and Words (pending
+  suggestions approval + direct add/remove).
+- `src/ui/screens/adminScreen.js` — `mountAdminScreen()` controller;
+  exports `ADMIN_INTENT` and `ADMIN_RENDER` bus events.
+- `index.html` — `#topbar-admin-btn` (👑) added to global topbar, hidden by
+  default; shown via `setAdminBtnVisible()` when `admins/{uid}===true`.
+- `src/ui/screens/menuScreen.js` — `MENU_INTENT.OPEN_ADMIN` added; wired to
+  `#topbar-admin-btn` in `TOPBAR_BUTTONS`.
+- `src/ui/screens/screenTransitions.js` — `'sadmin'` added to `SCREEN_IDS`.
+- `src/ui/screenPartialManifest.js` — admin partial registered.
+- `partials/screens/settings.html` — removed Section 5 `#dict-mgmt-panel`
+  (all admin-only dict inputs moved to the admin screen).
+- `src/main.js` — added `ADMIN_INTENT.{LOAD, APPROVE_SUGGESTION,
+  REJECT_SUGGESTION, BACK}` handlers; Firebase reads across `/globalRatings`,
+  `/dictionarySuggestions`, `/dictionaryApproved`, `/dictionaryRejected`;
+  replaced `setDictMgmtVisible()` with `setAdminBtnVisible()`.
+- `styles.css` — all `.adm-*` layout and component classes added.
+- `docs-md/docs/ui-rules.md` — documented new `#sadmin` screen IDs; removed
+  stale `#dict-mgmt-panel` section.
+
+---
+
 ## Coin-balance safety cap — June 2026
 
 Added a hard ceiling on coin balances after a profile was found holding

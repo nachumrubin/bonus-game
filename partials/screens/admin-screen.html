@@ -1,0 +1,121 @@
+<!-- ADMIN SCREEN -->
+<div id="sadmin" class="screen hidden" dir="rtl">
+  <div class="adm-wrap">
+
+    <!-- Header -->
+    <div class="adm-header">
+      <div class="adm-header-icon">👑</div>
+      <div class="adm-header-title">פאנל ניהול</div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="adm-tabs" role="tablist">
+      <button class="adm-tab adm-tab--active" data-adm-tab="stats" role="tab" aria-selected="true">📊 סטטיסטיקות</button>
+      <button class="adm-tab" data-adm-tab="players" role="tab" aria-selected="false">👥 שחקנים</button>
+      <button class="adm-tab" data-adm-tab="words" role="tab" aria-selected="false">📚 מילים</button>
+    </div>
+
+    <!-- ── Stats Panel ─────────────────────────────── -->
+    <div id="adm-panel-stats" class="adm-panel" role="tabpanel">
+
+      <div class="adm-stat-grid">
+        <div class="adm-stat-card">
+          <div class="adm-stat-val" id="adm-stat-total">—</div>
+          <div class="adm-stat-lbl">שחקנים רשומים</div>
+        </div>
+        <div class="adm-stat-card">
+          <div class="adm-stat-val" id="adm-stat-week">—</div>
+          <div class="adm-stat-lbl">פעילים השבוע</div>
+        </div>
+        <div class="adm-stat-card">
+          <div class="adm-stat-val" id="adm-stat-month">—</div>
+          <div class="adm-stat-lbl">פעילים החודש</div>
+        </div>
+        <div class="adm-stat-card">
+          <div class="adm-stat-val" id="adm-stat-pending">—</div>
+          <div class="adm-stat-lbl">הצעות ממתינות</div>
+        </div>
+      </div>
+
+      <!-- Dictionary health -->
+      <div class="adm-sec-hdr">בריאות המילון</div>
+      <div class="adm-dict-health">
+        <div class="adm-health-item adm-health-item--approved">
+          <span class="adm-health-val" id="adm-health-approved">—</span>
+          <span class="adm-health-lbl">מילים אושרו</span>
+        </div>
+        <div class="adm-health-item adm-health-item--blocked">
+          <span class="adm-health-val" id="adm-health-blocked">—</span>
+          <span class="adm-health-lbl">מילים חסומות</span>
+        </div>
+      </div>
+
+      <!-- Tier distribution -->
+      <div class="adm-sec-hdr">התפלגות דירוגים</div>
+      <div class="adm-tier-row" id="adm-tier-row">
+        <div class="adm-tier-pill adm-tier--bronze"><span id="adm-tier-bronze">—</span> 🪙</div>
+        <div class="adm-tier-pill adm-tier--silver"><span id="adm-tier-silver">—</span> 🥈</div>
+        <div class="adm-tier-pill adm-tier--gold"><span id="adm-tier-gold">—</span> 🥇</div>
+        <div class="adm-tier-pill adm-tier--diamond"><span id="adm-tier-diamond">—</span> 💎</div>
+      </div>
+
+      <div class="adm-refresh-row">
+        <button id="adm-refresh-btn" class="adm-refresh-btn">⟳ רענן נתונים</button>
+        <span id="adm-last-refresh" class="adm-last-refresh"></span>
+      </div>
+    </div>
+
+    <!-- ── Players Panel ───────────────────────────── -->
+    <div id="adm-panel-players" class="adm-panel" role="tabpanel" style="display:none">
+      <div id="adm-players-loading" class="adm-loading">טוען שחקנים...</div>
+      <table class="adm-table" id="adm-players-table" style="display:none">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>שם</th>
+            <th>דירוג</th>
+            <th>עדכון אחרון</th>
+          </tr>
+        </thead>
+        <tbody id="adm-players-body"></tbody>
+      </table>
+    </div>
+
+    <!-- ── Words Panel ─────────────────────────────── -->
+    <div id="adm-panel-words" class="adm-panel" role="tabpanel" style="display:none">
+
+      <!-- Pending suggestions -->
+      <div class="adm-sec-hdr">הצעות ממתינות לאישור</div>
+      <div id="adm-sugg-loading" class="adm-loading">טוען הצעות...</div>
+      <div id="adm-sugg-empty" class="adm-empty" style="display:none">אין הצעות ממתינות ✓</div>
+      <div id="adm-sugg-list"></div>
+
+      <!-- Direct add / remove (moved from settings) -->
+      <div class="adm-sec-hdr" style="margin-top:18px">ניהול מילון ישיר</div>
+
+      <div class="adm-dict-card adm-dict-card--add">
+        <div class="adm-dict-card-hdr">➕ הוסף למילון</div>
+        <input id="adm-dict-word-input" class="sett-dict-input" type="text" maxlength="120"
+          placeholder="מילה / מילים מופרדות בפסיק"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
+        <button id="adm-dict-add-btn" class="sett-dict-btn sett-dict-btn--add">הוסף ✓</button>
+        <div id="adm-dict-word-status" class="sett-dict-status"></div>
+      </div>
+
+      <div class="adm-dict-card adm-dict-card--remove">
+        <div class="adm-dict-card-hdr">🗑 הסר מהמילון</div>
+        <input id="adm-dict-remove-input" class="sett-dict-input" type="text" maxlength="120"
+          placeholder="מילה / מילים מופרדות בפסיק"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
+        <button id="adm-dict-remove-btn" class="sett-dict-btn sett-dict-btn--remove">הסר ✕</button>
+        <div id="adm-dict-remove-status" class="sett-dict-status"></div>
+      </div>
+    </div>
+
+    <!-- Back button -->
+    <button id="adm-back-btn" class="adm-back-btn">← חזרה לבית</button>
+
+  </div>
+</div>
