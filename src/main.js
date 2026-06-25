@@ -2289,7 +2289,10 @@ async function boot() {
       const approvedVal = approvedSnap?.val ? approvedSnap.val() ?? {} : {};
       const rejectedVal = rejectedSnap?.val ? rejectedSnap.val() ?? {} : {};
       const approvedWords = Object.keys(approvedVal).sort();
-      const blockedWords  = Object.keys(rejectedVal).sort();
+      // /dictionaryRejected uses push() so keys are push IDs — extract word from each entry.
+      const blockedWords = Object.values(rejectedVal)
+        .map((e) => (typeof e === 'string' ? e : e?.word ?? e?.normalizedWord ?? ''))
+        .filter(Boolean).sort();
       const approvedCount = approvedWords.length;
       const blockedCount  = blockedWords.length;
 
