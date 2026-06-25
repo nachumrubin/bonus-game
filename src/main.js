@@ -2290,8 +2290,13 @@ async function boot() {
       const rejectedVal = rejectedSnap?.val ? rejectedSnap.val() ?? {} : {};
       const approvedWords = Object.keys(approvedVal).sort();
       // /dictionaryRejected uses push() so keys are push IDs — extract word from each entry.
+      // Apply Hebrew-only filter so legacy string values or malformed entries
+      // (e.g. push IDs stored as values) are stripped rather than displayed.
       const blockedWords = Object.values(rejectedVal)
-        .map((e) => (typeof e === 'string' ? e : e?.word ?? e?.normalizedWord ?? ''))
+        .map((e) => {
+          const raw = typeof e === 'string' ? e : (e?.word ?? e?.normalizedWord ?? '');
+          return String(raw ?? '').replace(/[^א-ת]/g, '').trim();
+        })
         .filter(Boolean).sort();
       const approvedCount = approvedWords.length;
       const blockedCount  = blockedWords.length;
