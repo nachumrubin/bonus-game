@@ -4203,3 +4203,128 @@ button[aria-disabled="true"] {
 #sprofile:not(.hidden) .pf-btns>:nth-child(2){animation:pf-enter .30s ease both .28s}
 #sprofile:not(.hidden) .pf-btns>:nth-child(3){animation:pf-enter .30s ease both .34s}
 #sprofile:not(.hidden) .pf-btns>:nth-child(4){animation:pf-enter .30s ease both .40s}
+
+/* ── Admin Screen (#sadmin) ────────────────────────────────────────────────── */
+.adm-topbar-icon{font-size:18px;line-height:1;display:block;}
+#sadmin{display:flex;flex-direction:column;align-items:center;padding-top:calc(var(--em-topbar-h,56px) + 8px);box-sizing:border-box;}
+.adm-wrap{width:92%;max-width:420px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;max-height:calc(100svh - var(--em-topbar-h,56px) - 16px);padding-bottom:32px;scrollbar-width:none;}
+.adm-wrap::-webkit-scrollbar{display:none;}
+.adm-header{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0 4px;}
+.adm-header-icon{font-size:36px;line-height:1;}
+.adm-header-title{font-size:22px;font-weight:900;color:#fff;text-shadow:0 0 18px rgba(255,200,50,.5);}
+.adm-tabs{display:flex;gap:6px;border-bottom:1px solid rgba(0,180,255,.2);padding-bottom:0;}
+.adm-tab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.5);font-size:12px;font-weight:700;padding:8px 4px 9px;cursor:pointer;transition:color .15s,border-color .15s;font-family:inherit;}
+.adm-tab.adm-tab--active{color:#fff;border-bottom-color:var(--by,#f5c518);}
+.adm-panel{display:flex;flex-direction:column;gap:10px;}
+.adm-sec-hdr{font-size:11px;font-weight:800;color:rgba(0,220,255,.75);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+.adm-sec-hdr::before,.adm-sec-hdr::after{content:'';flex:1;height:1px;background:rgba(0,180,255,.2);}
+
+/* Stat cards */
+.adm-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.adm-stat-card{background:rgba(0,8,30,.6);border:1px solid rgba(0,145,255,.22);border-radius:12px;padding:14px 10px 10px;text-align:center;display:flex;flex-direction:column;gap:4px;}
+.adm-stat-val{font-size:26px;font-weight:900;color:#fff;line-height:1;}
+.adm-stat-lbl{font-size:11px;color:rgba(255,255,255,.5);font-weight:600;}
+
+/* Dictionary health */
+.adm-dict-health{display:flex;gap:10px;}
+.adm-health-item{flex:1;background:rgba(0,8,30,.5);border:1px solid rgba(0,145,255,.18);border-radius:10px;padding:10px 8px;text-align:center;display:flex;flex-direction:column;gap:3px;}
+.adm-health-item--approved{border-color:rgba(0,200,80,.3);}
+.adm-health-item--blocked{border-color:rgba(220,50,50,.3);}
+.adm-health-val{font-size:20px;font-weight:800;color:#fff;}
+.adm-health-item--approved .adm-health-val{color:#5dfc8c;}
+.adm-health-item--blocked .adm-health-val{color:#ff7070;}
+.adm-health-lbl{font-size:10px;color:rgba(255,255,255,.45);font-weight:600;}
+
+/* Tier distribution */
+.adm-tier-row{display:flex;gap:8px;}
+.adm-tier-pill{flex:1;background:rgba(0,8,30,.55);border:1px solid rgba(0,145,255,.18);border-radius:10px;padding:8px 4px;text-align:center;font-size:12px;font-weight:700;color:#fff;}
+.adm-tier--bronze{border-color:rgba(180,120,40,.4);}
+.adm-tier--silver{border-color:rgba(160,160,180,.35);}
+.adm-tier--gold{border-color:rgba(220,170,30,.4);}
+.adm-tier--diamond{border-color:rgba(100,200,255,.4);}
+
+/* Refresh */
+.adm-refresh-row{display:flex;align-items:center;gap:10px;justify-content:center;}
+.adm-refresh-btn{background:rgba(0,145,255,.18);border:1px solid rgba(0,145,255,.35);border-radius:8px;color:#7ad4ff;font-size:12px;font-weight:700;padding:6px 14px;cursor:pointer;font-family:inherit;}
+.adm-refresh-btn:active{opacity:.7;}
+.adm-last-refresh{font-size:10px;color:rgba(255,255,255,.35);}
+
+/* Players table */
+.adm-loading{text-align:center;color:rgba(255,255,255,.4);font-size:13px;padding:20px 0;}
+.adm-table{width:100%;border-collapse:collapse;font-size:12px;}
+.adm-table th{color:rgba(0,220,255,.7);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid rgba(0,180,255,.2);text-align:right;}
+.adm-table td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.05);color:rgba(255,255,255,.85);}
+.adm-table tr:hover td{background:rgba(0,145,255,.06);}
+.adm-rank{color:rgba(255,255,255,.35);font-size:11px;width:28px;}
+.adm-player-name{font-weight:700;}
+.adm-rating{font-weight:800;color:#7ad4ff;}
+.adm-date{color:rgba(255,255,255,.45);font-size:11px;}
+.adm-date--recent{color:#5dfc8c;}
+
+/* Suggestions list */
+.adm-empty{text-align:center;color:rgba(255,255,255,.4);font-size:13px;padding:16px 0;}
+.adm-sugg-row{background:rgba(0,8,30,.6);border:1px solid rgba(0,145,255,.2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;}
+.adm-sugg-row+.adm-sugg-row{margin-top:6px;}
+.adm-sugg--add{border-color:rgba(0,200,80,.25);}
+.adm-sugg--remove{border-color:rgba(220,50,50,.25);}
+.adm-sugg-word{font-size:18px;font-weight:900;color:#fff;}
+.adm-sugg-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.adm-sugg-type{font-size:11px;font-weight:700;background:rgba(0,145,255,.18);border-radius:6px;padding:2px 7px;color:#7ad4ff;}
+.adm-sugg--add .adm-sugg-type{background:rgba(0,200,80,.15);color:#5dfc8c;}
+.adm-sugg--remove .adm-sugg-type{background:rgba(220,50,50,.15);color:#ff7070;}
+.adm-sugg-voters{font-size:11px;color:rgba(255,255,255,.45);}
+.adm-sugg-date{font-size:11px;color:rgba(255,255,255,.3);}
+.adm-sugg-actions{display:flex;gap:8px;}
+.adm-sugg-approve,.adm-sugg-reject{flex:1;border:none;border-radius:8px;font-size:12px;font-weight:800;padding:7px 0;cursor:pointer;font-family:inherit;transition:opacity .12s;}
+.adm-sugg-approve{background:linear-gradient(180deg,#2a8a4a,#1a5a30);color:#fff;}
+.adm-sugg-reject{background:linear-gradient(180deg,#8a2a2a,#5a1a1a);color:#fff;}
+.adm-sugg-approve:active,.adm-sugg-reject:active{opacity:.7;}
+
+/* Direct dict-mgmt cards */
+.adm-dict-card{background:rgba(0,8,30,.55);border:1px solid rgba(0,145,255,.2);border-radius:10px;padding:12px;}
+.adm-dict-card+.adm-dict-card{margin-top:8px;}
+.adm-dict-card--add{border-color:rgba(0,200,80,.25);}
+.adm-dict-card--remove{border-color:rgba(220,50,50,.25);}
+.adm-dict-card-hdr{font-size:12px;font-weight:800;color:rgba(255,255,255,.7);margin-bottom:8px;}
+
+/* Back button */
+.adm-back-btn{background:rgba(0,145,255,.15);border:1px solid rgba(0,145,255,.3);border-radius:10px;color:#7ad4ff;font-size:13px;font-weight:700;padding:10px 0;cursor:pointer;font-family:inherit;width:100%;margin-top:4px;}
+.adm-back-btn:active{opacity:.7;}
+
+/* Online / queue stat card accents */
+.adm-stat-card--online{border-color:rgba(0,220,100,.3);}
+.adm-stat-card--online .adm-stat-val{color:#5dfc8c;}
+.adm-stat-card--queue{border-color:rgba(255,200,50,.25);}
+.adm-stat-card--queue .adm-stat-val{color:var(--by,#f5c518);}
+
+/* Top 10 leaderboard */
+.adm-top10{display:flex;flex-direction:column;gap:4px;}
+.adm-top10-row{display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(0,8,30,.5);border:1px solid rgba(0,145,255,.15);border-radius:9px;}
+.adm-top10-medal{font-size:16px;width:26px;text-align:center;flex-shrink:0;}
+.adm-top10-name{flex:1;font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.adm-top10-rating{font-size:13px;font-weight:800;color:#7ad4ff;flex-shrink:0;}
+
+/* Player search */
+.adm-search-row{width:100%;}
+.adm-search-input{width:100%;box-sizing:border-box;background:rgba(0,8,30,.6);border:1px solid rgba(0,145,255,.3);border-radius:10px;color:#fff;font-size:13px;padding:9px 12px;font-family:inherit;outline:none;direction:rtl;}
+.adm-search-input::placeholder{color:rgba(255,255,255,.35);}
+.adm-search-input:focus{border-color:rgba(0,145,255,.6);}
+
+/* Suggestion filter buttons */
+.adm-sugg-filters{display:flex;gap:6px;}
+.adm-filter-btn{flex:1;background:rgba(0,8,30,.5);border:1px solid rgba(0,145,255,.2);border-radius:8px;color:rgba(255,255,255,.55);font-size:11px;font-weight:700;padding:6px 4px;cursor:pointer;font-family:inherit;transition:color .15s,border-color .15s,background .15s;}
+.adm-filter-btn--active{background:rgba(0,145,255,.18);border-color:rgba(0,145,255,.5);color:#fff;}
+.adm-filter-btn--add.adm-filter-btn--active{background:rgba(0,200,80,.15);border-color:rgba(0,200,80,.4);color:#5dfc8c;}
+.adm-filter-btn--remove.adm-filter-btn--active{background:rgba(220,50,50,.15);border-color:rgba(220,50,50,.35);color:#ff7070;}
+
+/* Bulk approve bar */
+.adm-bulk-bar{display:flex;align-items:center;gap:10px;background:rgba(0,145,255,.1);border:1px solid rgba(0,145,255,.2);border-radius:10px;padding:8px 12px;}
+.adm-select-all-label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:rgba(255,255,255,.7);cursor:pointer;user-select:none;}
+.adm-bulk-approve-btn{margin-right:auto;background:linear-gradient(180deg,#2a8a4a,#1a5a30);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:800;padding:6px 14px;cursor:pointer;font-family:inherit;transition:opacity .12s;}
+.adm-bulk-approve-btn:disabled{opacity:.4;cursor:default;}
+.adm-bulk-approve-btn:not(:disabled):active{opacity:.7;}
+
+/* Suggestion row with checkbox */
+.adm-sugg-top{display:flex;align-items:center;gap:8px;}
+.adm-sugg-cb-wrap{display:flex;align-items:center;cursor:pointer;flex-shrink:0;}
+.adm-sugg-cb-wrap input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:#5dfc8c;}

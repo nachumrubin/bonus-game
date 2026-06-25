@@ -45,5 +45,6 @@ export const SCREEN_PARTIALS = [
   './partials/screens/async-games-screen.html',
   './partials/screens/avatar-unlock-overlay.html',
   './partials/screens/guest-upgrade-overlay.html',
-  './partials/screens/onboarding-overlay.html'
+  './partials/screens/onboarding-overlay.html',
+  './partials/screens/admin-screen.html',
 ];

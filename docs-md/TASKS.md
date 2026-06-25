@@ -38,6 +38,21 @@
   (replaced the emoji), precached in `sw.js`. The favorite-letter card keeps its
   dynamic Hebrew-letter glyph, so no static icon was needed there.
 
+## Admin monitoring dashboard — June 2026
+
+- [x] `#topbar-admin-btn` in global topbar (visible only to admins)
+- [x] `#sadmin` screen — 3-tab admin panel (Stats / Players / Words)
+- [x] Stats tab: total players, active this week/month, tier distribution,
+  dictionary health (approved/blocked counts), pending suggestions count
+- [x] Players tab: full `/globalRatings` table sorted by rating descending
+- [x] Words tab: pending suggestion approval (Approve ✓ / Reject ✕ per row)
+  + direct add/remove inputs (moved from Settings overlay)
+- [x] Removed `#dict-mgmt-panel` from Settings; `setDictMgmtVisible()` replaced
+  by `setAdminBtnVisible()` in main.js
+- [ ] **Polish:** consider adding pagination or virtual scrolling for large player
+  tables (> 500 rows)
+- [ ] **Polish:** add search/filter to the players tab
+
 ## Dictionary suggestions + word_contributor achievement — June 2026
 
 - [x] Raise app loading intro time to ≥10 s (was 6 s)
@@ -48,8 +63,7 @@
 - [x] Settings section "💡 הצע מילה למילון" (`#user-suggest-panel`) with input + status
 - [x] `wordsAccepted` stat added to `EMPTY_STATS` in `profileService.js`
 - [x] `word_contributor` achievement (20 accepted suggestions → 250 coins, gold tier)
-- [ ] **Hardening:** admin UI to list/review pending suggestions from `/dictionarySuggestions`
-  (current admin flow still direct-add; suggestions are credited retroactively when a word matches)
+- [x] Admin UI to list/review pending suggestions (now in the admin screen Words tab)
 - [ ] **Hardening:** prevent a user from spamming suggestions to farm the achievement —
   consider rate-limiting per-session or a daily cap on submissions
 

@@ -108,6 +108,7 @@ import { runInviteFlow, INVITE_REQUIRED } from './ui/inviteFriends.js';
 import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
 import { mountChampionsScreen, CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR } from './ui/screens/championsScreen.js';
 import { mountDictionaryScreen, DICT_INTENT, DICT_RENDER } from './ui/screens/dictionaryScreen.js';
+import { mountAdminScreen, ADMIN_INTENT, ADMIN_RENDER } from './ui/screens/adminScreen.js';
 import { mountTutorialScreen, TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_CLOSE, TUTORIAL_TIP, TUTORIAL_CLEAR } from './ui/screens/tutorialScreen.js';
 import { mountJokerPicker, JOKER_INTENT } from './ui/screens/jokerPicker.js';
 import { mountEndGameScreen,    END_INTENT,        END_OPEN }        from './ui/screens/endGameScreen.js';
@@ -558,29 +559,25 @@ async function boot() {
     activePresenceHandle = null;
     activePresenceUid = null;
     sessionPersistence.clearActiveOnlineSession(globalThis.localStorage);
-    setDictMgmtVisible(false);
+    setAdminBtnVisible(false);
     setUserSuggestVisible(false);
   }
 
-  // /admins/{uid} controls whether the settings overlay surfaces the
-  // הגדרות מתקדמות button. We check on every auth boot (the read itself
-  // is gated by the same `.read: auth != null` rule).
+  // Check /admins/{uid} once per auth event and show/hide the admin topbar button.
   async function refreshAdminUiFor(uid) {
-    if (!uid || !activeFbDb) { setDictMgmtVisible(false); return; }
+    if (!uid || !activeFbDb) { setAdminBtnVisible(false); return; }
     try {
       const snap = await activeFbDb.ref(`admins/${uid}`).get();
-      setDictMgmtVisible(snap?.exists?.() === true && snap.val() === true);
+      setAdminBtnVisible(snap?.exists?.() === true && snap.val() === true);
     } catch (e) {
       console.warn('[spine] admin lookup failed', e);
-      setDictMgmtVisible(false);
+      setAdminBtnVisible(false);
     }
   }
-  // Toggle the entire dictionary-management panel (add + remove suggestion
-  // inputs plus the admin-only הגדרות מתקדמות button). Non-admins see no
-  // panel at all; the dictionary word-check panel above it stays visible to all.
-  function setDictMgmtVisible(visible) {
-    const panel = globalThis.document?.getElementById?.('dict-mgmt-panel');
-    if (panel) panel.style.display = visible ? '' : 'none';
+
+  function setAdminBtnVisible(visible) {
+    const btn = globalThis.document?.getElementById?.('topbar-admin-btn');
+    if (btn) btn.style.display = visible ? '' : 'none';
   }
 
   // Show/hide the user word-suggestion panel — visible for any authenticated
@@ -919,6 +916,10 @@ async function boot() {
     });
     bus.on(MENU_INTENT.OPEN_NOTIFICATIONS, () => {
       showLegacyScreen('snotif');
+    });
+    bus.on(MENU_INTENT.OPEN_ADMIN, () => {
+      showLegacyScreen('sadmin');
+      bus.emit(ADMIN_INTENT.LOAD, {});
     });
     bus.on(MENU_INTENT.TOPBAR_MUSIC, () => {
       audioService.toggle();
@@ -2229,6 +2230,145 @@ async function boot() {
   function firebaseTimestamp() {
     return activeFbServerTimestamp?.() ?? Date.now();
   }
+
+  // ── Admin screen handlers ────────────────────────────────────────────────
+
+  bus.on(ADMIN_INTENT.BACK, () => { showLegacyScreen('sh'); });
+
+  bus.on(ADMIN_INTENT.LOAD, async () => {
+    const db = await getDictionaryDb();
+    if (!db) return;
+    try {
+      const now = Date.now();
+      const weekAgo  = now - 7  * 24 * 3600_000;
+      const monthAgo = now - 30 * 24 * 3600_000;
+      const onlineThreshold = now - 5 * 60 * 1000; // 5-minute heartbeat window
+
+      // /globalRatings is publicly readable. /presence and /matchmakingQueue
+      // are readable by any authenticated user — no new rules needed.
+      const [ratingsSnap, suggSnap, approvedSnap, rejectedSnap, presenceSnap, queueSnap] = await Promise.all([
+        db.ref('globalRatings').get(),
+        db.ref('dictionarySuggestions').get(),
+        db.ref('dictionaryApproved').get(),
+        db.ref('dictionaryRejected').get(),
+        db.ref('presence').get(),
+        db.ref('matchmakingQueue').get(),
+      ]);
+
+      // Players from globalRatings
+      const ratingsVal = ratingsSnap?.val ? ratingsSnap.val() ?? {} : {};
+      const players = Object.values(ratingsVal)
+        .map((p) => ({ uid: p.uid ?? '', name: p.name ?? '', rating: p.rating ?? 0, updatedAt: p.updatedAt ?? 0 }))
+        .sort((a, b) => b.rating - a.rating);
+
+      const totalPlayers    = players.length;
+      const activeThisWeek  = players.filter((p) => p.updatedAt > weekAgo).length;
+      const activeThisMonth = players.filter((p) => p.updatedAt > monthAgo).length;
+
+      // Tier counts
+      const tierCounts = { bronze: 0, silver: 0, gold: 0, diamond: 0 };
+      for (const p of players) {
+        const r = p.rating ?? 0;
+        if (r >= 1200)      tierCounts.diamond++;
+        else if (r >= 950)  tierCounts.gold++;
+        else if (r >= 800)  tierCounts.silver++;
+        else                tierCounts.bronze++;
+      }
+
+      // Word suggestions
+      const suggVal = suggSnap?.val ? suggSnap.val() ?? {} : {};
+      const suggestions = Object.entries(suggVal).map(([key, s]) => ({ key, ...s }));
+      const pendingCount = suggestions.filter((s) => s.status === 'pending').length;
+
+      // Dictionary health
+      const approvedVal = approvedSnap?.val ? approvedSnap.val() ?? {} : {};
+      const rejectedVal = rejectedSnap?.val ? rejectedSnap.val() ?? {} : {};
+      const approvedCount = Object.keys(approvedVal).length;
+      const blockedCount  = Object.keys(rejectedVal).length;
+
+      // Online now: presence entries with connected===true OR lastSeen within the heartbeat window
+      const presenceVal = presenceSnap?.val ? presenceSnap.val() ?? {} : {};
+      const onlineNow = Object.values(presenceVal).filter((p) =>
+        p?.connected === true || (typeof p?.lastSeen === 'number' && p.lastSeen > onlineThreshold)
+      ).length;
+
+      // Queue depth: count all uid entries across all modes in matchmakingQueue
+      const queueVal = queueSnap?.val ? queueSnap.val() ?? {} : {};
+      const queueDepth = Object.values(queueVal).reduce((acc, mode) => {
+        return acc + (mode && typeof mode === 'object' ? Object.keys(mode).length : 0);
+      }, 0);
+
+      bus.emit(ADMIN_RENDER.DATA, {
+        totalPlayers,
+        activeThisWeek,
+        activeThisMonth,
+        pendingCount,
+        approvedCount,
+        blockedCount,
+        tierCounts,
+        onlineNow,
+        queueDepth,
+        players,
+        suggestions,
+        loadedAt: now,
+      });
+    } catch (e) {
+      console.warn('[spine] admin load', e);
+    }
+  });
+
+  bus.on(ADMIN_INTENT.APPROVE_SUGGESTION, async ({ key, word, type } = {}) => {
+    if (!word || !key) return;
+    const db = await getDictionaryDb();
+    if (!db) return;
+    try {
+      if (type === 'remove') {
+        // Approve a removal suggestion → directly remove the word
+        const result = await dictionaryService.removeWordsFromDictionary(db, {
+          words: [word],
+          isValidWord: (w) => hebrewDictionary.isValid?.(w) ?? false,
+          serverTimestamp: () => firebaseTimestamp(),
+        });
+        if (result.ok) {
+          for (const w of result.removed) {
+            hebrewDictionary.BLOCKED_OVERLAY.add(w);
+            hebrewDictionary.DICT.delete(w);
+          }
+          await awardSuggestionCreditsForWords(db, [word], 'remove');
+        }
+      } else {
+        // Approve an add suggestion → directly add the word
+        const result = await dictionaryService.addWordsToDictionary(db, {
+          words: [word],
+          serverTimestamp: () => firebaseTimestamp(),
+        });
+        if (result.ok) {
+          for (const w of result.added) {
+            hebrewDictionary.DICT.add(w);
+            hebrewDictionary.BLOCKED_OVERLAY.delete(w);
+          }
+          await awardSuggestionCreditsForWords(db, [word], 'add');
+        }
+      }
+      bus.emit(ADMIN_RENDER.SUGGESTION_DONE, {});
+    } catch (e) {
+      console.warn('[spine] admin approve suggestion', e);
+    }
+  });
+
+  bus.on(ADMIN_INTENT.REJECT_SUGGESTION, async ({ key } = {}) => {
+    if (!key) return;
+    const db = await getDictionaryDb();
+    if (!db) return;
+    try {
+      await db.ref(`dictionarySuggestions/${key}/status`).set('rejected');
+      bus.emit(ADMIN_RENDER.SUGGESTION_DONE, {});
+    } catch (e) {
+      console.warn('[spine] admin reject suggestion', e);
+    }
+  });
+
+  // ── End admin screen handlers ────────────────────────────────────────────
 
   // Merge admin-approved words from Firebase into the local dictionary.
   // Must wait for BOTH Firebase init (otherwise activeFbDb is null) AND the
@@ -3789,6 +3929,7 @@ async function boot() {
   mountNotifBanner({ bus });
   const championsScreen    = mountChampionsScreen({ bus });
   const dictionaryScreen   = mountDictionaryScreen({ bus });
+  const adminScreen        = mountAdminScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });
   const onboarding         = mountOnboardingController({ bus, storage: globalThis.localStorage, getUid: () => activeFbCurrentUser?.uid ?? null });
   const jokerPicker = mountJokerPicker({ bus });
