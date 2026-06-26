@@ -133,8 +133,12 @@ export function createTutorialController({
         currentStep = 'lockInfo';
         emitTip('lockInfo', lockTip());
       }
-      // Fire parallelWordsTip for bot's third move (after player placed lock).
-      if (botMoves === 3 && currentStep === 'waitForBot3') {
+      // Fire parallelWordsTip for bot's third move.
+      // Normal path: player locked first → step='waitForBot3'.
+      // Rejection path: exchange used player's turn so bot-3 fires while
+      // step='lockInfo' (player never had a chance to lock before bot-3).
+      // Handle both so the tutorial doesn't get stuck at waitForBot3.
+      if (botMoves === 3 && (currentStep === 'waitForBot3' || currentStep === 'lockInfo')) {
         currentStep = 'parallelWords';
         emitTip('parallelWords', parallelWordsTip());
       }
