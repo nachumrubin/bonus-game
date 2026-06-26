@@ -1,4 +1,5 @@
 import { EV } from '../../events/eventTypes.js';
+import { CMD } from '../../events/commands.js';
 import { MENU_INTENT } from '../screens/menuScreen.js';
 import {
   TUTORIAL_CLEAR,
@@ -11,6 +12,7 @@ import { DICT_INTENT } from '../screens/dictionaryScreen.js';
 import {
   TUTORIAL_CELLS,
   TUTORIAL_BONUS_CELL,
+  TUTORIAL_LOCK_CELL,
 } from '../../game/sessions/tutorialSession.js';
 import { BONUS_RESOLVED } from './bonusActivationController.js';
 
@@ -24,15 +26,15 @@ export function createTutorialController({
   if (!bus) throw new Error('createTutorialController: bus required');
   const cleanups = [];
   let active = false;
-  let playerMoves = 0;
   let botMoves = 0;
   // Steps:
   //   idle | singleTile | recallDemo | first | dictQuery |
   //   botFirst | illegalInfo | exchangePrompt | botSecond |
-  //   lockInfo | bonus | done
+  //   lockInfo | waitForBot3 | parallelWords | bonus | done
   let currentStep = 'idle';
   let lastTipKey = '';
   let waitingForBonus = false;
+  let botStuckTimer = null;
 
 
   cleanups.push(bus.on(MENU_INTENT.OPEN_TUTORIAL, () => {
@@ -58,6 +60,10 @@ export function createTutorialController({
       currentStep = 'exchangePrompt';
       emitTip('exchange', exchangeTip());
     } else if (currentStep === 'lockInfo') {
+      // Player read the lock tip but skipped the lock — jump straight to bonus.
+      currentStep = 'bonus';
+      emitTip('bonus', bonusSquareTip());
+    } else if (currentStep === 'parallelWords') {
       currentStep = 'bonus';
       emitTip('bonus', bonusSquareTip());
     } else {
@@ -78,33 +84,55 @@ export function createTutorialController({
     emitTip('singleTile', singleTileTip());
   }));
 
+  // Steps where slot=0 MOVE_CONFIRMED counts as the first player word.
+  // Includes early steps in case the player presses שבץ before going through
+  // the full singleTile / recallDemo / dictQuery walkthrough.
+  const FIRST_WORD_STEPS = new Set(['singleTile', 'recallDemo', 'first', 'dictQuery']);
+
   cleanups.push(bus.on(EV.MOVE_CONFIRMED, ({ slot } = {}) => {
     const session = activeGameRef()?.session;
     if (!active || session?.state?.mode !== 'tutorial') return;
     if (slot === 0) {
-      playerMoves += 1;
-      if (playerMoves === 1) {
+      if (FIRST_WORD_STEPS.has(currentStep)) {
+        // Player confirmed their first word (שלום). Bot's turn next.
         currentStep = 'botFirst';
         emitClear();
-      } else if (playerMoves === 2) {
-        // Player placed the bonus tile. Defer completion tip until
+      } else if (currentStep === 'lockInfo') {
+        // Player placed the lock. Wait for bot's 3rd scripted move (parallel words demo).
+        currentStep = 'waitForBot3';
+        emitClear();
+      } else if (currentStep === 'bonus') {
+        // Player placed the bonus tile (שלומי). Defer completion tip until
         // BONUS_RESOLVED (mini-game overlay z-index 9999 > #tut-tip z-index 8200).
         currentStep = 'done';
         waitingForBonus = true;
       }
+      // All other steps: ignore — player shouldn't be making moves right now.
       return;
     }
     if (slot === 1) {
+      // Bot actually played — cancel the stuck-bot safety timer.
+      if (botStuckTimer) { clearTimeout(botStuckTimer); botStuckTimer = null; }
       botMoves += 1;
       if (botMoves === 1 && currentStep !== 'done') {
         // Bot played its first scripted move. Teach illegal moves (user taps הבא to continue).
         currentStep = 'illegalInfo';
         emitTip('illegalInfo', illegalMoveTip());
       }
-      if (botMoves === 2 && currentStep === 'botSecond') {
-        // Bot played its second scripted move. Teach lock placement (user taps הבא to continue).
+      // Fire lockTip for bot's second move unless we are already past that point.
+      if (botMoves === 2 &&
+          currentStep !== 'done' &&
+          currentStep !== 'lockInfo' &&
+          currentStep !== 'waitForBot3' &&
+          currentStep !== 'parallelWords' &&
+          currentStep !== 'bonus') {
         currentStep = 'lockInfo';
         emitTip('lockInfo', lockTip());
+      }
+      // Fire parallelWordsTip for bot's third move (after player placed lock).
+      if (botMoves === 3 && currentStep === 'waitForBot3') {
+        currentStep = 'parallelWords';
+        emitTip('parallelWords', parallelWordsTip());
       }
     }
   }));
@@ -115,6 +143,24 @@ export function createTutorialController({
     if (currentStep === 'exchangePrompt' || currentStep === 'illegalInfo') {
       currentStep = 'botSecond';
       emitTip('botSecond', waitingBotTip());
+    }
+  }));
+
+  // Safety net: if it becomes the bot's turn but the bot has exhausted its
+  // scripted moves and never calls MOVE_CONFIRMED, auto-pass after 2 s so
+  // the player isn't left waiting forever.
+  cleanups.push(bus.on(EV.TURN_CHANGED, ({ currentTurnSlot } = {}) => {
+    if (!active) return;
+    if (currentTurnSlot === 1 && currentStep !== 'done') {
+      botStuckTimer = setTimeout(() => {
+        botStuckTimer = null;
+        const session = activeGameRef()?.session;
+        if (!session || session.state?.mode !== 'tutorial') return;
+        if (session.state?.currentTurnSlot !== 1) return;
+        try { session.dispatch({ type: CMD.PASS_TURN, payload: { reason: 'pass' } }); } catch {}
+      }, 2000);
+    } else {
+      if (botStuckTimer) { clearTimeout(botStuckTimer); botStuckTimer = null; }
     }
   }));
 
@@ -222,11 +268,11 @@ export function createTutorialController({
   }
 
   function resetState() {
-    playerMoves = 0;
     botMoves = 0;
     currentStep = 'idle';
     lastTipKey = '';
     waitingForBonus = false;
+    if (botStuckTimer) { clearTimeout(botStuckTimer); botStuckTimer = null; }
   }
 
   function dispose() {
@@ -304,8 +350,17 @@ export function exchangeTip() {
 export function lockTip() {
   return {
     label: 'נעילת משבצת',
-    text: 'אפשר לנעול משבצת! בחר 🔒 בתחתית המסך, לחץ על משבצת ריקה, ואשר עם שבץ — המתחרה לא יוכל לשים שם אות.',
-    selectors: ['#lock-inv-display'],
+    text: 'אפשר לנעול משבצת כדי לחסום את היריב! בחר 🔒 מטה, לחץ על המשבצת המסומנת, ואשר עם שבץ.',
+    selectors: [`#lock-inv-display`, `#c${TUTORIAL_LOCK_CELL.r}_${TUTORIAL_LOCK_CELL.c}`],
+    showNext: true,
+  };
+}
+
+export function parallelWordsTip() {
+  return {
+    label: 'מילים מקבילות',
+    text: 'הבוט יצר שתי מילים במהלך אחד: "בת" (אופקית) ו"תות" (אנכית). כך אפשר לצבור ניקוד כפול — אות אחת משתתפת בשתי מילים!',
+    selectors: [],
     showNext: true,
   };
 }

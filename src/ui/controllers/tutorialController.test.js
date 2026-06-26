@@ -9,6 +9,7 @@ import { GAME_SCREEN_INTENT } from '../screens/gameScreen.js';
 import { DICT_INTENT } from '../screens/dictionaryScreen.js';
 import { createTutorialController } from './tutorialController.js';
 import { BONUS_RESOLVED } from './bonusActivationController.js';
+import { TUTORIAL_BONUS_CELL } from '../../game/sessions/tutorialSession.js';
 
 test('menu replay opens the tutorial intro and start launches tutorial game', () => {
   bus._reset();
@@ -148,7 +149,7 @@ test('removing a tile after dictQuery tip reverts to firstMove tip', () => {
   assert.ok(tips[tips.length - 1].selectors.includes('#c5_9'), 'reverts to firstMove tip');
 });
 
-test('full tutorial flow: bot plays → illegalInfo (הבא button) → exchangePrompt → TILES_EXCHANGED → bot2 → lockInfo (הבא button) → bonus → BONUS_RESOLVED', () => {
+test('full tutorial flow: שלום → illegalInfo → exchange → lockInfo → lock placement → bot3 parallel words → bonus → BONUS_RESOLVED', () => {
   bus._reset();
   const tips = [];
   const clears = [];
@@ -163,48 +164,59 @@ test('full tutorial flow: bot plays → illegalInfo (הבא button) → exchange
 
   // --- player confirms שלום ---
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });
-  // tip cleared while bot thinks
-  assert.ok(clears.length >= 1);
+  assert.ok(clears.length >= 1, 'tip cleared while bot thinks');
 
-  // --- bot plays לב ---
+  // --- bot plays לב (move 1) → illegalInfo ---
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
-  // illegalInfo tip shown
   const afterBot1 = tips.length;
   assert.ok(afterBot1 >= 1, 'illegalInfo tip emitted after bot move 1');
-  assert.ok(tips[afterBot1 - 1].label === 'מהלך לא חוקי', 'tip is the illegal-move info tip');
+  assert.equal(tips[afterBot1 - 1].label, 'מהלך לא חוקי', 'tip is the illegal-move info tip');
   assert.ok(tips[afterBot1 - 1].showNext, 'illegalInfo tip has הבא button');
 
-  // --- player does TILES_EXCHANGED ---
-  bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
-  // step advances to botSecond; waiting tip shown briefly
-  const afterExchange = tips.length;
-  assert.ok(tips[afterExchange - 1].label === 'תור היריב', 'waiting-for-bot tip shown after exchange');
+  // --- player taps הבא → exchange prompt ---
+  bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.equal(tips[tips.length - 1].label, 'החלפת אות', 'הבא on illegalInfo shows exchangeTip');
 
-  // --- bot plays ת (2nd scripted move) ---
+  // --- player exchanges a tile ---
+  bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
+  assert.equal(tips[tips.length - 1].label, 'תור היריב', 'waiting-for-bot tip shown after exchange');
+
+  // --- bot plays תו (move 2) → lockInfo ---
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
-  // lockInfo tip shown
   const afterBot2 = tips.length;
   assert.ok(afterBot2 > afterBot1, 'lockInfo tip emitted after bot move 2');
-  assert.ok(tips[afterBot2 - 1].label === 'נעילת משבצת', 'lockInfo tip shown');
+  assert.equal(tips[afterBot2 - 1].label, 'נעילת משבצת', 'lockInfo tip shown');
   assert.ok(tips[afterBot2 - 1].showNext, 'lockInfo tip has הבא button');
+  assert.ok(tips[afterBot2 - 1].selectors.some(s => s.includes('lock-inv-display')), 'lockInfo highlights lock button');
 
-  // --- (after lockTimer fires in real usage, step would become 'bonus')
-  // --- player places 'י' and confirms before timer fires ---
+  // --- player places the lock (MOVE_CONFIRMED at lockInfo step) → waitForBot3 ---
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0 });
+  assert.ok(clears.length >= 2, 'tip cleared after lock placement');
+
+  // --- bot plays ת at (6,8) (move 3) forming "בת" + "תות" → parallelWords ---
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['בת', 'תות'] });
+  const afterBot3 = tips.length;
+  assert.ok(afterBot3 > afterBot2, 'parallelWords tip emitted after bot move 3');
+  assert.equal(tips[afterBot3 - 1].label, 'מילים מקבילות', 'parallelWords tip shown');
+  assert.ok(tips[afterBot3 - 1].showNext, 'parallelWords tip has הבא button');
+
+  // --- player taps הבא → bonus tip ---
+  bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.equal(tips[tips.length - 1].label, 'משבצות בוסט', 'הבא on parallelWords shows bonus tip');
+
+  // --- player places 'י' on the bonus square and confirms ---
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלומי'] });
-  // waitingForBonus = true; BONUS_RESOLVED triggers completion
   assert.equal(tips.filter(t => t.label === 'כל הכבוד!').length, 0,
     'completion tip not shown before BONUS_RESOLVED');
 
+  // --- mini-game completes → completion tip ---
   bus.emit(BONUS_RESOLVED, { kind: 'minigame', slot: 0, success: true, earnedPts: 40 });
-  assert.ok(tips[tips.length - 1].label === 'כל הכבוד!', 'completion tip shown after BONUS_RESOLVED');
+  assert.equal(tips[tips.length - 1].label, 'כל הכבוד!', 'completion tip shown after BONUS_RESOLVED');
   assert.match(tips[tips.length - 1].text, /הפעלת בוסט/);
   assert.ok(tips[tips.length - 1].autoCloseMs > 0, 'completion tip auto-closes');
 });
 
-test('lockInfo timer advances to bonus step (simulated via state inspection)', () => {
-  // This test verifies the botSecond → lockInfo → bonus path exists without
-  // actually waiting for the real setTimeout. We check that when the bot plays
-  // move 2 after an exchange, the lockInfo tip fires.
+test('bot move 2 after exchange triggers lockTip with interactive selectors', () => {
   bus._reset();
   const tips = [];
   bus.on(TUTORIAL_TIP, (p) => tips.push(p));
@@ -219,11 +231,12 @@ test('lockInfo timer advances to bonus step (simulated via state inspection)', (
   bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
 
-  const lockTipEmitted = tips.some(t => t.label === 'נעילת משבצת');
-  assert.ok(lockTipEmitted, 'lock tip emitted when bot plays 2nd move after exchange');
+  const lockTip = tips.find(t => t.label === 'נעילת משבצת');
+  assert.ok(lockTip, 'lock tip emitted when bot plays 2nd move after exchange');
+  assert.ok(lockTip.selectors.length > 0, 'lockTip has selectors (interactive)');
 });
 
-test('bonus step live-preview: all bonus-cell tiles show שבץ tip; partial revert shows bonus tip', () => {
+test('bonus step live-preview: placing the bonus tile shows שבץ tip; removing it reverts to bonus tip', () => {
   bus._reset();
   const tips = [];
   bus.on(TUTORIAL_TIP, (p) => tips.push(p));
@@ -232,28 +245,35 @@ test('bonus step live-preview: all bonus-cell tiles show שבץ tip; partial rev
     activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
   });
 
+  // Fast-path to the bonus step via: שלום → bot1 → exchange → bot2 → lock → bot3 → הבא
   bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
-  // Simulate timer-driven advance to bonus step by emitting exchangePrompt
-  // then bonus via TILES_EXCHANGED + bot move 2 + forcing lock timer.
-  // Simplified: jump to bonus by triggering the exchange + bot2 path.
   bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
-  // At this point step = lockInfo; simulate the lockTimer firing by emitting
-  // what the timer would emit — we can't easily fire the real timer in a sync
-  // test, so we verify the bonus live-preview works by checking the BONUS_RESOLVED path.
-  // Instead test the bonus tip emission directly:
-  const lockTipIdx = tips.findIndex(t => t.label === 'נעילת משבצת');
-  assert.ok(lockTipIdx >= 0, 'lock tip present');
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0 });                       // player places lock
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['בת', 'תות'] }); // bot move 3
+  bus.emit(TUTORIAL_INTENT.NEXT, {});                              // הבא → bonus tip
+
+  const bonusTipIdx = tips.findIndex(t => t.label === 'משבצות בוסט');
+  assert.ok(bonusTipIdx >= 0, 'bonus tip shown at start of bonus step');
+
+  // Player places the bonus tile → play tip
+  bus.emit(GAME_SCREEN_INTENT.LIVE_PREVIEW_CHANGED, {
+    slot: 0,
+    tiles: [{ r: TUTORIAL_BONUS_CELL.r, c: TUTORIAL_BONUS_CELL.c, letter: 'י' }],
+  });
+  assert.equal(tips[tips.length - 1].label, 'אישור', 'play tip shown when bonus cell occupied');
+
+  // Player removes it → bonus tip reverts
+  bus.emit(GAME_SCREEN_INTENT.LIVE_PREVIEW_CHANGED, { slot: 0, tiles: [] });
+  assert.equal(tips[tips.length - 1].label, 'משבצות בוסט', 'bonus tip restored when tile removed');
 });
 
-test('TUTORIAL_INTENT.NEXT advances illegalInfo→exchangePrompt and lockInfo→bonus', () => {
+test('TUTORIAL_INTENT.NEXT: illegalInfo→exchangePrompt, lockInfo→bonus (skip lock), parallelWords→bonus', () => {
   bus._reset();
   const tips = [];
-  const clears = [];
   bus.on(TUTORIAL_TIP, (p) => tips.push(p));
-  bus.on(TUTORIAL_CLEAR, () => clears.push(true));
   createTutorialController({
     bus,
     activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
@@ -262,22 +282,41 @@ test('TUTORIAL_INTENT.NEXT advances illegalInfo→exchangePrompt and lockInfo→
   bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
-  // illegalInfo tip shown with הבא button
-  assert.ok(tips[tips.length - 1].label === 'מהלך לא חוקי');
+  assert.equal(tips[tips.length - 1].label, 'מהלך לא חוקי');
 
-  // User taps הבא → advances to exchangePrompt
+  // הבא on illegalInfo → exchangePrompt
   bus.emit(TUTORIAL_INTENT.NEXT, {});
-  assert.ok(tips[tips.length - 1].label === 'החלפת אות', 'הבא on illegalInfo shows exchangeTip');
+  assert.equal(tips[tips.length - 1].label, 'החלפת אות', 'הבא on illegalInfo shows exchangeTip');
 
-  // Player exchanges (drives step to botSecond)
+  // Exchange → bot2 → lockInfo
   bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
-  // lockInfo tip shown with הבא button
-  assert.ok(tips[tips.length - 1].label === 'נעילת משבצת');
+  assert.equal(tips[tips.length - 1].label, 'נעילת משבצת');
 
-  // User taps הבא → advances to bonus
+  // הבא on lockInfo → bonus (player chose to skip the lock step)
   bus.emit(TUTORIAL_INTENT.NEXT, {});
-  assert.ok(tips[tips.length - 1].label === 'משבצות בוסט', 'הבא on lockInfo shows bonusSquareTip');
+  assert.equal(tips[tips.length - 1].label, 'משבצות בוסט', 'הבא on lockInfo skips to bonus');
+
+  // Now test parallelWords→bonus via a second independent controller
+  bus._reset();
+  const tips2 = [];
+  bus.on(TUTORIAL_TIP, (p) => tips2.push(p));
+  createTutorialController({
+    bus,
+    activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
+  });
+  bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
+  bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0 });                        // lock placement
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['בת'] });         // bot move 3
+  assert.equal(tips2[tips2.length - 1].label, 'מילים מקבילות', 'parallelWords tip shown');
+
+  // הבא on parallelWords → bonus
+  bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.equal(tips2[tips2.length - 1].label, 'משבצות בוסט', 'הבא on parallelWords advances to bonus');
 });
 
 test('illegal-word rejection during illegalInfo advances to botSecond so bot-move-2 triggers lockTip', () => {
@@ -292,8 +331,8 @@ test('illegal-word rejection during illegalInfo advances to botSecond so bot-mov
   });
 
   bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });      // playerMoves=1
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });        // botMoves=1 → illegalInfo
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
 
   assert.ok(tips[tips.length - 1].label === 'מהלך לא חוקי', 'illegalInfo tip shown');
   const clearsBeforeRejection = clears.length;
@@ -303,7 +342,7 @@ test('illegal-word rejection during illegalInfo advances to botSecond so bot-mov
   assert.ok(clears.length > clearsBeforeRejection, 'tip cleared on rejection');
 
   // ~2s later (1100ms auto-pass + 900ms think): bot plays ת (2nd scripted move)
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });        // botMoves=2
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
   assert.ok(tips[tips.length - 1].label === 'נעילת משבצת', 'lockTip shown after bot-move-2');
   assert.ok(tips[tips.length - 1].showNext, 'lockTip has הבא button');
 });
@@ -330,29 +369,4 @@ test('illegal-word rejection during exchangePrompt also advances correctly', () 
   // Bot plays ת after auto-pass
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
   assert.ok(tips[tips.length - 1].label === 'נעילת משבצת', 'lockTip shown even when illegal move happened from exchangePrompt step');
-});
-
-test('player skips exchange and plays שלומי directly — completion fires correctly', () => {
-  bus._reset();
-  const tips = [];
-  bus.on(TUTORIAL_TIP, (p) => tips.push(p));
-  createTutorialController({
-    bus,
-    activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
-  });
-
-  bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });   // playerMoves=1
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });     // botMoves=1 → illegalInfo
-  // Player SKIPS exchange and plays שלומי directly
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלומי'] });  // playerMoves=2 → done, waitingForBonus
-
-  // Bot plays ת but controller is in 'done' state — lock tip should NOT fire
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
-  const lockTips = tips.filter(t => t.label === 'נעילת משבצת');
-  assert.equal(lockTips.length, 0, 'lock tip not shown when player already in done state');
-
-  // Completion fires on BONUS_RESOLVED
-  bus.emit(BONUS_RESOLVED, { kind: 'minigame', slot: 0, success: true, earnedPts: 40 });
-  assert.ok(tips[tips.length - 1].label === 'כל הכבוד!', 'completion tip fires after BONUS_RESOLVED');
 });
