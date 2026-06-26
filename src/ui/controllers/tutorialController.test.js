@@ -174,10 +174,11 @@ test('full tutorial flow: bot plays → illegalInfo (הבא button) → exchange
   assert.ok(tips[afterBot1 - 1].label === 'מהלך לא חוקי', 'tip is the illegal-move info tip');
   assert.ok(tips[afterBot1 - 1].showNext, 'illegalInfo tip has הבא button');
 
-  // --- player does TILES_EXCHANGED (skips the illegalInfo → exchangePrompt timer) ---
+  // --- player does TILES_EXCHANGED ---
   bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
-  // step advances to botSecond and tip clears
-  assert.ok(clears.length >= 2, 'tip cleared after exchange');
+  // step advances to botSecond; waiting tip shown briefly
+  const afterExchange = tips.length;
+  assert.ok(tips[afterExchange - 1].label === 'תור היריב', 'waiting-for-bot tip shown after exchange');
 
   // --- bot plays ת (2nd scripted move) ---
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
@@ -277,6 +278,58 @@ test('TUTORIAL_INTENT.NEXT advances illegalInfo→exchangePrompt and lockInfo→
   // User taps הבא → advances to bonus
   bus.emit(TUTORIAL_INTENT.NEXT, {});
   assert.ok(tips[tips.length - 1].label === 'משבצות בוסט', 'הבא on lockInfo shows bonusSquareTip');
+});
+
+test('illegal-word rejection during illegalInfo advances to botSecond so bot-move-2 triggers lockTip', () => {
+  bus._reset();
+  const tips = [];
+  const clears = [];
+  bus.on(TUTORIAL_TIP, (p) => tips.push(p));
+  bus.on(TUTORIAL_CLEAR, () => clears.push(true));
+  createTutorialController({
+    bus,
+    activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
+  });
+
+  bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });      // playerMoves=1
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });        // botMoves=1 → illegalInfo
+
+  assert.ok(tips[tips.length - 1].label === 'מהלך לא חוקי', 'illegalInfo tip shown');
+  const clearsBeforeRejection = clears.length;
+
+  // Player tries a non-dict word → engine rejects → tutorial advances to botSecond
+  bus.emit(EV.INVALID_MOVE_REJECTED, { reason: 'word-not-in-dictionary' });
+  assert.ok(clears.length > clearsBeforeRejection, 'tip cleared on rejection');
+
+  // ~2s later (1100ms auto-pass + 900ms think): bot plays ת (2nd scripted move)
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });        // botMoves=2
+  assert.ok(tips[tips.length - 1].label === 'נעילת משבצת', 'lockTip shown after bot-move-2');
+  assert.ok(tips[tips.length - 1].showNext, 'lockTip has הבא button');
+});
+
+test('illegal-word rejection during exchangePrompt also advances correctly', () => {
+  bus._reset();
+  const tips = [];
+  bus.on(TUTORIAL_TIP, (p) => tips.push(p));
+  createTutorialController({
+    bus,
+    activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
+  });
+
+  bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
+  // Player clicks הבא → goes to exchangePrompt
+  bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.ok(tips[tips.length - 1].label === 'החלפת אות');
+
+  // Player tries illegal move instead of exchanging
+  bus.emit(EV.INVALID_MOVE_REJECTED, { reason: 'word-not-in-dictionary' });
+
+  // Bot plays ת after auto-pass
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
+  assert.ok(tips[tips.length - 1].label === 'נעילת משבצת', 'lockTip shown even when illegal move happened from exchangePrompt step');
 });
 
 test('player skips exchange and plays שלומי directly — completion fires correctly', () => {

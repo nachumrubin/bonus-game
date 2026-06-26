@@ -114,6 +114,19 @@ export function createTutorialController({
     if (!active || slot !== 0) return;
     if (currentStep === 'exchangePrompt' || currentStep === 'illegalInfo') {
       currentStep = 'botSecond';
+      emitTip('botSecond', waitingBotTip());
+    }
+  }));
+
+  // Illegal-word rejection: the player demonstrated the mechanic, or tried a
+  // non-dict word while at the exchange step. Either way the game will
+  // auto-pass their turn in ~1100ms (see gameController) and the bot will
+  // play its second scripted move. We advance to 'botSecond' now so that
+  // when MOVE_CONFIRMED slot=1 fires, the lockTip branch triggers correctly.
+  cleanups.push(bus.on(EV.INVALID_MOVE_REJECTED, ({ reason } = {}) => {
+    if (!active) return;
+    if ((currentStep === 'illegalInfo' || currentStep === 'exchangePrompt') && reason === 'word-not-in-dictionary') {
+      currentStep = 'botSecond';
       emitClear();
     }
   }));
@@ -294,6 +307,15 @@ export function lockTip() {
     text: 'אפשר לנעול משבצת! בחר 🔒 בתחתית המסך, לחץ על משבצת ריקה, ואשר עם שבץ — המתחרה לא יוכל לשים שם אות.',
     selectors: ['#lock-inv-display'],
     showNext: true,
+  };
+}
+
+export function waitingBotTip() {
+  return {
+    label: 'תור היריב',
+    text: 'מצוין! המחשב עכשיו שם אות על הלוח...',
+    selectors: [],
+    autoCloseMs: 1500,
   };
 }
 
