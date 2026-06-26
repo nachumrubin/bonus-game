@@ -114,7 +114,7 @@ export function createTutorialController({
     if (!active || slot !== 0) return;
     if (currentStep === 'exchangePrompt' || currentStep === 'illegalInfo') {
       currentStep = 'botSecond';
-      emitClear();
+      emitTip('botSecond', waitingBotTip());
     }
   }));
 
@@ -294,6 +294,15 @@ export function lockTip() {
     text: 'אפשר לנעול משבצת! בחר 🔒 בתחתית המסך, לחץ על משבצת ריקה, ואשר עם שבץ — המתחרה לא יוכל לשים שם אות.',
     selectors: ['#lock-inv-display'],
     showNext: true,
+  };
+}
+
+export function waitingBotTip() {
+  return {
+    label: 'תור היריב',
+    text: 'מצוין! המחשב עכשיו שם אות על הלוח...',
+    selectors: [],
+    autoCloseMs: 1500,
   };
 }
 

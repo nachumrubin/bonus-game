@@ -174,10 +174,11 @@ test('full tutorial flow: bot plays → illegalInfo (הבא button) → exchange
   assert.ok(tips[afterBot1 - 1].label === 'מהלך לא חוקי', 'tip is the illegal-move info tip');
   assert.ok(tips[afterBot1 - 1].showNext, 'illegalInfo tip has הבא button');
 
-  // --- player does TILES_EXCHANGED (skips the illegalInfo → exchangePrompt timer) ---
+  // --- player does TILES_EXCHANGED ---
   bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
-  // step advances to botSecond and tip clears
-  assert.ok(clears.length >= 2, 'tip cleared after exchange');
+  // step advances to botSecond; waiting tip shown briefly
+  const afterExchange = tips.length;
+  assert.ok(tips[afterExchange - 1].label === 'תור היריב', 'waiting-for-bot tip shown after exchange');
 
   // --- bot plays ת (2nd scripted move) ---
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
