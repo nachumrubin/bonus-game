@@ -188,8 +188,11 @@ test('full tutorial flow: bot plays → illegalInfo (הבא button) → exchange
   assert.ok(tips[afterBot2 - 1].label === 'נעילת משבצת', 'lockInfo tip shown');
   assert.ok(tips[afterBot2 - 1].showNext, 'lockInfo tip has הבא button');
 
-  // --- (after lockTimer fires in real usage, step would become 'bonus')
-  // --- player places 'י' and confirms before timer fires ---
+  // --- player taps הבא on lockInfo → step advances to bonus ---
+  bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.ok(tips[tips.length - 1].label === 'משבצות בוסט', 'bonus tip shown after הבא on lockInfo');
+
+  // --- player places 'י' on the bonus square and confirms ---
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלומי'] });
   // waitingForBonus = true; BONUS_RESOLVED triggers completion
   assert.equal(tips.filter(t => t.label === 'כל הכבוד!').length, 0,

@@ -1,4 +1,5 @@
 import { EV } from '../../events/eventTypes.js';
+import { CMD } from '../../events/commands.js';
 import { MENU_INTENT } from '../screens/menuScreen.js';
 import {
   TUTORIAL_CLEAR,
@@ -33,6 +34,7 @@ export function createTutorialController({
   let currentStep = 'idle';
   let lastTipKey = '';
   let waitingForBonus = false;
+  let botStuckTimer = null;
 
 
   cleanups.push(bus.on(MENU_INTENT.OPEN_TUTORIAL, () => {
@@ -82,6 +84,9 @@ export function createTutorialController({
     const session = activeGameRef()?.session;
     if (!active || session?.state?.mode !== 'tutorial') return;
     if (slot === 0) {
+      // At lockInfo the player is reading an informational tip and should not
+      // be able to advance the tutorial counter by accidentally placing a lock.
+      if (currentStep === 'lockInfo') return;
       playerMoves += 1;
       if (playerMoves === 1) {
         currentStep = 'botFirst';
@@ -95,14 +100,18 @@ export function createTutorialController({
       return;
     }
     if (slot === 1) {
+      // Bot actually played — cancel the stuck-bot safety timer.
+      if (botStuckTimer) { clearTimeout(botStuckTimer); botStuckTimer = null; }
       botMoves += 1;
       if (botMoves === 1 && currentStep !== 'done') {
         // Bot played its first scripted move. Teach illegal moves (user taps הבא to continue).
         currentStep = 'illegalInfo';
         emitTip('illegalInfo', illegalMoveTip());
       }
-      if (botMoves === 2 && currentStep === 'botSecond') {
-        // Bot played its second scripted move. Teach lock placement (user taps הבא to continue).
+      // Fire lockTip for bot's second move unless we are already past that point
+      // (done / already showing lockInfo or bonus tip).
+      if (botMoves === 2 && currentStep !== 'done' && currentStep !== 'lockInfo' && currentStep !== 'bonus') {
+        // Bot played its second scripted move. Teach lock info (user taps הבא to continue).
         currentStep = 'lockInfo';
         emitTip('lockInfo', lockTip());
       }
@@ -115,6 +124,24 @@ export function createTutorialController({
     if (currentStep === 'exchangePrompt' || currentStep === 'illegalInfo') {
       currentStep = 'botSecond';
       emitTip('botSecond', waitingBotTip());
+    }
+  }));
+
+  // Safety net: if it becomes the bot's turn but the bot has exhausted its
+  // scripted moves and never calls MOVE_CONFIRMED, auto-pass after 2 s so
+  // the player isn't left waiting forever.
+  cleanups.push(bus.on(EV.TURN_CHANGED, ({ currentTurnSlot } = {}) => {
+    if (!active) return;
+    if (currentTurnSlot === 1 && currentStep !== 'done') {
+      botStuckTimer = setTimeout(() => {
+        botStuckTimer = null;
+        const session = activeGameRef()?.session;
+        if (!session || session.state?.mode !== 'tutorial') return;
+        if (session.state?.currentTurnSlot !== 1) return;
+        try { session.dispatch({ type: CMD.PASS_TURN, payload: { reason: 'pass' } }); } catch {}
+      }, 2000);
+    } else {
+      if (botStuckTimer) { clearTimeout(botStuckTimer); botStuckTimer = null; }
     }
   }));
 
@@ -227,6 +254,7 @@ export function createTutorialController({
     currentStep = 'idle';
     lastTipKey = '';
     waitingForBonus = false;
+    if (botStuckTimer) { clearTimeout(botStuckTimer); botStuckTimer = null; }
   }
 
   function dispose() {
@@ -287,7 +315,7 @@ export function playButtonTip() {
 export function illegalMoveTip() {
   return {
     label: 'מהלך לא חוקי',
-    text: 'אם תנסה לאשר מילה שאינה במילון, המשחק ידחה אותה אוטומטית ויחזיר את האותיות למגש. כדאי לנסות פעם אחת!',
+    text: 'אם תנסה לאשר מילה שאינה במילון, המשחק ידחה אותה אוטומטית ויחזיר את האותיות למגש.',
     selectors: [],
     showNext: true,
   };
@@ -304,8 +332,8 @@ export function exchangeTip() {
 export function lockTip() {
   return {
     label: 'נעילת משבצת',
-    text: 'אפשר לנעול משבצת! בחר 🔒 בתחתית המסך, לחץ על משבצת ריקה, ואשר עם שבץ — המתחרה לא יוכל לשים שם אות.',
-    selectors: ['#lock-inv-display'],
+    text: 'ידעת? ניתן לנעול משבצת ריקה כדי לחסום את היריב ממנה. זה כלי חשוב במשחק!',
+    selectors: [],
     showNext: true,
   };
 }
