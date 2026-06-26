@@ -2,6 +2,38 @@
 
 ---
 
+## Tutorial expanded with full mechanics walkthrough — June 2026
+
+Expanded the tutorial from a 2-step stub (place "שלום" + bonus mini-game) to a
+complete mechanics walkthrough covering all major game actions:
+
+**New tutorial steps (in order):**
+1. **Single tile placement** — place one tile to learn the drag-and-drop mechanic
+2. **בטל (recall)** — click the recall button to return the tile, teaching undo
+3. **Place "שלום"** — place all 4 letters on the highlighted cells
+4. **מילון / שאילתה** — prompted to open the dictionary to verify the word before confirming
+5. **שבץ** — confirm the move
+6. **Bot plays "לב"** — watch the opponent's scripted move
+7. **מהלך לא חוקי** — informational tip explaining that the engine rejects invalid words automatically
+8. **החלפת אות** — tile exchange prompt; completing the exchange advances to the next step
+9. **Bot plays "ת"** — opponent responds to the exchange turn
+10. **נעילת משבצת** — informational tip explaining lock mechanics
+11. **Bonus square** — extend "שלום" → "שלומי" on the bonus square to trigger the mini-game
+12. **Completion** — "כל הכבוד!" tip after the mini-game resolves
+
+**Files changed:**
+- `src/ui/controllers/tutorialController.js` — major state machine expansion; new steps
+  `singleTile`, `recallDemo`, `dictQuery`, `illegalInfo`, `exchangePrompt`,
+  `botSecond`, `lockInfo`; timers for auto-advancing informational tips;
+  new imports: `DICT_INTENT`, `EV.TILES_EXCHANGED`
+- `src/ui/controllers/tutorialController.test.js` — 9 tests covering the full flow
+
+The bot's 2 scripted moves (`tutorialSession.js`) are unchanged — the exchange
+step consumes one player turn, causing the bot to fire its second scripted move
+(ת), which fits naturally as the "opponent reacts to your exchange" moment.
+
+---
+
 ## Tutorial completion tip deferred past mini-game overlay — June 2026
 
 Fixed the tutorial getting stuck after the Boost mini-game step. After the June
