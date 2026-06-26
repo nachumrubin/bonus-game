@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import { EV } from '../../events/eventTypes.js';
 import { MENU_INTENT } from '../screens/menuScreen.js';
-import { TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_TIP } from '../screens/tutorialScreen.js';
+import { TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_TIP, TUTORIAL_CLEAR } from '../screens/tutorialScreen.js';
 import { GAME_SCREEN_INTENT } from '../screens/gameScreen.js';
 import { DICT_INTENT } from '../screens/dictionaryScreen.js';
 import { createTutorialController } from './tutorialController.js';
@@ -148,7 +148,7 @@ test('removing a tile after dictQuery tip reverts to firstMove tip', () => {
   assert.ok(tips[tips.length - 1].selectors.includes('#c5_9'), 'reverts to firstMove tip');
 });
 
-test('full tutorial flow: bot plays → illegalInfo auto-advances → exchangePrompt → TILES_EXCHANGED → bot2 → lockInfo → bonus → BONUS_RESOLVED', () => {
+test('full tutorial flow: bot plays → illegalInfo (הבא button) → exchangePrompt → TILES_EXCHANGED → bot2 → lockInfo (הבא button) → bonus → BONUS_RESOLVED', () => {
   bus._reset();
   const tips = [];
   const clears = [];
@@ -171,8 +171,8 @@ test('full tutorial flow: bot plays → illegalInfo auto-advances → exchangePr
   // illegalInfo tip shown
   const afterBot1 = tips.length;
   assert.ok(afterBot1 >= 1, 'illegalInfo tip emitted after bot move 1');
-  assert.ok(tips[afterBot1 - 1].text.includes('לא חוקי') || tips[afterBot1 - 1].label === 'מהלך לא חוקי',
-    'tip is the illegal-move info tip');
+  assert.ok(tips[afterBot1 - 1].label === 'מהלך לא חוקי', 'tip is the illegal-move info tip');
+  assert.ok(tips[afterBot1 - 1].showNext, 'illegalInfo tip has הבא button');
 
   // --- player does TILES_EXCHANGED (skips the illegalInfo → exchangePrompt timer) ---
   bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
@@ -185,6 +185,7 @@ test('full tutorial flow: bot plays → illegalInfo auto-advances → exchangePr
   const afterBot2 = tips.length;
   assert.ok(afterBot2 > afterBot1, 'lockInfo tip emitted after bot move 2');
   assert.ok(tips[afterBot2 - 1].label === 'נעילת משבצת', 'lockInfo tip shown');
+  assert.ok(tips[afterBot2 - 1].showNext, 'lockInfo tip has הבא button');
 
   // --- (after lockTimer fires in real usage, step would become 'bonus')
   // --- player places 'י' and confirms before timer fires ---
@@ -244,6 +245,38 @@ test('bonus step live-preview: all bonus-cell tiles show שבץ tip; partial rev
   // Instead test the bonus tip emission directly:
   const lockTipIdx = tips.findIndex(t => t.label === 'נעילת משבצת');
   assert.ok(lockTipIdx >= 0, 'lock tip present');
+});
+
+test('TUTORIAL_INTENT.NEXT advances illegalInfo→exchangePrompt and lockInfo→bonus', () => {
+  bus._reset();
+  const tips = [];
+  const clears = [];
+  bus.on(TUTORIAL_TIP, (p) => tips.push(p));
+  bus.on(TUTORIAL_CLEAR, () => clears.push(true));
+  createTutorialController({
+    bus,
+    activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
+  });
+
+  bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלום'] });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
+  // illegalInfo tip shown with הבא button
+  assert.ok(tips[tips.length - 1].label === 'מהלך לא חוקי');
+
+  // User taps הבא → advances to exchangePrompt
+  bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.ok(tips[tips.length - 1].label === 'החלפת אות', 'הבא on illegalInfo shows exchangeTip');
+
+  // Player exchanges (drives step to botSecond)
+  bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
+  // lockInfo tip shown with הבא button
+  assert.ok(tips[tips.length - 1].label === 'נעילת משבצת');
+
+  // User taps הבא → advances to bonus
+  bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.ok(tips[tips.length - 1].label === 'משבצות בוסט', 'הבא on lockInfo shows bonusSquareTip');
 });
 
 test('player skips exchange and plays שלומי directly — completion fires correctly', () => {

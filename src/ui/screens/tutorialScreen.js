@@ -25,6 +25,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   const tip = $('#tut-tip', root);
   const tipLabel = $('#tut-tip-lbl', root);
   const tipText = $('#tut-tip-txt', root);
+  const tipNext = $('#tut-tip-next', root);
   const start = $('#tut-intro-go', root);
   const back = $('#tut-intro-back', root);
   const cleanups = [];
@@ -47,6 +48,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     intro?.classList?.add('hidden');
     bus.emit(TUTORIAL_INTENT.BACK, {});
   });
+  takeOver(tipNext, () => bus.emit(TUTORIAL_INTENT.NEXT, {}));
 
   cleanups.push(bus.on(TUTORIAL_OPEN, () => intro?.classList?.remove('hidden')));
   cleanups.push(bus.on(TUTORIAL_CLOSE, () => intro?.classList?.add('hidden')));
@@ -62,7 +64,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
-  function showTip({ label = '', text = '', selectors = [], selector = null, autoCloseMs = 0 } = {}) {
+  function showTip({ label = '', text = '', selectors = [], selector = null, autoCloseMs = 0, showNext = false } = {}) {
     clearHighlights();
     cancelAutoClose();
     setText(tipLabel, label);
@@ -71,6 +73,8 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     if (selector) list.push(selector);
     currentSelectors = list;
     applyHighlights();
+    if (showNext) tipNext?.classList?.remove('hidden');
+    else tipNext?.classList?.add('hidden');
     tip?.classList?.remove('hidden');
     positionTip();
     // Board cells, rack tiles, and bonus squares may not exist in the DOM
@@ -295,6 +299,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   function clearTip() {
     cancelAutoClose();
     clearHighlights();
+    tipNext?.classList?.add('hidden');
     tip?.classList?.add('hidden');
     detachResize();
     detachRackObserver();

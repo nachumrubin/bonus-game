@@ -34,10 +34,6 @@ export function createTutorialController({
   let lastTipKey = '';
   let waitingForBonus = false;
 
-  // Timers for auto-advancing informational tips
-  let dictQueryTimer = null;
-  let illegalTimer = null;
-  let lockTimer = null;
 
   cleanups.push(bus.on(MENU_INTENT.OPEN_TUTORIAL, () => {
     bus.emit(TUTORIAL_OPEN, {});
@@ -57,7 +53,17 @@ export function createTutorialController({
     showScreen('sh');
   }));
 
-  cleanups.push(bus.on(TUTORIAL_INTENT.NEXT, () => bus.emit(TUTORIAL_CLEAR, {})));
+  cleanups.push(bus.on(TUTORIAL_INTENT.NEXT, () => {
+    if (currentStep === 'illegalInfo') {
+      currentStep = 'exchangePrompt';
+      emitTip('exchange', exchangeTip());
+    } else if (currentStep === 'lockInfo') {
+      currentStep = 'bonus';
+      emitTip('bonus', bonusSquareTip());
+    } else {
+      bus.emit(TUTORIAL_CLEAR, {});
+    }
+  }));
   cleanups.push(bus.on(TUTORIAL_INTENT.SKIP, () => {
     active = false;
     resetState();
@@ -85,37 +91,20 @@ export function createTutorialController({
         // BONUS_RESOLVED (mini-game overlay z-index 9999 > #tut-tip z-index 8200).
         currentStep = 'done';
         waitingForBonus = true;
-        clearAllTimers();
       }
       return;
     }
     if (slot === 1) {
       botMoves += 1;
       if (botMoves === 1 && currentStep !== 'done') {
-        // Bot played its first scripted move. Teach illegal moves (informational),
-        // then prompt the player to use tile exchange.
+        // Bot played its first scripted move. Teach illegal moves (user taps הבא to continue).
         currentStep = 'illegalInfo';
         emitTip('illegalInfo', illegalMoveTip());
-        illegalTimer = setTimeout(() => {
-          illegalTimer = null;
-          if (currentStep === 'illegalInfo') {
-            currentStep = 'exchangePrompt';
-            emitTip('exchange', exchangeTip());
-          }
-        }, 4500);
       }
       if (botMoves === 2 && currentStep === 'botSecond') {
-        // Bot played its second scripted move (after player exchanged).
-        // Teach lock placement (informational, auto-advances to bonus step).
+        // Bot played its second scripted move. Teach lock placement (user taps הבא to continue).
         currentStep = 'lockInfo';
         emitTip('lockInfo', lockTip());
-        lockTimer = setTimeout(() => {
-          lockTimer = null;
-          if (currentStep === 'lockInfo') {
-            currentStep = 'bonus';
-            emitTip('bonus', bonusSquareTip());
-          }
-        }, 5500);
       }
     }
   }));
@@ -124,7 +113,6 @@ export function createTutorialController({
   cleanups.push(bus.on(EV.TILES_EXCHANGED, ({ slot } = {}) => {
     if (!active || slot !== 0) return;
     if (currentStep === 'exchangePrompt' || currentStep === 'illegalInfo') {
-      if (illegalTimer) { clearTimeout(illegalTimer); illegalTimer = null; }
       currentStep = 'botSecond';
       emitClear();
     }
@@ -134,7 +122,6 @@ export function createTutorialController({
   cleanups.push(bus.on(DICT_INTENT.OPEN_QUERY, () => {
     if (!active) return;
     if (currentStep === 'first' || currentStep === 'dictQuery') {
-      if (dictQueryTimer) { clearTimeout(dictQueryTimer); dictQueryTimer = null; }
       // Small delay so the overlay opens before we swap the tip.
       setTimeout(() => {
         if (currentStep === 'first' || currentStep === 'dictQuery') {
@@ -186,17 +173,9 @@ export function createTutorialController({
         if (lastTipKey !== 'dictQuery' && lastTipKey !== 'play') {
           currentStep = 'dictQuery';
           emitTip('dictQuery', dictQueryTip());
-          // Auto-advance to שבץ tip if player ignores the dict query.
-          dictQueryTimer = setTimeout(() => {
-            dictQueryTimer = null;
-            if (currentStep === 'dictQuery') {
-              emitTip('play', playButtonTip());
-            }
-          }, 7000);
         }
       } else {
-        // Player removed a tile — cancel dict-query advance and revert to placement tip.
-        if (dictQueryTimer) { clearTimeout(dictQueryTimer); dictQueryTimer = null; }
+        // Player removed a tile — revert to placement tip.
         if (lastTipKey === 'dictQuery' || lastTipKey === 'play') {
           currentStep = 'first';
           emitTip('first', firstMoveTip());
@@ -229,19 +208,12 @@ export function createTutorialController({
     bus.emit(TUTORIAL_CLEAR, {});
   }
 
-  function clearAllTimers() {
-    if (dictQueryTimer) { clearTimeout(dictQueryTimer); dictQueryTimer = null; }
-    if (illegalTimer) { clearTimeout(illegalTimer); illegalTimer = null; }
-    if (lockTimer) { clearTimeout(lockTimer); lockTimer = null; }
-  }
-
   function resetState() {
     playerMoves = 0;
     botMoves = 0;
     currentStep = 'idle';
     lastTipKey = '';
     waitingForBonus = false;
-    clearAllTimers();
   }
 
   function dispose() {
@@ -304,7 +276,7 @@ export function illegalMoveTip() {
     label: 'מהלך לא חוקי',
     text: 'אם תנסה לאשר מילה שאינה במילון, המשחק ידחה אותה אוטומטית ויחזיר את האותיות למגש. כדאי לנסות פעם אחת!',
     selectors: [],
-    autoCloseMs: 4000,
+    showNext: true,
   };
 }
 
@@ -321,7 +293,7 @@ export function lockTip() {
     label: 'נעילת משבצת',
     text: 'אפשר לנעול משבצת! בחר 🔒 בתחתית המסך, לחץ על משבצת ריקה, ואשר עם שבץ — המתחרה לא יוכל לשים שם אות.',
     selectors: ['#lock-inv-display'],
-    autoCloseMs: 5000,
+    showNext: true,
   };
 }
 
