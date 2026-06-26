@@ -14,10 +14,10 @@ export const TUTORIAL_CELLS = Object.freeze([
   { r: 5, c: 9 },
 ]);
 
-// Second player move: place 'י' AT the row-5 right-edge bonus square (5,10).
-// findBonusActivationIdxs requires p.r === bonus.br && p.c === bonus.bc, so
-// the tile has to be on the bonus square itself, not adjacent to it.
-export const TUTORIAL_BONUS_LETTER = 'י';
+// Second player move: place a joker '?' AT the row-5 right-edge bonus square
+// (5,10) and assign it the letter 'י' via the joker picker — demonstrates
+// the joker mechanic and the bonus square in one move.
+export const TUTORIAL_BONUS_LETTER = '?';
 export const TUTORIAL_BONUS_CELL = Object.freeze({ r: 5, c: 10 });
 
 export const TUTORIAL_WORDS = Object.freeze(['שלום', 'שלומי', 'לב', 'תו', 'בת', 'תות']);
