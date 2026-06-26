@@ -74,7 +74,7 @@ test('placing a tile advances to recallDemo, recalling advances to first', () =>
   assert.ok(tips[2].selectors.includes('#c5_9'), 'first-move tip covers all 4 cells');
 });
 
-test('placing all 4 tiles shows dictQuery tip; DICT_INTENT.OPEN_QUERY advances to שבץ', () => {
+test('placing all 4 tiles shows dictQuery tip; DICT_INTENT.CHECK_QUERY advances to שבץ', () => {
   bus._reset();
   const tips = [];
   bus.on(TUTORIAL_TIP, (p) => tips.push(p));
@@ -90,7 +90,7 @@ test('placing all 4 tiles shows dictQuery tip; DICT_INTENT.OPEN_QUERY advances t
 
   const tipsBefore = tips.length;
 
-  // All 4 tiles placed
+  // All 4 tiles placed → dictQuery tip
   bus.emit(GAME_SCREEN_INTENT.LIVE_PREVIEW_CHANGED, {
     slot: 0,
     tiles: [
@@ -103,11 +103,14 @@ test('placing all 4 tiles shows dictQuery tip; DICT_INTENT.OPEN_QUERY advances t
   assert.equal(tips.length, tipsBefore + 1, 'dictQuery tip shown when all 4 placed');
   assert.ok(tips[tips.length - 1].selectors.includes('#btn-shailta'), 'dictQuery tip highlights שאילתה button');
 
-  // Player opens the dictionary
+  // Opening the dictionary does NOT advance the tip — player must click בדוק
   bus.emit(DICT_INTENT.OPEN_QUERY, {});
-  // Note: the advance uses a 400ms internal setTimeout so we can only check
-  // the tip count stays at dictQuery until that fires; just verify no crash.
-  assert.equal(tips.length, tipsBefore + 1, 'play tip not yet emitted synchronously');
+  assert.equal(tips.length, tipsBefore + 1, 'play tip not shown on dictionary open');
+
+  // Player clicks בדוק → play-button tip shown
+  bus.emit(DICT_INTENT.CHECK_QUERY, { word: 'שלום' });
+  assert.equal(tips.length, tipsBefore + 2, 'play tip shown after בדוק click');
+  assert.ok(tips[tips.length - 1].selectors.includes('#btn-play'), 'play tip highlights שבץ button');
 });
 
 test('removing a tile after dictQuery tip reverts to firstMove tip', () => {
@@ -213,7 +216,7 @@ test('full tutorial flow: שלום → illegalInfo → exchange → lockInfo →
   bus.emit(BONUS_RESOLVED, { kind: 'minigame', slot: 0, success: true, earnedPts: 40 });
   assert.equal(tips[tips.length - 1].label, 'כל הכבוד!', 'completion tip shown after BONUS_RESOLVED');
   assert.match(tips[tips.length - 1].text, /הפעלת בוסט/);
-  assert.ok(tips[tips.length - 1].autoCloseMs > 0, 'completion tip auto-closes');
+  assert.ok(!tips[tips.length - 1].autoCloseMs, 'completion tip stays until dismissed');
 });
 
 test('bot move 2 after exchange triggers lockTip with interactive selectors', () => {

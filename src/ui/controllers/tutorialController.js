@@ -187,21 +187,18 @@ export function createTutorialController({
     }
   }));
 
-  // Dictionary overlay opened — advance past the dict-query tip to שבץ prompt.
-  cleanups.push(bus.on(DICT_INTENT.OPEN_QUERY, () => {
+  // Player clicked בדוק inside the dictionary — the word has been checked,
+  // so now prompt them to close the dictionary and confirm with שבץ.
+  cleanups.push(bus.on(DICT_INTENT.CHECK_QUERY, () => {
     if (!active) return;
-    if (currentStep === 'first' || currentStep === 'dictQuery') {
-      // Small delay so the overlay opens before we swap the tip.
-      setTimeout(() => {
-        if (currentStep === 'first' || currentStep === 'dictQuery') {
-          emitTip('play', playButtonTip());
-        }
-      }, 400);
+    if (currentStep === 'dictQuery') {
+      emitTip('play', playButtonTip());
     }
   }));
 
-  // Mini-game completion: tip queues here while the result overlay is visible
-  // (z-index 9999) and becomes visible the moment the player clicks "Continue".
+  // Mini-game completion: show the completion tip without autoCloseMs so it
+  // stays visible after the result overlay (z-index 9999) is dismissed and
+  // the player can read it at their own pace.
   cleanups.push(bus.on(BONUS_RESOLVED, () => {
     if (!active || !waitingForBonus) return;
     waitingForBonus = false;
@@ -209,7 +206,6 @@ export function createTutorialController({
       label: 'כל הכבוד!',
       text: 'הפעלת בוסט! קיבלת ניקוד נוסף מהמשבצת. זה הסוד של המשחק — נסה להגיע למשבצות הבוסט. סיימת את ההדרכה.',
       selectors: ['#sv1'],
-      autoCloseMs: 6000,
     });
   }));
 
