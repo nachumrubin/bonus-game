@@ -125,7 +125,11 @@ export function createTutorialController({
           currentStep !== 'lockInfo' &&
           currentStep !== 'waitForBot3' &&
           currentStep !== 'parallelWords' &&
-          currentStep !== 'bonus') {
+          currentStep !== 'bonus' &&
+          currentStep !== 'exchangePrompt') {
+        // 'exchangePrompt' excluded: if the player hasn't exchanged yet (e.g.
+        // their turn was auto-passed after a word rejection), hold off on
+        // lockTip until TILES_EXCHANGED fires.
         currentStep = 'lockInfo';
         emitTip('lockInfo', lockTip());
       }
@@ -138,11 +142,18 @@ export function createTutorialController({
   }));
 
   // Player exchanged a tile — advance past the exchange step.
+  // If bot-2 has already played (e.g. after an illegal-word auto-pass), go
+  // straight to lockInfo; otherwise wait for the bot's second scripted move.
   cleanups.push(bus.on(EV.TILES_EXCHANGED, ({ slot } = {}) => {
     if (!active || slot !== 0) return;
     if (currentStep === 'exchangePrompt' || currentStep === 'illegalInfo') {
-      currentStep = 'botSecond';
-      emitTip('botSecond', waitingBotTip());
+      if (botMoves >= 2) {
+        currentStep = 'lockInfo';
+        emitTip('lockInfo', lockTip());
+      } else {
+        currentStep = 'botSecond';
+        emitTip('botSecond', waitingBotTip());
+      }
     }
   }));
 
@@ -174,34 +185,33 @@ export function createTutorialController({
     }
   }));
 
-  // Illegal-word rejection: the player demonstrated the mechanic, or tried a
-  // non-dict word while at the exchange step. Either way the game will
-  // auto-pass their turn in ~1100ms (see gameController) and the bot will
-  // play its second scripted move. We advance to 'botSecond' now so that
-  // when MOVE_CONFIRMED slot=1 fires, the lockTip branch triggers correctly.
+  // Illegal-word rejection:
+  //   • At illegalInfo: the player demonstrated the mechanic — now show the
+  //     exchange tip. The game auto-passes their turn (~1100 ms) so the bot
+  //     plays move 2 while the exchange tip is visible. Bot-2 does NOT fire
+  //     lockTip when currentStep === 'exchangePrompt' (excluded above); lockTip
+  //     fires via TILES_EXCHANGED once the player exchanges on their next turn.
+  //   • At exchangePrompt: rejection is ignored — the player must exchange.
   cleanups.push(bus.on(EV.INVALID_MOVE_REJECTED, ({ reason } = {}) => {
     if (!active) return;
-    if ((currentStep === 'illegalInfo' || currentStep === 'exchangePrompt') && reason === 'word-not-in-dictionary') {
-      currentStep = 'botSecond';
-      emitClear();
+    if (currentStep === 'illegalInfo' && reason === 'word-not-in-dictionary') {
+      currentStep = 'exchangePrompt';
+      emitTip('exchange', exchangeTip());
     }
   }));
 
-  // Dictionary overlay opened — advance past the dict-query tip to שבץ prompt.
-  cleanups.push(bus.on(DICT_INTENT.OPEN_QUERY, () => {
+  // Player clicked בדוק inside the dictionary — the word has been checked,
+  // so now prompt them to close the dictionary and confirm with שבץ.
+  cleanups.push(bus.on(DICT_INTENT.CHECK_QUERY, () => {
     if (!active) return;
-    if (currentStep === 'first' || currentStep === 'dictQuery') {
-      // Small delay so the overlay opens before we swap the tip.
-      setTimeout(() => {
-        if (currentStep === 'first' || currentStep === 'dictQuery') {
-          emitTip('play', playButtonTip());
-        }
-      }, 400);
+    if (currentStep === 'dictQuery') {
+      emitTip('play', playButtonTip());
     }
   }));
 
-  // Mini-game completion: tip queues here while the result overlay is visible
-  // (z-index 9999) and becomes visible the moment the player clicks "Continue".
+  // Mini-game completion: show the completion tip without autoCloseMs so it
+  // stays visible after the result overlay (z-index 9999) is dismissed and
+  // the player can read it at their own pace.
   cleanups.push(bus.on(BONUS_RESOLVED, () => {
     if (!active || !waitingForBonus) return;
     waitingForBonus = false;
@@ -209,7 +219,6 @@ export function createTutorialController({
       label: 'כל הכבוד!',
       text: 'הפעלת בוסט! קיבלת ניקוד נוסף מהמשבצת. זה הסוד של המשחק — נסה להגיע למשבצות הבוסט. סיימת את ההדרכה.',
       selectors: ['#sv1'],
-      autoCloseMs: 6000,
     });
   }));
 
@@ -387,7 +396,7 @@ export function waitingBotTip() {
 export function bonusSquareTip() {
   return {
     label: 'משבצות בוסט',
-    text: 'סביב הלוח יש 12 משבצות בוסט. הנח את האות "י" על משבצת הבוסט המסומנת בצד שמאל כדי להאריך את המילה ל"שלומי" ולקבל בוסט.',
-    selectors: ['#brack[letter=י]', '#bsq-10'],
+    text: 'סביב הלוח יש 12 משבצות בוסט. יש לך ג\'וקר "?" — בחר אותו מהמגש, בחר "י" בחלון הבחירה, והנח על משבצת הבוסט המסומנת כדי להאריך ל"שלומי" ולקבל בוסט!',
+    selectors: ['#brack[letter=?]', '#bsq-10'],
   };
 }
