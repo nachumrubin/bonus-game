@@ -189,8 +189,8 @@ test('full tutorial flow: שלום → illegalInfo → exchange → lockInfo →
   assert.ok(tips[afterBot2 - 1].showNext, 'lockInfo tip has הבא button');
   assert.ok(tips[afterBot2 - 1].selectors.some(s => s.includes('lock-inv-display')), 'lockInfo highlights lock button');
 
-  // --- player places the lock (MOVE_CONFIRMED at lockInfo step) → waitForBot3 ---
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 0 });
+  // --- player places the lock (LOCK_PLACED at lockInfo step) → waitForBot3 ---
+  bus.emit(EV.LOCK_PLACED, { slot: 0, lock: { r: 7, c: 7 } });
   assert.ok(clears.length >= 2, 'tip cleared after lock placement');
 
   // --- bot plays ת at (6,8) (move 3) forming "בת" + "תות" → parallelWords ---
@@ -251,7 +251,7 @@ test('bonus step live-preview: placing the bonus tile shows שבץ tip; removing
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
   bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 0 });                       // player places lock
+  bus.emit(EV.LOCK_PLACED, { slot: 0, lock: { r: 7, c: 7 } });   // player places lock
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['בת', 'תות'] }); // bot move 3
   bus.emit(TUTORIAL_INTENT.NEXT, {});                              // הבא → bonus tip
 
@@ -310,7 +310,7 @@ test('TUTORIAL_INTENT.NEXT: illegalInfo→exchangePrompt, lockInfo→bonus (skip
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
   bus.emit(EV.TILES_EXCHANGED, { slot: 0, count: 1 });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['תו'] });
-  bus.emit(EV.MOVE_CONFIRMED, { slot: 0 });                        // lock placement
+  bus.emit(EV.LOCK_PLACED, { slot: 0, lock: { r: 7, c: 7 } });    // lock placement
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['בת'] });         // bot move 3
   assert.equal(tips2[tips2.length - 1].label, 'מילים מקבילות', 'parallelWords tip shown');
 

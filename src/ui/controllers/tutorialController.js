@@ -146,12 +146,22 @@ export function createTutorialController({
     }
   }));
 
+  // Player placed a lock — advance past lockInfo regardless of currentStep.
+  cleanups.push(bus.on(EV.LOCK_PLACED, ({ slot } = {}) => {
+    if (!active || slot !== 0) return;
+    if (currentStep === 'lockInfo') {
+      currentStep = 'waitForBot3';
+      emitClear();
+    }
+  }));
+
   // Safety net: if it becomes the bot's turn but the bot has exhausted its
   // scripted moves and never calls MOVE_CONFIRMED, auto-pass after 2 s so
-  // the player isn't left waiting forever.
+  // the player isn't left waiting forever. Runs even in 'done' state so the
+  // bot passes after the mini-game completes and the game doesn't freeze.
   cleanups.push(bus.on(EV.TURN_CHANGED, ({ currentTurnSlot } = {}) => {
     if (!active) return;
-    if (currentTurnSlot === 1 && currentStep !== 'done') {
+    if (currentTurnSlot === 1) {
       botStuckTimer = setTimeout(() => {
         botStuckTimer = null;
         const session = activeGameRef()?.session;
