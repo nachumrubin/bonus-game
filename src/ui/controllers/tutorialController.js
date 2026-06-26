@@ -118,6 +118,19 @@ export function createTutorialController({
     }
   }));
 
+  // Illegal-word rejection: the player demonstrated the mechanic, or tried a
+  // non-dict word while at the exchange step. Either way the game will
+  // auto-pass their turn in ~1100ms (see gameController) and the bot will
+  // play its second scripted move. We advance to 'botSecond' now so that
+  // when MOVE_CONFIRMED slot=1 fires, the lockTip branch triggers correctly.
+  cleanups.push(bus.on(EV.INVALID_MOVE_REJECTED, ({ reason } = {}) => {
+    if (!active) return;
+    if ((currentStep === 'illegalInfo' || currentStep === 'exchangePrompt') && reason === 'word-not-in-dictionary') {
+      currentStep = 'botSecond';
+      emitClear();
+    }
+  }));
+
   // Dictionary overlay opened — advance past the dict-query tip to שבץ prompt.
   cleanups.push(bus.on(DICT_INTENT.OPEN_QUERY, () => {
     if (!active) return;
