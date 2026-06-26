@@ -11,6 +11,7 @@ import {
   TUTORIAL_CELLS,
   TUTORIAL_BONUS_CELL,
 } from '../../game/sessions/tutorialSession.js';
+import { BONUS_RESOLVED } from './bonusActivationController.js';
 
 export function createTutorialController({
   bus,
@@ -26,6 +27,7 @@ export function createTutorialController({
   let botMoves = 0;
   let currentStep = 'idle';   // 'idle' | 'first' | 'bot' | 'bonus' | 'done'
   let lastTipKey = '';        // last tip kind we emitted, to suppress dupes
+  let waitingForBonus = false; // true after bonus-square move, until BONUS_RESOLVED
 
   cleanups.push(bus.on(MENU_INTENT.OPEN_TUTORIAL, () => {
     bus.emit(TUTORIAL_OPEN, {});
@@ -71,15 +73,13 @@ export function createTutorialController({
         currentStep = 'bot';
         emitClear();
       } else if (playerMoves === 2) {
-        // Player placed the bonus tile. Show the completion message
-        // briefly (no buttons — the box auto-dismisses).
+        // Player placed the bonus tile. Defer the completion tip until
+        // BONUS_RESOLVED fires (after the mini-game finishes). The mini-game
+        // overlay (.bz-overlay, z-index 9999) covers #tut-tip (z-index 8200),
+        // so showing the tip here would make it invisible during play and then
+        // auto-close before the user ever sees it.
         currentStep = 'done';
-        emitTip('completion', {
-          label: 'כל הכבוד!',
-          text: 'הפעלת בוסט! קיבלת ניקוד נוסף מהמשבצת. זה הסוד של המשחק — נסה להגיע למשבצות הבוסט. סיימת את ההדרכה.',
-          selectors: ['#sv1'],
-          autoCloseMs: 4000,
-        });
+        waitingForBonus = true;
       }
       return;
     }
@@ -91,6 +91,21 @@ export function createTutorialController({
       }
       // Subsequent bot moves don't show any tip — the tutorial is over.
     }
+  }));
+
+  // Mini-game completion: the .bz-overlay result screen is still visible when
+  // BONUS_RESOLVED fires, but it sits above #tut-tip (z-index 9999 vs 8200).
+  // The tip queues up here and becomes visible the moment the player clicks
+  // "Continue" and the result overlay is removed.
+  cleanups.push(bus.on(BONUS_RESOLVED, () => {
+    if (!active || !waitingForBonus) return;
+    waitingForBonus = false;
+    emitTip('completion', {
+      label: 'כל הכבוד!',
+      text: 'הפעלת בוסט! קיבלת ניקוד נוסף מהמשבצת. זה הסוד של המשחק — נסה להגיע למשבצות הבוסט. סיימת את ההדרכה.',
+      selectors: ['#sv1'],
+      autoCloseMs: 6000,
+    });
   }));
 
   // The player's pending placements come through this intent (gameScreen
@@ -127,6 +142,7 @@ export function createTutorialController({
     botMoves = 0;
     currentStep = 'idle';
     lastTipKey = '';
+    waitingForBonus = false;
   }
 
   function dispose() {

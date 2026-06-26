@@ -2,6 +2,31 @@
 
 ---
 
+## Tutorial completion tip deferred past mini-game overlay — June 2026
+
+Fixed the tutorial getting stuck after the Boost mini-game step. After the June
+2026 premium mini-game redesign, interactive mini-games render into a
+`.bz-overlay` (z-index 9999), which sits above the tutorial tip `#tut-tip`
+(z-index 8200). The previous code emitted the "כל הכבוד!" completion tip the
+moment the player placed "י" on the bonus square, but the mini-game overlay
+immediately covered it and the 4-second auto-close fired while the game was
+still in progress — so the user never saw the tip.
+
+Fix: deferred the completion tip from `EV.MOVE_CONFIRMED (playerMoves === 2)`
+to the `BONUS_RESOLVED` event (`'bonus/resolved'`). `BONUS_RESOLVED` fires when
+the mini-game calls its `onResult` callback (while the result view is still
+showing). When the player clicks "Continue" and the `.bz-overlay` is removed,
+the queued tutorial tip (z-index 8200) becomes visible on the game screen.
+Also extended `autoCloseMs` from 4000 → 6000 ms to give the user time to read
+after the result overlay dismisses.
+
+- `src/ui/controllers/tutorialController.js` — completion tip now fires on
+  `BONUS_RESOLVED`; added `waitingForBonus` flag; reset in `resetState()`.
+- `src/ui/controllers/tutorialController.test.js` — updated test to assert tip
+  fires only after `BONUS_RESOLVED`, not on `MOVE_CONFIRMED`.
+
+---
+
 ## Admin monitoring dashboard — June 2026
 
 Added a dedicated admin panel (`#sadmin`) with app-usage statistics, a full

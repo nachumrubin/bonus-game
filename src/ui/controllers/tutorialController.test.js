@@ -7,6 +7,7 @@ import { MENU_INTENT } from '../screens/menuScreen.js';
 import { TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_TIP } from '../screens/tutorialScreen.js';
 import { GAME_SCREEN_INTENT } from '../screens/gameScreen.js';
 import { createTutorialController } from './tutorialController.js';
+import { BONUS_RESOLVED } from './bonusActivationController.js';
 
 test('menu replay opens the tutorial intro and start launches tutorial game', () => {
   bus._reset();
@@ -43,17 +44,20 @@ test('tutorial game events emit guided tips through bonus-square demo', () => {
   bus.emit(EV.MOVE_CONFIRMED, { slot: 1, words: ['לב'] });
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, words: ['שלומי'] });
 
-  // 3 actionable tips: first-move prompt, bonus-square prompt, completion.
-  // Intermediate "יפה" / "תור הבוט" tips were removed in favor of a clear
-  // after the first player move (no buttons → would otherwise flash).
-  assert.equal(tips.length, 3);
+  // After the bonus-tile move only 2 tips have fired (first + bonus prompt).
+  // The completion tip is deferred until the mini-game resolves so it is not
+  // hidden behind the .bz-overlay (z-index 9999 > #tut-tip z-index 8200).
+  assert.equal(tips.length, 2, 'completion tip not yet shown before BONUS_RESOLVED');
   // First move shifted +1 column so 'י' can land ON the bonus square at (5,10).
   assert.ok(tips[0].selectors.includes('#c5_6'));
   assert.ok(tips[0].selectors.includes('#c5_9'));
   // Bonus prompt now points the player AT the bonus square (not adjacent).
   assert.ok(tips[1].selectors.includes('#bsq-10'));
   assert.ok(tips[1].selectors.includes('#brack[letter=י]'));
-  // Completion tip auto-closes (no buttons exist to dismiss it).
+
+  // Mini-game completes → BONUS_RESOLVED → completion tip fires.
+  bus.emit(BONUS_RESOLVED, { kind: 'minigame', slot: 0, success: true, earnedPts: 40 });
+  assert.equal(tips.length, 3);
   assert.match(tips[2].text, /הפעלת בוסט/);
   assert.ok(tips[2].autoCloseMs > 0, 'completion tip auto-closes');
   // The clear between firstMoveTip and bonusSquareTip fires explicitly.
