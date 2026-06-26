@@ -22,8 +22,10 @@ export const TUTORIAL_BONUS_CELL = Object.freeze({ r: 5, c: 10 });
 
 export const TUTORIAL_WORDS = Object.freeze(['שלום', 'שלומי', 'לב', 'תו', 'בת', 'תות']);
 
-// Cell the player is guided to lock in the lock tutorial step.
-export const TUTORIAL_LOCK_CELL = Object.freeze({ r: 4, c: 9 });
+// Cell the player is guided to lock in the lock tutorial step: one row
+// directly below ב at (6,7). This is far from bot move 3 at (6,8) and from
+// the player's bonus cell at (5,10) so neither future step is blocked.
+export const TUTORIAL_LOCK_CELL = Object.freeze({ r: 7, c: 7 });
 
 // Bot moves are scripted around the shifted player word.
 //   Move 1: ב at (6,7) forms "לב" vertically with ל at (5,7).

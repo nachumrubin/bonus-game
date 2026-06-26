@@ -350,7 +350,7 @@ export function exchangeTip() {
 export function lockTip() {
   return {
     label: 'נעילת משבצת',
-    text: 'אפשר לנעול משבצת כדי לחסום את היריב! בחר 🔒 מטה, לחץ על המשבצת המסומנת, ואשר עם שבץ.',
+    text: 'אפשר לנעול משבצת כדי לחסום את היריב! בחר 🔒 מהסרגל למטה, לחץ על המשבצת שמתחת לאות ב (המסומנת בצהוב), ואשר עם שבץ.',
     selectors: [`#lock-inv-display`, `#c${TUTORIAL_LOCK_CELL.r}_${TUTORIAL_LOCK_CELL.c}`],
     showNext: true,
   };
