@@ -25,6 +25,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   const tip = $('#tut-tip', root);
   const tipLabel = $('#tut-tip-lbl', root);
   const tipText = $('#tut-tip-txt', root);
+  const tipNext = $('#tut-tip-next', root);
   const start = $('#tut-intro-go', root);
   const back = $('#tut-intro-back', root);
   const cleanups = [];
@@ -47,6 +48,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     intro?.classList?.add('hidden');
     bus.emit(TUTORIAL_INTENT.BACK, {});
   });
+  takeOver(tipNext, () => bus.emit(TUTORIAL_INTENT.NEXT, {}));
 
   cleanups.push(bus.on(TUTORIAL_OPEN, () => intro?.classList?.remove('hidden')));
   cleanups.push(bus.on(TUTORIAL_CLOSE, () => intro?.classList?.add('hidden')));
@@ -62,7 +64,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
-  function showTip({ label = '', text = '', selectors = [], selector = null, autoCloseMs = 0 } = {}) {
+  function showTip({ label = '', text = '', selectors = [], selector = null, autoCloseMs = 0, showNext = false } = {}) {
     clearHighlights();
     cancelAutoClose();
     setText(tipLabel, label);
@@ -71,7 +73,10 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     if (selector) list.push(selector);
     currentSelectors = list;
     applyHighlights();
+    if (showNext) tipNext?.classList?.remove('hidden');
+    else tipNext?.classList?.add('hidden');
     tip?.classList?.remove('hidden');
+    positionTip();
     // Board cells, rack tiles, and bonus squares may not exist in the DOM
     // at the moment the tip fires (rack is re-rendered as a side effect of
     // selection/placement, not from GAME_STARTED directly). Re-resolve
@@ -87,6 +92,46 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
         clearTip();
       }, autoCloseMs);
     }
+  }
+
+  // Place the tip box just below the status bar, above the board, centered
+  // in the game grid. Uses getBoundingClientRect so it adapts to any screen
+  // size without hard-coded pixel offsets.
+  function positionTip() {
+    if (!tip) return;
+    const win = root.defaultView ?? globalThis.window;
+    if (!win?.requestAnimationFrame) return;
+    // Defer one frame so the tip is visible (non-hidden) before measuring.
+    win.requestAnimationFrame(() => {
+      const sbar = root.querySelector?.('#sbar') ?? root.querySelector?.('.sbar');
+      const grid = root.getElementById?.('game-grid') ?? root.querySelector?.('#game-grid');
+      if (!sbar && !grid) return;
+
+      // Anchor below the status bar if available, otherwise below the grid top.
+      const anchor = sbar ?? grid;
+      const anchorRect = anchor.getBoundingClientRect?.();
+      if (!anchorRect || anchorRect.width === 0) return;
+
+      const tipTop = anchorRect.bottom + 8;
+      tip.style.top = `${tipTop}px`;
+      tip.style.bottom = '';
+
+      // Horizontally center within the game grid.
+      if (grid) {
+        const gridRect = grid.getBoundingClientRect?.();
+        if (gridRect && gridRect.width > 0) {
+          const centerX = gridRect.left + gridRect.width / 2;
+          tip.style.left = `${centerX}px`;
+          tip.style.transform = 'translateX(-50%)';
+          tip.style.right = '';
+          return;
+        }
+      }
+      // Fallback: center in the viewport.
+      tip.style.left = '50%';
+      tip.style.transform = 'translateX(-50%)';
+      tip.style.right = '';
+    });
   }
 
   function isInPlaceTarget(el) {
@@ -210,6 +255,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   }
 
   function onResize() {
+    positionTip();
     if (currentTargets.length) paintSpotlights(currentTargets);
   }
 
@@ -253,6 +299,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   function clearTip() {
     cancelAutoClose();
     clearHighlights();
+    tipNext?.classList?.add('hidden');
     tip?.classList?.add('hidden');
     detachResize();
     detachRackObserver();

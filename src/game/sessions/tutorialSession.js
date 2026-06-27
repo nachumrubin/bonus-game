@@ -14,27 +14,28 @@ export const TUTORIAL_CELLS = Object.freeze([
   { r: 5, c: 9 },
 ]);
 
-// Second player move: place 'י' AT the row-5 right-edge bonus square (5,10).
-// findBonusActivationIdxs requires p.r === bonus.br && p.c === bonus.bc, so
-// the tile has to be on the bonus square itself, not adjacent to it.
-export const TUTORIAL_BONUS_LETTER = 'י';
+// Second player move: place a joker '?' AT the row-5 right-edge bonus square
+// (5,10) and assign it the letter 'י' via the joker picker — demonstrates
+// the joker mechanic and the bonus square in one move.
+export const TUTORIAL_BONUS_LETTER = '?';
 export const TUTORIAL_BONUS_CELL = Object.freeze({ r: 5, c: 10 });
 
-export const TUTORIAL_WORDS = Object.freeze(['שלום', 'שלומי', 'לב', 'תו']);
+export const TUTORIAL_WORDS = Object.freeze(['שלום', 'שלומי', 'לב', 'תו', 'בת', 'תות']);
+
+// Cell the player is guided to lock in the lock tutorial step: one row
+// directly below ב at (6,7). This is far from bot move 3 at (6,8) and from
+// the player's bonus cell at (5,10) so neither future step is blocked.
+export const TUTORIAL_LOCK_CELL = Object.freeze({ r: 7, c: 7 });
 
 // Bot moves are scripted around the shifted player word.
 //   Move 1: ב at (6,7) forms "לב" vertically with ל at (5,7).
-//   Move 2: ת at (4,8) forms "תו" vertically with ו at (5,8) — fires AFTER
-//     the player's bonus move, so it has to connect to the post-bonus board
-//     (Row 5: ש ל ו מ י, Row 6: ב). Earlier scripted moves landed on
-//     empty cells not adjacent to any existing tile and the engine rejected
-//     them, leaving the bot stuck on its turn.
-// We deliberately don't queue a third bot move: the tutorial is conceptually
-// over after the player's bonus tile, and any further bot play would have
-// to react to whatever non-scripted moves the player makes next.
+//   Move 2: ת at (4,8) forms "תו" vertically with ו at (5,8).
+//   Move 3: ת at (6,8) forms "בת" horizontally (with ב at 6,7) AND "תות"
+//            vertically (ת-ו-ת in col 8). Demonstrates parallel words.
 export const TUTORIAL_BOT_MOVES = Object.freeze([
   [{ r: 6, c: 7, letter: 'ב', val: 2, isJoker: false }, 'לב'],
   [{ r: 4, c: 8, letter: 'ת', val: 1, isJoker: false }, 'תו'],
+  [{ r: 6, c: 8, letter: 'ת', val: 1, isJoker: false }, 'בת'],
 ]);
 
 export function buildTutorialFirstMove() {
