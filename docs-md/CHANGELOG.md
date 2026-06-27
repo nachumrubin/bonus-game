@@ -2,6 +2,111 @@
 
 ---
 
+## New default avatar: "anonymous player" — June 2026
+
+The default avatar changed from the legacy `crown` emoji to the neutral
+"anonymous player" art, now also offered as a free common store avatar.
+
+- `src/ui/screens/avatarStore.js` — appended the avatar to the `common` tier as
+  `common_17` (17 common, 44 total). A tier file entry may now be `{ src }` to
+  reuse an existing asset (`assets/avatars/anonymous player.png`) instead of
+  duplicating it into `avatars_v2/`. New export `DEFAULT_STORE_AVATAR_ID`.
+- `src/game/account/profileService.js` — `DEFAULT_AVATAR` is now `common_17`, so
+  new accounts start with it (`buildInitialProfile`).
+- `scripts/migrate-default-avatar.mjs` — one-time admin migration that moves
+  existing accounts off `crown` to `common_17` (`--include-unset` also covers
+  accounts with no avatar set; `--dry-run` to preview).
+- Tests updated in `avatarStore.test.js`; `profileService.test.js` tracks
+  `DEFAULT_AVATAR` automatically.
+
+---
+
+## Fix: friends list shows stale (achievement) avatars instead of v2 — June 2026
+
+`friends/{uid}/{friendUid}` stores a **snapshot** of the friend's name/avatar
+captured at acceptance time (`acceptFriendRequest`). When a user later equipped
+a v2 store avatar, friends kept seeing the old achievement avatar. The friend's
+own `/users` profile isn't readable by others (`users/$uid` read is owner-only),
+so the avatar can't be resolved live at render time — instead each user now
+*pushes* their current name/avatar into every friend's edge.
+
+- `src/game/account/friendsService.js` — new `syncSelfToFriends(db, { uid,
+  friendUids, avatar, name })`: atomic multi-path update of
+  `friends/{fid}/{uid}/{avatar,name}`. Allowed by the existing rule
+  (`friends/$uid/$friendUid` is writable when `auth.uid === $friendUid`), so no
+  rules change.
+- `src/main.js` — `syncMyProfileToFriends()` calls it from the profile watch
+  (equip/rename, incl. other devices) and the friends-list watch (self-heals
+  pre-existing stale edges on next app open). Signature-guarded to avoid a
+  write ping-pong between two online friends.
+- Tests added in `friendsService.test.js`.
+- `scripts/refresh-friend-avatars.mjs` — one-time admin force-heal that rewrites
+  every `friends/*/*/avatar` from each friend's current `equippedAvatar`
+  (`--names` also refreshes stale displayNames; `--dry-run` to preview). Run it
+  to fix all existing edges immediately instead of waiting for users to come
+  online.
+
+---
+
+## Back-confirm overlay: remove non-functional × close button — June 2026
+
+The × close button on the end-game/back-confirm overlay (`#ov-back-confirm`)
+was removed. It duplicated the primary "חזור למשחק" action (both emitted
+`back/stay`) and was a recurring source of the `backConfirmStay is not defined`
+error when the inline `onclick` wasn't stripped by the mount. The primary
+action already covers returning to the game.
+
+- `partials/screens/back-confirm-overlay.html` — deleted the
+  `.pause-close-btn`. The `backConfirmScreen.js` mount is unchanged (its
+  `button[onclick="backConfirmStay()"]` selector now matches only the primary
+  action button).
+
+---
+
+## Fix: epic avatar `jacob` 404 on deploy — June 2026
+
+`assets/avatars_v2/epic/jacob.PNG` 404'd on the case-sensitive host
+(boost-8ef11.web.app). Root cause was a Windows case-collision: git tracked
+both `jacob.PNG` and `jacob.png` (distinct blobs), but the working tree only
+had the lowercase `jacob.png`, so deploys from Windows uploaded only that file
+while the store catalog requested `jacob.PNG`.
+
+- `src/ui/screens/avatarStore.js` — epic catalog entry `'jacob.PNG'` → `'jacob.png'`.
+- `docs/asset_inventory.md` — same rename.
+- Removed the phantom `jacob.PNG` from the git index (`git rm --cached`); the
+  physical `jacob.png` (current art) is untouched.
+
+---
+
+## Fix: word-suggestion "Permission denied" — June 2026
+
+`submitWordSuggestion()` (`src/game/account/dictionaryService.js`) was doing a
+whole-collection `db.ref('dictionarySuggestions').get()` to de-duplicate a
+user's pending suggestion. The security rules grant the collection-level
+`.read` on `dictionarySuggestions` to **admins only** (individual `$id` nodes
+are readable by any authenticated user), so every non-admin "suggest removal"
+attempt failed with `Error: Permission denied`.
+
+- Each suggestion is now stored under a **deterministic key** —
+  `suggestionKey(type, normalizedWord, uid)` → `"${type}__${word}__${uid}"` —
+  instead of a `push()` auto-id. De-dup reads just that one node, which the
+  existing rules already permit, so no rule change was required.
+- `findPendingSuggestionsForWords()` / `markSuggestionsApproved()` are
+  unaffected — they key by string and only run on the admin side.
+- Added a regression test asserting the collection is never listed during a
+  submit.
+- `scripts/migrate-suggestion-keys.mjs` — one-time admin migration that re-keys
+  legacy `push()`-id suggestion rows to the deterministic scheme (splits
+  multi-user `suggestedBy` arrays, preserves status + earliest `createdAt`,
+  atomic multi-path update). Run with `--dry-run` first.
+
+Note: the related `backConfirmStay is not defined` console error is a stale
+service-worker cache serving the pre-`5491747c` `backConfirmScreen.js` (which
+wired only the first `onclick="backConfirmStay()"` button). The build-stamp
+`CACHE_NAME` bump in `sw.js` purges it on the next SW activation / hard reload.
+
+---
+
 ## Admin monitoring dashboard — June 2026
 
 Added a dedicated admin panel (`#sadmin`) with app-usage statistics, a full
