@@ -3838,7 +3838,6 @@ async function boot() {
       jokerPicker: globalThis.__spine?.jokerPicker ?? null,
       bus,
     });
-    session.start();
     const bonusFlow = attachBonusFlow(session);
     const reactionCtrl = mountReactionController({
       bus,
@@ -3888,6 +3887,8 @@ async function boot() {
       preGameTotalPlayers = leaderboardMeta.totalPlayers;
     }
 
+    // activeGame must be set BEFORE session.start() so that the debug recorder
+    // can read session.roomId when EV.GAME_STARTED fires synchronously inside start().
     globalThis.__spine.activeGame = {
       session, controller, animationController, screen, bonusFlow, timeoutWatchdog, reactionCtrl, online: true, isAsync, mySlot,
       preGameMyRating, preGameOppRating, preGameTopUid, preGameTotalPlayers,
@@ -3910,6 +3911,7 @@ async function boot() {
     globalThis.__spine.disconnectController?.resubscribe?.();
     globalThis.__spine.turnTimerController?.sync?.();
     scheduleGameLayoutRefresh();
+    session.start();
     console.info('[spine] online game started', { roomId: room.roomId, mySlot, isAsync });
     return session;
   }
@@ -4022,10 +4024,10 @@ async function boot() {
       bus,
     });
 
-    session.start();
     const bonusFlow = attachBonusFlow(session, { botSlot: bot ? 1 : null });
 
-    // Tear-down hook — exposed so DevTools / future "back to menu" can clean up.
+    // activeGame must be set BEFORE session.start() so that the debug recorder
+    // can read session data when EV.GAME_STARTED fires synchronously inside start().
     globalThis.__spine.activeGame = {
       session, controller, animationController, screen, bonusFlow,
       tutorial: mode === 'tutorial', mySlot: humanSlot,
@@ -4043,6 +4045,7 @@ async function boot() {
     globalThis.__spine.disconnectController?.resubscribe?.();
     globalThis.__spine.turnTimerController?.sync?.();
     scheduleGameLayoutRefresh();
+    session.start();
     console.info('[spine] game session started; state:', session.state);
     return session;
   }
