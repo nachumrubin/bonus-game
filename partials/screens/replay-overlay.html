@@ -1,0 +1,47 @@
+<!-- GAME DEBUG REPLAY (admin) — tri-panel synchronized board review -->
+<div id="ov-replay" class="ov hidden">
+  <div class="replay-wrap" dir="rtl">
+    <div class="replay-hdr">
+      <span class="replay-title">🔁 שחזור משחק</span>
+      <span id="replay-gid" class="replay-gid"></span>
+      <button id="replay-close" class="replay-x" aria-label="סגור">✕</button>
+    </div>
+
+    <div class="replay-panels">
+      <div class="replay-panel" id="replay-panel-p0">
+        <div class="replay-panel-hdr">
+          <span class="replay-panel-title" id="replay-p0-title">שחקן 1</span>
+          <span class="replay-panel-badge" id="replay-p0-badge"></span>
+        </div>
+        <div class="replay-panel-meta" id="replay-p0-meta"></div>
+        <div class="replay-board" id="replay-board-p0"></div>
+      </div>
+
+      <div class="replay-panel" id="replay-panel-p1">
+        <div class="replay-panel-hdr">
+          <span class="replay-panel-title" id="replay-p1-title">שחקן 2</span>
+          <span class="replay-panel-badge" id="replay-p1-badge"></span>
+        </div>
+        <div class="replay-panel-meta" id="replay-p1-meta"></div>
+        <div class="replay-board" id="replay-board-p1"></div>
+      </div>
+
+      <div class="replay-panel replay-panel--server" id="replay-panel-srv">
+        <div class="replay-panel-hdr">
+          <span class="replay-panel-title">שרת (אמת)</span>
+        </div>
+        <div class="replay-panel-meta" id="replay-srv-meta"></div>
+        <div class="replay-board" id="replay-board-srv"></div>
+      </div>
+    </div>
+
+    <div class="replay-transport">
+      <button id="replay-first" class="replay-tbtn" title="להתחלה">⏮</button>
+      <button id="replay-prev" class="replay-tbtn" title="אחורה">◀</button>
+      <button id="replay-play" class="replay-tbtn" title="הפעל/השהה">▶</button>
+      <button id="replay-next" class="replay-tbtn" title="קדימה">▶▶</button>
+      <input id="replay-scrub" class="replay-scrub" type="range" min="0" max="0" value="0">
+      <span id="replay-frame-label" class="replay-frame-label"></span>
+    </div>
+  </div>
+</div>

@@ -19,6 +19,7 @@ export const MENU_INTENT = Object.freeze({
   OPEN_GUIDE:         'menu/openGuide',
   OPEN_FAQ:           'menu/openFaq',
   OPEN_HELP_MENU:     'menu/openHelpMenu',
+  OPEN_REPORT_PROBLEM:'menu/openReportProblem',
   OPEN_SETTINGS:      'menu/openSettings',
   SHARE_GAME:         'menu/shareGame',
   OPEN_STATS:         'menu/openStats',

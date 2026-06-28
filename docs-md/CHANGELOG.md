@@ -2,60 +2,224 @@
 
 ---
 
-## Tutorial expanded with full mechanics walkthrough — June 2026
+## Game Debug Timeline (internal admin tool) — June 2026
 
-Expanded the tutorial from a 2-step stub (place "שלום" + bonus mini-game) to a
-complete mechanics walkthrough covering all major game actions:
+Added an append-only debug timeline for investigating bugs inside live/finished
+online games, with an admin-only screen, a tri-panel replay, and a player-facing
+"report a problem" button. All debug data lives in **separate** Firebase nodes —
+`/rooms` is untouched — and every write is best-effort so debug logging can never
+disrupt gameplay.
 
-**New tutorial steps (in order):**
-1. **Single tile placement** — place one tile to learn the drag-and-drop mechanic
-2. **בטל (recall)** — click the recall button to return the tile, teaching undo
-3. **Place "שלום"** — place all 4 letters on the highlighted cells
-4. **מילון / שאילתה** — prompted to open the dictionary to verify the word before confirming
-5. **שבץ** — confirm the move
-6. **Bot plays "לב"** — watch the opponent's scripted move
-7. **מהלך לא חוקי** — informational tip explaining that the engine rejects invalid words automatically
-8. **החלפת אות** — tile exchange prompt; completing the exchange advances to the next step
-9. **Bot plays "ת"** — opponent responds to the exchange turn
-10. **נעילת משבצת** — informational tip explaining lock mechanics
-11. **Bonus square** — extend "שלום" → "שלומי" on the bonus square to trigger the mini-game
-12. **Completion** — "כל הכבוד!" tip after the mini-game resolves
+New modules (all under `src/game/debug/`):
+- `debugSchema.js` — path constants + `DEBUG_EVENT` / `WARNING_TYPE` / `SEVERITY`
+  enums (single source of truth; add an event type in one line).
+- `stateHash.js` (pure) — `compactSnapshot` / `boardHash` / `hashState`; canonical
+  hashing that's identical for the engine's 2D board and the room doc's flat board.
+- `gameStateValidator.js` (pure) — `validateTransition` raising warnings for
+  same-player-twice, turn skip/no-advance, score mismatch, negative score,
+  change-after-ended, tile-count mismatch, board-without-move, client/server
+  mismatch, old app version, rules/dict version mismatch.
+- `debugLogger.js` — best-effort append-only writers (`logGameEvent`,
+  `createGameSnapshot`, `putClientSnapshot`, `createDebugWarning`,
+  `createDebugReport`, `upsertGameIndex`, `getGameDebugTimeline`) + env helpers.
+- `debugRecorder.js` — one global recorder; translates bus events → timeline,
+  writes per-client snapshots (deduped), and (online) watches the room to write
+  server snapshots + warnings.
+- `replayPlayer.js` (pure) — merges the server + both client snapshot streams onto
+  one `serverTimestamp` timeline for the tri-panel replay.
 
-**Files changed:**
-- `src/ui/controllers/tutorialController.js` — major state machine expansion; new steps
-  `singleTile`, `recallDemo`, `dictQuery`, `illegalInfo`, `exchangePrompt`,
-  `botSecond`, `lockInfo`; timers for auto-advancing informational tips;
-  new imports: `DICT_INTENT`, `EV.TILES_EXCHANGED`
-- `src/ui/controllers/tutorialController.test.js` — 9 tests covering the full flow
+New Firebase nodes (admin-read; append-only participant writes): `/gameEvents`,
+`/gameSnapshots`, `/clientSnapshots/{gameId}/{slot}`, `/debugWarnings`,
+`/debugReports`, `/debugGameIndex`. Rules added in
+`firebase.database.rules.json` (+ unit assertions + `tests/emulator/debug-rules.test.mjs`).
 
-The bot's 2 scripted moves (`tutorialSession.js`) are unchanged — the exchange
-step consumes one player turn, causing the bot to fire its second scripted move
-(ת), which fits naturally as the "opponent reacts to your exchange" moment.
+UI:
+- Admin **🐞 דיבאג** tab (`adminScreen.js` / `admin-screen.html`): search the game
+  index, open a game's timeline (events with readable summaries, severity-colored
+  warnings, manual reports, expandable raw JSON).
+- **שחזר משחק** replay (`replayScreen.js` / `replay-overlay.html`): three
+  synchronized read-only boards — Player 1 | Player 2 | Server — on a shared
+  scrubber; a lagging/diverged client is bordered red with a "לא תואם" badge and
+  its app version shown.
+- **"דווח על בעיה במשחק"** in the help dropdown → `report-problem-overlay.html` /
+  `reportProblemScreen.js`; captures env + last actions + local snapshot.
+- Global `window.onerror` / `unhandledrejection` capture → `/debugReports` with
+  dictionary-load health (closes the "couldn't explain why" gap).
+
+Wiring in `src/main.js` (recorder mount, admin debug/replay/report handlers,
+error capture) and a single GAME_CREATED hook in `roomService.createRoom`.
+Verification: 33 new unit tests + 5 emulator rule tests; capture spec
+`tests/e2e/capture-debug-timeline.spec.js` → `images/guide/debug/`.
 
 ---
 
-## Tutorial completion tip deferred past mini-game overlay — June 2026
+## Feature: read-only board review from the end screen — June 2026
 
-Fixed the tutorial getting stuck after the Boost mini-game step. After the June
-2026 premium mini-game redesign, interactive mini-games render into a
-`.bz-overlay` (z-index 9999), which sits above the tutorial tip `#tut-tip`
-(z-index 8200). The previous code emitted the "כל הכבוד!" completion tip the
-moment the player placed "י" on the bonus square, but the mini-game overlay
-immediately covered it and the 4-second auto-close fired while the game was
-still in progress — so the user never saw the tip.
+After a game ends, the results overlay now has a **"צפה בלוח"** button that hides
+the results and reveals the finished board (already rendered behind the overlay)
+in a **read-only** state — useful for recapping or taking a screenshot. A
+floating **"חזרה לתוצאות"** button restores the results table.
 
-Fix: deferred the completion tip from `EV.MOVE_CONFIRMED (playerMoves === 2)`
-to the `BONUS_RESOLVED` event (`'bonus/resolved'`). `BONUS_RESOLVED` fires when
-the mini-game calls its `onResult` callback (while the result view is still
-showing). When the player clicks "Continue" and the `.bz-overlay` is removed,
-the queued tutorial tip (z-index 8200) becomes visible on the game screen.
-Also extended `autoCloseMs` from 4000 → 6000 ms to give the user time to read
-after the result overlay dismisses.
+- `partials/screens/end.html` — new `reviewBoard()` button on `#ov-end`.
+- `partials/screens/game.html` — `#board-review-back` floating button, placed
+  outside `.gr` so the read-only guard doesn't disable it.
+- `styles.css` — `#sg.board-review .gr { pointer-events:none }` makes the board
+  non-interactive during review; `.board-review-back` styling.
+- `src/ui/screens/endGameScreen.js` — `END_INTENT.VIEW_BOARD` wired to the button.
+- `src/ui/controllers/gameFlowController.js` — `enterBoardReview()` /
+  `exitBoardReview()`; caches the end payload so "back to results" re-opens the
+  same table. Review state is cleared on home / rematch / new game.
+- Tests added in `overlays.test.js` and `gameFlowController.test.js`.
 
-- `src/ui/controllers/tutorialController.js` — completion tip now fires on
-  `BONUS_RESOLVED`; added `waitingForBonus` flag; reset in `resetState()`.
-- `src/ui/controllers/tutorialController.test.js` — updated test to assert tip
-  fires only after `BONUS_RESOLVED`, not on `MOVE_CONFIRMED`.
+---
+
+## Tutorial: final tip "סיים" button exits to the main screen — June 2026
+
+The last tutorial tip ("כל הכבוד! … סיימת את ההדרכה") had no button. It now
+shows a **סיים** button that closes the tutorial game and returns to the home
+screen.
+
+- `src/ui/screens/tutorialScreen.js` — `showTip` accepts a `nextLabel` (default
+  "הבא ›") so a tip can relabel its action button.
+- `src/ui/controllers/tutorialController.js` — the completion tip sets
+  `showNext: true, nextLabel: 'סיים'` and marks `currentStep = 'completion'`;
+  the NEXT handler now finishes on that step via the shared `endTutorialToMenu()`
+  teardown (same as the back action: deactivate → clear → `showScreen('sh')`).
+- Test coverage added to the full-flow tutorial test.
+
+---
+
+## Fix: matchmaking spinner showed achievement avatars — June 2026
+
+The "מחפש יריב" search spinner cycles a hardcoded `SLOT_PROFILES` list of sample
+opponents. Their avatars were legacy achievement ids (`fire`, `shark`,
+`diamond`, …), which `avatarMarkup` renders as achievement trophy art instead of
+the avatars_v2 store icons. Swapped them to a spread of store ids
+(`common_*`/`rare_*`/`epic_*`/`legendary_*`) in
+`src/ui/screens/matchmakingOverlayScreen.js`. The matched opponent card already
+used the real player's avatar and was unaffected.
+
+---
+
+## Fix: store coin balance + tutorial joker-picker tip overlap — June 2026
+
+1. **Avatar-store coin balance stale on entry.** The store balance only
+   repainted on a profile *change* (the `STORE_RENDER` from the profile watch),
+   not on navigation — so coins earned just before (e.g. the daily login
+   reward) didn't show until the next profile update. `STORE_INTENT.OPEN` now
+   re-emits `STORE_RENDER` from the latest `lastProfile` on entry
+   (`src/main.js`).
+
+2. **Tutorial bonus tip covered the joker-picker letter 'י'.** The tip is
+   anchored below the status bar, but the בחר אות (joker picker) is a centered
+   modal, so the tip hid its top row — including the 'י' the step tells you to
+   pick. `tutorialScreen.js` now pins the tip to the bottom while a centered
+   modal overlay (`#ov-joker` / `#ov-exch`) is open and back to the top when it
+   closes, via an overlay MutationObserver. The rack stays tappable (tip at top)
+   until the picker actually opens.
+
+## New default avatar: "anonymous player" — June 2026
+
+The default avatar changed from the legacy `crown` emoji to the neutral
+"anonymous player" art, now also offered as a free common store avatar.
+
+- `src/ui/screens/avatarStore.js` — appended the avatar to the `common` tier as
+  `common_17` (17 common, 44 total). A tier file entry may now be `{ src }` to
+  reuse an existing asset (`assets/avatars/anonymous player.png`) instead of
+  duplicating it into `avatars_v2/`. New export `DEFAULT_STORE_AVATAR_ID`.
+- `src/game/account/profileService.js` — `DEFAULT_AVATAR` is now `common_17`, so
+  new accounts start with it (`buildInitialProfile`).
+- `scripts/migrate-default-avatar.mjs` — one-time admin migration that moves
+  existing accounts off `crown` to `common_17` (`--include-unset` also covers
+  accounts with no avatar set; `--dry-run` to preview).
+- Tests updated in `avatarStore.test.js`; `profileService.test.js` tracks
+  `DEFAULT_AVATAR` automatically.
+
+---
+
+## Fix: friends list shows stale (achievement) avatars instead of v2 — June 2026
+
+`friends/{uid}/{friendUid}` stores a **snapshot** of the friend's name/avatar
+captured at acceptance time (`acceptFriendRequest`). When a user later equipped
+a v2 store avatar, friends kept seeing the old achievement avatar. The friend's
+own `/users` profile isn't readable by others (`users/$uid` read is owner-only),
+so the avatar can't be resolved live at render time — instead each user now
+*pushes* their current name/avatar into every friend's edge.
+
+- `src/game/account/friendsService.js` — new `syncSelfToFriends(db, { uid,
+  friendUids, avatar, name })`: atomic multi-path update of
+  `friends/{fid}/{uid}/{avatar,name}`. Allowed by the existing rule
+  (`friends/$uid/$friendUid` is writable when `auth.uid === $friendUid`), so no
+  rules change.
+- `src/main.js` — `syncMyProfileToFriends()` calls it from the profile watch
+  (equip/rename, incl. other devices) and the friends-list watch (self-heals
+  pre-existing stale edges on next app open). Signature-guarded to avoid a
+  write ping-pong between two online friends.
+- Tests added in `friendsService.test.js`.
+- `scripts/refresh-friend-avatars.mjs` — one-time admin force-heal that rewrites
+  every `friends/*/*/avatar` from each friend's current `equippedAvatar`
+  (`--names` also refreshes stale displayNames; `--dry-run` to preview). Run it
+  to fix all existing edges immediately instead of waiting for users to come
+  online.
+
+---
+
+## Back-confirm overlay: remove non-functional × close button — June 2026
+
+The × close button on the end-game/back-confirm overlay (`#ov-back-confirm`)
+was removed. It duplicated the primary "חזור למשחק" action (both emitted
+`back/stay`) and was a recurring source of the `backConfirmStay is not defined`
+error when the inline `onclick` wasn't stripped by the mount. The primary
+action already covers returning to the game.
+
+- `partials/screens/back-confirm-overlay.html` — deleted the
+  `.pause-close-btn`. The `backConfirmScreen.js` mount is unchanged (its
+  `button[onclick="backConfirmStay()"]` selector now matches only the primary
+  action button).
+
+---
+
+## Fix: epic avatar `jacob` 404 on deploy — June 2026
+
+`assets/avatars_v2/epic/jacob.PNG` 404'd on the case-sensitive host
+(boost-8ef11.web.app). Root cause was a Windows case-collision: git tracked
+both `jacob.PNG` and `jacob.png` (distinct blobs), but the working tree only
+had the lowercase `jacob.png`, so deploys from Windows uploaded only that file
+while the store catalog requested `jacob.PNG`.
+
+- `src/ui/screens/avatarStore.js` — epic catalog entry `'jacob.PNG'` → `'jacob.png'`.
+- `docs/asset_inventory.md` — same rename.
+- Removed the phantom `jacob.PNG` from the git index (`git rm --cached`); the
+  physical `jacob.png` (current art) is untouched.
+
+---
+
+## Fix: word-suggestion "Permission denied" — June 2026
+
+`submitWordSuggestion()` (`src/game/account/dictionaryService.js`) was doing a
+whole-collection `db.ref('dictionarySuggestions').get()` to de-duplicate a
+user's pending suggestion. The security rules grant the collection-level
+`.read` on `dictionarySuggestions` to **admins only** (individual `$id` nodes
+are readable by any authenticated user), so every non-admin "suggest removal"
+attempt failed with `Error: Permission denied`.
+
+- Each suggestion is now stored under a **deterministic key** —
+  `suggestionKey(type, normalizedWord, uid)` → `"${type}__${word}__${uid}"` —
+  instead of a `push()` auto-id. De-dup reads just that one node, which the
+  existing rules already permit, so no rule change was required.
+- `findPendingSuggestionsForWords()` / `markSuggestionsApproved()` are
+  unaffected — they key by string and only run on the admin side.
+- Added a regression test asserting the collection is never listed during a
+  submit.
+- `scripts/migrate-suggestion-keys.mjs` — one-time admin migration that re-keys
+  legacy `push()`-id suggestion rows to the deterministic scheme (splits
+  multi-user `suggestedBy` arrays, preserves status + earliest `createdAt`,
+  atomic multi-path update). Run with `--dry-run` first.
+
+Note: the related `backConfirmStay is not defined` console error is a stale
+service-worker cache serving the pre-`5491747c` `backConfirmScreen.js` (which
+wired only the first `onclick="backConfirmStay()"` button). The build-stamp
+`CACHE_NAME` bump in `sw.js` purges it on the next SW activation / hard reload.
 
 ---
 

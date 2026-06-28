@@ -14,6 +14,8 @@ import {
   normalizeLockInventory, normalizeLockedCells,
   normalizeBonusAssignment, normalizeBonusSqUsed, normalizePendingBonuses,
 } from './schema.js';
+import { logGameEvent, upsertGameIndex } from '../debug/debugLogger.js';
+import { DEBUG_EVENT } from '../debug/debugSchema.js';
 import { setCommittedTile } from '../core/board.js';
 import { createInitialState } from '../core/gameEngine.js';
 
@@ -68,6 +70,18 @@ export async function createRoom(db, { roomId, mode, players, settings, engineSt
     await asyncIndexRef(db, players[0].uid, roomId).set(meta);
     await asyncIndexRef(db, players[1].uid, roomId).set(meta);
   }
+  // Debug timeline (best-effort, never blocks room creation): seed the game
+  // index + a GAME_CREATED event so the admin can find this game later.
+  upsertGameIndex(db, roomId, {
+    hostName: players[0]?.displayName ?? null, guestName: players[1]?.displayName ?? null,
+    hostUid: players[0]?.uid ?? null, guestUid: players[1]?.uid ?? null,
+    mode, status: STATUS.WAITING, createdAt: Date.now(),
+  });
+  logGameEvent(db, roomId, {
+    type: DEBUG_EVENT.GAME_CREATED,
+    summary: `Room created (${mode}) — ${players[0]?.displayName ?? '?'} vs ${players[1]?.displayName ?? '?'}`,
+    payload: { mode }, userId: players[0]?.uid ?? null,
+  });
   return doc;
 }
 

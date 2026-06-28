@@ -99,6 +99,7 @@ function makeGameDom() {
   // Score panels
   reg('sv1'); reg('sv2'); reg('is-sv1'); reg('is-sv2');
   reg('sn1'); reg('sn2'); reg('is-sn1'); reg('is-sn2');
+  reg('is-av1'); reg('is-av2');
   reg('sb1'); reg('sb2'); reg('is-sb1'); reg('is-sb2');
   reg('scn1'); reg('scn2');
   // Misc
@@ -223,6 +224,16 @@ test('mount: score values reflect view-model on initial render', () => {
   assert.equal(elements.get('sv2').textContent, '8');
   assert.equal(elements.get('is-sv1').textContent, '12');
   assert.equal(elements.get('is-sv2').textContent, '8');
+});
+
+test('mount: blank player 2 avatar repaints to anonymous image', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  session.state.players[1].avatar = 'bot';
+  elements.get('is-av2').innerHTML = '<img class="av-img" src="assets/avatars/bot.png" alt="">';
+  mountGameScreen({ controller, root });
+  assert.match(elements.get('is-av2').innerHTML, /anonymous player\.png/);
+  assert.doesNotMatch(elements.get('is-av2').innerHTML, /bot\.png/);
 });
 
 test('mount: active slot gets the "act" class on its score box', () => {

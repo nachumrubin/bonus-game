@@ -47,4 +47,6 @@ export const SCREEN_PARTIALS = [
   './partials/screens/guest-upgrade-overlay.html',
   './partials/screens/onboarding-overlay.html',
   './partials/screens/admin-screen.html',
+  './partials/screens/replay-overlay.html',
+  './partials/screens/report-problem-overlay.html',
 ];

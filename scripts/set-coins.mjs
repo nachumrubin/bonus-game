@@ -7,7 +7,8 @@
 //   npm i firebase-admin
 //   A service-account key for the boost-8ef11 project. Point the standard
 //   Google credential env var at it:
-//     export GOOGLE_APPLICATION_CREDENTIALS="/abs/path/to/serviceAccount.json"
+//     bash/zsh:    export GOOGLE_APPLICATION_CREDENTIALS="/abs/path/serviceAccount.json"
+//     PowerShell:  $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\abs\path\serviceAccount.json"
 //
 // Usage:
 //   node scripts/set-coins.mjs --name "הודיה" --coins 1000
@@ -22,7 +23,8 @@
 //   --coins <n>           Balance to set. Default 1000. Clamped to 0..1,000,000.
 //   --dry-run             Resolve the target and print current coins; do not write.
 
-import admin from 'firebase-admin';
+import { initializeApp, applicationDefault } from 'firebase-admin/app';
+import { getDatabase } from 'firebase-admin/database';
 
 const DATABASE_URL = 'https://boost-8ef11-default-rtdb.firebaseio.com';
 
@@ -59,8 +61,9 @@ async function main() {
     process.exit(1);
   }
 
-  admin.initializeApp({ databaseURL: DATABASE_URL }); // uses GOOGLE_APPLICATION_CREDENTIALS
-  const db = admin.database();
+  // applicationDefault() reads the service-account key from GOOGLE_APPLICATION_CREDENTIALS.
+  const app = initializeApp({ credential: applicationDefault(), databaseURL: DATABASE_URL });
+  const db = getDatabase(app);
 
   let uid = opts.uid;
   let label = uid;

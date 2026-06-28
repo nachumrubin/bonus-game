@@ -191,6 +191,24 @@ test('submitWordSuggestion rejects duplicate suggestion from same user', async (
   assert.equal(result.reason, 'already-suggested');
 });
 
+test('submitWordSuggestion never lists the whole /dictionarySuggestions collection', async () => {
+  // Non-admin users may only read their own suggestion node — a whole-collection
+  // .get() is what triggered "Permission denied" against the security rules.
+  const db = makeMockDb();
+  const reads = [];
+  const realRef = db.ref.bind(db);
+  db.ref = (path) => {
+    const ref = realRef(path);
+    const realGet = ref.get.bind(ref);
+    ref.get = (...args) => { reads.push(path); return realGet(...args); };
+    return ref;
+  };
+  const result = await submitWordSuggestion(db, { word: 'חדשה', uid: 'u1' });
+  assert.equal(result.ok, true);
+  assert.ok(!reads.includes('dictionarySuggestions'),
+    `expected no collection-level read, got reads: ${reads.join(', ')}`);
+});
+
 test('findPendingSuggestionsForWords returns credits for matching pending suggestions', async () => {
   const db = makeMockDb();
   await db.ref('dictionarySuggestions/s1').set({

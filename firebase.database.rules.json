@@ -162,6 +162,52 @@
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid"
       }
+    },
+    "gameEvents": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$gameId": {
+        "$eventId": {
+          ".write": "auth != null && !data.exists() && (auth.uid === root.child('rooms').child($gameId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($gameId).child('players').child('1').child('uid').val())"
+        }
+      }
+    },
+    "gameSnapshots": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$gameId": {
+        "$version": {
+          ".write": "auth != null && !data.exists() && (auth.uid === root.child('rooms').child($gameId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($gameId).child('players').child('1').child('uid').val())"
+        }
+      }
+    },
+    "clientSnapshots": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$gameId": {
+        "$slot": {
+          "$id": {
+            ".write": "auth != null && !data.exists() && auth.uid === root.child('rooms').child($gameId).child('players').child($slot).child('uid').val()"
+          }
+        }
+      }
+    },
+    "debugWarnings": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$gameId": {
+        "$warningId": {
+          ".write": "auth != null && !data.exists() && (auth.uid === root.child('rooms').child($gameId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($gameId).child('players').child('1').child('uid').val())"
+        }
+      }
+    },
+    "debugReports": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$reportId": {
+        ".write": "auth != null && !data.exists()"
+      }
+    },
+    "debugGameIndex": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$gameId": {
+        ".write": "auth != null && (auth.uid === root.child('rooms').child($gameId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($gameId).child('players').child('1').child('uid').val())"
+      }
     }
   }
 }

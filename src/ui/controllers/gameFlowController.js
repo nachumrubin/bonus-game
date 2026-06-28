@@ -65,6 +65,11 @@ export function createGameFlowController({
   });
   audioService.refreshButton();
 
+  // Cached so "back to results" (after a read-only board review) can re-open
+  // the end overlay without recomputing — and so review never resurrects a
+  // torn-down session.
+  let lastEndPayload = null;
+
   cleanups.push(bus.on(EV.GAME_COMPLETED, () => {
     const ag = activeGameRef();
     const session = ag?.session;
@@ -73,16 +78,40 @@ export function createGameFlowController({
     // active game was resumed from it (or if this offline game just ended
     // — leaves no stale offline save behind).
     if (!ag.online && storage) clearLocalGame(storage);
-    bus.emit('overlay/end/open', {
+    lastEndPayload = {
       winnerSlot: winnerSlot(session.state),
       scores: { ...session.state.scores },
       players: session.state.players,
       abandonedBy: session.state.abandonedBy,
-    });
+    };
+    bus.emit('overlay/end/open', lastEndPayload);
     bus.emit(MENU_REFRESH, { hasSavedGame: false });
   }));
 
+  // ── Read-only board review ──────────────────────────────────────────────
+  // "צפה בלוח" on the end overlay hides the results and reveals the finished
+  // board behind it (already rendered) in a non-interactive state, so the
+  // player can recap / screenshot. The floating "חזרה לתוצאות" button restores
+  // the results table.
+  function enterBoardReview() {
+    hideOverlay('ov-end');
+    root?.getElementById?.('sg')?.classList?.add('board-review');
+    root?.getElementById?.('board-review-back')?.classList?.remove('hidden');
+  }
+  function exitBoardReview() {
+    root?.getElementById?.('sg')?.classList?.remove('board-review');
+    root?.getElementById?.('board-review-back')?.classList?.add('hidden');
+  }
+  cleanups.push(bus.on(END_INTENT.VIEW_BOARD, enterBoardReview));
+  wireButton('#board-review-back', () => {
+    exitBoardReview();
+    if (lastEndPayload) bus.emit('overlay/end/open', lastEndPayload);
+  });
+  // Leaving the game in any way clears a lingering review state.
+  cleanups.push(bus.on(EV.GAME_STARTED, exitBoardReview));
+
   cleanups.push(bus.on(END_INTENT.GO_HOME, () => {
+    exitBoardReview();
     endActiveGame();
     hideOverlay('ov-end');
     showScreen('sh');
@@ -93,6 +122,7 @@ export function createGameFlowController({
     const session = ag?.session;
     if (!session?.state) return;
     const { mode, players } = session.state;
+    exitBoardReview();
     endActiveGame();
     hideOverlay('ov-end');
     if (mode === 'offline-2p' || mode === 'offline-solo') {

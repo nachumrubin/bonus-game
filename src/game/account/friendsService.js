@@ -119,6 +119,28 @@ export function watchFriends(db, uid, cb) {
   return () => ref.off('value', handler);
 }
 
+// The friend edge stores a *snapshot* of name/avatar taken when the friendship
+// was created (see acceptFriendRequest). It goes stale when the user later
+// renames or equips a new avatar, so friends keep seeing the old art. This
+// pushes the user's current name/avatar into every friend's edge to refresh it.
+//
+// Allowed by the security rules: `friends/$uid/$friendUid` is writable when
+// `auth.uid === $friendUid`, so the current user may write `friends/{fid}/{me}`.
+// (A friend's own profile under /users is NOT readable by us, which is why the
+// refresh is push-based rather than resolved live at render time.)
+export async function syncSelfToFriends(db, { uid, friendUids = [], avatar, name } = {}) {
+  if (!uid || !friendUids.length) return { ok: false, reason: 'noop' };
+  const updates = {};
+  for (const fid of friendUids) {
+    if (!fid || fid === uid) continue;
+    if (avatar !== undefined) updates[`${PATH.friends}/${fid}/${uid}/avatar`] = avatar ?? null;
+    if (name   !== undefined) updates[`${PATH.friends}/${fid}/${uid}/name`]   = name ?? '';
+  }
+  if (Object.keys(updates).length === 0) return { ok: false, reason: 'noop' };
+  await db.ref().update(updates);
+  return { ok: true, count: Object.keys(updates).length };
+}
+
 export async function removeFriend(db, { uid, friendUid }) {
   if (!uid || !friendUid) return { ok: false, reason: 'missing-uid' };
   await Promise.all([

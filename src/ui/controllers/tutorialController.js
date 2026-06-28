@@ -48,15 +48,21 @@ export function createTutorialController({
     startTutorialGame();
   }));
 
-  cleanups.push(bus.on(TUTORIAL_INTENT.BACK, () => {
+  // Tear down the tutorial game and return to the main menu.
+  function endTutorialToMenu() {
     active = false;
     resetState();
     bus.emit(TUTORIAL_CLEAR, {});
     showScreen('sh');
-  }));
+  }
+
+  cleanups.push(bus.on(TUTORIAL_INTENT.BACK, endTutorialToMenu));
 
   cleanups.push(bus.on(TUTORIAL_INTENT.NEXT, () => {
-    if (currentStep === 'illegalInfo') {
+    if (currentStep === 'completion') {
+      // Final tip — the "סיים" button closes the tutorial game and goes home.
+      endTutorialToMenu();
+    } else if (currentStep === 'illegalInfo') {
       currentStep = 'exchangePrompt';
       emitTip('exchange', exchangeTip());
     } else if (currentStep === 'lockInfo') {
@@ -219,10 +225,13 @@ export function createTutorialController({
   cleanups.push(bus.on(BONUS_RESOLVED, () => {
     if (!active || !waitingForBonus) return;
     waitingForBonus = false;
+    currentStep = 'completion';
     emitTip('completion', {
       label: 'כל הכבוד!',
       text: 'הפעלת בוסט! קיבלת ניקוד נוסף מהמשבצת. זה הסוד של המשחק — נסה להגיע למשבצות הבוסט. סיימת את ההדרכה.',
       selectors: ['#sv1'],
+      showNext: true,
+      nextLabel: 'סיים',
     });
   }));
 

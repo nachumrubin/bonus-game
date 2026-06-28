@@ -14,9 +14,12 @@ import { CHAMPS_RENDER } from './championsScreen.js';
 export const END_INTENT = Object.freeze({
   REMATCH: 'end/rematch',
   GO_HOME: 'end/goHome',
+  VIEW_BOARD: 'end/viewBoard',
 });
 
 export const END_OPEN = 'overlay/end/open';
+const COMPUTER_NAME_HE = '\u05D4\u05DE\u05D7\u05E9\u05D1';
+const LEGACY_CROWN_VALUES = new Set(['crown', '\uD83D\uDC51']);
 
 export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountEndGameScreen: bus required');
@@ -31,6 +34,15 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
 
   const rematch = $('button[onclick="rematch()"]', overlay);
   const goHome  = $('button[onclick="goHome()"]', overlay);
+  const viewBoard = $('button[onclick="reviewBoard()"]', overlay);
+
+  if (viewBoard) {
+    viewBoard.removeAttribute('onclick');
+    cleanups.push(on(viewBoard, 'click', (e) => {
+      e.preventDefault?.();
+      bus.emit(END_INTENT.VIEW_BOARD);
+    }));
+  }
 
   if (rematch) {
     rematch.removeAttribute('onclick');
@@ -76,8 +88,8 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     setText($('#en1', overlay), players?.[0]?.displayName ?? 'שחקן 1');
     setText($('#en2', overlay), players?.[1]?.displayName ?? 'שחקן 2');
 
-    setAvatarEl($('#end-av0', overlay), players?.[0]?.avatar ?? null, { fallback: '👑', className: 'av-img' });
-    setAvatarEl($('#end-av1', overlay), players?.[1]?.avatar ?? null, { fallback: '👑', className: 'av-img' });
+    setAvatarEl($('#end-av0', overlay), endAvatarValue(players?.[0]), { fallback: '\uD83D\uDC64', className: 'av-img' });
+    setAvatarEl($('#end-av1', overlay), endAvatarValue(players?.[1]), { fallback: '\uD83D\uDC64', className: 'av-img' });
 
     const wn = $('#wn', overlay);
     const ws = $('#wws', overlay);
@@ -129,6 +141,13 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
       card0?.classList?.add('is-loser');
       card1?.classList?.add('is-winner');
     }
+  }
+
+  function endAvatarValue(player) {
+    const value = player?.avatar ?? null;
+    if (LEGACY_CROWN_VALUES.has(value)) return null;
+    if (value === 'bot' && player?.displayName !== COMPUTER_NAME_HE) return null;
+    return value;
   }
 
   function highlightMyChampRow() {

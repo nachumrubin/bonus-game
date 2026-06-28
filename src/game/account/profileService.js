@@ -22,7 +22,11 @@ export const PROFILE_EVT = Object.freeze({
   AVATAR_UNLOCK:  'profile/avatarUnlock',
 });
 
-export const DEFAULT_AVATAR = 'crown';
+// New accounts start with the neutral "anonymous player" store avatar. Must
+// stay in sync with avatarStore.DEFAULT_STORE_AVATAR_ID (kept as a literal here
+// so the game layer doesn't import the UI catalog). Existing 'crown' defaults
+// are migrated by scripts/migrate-default-avatar.mjs.
+export const DEFAULT_AVATAR = 'common_17';
 export const RATING_START   = 800;
 
 // ── Avatar-store economy (coins) ──────────────────────────────────────────

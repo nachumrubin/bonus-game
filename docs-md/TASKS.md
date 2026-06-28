@@ -1,5 +1,53 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Game Debug Timeline — June 2026
+
+- [x] Append-only debug timeline + snapshots + warnings in separate Firebase
+  nodes (`src/game/debug/`), recorder wired in `main.js`, admin Debug tab,
+  tri-panel replay, "report a problem" button, global error capture, rules +
+  unit/emulator tests.
+- [ ] **Deploy the new rules**: `npm run test:emulator` then deploy (CI deploys
+  on push to main). Until deployed, debug writes are denied in prod.
+- [ ] Future: richer admin search (server-side index by date/appVersion), bot
+  BOT_MOVE_* events, PLAYER_INVITED/JOINED at the invite layer, exchange-letter
+  recording for byte-exact engine cross-checks.
+
+
+
+## Default avatar — June 2026
+
+- [x] New default avatar "anonymous player" (`common_17`), added to the common
+  store tier; `DEFAULT_AVATAR` updated for new accounts.
+- [ ] **Run the default-avatar migration** for existing users:
+  `node scripts/migrate-default-avatar.mjs --dry-run` then without `--dry-run`
+  (add `--include-unset` to also cover accounts with no avatar). Needs
+  `npm i firebase-admin` + `GOOGLE_APPLICATION_CREDENTIALS`.
+
+## Friends list — June 2026
+
+- [x] Fix stale friend avatars (friends showed old achievement avatars instead
+  of equipped v2 avatars): push-based snapshot refresh via
+  `friendsService.syncSelfToFriends` + `syncMyProfileToFriends()` in `main.js`.
+- [x] Removed the non-functional × close button from the back-confirm overlay.
+- [ ] **Optional one-time force-heal** of existing stale edges (instead of
+  waiting for users to come online):
+  `node scripts/refresh-friend-avatars.mjs --dry-run` then without `--dry-run`
+  (add `--names` to also refresh displayNames). Needs `npm i firebase-admin` +
+  `GOOGLE_APPLICATION_CREDENTIALS`.
+
+## Dictionary suggestions — June 2026
+
+- [x] Fix "Permission denied" on user word-removal suggestions:
+  `submitWordSuggestion()` no longer lists the admin-only
+  `/dictionarySuggestions` collection; it reads/writes a deterministic
+  per-user node (`suggestionKey(type, word, uid)`) instead.
+- [ ] **Run the one-time key migration** so de-dup also catches suggestions
+  written before this change (legacy `push()`-id rows):
+  `node scripts/migrate-suggestion-keys.mjs --dry-run` then without `--dry-run`.
+  Needs `npm i firebase-admin` + `GOOGLE_APPLICATION_CREDENTIALS`. Splits
+  multi-user `suggestedBy` arrays into one node per uid and preserves
+  approved/rejected status + earliest `createdAt`.
+
 ## Coin economy — June 2026
 
 - [x] Hard cap on coin balances (`MAX_COIN_BALANCE = 100_000`) enforced on all

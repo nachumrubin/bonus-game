@@ -24,6 +24,15 @@ export function cleanDictionaryWord(raw) {
   return String(raw ?? '').replace(/[^א-ת]/g, '').trim();
 }
 
+// Deterministic Firebase key for a single user's suggestion of a word, so a
+// non-admin user can read/write exactly their own node (allowed by the rules)
+// without listing the whole /dictionarySuggestions collection (admin-only).
+// All three parts are key-safe: type is 'add'/'remove', the word is Hebrew-only
+// after cleanDictionaryWord, and uid is the alphanumeric Firebase uid.
+export function suggestionKey(type, normalizedWord, uid) {
+  return `${type}__${normalizedWord}__${uid}`;
+}
+
 // Parse a comma/newline-separated string of words, normalizing each to
 // Hebrew-only and deduplicating.
 export function parseSuggestedWords(raw) {
@@ -188,19 +197,22 @@ export async function submitWordSuggestion(db, {
     }
   }
 
-  // Check if this user already has a pending suggestion of the same type for this word.
-  const suggestionsSnap = await db.ref(DICTIONARY_SUGGESTIONS_PATH).get();
-  const existing = Object.values(suggestionsSnap?.val ? (suggestionsSnap.val() ?? {}) : {});
-  const alreadySuggested = existing.some(
-    (s) => cleanDictionaryWord(s?.word ?? '') === normalized &&
-      s?.status === 'pending' &&
-      (s?.type ?? 'add') === suggestionType &&
-      (Array.isArray(s?.suggestedBy) ? s.suggestedBy.includes(uid) : s?.suggestedBy === uid),
-  );
-  if (alreadySuggested) return { ok: false, reason: 'already-suggested' };
+  // Check if this user already suggested the same word+type. Non-admin users
+  // are NOT allowed to list /dictionarySuggestions — the security rules grant
+  // the collection-level `.read` to admins only (a whole-collection `.get()`
+  // here is what triggers "Permission denied"). Individual suggestion nodes,
+  // however, are readable by any authenticated user, so we key each suggestion
+  // deterministically by type+word+uid and read just that one node.
+  const key = suggestionKey(suggestionType, normalized, uid);
+  const existingSnap = await db.ref(`${DICTIONARY_SUGGESTIONS_PATH}/${key}`).get();
+  const existing = existingSnap?.val ? existingSnap.val() : null;
+  // Any existing node for this user+word+type means they already suggested it.
+  // (Approved/rejected outcomes are already short-circuited by the
+  // approved/rejected checks above, so a surviving node is effectively pending.)
+  if (existing) return { ok: false, reason: 'already-suggested' };
 
   const stamp = typeof serverTimestamp === 'function' ? serverTimestamp() : now;
-  await db.ref(DICTIONARY_SUGGESTIONS_PATH).push().set({
+  await db.ref(`${DICTIONARY_SUGGESTIONS_PATH}/${key}`).set({
     word: normalized,
     normalizedWord: normalized,
     type: suggestionType,

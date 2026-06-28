@@ -17,6 +17,7 @@ const ACTION_TO_INTENT = Object.freeze({
   tutorial: MENU_INTENT.OPEN_TUTORIAL,
   guide:    MENU_INTENT.OPEN_GUIDE,
   faq:      MENU_INTENT.OPEN_FAQ,
+  report:   MENU_INTENT.OPEN_REPORT_PROBLEM,
 });
 
 export function mountHelpDropdown({ root = globalThis.document, bus } = {}) {

@@ -1,9 +1,10 @@
 // Avatar store catalog — pure data + helpers, no Firebase / no DOM.
 //
 // The store is a SEPARATE collection from the achievement-unlock avatars in
-// avatarScreens.js (SPINE_AVATARS). These 40 avatars live as PNGs under
+// avatarScreens.js (SPINE_AVATARS). These avatars live as PNGs under
 // assets/avatars_v2/<category>/ and are bought with coins:
-//   common (16)   — free to everyone (price 0, always "owned")
+//   common (17)   — free to everyone (price 0, always "owned"); the last one
+//                   (common_17, "anonymous player") is the default avatar
 //   rare (12)     — purchasable
 //   epic (10)     — purchasable (avraham removed — white background)
 //   legendary (5) — purchasable (the prestige tier)
@@ -49,11 +50,17 @@ export const STORE_TIERS = Object.freeze({
   common: {
     prefix: 'common_',
     price: STORE_PRICES.common,
+    // Most files live under assets/avatars_v2/common/; an entry may instead be
+    // `{ src }` to point at an existing asset elsewhere (used for the default
+    // "anonymous player" avatar, appended last — see DEFAULT_STORE_AVATAR_ID).
     files: [
       'basketball_player.png', 'common_1_1.png', 'common_1_2.png', 'common_1_3.png',
       'common_1_4.png', 'common_2_split.png', 'doctor.png', 'fire_dep.png',
       'gamer.png', 'hacker.png', 'police.png', 'shef.png',
       'soccer_fan.png', 'soccer_player.png', 'soldier.png', 'su_shef.png',
+      // Default avatar (id common_17): the neutral "anonymous player" art,
+      // reused from assets/avatars/ rather than duplicated into avatars_v2/.
+      { src: 'assets/avatars/anonymous player.png' },
     ],
   },
   rare: {
@@ -70,7 +77,7 @@ export const STORE_TIERS = Object.freeze({
     prefix: 'epic_',
     price: STORE_PRICES.epic,
     files: [
-      'esther.PNG', 'jacob.PNG', 'rachel.png', 'ruth.PNG', 'shmoel.png',
+      'esther.PNG', 'jacob.png', 'rachel.png', 'ruth.PNG', 'shmoel.png',
       'מרדכי היהודי.PNG', 'joshua.png', 'rambam.png', 'adam.png', 'yehuda_hamaccabi.png',
     ],
   },
@@ -93,15 +100,25 @@ export const STORE_AVATARS = Object.freeze(
     const tier = STORE_TIERS[category];
     return tier.files.map((file, i) => {
       const id = `${tier.prefix}${i + 1}`;
+      // A file entry is either a filename under assets/avatars_v2/<category>/
+      // or an object `{ src }` carrying an absolute path to reuse elsewhere.
+      const src = typeof file === 'string'
+        ? `${AVATAR_DIR}${category}/${file}`
+        : file.src;
       return Object.freeze({
         id,
         category,
-        src: encodeURI(`${AVATAR_DIR}${category}/${file}`),
+        src: encodeURI(src),
         price: tier.price,
       });
     });
   }),
 );
+
+// The default avatar new accounts start with (and the migration target for
+// existing 'crown' defaults). It's the last common entry — the neutral
+// "anonymous player" art. profileService.DEFAULT_AVATAR must equal this.
+export const DEFAULT_STORE_AVATAR_ID = 'common_17';
 
 const STORE_BY_ID = new Map(STORE_AVATARS.map((a) => [a.id, a]));
 

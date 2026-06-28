@@ -10,7 +10,7 @@ import { mountEndGameScreen, END_INTENT, END_OPEN } from './endGameScreen.js';
 import { mountPauseScreen, PAUSE_INTENT, PAUSE_OPEN } from './pauseScreen.js';
 import { mountBackConfirmScreen, BACK_INTENT, BACK_OPEN } from './backConfirmScreen.js';
 import { mountCoinTossScreen, COIN_INTENT, COIN_OPEN } from './coinTossScreen.js';
-import { mountSettingsScreen, SETTINGS_INTENT, SETTINGS_OPEN, SETTINGS_CHANGED } from './settingsScreen.js';
+import { mountSettingsScreen, SETTINGS_INTENT, SETTINGS_OPEN } from './settingsScreen.js';
 import { mountDisconnectScreen, DISCONNECT_INTENT, DISCONNECT_OPEN, DISCONNECT_CLOSE } from './disconnectScreen.js';
 
 function makeBtn({ onclick, classes = [] } = {}) {
@@ -81,6 +81,8 @@ test('endGameScreen: GAME_COMPLETED auto-opens overlay with winner + scores', ()
   elements.set('en2', makeBtn());
   elements.set('es1', makeBtn());
   elements.set('es2', makeBtn());
+  elements.set('end-av0', makeBtn());
+  elements.set('end-av1', makeBtn());
   const rematch = makeBtn({ onclick: 'rematch()' });
   const home    = makeBtn({ onclick: 'goHome()' });
   elements.set('rematch', rematch);
@@ -98,13 +100,29 @@ test('endGameScreen: GAME_COMPLETED auto-opens overlay with winner + scores', ()
   bus.emit(EV.GAME_COMPLETED, {
     winnerSlot: 0,
     scores: { 0: 80, 1: 50 },
-    players: { 0: { displayName: 'Alice' }, 1: { displayName: 'Bob' } },
+    players: { 0: { displayName: 'Alice', avatar: 'crown' }, 1: { displayName: 'Bob', avatar: '👑' } },
   });
 
   assert.ok(!overlay.classList.contains('hidden'));
   assert.equal(elements.get('wn').textContent, 'Alice ניצח!');
   assert.equal(elements.get('es1').textContent, '80');
   assert.equal(elements.get('es2').textContent, '50');
+  assert.match(elements.get('end-av0').innerHTML, /anonymous player\.png/);
+  assert.match(elements.get('end-av1').innerHTML, /anonymous player\.png/);
+});
+
+test('endGameScreen: "צפה בלוח" button emits VIEW_BOARD', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-end' });
+  ['wn', 'wws', 'en1', 'en2', 'es1', 'es2'].forEach(id => elements.set(id, makeBtn()));
+  const review = makeBtn({ onclick: 'reviewBoard()' });
+  elements.set('review', review);
+  const root = { querySelector: (sel) => sel === '#ov-end' ? overlay : null };
+  let fired = 0;
+  bus.on(END_INTENT.VIEW_BOARD, () => fired++);
+  mountEndGameScreen({ root, bus });
+  review.fireClick();
+  assert.equal(fired, 1);
 });
 
 test('endGameScreen: tie shows draw text', () => {
@@ -328,58 +346,6 @@ test('coinTossScreen: enter button emits COIN_INTENT.ENTER', () => {
 
 // ─── Settings ─────────────────────────────────────────────────────
 
-test('settingsScreen: clicking timelimit "yes" emits TOGGLE + SETTINGS_CHANGED', () => {
-  bus._reset();
-  const { overlay, elements } = makeOverlay({ id: 'ov-settings' });
-  const tlYes = makeBtn({ onclick: "settToggle('timelimit',true)" });
-  const tlNo  = makeBtn({ onclick: "settToggle('timelimit',false)" });
-  elements.set('sett-timelimit-yes', tlYes);
-  elements.set('sett-timelimit-no',  tlNo);
-  const close = makeBtn({ onclick: "ovClose('ov-settings')" });
-  const origQS = overlay.querySelector;
-  overlay.querySelector = (sel) => {
-    if (sel === 'button[onclick="ovClose(\'ov-settings\')"]') return close;
-    return origQS.call(overlay, sel);
-  };
-  const root = { querySelector: () => overlay };
-  let toggleEvts = 0, changedEvts = 0;
-  let fallbackArgs = null;
-  bus.on(SETTINGS_INTENT.TOGGLE, () => toggleEvts++);
-  bus.on(SETTINGS_CHANGED, (changes) => { changedEvts++; fallbackArgs = changes; });
-  mountSettingsScreen({ root, bus });
-  tlYes.fireClick();
-  assert.equal(toggleEvts, 1);
-  assert.equal(changedEvts, 1);
-  assert.deepEqual(fallbackArgs, { timelimit: true });
-  assert.ok(tlYes.classList.contains('active-yes'));
-});
-
-test('settingsScreen: counter +/- buttons adjust display and emit SETTINGS_CHANGED', () => {
-  bus._reset();
-  const { overlay, elements } = makeOverlay({ id: 'ov-settings' });
-  const display = makeBtn();
-  display.textContent = '20';
-  elements.set('sett-bottime', display);
-  const minus = makeBtn({ onclick: "settAdj('botTime',-5)" });
-  const plus  = makeBtn({ onclick: "settAdj('botTime',5)" });
-  elements.set('minus', minus); elements.set('plus', plus);
-  const origQS = overlay.querySelector;
-  overlay.querySelector = (sel) => {
-    if (sel.includes("settAdj('botTime',-5)")) return minus;
-    if (sel.includes("settAdj('botTime',5)"))  return plus;
-    return origQS.call(overlay, sel);
-  };
-  const root = { querySelector: () => overlay };
-  let changed = null;
-  bus.on(SETTINGS_CHANGED, (c) => changed = c);
-  mountSettingsScreen({ root, bus });
-  plus.fireClick();
-  assert.equal(display.textContent, '25');
-  assert.deepEqual(changed, { botTime: 25 });
-  minus.fireClick();
-  assert.equal(display.textContent, '20');
-});
-
 test('settingsScreen: both the top "×" and bottom "אישור" close the overlay', () => {
   bus._reset();
   const { overlay, elements } = makeOverlay({ id: 'ov-settings' });
@@ -402,28 +368,25 @@ test('settingsScreen: both the top "×" and bottom "אישור" close the overla
   assert.ok(overlay.classList.contains('hidden'));
 });
 
-// ─── Disconnect ──────────────────────────────────────────────────
-
 test('settingsScreen: SETTINGS_OPEN refreshes controls from current settings', () => {
   bus._reset();
   const { overlay, elements } = makeOverlay({ id: 'ov-settings' });
   const musicYes = makeBtn({ onclick: "settToggle('music',true)" });
   const musicNo  = makeBtn({ onclick: "settToggle('music',false)" });
-  const botTime = makeBtn();
   elements.set('sett-music-yes', musicYes);
   elements.set('sett-music-no', musicNo);
-  elements.set('sett-bottime', botTime);
   const root = { querySelector: () => overlay };
   mountSettingsScreen({
     root,
     bus,
-    getSettings: () => ({ music: false, botTime: 35 }),
+    getSettings: () => ({ music: false }),
   });
   bus.emit(SETTINGS_OPEN, {});
   assert.ok(!musicYes.classList.contains('active-yes'));
   assert.ok(musicNo.classList.contains('active-no'));
-  assert.equal(botTime.textContent, '35');
 });
+
+// ─── Disconnect ──────────────────────────────────────────────────
 
 test('disconnectScreen: DISCONNECT_OPEN starts countdown and shows opponent name', () => {
   bus._reset();
