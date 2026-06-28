@@ -263,11 +263,12 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     lastSuggestions = suggestions;
     renderFilteredSuggestions();
 
-    // Seed the debug tab with recent rooms from the stats load when the dedicated
-    // debug index hasn't been fetched yet. Clicking "רענן רשימה" replaces these
-    // with the richer debugGameIndex entries (which include appVersion etc.).
-    if (!debugIndexLoaded && rooms.length > 0) {
-      debugIndex = rooms.map((r) => ({
+    // Always keep roomsFallback fresh from the stats load. renderDebugGames()
+    // uses this when debugIndex (from the dedicated debugGameIndex Firebase path)
+    // is empty, so recent rooms are visible before "רענן רשימה" is clicked or
+    // when the debug index hasn't accumulated entries yet.
+    if (rooms.length > 0) {
+      roomsFallback = rooms.map((r) => ({
         gameId:    r.roomId,
         hostName:  r.players?.['0']?.displayName ?? null,
         guestName: r.players?.['1']?.displayName ?? null,
@@ -278,7 +279,7 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
         appVersion: null,
         createdAt: r.createdAt ?? null,
       }));
-      renderDebugGames();
+      if (debugIndex.length === 0) renderDebugGames();
     }
 
   }
@@ -411,6 +412,7 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   // ── Debug tab ──────────────────────────────────────────────────────────────
   let debugIndexLoaded = false;
   let debugIndex = [];          // [{ gameId, hostName, guestName, status, appVersion, createdAt, ... }]
+  let roomsFallback = [];       // normalized rooms from the stats load; shown when debugIndex is empty
   let currentTimeline = null;
 
   const debugSearch   = $('#adm-debug-search', screenEl);
@@ -446,11 +448,12 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
 
   function renderDebugGames() {
     if (!debugGamesEl) return;
+    const source = debugIndex.length > 0 ? debugIndex : roomsFallback;
     const q = (debugSearch?.value ?? '').trim().toLowerCase();
     const rows = (q
-      ? debugIndex.filter((g) => [g.gameId, g.hostName, g.guestName, g.hostUid, g.guestUid, g.status, g.appVersion]
+      ? source.filter((g) => [g.gameId, g.hostName, g.guestName, g.hostUid, g.guestUid, g.status, g.appVersion]
           .some((v) => String(v ?? '').toLowerCase().includes(q)))
-      : debugIndex
+      : source
     ).slice(0, 200);
     if (rows.length === 0) {
       debugGamesEl.innerHTML = '<div class="adm-debug-empty">לא נמצאו משחקים</div>';
