@@ -35,8 +35,6 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   let activeFilter = 'all';
   // All players (for search re-rendering)
   let allPlayers = [];
-  // All games (for debug search re-rendering)
-  let allGames = [];
   // Approved/blocked word arrays for the health modal
   let approvedWordsCache = [];
   let blockedWordsCache  = [];
@@ -159,8 +157,6 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   // ── Debug panel controls ───────────────────────────────────────────────────
   const debugRefreshBtn = $('#adm-debug-refresh-btn', screenEl);
   if (debugRefreshBtn) cleanups.push(on(debugRefreshBtn, 'click', () => bus.emit(ADMIN_INTENT.LOAD, {})));
-  const debugSearch = $('#adm-debug-search', screenEl);
-  if (debugSearch) cleanups.push(on(debugSearch, 'input', () => renderFilteredGames()));
 
   // ── Word list modal ────────────────────────────────────────────────────────
   const wordModal    = $('#adm-word-modal', screenEl);
@@ -271,8 +267,6 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     lastSuggestions = suggestions;
     renderFilteredSuggestions();
 
-    allGames = rooms;
-    renderFilteredGames();
   }
 
   function setVal(id, val) {
