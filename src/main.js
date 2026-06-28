@@ -2419,6 +2419,19 @@ async function boot() {
     }
   });
 
+  bus.on(ADMIN_INTENT.LOAD_GAME, async ({ roomId } = {}) => {
+    if (!roomId) return;
+    const db = await getDictionaryDb();
+    if (!db) return;
+    try {
+      const snap = await db.ref(`rooms/${roomId}`).get();
+      const room = snap?.val ? snap.val() : null;
+      if (room) bus.emit(ADMIN_RENDER.GAME, { ...room, roomId });
+    } catch (e) {
+      console.warn('[spine] admin load game', e);
+    }
+  });
+
   // ── End admin screen handlers ────────────────────────────────────────────
 
   // Merge admin-approved words from Firebase into the local dictionary.

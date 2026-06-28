@@ -171,6 +171,31 @@
 
   </div>
 
+  <!-- Game detail modal (opened from debug tab) -->
+  <div id="adm-game-modal" class="adm-game-modal" style="display:none" role="dialog" aria-modal="true">
+    <div class="adm-game-modal-inner">
+      <div class="adm-game-modal-hdr">
+        <span id="adm-game-modal-title" class="adm-game-modal-title"></span>
+        <div class="adm-game-modal-tabs">
+          <button class="adm-game-tab adm-game-tab--active" data-game-tab="server">🖥 שרת</button>
+          <button class="adm-game-tab" data-game-tab="p0">👤 שחקן 1</button>
+          <button class="adm-game-tab" data-game-tab="p1">👤 שחקן 2</button>
+        </div>
+        <button id="adm-game-modal-close" class="adm-game-modal-close" aria-label="סגור">✕</button>
+      </div>
+      <div id="adm-game-panel-server" class="adm-game-panel">
+        <div id="adm-game-loading" class="adm-loading">טוען משחק...</div>
+        <div id="adm-game-server-content"></div>
+      </div>
+      <div id="adm-game-panel-p0" class="adm-game-panel" style="display:none">
+        <div id="adm-game-p0-content"></div>
+      </div>
+      <div id="adm-game-panel-p1" class="adm-game-panel" style="display:none">
+        <div id="adm-game-p1-content"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Word list modal (shown when health card is clicked) -->
   <div id="adm-word-modal" class="adm-word-modal" style="display:none" role="dialog" aria-modal="true">
     <div class="adm-word-modal-inner">

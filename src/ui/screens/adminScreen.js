@@ -7,6 +7,7 @@ import { DICT_INTENT, DICT_RENDER } from './dictionaryScreen.js';
 
 export const ADMIN_INTENT = Object.freeze({
   LOAD:               'admin/load',
+  LOAD_GAME:          'admin/loadGame',
   APPROVE_SUGGESTION: 'admin/approveSuggestion',
   REJECT_SUGGESTION:  'admin/rejectSuggestion',
   BACK:               'admin/back',
@@ -14,6 +15,7 @@ export const ADMIN_INTENT = Object.freeze({
 
 export const ADMIN_RENDER = Object.freeze({
   DATA:               'admin/render/data',
+  GAME:               'admin/render/game',
   SUGGESTION_DONE:    'admin/render/suggestionDone',
 });
 
@@ -155,6 +157,32 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   if (debugRefreshBtn) cleanups.push(on(debugRefreshBtn, 'click', () => bus.emit(ADMIN_INTENT.LOAD, {})));
   const debugSearch = $('#adm-debug-search', screenEl);
   if (debugSearch) cleanups.push(on(debugSearch, 'input', () => renderFilteredGames()));
+
+  // Click delegation on game rows → open detail modal
+  const debugList = $('#adm-debug-list', screenEl);
+  if (debugList) {
+    cleanups.push(on(debugList, 'click', (e) => {
+      const row = e.target.closest('.adm-game-row');
+      if (!row) return;
+      const roomId = row.dataset.roomId;
+      if (!roomId) return;
+      openGameModal(row);
+      bus.emit(ADMIN_INTENT.LOAD_GAME, { roomId });
+    }));
+  }
+
+  // ── Game detail modal ──────────────────────────────────────────────────────
+  const gameModal     = $('#adm-game-modal',       screenEl);
+  const gameModalClose = $('#adm-game-modal-close', screenEl);
+  const gameTabBtns   = gameModal ? Array.from(gameModal.querySelectorAll('.adm-game-tab')) : [];
+
+  gameTabBtns.forEach((btn) => {
+    cleanups.push(on(btn, 'click', () => switchGameTab(btn.dataset.gameTab)));
+  });
+  if (gameModalClose) cleanups.push(on(gameModalClose, 'click', closeGameModal));
+  if (gameModal) cleanups.push(on(gameModal, 'click', (e) => { if (e.target === gameModal) closeGameModal(); }));
+
+  cleanups.push(bus.on(ADMIN_RENDER.GAME, (room = {}) => paintGameDetail(room)));
 
   // ── Word list modal ────────────────────────────────────────────────────────
   const wordModal    = $('#adm-word-modal', screenEl);
@@ -435,10 +463,11 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
       const status = g.status ?? '?';
       const statusCls = `adm-game-status--${status}`;
       const dateStr = g.createdAt ? new Date(g.createdAt).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
-      return `<div class="adm-game-row">
+      return `<div class="adm-game-row" data-room-id="${esc(g.roomId ?? '')}">
         <div class="adm-game-top">
           <span class="adm-game-status ${statusCls}">${esc(status)}</span>
           <span class="adm-game-meta">${esc(g.mode ?? '?')} · v${esc(String(g.schemaVersion ?? '?'))} · ${dateStr}</span>
+          <span class="adm-game-arrow">›</span>
         </div>
         <div class="adm-game-players">
           <span>${p0}</span>
@@ -446,6 +475,181 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
           <span>${p1}</span>
         </div>
         <div class="adm-game-rid">${esc(g.roomId ?? '')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Game detail modal ──────────────────────────────────────────────────────
+  function openGameModal(row) {
+    if (!gameModal) return;
+    // Reset to server tab + loading state
+    switchGameTab('server');
+    const loadingEl = $('#adm-game-loading', gameModal);
+    const serverContent = $('#adm-game-server-content', gameModal);
+    const p0Content = $('#adm-game-p0-content', gameModal);
+    const p1Content = $('#adm-game-p1-content', gameModal);
+    if (loadingEl)    loadingEl.style.display = '';
+    if (serverContent) serverContent.innerHTML = '';
+    if (p0Content)    p0Content.innerHTML = '';
+    if (p1Content)    p1Content.innerHTML = '';
+    // Show player names in title while loading
+    const titleEl = $('#adm-game-modal-title', gameModal);
+    if (titleEl) titleEl.textContent = row.querySelector('.adm-game-players')?.textContent?.trim() ?? '';
+    gameModal.style.display = '';
+  }
+
+  function closeGameModal() {
+    if (gameModal) gameModal.style.display = 'none';
+  }
+
+  function switchGameTab(tab) {
+    gameTabBtns.forEach((b) => {
+      b.classList.toggle('adm-game-tab--active', b.dataset.gameTab === tab);
+    });
+    ['server', 'p0', 'p1'].forEach((t) => {
+      const panel = $(`#adm-game-panel-${t}`, gameModal);
+      if (panel) panel.style.display = t === tab ? '' : 'none';
+    });
+  }
+
+  function paintGameDetail(room) {
+    const loadingEl = $('#adm-game-loading', gameModal);
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const p0 = room.players?.['0'] ?? {};
+    const p1 = room.players?.['1'] ?? {};
+    const s0 = room.scores?.['0'] ?? 0;
+    const s1 = room.scores?.['1'] ?? 0;
+    const titleEl = $('#adm-game-modal-title', gameModal);
+    if (titleEl) titleEl.textContent = `${p0.displayName ?? '—'} vs ${p1.displayName ?? '—'}`;
+
+    const dateStr = room.createdAt ? new Date(room.createdAt).toLocaleString('he-IL') : '—';
+    const turnName = room.currentTurnSlot === 0 ? (p0.displayName ?? 'שחקן 1') : (p1.displayName ?? 'שחקן 2');
+    const boardHtml = renderBoardGrid(room.board);
+    const fullHistory = renderMoveHistory(room.moveHistory, room.players, null);
+
+    const serverContent = $('#adm-game-server-content', gameModal);
+    if (serverContent) {
+      serverContent.innerHTML = `
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">מטא-דאטה</div>
+          <div class="adm-game-rid">${esc(room.roomId ?? '')}</div>
+          <div class="adm-detail-meta">${esc(room.status ?? '?')} · ${esc(room.mode ?? '?')} · v${esc(String(room.schemaVersion ?? '?'))} · עדכון ${room.version ?? 0}</div>
+          <div class="adm-detail-meta">${esc(dateStr)}</div>
+          <div class="adm-detail-meta">תור: <strong>${esc(turnName)}</strong></div>
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">ניקוד</div>
+          <div class="adm-detail-scores">
+            <span>${esc(p0.displayName ?? '—')}: <strong>${s0}</strong></span>
+            <span>${esc(p1.displayName ?? '—')}: <strong>${s1}</strong></span>
+          </div>
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">לוח</div>
+          ${boardHtml}
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">מדף ${esc(p0.displayName ?? 'שחקן 1')}</div>
+          <div class="adm-rack">${renderRack(room.racks?.['0'])}</div>
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">מדף ${esc(p1.displayName ?? 'שחקן 2')}</div>
+          <div class="adm-rack">${renderRack(room.racks?.['1'])}</div>
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">היסטוריית מהלכים (${(room.moveHistory ?? []).length})</div>
+          ${fullHistory}
+        </div>`;
+    }
+
+    const p0Content = $('#adm-game-p0-content', gameModal);
+    if (p0Content) {
+      p0Content.innerHTML = `
+        <div class="adm-detail-player-card">
+          <div class="adm-detail-player-name">${esc(p0.displayName ?? '—')}</div>
+          <div class="adm-detail-player-score">${s0}</div>
+          ${p0.rating != null ? `<div class="adm-detail-meta">דירוג: ${p0.rating}</div>` : ''}
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">מדף</div>
+          <div class="adm-rack">${renderRack(room.racks?.['0'])}</div>
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">לוח</div>
+          ${boardHtml}
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">מהלכים</div>
+          ${renderMoveHistory(room.moveHistory, room.players, 0)}
+        </div>`;
+    }
+
+    const p1Content = $('#adm-game-p1-content', gameModal);
+    if (p1Content) {
+      p1Content.innerHTML = `
+        <div class="adm-detail-player-card">
+          <div class="adm-detail-player-name">${esc(p1.displayName ?? '—')}</div>
+          <div class="adm-detail-player-score">${s1}</div>
+          ${p1.rating != null ? `<div class="adm-detail-meta">דירוג: ${p1.rating}</div>` : ''}
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">מדף</div>
+          <div class="adm-rack">${renderRack(room.racks?.['1'])}</div>
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">לוח</div>
+          ${boardHtml}
+        </div>
+        <div class="adm-detail-section">
+          <div class="adm-detail-hdr">מהלכים</div>
+          ${renderMoveHistory(room.moveHistory, room.players, 1)}
+        </div>`;
+    }
+  }
+
+  function renderBoardGrid(flat) {
+    if (!flat) return '<div class="adm-detail-empty">אין נתוני לוח</div>';
+    let html = '<table class="adm-board-grid"><tbody>';
+    for (let r = 0; r < 10; r++) {
+      html += '<tr>';
+      for (let c = 0; c < 10; c++) {
+        const t = flat[r * 10 + c];
+        if (t?.letter) {
+          const cls = t.isJoker ? 'adm-board-cell adm-board-cell--joker' : 'adm-board-cell adm-board-cell--tile';
+          html += `<td class="${cls}">${esc(t.letter)}</td>`;
+        } else {
+          html += '<td class="adm-board-cell adm-board-cell--empty"></td>';
+        }
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function renderRack(tiles) {
+    if (!Array.isArray(tiles) || !tiles.length) return '<span class="adm-detail-empty">ריק</span>';
+    return tiles.map((t) => {
+      const cls = t.isJoker ? 'adm-rack-tile adm-rack-tile--joker' : 'adm-rack-tile';
+      return `<span class="${cls}">${esc(t.letter ?? '?')}</span>`;
+    }).join('');
+  }
+
+  function renderMoveHistory(moveHistory, players, highlightSlot) {
+    if (!Array.isArray(moveHistory) || !moveHistory.length)
+      return '<div class="adm-detail-empty">אין מהלכים</div>';
+    return moveHistory.map((move, i) => {
+      const name = esc(players?.[move.slot]?.displayName ?? `שחקן ${(move.slot ?? 0) + 1}`);
+      const words = (move.words ?? []).map(esc).join(', ');
+      const timeStr = move.ts ? new Date(move.ts).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+      const dimmed = highlightSlot !== null && move.slot !== highlightSlot ? ' adm-move-row--dim' : '';
+      return `<div class="adm-move-row${dimmed}">
+        <span class="adm-move-num">${i + 1}</span>
+        <span class="adm-move-name">${name}</span>
+        <span class="adm-move-words">${words || '—'}</span>
+        <span class="adm-move-score">+${move.score ?? 0}</span>
+        ${timeStr ? `<span class="adm-move-time">${timeStr}</span>` : ''}
       </div>`;
     }).join('');
   }
