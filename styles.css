@@ -4343,3 +4343,21 @@ button[aria-disabled="true"] {
 .adm-sugg-top{display:flex;align-items:center;gap:8px;}
 .adm-sugg-cb-wrap{display:flex;align-items:center;cursor:pointer;flex-shrink:0;}
 .adm-sugg-cb-wrap input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:#5dfc8c;}
+
+/* Debug panel toolbar */
+.adm-debug-toolbar{display:flex;gap:8px;align-items:center;width:100%;}
+.adm-debug-search-input{flex:1;}
+
+/* Debug game rows */
+.adm-game-row{background:rgba(0,8,30,.6);border:1px solid rgba(0,145,255,.2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;}
+.adm-game-row+.adm-game-row{margin-top:6px;}
+.adm-game-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.adm-game-status{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;border:1px solid;white-space:nowrap;flex-shrink:0;}
+.adm-game-status--playing{color:#1ed760;border-color:rgba(30,215,96,.4);background:rgba(30,215,96,.1);}
+.adm-game-status--waiting{color:#f8d86a;border-color:rgba(248,216,106,.4);background:rgba(248,216,106,.1);}
+.adm-game-status--completed{color:rgba(255,255,255,.5);border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.05);}
+.adm-game-status--abandoned,.adm-game-status--expired{color:#ff8e8e;border-color:rgba(255,142,142,.4);background:rgba(255,142,142,.08);}
+.adm-game-players{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;}
+.adm-game-score{font-size:15px;font-weight:800;color:#f8d86a;padding:0 4px;}
+.adm-game-meta{font-size:11px;color:rgba(255,255,255,.4);}
+.adm-game-rid{font-family:Consolas,monospace;font-size:10px;color:rgba(255,220,80,.6);word-break:break-all;}

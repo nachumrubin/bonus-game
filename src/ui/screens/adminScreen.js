@@ -30,6 +30,8 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   let activeFilter = 'all';
   // All players (for search re-rendering)
   let allPlayers = [];
+  // All games (for debug search re-rendering)
+  let allGames = [];
   // Approved/blocked word arrays for the health modal
   let approvedWordsCache = [];
   let blockedWordsCache  = [];
@@ -47,7 +49,7 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
       b.classList.toggle('adm-tab--active', active);
       b.setAttribute('aria-selected', String(active));
     });
-    ['stats', 'players', 'words'].forEach((t) => {
+    ['stats', 'players', 'words', 'debug'].forEach((t) => {
       const panel = $(`#adm-panel-${t}`, screenEl);
       if (panel) panel.style.display = t === tab ? '' : 'none';
     });
@@ -148,6 +150,12 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     cleanups.push(on(playerSearch, 'input', () => renderFilteredPlayers()));
   }
 
+  // ── Debug panel controls ───────────────────────────────────────────────────
+  const debugRefreshBtn = $('#adm-debug-refresh-btn', screenEl);
+  if (debugRefreshBtn) cleanups.push(on(debugRefreshBtn, 'click', () => bus.emit(ADMIN_INTENT.LOAD, {})));
+  const debugSearch = $('#adm-debug-search', screenEl);
+  if (debugSearch) cleanups.push(on(debugSearch, 'input', () => renderFilteredGames()));
+
   // ── Word list modal ────────────────────────────────────────────────────────
   const wordModal    = $('#adm-word-modal', screenEl);
   const wordModalList  = $('#adm-word-modal-list', screenEl);
@@ -217,6 +225,7 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     queueDepth = null,
     players = [],
     suggestions = [],
+    rooms = [],
     loadedAt = null,
   } = {}) {
     approvedWordsCache = approvedWords;
@@ -255,6 +264,9 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
 
     lastSuggestions = suggestions;
     renderFilteredSuggestions();
+
+    allGames = rooms;
+    renderFilteredGames();
   }
 
   function setVal(id, val) {
@@ -380,6 +392,62 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     listEl.addEventListener('change', (e) => {
       if (e.target.classList.contains('adm-sugg-cb')) updateBulkBtn();
     });
+  }
+
+  // ── Debug game list ────────────────────────────────────────────────────────
+  function renderFilteredGames() {
+    const query = (debugSearch?.value ?? '').trim().toLowerCase();
+    if (!query) { paintGames(allGames); return; }
+    const filtered = allGames.filter((g) => {
+      const p0 = (g.players?.['0']?.displayName ?? '').toLowerCase();
+      const p1 = (g.players?.['1']?.displayName ?? '').toLowerCase();
+      const uid0 = (g.players?.['0']?.uid ?? '').toLowerCase();
+      const uid1 = (g.players?.['1']?.uid ?? '').toLowerCase();
+      return (
+        (g.roomId ?? '').toLowerCase().includes(query) ||
+        p0.includes(query) || p1.includes(query) ||
+        uid0.includes(query) || uid1.includes(query) ||
+        (g.status ?? '').toLowerCase().includes(query) ||
+        (g.mode ?? '').toLowerCase().includes(query) ||
+        String(g.schemaVersion ?? '').includes(query)
+      );
+    });
+    paintGames(filtered);
+  }
+
+  function paintGames(games) {
+    const emptyEl = $('#adm-debug-empty', screenEl);
+    const listEl  = $('#adm-debug-list',  screenEl);
+    if (!listEl) return;
+
+    if (games.length === 0) {
+      if (emptyEl) emptyEl.style.display = '';
+      listEl.innerHTML = '';
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    listEl.innerHTML = games.map((g) => {
+      const p0 = esc(g.players?.['0']?.displayName ?? '—');
+      const p1 = esc(g.players?.['1']?.displayName ?? '—');
+      const s0 = g.scores?.['0'] ?? 0;
+      const s1 = g.scores?.['1'] ?? 0;
+      const status = g.status ?? '?';
+      const statusCls = `adm-game-status--${status}`;
+      const dateStr = g.createdAt ? new Date(g.createdAt).toLocaleString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+      return `<div class="adm-game-row">
+        <div class="adm-game-top">
+          <span class="adm-game-status ${statusCls}">${esc(status)}</span>
+          <span class="adm-game-meta">${esc(g.mode ?? '?')} · v${esc(String(g.schemaVersion ?? '?'))} · ${dateStr}</span>
+        </div>
+        <div class="adm-game-players">
+          <span>${p0}</span>
+          <span class="adm-game-score">${s0} – ${s1}</span>
+          <span>${p1}</span>
+        </div>
+        <div class="adm-game-rid">${esc(g.roomId ?? '')}</div>
+      </div>`;
+    }).join('');
   }
 
   function esc(str) {

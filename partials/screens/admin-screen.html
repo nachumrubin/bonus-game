@@ -13,6 +13,7 @@
       <button class="adm-tab adm-tab--active" data-adm-tab="stats" role="tab" aria-selected="true">📊 סטטיסטיקות</button>
       <button class="adm-tab" data-adm-tab="players" role="tab" aria-selected="false">👥 שחקנים</button>
       <button class="adm-tab" data-adm-tab="words" role="tab" aria-selected="false">📚 מילים</button>
+      <button class="adm-tab" data-adm-tab="debug" role="tab" aria-selected="false">🐞 דיבאג</button>
     </div>
 
     <!-- ── Stats Panel ─────────────────────────────── -->
@@ -151,6 +152,18 @@
         <button id="adm-dict-remove-btn" class="sett-dict-btn sett-dict-btn--remove">הסר ✕</button>
         <div id="adm-dict-remove-status" class="sett-dict-status"></div>
       </div>
+    </div>
+
+    <!-- ── Debug Panel ────────────────────────────── -->
+    <div id="adm-panel-debug" class="adm-panel" role="tabpanel" style="display:none">
+      <div class="adm-debug-toolbar">
+        <button id="adm-debug-refresh-btn" class="adm-refresh-btn">⟳ רענן רשימה</button>
+        <input id="adm-debug-search" class="adm-search-input adm-debug-search-input" type="text"
+          placeholder="חפש: מזהה משחק / שם / סטטוס / גרסה / Id"
+          autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div id="adm-debug-empty" class="adm-empty">לא נמצאו משחקים</div>
+      <div id="adm-debug-list"></div>
     </div>
 
     <!-- Back button -->
