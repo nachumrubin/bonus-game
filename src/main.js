@@ -2464,7 +2464,7 @@ async function boot() {
 
   // ── Game Debug Timeline (admin) ──────────────────────────────────────────
   bus.on(ADMIN_INTENT.LOAD_DEBUG_INDEX, async () => {
-    const db = activeFbDb;
+    const db = await getDictionaryDb();
     if (!db) return;
     try {
       const snap = await db.ref(DEBUG_PATH.debugGameIndex).get();

@@ -154,10 +154,6 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     cleanups.push(on(playerSearch, 'input', () => renderFilteredPlayers()));
   }
 
-  // ── Debug panel controls ───────────────────────────────────────────────────
-  const debugRefreshBtn = $('#adm-debug-refresh-btn', screenEl);
-  if (debugRefreshBtn) cleanups.push(on(debugRefreshBtn, 'click', () => bus.emit(ADMIN_INTENT.LOAD, {})));
-
   // ── Word list modal ────────────────────────────────────────────────────────
   const wordModal    = $('#adm-word-modal', screenEl);
   const wordModalList  = $('#adm-word-modal-list', screenEl);
@@ -266,6 +262,24 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
 
     lastSuggestions = suggestions;
     renderFilteredSuggestions();
+
+    // Seed the debug tab with recent rooms from the stats load when the dedicated
+    // debug index hasn't been fetched yet. Clicking "רענן רשימה" replaces these
+    // with the richer debugGameIndex entries (which include appVersion etc.).
+    if (!debugIndexLoaded && rooms.length > 0) {
+      debugIndex = rooms.map((r) => ({
+        gameId:    r.roomId,
+        hostName:  r.players?.['0']?.displayName ?? null,
+        guestName: r.players?.['1']?.displayName ?? null,
+        hostUid:   r.players?.['0']?.uid ?? null,
+        guestUid:  r.players?.['1']?.uid ?? null,
+        status:    r.status ?? null,
+        mode:      r.mode ?? null,
+        appVersion: null,
+        createdAt: r.createdAt ?? null,
+      }));
+      renderDebugGames();
+    }
 
   }
 
