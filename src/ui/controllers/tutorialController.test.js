@@ -156,11 +156,13 @@ test('full tutorial flow: שלום → illegalInfo → exchange → lockInfo →
   bus._reset();
   const tips = [];
   const clears = [];
+  const screens = [];
   bus.on(TUTORIAL_TIP, (p) => tips.push(p));
   bus.on('tutorial/clear', () => clears.push(true));
   createTutorialController({
     bus,
     activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
+    showScreen: (id) => screens.push(id),
   });
 
   bus.emit(EV.GAME_STARTED, { mode: 'tutorial' });
@@ -214,9 +216,19 @@ test('full tutorial flow: שלום → illegalInfo → exchange → lockInfo →
 
   // --- mini-game completes → completion tip ---
   bus.emit(BONUS_RESOLVED, { kind: 'minigame', slot: 0, success: true, earnedPts: 40 });
-  assert.equal(tips[tips.length - 1].label, 'כל הכבוד!', 'completion tip shown after BONUS_RESOLVED');
-  assert.match(tips[tips.length - 1].text, /הפעלת בוסט/);
-  assert.ok(!tips[tips.length - 1].autoCloseMs, 'completion tip stays until dismissed');
+  const completion = tips[tips.length - 1];
+  assert.equal(completion.label, 'כל הכבוד!', 'completion tip shown after BONUS_RESOLVED');
+  assert.match(completion.text, /הפעלת בוסט/);
+  assert.ok(!completion.autoCloseMs, 'completion tip stays until dismissed');
+  // Final tip carries a "סיים" button (not "הבא").
+  assert.ok(completion.showNext, 'completion tip shows a button');
+  assert.equal(completion.nextLabel, 'סיים', 'final button reads סיים');
+
+  // --- player taps סיים → tutorial closes and returns to the main screen ---
+  const clearsBefore = clears.length;
+  bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.ok(clears.length > clearsBefore, 'tip cleared on finish');
+  assert.equal(screens[screens.length - 1], 'sh', 'סיים returns to the main screen');
 });
 
 test('bot move 2 after exchange triggers lockTip with interactive selectors', () => {

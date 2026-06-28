@@ -30,6 +30,12 @@ import { createOnlineGameSession } from './game/sessions/onlineGameSession.js';
 
 import * as firebaseClient from './game/online/firebaseClient.js';
 import * as roomService from './game/online/roomService.js';
+import { mountDebugRecorder } from './game/debug/debugRecorder.js';
+import { configureDebugLogger, createDebugReport, getGameDebugTimeline, appVersion as debugAppVersion, platformInfo as debugPlatformInfo } from './game/debug/debugLogger.js';
+import { DEBUG_PATH } from './game/debug/debugSchema.js';
+import { framesFromTimeline } from './game/debug/replayPlayer.js';
+import { mountReplayScreen, REPLAY_OPEN } from './ui/screens/replayScreen.js';
+import { mountReportProblemScreen, REPORT_SUBMIT, REPORT_DONE } from './ui/screens/reportProblemScreen.js';
 import * as inviteService from './game/online/inviteService.js';
 import * as matchmakingService from './game/online/matchmakingService.js';
 import * as presenceService from './game/online/presenceService.js';
@@ -483,6 +489,43 @@ async function boot() {
   let lastLivePreviewWrite = '';
   const recoveredSessionForUid = new Set();
   let launchParamsHandled = false;
+
+  // ── Game Debug Timeline ──────────────────────────────────────────
+  // One recorder for the whole session; it (re)initialises per game on
+  // EV.GAME_STARTED. All writes are best-effort and never block gameplay.
+  configureDebugLogger({ serverTimestamp: () => (activeFbServerTimestamp?.() ?? Date.now()) });
+  const debugRecorder = mountDebugRecorder({
+    bus,
+    getDb: () => activeFbDb,
+    getActiveGame: () => globalThis.__spine?.activeGame ?? null,
+    watchRoom: roomService.watchRoom,
+  });
+  globalThis.__spine.debug = {
+    recorder: debugRecorder,
+    createDebugReport: (report) => createDebugReport(activeFbDb, report),
+  };
+
+  // Capture uncaught client errors into /debugReports with the current game
+  // context + environment health — so a failure (e.g. dictionary never loaded)
+  // leaves a breadcrumb instead of vanishing into the console.
+  function captureClientError(kind, message, stack) {
+    try {
+      const ctx = debugRecorder.getContext?.() ?? null;
+      debugRecorder.recordError?.(`${kind}: ${String(message).slice(0, 200)}`, { stack: String(stack ?? '').slice(0, 1000) });
+      createDebugReport(activeFbDb, {
+        kind, gameId: ctx?.gameId ?? null, userId: activeFbCurrentUser?.uid ?? null,
+        screen: globalThis.__spine?.currentScreen ?? null,
+        appVersion: debugAppVersion(), ...debugPlatformInfo(),
+        userMessage: `[auto] ${kind}`,
+        errorMessage: String(message).slice(0, 500), errorStack: String(stack ?? '').slice(0, 2000),
+        dictLoaded: (hebrewDictionary?.DICT?.size ?? 0) > 0, dictSize: hebrewDictionary?.DICT?.size ?? 0,
+        lastActions: debugRecorder.getLastActions?.() ?? [], lastEventId: debugRecorder.getLastEventId?.() ?? null,
+        lastKnownLocalState: debugRecorder.localSnapshot?.() ?? null,
+      });
+    } catch { /* never let error capture throw */ }
+  }
+  globalThis.addEventListener?.('error', (e) => captureClientError('window.onerror', e?.message ?? e?.error?.message, e?.error?.stack));
+  globalThis.addEventListener?.('unhandledrejection', (e) => captureClientError('unhandledrejection', e?.reason?.message ?? e?.reason, e?.reason?.stack));
 
   async function bootCrossCuttingFor(uid) {
     if (!uid) return;
@@ -2402,6 +2445,67 @@ async function boot() {
     }
   });
 
+  // ── Game Debug Timeline (admin) ──────────────────────────────────────────
+  bus.on(ADMIN_INTENT.LOAD_DEBUG_INDEX, async () => {
+    const db = activeFbDb;
+    if (!db) return;
+    try {
+      const snap = await db.ref(DEBUG_PATH.debugGameIndex).get();
+      const raw = snap?.val ? (snap.val() ?? {}) : {};
+      const games = Object.values(raw)
+        .sort((a, b) => (b.updatedAt ?? b.createdAt ?? 0) - (a.updatedAt ?? a.createdAt ?? 0));
+      bus.emit(ADMIN_RENDER.DEBUG_INDEX, { games });
+    } catch (e) {
+      console.warn('[spine] admin debug index', e);
+      bus.emit(ADMIN_RENDER.DEBUG_INDEX, { games: [] });
+    }
+  });
+
+  bus.on(ADMIN_INTENT.LOAD_DEBUG_TIMELINE, async ({ gameId } = {}) => {
+    const db = activeFbDb;
+    if (!db || !gameId) return;
+    try {
+      const timeline = await getGameDebugTimeline(db, gameId);
+      bus.emit(ADMIN_RENDER.DEBUG_TIMELINE, { gameId, timeline });
+    } catch (e) {
+      console.warn('[spine] admin debug timeline', e);
+    }
+  });
+
+  bus.on(REPORT_SUBMIT, async ({ userMessage = '' } = {}) => {
+    try {
+      const ctx = debugRecorder.getContext?.() ?? null;
+      const reportId = await createDebugReport(activeFbDb, {
+        kind: 'manual',
+        gameId: ctx?.gameId ?? null,
+        userId: activeFbCurrentUser?.uid ?? null,
+        playerName: lastProfile?.displayName ?? activeFbCurrentUser?.displayName ?? null,
+        screen: globalThis.__spine?.activeGame ? 'GameScreen' : (globalThis.__spine?.currentScreen ?? null),
+        appVersion: debugAppVersion(), ...debugPlatformInfo(),
+        userMessage: String(userMessage).slice(0, 1000),
+        dictLoaded: (hebrewDictionary?.DICT?.size ?? 0) > 0, dictSize: hebrewDictionary?.DICT?.size ?? 0,
+        lastKnownLocalState: debugRecorder.localSnapshot?.() ?? null,
+        lastActions: debugRecorder.getLastActions?.() ?? [],
+        lastEventId: debugRecorder.getLastEventId?.() ?? null,
+      });
+      bus.emit(REPORT_DONE, { ok: !!reportId });
+    } catch (e) {
+      console.warn('[spine] report submit', e);
+      bus.emit(REPORT_DONE, { ok: false });
+    }
+  });
+
+  bus.on(ADMIN_INTENT.REPLAY_GAME, async ({ gameId } = {}) => {
+    const db = activeFbDb;
+    if (!db || !gameId) return;
+    try {
+      const timeline = await getGameDebugTimeline(db, gameId);
+      bus.emit(REPLAY_OPEN, { gameId, frames: framesFromTimeline(timeline) });
+    } catch (e) {
+      console.warn('[spine] admin replay', e);
+    }
+  });
+
   // ── End admin screen handlers ────────────────────────────────────────────
 
   // Merge admin-approved words from Firebase into the local dictionary.
@@ -2447,6 +2551,28 @@ async function boot() {
     let lastRequests = [];
     let pendingFriendTarget = null; // set by INVITE_FRIEND, consumed by CR_INTENT.CONFIRM
 
+    // Friend edges cache a snapshot of our name/avatar from when each friendship
+    // was created; it goes stale when we rename or equip a new (e.g. v2 store)
+    // avatar. We can't fix it at render time — a friend's /users profile isn't
+    // readable by us — so we push our current values into each friend's edge.
+    // Called on equip and whenever our friends list loads (self-heals old edges).
+    // A friend writing their snapshot into our list re-fires our friends watch,
+    // so we guard with a signature to avoid re-pushing unchanged data (and the
+    // write ping-pong it would cause between two online friends).
+    let lastSelfSyncSig = null;
+    function syncMyProfileToFriends() {
+      const fbDb = activeFbDb;
+      const uid = activeFbCurrentUser?.uid;
+      const friendUids = lastFriends.map(f => f.uid).filter(Boolean);
+      if (!fbDb || !uid || friendUids.length === 0) return;
+      const avatar = lastProfile?.equippedAvatar ?? null;
+      const name   = lastProfile?.displayName ?? '';
+      const sig = JSON.stringify([uid, avatar, name, [...friendUids].sort()]);
+      if (sig === lastSelfSyncSig) return;
+      lastSelfSyncSig = sig;
+      friendsService.syncSelfToFriends(fbDb, { uid, friendUids, avatar, name }).catch(() => {});
+    }
+
     function bootProfileFor(uid) {
       const fbDb = activeFbDb;
       if (!fbDb || !uid) return;
@@ -2484,6 +2610,9 @@ async function boot() {
         }
         lastProfile = profile;
         globalThis.__spine.currentProfile = profile;
+        // Keep our name/avatar snapshot fresh in friends' lists when either
+        // changes (equip, rename — including from another device/tab).
+        syncMyProfileToFriends();
         // Daily login reward — once per boot, gated to signed-in users.
         if (profile && !dailyRewardChecked && !activeFbCurrentUser?.isAnonymous) {
           dailyRewardChecked = true;
@@ -2560,6 +2689,10 @@ async function boot() {
 
       activeFriendsWatch = friendsService.watchFriends(fbDb, uid, (friends) => {
         lastFriends = friends;
+
+        // Refresh our (possibly stale) name/avatar snapshot in each friend's
+        // edge — self-heals friendships created before the v2 avatars existed.
+        syncMyProfileToFriends();
 
         // Sync friendsCount achievement stat whenever the friends list changes
         const newFriendsCount = friends.length;
@@ -2665,6 +2798,8 @@ async function boot() {
       if (!fbDb || !fbUser?.uid || !id) return;
       try { await profileService.updateProfile(fbDb, fbUser.uid, { equippedAvatar: id }); }
       catch (e) { console.warn('[spine] avatar equip', e); }
+      // The friend-edge avatar snapshot is refreshed by the profile watch once
+      // the equippedAvatar write round-trips (see syncMyProfileToFriends).
     });
     bus.on(AV_INTENT.CLOSE, () => {
       showLegacyScreen('sprofile');
@@ -2677,6 +2812,17 @@ async function boot() {
       if (!fbUser?.uid || fbUser.isAnonymous) {
         globalThis.document?.getElementById?.('ov-guest-upgrade')?.classList?.remove?.('hidden');
         return;
+      }
+      // Repaint from the latest profile so coins earned since the store was last
+      // rendered (e.g. the daily login reward) show on entry — the profile watch
+      // only re-emits STORE_RENDER on a profile change, not on navigation.
+      if (lastProfile) {
+        const economy = profileService.normalizeProfileEconomy(lastProfile);
+        bus.emit(STORE_RENDER, {
+          coins: economy.coins,
+          ownedAvatars: economy.ownedAvatars,
+          equippedAvatar: lastProfile?.equippedAvatar ?? null,
+        });
       }
       showLegacyScreen('savatar-store');
     });
@@ -3794,8 +3940,8 @@ async function boot() {
           mode,
           tileBagSeed,
           players: {
-            0: { uid: 'p0', displayName: p1Name, avatar: avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar) || null },
-            1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? 'bot' : null },
+            0: { uid: 'p0', displayName: p1Name, avatar: avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar ?? profileService.DEFAULT_AVATAR) || null },
+            1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? 'bot' : profileService.DEFAULT_AVATAR },
           },
           startingSlot,
           settings,
@@ -3964,6 +4110,8 @@ async function boot() {
   const championsScreen    = mountChampionsScreen({ bus });
   const dictionaryScreen   = mountDictionaryScreen({ bus });
   const adminScreen        = mountAdminScreen({ bus });
+  const replayScreen       = mountReplayScreen({ bus });
+  const reportProblemScreen = mountReportProblemScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });
   const onboarding         = mountOnboardingController({ bus, storage: globalThis.localStorage, getUid: () => activeFbCurrentUser?.uid ?? null });
   const jokerPicker = mountJokerPicker({ bus });

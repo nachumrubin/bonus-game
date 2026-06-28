@@ -13,6 +13,7 @@
       <button class="adm-tab adm-tab--active" data-adm-tab="stats" role="tab" aria-selected="true">📊 סטטיסטיקות</button>
       <button class="adm-tab" data-adm-tab="players" role="tab" aria-selected="false">👥 שחקנים</button>
       <button class="adm-tab" data-adm-tab="words" role="tab" aria-selected="false">📚 מילים</button>
+      <button class="adm-tab" data-adm-tab="debug" role="tab" aria-selected="false">🐞 דיבאג</button>
     </div>
 
     <!-- ── Stats Panel ─────────────────────────────── -->
@@ -150,6 +151,33 @@
           oninput="this.value=this.value.replace(/[^א-ת,]/g,'')">
         <button id="adm-dict-remove-btn" class="sett-dict-btn sett-dict-btn--remove">הסר ✕</button>
         <div id="adm-dict-remove-status" class="sett-dict-status"></div>
+      </div>
+    </div>
+
+    <!-- ── Debug Panel ─────────────────────────────── -->
+    <div id="adm-panel-debug" class="adm-panel" role="tabpanel" style="display:none">
+      <div class="adm-section">
+        <div class="adm-debug-searchbar">
+          <input id="adm-debug-search" class="adm-debug-input" type="text"
+                 placeholder="חפש: מזהה משחק / שם / סטטוס / גרסה / userId">
+          <button id="adm-debug-load-btn" class="adm-debug-btn">רענן רשימה</button>
+        </div>
+        <div id="adm-debug-games" class="adm-debug-games">
+          <div class="adm-debug-empty">לחץ "רענן רשימה" כדי לטעון משחקים</div>
+        </div>
+      </div>
+
+      <div id="adm-debug-detail" class="adm-section" style="display:none">
+        <div class="adm-debug-detail-hdr">
+          <button id="adm-debug-back-btn" class="adm-debug-btn adm-debug-btn--ghost">← רשימה</button>
+          <button id="adm-debug-replay-btn" class="adm-debug-btn adm-debug-btn--primary">▶ שחזר משחק</button>
+        </div>
+        <div id="adm-debug-summary" class="adm-debug-summary"></div>
+        <div id="adm-debug-warnings" class="adm-debug-warnings"></div>
+        <div class="adm-debug-section-title">ציר זמן</div>
+        <div id="adm-debug-timeline" class="adm-debug-timeline"></div>
+        <div class="adm-debug-section-title">דיווחים</div>
+        <div id="adm-debug-reports" class="adm-debug-reports"></div>
       </div>
     </div>
 

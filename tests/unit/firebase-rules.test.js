@@ -49,3 +49,33 @@ test('firebase rules include dictionary moderation protections', () => {
     'rejected dictionary writes should require an entry in /admins/$uid'
   );
 });
+
+test('firebase rules protect the game-debug nodes (admin read, participant append-only)', () => {
+  const rulesDoc = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+  const rules = rulesDoc.rules || {};
+  const ADMIN_READ = "auth != null && root.child('admins').child(auth.uid).val() === true";
+
+  for (const node of ['gameEvents', 'gameSnapshots', 'clientSnapshots', 'debugWarnings', 'debugReports', 'debugGameIndex']) {
+    assert.ok(rules[node], `${node} path should exist`);
+    assert.equal(rules[node]['.read'], ADMIN_READ, `${node} should be admin-read only`);
+  }
+
+  // Append-only for events/snapshots/warnings, restricted to room participants.
+  for (const [node, idKey] of [['gameEvents', '$eventId'], ['gameSnapshots', '$version'], ['debugWarnings', '$warningId']]) {
+    const w = rules[node].$gameId[idKey]['.write'];
+    assert.match(w, /!data\.exists\(\)/, `${node} writes should be append-only`);
+    assert.match(w, /players'\)\.child\('0'\)\.child\('uid'\)/, `${node} writes should require a room participant`);
+  }
+
+  // clientSnapshots: a player may only write under their OWN slot.
+  const cs = rules.clientSnapshots.$gameId.$slot.$id['.write'];
+  assert.match(cs, /!data\.exists\(\)/);
+  assert.equal(
+    cs,
+    "auth != null && !data.exists() && auth.uid === root.child('rooms').child($gameId).child('players').child($slot).child('uid').val()",
+    'clientSnapshots write must bind auth.uid to the $slot player'
+  );
+
+  // debugReports: any authenticated user may file, append-only.
+  assert.equal(rules.debugReports.$reportId['.write'], 'auth != null && !data.exists()');
+});

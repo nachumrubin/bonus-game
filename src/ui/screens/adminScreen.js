@@ -6,15 +6,20 @@ import { parseSuggestedWords } from '../../game/account/dictionaryService.js';
 import { DICT_INTENT, DICT_RENDER } from './dictionaryScreen.js';
 
 export const ADMIN_INTENT = Object.freeze({
-  LOAD:               'admin/load',
-  APPROVE_SUGGESTION: 'admin/approveSuggestion',
-  REJECT_SUGGESTION:  'admin/rejectSuggestion',
-  BACK:               'admin/back',
+  LOAD:                'admin/load',
+  APPROVE_SUGGESTION:  'admin/approveSuggestion',
+  REJECT_SUGGESTION:   'admin/rejectSuggestion',
+  BACK:                'admin/back',
+  LOAD_DEBUG_INDEX:    'admin/loadDebugIndex',
+  LOAD_DEBUG_TIMELINE: 'admin/loadDebugTimeline',
+  REPLAY_GAME:         'admin/replayGame',
 });
 
 export const ADMIN_RENDER = Object.freeze({
   DATA:               'admin/render/data',
   SUGGESTION_DONE:    'admin/render/suggestionDone',
+  DEBUG_INDEX:        'admin/render/debugIndex',
+  DEBUG_TIMELINE:     'admin/render/debugTimeline',
 });
 
 export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
@@ -47,10 +52,11 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
       b.classList.toggle('adm-tab--active', active);
       b.setAttribute('aria-selected', String(active));
     });
-    ['stats', 'players', 'words'].forEach((t) => {
+    ['stats', 'players', 'words', 'debug'].forEach((t) => {
       const panel = $(`#adm-panel-${t}`, screenEl);
       if (panel) panel.style.display = t === tab ? '' : 'none';
     });
+    if (tab === 'debug' && !debugIndexLoaded) bus.emit(ADMIN_INTENT.LOAD_DEBUG_INDEX, {});
   }
 
   // ── Refresh button ─────────────────────────────────────────────────────────
@@ -380,6 +386,121 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     listEl.addEventListener('change', (e) => {
       if (e.target.classList.contains('adm-sugg-cb')) updateBulkBtn();
     });
+  }
+
+  // ── Debug tab ──────────────────────────────────────────────────────────────
+  let debugIndexLoaded = false;
+  let debugIndex = [];          // [{ gameId, hostName, guestName, status, appVersion, createdAt, ... }]
+  let currentTimeline = null;
+
+  const debugSearch   = $('#adm-debug-search', screenEl);
+  const debugLoadBtn  = $('#adm-debug-load-btn', screenEl);
+  const debugGamesEl  = $('#adm-debug-games', screenEl);
+  const debugDetailEl = $('#adm-debug-detail', screenEl);
+  const debugBackBtn  = $('#adm-debug-back-btn', screenEl);
+  const debugReplayBtn = $('#adm-debug-replay-btn', screenEl);
+
+  if (debugLoadBtn) cleanups.push(on(debugLoadBtn, 'click', () => bus.emit(ADMIN_INTENT.LOAD_DEBUG_INDEX, {})));
+  if (debugSearch)  cleanups.push(on(debugSearch, 'input', () => renderDebugGames()));
+  if (debugBackBtn) cleanups.push(on(debugBackBtn, 'click', () => {
+    if (debugDetailEl) debugDetailEl.style.display = 'none';
+    if (debugGamesEl)  debugGamesEl.style.display = '';
+  }));
+  if (debugReplayBtn) cleanups.push(on(debugReplayBtn, 'click', () => {
+    if (currentTimeline?.gameId) bus.emit(ADMIN_INTENT.REPLAY_GAME, { gameId: currentTimeline.gameId });
+  }));
+
+  cleanups.push(bus.on(ADMIN_RENDER.DEBUG_INDEX, ({ games = [] } = {}) => {
+    debugIndexLoaded = true;
+    debugIndex = games;
+    renderDebugGames();
+  }));
+  cleanups.push(bus.on(ADMIN_RENDER.DEBUG_TIMELINE, (payload = {}) => paintDebugTimeline(payload)));
+
+  if (debugGamesEl) {
+    debugGamesEl.onclick = (e) => {
+      const row = e.target.closest?.('[data-debug-gid]');
+      if (row) bus.emit(ADMIN_INTENT.LOAD_DEBUG_TIMELINE, { gameId: row.dataset.debugGid });
+    };
+  }
+
+  function renderDebugGames() {
+    if (!debugGamesEl) return;
+    const q = (debugSearch?.value ?? '').trim().toLowerCase();
+    const rows = (q
+      ? debugIndex.filter((g) => [g.gameId, g.hostName, g.guestName, g.hostUid, g.guestUid, g.status, g.appVersion]
+          .some((v) => String(v ?? '').toLowerCase().includes(q)))
+      : debugIndex
+    ).slice(0, 200);
+    if (rows.length === 0) {
+      debugGamesEl.innerHTML = '<div class="adm-debug-empty">לא נמצאו משחקים</div>';
+      return;
+    }
+    debugGamesEl.innerHTML = rows.map((g) => {
+      const when = g.createdAt ? new Date(g.createdAt).toLocaleString('he-IL') : '—';
+      return `<div class="adm-debug-game-row" data-debug-gid="${esc(g.gameId)}">
+        <div class="adm-debug-game-players">${esc(g.hostName ?? '?')} <span class="adm-debug-vs">vs</span> ${esc(g.guestName ?? '?')}</div>
+        <div class="adm-debug-game-meta">
+          <span class="adm-debug-status adm-debug-status--${esc(g.status ?? '')}">${esc(g.status ?? '—')}</span>
+          <span class="adm-debug-gid">${esc(g.gameId)}</span>
+          <span class="adm-debug-ver">v:${esc(g.appVersion ?? '—')}</span>
+          <span class="adm-debug-when">${esc(when)}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function paintDebugTimeline({ gameId, timeline } = {}) {
+    currentTimeline = timeline ? { ...timeline, gameId } : null;
+    if (debugGamesEl)  debugGamesEl.style.display = 'none';
+    if (debugDetailEl) debugDetailEl.style.display = '';
+    const idx = timeline?.index ?? {};
+    const summaryEl = $('#adm-debug-summary', screenEl);
+    if (summaryEl) {
+      summaryEl.innerHTML = `
+        <div class="adm-debug-summary-row"><b>${esc(idx.hostName ?? '?')}</b> vs <b>${esc(idx.guestName ?? '?')}</b></div>
+        <div class="adm-debug-summary-row">משחק: <code>${esc(gameId)}</code> · סטטוס: ${esc(idx.status ?? '—')} · מצב: ${esc(idx.mode ?? '—')}</div>
+        <div class="adm-debug-summary-row">גרסת אפליקציה: ${esc(idx.appVersion ?? '—')} · נוצר: ${idx.createdAt ? esc(new Date(idx.createdAt).toLocaleString('he-IL')) : '—'}</div>
+        <div class="adm-debug-summary-row">אירועים: ${timeline?.events?.length ?? 0} · צילומי מצב: ${timeline?.snapshots?.length ?? 0} · אזהרות: ${timeline?.warnings?.length ?? 0}</div>`;
+    }
+
+    const warnEl = $('#adm-debug-warnings', screenEl);
+    if (warnEl) {
+      const ws = timeline?.warnings ?? [];
+      warnEl.innerHTML = ws.length === 0 ? '<div class="adm-debug-ok">✓ אין אזהרות</div>'
+        : ws.map((w) => `<div class="adm-debug-warn adm-debug-warn--${esc(w.severity ?? 'low')}">
+            <span class="adm-debug-warn-type">${esc(w.type)}</span>
+            <span class="adm-debug-warn-msg">${esc(w.message ?? '')}</span>
+            ${w.version != null ? `<span class="adm-debug-warn-ver">v${esc(w.version)}</span>` : ''}
+          </div>`).join('');
+    }
+
+    const tlEl = $('#adm-debug-timeline', screenEl);
+    if (tlEl) {
+      const evs = timeline?.events ?? [];
+      tlEl.innerHTML = evs.length === 0 ? '<div class="adm-debug-empty">אין אירועים</div>'
+        : evs.map((e) => {
+            const when = e.serverTimestamp ?? e.clientTimestamp;
+            const t = typeof when === 'number' ? new Date(when).toLocaleTimeString('he-IL') : '';
+            return `<details class="adm-debug-evt">
+              <summary><span class="adm-debug-evt-type">${esc(e.type)}</span>
+                <span class="adm-debug-evt-sum">${esc(e.summary ?? '')}</span>
+                <span class="adm-debug-evt-time">${esc(t)}</span></summary>
+              <pre class="adm-debug-json">${esc(JSON.stringify(e, null, 2))}</pre>
+            </details>`;
+          }).join('');
+    }
+
+    const repEl = $('#adm-debug-reports', screenEl);
+    if (repEl) {
+      const reps = timeline?.reports ?? [];
+      repEl.innerHTML = reps.length === 0 ? '<div class="adm-debug-empty">אין דיווחים</div>'
+        : reps.map((r) => `<details class="adm-debug-evt adm-debug-report">
+            <summary><span class="adm-debug-evt-type">📣 ${esc(r.kind ?? 'report')}</span>
+              <span class="adm-debug-evt-sum">${esc(r.userMessage ?? '')}</span></summary>
+            <pre class="adm-debug-json">${esc(JSON.stringify(r, null, 2))}</pre>
+          </details>`).join('');
+    }
   }
 
   function esc(str) {

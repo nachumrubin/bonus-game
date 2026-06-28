@@ -39,6 +39,11 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
   let repaintRafs = [];
   let autoCloseTimer = null;
   let rackObserver = null;
+  let overlayObserver = null;
+
+  // Overlays whose open/close should re-position the tip (they're centered
+  // modals that a top-anchored tip would cover — see positionTip).
+  const REPOSITION_OVERLAY_IDS = ['ov-joker', 'ov-exch'];
 
   takeOver(start, () => {
     intro?.classList?.add('hidden');
@@ -64,7 +69,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
-  function showTip({ label = '', text = '', selectors = [], selector = null, autoCloseMs = 0, showNext = false } = {}) {
+  function showTip({ label = '', text = '', selectors = [], selector = null, autoCloseMs = 0, showNext = false, nextLabel = 'הבא ›' } = {}) {
     clearHighlights();
     cancelAutoClose();
     setText(tipLabel, label);
@@ -73,6 +78,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     if (selector) list.push(selector);
     currentSelectors = list;
     applyHighlights();
+    if (tipNext) setText(tipNext, nextLabel);
     if (showNext) tipNext?.classList?.remove('hidden');
     else tipNext?.classList?.add('hidden');
     tip?.classList?.remove('hidden');
@@ -86,6 +92,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     schedulePaints();
     attachResize();
     attachRackObserver();
+    attachOverlayObserver();
     if (autoCloseMs > 0) {
       autoCloseTimer = setTimeout(() => {
         autoCloseTimer = null;
@@ -103,6 +110,21 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     if (!win?.requestAnimationFrame) return;
     // Defer one frame so the tip is visible (non-hidden) before measuring.
     win.requestAnimationFrame(() => {
+      // A centered modal overlay (joker picker, exchange) sits mid-screen and
+      // would be covered by the top-anchored tip — pin the tip to the bottom
+      // while one is open so it doesn't hide the picker's letters (e.g. the
+      // 'י' the bonus step tells the player to choose). attachOverlayObserver
+      // re-runs positionTip when these overlays toggle.
+      const modalOpen = root.querySelector?.('.ov:not(.hidden)');
+      if (modalOpen) {
+        tip.style.top = '';
+        tip.style.bottom = '14px';
+        tip.style.left = '50%';
+        tip.style.transform = 'translateX(-50%)';
+        tip.style.right = '';
+        return;
+      }
+
       const sbar = root.querySelector?.('#sbar') ?? root.querySelector?.('.sbar');
       const grid = root.getElementById?.('game-grid') ?? root.querySelector?.('#game-grid');
       if (!sbar && !grid) return;
@@ -296,6 +318,24 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     rackObserver = null;
   }
 
+  function attachOverlayObserver() {
+    if (overlayObserver) return;
+    const win = root.defaultView ?? globalThis.window;
+    const MO = win?.MutationObserver ?? globalThis.MutationObserver;
+    if (!MO) return;
+    overlayObserver = new MO(() => positionTip());
+    for (const id of REPOSITION_OVERLAY_IDS) {
+      const el = root.getElementById?.(id) ?? $(`#${id}`, root);
+      if (el) overlayObserver.observe(el, { attributes: true, attributeFilter: ['class'] });
+    }
+  }
+
+  function detachOverlayObserver() {
+    if (!overlayObserver) return;
+    try { overlayObserver.disconnect(); } catch {}
+    overlayObserver = null;
+  }
+
   function clearTip() {
     cancelAutoClose();
     clearHighlights();
@@ -303,6 +343,7 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
     tip?.classList?.add('hidden');
     detachResize();
     detachRackObserver();
+    detachOverlayObserver();
   }
 
   function cancelAutoClose() {

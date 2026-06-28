@@ -18,7 +18,7 @@ function makeEl() {
   const attrs = {};
   const cls = new Set();
   return {
-    classList: { add(c) { cls.add(c); }, contains(c) { return cls.has(c); } },
+    classList: { add(c) { cls.add(c); }, remove(c) { cls.delete(c); }, contains(c) { return cls.has(c); } },
     getAttribute(n) { return attrs[n] ?? null; },
     setAttribute(n, v) { attrs[n] = v; },
     removeAttribute(n) { delete attrs[n]; },
@@ -82,6 +82,35 @@ test('pause quit in live online opens resign confirmation instead of ending imme
   bus.emit(PAUSE_INTENT.QUIT_NO_SAVE, {});
   assert.equal(resignOpened, 1);
   assert.equal(active.ended, 0);
+});
+
+test('VIEW_BOARD enters read-only review; back button restores the results', () => {
+  bus._reset();
+  const active = makeActiveGame();
+  const sg = makeEl(), back = makeEl(), ovEnd = makeEl();
+  // makeRoot resolves both querySelector('#x') and getElementById('x') from
+  // keys prefixed with '#'.
+  const root = makeRoot({ '#sg': sg, '#board-review-back': back, '#ov-end': ovEnd });
+  const opens = [];
+  bus.on('overlay/end/open', (p) => opens.push(p));
+  createGameFlowController({ bus, root, activeGameRef: () => active });
+
+  // Finish the game so the end payload is cached.
+  bus.emit(EV.GAME_COMPLETED, {});
+  assert.equal(opens.length, 1);
+
+  // "צפה בלוח" → board goes read-only, results hidden, back button shown.
+  bus.emit(END_INTENT.VIEW_BOARD, {});
+  assert.ok(sg.classList.contains('board-review'), 'board entered review mode');
+  assert.ok(ovEnd.classList.contains('hidden'), 'results overlay hidden');
+  assert.ok(!back.classList.contains('hidden'), 'back-to-results button shown');
+
+  // "חזרה לתוצאות" → review exits and the results re-open with the same payload.
+  back.click();
+  assert.ok(!sg.classList.contains('board-review'), 'review mode cleared');
+  assert.ok(back.classList.contains('hidden'), 'back button hidden again');
+  assert.equal(opens.length, 2, 'results re-opened');
+  assert.deepEqual(opens[1], opens[0], 'same end payload reused');
 });
 
 test('confirmed resign dispatches RESIGN_GAME for my slot', () => {

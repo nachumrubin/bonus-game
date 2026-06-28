@@ -1,60 +1,119 @@
-21:43:54.107 [NamespaceSystem-akka.actor.default-dispatcher-6] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
-21:43:54.535 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000
-21:43:55.192 [NamespaceSystem-akka.actor.default-dispatcher-6] INFO com.firebase.core.namespace.NamespaceActor - demo-bonus-game-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 308ms, init: 0ms
-21:43:55.437 [NamespaceSystem-blocking-namespace-operation-dispatcher-8] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game-default-rtdb status Active to Active
-21:43:56.287 [FirebaseWorkerPool-1-3] WARN com.firebase.core.persistence.backend.dummy.EmulatorMetadataPersistence - Multiple projectIds are not recommended in single project mode. Requested 
+01:03:11.782 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+01:03:11.959 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000
+01:03:12.425 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO com.firebase.core.namespace.NamespaceActor - demo-bonus-game-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 177ms, init: 0ms
+01:03:12.593 [NamespaceSystem-blocking-namespace-operation-dispatcher-7] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game-default-rtdb status Active to Active
+01:03:13.060 [FirebaseWorkerPool-1-3] WARN com.firebase.core.persistence.backend.dummy.EmulatorMetadataPersistence - Multiple projectIds are not recommended in single project mode. Requested 
 namespace demo-bonus-game, but the emulator is configured for demo-bonus-game-default-rtdb. To 
 opt-out of single project mode add/set the singleProjectMode: false property in 
 the firebase.json emulators config. 
-21:43:56.290 [NamespaceSystem-akka.actor.default-dispatcher-7] INFO com.firebase.core.namespace.NamespaceActor - demo-bonus-game successfully activated FBKV (SurveyIdle(0)) wait: 1ms, init: 0ms
-21:43:56.308 [NamespaceSystem-blocking-namespace-operation-dispatcher-8] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
-21:43:56.814 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.814 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.814 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.814 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.820 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.821 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.822 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.848 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:56.848 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.759 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.759 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.759 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.759 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.760 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.761 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.761 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.761 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.761 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.761 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.778 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.783 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.784 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.784 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.784 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.784 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.785 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.785 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.788 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
-21:43:57.788 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:13.063 [NamespaceSystem-akka.actor.default-dispatcher-6] INFO com.firebase.core.namespace.NamespaceActor - demo-bonus-game successfully activated FBKV (SurveyIdle(0)) wait: 1ms, init: 0ms
+01:03:13.082 [NamespaceSystem-blocking-namespace-operation-dispatcher-7] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:13.538 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:13.782 [NamespaceSystem-blocking-namespace-operation-dispatcher-7] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:13.932 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:13.957 [NamespaceSystem-blocking-namespace-operation-dispatcher-7] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:14.072 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:14.546 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:14.611 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:14.638 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:14.719 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:14.743 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:14.797 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:14.815 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:15.182 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:15.347 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:15.410 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:15.444 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:15.584 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:15.632 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:15.680 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:15.743 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:15.886 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:15.949 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:15.977 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:16.104 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:16.198 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:16.238 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:16.354 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:16.401 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:16.449 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:16.759 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:16.829 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:16.863 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:16.938 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:16.954 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:17.014 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:17.029 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:17.156 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:17.176 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:17.250 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:17.266 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:17.347 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:17.362 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:17.456 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:17.469 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:17.598 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:17.633 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:17.771 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:17.808 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:17.942 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:17.954 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:18.081 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:18.094 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:18.240 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:18.260 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:18.378 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:18.392 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:18.507 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:18.526 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:18.599 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:18.611 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:18.758 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:18.771 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:18.900 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:18.914 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.011 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:19.033 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.167 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:19.182 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.322 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:19.343 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.415 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:19.433 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.525 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:19.544 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.666 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:19.688 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.758 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...X19., assuming ownership.
+01:03:19.768 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.837 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:19.848 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:19.933 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:19.943 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:20.074 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:20.095 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:20.146 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:20.162 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:20.243 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:20.548 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:20.637 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:20.700 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:20.731 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:20.811 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:20.833 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:20.921 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:20.950 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:21.078 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:21.191 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:21.295 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:21.308 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:21.454 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:21.455 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...9fQ., assuming ownership.
+01:03:21.496 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:21.643 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:21.680 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:21.781 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:21.809 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:21.921 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.
+01:03:21.954 [NamespaceSystem-blocking-namespace-operation-dispatcher-10] INFO com.firebase.core.namespace.StateManager - Namespace demo-bonus-game status Active to Active
+01:03:22.094 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...fX0., assuming ownership.

@@ -6,7 +6,7 @@ import * as bus from '../../events/bus.js';
 import {
   sendFriendRequest, acceptFriendRequest, rejectFriendRequest, cancelFriendRequest,
   watchIncomingRequests, listFriends, watchFriends, removeFriend,
-  filterFriendsByName, FRIENDS_EVT,
+  filterFriendsByName, syncSelfToFriends, FRIENDS_EVT,
 } from './friendsService.js';
 
 const ALICE = { uid: 'alice', displayName: 'Alice', equippedAvatar: 'crown' };
@@ -118,6 +118,31 @@ test('removeFriend: clears both directions', async () => {
   await removeFriend(db, { uid: ALICE.uid, friendUid: BOB.uid });
   assert.equal((await db.ref(`friends/${ALICE.uid}/${BOB.uid}`).get()).val(), null);
   assert.equal((await db.ref(`friends/${BOB.uid}/${ALICE.uid}`).get()).val(), null);
+});
+
+test('syncSelfToFriends: refreshes my avatar/name in each friend edge', async () => {
+  const db = makeMockDb();
+  // Become friends with the snapshot avatar 'crown', then equip a v2 avatar.
+  await acceptFriendRequest(db, { fromUid: ALICE.uid, toUid: BOB.uid, fromProfile: ALICE, toProfile: BOB });
+  await db.ref(`friends/${ALICE.uid}/${BOB.uid}`).set({ uid: BOB.uid, name: 'Bob', avatar: 'crown' });
+
+  const r = await syncSelfToFriends(db, {
+    uid: BOB.uid, friendUids: [ALICE.uid], avatar: 'epic_2', name: 'Bob',
+  });
+  assert.equal(r.ok, true);
+  // BOB's edge inside ALICE's friend list now shows the v2 avatar.
+  const edge = (await db.ref(`friends/${ALICE.uid}/${BOB.uid}`).get()).val();
+  assert.equal(edge.avatar, 'epic_2');
+  assert.equal(edge.name, 'Bob');
+});
+
+test('syncSelfToFriends: no-op without uid or friends', async () => {
+  const db = makeMockDb();
+  assert.equal((await syncSelfToFriends(db, { uid: 'x', friendUids: [] })).ok, false);
+  assert.equal((await syncSelfToFriends(db, { uid: '', friendUids: ['a'], avatar: 'z' })).ok, false);
+  // skips self-edge so no stray write
+  const r = await syncSelfToFriends(db, { uid: 'a', friendUids: ['a'], avatar: 'z' });
+  assert.equal(r.ok, false);
 });
 
 test('filterFriendsByName: case-insensitive substring', () => {

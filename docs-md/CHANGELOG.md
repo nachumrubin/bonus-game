@@ -2,6 +2,122 @@
 
 ---
 
+## Game Debug Timeline (internal admin tool) — June 2026
+
+Added an append-only debug timeline for investigating bugs inside live/finished
+online games, with an admin-only screen, a tri-panel replay, and a player-facing
+"report a problem" button. All debug data lives in **separate** Firebase nodes —
+`/rooms` is untouched — and every write is best-effort so debug logging can never
+disrupt gameplay.
+
+New modules (all under `src/game/debug/`):
+- `debugSchema.js` — path constants + `DEBUG_EVENT` / `WARNING_TYPE` / `SEVERITY`
+  enums (single source of truth; add an event type in one line).
+- `stateHash.js` (pure) — `compactSnapshot` / `boardHash` / `hashState`; canonical
+  hashing that's identical for the engine's 2D board and the room doc's flat board.
+- `gameStateValidator.js` (pure) — `validateTransition` raising warnings for
+  same-player-twice, turn skip/no-advance, score mismatch, negative score,
+  change-after-ended, tile-count mismatch, board-without-move, client/server
+  mismatch, old app version, rules/dict version mismatch.
+- `debugLogger.js` — best-effort append-only writers (`logGameEvent`,
+  `createGameSnapshot`, `putClientSnapshot`, `createDebugWarning`,
+  `createDebugReport`, `upsertGameIndex`, `getGameDebugTimeline`) + env helpers.
+- `debugRecorder.js` — one global recorder; translates bus events → timeline,
+  writes per-client snapshots (deduped), and (online) watches the room to write
+  server snapshots + warnings.
+- `replayPlayer.js` (pure) — merges the server + both client snapshot streams onto
+  one `serverTimestamp` timeline for the tri-panel replay.
+
+New Firebase nodes (admin-read; append-only participant writes): `/gameEvents`,
+`/gameSnapshots`, `/clientSnapshots/{gameId}/{slot}`, `/debugWarnings`,
+`/debugReports`, `/debugGameIndex`. Rules added in
+`firebase.database.rules.json` (+ unit assertions + `tests/emulator/debug-rules.test.mjs`).
+
+UI:
+- Admin **🐞 דיבאג** tab (`adminScreen.js` / `admin-screen.html`): search the game
+  index, open a game's timeline (events with readable summaries, severity-colored
+  warnings, manual reports, expandable raw JSON).
+- **שחזר משחק** replay (`replayScreen.js` / `replay-overlay.html`): three
+  synchronized read-only boards — Player 1 | Player 2 | Server — on a shared
+  scrubber; a lagging/diverged client is bordered red with a "לא תואם" badge and
+  its app version shown.
+- **"דווח על בעיה במשחק"** in the help dropdown → `report-problem-overlay.html` /
+  `reportProblemScreen.js`; captures env + last actions + local snapshot.
+- Global `window.onerror` / `unhandledrejection` capture → `/debugReports` with
+  dictionary-load health (closes the "couldn't explain why" gap).
+
+Wiring in `src/main.js` (recorder mount, admin debug/replay/report handlers,
+error capture) and a single GAME_CREATED hook in `roomService.createRoom`.
+Verification: 33 new unit tests + 5 emulator rule tests; capture spec
+`tests/e2e/capture-debug-timeline.spec.js` → `images/guide/debug/`.
+
+---
+
+## Feature: read-only board review from the end screen — June 2026
+
+After a game ends, the results overlay now has a **"צפה בלוח"** button that hides
+the results and reveals the finished board (already rendered behind the overlay)
+in a **read-only** state — useful for recapping or taking a screenshot. A
+floating **"חזרה לתוצאות"** button restores the results table.
+
+- `partials/screens/end.html` — new `reviewBoard()` button on `#ov-end`.
+- `partials/screens/game.html` — `#board-review-back` floating button, placed
+  outside `.gr` so the read-only guard doesn't disable it.
+- `styles.css` — `#sg.board-review .gr { pointer-events:none }` makes the board
+  non-interactive during review; `.board-review-back` styling.
+- `src/ui/screens/endGameScreen.js` — `END_INTENT.VIEW_BOARD` wired to the button.
+- `src/ui/controllers/gameFlowController.js` — `enterBoardReview()` /
+  `exitBoardReview()`; caches the end payload so "back to results" re-opens the
+  same table. Review state is cleared on home / rematch / new game.
+- Tests added in `overlays.test.js` and `gameFlowController.test.js`.
+
+---
+
+## Tutorial: final tip "סיים" button exits to the main screen — June 2026
+
+The last tutorial tip ("כל הכבוד! … סיימת את ההדרכה") had no button. It now
+shows a **סיים** button that closes the tutorial game and returns to the home
+screen.
+
+- `src/ui/screens/tutorialScreen.js` — `showTip` accepts a `nextLabel` (default
+  "הבא ›") so a tip can relabel its action button.
+- `src/ui/controllers/tutorialController.js` — the completion tip sets
+  `showNext: true, nextLabel: 'סיים'` and marks `currentStep = 'completion'`;
+  the NEXT handler now finishes on that step via the shared `endTutorialToMenu()`
+  teardown (same as the back action: deactivate → clear → `showScreen('sh')`).
+- Test coverage added to the full-flow tutorial test.
+
+---
+
+## Fix: matchmaking spinner showed achievement avatars — June 2026
+
+The "מחפש יריב" search spinner cycles a hardcoded `SLOT_PROFILES` list of sample
+opponents. Their avatars were legacy achievement ids (`fire`, `shark`,
+`diamond`, …), which `avatarMarkup` renders as achievement trophy art instead of
+the avatars_v2 store icons. Swapped them to a spread of store ids
+(`common_*`/`rare_*`/`epic_*`/`legendary_*`) in
+`src/ui/screens/matchmakingOverlayScreen.js`. The matched opponent card already
+used the real player's avatar and was unaffected.
+
+---
+
+## Fix: store coin balance + tutorial joker-picker tip overlap — June 2026
+
+1. **Avatar-store coin balance stale on entry.** The store balance only
+   repainted on a profile *change* (the `STORE_RENDER` from the profile watch),
+   not on navigation — so coins earned just before (e.g. the daily login
+   reward) didn't show until the next profile update. `STORE_INTENT.OPEN` now
+   re-emits `STORE_RENDER` from the latest `lastProfile` on entry
+   (`src/main.js`).
+
+2. **Tutorial bonus tip covered the joker-picker letter 'י'.** The tip is
+   anchored below the status bar, but the בחר אות (joker picker) is a centered
+   modal, so the tip hid its top row — including the 'י' the step tells you to
+   pick. `tutorialScreen.js` now pins the tip to the bottom while a centered
+   modal overlay (`#ov-joker` / `#ov-exch`) is open and back to the top when it
+   closes, via an overlay MutationObserver. The rack stays tappable (tip at top)
+   until the picker actually opens.
+
 ## New default avatar: "anonymous player" — June 2026
 
 The default avatar changed from the legacy `crown` emoji to the neutral

@@ -45,6 +45,8 @@ export const GAME_SCREEN_INTENT = Object.freeze({
   OPEN_EXCHANGE: 'gameScreen/openExchange',
 });
 
+const COMPUTER_NAME_HE = '\u05D4\u05DE\u05D7\u05E9\u05D1';
+
 // Map from (r,c) to the cell DOM id legacy uses.
 function cellIdFor(r, c) {
   if (r >= 0 && r < 10 && c >= 0 && c < 10) return `c${r}_${c}`;
@@ -686,8 +688,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       setText($('#sn2', root), p1.displayName);
       setText($('#is-sn2', root), p1.displayName);
     }
-    if (p0?.avatar) setAvatarEl($('#is-av1', root), p0.avatar, { fallback: '👑' });
-    if (p1?.avatar) setAvatarEl($('#is-av2', root), p1.avatar, { fallback: '👤' });
+    const p1Avatar = p1?.avatar === 'bot' && p1?.displayName !== COMPUTER_NAME_HE ? null : p1?.avatar;
+    setAvatarEl($('#is-av1', root), p0?.avatar ?? null, { fallback: '\uD83D\uDC51' });
+    setAvatarEl($('#is-av2', root), p1Avatar ?? null, { fallback: '\uD83D\uDC64' });
     // Desktop side-panel boxes use `.scbox.act`; the mobile info-strip cards
     // use `.is-pcard.act-cell` (different class name, see styles.css). When
     // a scoring sequence is in flight we keep the previous player's glow lit

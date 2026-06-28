@@ -51,7 +51,8 @@ Never call screen methods directly from other screens. All inter-screen communic
 Critical element IDs referenced by game logic (must not be renamed):
 
 ```
-#sg                    — game screen container
+#sg                    — game screen container (gets .board-review for read-only post-game review)
+#board-review-back     — floating "back to results" button shown during board review
 #sh                    — home/menu screen container
 #game-grid             — 12×12 board grid
 #c{r}_{c}              — board cells (e.g., #c5_3 = row 5, col 3)

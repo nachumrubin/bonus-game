@@ -72,16 +72,19 @@ export const PS_INTENT = Object.freeze({
   MATCHED: 'partnerSearch/matched',
 });
 
+// Sample opponents shown in the search spinner. Avatars are avatars_v2 store
+// ids (resolved to PNGs by avatarMarkup), spread across tiers for variety — the
+// old achievement-avatar ids rendered the achievement trophy art here.
 const SLOT_PROFILES = [
-  { av: 'fire',      nm: 'שרה'   }, { av: 'shark',     nm: 'מרים'  },
-  { av: 'diamond',   nm: 'יוסי'  }, { av: 'tiger',     nm: 'רונית' },
-  { av: 'fox',       nm: 'נועה'  }, { av: 'bulb',      nm: 'אמיר'  },
-  { av: 'handshake', nm: 'גיל'   }, { av: 'dragon',    nm: 'אלי'   },
-  { av: 'wizard',    nm: 'תמר'   }, { av: 'shield',    nm: 'ניר'   },
-  { av: 'bolt',      nm: 'לילך'  }, { av: 'alien',     nm: 'דוד'   },
-  { av: 'robot',     nm: 'משה'   }, { av: 'trophy',    nm: 'עינת'  },
-  { av: 'books',     nm: 'דניאל' }, { av: 'hero',      nm: 'אורה'  },
-  { av: 'target',    nm: 'ענת'   },
+  { av: 'common_1',  nm: 'שרה'   }, { av: 'rare_1',    nm: 'מרים'  },
+  { av: 'epic_1',    nm: 'יוסי'  }, { av: 'legendary_1', nm: 'רונית' },
+  { av: 'common_2',  nm: 'נועה'  }, { av: 'rare_2',    nm: 'אמיר'  },
+  { av: 'epic_2',    nm: 'גיל'   }, { av: 'common_3',  nm: 'אלי'   },
+  { av: 'rare_3',    nm: 'תמר'   }, { av: 'epic_3',    nm: 'ניר'   },
+  { av: 'common_4',  nm: 'לילך'  }, { av: 'rare_4',    nm: 'דוד'   },
+  { av: 'legendary_2', nm: 'משה' }, { av: 'common_5',  nm: 'עינת'  },
+  { av: 'epic_4',    nm: 'דניאל' }, { av: 'rare_5',    nm: 'אורה'  },
+  { av: 'common_6',  nm: 'ענת'   },
 ];
 
 const ITEM_H = 68;
