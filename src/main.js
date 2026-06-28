@@ -2255,9 +2255,10 @@ async function boot() {
       // Optional reads — top-level read only allowed for admins (rules added).
       // Each is individually guarded so a transient permission error on one
       // doesn't break the entire stats load.
-      const [presenceSnap, queueSnap] = await Promise.all([
+      const [presenceSnap, queueSnap, roomsSnap] = await Promise.all([
         db.ref('presence').get().catch(() => null),
         db.ref('matchmakingQueue').get().catch(() => null),
+        db.ref('rooms').orderByChild('createdAt').limitToLast(100).get().catch(() => null),
       ]);
 
       // Players from globalRatings
@@ -2313,6 +2314,21 @@ async function boot() {
         return acc + (mode && typeof mode === 'object' ? Object.keys(mode).length : 0);
       }, 0);
 
+      // Recent rooms for the debug tab
+      const roomsVal = roomsSnap?.val ? roomsSnap.val() ?? {} : {};
+      const rooms = Object.entries(roomsVal)
+        .map(([roomId, r]) => ({
+          roomId,
+          status:        r.status        ?? '?',
+          mode:          r.mode          ?? '?',
+          schemaVersion: r.schemaVersion ?? '?',
+          version:       r.version       ?? 0,
+          createdAt:     r.createdAt     ?? 0,
+          scores:        r.scores        ?? {},
+          players:       r.players       ?? {},
+        }))
+        .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+
       bus.emit(ADMIN_RENDER.DATA, {
         totalPlayers,
         activeThisWeek,
@@ -2327,6 +2343,7 @@ async function boot() {
         queueDepth,
         players,
         suggestions,
+        rooms,
         loadedAt: now,
       });
     } catch (e) {
