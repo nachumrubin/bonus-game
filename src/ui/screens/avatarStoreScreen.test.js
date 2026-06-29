@@ -83,6 +83,8 @@ test('STORE_RENDER: paints sections, tile states, and the coin balance', () => {
 
   assert.equal(els.balance.textContent, '300');
   const html = els.grid.innerHTML;
+  assert.match(html, /store-tile-name[^>]*>משה רבנו</);
+  assert.match(html, /alt="משה רבנו"/);
   // common is always owned (free) and common_2 is equipped
   assert.match(html, /data-store-id="common_2"[^>]*data-action="equip"/);
   assert.match(html, /is-equipped"[^>]*data-store-id="common_2"/);

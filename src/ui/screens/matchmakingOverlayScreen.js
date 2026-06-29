@@ -146,7 +146,7 @@ export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = 
     if (!reelEl) return;
     reelEl.classList.remove('ps-spinning');
     reelEl.style.animation = 'none';
-    reelEl.innerHTML = makeItem({ av: avatarMarkup(avatar, { fallback: '👑' }), nm: name || 'שחקן' });
+    reelEl.innerHTML = makeItem({ av: avatar, nm: name || 'שחקן' });
     void reelEl.offsetHeight; // force reflow before adding animation
     reelEl.classList.add('ps-landing');
     slotCard?.classList.add('ps-found');

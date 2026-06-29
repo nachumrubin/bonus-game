@@ -1,11 +1,60 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Live pause + matchmaking + test gate — June 2026
+
+- [x] Live games no longer offer "השהה ושמור" (it only resigned); pause/back
+  overlays hide the save button when `online && !isAsync`, top-bar reads "סיום".
+- [x] Reworked "חיפוש מדויק" semantics: exact-search makes ALL of a player's
+  settings hard (speed + ratingRange); a flexible player imposes no hard
+  constraint but gets the CLOSEST available opponent (`matchDistance` ranking:
+  same speed → nearest rating → age). One strict + one flexible still pair, with
+  the flexible side adopting the strict side's speed
+  (`spineMatchmaking.resolveMatchSettings`). See DECISIONS.md
+  (D-matchmaking-exact-search).
+- [x] `npm run test:unit` now runs `src/**/*.test.js` too (was only `tests/unit/`);
+  fixed the 16 pre-existing co-located test failures it surfaced. 1236 tests pass.
+- [ ] Dead `MENU_INTENT.SHARE_GAME` intent + its `main.js` handler + `ui-rules.md`
+  `#btn-share-game` notes remain after the home share button was removed — clean up.
+
 ## Game Debug Timeline — June 2026
 
 - [x] Append-only debug timeline + snapshots + warnings in separate Firebase
   nodes (`src/game/debug/`), recorder wired in `main.js`, admin Debug tab,
   tri-panel replay, "report a problem" button, global error capture, rules +
   unit/emulator tests.
+- [x] Fix: replay client panels rendered a blank board — client snapshots stored
+  the engine's 2D board which round-trips through Firebase as a sparse object;
+  `renderable()` now flattens to the canonical flat 100-cell shape (`flattenBoard`).
+- [x] Fix: debug writes with an absent optional field (e.g. `TURN_CHANGED` with no
+  `reason`) failed — RTDB `set()` rejects `undefined`; `debugLogger` now deep-prunes
+  undefined on every write (`pruneUndefined`).
+- [x] Fix: `/gameSnapshots` PERMISSION_DENIED — both clients raced the write-once
+  node; server snapshots + validation are now host-only (`onServerRoom`).
+- [x] Fix: `לא תואם` divergence fired every move — now judged on visible outcome
+  (board tiles + scores) via `snapshotOutcomeKey`, not the full state hash.
+- [x] Replay: render perimeter boost squares (`BDEFS`) on the 12×12 board with
+  assignment, dropped tiles (`bonusBoard`) and used state (`bonusSqUsed`); recorder
+  `renderable()` now captures those fields.
+- [x] Replay transport simplified to step-back / play-pause / step-forward / draggable slider.
+- [x] Replay: surface the bonus mini-game *outcome* per move — `buildReplayTimeline`
+  merges `BOOST_ACTIVATED` events into each frame (`bonuses[]`), resolved against
+  `bonusAssignment`; `replayScreen` shows a `#replay-bonus` pill strip (mini-game
+  title via `describeBonus` + awarded effect/points).
+- [x] Replay: scripted demo game fixture (`demoTimeline.js`) — runnable via
+  `window.__spine.debug.openDemoReplay()`, pinned by `demoTimeline.test.js`, and
+  captured frame-by-frame in `capture-replay-demo.spec.js`. Serves as the
+  recorder/replayer regression guard for future versions.
+- [x] Replay: time-aligned timeline grid (`buildTimeline`) — one row per second,
+  a column per source showing what it saw then (`----` when nothing), multi-line
+  cells for same-second events, current row highlighted, click-to-jump.
+- [x] Replay: frames bucketed by second (`buildReplayTimeline`) too — one transport
+  step advances all three boards together (a move is no longer 3 clicks); frame
+  axis is 1:1 with the timeline rows.
+- [x] Replay: `WORD_REJECTED` summary now includes the rejected word(s); placed
+  tiles on used boost squares no longer dimmed. (Boost-square tiles only show for
+  games recorded after the `bonusBoard` capture was added.)
+- [x] Admin detail view slimmed to header + warnings; the per-event timeline and
+  reports lists removed (replay grid covers the walkthrough).
 - [ ] **Deploy the new rules**: `npm run test:emulator` then deploy (CI deploys
   on push to main). Until deployed, debug writes are denied in prod.
 - [ ] Future: richer admin search (server-side index by date/appVersion), bot
@@ -52,6 +101,15 @@
 
 - [x] Hard cap on coin balances (`MAX_COIN_BALANCE = 100_000`) enforced on all
   read/write paths; self-heal on boot for over-cap accounts
+- [x] Fix infinite-recursion coin payout (`RangeError: Maximum call stack size
+  exceeded`): the `watchProfile` callback in `main.js` paid achievement rewards
+  via `bumpCoins` before advancing `lastProfile`, so the transaction's optimistic
+  re-fire re-detected the same achievement and paid forever. Now advances
+  `lastProfile` before the payout loop → each reward pays once. **This is a likely
+  source of the out-of-band coin inflation noted below.**
+- [x] Defense-in-depth: `bumpCoins` carries a per-uid in-flight guard
+  (`coinTxInFlight`) that suppresses synchronous re-entry for the same uid during
+  the transaction's optimistic apply, without blocking legitimate sequential payouts.
 - [x] `scripts/set-coins.mjs` admin reset helper
 - [ ] **Run the reset for הודיה** (balance 1,185,490): either let the boot
   self-heal pull it to the cap on her next login, or run

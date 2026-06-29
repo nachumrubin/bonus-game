@@ -30,10 +30,16 @@ export function mountBackConfirmScreen({ root = globalThis.document, bus } = {})
     { sel: 'button[onclick="backConfirmLeave()"]',               intent: BACK_INTENT.LEAVE },
   ];
 
+  // The "השהה ושמור" (pause-and-save) button — hidden for live games, which
+  // can't be saved (see BACK_OPEN handler). Captured here because the onclick
+  // attribute is stripped below, so it can't be re-selected at open time.
+  let saveBtn = null;
+
   for (const def of buttons) {
     // querySelectorAll so both the X close-button and the primary action button
     // get wired — both share the same onclick attribute value in the HTML.
     for (const btn of $$(def.sel, overlay)) {
+      if (def.intent === BACK_INTENT.PAUSE_AND_SAVE) saveBtn = btn;
       btn.removeAttribute('onclick');
       cleanups.push(on(btn, 'click', (e) => {
         e.preventDefault?.();
@@ -43,8 +49,9 @@ export function mountBackConfirmScreen({ root = globalThis.document, bus } = {})
     }
   }
 
-  cleanups.push(bus.on(BACK_OPEN, () => {
+  cleanups.push(bus.on(BACK_OPEN, ({ isLive = false } = {}) => {
     applyGenderToRoot(overlay, getGender());
+    if (saveBtn) saveBtn.style.display = isLive ? 'none' : '';
     overlay.classList?.remove('hidden');
   }));
 

@@ -7,8 +7,54 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { makeMockDb } from './mockFirebase.js';
-import { startMatchmaking, createRoomForPair } from './spineMatchmaking.js';
+import { startMatchmaking, createRoomForPair, resolveMatchSettings } from './spineMatchmaking.js';
 import { PATH } from './schema.js';
+
+test('resolveMatchSettings: flexible driver adopts a strict partner\'s speed', () => {
+  // Driver (mine) is flexible + בזק (20); partner (theirs) is strict + רגיל (40).
+  // The strict player must get רגיל, so the room runs at 40.
+  const driver = { strict: false, timelimit: true, botTime: 20 };
+  const out = resolveMatchSettings(
+    driver,
+    { settings: driver },
+    { settings: { strict: true, timelimit: true, botTime: 40 } },
+  );
+  assert.equal(out.botTime, 40);
+});
+
+test('resolveMatchSettings: strict driver keeps its own speed against a flexible partner', () => {
+  const driver = { strict: true, timelimit: true, botTime: 40 };
+  const out = resolveMatchSettings(
+    driver,
+    { settings: driver },
+    { settings: { strict: false, timelimit: true, botTime: 20 } },
+  );
+  assert.equal(out.botTime, 40);
+});
+
+test('resolveMatchSettings: neither/both strict keeps the driver settings', () => {
+  const driver = { strict: false, timelimit: true, botTime: 20 };
+  assert.equal(resolveMatchSettings(driver, { settings: driver }, { settings: { strict: false, botTime: 40 } }).botTime, 20);
+  const bothStrict = { strict: true, timelimit: true, botTime: 40 };
+  assert.equal(resolveMatchSettings(bothStrict, { settings: bothStrict }, { settings: { strict: true, botTime: 40 } }).botTime, 40);
+});
+
+test('createRoomForPair: room runs at the strict partner\'s speed when the creator is flexible', async () => {
+  const db = makeMockDb();
+  const result = await createRoomForPair({
+    db,
+    // Driver/creator is flexible + בזק (20s)…
+    mine:   { uid: 'a', displayName: 'A', joinedAt: 100, settings: { strict: false, timelimit: true, botTime: 20 } },
+    // …partner is strict + רגיל (40s) — the room must run at 40s.
+    theirs: { uid: 'b', displayName: 'B', joinedAt: 200, settings: { strict: true, timelimit: true, botTime: 40 } },
+    mode: 'random-live',
+    settings: { strict: false, timelimit: true, botTime: 20 },
+    serverTimestamp: 1000,
+    startingSlot: 0,
+  });
+  const room = db._data.rooms[result.roomId];
+  assert.equal(room.settings.botTime, 40, 'flexible creator adopts the strict partner\'s speed');
+});
 
 test('createRoomForPair: writes a v2 room with playing status and stamps activeRoom for both', async () => {
   const db = makeMockDb();

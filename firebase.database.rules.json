@@ -99,6 +99,12 @@
       "$uid": {
         ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid",
+        "profile": {
+          "stats": {
+            ".read": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true)",
+            ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+          }
+        },
         "activeRoom": {
           ".write": "$uid === auth.uid || (newData.exists() && (auth.uid === root.child('rooms').child(newData.val()).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child(newData.val()).child('players').child('1').child('uid').val()) && ($uid === root.child('rooms').child(newData.val()).child('players').child('0').child('uid').val() || $uid === root.child('rooms').child(newData.val()).child('players').child('1').child('uid').val()))"
         },
@@ -200,7 +206,15 @@
     "debugReports": {
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
       "$reportId": {
-        ".write": "auth != null && !data.exists()"
+        ".write": "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)"
+      }
+    },
+    "userNotifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$notificationId": {
+          ".write": "auth != null && ((root.child('admins').child(auth.uid).val() === true && newData.exists()) || (auth.uid === $uid && data.exists() && newData.exists() && newData.child('id').val() === data.child('id').val() && newData.child('type').val() === data.child('type').val() && newData.child('reportId').val() === data.child('reportId').val() && newData.child('reason').val() === data.child('reason').val() && newData.child('reasonLabel').val() === data.child('reasonLabel').val() && newData.child('outcome').val() === data.child('outcome').val() && newData.child('outcomeLabel').val() === data.child('outcomeLabel').val() && newData.child('title').val() === data.child('title').val() && newData.child('message').val() === data.child('message').val() && newData.child('originalMessage').val() === data.child('originalMessage').val() && newData.child('originalCreatedAt').val() === data.child('originalCreatedAt').val() && newData.child('createdAt').val() === data.child('createdAt').val()))"
+        }
       }
     },
     "debugGameIndex": {

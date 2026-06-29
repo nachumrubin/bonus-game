@@ -20,10 +20,12 @@ test('room write rule requires authenticated v2 room participant and current-tur
   // The expression is now a disjunction: either the current-turn player
   // writes (normal path), OR the OPPONENT claims a timed-out turn (watchdog
   // path — requires turnDeadlineMs to be expired, status=playing,
-  // settings.timelimit=true, and a turn rotation to the claimer's seat).
+  // settings.timelimit=true, and a turn rotation to the claimer's seat). The
+  // watchdog path also accepts an abandonment write (status=abandoned with
+  // turnDeadlineMs reset to 0) so a stuck timed-out game can be force-ended.
   assert.equal(
     expr,
-    "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && (((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/0/uid').val()) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/1/uid').val())) || (data.child('status').val() === 'playing' && data.child('settings/timelimit').val() === true && data.child('turnDeadlineMs').val() <= now && newData.child('turnDeadlineMs').val() > now && ((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/1/uid').val() && newData.child('currentTurnSlot').val() === 1) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/0/uid').val() && newData.child('currentTurnSlot').val() === 0))))))",
+    "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && (((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/0/uid').val()) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/1/uid').val())) || (data.child('status').val() === 'playing' && data.child('settings/timelimit').val() === true && data.child('turnDeadlineMs').val() <= now && (newData.child('turnDeadlineMs').val() > now || (newData.child('status').val() === 'abandoned' && newData.child('turnDeadlineMs').val() === 0)) && ((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/1/uid').val() && newData.child('currentTurnSlot').val() === 1) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/0/uid').val() && newData.child('currentTurnSlot').val() === 0))))))",
   );
 
   const players = { 0: { uid: 'a' }, 1: { uid: 'b' } };
@@ -55,13 +57,25 @@ test('room side-channel writes remain participant-scoped', () => {
 test('dictionary moderation rules require an /admins/{uid} whitelist entry', () => {
   const r = rules();
   const adminGate = "auth != null && root.child('admins').child(auth.uid).val() === true";
-  assert.equal(r.dictionarySuggestions.$suggestionId['.write'], 'auth != null');
+  // Anyone authenticated may CREATE a suggestion (no existing data); only an
+  // admin may modify or delete an existing one.
+  assert.equal(
+    r.dictionarySuggestions.$id['.write'],
+    "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)",
+  );
   assert.equal(r.dictionaryApproved.$word['.write'], adminGate);
   assert.equal(r.dictionaryRejected.$id['.write'], adminGate);
   // /admins itself is self-gated — only existing admins can add new admins.
   // Bootstrap the first admin uid manually via the Firebase Console.
   assert.equal(r.admins['.read'], 'auth != null');
   assert.equal(r.admins.$uid['.write'], adminGate);
+});
+
+test('admins can update user stats for moderation rewards only', () => {
+  const statsRules = rules().users.$uid.profile.stats;
+  const adminOrSelf = "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true)";
+  assert.equal(statsRules['.read'], adminOrSelf);
+  assert.equal(statsRules['.write'], adminOrSelf);
 });
 
 test('ratings leaderboard is public read and indexed by rating', () => {
@@ -76,4 +90,15 @@ test('presence and matchmaking writes are scoped to authenticated uid', () => {
   const r = rules();
   assert.equal(r.presence.$uid['.write'], 'auth != null && auth.uid === $uid');
   assert.equal(r.matchmakingQueue.$mode.$uid['.write'], 'auth != null && (auth.uid === $uid || !newData.exists())');
+});
+
+test('support notification rules are admin-created and user-readable', () => {
+  const r = rules().userNotifications;
+  assert.ok(r, 'userNotifications rules should exist');
+  assert.equal(r.$uid['.read'], 'auth != null && auth.uid === $uid');
+  assert.match(r.$uid.$notificationId['.write'], /root\.child\('admins'\)\.child\(auth\.uid\)\.val\(\) === true/);
+  assert.match(r.$uid.$notificationId['.write'], /auth\.uid === \$uid && data\.exists\(\) && newData\.exists\(\)/);
+  assert.match(r.$uid.$notificationId['.write'], /newData\.child\('title'\)\.val\(\) === data\.child\('title'\)\.val\(\)/);
+  assert.match(r.$uid.$notificationId['.write'], /newData\.child\('message'\)\.val\(\) === data\.child\('message'\)\.val\(\)/);
+  assert.match(r.$uid.$notificationId['.write'], /newData\.child\('originalMessage'\)\.val\(\) === data\.child\('originalMessage'\)\.val\(\)/);
 });

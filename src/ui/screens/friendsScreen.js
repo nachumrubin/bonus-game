@@ -6,7 +6,7 @@
 //   - paint accepted-friends list
 //   - 'add friend' input → emits FRIENDS_INTENT.SEND_REQUEST(userId)
 //   - per-row accept/reject buttons → emit FRIENDS_INTENT.ACCEPT/REJECT
-//   - 'copy my id' → write to clipboard if available, otherwise just paint a flash
+//   - 'share my id' → open the native share sheet if available, otherwise copy
 //
 // All Firebase work happens in friendsService; this module is pure
 // presentational + intent-emitting.

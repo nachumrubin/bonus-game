@@ -81,6 +81,7 @@ function makeRoot() {
     addStatus:   makeEl(),
     reqBadge:    makeEl(),
     copyStatus:  makeEl(),
+    copyBtn:     makeEl(),
     sendBtn:     makeEl(),
     backBtn:     makeEl(),
     detailOv:    makeOverlay(),
@@ -104,6 +105,7 @@ function makeRoot() {
         case '#add-friend-status':return els.addStatus;
         case '#friends-req-badge':return els.reqBadge;
         case '#fr-copy-status':   return els.copyStatus;
+        case '#fr-copy-btn':      return els.copyBtn;
         case '#ov-friend-detail': return els.detailOv;
         case '#fd-close':         return els.fdClose;
         case '#fd-active-games':  return els.fdGames;
@@ -185,6 +187,16 @@ test('clicking my-id emits COPY_MY_ID', () => {
   bus.on(FRIENDS_INTENT.COPY_MY_ID, () => { n++; });
   mountFriendsScreen({ root, bus });
   els.myId.fireClick();
+  assert.equal(n, 1);
+});
+
+test('clicking share-code button emits COPY_MY_ID', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  let n = 0;
+  bus.on(FRIENDS_INTENT.COPY_MY_ID, () => { n++; });
+  mountFriendsScreen({ root, bus });
+  els.copyBtn.fireClick();
   assert.equal(n, 1);
 });
 

@@ -24,17 +24,55 @@ import {
 
 const RING_MAX = 30;
 
-// Renderable subset stored in each snapshot so the replay tool can draw the board.
+// Normalize any board (engine 2D `board[r][c]` or Firebase flat 100-cell array)
+// to a single flat 100-cell array of {letter,val,isJoker}|null. Storing the
+// client's engine board 2D would round-trip through Firebase as a sparse object
+// (empty rows dropped), which the replay renderer can't detect as 2D — so the
+// client panel rendered blank while the (already-flat) server panel rendered.
+// Canonicalising here keeps both panels' stored boards identical in shape.
+function flattenBoard(board) {
+  if (!board) return null;
+  const is2d = Array.isArray(board) && Array.isArray(board[0]);
+  const flat = new Array(100).fill(null);
+  for (let i = 0; i < 100; i++) {
+    const t = is2d ? board[Math.floor(i / 10)]?.[i % 10] : board[i];
+    if (t && t.letter != null) flat[i] = { letter: t.letter, val: t.val ?? null, isJoker: !!t.isJoker };
+  }
+  return flat;
+}
+
+// Perimeter boost-square tiles live in `bonusBoard`, a Map (engine) or plain
+// object (Firebase room doc) keyed "r,c" (r/c can be -1 or 10, off the 10x10).
+// Normalize to a plain object so the replay can draw tiles dropped on boost
+// squares and so the value is Firebase-safe.
+function serializeBonusBoard(bonusBoard) {
+  if (!bonusBoard) return null;
+  const entries = bonusBoard instanceof Map ? bonusBoard.entries() : Object.entries(bonusBoard);
+  const out = {};
+  for (const [k, t] of entries) {
+    if (t && t.letter != null) out[k] = { letter: t.letter, val: t.val ?? null, isJoker: !!t.isJoker };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// Renderable subset stored in each snapshot so the replay tool can draw the board
+// AND the perimeter boost squares (assignment + tiles dropped on them + which
+// were consumed), so a word played onto a boost square is visible in the replay.
 function renderable(state = {}) {
   return {
     status: state.status ?? null,
-    board: state.board ?? null,
+    board: flattenBoard(state.board),
     scores: state.scores ?? null,
     racks: state.racks ?? null,
     currentTurnSlot: state.currentTurnSlot ?? null,
     turnNumber: state.turnNumber ?? null,
     lastMove: state.lastMove ?? null,
     players: state.players ?? null,
+    bonusAssignment: Array.isArray(state.bonusAssignment)
+      ? state.bonusAssignment.map((b) => ({ type: b?.type ?? null, pts: b?.pts ?? null, ic: b?.ic ?? null }))
+      : null,
+    bonusBoard: serializeBonusBoard(state.bonusBoard),
+    bonusSqUsed: state.bonusSqUsed ? { ...state.bonusSqUsed } : null,
   };
 }
 
@@ -135,15 +173,19 @@ export function mountDebugRecorder({
     const serverCompact = compactSnapshot(room);
     const serverHash = hashState(serverCompact);
 
-    if (db && ctx?.gameId) {
+    // Only the host (slot 0) writes the server-authoritative stream. Both clients
+    // observe the same room doc, so letting both write races on the write-once
+    // /gameSnapshots/{version} node — the loser gets a noisy PERMISSION_DENIED.
+    // The guest's view is already captured separately in /clientSnapshots.
+    if (db && ctx?.gameId && ctx.mySlot === 0) {
       createGameSnapshot(db, ctx.gameId, room.version, {
         ...renderable(room), compact: serverCompact, hash: serverHash, version: room.version,
       });
 
-      // Server-state validation. Only the host (slot 0) writes these so a
-      // stored-state anomaly isn't duplicated by both clients. Per-client
-      // mismatch is surfaced later by the admin tool comparing the two streams.
-      if (ctx.mySlot === 0) {
+      // Server-state validation. Host-only too, so a stored-state anomaly isn't
+      // duplicated by both clients. Per-client mismatch is surfaced later by the
+      // admin tool comparing the two streams.
+      {
         const expectedDelta = Number.isFinite(room.lastMove?.score) ? Number(room.lastMove.score) : undefined;
         const warnings = validateTransition(prevServerCompact, serverCompact, {
           expectedDelta,
@@ -182,7 +224,14 @@ export function mountDebugRecorder({
 
   on(EV.INVALID_MOVE_REJECTED, (p = {}) => {
     if (!ctx) return;
-    record(DEBUG_EVENT.WORD_REJECTED, { summary: `Move rejected: ${p.reason}`, payload: { reason: p.reason, placed: p.placed, invalidWords: p.invalidWords } });
+    // Surface the offending word(s) in the summary, not just the reason code,
+    // so the replay log reads e.g. "Move rejected: word-not-in-dictionary (גמל)".
+    const words = Array.isArray(p.invalidWords) ? p.invalidWords.filter(Boolean) : [];
+    const wordSuffix = words.length ? ` (${words.join(', ')})` : '';
+    record(DEBUG_EVENT.WORD_REJECTED, {
+      summary: `Move rejected: ${p.reason}${wordSuffix}`,
+      payload: { reason: p.reason, placed: p.placed, invalidWords: p.invalidWords },
+    });
   });
 
   on(EV.TURN_CHANGED, (p = {}) => {
@@ -207,7 +256,21 @@ export function mountDebugRecorder({
 
   on(EV.BOOST_ACTIVATED, (p = {}) => {
     if (!ctx) return;
-    record(DEBUG_EVENT.BOOST_ACTIVATED, { summary: `Boost ${p.boostId}`, payload: p });
+    // Flatten to the fields the replay needs: which boost effect fired, on which
+    // boost square (bonusIdx → bonusAssignment type), for which slot, and the
+    // points awarded. consumed/pending markers are kept so the replay can skip
+    // them (they aren't a freshly-played bonus).
+    record(DEBUG_EVENT.BOOST_ACTIVATED, {
+      summary: `Boost ${p.boostId}${p.consumed ? ' (consumed)' : ''}${p.pending ? ' (pending)' : ''}`,
+      payload: {
+        slot: p.slot ?? null,
+        boostId: p.boostId ?? null,
+        bonusIdx: p.bonusIdx ?? null,
+        extra: Number(p.payload?.extra) || 0,
+        consumed: !!p.consumed,
+        pending: !!p.pending,
+      },
+    });
   });
 
   on(EV.OPPONENT_MOVED, () => { if (ctx) writeClientSnapshot(ctx.getState()); });

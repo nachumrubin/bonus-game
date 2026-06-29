@@ -321,6 +321,33 @@ test('bumpCoins: clamps the balance at MAX_COIN_BALANCE', async () => {
   assert.equal(await bumpCoins(db, 'u1', 5000), MAX_COIN_BALANCE); // capped, not 104,900
 });
 
+test('bumpCoins: suppresses synchronous re-entry but allows sequential payouts', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 0 });
+  // A db whose transaction synchronously re-invokes bumpCoins for the same uid
+  // (mimicking a watcher re-fire). The re-entrant call must be a no-op; without
+  // the guard this recurses until the stack overflows.
+  let reentered = 0;
+  const realRef = db.ref.bind(db);
+  db.ref = (path) => {
+    const ref = realRef(path);
+    if (path === 'users/u1/profile/coins') {
+      const realTx = ref.transaction.bind(ref);
+      ref.transaction = (fn) => {
+        if (reentered < 1) { reentered++; bumpCoins(db, 'u1', 5); } // synchronous re-entry
+        return realTx(fn);
+      };
+    }
+    return ref;
+  };
+  const balance = await bumpCoins(db, 'u1', 10);
+  assert.equal(reentered, 1, 'the inner call was attempted');
+  assert.equal(balance, 10, 'only the outer +10 applied; re-entrant +5 suppressed');
+  // Guard is released after the transaction, so a later payout still works.
+  db.ref = realRef;
+  assert.equal(await bumpCoins(db, 'u1', 7), 17);
+});
+
 test('clampCoins: coerces to an in-range integer balance', () => {
   assert.equal(clampCoins(1185490), MAX_COIN_BALANCE);
   assert.equal(clampCoins(-5), 0);

@@ -34,6 +34,29 @@ function randomStartingSlot() {
   return Math.random() < 0.5 ? 0 : 1;
 }
 
+// Resolve the turn pace (timelimit + botTime) the paired room will run at.
+//
+// `driverSettings` is the room creator's own settings. When exactly ONE of the
+// two players asked for an exact match ("חיפוש מדויק"), the game runs at THAT
+// player's speed — the flexible side adopts it — so a strict player always gets
+// the pace they chose even if the flexible side was the room creator. When both
+// or neither are strict, the driver's settings already carry the agreed pace
+// (both-strict only pairs when the speeds already match; see
+// matchmakingService.isCompatible).
+export function resolveMatchSettings(driverSettings = {}, mine, theirs) {
+  const ms = mine?.settings ?? {};
+  const ts = theirs?.settings ?? {};
+  let speedSource = null;
+  if (ms.strict && !ts.strict) speedSource = ms;
+  else if (ts.strict && !ms.strict) speedSource = ts;
+  if (!speedSource) return driverSettings;
+  return {
+    ...driverSettings,
+    timelimit: speedSource.timelimit ?? driverSettings.timelimit,
+    botTime: speedSource.botTime ?? driverSettings.botTime,
+  };
+}
+
 // Build the room from a matched pair. Used as the createRoomFromPair callback
 // passed to tryPair; also exported so tests can drive it directly.
 export async function createRoomForPair({
@@ -50,11 +73,14 @@ export async function createRoomForPair({
     0: { uid: mine.uid,   displayName: mine.displayName ?? '?',   avatar: mine.avatar ?? null,   joinedAt: mine.joinedAt },
     1: { uid: theirs.uid, displayName: theirs.displayName ?? '?', avatar: theirs.avatar ?? null, joinedAt: theirs.joinedAt },
   };
+  // When one side is strict and the other flexible, the flexible side adopts
+  // the strict side's speed (the strict player gets the pace they asked for).
+  const roomSettings = resolveMatchSettings(settings, mine, theirs);
   const engineState = createInitialState({
-    mode, tileBagSeed: roomId, players, startingSlot, settings,
+    mode, tileBagSeed: roomId, players, startingSlot, settings: roomSettings,
   });
   await roomService.createRoom(db, {
-    roomId, mode, players, settings, engineState, serverTimestamp,
+    roomId, mode, players, settings: roomSettings, engineState, serverTimestamp,
   });
   // Async games can start immediately. Live games stay WAITING until both
   // matched clients click through the coin screen; that ready handshake

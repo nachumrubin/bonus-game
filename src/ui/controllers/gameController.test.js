@@ -73,10 +73,12 @@ test('view-model updates when MOVE_CONFIRMED fires', () => {
 
 test('INVALID_MOVE_REJECTED sets lastInvalidReason on the view', () => {
   const { controller } = fresh();
-  // place a single tile (no opening word will form because there's no other tile)
-  controller.placeTile({ r: 4, c: 4, letter: 'ת', val: 4 });
+  // place a single tile (no opening word will form because there's no other
+  // tile). 'א' is in rack[0] so the move clears the placed-in-rack guard and
+  // reaches the word-length check.
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 });
   controller.confirmMove();
-  // 'ת' alone is one letter; engine rejects with word-too-short
+  // a single letter is too short; engine rejects with word-too-short
   assert.equal(controller.view.lastInvalidReason, 'word-too-short');
 });
 

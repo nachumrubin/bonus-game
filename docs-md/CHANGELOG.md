@@ -2,6 +2,247 @@
 
 ---
 
+## Live-game pause fix, strict matchmaking by speed, and full test gate — June 2026
+
+Three changes:
+
+1. **Live games can no longer "pause & save".** A real-time game can't be frozen
+   (the opponent's clock keeps running), so the "השהה ושמור" action — which for
+   live games merely resigned — is now hidden in both the pause overlay
+   (`#ov-pause`) and the back-confirm overlay (`#ov-back-confirm`). The flow
+   controller passes an `isLive` flag (`activeGame.online && !activeGame.isAsync`)
+   in the `PAUSE_OPEN` / `BACK_OPEN` payloads; the screens hide the save button
+   when set. The in-game top-bar button now reads **"סיום"** for live/async games
+   (offline still shows "סיים / שמור"). Fixed the long-dead `GAME_STARTED` label
+   swap, which targeted a `.tb-tx` span that didn't exist on the button — wrapped
+   the label in `<span class="tb-tx">` in `game.html`.
+   (`gameFlowController.js`, `pauseScreen.js`, `backConfirmScreen.js`, `game.html`.)
+
+2. **Reworked "חיפוש מדויק" (exact-search) matchmaking semantics.** Previously
+   `isCompatible()` only compared the `timelimit` boolean (true for every live
+   game), so two strict searchers could pair across different speeds, and
+   `ratingRange` hard-filtered *everyone* regardless of strict. New model:
+   exact-search makes **all** of that player's settings hard; a flexible player
+   imposes no hard constraint but is matched with the **closest** available
+   opponent. Concretely:
+   - `timelimit` (live vs async) must match if **either** side is strict.
+   - `botTime` (turn speed) must match only if **both** are strict; if exactly
+     one is strict the flexible side adopts the strict side's speed
+     (`spineMatchmaking.resolveMatchSettings` builds the room at the strict
+     player's speed even when the flexible player is the room creator).
+   - `ratingRange` is a hard filter **only for a strict** side; a flexible
+     player's range is just a preference and never blocks a pairing.
+   - Candidate selection (`matchDistance` in `tryPair`) now prefers the closest
+     opponent — same speed first, then nearest rating, then queue age — instead
+     of plain oldest-first.
+   See DECISIONS.md (`D-matchmaking-exact-search`).
+   (`matchmakingService.js`, `spineMatchmaking.js`.)
+
+3. **`npm run test:unit` now runs the whole suite.** The script globbed only
+   `tests/unit/*.test.js` (203 tests); the 91 co-located `src/**/*.test.js` files
+   (~1030 tests) never ran in CI. Pointed `test:unit` at both trees and fixed the
+   16 pre-existing failures this surfaced (stale `createRoomScreen` speed-card
+   tests, the `firebaseRules` room-write/dictionary-suggestion expectations,
+   `setupScreen`'s `#stitle-text` retarget, the removed home share button in
+   `menuScreen`, a missing `style` mock in `waitingRoomScreen`, and several
+   `gameEngine`/`gameScreen`/`gameController` tests that predated the
+   placed-not-in-rack guard and the pending-then-confirm lock flow). No product
+   code changed for these — tests were updated to match current behavior. Total:
+   1236 tests, all passing.
+
+---
+
+## Admin: slim the game-detail view — June 2026
+
+Removed the per-event "ציר זמן" timeline list and the "דיווחים" reports list from
+the admin game-detail view (`adminScreen.paintDebugTimeline` + `admin-screen.html`)
+— the replay overlay's time-aligned grid now covers the event walkthrough. The
+detail view keeps the **summary header** (counts) and the **warnings** (e.g.
+`TILE_COUNT_MISMATCH`), since those anomaly diagnostics aren't shown anywhere
+else. Dead CSS for the removed lists trimmed from `styles.css`.
+
+---
+
+## Replay: rejected-word in the log + boost-tile visibility — June 2026
+
+- The `WORD_REJECTED` debug summary now names the offending word(s):
+  "Move rejected: word-not-in-dictionary (גמל, דשא)" instead of just the reason
+  code. The words were already in the event payload (`invalidWords`); the recorder
+  now folds them into the summary. (`debugRecorder` `INVALID_MOVE_REJECTED`.)
+- A tile dropped on a *consumed* boost square no longer dims with the square — the
+  `.used` opacity/grayscale only applies when the square has no tile, so a played
+  letter on a boost square stays clearly visible (`styles.css`).
+
+Note: the boost-square tile only appears for games recorded AFTER the
+`bonusBoard` capture was added (snapshots from earlier games don't carry it).
+
+---
+
+## Replay: time-aligned timeline grid — June 2026
+
+The replay now has a single TIME-BASED timeline grid below the three boards: one
+row PER SECOND (timestamps are ms but the grid reads at second granularity, so
+everything in the same second shares one row), and a column per source showing
+what THAT side saw that second — multiple same-second events stack as lines, and
+a source with nothing that second renders blank (`----`). Reading a row across
+answers "what did each side have at time T"; the row at the scrubbed moment is
+highlighted (rows after it dimmed), and clicking a row jumps the scrubber there.
+
+- **Server (שרת):** the version(s) committed that second (`v{n} · score · turn`).
+- **Each player:** the event(s) THAT client recorded that second (the recorder
+  stamps `slot`) — a move appears only under the player who made it, a turn
+  change under both.
+
+`buildTimeline(timeline)` (pure) buckets by second into rows whose cells are
+arrays of labels (empty = blank); `replayScreen` renders a
+sticky-header CSS grid (`#replay-timeline`) whose columns match the board order
+and re-highlights on every frame. `REPLAY_OPEN` carries `rows` alongside `frames`
+(via `replayDataFromTimeline()`). Replaces the earlier per-board move-lists.
+Tests in `demoTimeline.test.js`.
+
+Follow-up: the FRAMES are now bucketed by second too (`buildReplayTimeline`), so a
+single move — whose server/host/guest snapshots land a few ms apart — is ONE step
+instead of three. One click of the transport advances all three boards together,
+and the frame axis is 1:1 with the timeline rows (frame i ↔ row i). Each board
+shows its latest snapshot by the end of that second; a client that lags across a
+second boundary still flags "לא תואם".
+
+---
+
+## Replay: scripted demo game (viewer + regression fixture) — June 2026
+
+Added `src/game/debug/demoTimeline.js` — a pure, deterministic 6-turn demo game
+(`buildDemoTimeline()`) in the `getGameDebugTimeline()` shape, exercising every
+replay feature: board growth, two boost squares hit (anagram +100, wheel → extra
+turn) with dropped tiles + used markers, a real turn-5 divergence (guest lags the
+host, then recovers), and a duplicate boost event (de-duped).
+
+Two ways to use it:
+- **See it:** `window.__spine.debug.openDemoReplay()` opens the demo in the replay
+  overlay — no Firebase/live game needed (logged in the boot console hint).
+- **Guard it:** `demoTimeline.test.js` pins the frames this produces (count, the
+  divergence frame, the bonus strip, final score), so a future change that breaks
+  the recorder/replayer pipeline fails a unit test.
+
+Visual filmstrip: `tests/e2e/capture-replay-demo.spec.js` writes one PNG per frame
+to `images/guide/debug/demo/frame-NN.png`.
+
+---
+
+## Replay: per-move bonus mini-game outcome strip — June 2026
+
+The replay overlay now shows, above the board panels, which boost mini-game(s)
+resolved on each move and what was awarded — e.g. "נחום רובין · ⚡ אנגרמה! →
+נקודות בונוס +100". Built by merging the recorded `BOOST_ACTIVATED` event stream
+into the frame timeline:
+
+- `debugRecorder` flattens each `BOOST_ACTIVATED` record to `{ slot, boostId,
+  bonusIdx, extra, consumed, pending }`.
+- `buildReplayTimeline` accepts `events` and attaches a `bonuses[]` to each
+  frame (events in that frame's time window), resolving the boost square's bonus
+  type from the server snapshot's `bonusAssignment[bonusIdx]`, skipping
+  consumed/pending markers and de-duping the both-clients double-log.
+- `replayScreen` renders a `#replay-bonus` pill strip, using `describeBonus()`
+  for the mini-game title and a Hebrew label for the awarded effect.
+
+Tests in `replayPlayer.test.js`; visual check regenerated into
+`images/guide/debug/replay-boost-squares.png`.
+
+---
+
+## Replay: boost squares on the board + simplified transport — June 2026
+
+- Replay boards now render the **full 12×12 layout** — the inner 10×10 play area
+  plus the 12 perimeter boost squares (`BDEFS`). Each boost square shows its
+  assigned bonus (icon + points), the tile a player dropped on it (from
+  `bonusBoard`), and dims once consumed (`bonusSqUsed`) — so a word played onto a
+  boost square is now visible in the replay. The recorder's `renderable()`
+  captures `bonusAssignment` / `bonusBoard` (Map→object) / `bonusSqUsed`; the
+  server panel reads them straight off the room doc, which already carries them.
+- Transport controls reduced to: step-back ◀, play/pause ▶/⏸, step-forward ▶,
+  and the draggable timeline slider (the redundant "to start" ⏮ button removed).
+- Follow-up (tracked in TASKS): surface the specific bonus mini-game *outcome*
+  per move (which mini-game ran / what was awarded), which needs the recorded
+  `BOOST_ACTIVATED` event stream merged into the replay timeline.
+- Visual check: `tests/e2e/capture-replay-screenshots.spec.js` drives the overlay
+  with seeded frames and writes `images/guide/debug/replay-boost-squares.png`.
+
+---
+
+## Fix: replay PERMISSION_DENIED + false "לא תואם" divergence — June 2026
+
+Two replay/debug-recorder bugs seen in the console + admin replay:
+
+1. **`set at /gameSnapshots/{gameId}/{version} failed: permission_denied`** on
+   every other version. Both clients watch the same room doc and both wrote the
+   server-authoritative snapshot, racing on the write-once `/gameSnapshots`
+   node — the loser was denied. `onServerRoom` now writes the server stream
+   (and runs the state validator) only on the **host (slot 0)**; the guest's
+   view is already captured in `/clientSnapshots`. (No rule change.)
+
+2. **`לא תואם` (diverged) badge fired on essentially every move** even when the
+   boards matched. Divergence was judged on the full state hash, which includes
+   `turnNumber` / `currentTurnSlot` / `tileBagCount` — fields that legitimately
+   differ by one step between two views captured microseconds apart. Divergence
+   is now judged on the **visible outcome only** (placed tiles + both scores) via
+   `snapshotOutcomeKey`, in both `replayPlayer` (frame-level) and `replayScreen`
+   (per-panel badge). A real "P1 moved, P2 didn't see it" desync still shows,
+   because it changes the board. Tests updated in `replayPlayer.test.js` /
+   `debugRecorder.test.js`.
+
+---
+
+## Fix: infinite recursion paying achievement coin rewards — June 2026
+
+`bumpCoins()` ran a coins transaction whose optimistic local write synchronously
+re-fired the `watchProfile` callback in `main.js`. That callback computed newly
+completed achievements against `lastProfile` and paid each via `bumpCoins` — but
+it advanced `lastProfile` only *after* the payout loop. So the re-entrant fire
+still saw the stale `prev`, re-detected the same false→true achievement
+transition, and paid again, unbounded: `RangeError: Maximum call stack size
+exceeded` (the `escapeAvatar` regex overflow in the trace was just collateral
+from the exhausted stack).
+
+Fix: advance `lastProfile` / `__spine.currentProfile` to the new snapshot
+*before* the achievement-payout loop (using the already-captured `prev`). The
+re-entrant fire now diffs the profile against itself (stats/ownedAvatars
+unchanged → empty), so each reward pays exactly once.
+
+Defense-in-depth: `bumpCoins` now also carries a per-uid in-flight guard
+(`coinTxInFlight`) held only around the synchronous transaction call, so any
+*other* path that re-enters `bumpCoins` for the same uid during the optimistic
+local apply is suppressed — while legitimate back-to-back payouts (held only
+around the sync call, not across the await) still go through.
+
+---
+
+## Fix: replay client panels rendered a blank board — June 2026
+
+In the tri-panel game replay (`#ov-replay`), only the server (`שרת/אמת`) panel
+drew the board; the two client panels were blank even when a client snapshot
+existed (its meta line — version/scores/turn — rendered fine).
+
+Cause: `debugRecorder.renderable()` stored the client's board as the engine's
+**2D** `board[r][c]`, while the server panel stored Firebase's **flat** 100-cell
+array. A 2D board round-trips through Firebase as a sparse object (all-`null`
+rows are dropped), so `replayScreen`'s `is2d` check (`Array.isArray(board[0])`)
+failed and it fell back to the flat path, reading nothing.
+
+Fix: `renderable()` now canonicalises any board (2D or flat) to a flat 100-cell
+array via `flattenBoard()`, so both client and server panels store an identical,
+Firebase-safe shape. Added a regression test in `debugRecorder.test.js`.
+
+Also fixed a second recorder bug surfaced in the console: every debug write of an
+event with an optional field absent (e.g. a `TURN_CHANGED` with no `reason`)
+failed with `set failed: value argument contains undefined in property
+'…payload.reason'`, because RTDB `set()` rejects any value tree containing
+`undefined`. `debugLogger` now deep-prunes undefined (`pruneUndefined`) on every
+write (events, snapshots, warnings, reports, game index), so a missing optional
+field can never break a best-effort debug write. Regression tests in
+`debugLogger.test.js`.
+
+---
+
 ## Game Debug Timeline (internal admin tool) — June 2026
 
 Added an append-only debug timeline for investigating bugs inside live/finished
@@ -3652,3 +3893,10 @@ The repository has been active through at least 206 pull requests based on visib
 - **Firebase Tools:** 15.18.0
 - **`@firebase/rules-unit-testing`:** 5.0.1
 - **Gradle:** 8.4 (Android wrapper)
+# Screenshot refresh - June 2026
+
+Regenerated the complete `images/guide/` screenshot set with Playwright: top-level guide screens, mini-games, crossing-word states, app loading, my-games, stats insights, and debug/replay captures. Restored `tests/e2e/capture-guide-screenshots.spec.js` from the historical guide capture flow and updated its boot wait to use stable `window.__spine` APIs instead of the removed `#sh .em-circle-btn` selector.
+
+Verification: `npx playwright test tests/e2e/capture-app-loading.spec.js tests/e2e/capture-crossing-words-states.spec.js tests/e2e/capture-debug-timeline.spec.js tests/e2e/capture-guide-screenshots.spec.js tests/e2e/capture-minigame-screenshots.spec.js tests/e2e/capture-my-games-screen.spec.js tests/e2e/capture-replay-demo.spec.js tests/e2e/capture-replay-screenshots.spec.js tests/e2e/capture-stats-insights.spec.js --reporter=list --workers=1 --timeout=60000` passes 23/23.
+
+---

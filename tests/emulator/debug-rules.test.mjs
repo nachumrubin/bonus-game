@@ -65,15 +65,17 @@ test('clientSnapshots: a player may write only their OWN slot', async () => {
   });
 });
 
-test('debugReports: any authed user may file (append-only); only admin reads', async () => {
+test('debugReports: any authed user may file; only admin reads or resolves', async () => {
   await withTestEnv(async (env) => {
     await seed(env);
     const carol = makeUserApp(env, CAROL); // not in the game — can still report
+    const admin = makeUserApp(env, ADMIN);
     await assertSucceeds(carol.ref('debugReports/r1').set({ gameId: GAME, userMessage: 'bug' }));
     await assertFails(carol.ref('debugReports/r1').set({ userMessage: 'tampered' })); // edit denied
+    await assertSucceeds(admin.ref('debugReports/r1').update({ status: 'resolved', resolved: true }));
     await assertFails(makeAnonApp(env).ref('debugReports/r2').set({ userMessage: 'x' })); // unauthed denied
 
-    await assertSucceeds(makeUserApp(env, ADMIN).ref('debugReports').get());
+    await assertSucceeds(admin.ref('debugReports').get());
     await assertFails(carol.ref('debugReports').get());
   });
 });

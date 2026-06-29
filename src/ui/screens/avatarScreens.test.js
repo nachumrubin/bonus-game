@@ -6,7 +6,7 @@ import {
   SPINE_AVATARS, ACHIEVEMENTS,
   findAvatar, findAchievementByRewardId, isAvatarUnlocked, diffNewlyUnlocked, progressPct,
   achievementMetric, isAchievementComplete, achievementProgressPct, diffNewlyCompletedAchievements,
-  avatarIconSrc, avatarText,
+  avatarIconSrc, achievementIconSrc, avatarText,
   mountAvatarPickerScreen, mountAvatarUnlockedScreen,
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
 } from './avatarScreens.js';
@@ -94,6 +94,14 @@ function makeOverlay() {
   return {
     classList: { contains: c => cl.has(c), add: c => cl.add(c), remove: c => cl.delete(c) },
     dataset: {},
+  };
+}
+
+function makeTextEl() {
+  return {
+    textContent: '',
+    innerHTML: '',
+    querySelector: () => null,
   };
 }
 
@@ -192,6 +200,24 @@ test('AvatarUnlocked: AV_UNLOCK_OPEN unhides + records the achievement id', () =
   bus.emit(AV_UNLOCK_OPEN, { achievement: { id: 'veteran', titleHe: 'ותיק', tier: 'gold' }, coins: 250 });
   assert.equal(overlay.classList.contains('hidden'), false);
   assert.equal(overlay.dataset.achId, 'veteran');
+});
+
+test('AvatarUnlocked: AV_UNLOCK_OPEN renders the achievement trophy icon', () => {
+  bus._reset();
+  const overlay = makeOverlay();
+  const ic = makeTextEl();
+  const root = { querySelector: (sel) => {
+    if (sel === '#ov-avatar-unlocked') return overlay;
+    if (sel === '#av-unlock-ic') return ic;
+    return null;
+  } };
+  const achievement = ACHIEVEMENTS.find(a => a.id === 'streaker');
+  mountAvatarUnlockedScreen({ root, bus });
+
+  bus.emit(AV_UNLOCK_OPEN, { achievement, coins: 100 });
+
+  assert.match(ic.innerHTML, /^<img class="ach-ic-img"/);
+  assert.ok(ic.innerHTML.includes(achievementIconSrc(achievement)));
 });
 
 test('AvatarUnlocked: UNLOCK_ACK + AV_UNLOCK_CLOSE rehide', () => {

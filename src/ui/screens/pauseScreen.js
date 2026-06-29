@@ -31,10 +31,16 @@ export function mountPauseScreen({ root = globalThis.document, bus } = {}) {
     { sel: 'button[onclick="discardPauseAndHome()"]',intent: PAUSE_INTENT.QUIT_NO_SAVE,  close: true },
   ];
 
+  // The "השהה ושמור" (pause-and-save) button — hidden for live games, which
+  // can't be saved (the opponent's clock keeps running). Captured here because
+  // the onclick attribute is stripped below, so it can't be re-selected later.
+  let saveBtn = null;
+
   for (const def of buttons) {
     // querySelectorAll so both the X close-button and the primary action button
     // get wired — both share the same onclick attribute value in the HTML.
     for (const btn of $$(def.sel, overlay)) {
+      if (def.intent === PAUSE_INTENT.SAVE_AND_EXIT) saveBtn = btn;
       btn.removeAttribute('onclick');
       cleanups.push(on(btn, 'click', (e) => {
         e.preventDefault?.();
@@ -59,8 +65,9 @@ export function mountPauseScreen({ root = globalThis.document, bus } = {}) {
   cleanups.push(bus.on(PAUSE_INTENT.SAVE_AND_EXIT, () => { frozen = false; }));
   cleanups.push(bus.on(PAUSE_INTENT.QUIT_NO_SAVE,  () => { frozen = false; }));
 
-  cleanups.push(bus.on(PAUSE_OPEN, ({ playerName } = {}) => {
+  cleanups.push(bus.on(PAUSE_OPEN, ({ playerName, isLive = false } = {}) => {
     if (playerName) setText($('#pause-player-name', overlay), playerName);
+    if (saveBtn) saveBtn.style.display = isLive ? 'none' : '';
     applyGenderToRoot(overlay, getGender());
     overlay.classList?.remove('hidden');
     freezeForPause();

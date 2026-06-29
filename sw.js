@@ -1,6 +1,9 @@
 // בוסט — Service Worker
 // Cache name includes build timestamp — auto-invalidates on every deploy
 
+self.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 // OneSignal (wrapped in try-catch — caching works even if CDN fails to load)
 try {
   importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
@@ -32,7 +35,6 @@ self.addEventListener('notificationclick', function(e) {
     })
   );
 });
-
 function mapKindToRoute(kind, roomId) {
   switch (kind) {
     case 'invite':
@@ -67,15 +69,14 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260628030756';
+var CACHE_NAME = 'boost-20260629192950';
 var ASSETS = [
   './',
   './index.html',
   './styles.css',
   './manifest.json',
-  './icon.svg',
   './icon-512.png',
-  './data/dictionary.base.txt',
+  './data/dictionary.txt',
   // Navigation / top-bar icons.
   './assets/navigation/bell.png',
   './assets/navigation/sound_on.png',
@@ -270,8 +271,4 @@ self.addEventListener('fetch', function(e){
       });
     })
   );
-});
-
-self.addEventListener('message', function(e){
-  if(e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });

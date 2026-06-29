@@ -69,14 +69,51 @@ test('MOVE_CONFIRMED records a readable WORD_ACCEPTED summary + new client snaps
   assert.ok(snapsAfter > snapsBefore, 'board change wrote a new client snapshot');
 });
 
-test('INVALID_MOVE_REJECTED records the reason', async () => {
+test('client snapshot stores a flat 100-cell board even from a 2D engine board', async () => {
+  const { db, state } = setup();
+  // Engine board is 2D (board[r][c]); a tile near the centre, top rows empty.
+  state.board = Array.from({ length: 10 }, () => new Array(10).fill(null));
+  state.board[4][4] = { letter: 'ש', val: 3, isJoker: false };
+  bus.emit(EV.GAME_STARTED, {});
+  await tick();
+  const snap = Object.values(db._data.clientSnapshots.room1['0'])[0];
+  assert.ok(Array.isArray(snap.board), 'stored board is a flat array');
+  assert.equal(snap.board.length, 100);
+  assert.equal(snap.board[44]?.letter, 'ש', 'tile mapped to flat index r*10+c');
+  assert.equal(snap.board[0], null, 'empty cells are null');
+});
+
+test('client snapshot captures boost-square data (assignment, bonusBoard tiles, used)', async () => {
+  const { db, state } = setup();
+  state.bonusAssignment = Array.from({ length: 12 }, (_, i) => ({ type: `B${i + 1}`, pts: 10 + i, ic: '⚡' }));
+  state.bonusBoard = new Map([['-1,1', { letter: 'ק', val: 5, isJoker: false }]]); // tile dropped on a top boost square
+  state.bonusSqUsed = { 0: true };
+  bus.emit(EV.GAME_STARTED, {});
+  await tick();
+  const snap = Object.values(db._data.clientSnapshots.room1['0'])[0];
+  assert.equal(snap.bonusAssignment[0].type, 'B1');
+  assert.equal(snap.bonusBoard['-1,1'].letter, 'ק', 'Map serialized to a plain keyed object');
+  assert.equal(snap.bonusSqUsed['0'], true);
+});
+
+test('INVALID_MOVE_REJECTED records the reason AND the offending word(s)', async () => {
   const { db } = setup();
   bus.emit(EV.GAME_STARTED, {});
-  bus.emit(EV.INVALID_MOVE_REJECTED, { reason: 'word-not-in-dictionary', placed: [] });
+  bus.emit(EV.INVALID_MOVE_REJECTED, { reason: 'word-not-in-dictionary', placed: [], invalidWords: ['גמל', 'דשא'] });
   await tick();
   const rejected = Object.values(db._data.gameEvents.room1).find(e => e.type === 'WORD_REJECTED');
   assert.ok(rejected);
-  assert.match(rejected.summary, /word-not-in-dictionary/);
+  assert.match(rejected.summary, /word-not-in-dictionary \(גמל, דשא\)/);
+  assert.deepEqual(rejected.payload.invalidWords, ['גמל', 'דשא']);
+});
+
+test('INVALID_MOVE_REJECTED with no word list still records just the reason', async () => {
+  const { db } = setup();
+  bus.emit(EV.GAME_STARTED, {});
+  bus.emit(EV.INVALID_MOVE_REJECTED, { reason: 'has-gaps', placed: [] });
+  await tick();
+  const rejected = Object.values(db._data.gameEvents.room1).find(e => e.type === 'WORD_REJECTED');
+  assert.equal(rejected.summary, 'Move rejected: has-gaps');
 });
 
 test('server room versions write /gameSnapshots and host writes warnings', async () => {
@@ -94,6 +131,28 @@ test('server room versions write /gameSnapshots and host writes warnings', async
   assert.ok(db._data.gameSnapshots.room1['2'], 'server snapshot stored under version key');
   const warnings = Object.values(db._data.debugWarnings?.room1 ?? {});
   assert.ok(warnings.some(w => w.type === WARNING_TYPE.NEGATIVE_SCORE), 'negative-score warning written');
+});
+
+test('guest (slot 1) does NOT write /gameSnapshots — only the host does', async () => {
+  bus._reset();
+  const db = makeMockDb();
+  const state = makeState();
+  const ag = { online: true, mode: 'friend-live', mySlot: 1, session: { roomId: 'room1', mySlot: 1, state } };
+  let roomCb = null;
+  const watchRoom = (_db, _id, cb) => { roomCb = cb; return () => { roomCb = null; }; };
+  mountDebugRecorder({ bus, getDb: () => db, getActiveGame: () => ag, watchRoom });
+  bus.emit(EV.GAME_STARTED, {});
+  await tick();
+  roomCb?.({
+    version: 2, status: 'playing', currentTurnSlot: 0, turnNumber: 2,
+    players: { 0: { uid: 'u0' }, 1: { uid: 'u1' } },
+    scores: { 0: 5, 1: 10 }, racks: { 0: ['א'], 1: ['ב'] }, board: flat(), bag: new Array(80).fill('א'),
+    lastMove: { slot: 0, score: 5 },
+  });
+  await tick();
+  // The guest still records its own client snapshots, but never the server stream.
+  assert.equal(db._data.gameSnapshots?.room1, undefined, 'guest wrote no server snapshot (avoids write-once race)');
+  assert.ok(db._data.clientSnapshots.room1['1'], 'guest still wrote its own client snapshot');
 });
 
 test('getLastActions returns the in-memory ring buffer for reports', async () => {

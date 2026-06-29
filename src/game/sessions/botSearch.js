@@ -49,8 +49,8 @@ export const DIFFICULTY_PROFILES = Object.freeze({
   [DIFFICULTY.MEDIUM]: Object.freeze({
     maxWordLen: 5, tries: 60, anchLimit: 14,
     includeBonusSquares: true, avoidBonusTiles: false,
-    select: 'topN', topN: 3, scoreCeiling: Infinity,
-    weakenFirstMove: false, blunderChance: 0,
+    select: 'topN', topN: 3, scoreCeiling: 25,
+    weakenFirstMove: false, blunderChance: 0.05,
   }),
   [DIFFICULTY.HARD]: Object.freeze({
     maxWordLen: 6, tries: 120, anchLimit: 20,

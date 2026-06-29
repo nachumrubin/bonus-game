@@ -50,6 +50,10 @@ export function createTutorialController({
 
   // Tear down the tutorial game and return to the main menu.
   function endTutorialToMenu() {
+    const ag = activeGameRef();
+    if (ag?.session?.state?.mode === 'tutorial') {
+      try { ag.end?.(); } catch (e) { console.warn('[tutorialController.end]', e); }
+    }
     active = false;
     resetState();
     bus.emit(TUTORIAL_CLEAR, {});

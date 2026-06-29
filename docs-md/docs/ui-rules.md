@@ -332,11 +332,25 @@ button[onclick="openNotifications()"] // → MENU_INTENT.OPEN_NOTIFICATIONS
 // In gameFlowController.js:
 #btn-pause
 button[onclick="openSettings()"]
-button[onclick="openEndMenu()"]
+button[onclick="openEndMenu()"]   // label lives in a <span class="tb-tx"> child;
+                                  // swapped to "סיום" (online) / "סיים / שמור" (offline) on GAME_STARTED
 button[onclick="toggleMusic()"]
 ```
 
 If you change an `onclick` value in an HTML partial, you **must** update the corresponding selector in the JS controller.
+
+### Pause / back-confirm overlays and live games
+
+`#ov-pause` and `#ov-back-confirm` share the same three-action layout (resume,
+"השהה ושמור", "צא ללא שמירה"). For **live** online games (`activeGame.online &&
+!activeGame.isAsync`) the "השהה ושמור" (pause-and-save) button is hidden — a
+real-time game can't be saved. `gameFlowController` passes `isLive` in the
+`PAUSE_OPEN` / `BACK_OPEN` payloads; `pauseScreen` / `backConfirmScreen` toggle
+the save button's `style.display` accordingly. Offline and async games keep it.
+
+> **Note:** `button[onclick="shareGame()"]` / `#btn-share-game` above is stale —
+> the home share button was removed from all partials. `MENU_INTENT.SHARE_GAME`
+> and its `main.js` handler are dead code pending cleanup.
 
 ---
 

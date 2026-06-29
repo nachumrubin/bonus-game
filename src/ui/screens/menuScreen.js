@@ -164,7 +164,7 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     }
 
     // Bell badge (#online-badge) reflects ONLY notification-inbox items:
-    // game invites + friend requests (the `unreadCount`). It must NOT light
+    // game invites + friend requests + support replies (the `unreadCount`). It must NOT light
     // up for "it's your turn" async games — those have no entry in the inbox,
     // so a lit bell over an empty inbox looked like a bug. The my-turn signal
     // drives the My-Games badge colour instead (myTurnInGame, below).

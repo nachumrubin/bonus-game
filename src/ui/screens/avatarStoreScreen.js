@@ -31,6 +31,16 @@ export const DAILY_REWARD_ACK  = 'dailyReward/ack';
 
 const FALLBACK_AVATAR_SRC = 'assets/avatars/anonymous player.png';
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch]));
+}
+
 export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountAvatarStoreScreen: bus required');
 
@@ -62,6 +72,7 @@ export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {})
     const equipped = av.id === state.equippedAvatar;
     const price = av.price;
     const affordable = state.coins >= price;
+    const name = escapeHtml(av.nameHe || av.id);
 
     const cls = ['store-tile', `store-tile--${av.category}`];
     let action;
@@ -76,7 +87,8 @@ export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {})
     else               footer = `<span class="store-tile-price">${price} ${COIN_ICON_HTML}</span>`;
 
     return `<button class="${cls.join(' ')}" data-store-id="${av.id}" data-action="${action}">`
-      + `<span class="store-tile-av"><img src="${av.src}" alt="" class="store-tile-img"></span>`
+      + `<span class="store-tile-name">${name}</span>`
+      + `<span class="store-tile-av"><img src="${av.src}" alt="${name}" class="store-tile-img"></span>`
       + (owned || equipped ? '' : `<span class="store-tile-lock" aria-hidden="true">${affordable ? '' : '🔒'}</span>`)
       + footer
       + `</button>`;

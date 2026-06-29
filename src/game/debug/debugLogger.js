@@ -30,6 +30,24 @@ async function safe(label, fn) {
   catch (e) { console.warn(`[debug] ${label} failed:`, e?.message ?? e); return null; }
 }
 
+// Firebase RTDB set()/update() reject any value tree containing `undefined`.
+// Debug payloads carry optional fields (e.g. a TURN_CHANGED with no `reason`,
+// an event with no `userId`), so deep-prune undefined before writing — a missing
+// optional field must never make a best-effort debug write throw. Undefined
+// array elements become null (Firebase rejects undefined-in-array too).
+export function pruneUndefined(value) {
+  if (Array.isArray(value)) return value.map((v) => (v === undefined ? null : pruneUndefined(v)));
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (v === undefined) continue;
+      out[k] = pruneUndefined(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 // ── Environment helpers ────────────────────────────────────────────
 export function appVersion() {
   try {
@@ -53,7 +71,7 @@ export function logGameEvent(db, gameId, event = {}) {
   return safe('logGameEvent', async () => {
     const ref = db.ref(`${DEBUG_PATH.gameEvents}/${gameId}`).push();
     const eventId = refKey(ref);
-    await ref.set({ eventId, gameId, ...event, ...meta() });
+    await ref.set(pruneUndefined({ eventId, gameId, ...event, ...meta() }));
     return eventId;
   });
 }
@@ -63,7 +81,7 @@ export function logGameEvent(db, gameId, event = {}) {
 export function createGameSnapshot(db, gameId, key, payload = {}) {
   if (!db || !gameId || key == null) return Promise.resolve(null);
   return safe('createGameSnapshot', async () => {
-    await db.ref(`${DEBUG_PATH.gameSnapshots}/${gameId}/${key}`).set({ gameId, key, ...payload, ...meta() });
+    await db.ref(`${DEBUG_PATH.gameSnapshots}/${gameId}/${key}`).set(pruneUndefined({ gameId, key, ...payload, ...meta() }));
     return key;
   });
 }
@@ -74,7 +92,7 @@ export function putClientSnapshot(db, gameId, slot, payload = {}) {
   return safe('putClientSnapshot', async () => {
     const ref = db.ref(`${DEBUG_PATH.clientSnapshots}/${gameId}/${slot}`).push();
     const id = refKey(ref);
-    await ref.set({ id, gameId, slot, ...payload, ...meta() });
+    await ref.set(pruneUndefined({ id, gameId, slot, ...payload, ...meta() }));
     return id;
   });
 }
@@ -85,7 +103,7 @@ export function createDebugWarning(db, gameId, warning = {}) {
   return safe('createDebugWarning', async () => {
     const ref = db.ref(`${DEBUG_PATH.debugWarnings}/${gameId}`).push();
     const warningId = refKey(ref);
-    await ref.set({ warningId, gameId, ...warning, ...meta() });
+    await ref.set(pruneUndefined({ warningId, gameId, ...warning, ...meta() }));
     return warningId;
   });
 }
@@ -96,7 +114,7 @@ export function createDebugReport(db, report = {}) {
   return safe('createDebugReport', async () => {
     const ref = db.ref(DEBUG_PATH.debugReports).push();
     const reportId = refKey(ref);
-    await ref.set({ reportId, ...report, ...meta() });
+    await ref.set(pruneUndefined({ reportId, ...report, ...meta() }));
     return reportId;
   });
 }
@@ -105,7 +123,7 @@ export function createDebugReport(db, report = {}) {
 export function upsertGameIndex(db, gameId, summary = {}) {
   if (!db || !gameId) return Promise.resolve(null);
   return safe('upsertGameIndex', async () => {
-    await db.ref(`${DEBUG_PATH.debugGameIndex}/${gameId}`).update({ gameId, ...summary, updatedAt: serverTimestampProvider() });
+    await db.ref(`${DEBUG_PATH.debugGameIndex}/${gameId}`).update(pruneUndefined({ gameId, ...summary, updatedAt: serverTimestampProvider() }));
     return gameId;
   });
 }

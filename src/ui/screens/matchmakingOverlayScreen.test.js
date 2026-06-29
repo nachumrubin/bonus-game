@@ -4,8 +4,10 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountMatchmakingOverlayScreen,
+  mountPartnerSearchOverlay,
   readMatchmakingFilters,
   MM_INTENT,
+  PS_INTENT,
 } from './matchmakingOverlayScreen.js';
 
 function makeBtn({ id, onclick, classes = [] } = {}) {
@@ -73,6 +75,39 @@ function makeOverlayDom({
     },
   };
   return { root, els };
+}
+
+function makeClassList(initial = []) {
+  const cl = new Set(initial);
+  return {
+    contains(c) { return cl.has(c); },
+    add(c)      { cl.add(c); },
+    remove(...cs) { for (const c of cs) cl.delete(c); },
+  };
+}
+
+function makePartnerSearchDom() {
+  const ids = {
+    'ov-partner-search': { classList: makeClassList(['hidden']) },
+    'ps-my-avatar': { innerHTML: '', textContent: '' },
+    'ps-my-name': { textContent: '' },
+    'ps-slot-reel': {
+      innerHTML: '',
+      style: {
+        animation: '',
+        setProperty(k, v) { this[k] = v; },
+      },
+      classList: makeClassList(),
+      offsetHeight: 0,
+    },
+    'ps-slot-card': { classList: makeClassList() },
+    'ps-slot-lbl': { textContent: '' },
+    'ps-cancel-btn': makeBtn({ id: 'ps-cancel-btn' }),
+  };
+  return {
+    ids,
+    root: { getElementById: (id) => ids[id] ?? null },
+  };
 }
 
 test('readMatchmakingFilters: live + spd-normal + any-range + strict (defaults)', () => {
@@ -169,4 +204,15 @@ test('mount: missing buttons are tolerated (no throw)', () => {
   const root = { querySelector: () => null };
   const screen = mountMatchmakingOverlayScreen({ root, bus });
   screen.unmount();
+});
+
+test('partner search: matched avatar renders image markup once', () => {
+  bus._reset();
+  const { root, ids } = makePartnerSearchDom();
+  mountPartnerSearchOverlay({ root, bus });
+
+  bus.emit(PS_INTENT.MATCHED, { avatar: 'rare_3', name: 'Tamar' });
+
+  assert.match(ids['ps-slot-reel'].innerHTML, /assets\/avatars_v2\/rare\/hertzel\.png/);
+  assert.doesNotMatch(ids['ps-slot-reel'].innerHTML, /&lt;img/);
 });

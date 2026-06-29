@@ -16,6 +16,7 @@ export const NOTIF_INTENT = Object.freeze({
   REJECT_INVITE: 'notif/rejectInvite',
   ACCEPT_FRIEND: 'notif/acceptFriend',
   REJECT_FRIEND: 'notif/rejectFriend',
+  MARK_SUPPORT_REPLY_READ: 'notif/markSupportReplyRead',
   BACK:          'notif/back',
 });
 
@@ -69,6 +70,38 @@ function buildFriendRequestHtml(req) {
   );
 }
 
+function supportReplyTime(reply) {
+  const ms = reply?.createdAt ?? reply?.respondedAt ?? null;
+  return typeof ms === 'number' && Number.isFinite(ms)
+    ? new Date(ms).toLocaleString('he-IL')
+    : '';
+}
+
+function buildSupportReplyHtml(reply) {
+  const id = escapeHtml(reply.id ?? reply.notificationId ?? '');
+  const title = escapeHtml(reply.title ?? 'עדכון לפנייה שלך');
+  const message = escapeHtml(reply.message ?? '');
+  const originalMessage = escapeHtml(reply.originalMessage ?? '');
+  const reason = escapeHtml(reply.reasonLabel ?? reply.reason ?? '');
+  const outcome = escapeHtml(reply.outcomeLabel ?? reply.outcome ?? '');
+  const when = escapeHtml(supportReplyTime(reply));
+  return (
+    `<div class="nf-support-card">`
+    + `<div style="flex:1;min-width:0;">`
+    +   `<div style="font-size:13px;font-weight:900;color:#fff;">${title}</div>`
+    +   `<div style="font-size:12px;line-height:1.45;color:rgba(255,255,255,.78);white-space:pre-wrap;overflow-wrap:anywhere;">${message}</div>`
+    +   `${originalMessage ? `<div class="nf-support-original"><span>הפנייה המקורית:</span>${originalMessage}</div>` : ''}`
+    +   `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;font-size:10px;color:rgba(255,255,255,.48);">`
+    +     `${outcome ? `<span>${outcome}</span>` : ''}`
+    +     `${reason ? `<span>${reason}</span>` : ''}`
+    +     `${when ? `<span>${when}</span>` : ''}`
+    +   `</div>`
+    + `</div>`
+    + `<button data-notif-read-support="${id}" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:5px 10px;font-family:Heebo,sans-serif;font-size:12px;color:rgba(255,255,255,.85);cursor:pointer;">סמן כנקרא</button>`
+    + `</div>`
+  );
+}
+
 export function mountNotificationsScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountNotificationsScreen: bus required');
 
@@ -77,9 +110,12 @@ export function mountNotificationsScreen({ root = globalThis.document, bus } = {
   const invitesList = $('#notif-invites-list', root);
   const friendsWrap = $('#notif-friends-wrap', root);
   const friendsList = $('#notif-friends-list', root);
+  const supportWrap = $('#notif-support-wrap', root);
+  const supportList = $('#notif-support-list', root);
 
   let currentInvites        = [];
   let currentFriendRequests = [];
+  let currentSupportReplies = [];
 
   const cleanups = [];
 
@@ -92,6 +128,7 @@ export function mountNotificationsScreen({ root = globalThis.document, bus } = {
       const rejectInvite = btn.getAttribute?.('data-notif-reject-invite');
       const acceptFriend = btn.getAttribute?.('data-notif-accept-friend');
       const rejectFriend = btn.getAttribute?.('data-notif-reject-friend');
+      const readSupport = btn.getAttribute?.('data-notif-read-support');
       if (acceptInvite) {
         const inv = currentInvites.find(i => i.inviteId === acceptInvite);
         bus.emit(NOTIF_INTENT.ACCEPT_INVITE, inv ?? { inviteId: acceptInvite });
@@ -102,27 +139,33 @@ export function mountNotificationsScreen({ root = globalThis.document, bus } = {
       }
       if (acceptFriend) bus.emit(NOTIF_INTENT.ACCEPT_FRIEND, { fromUid: acceptFriend });
       if (rejectFriend) bus.emit(NOTIF_INTENT.REJECT_FRIEND, { fromUid: rejectFriend });
+      if (readSupport) bus.emit(NOTIF_INTENT.MARK_SUPPORT_REPLY_READ, { id: readSupport });
     }));
   }
 
   delegateClick(invitesList);
   delegateClick(friendsList);
+  delegateClick(supportList);
 
   function repaint() {
     const hasInvites   = currentInvites.length > 0;
     const hasRequests  = currentFriendRequests.length > 0;
-    const isEmpty      = !hasInvites && !hasRequests;
+    const hasSupport   = currentSupportReplies.length > 0;
+    const isEmpty      = !hasInvites && !hasRequests && !hasSupport;
 
     if (emptyEl)     emptyEl.style.display     = isEmpty      ? '' : 'none';
     if (invitesWrap) invitesWrap.style.display  = hasInvites  ? '' : 'none';
     if (friendsWrap) friendsWrap.style.display  = hasRequests ? '' : 'none';
+    if (supportWrap) supportWrap.style.display  = hasSupport  ? '' : 'none';
     if (invitesList) invitesList.innerHTML       = currentInvites.map(buildInviteHtml).join('');
     if (friendsList) friendsList.innerHTML       = currentFriendRequests.map(buildFriendRequestHtml).join('');
+    if (supportList) supportList.innerHTML       = currentSupportReplies.map(buildSupportReplyHtml).join('');
   }
 
-  cleanups.push(bus.on(NOTIF_RENDER, ({ invites, friendRequests } = {}) => {
+  cleanups.push(bus.on(NOTIF_RENDER, ({ invites, friendRequests, supportReplies } = {}) => {
     if (Array.isArray(invites))        currentInvites        = invites;
     if (Array.isArray(friendRequests)) currentFriendRequests = friendRequests;
+    if (Array.isArray(supportReplies)) currentSupportReplies = supportReplies;
     repaint();
   }));
 
@@ -190,5 +233,6 @@ registerOnboardingContent('snotif', {
   bullets: [
     '🎮 הזמנות למשחק — קבל או דחה הזמנות',
     '👥 בקשות חברות — אשר שחקנים שהוסיפו אותך',
+    'עדכוני פניות — קבל תשובות מהצוות על דיווחים והצעות',
   ],
 });
