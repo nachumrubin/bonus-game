@@ -54,7 +54,6 @@ function makeMenuDom() {
     online:     makeButton({ onclick: 'showOnlineLobby()' }),
     tutorial:   makeButton({ onclick: 'showTutorialIntro()', id: 'topbar-help-btn' }),
     settings:   makeButton({ onclick: 'openSettings()' }),
-    share:      makeButton({ onclick: 'shareGame()',              id: 'btn-share-game' }),
     nameLabel:  makeButton({ id: 'home-user-label' }),
     onlineBadge: makeButton({ id: 'online-badge' }),
     mgBadge:    makeButton({ id: 'mg-nav-badge' }),
@@ -139,7 +138,6 @@ test('mount: each button maps to its specific intent', () => {
   buttons.online.click();
   buttons.tutorial.click();
   buttons.settings.click();
-  buttons.share.click();
 
   assert.equal(seen.get(MENU_INTENT.OPEN_PROFILE), 1);
   assert.equal(seen.get(MENU_INTENT.START_2P), 1);
@@ -147,7 +145,6 @@ test('mount: each button maps to its specific intent', () => {
   assert.equal(seen.get(MENU_INTENT.OPEN_ONLINE_LOBBY), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_HELP_MENU), 1);
   assert.equal(seen.get(MENU_INTENT.OPEN_SETTINGS), 1);
-  assert.equal(seen.get(MENU_INTENT.SHARE_GAME), 1);
 });
 
 test('MENU_REFRESH paints the My-Games bottom-nav badge from `myGamesCount`', () => {
@@ -202,16 +199,6 @@ test('bell badge reflects only unreadCount, never the my-turn signal', () => {
   // Cleared inbox hides the bell.
   bus.emit(MENU_REFRESH, { unreadCount: 0 });
   assert.equal(buttons.onlineBadge.style.display, 'none');
-});
-
-test('MENU_REFRESH event toggles share button visibility based on isAuthed', () => {
-  bus._reset();
-  const { root, buttons } = makeMenuDom();
-  mountMenuScreen({ root, bus });
-  bus.emit(MENU_REFRESH, { isAuthed: false });
-  assert.equal(buttons.share.style.display, 'none');
-  bus.emit(MENU_REFRESH, { isAuthed: true });
-  assert.equal(buttons.share.style.display, '');
 });
 
 test('MENU_REFRESH updates the displayed name label', () => {

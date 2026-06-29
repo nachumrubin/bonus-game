@@ -157,11 +157,16 @@ test('full tutorial flow: שלום → illegalInfo → exchange → lockInfo →
   const tips = [];
   const clears = [];
   const screens = [];
+  let ended = 0;
+  const activeGame = {
+    session: { state: { mode: 'tutorial' } },
+    end: () => { ended++; },
+  };
   bus.on(TUTORIAL_TIP, (p) => tips.push(p));
   bus.on('tutorial/clear', () => clears.push(true));
   createTutorialController({
     bus,
-    activeGameRef: () => ({ session: { state: { mode: 'tutorial' } } }),
+    activeGameRef: () => activeGame,
     showScreen: (id) => screens.push(id),
   });
 
@@ -227,6 +232,7 @@ test('full tutorial flow: שלום → illegalInfo → exchange → lockInfo →
   // --- player taps סיים → tutorial closes and returns to the main screen ---
   const clearsBefore = clears.length;
   bus.emit(TUTORIAL_INTENT.NEXT, {});
+  assert.equal(ended, 1, 'active tutorial game ended on finish');
   assert.ok(clears.length > clearsBefore, 'tip cleared on finish');
   assert.equal(screens[screens.length - 1], 'sh', 'סיים returns to the main screen');
 });

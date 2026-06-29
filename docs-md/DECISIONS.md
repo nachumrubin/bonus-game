@@ -5,6 +5,54 @@
 
 ---
 
+## D-matchmaking-exact-search: "חיפוש מדויק" makes settings hard; flexible = closest-from-pool — June 2026
+
+**Decision:** "חיפוש מדויק" (exact search) is a per-player switch that turns **all**
+of that player's settings into **hard constraints**. Flexible (unchecked) does
+**not** mean "I'll play anyone with no preference" — it means *"pair me with the
+closest available player in the pool, but I'll accept a farther one rather than
+wait forever."* Two distinct layers:
+
+*Hard compatibility* (`isCompatible` — a yes/no gate):
+- **timelimit** (live vs async): must match whenever **either** side is strict.
+  (Never blocks in practice — `random-live` / `random-async` are separate queues —
+  but kept defensively.)
+- **botTime** (turn speed בזק 20 / רגיל 40 / איטי 60): must match only when **both**
+  sides are strict. If exactly one side is strict they still pair and the flexible
+  side adopts the strict side's speed.
+- **ratingRange**: a hard filter **only for a strict** side. A flexible player's
+  range never blocks a pairing — it is only a ranking preference.
+
+*Soft preference* (`matchDistance` + `tryPair` selection): among all
+hard-compatible candidates, pick the **closest** — same turn speed first (the
+largest experience gap), then smallest rating gap, tie-broken by queue age. This
+gives every searcher the nearest available opponent rather than just the oldest.
+
+**Why:** A real-time room has one turn clock and one opponent, so the sides can't
+each keep their own speed/opponent-rating. A strict player asked for exact settings
+and must get them; a flexible player wants the best available match but shouldn't be
+left unmatched over a preference. Running the game at the strict side's speed,
+hard-filtering only on the strict side's range, and ranking everyone by closeness
+satisfies both intents.
+
+**Implementation:** `matchmakingService.isCompatible` (hard gate) +
+`matchmakingService.matchDistance` (ranking, used in `tryPair`'s candidate sort).
+Because the room is created from the *driver's* (lower-uid) settings,
+`spineMatchmaking.resolveMatchSettings` overrides the room's `botTime`/`timelimit`
+to the strict side's values when exactly one side is strict — so the strict player
+gets their pace even when the flexible player is the room creator.
+
+**Speed-over-rating ranking is a deliberate, adjustable choice:** a different turn
+pace is treated as a bigger mismatch than a rating gap. If product wants rating
+proximity to dominate, swap the axis order in `matchDistance`.
+
+**Evidence:** `src/game/online/matchmakingService.js` (`isCompatible`,
+`matchDistance`, `tryPair`), `src/game/online/spineMatchmaking.js`
+(`resolveMatchSettings`, `createRoomForPair`). Tests: `matchmakingService.test.js`,
+`spineMatchmaking.test.js`.
+
+---
+
 ## D-avatar-store: separate coin-bought avatar collection, client-authoritative economy — June 2026
 
 **Decision:** The avatar **store** is a NEW collection of 36 avatars (`assets/avatars/`,

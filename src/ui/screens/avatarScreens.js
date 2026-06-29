@@ -99,6 +99,10 @@ export function findAchievementByRewardId(avatarId) {
   return ACHIEVEMENTS.find(a => a.rewardAvatarId === avatarId) ?? null;
 }
 
+export function achievementIconSrc(achievement) {
+  return achievement?.titleHe ? encodeURI(ACH_ICON_DIR + achievement.titleHe + '.png') : null;
+}
+
 // Resolve an avatar (id like 'robot' OR its emoji '🤖') to the achievement
 // trophy-icon PNG that represents it, so the equipped avatar displays as the
 // collected achievement art instead of the legacy emoji. Returns null for
@@ -119,7 +123,7 @@ export function avatarIconSrc(value) {
   if (!av) return null;
   const ach = findAchievementByRewardId(av.id);
   if (!ach) return null;
-  return encodeURI(ACH_ICON_DIR + ach.titleHe + '.png');
+  return achievementIconSrc(ach);
 }
 
 function escapeAvatar(s) {
@@ -270,7 +274,7 @@ export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}
     const { current, target } = achievementMetric(ach, data);
     const badge = `${Math.min(current, target)}/${target}`;
     const emoji = ach.emoji ?? findAvatar(ach.rewardAvatarId)?.emoji ?? '🏆';
-    const icon = `<img class="ach-ic-img" src="${encodeURI(ACH_ICON_DIR + ach.titleHe + '.png')}" alt="">`
+    const icon = `<img class="ach-ic-img" src="${achievementIconSrc(ach)}" alt="">`
       + `<span class="ach-ic-emoji" style="display:none">${emoji}</span>`;
     const cls = ['ach-iccell'];
     if (!complete) cls.push('is-locked');
@@ -387,7 +391,21 @@ export function mountAvatarUnlockedScreen({ root = globalThis.document, bus } = 
     const achId = achievement?.id ?? '';
     if (overlay.dataset) overlay.dataset.achId = achId;
     else overlay.setAttribute?.('data-ach-id', achId);
-    if (icEl)    setText(icEl, achievement?.emoji ?? findAvatar(achievement?.rewardAvatarId)?.emoji ?? '🏆');
+    if (icEl) {
+      const iconSrc = achievementIconSrc(achievement);
+      const fallback = achievement?.emoji ?? findAvatar(achievement?.rewardAvatarId)?.emoji ?? '🏆';
+      if (iconSrc) {
+        icEl.innerHTML = `<img class="ach-ic-img" src="${iconSrc}" alt=""><span class="ach-ic-emoji" style="display:none">${fallback}</span>`;
+        const img = icEl.querySelector?.('.ach-ic-img');
+        if (img) img.onerror = () => {
+          img.style.display = 'none';
+          const em = icEl.querySelector?.('.ach-ic-emoji');
+          if (em) em.style.display = 'flex';
+        };
+      } else {
+        setText(icEl, fallback);
+      }
+    }
     if (nameEl)  setText(nameEl, achievement?.titleHe ?? '');
     if (coinsEl) coinsEl.innerHTML = coins ? `+${coins} ${COIN_ICON_HTML}` : '';
     if (condEl)  setText(condEl, achievement?.descHe ?? '');

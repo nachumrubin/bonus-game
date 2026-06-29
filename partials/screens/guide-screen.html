@@ -1,179 +1,162 @@
-<!-- GUIDE — full game guide, opened from the `?` dropdown.
-     Overlay pattern (same as ov-champs): scrollable card with collapsible sections. -->
+<!-- GUIDE - full app guide, opened from the `?` dropdown. -->
 <div id="ov-guide" class="ov hidden" onclick="if(event.target===this)ovClose('ov-guide')">
   <div class="ovc guide-ovc" dir="rtl">
-    <div class="ovt" style="margin-bottom:12px">📖 מדריך המשחק</div>
+    <div class="ovt" style="margin-bottom:12px">📖 מדריך בוסט</div>
 
     <div class="guide-body">
 
-      <details class="guide-section" id="guide-rules" open>
-        <summary>חוקי המשחק וניקוד</summary>
+      <details class="guide-section" id="guide-board" open>
+        <summary>לוח המשחק, תור וניקוד</summary>
         <div class="guide-section-body">
           <figure class="guide-shot">
-            <img src="images/guide/game-screen.png" alt="מסך משחק — לוח 10×10, מגש אותיות וטיימר תור" loading="lazy">
-            <figcaption>מסך המשחק: לוח 10×10, המגש למטה, הניקוד והשעון בראש.</figcaption>
+            <img src="images/guide/game-screen.png" alt="מסך משחק עם לוח, ניקוד ומגש אותיות" loading="lazy">
+            <figcaption>מסך המשחק: לוח 10×10, ניקוד, שעון תור, מגש אותיות ובוסטים סביב הלוח.</figcaption>
           </figure>
-          <p>הלוח הוא רשת של <strong>10×10</strong>. בכל תור יש לך <strong>8 אותיות</strong> במגש, ובשק הכללי <strong>108 אותיות</strong> ובהן 2 ג'וקרים.</p>
-          <p><strong>איך מקבלים נקודות:</strong> כל אות שווה את ערכה הקבוע (למשל א=1, צ=9, ג'וקר=0). הניקוד הוא סכום כל האותיות במילה. כשנוצרות יותר ממילה אחת במהלך אחד — סופרים את כולן.</p>
-          <p><strong>בוסט בינגו:</strong> הנחת כל 8 האותיות במהלך אחד מזכה ב-<strong>+50</strong> נקודות נוספות.</p>
-          <p><strong>כללי הנחה:</strong></p>
+          <p>בכל תור מניחים אות אחת או יותר מאותו קו - שורה או טור - ומאשרים עם <strong>שבץ</strong>. אחרי המהלך הראשון, כל מהלך חייב להתחבר לאות קיימת על הלוח.</p>
           <ul>
-            <li>חייבים להניח לפחות אות אחת בכל תור.</li>
-            <li>כל האותיות במהלך חייבות להיות באותה שורה או אותו טור.</li>
-            <li>אסור שיהיו רווחים בין האותיות שהנחת.</li>
-            <li>חוץ מהמהלך הראשון — לפחות אות אחת חייבת להיצמד למילה קיימת.</li>
-          </ul>
-          <p><strong>סיום המשחק:</strong></p>
-          <ul>
-            <li>2 סבבים רצופים שבהם אף שחקן לא הניח אות (הפסה, החלפת אותיות או מילה לא תקינה) — המשחק נסגר אוטומטית.</li>
-            <li>השק התרוקן ולשחקן אחד אין יותר אותיות במגש.</li>
-            <li>אחד השחקנים פרש.</li>
-            <li><strong>השחקן המוביל</strong> יכול ללחוץ על "🏆 סיים וזכה" כדי לסגור משחק תקוע מוקדם — הכפתור מופיע אחרי סבב שלם של מהלכים בלי ניקוד.</li>
-          </ul>
-          <p><strong>קביעת המנצח:</strong> הניקוד הגבוה ביותר ניצח. תיקו אפשרי אם הניקוד שווה. אם אחד פרש — השני ניצח.</p>
-        </div>
-      </details>
-
-      <details class="guide-section" id="guide-words">
-        <summary>מילים והטיות מותרות</summary>
-        <div class="guide-section-body">
-          <p>הבדיקה משתמשת במילון עברי עם זיהוי הטיות. מילה תתקבל אם היא עונה על אחד מאלה:</p>
-          <ul>
-            <li><strong>התאמה ישירה למילון</strong> — אותיות סופיות (ך, ם, ן, ף, ץ) מומרות אוטומטית לצורתן הרגילה (כ, מ, נ, פ, צ) לפני הבדיקה.</li>
-            <li><strong>צורת ריבוי</strong> — סיומות <code>-ים</code> ו-<code>-ות</code> על שם בסיס תקני.</li>
-            <li><strong>הטיית פעלים</strong> — עבר/הווה/עתיד עם סיומות כמו <code>-תי</code>, <code>-נו</code>, <code>-תם</code> וכו'.</li>
-            <li><strong>צורת נקבה</strong> — בסיומת <code>-ה</code>.</li>
-            <li><strong>כתיב חסר ומלא</strong> — שתי הצורות מתקבלות (עם או בלי וי"ו/יו"ד).</li>
-            <li><strong>מילות יחס קצרות</strong> — בה, בו, לי, לך, לנו וכו' מתקבלות תמיד.</li>
-          </ul>
-          <p><strong>נדחות:</strong> רשימה סגורה של כינויי שייכות (אותו, אותה, שלו, שלי וכו') — אלה לא מתקבלות במשחק.</p>
-          <p>אם המילה שלך נדחתה, התור עובר אוטומטית אחרי כשנייה ומונה ההפסות שלך עולה — אז כדאי לוודא לפני אישור.</p>
-        </div>
-      </details>
-
-      <details class="guide-section" id="guide-screens">
-        <summary>מסכי המשחק</summary>
-        <div class="guide-section-body">
-          <figure class="guide-shot">
-            <img src="images/guide/home.png" alt="מסך הבית עם שלושת מצבי המשחק" loading="lazy">
-            <figcaption>מסך הבית: משחק ברשת, שני שחקנים על אותו מכשיר, ונגד המחשב.</figcaption>
-          </figure>
-          <figure class="guide-shot">
-            <img src="images/guide/signup.png" alt="מסך יצירת חשבון" loading="lazy">
-            <figcaption>מסך יצירת חשבון: שם, דוא"ל, סיסמה ואימות סיסמה, ובחירה אם לקבל התראות.</figcaption>
-          </figure>
-          <figure class="guide-shot">
-            <img src="images/guide/stats.png" alt="מסך הסטטיסטיקה והדירוג האישי" loading="lazy">
-            <figcaption>מסך הסטטיסטיקה: דירוג ELO, ניצחונות/הפסדים, ושיא ניקוד למשחק.</figcaption>
-          </figure>
-          <ul>
-            <li><strong>מסך הבית</strong> — בחירת מצב משחק, חזרה למשחק שמור, גישה לפרופיל, חברים, סטטיסטיקה ולוח השיאים.</li>
-            <li><strong>מסך המשחק</strong> — לוח 10×10 במרכז, המגש שלך למטה, הניקוד והשעון בראש. הקלקה על אות מהמגש ואז על תא מציבה אותה.</li>
-            <li><strong>הזמנה / מציאת יריב</strong> — לובי אונליין, יצירת חדר בקוד, התאמה אקראית, חיפוש שותף.</li>
-            <li><strong>הטלת מטבע</strong> — קביעת מי משחק ראשון במשחק חי.</li>
-            <li><strong>פרופיל וסטטיסטיקה</strong> — שם תצוגה, אווטאר, דירוג Elo, ניצחונות והפסדים.</li>
-            <li><strong>לוח שיאים (טבלת הדירוגים)</strong> — 10 השחקנים בעלי הדירוג הגבוה ביותר.</li>
-            <li><strong>חברים והזמנות</strong> — שליחת בקשות חברות, ניהול הזמנות נכנסות.</li>
-            <li><strong>התראות</strong> — תיבת הודעות נכנסת (תורך, יריב מצטרף, יריב התנתק).</li>
-            <li><strong>הגדרות</strong> — מוזיקה, אפקטי קול, רטט, הרשאות התראות.</li>
-            <li><strong>סוף משחק</strong> — ניקוד סופי, מנצח, וכפתור משחק חוזר.</li>
+            <li>כל מילה חדשה שנוצרת חייבת להיות חוקית במילון.</li>
+            <li>אם נוצרת יותר ממילה אחת באותו מהלך, כולן נספרות לניקוד.</li>
+            <li>הנחת כל 8 האותיות מהמגש במהלך אחד נותנת בונוס +50.</li>
+            <li>ג'וקר יכול לייצג כל אות, אבל שווה 0 נקודות.</li>
+            <li>שני סבבים מלאים בלי ניקוד יכולים לסגור משחק תקוע.</li>
           </ul>
         </div>
       </details>
 
-      <details class="guide-section" id="guide-modes">
-        <summary>מצבי משחק</summary>
+      <details class="guide-section" id="guide-home">
+        <summary>מסך הבית והניווט</summary>
         <div class="guide-section-body">
+          <figure class="guide-shot">
+            <img src="images/guide/home.png" alt="מסך הבית של בוסט" loading="lazy">
+            <figcaption>מסך הבית מרכז את מצבי המשחק, הפרופיל, חברים, הישגים והמשחקים הפעילים.</figcaption>
+          </figure>
           <ul>
-            <li><strong>מול הבוט</strong> — שחקן יחיד נגד מחשב. ללא טיימר חובה, ללא דירוג.</li>
-            <li><strong>שניים על אותו מכשיר</strong> — מעבירים את המכשיר ביניכם. ללא דירוג.</li>
-            <li><strong>הדרכה</strong> — מהלך קצר נגד בוט מתוסרט, מציג טיפים. כ-3 דקות.</li>
-            <li><strong>חבר — חי (Live)</strong> — שחקן ידוע, טיימר חובה, התראות push כשהאפליקציה ברקע.</li>
-            <li><strong>חבר — אסינכרוני (Async)</strong> — תור-תור ללא טיימר, התראה בכל מהלך. נסגר אוטומטית אחרי 7 ימים ללא תזוזה (תזכורת push אחרי 24 שעות).</li>
-            <li><strong>אקראי — חי</strong> — התאמה מהירה מול שחקן זמין, טיימר חובה, משפיע על הדירוג.</li>
-            <li><strong>אקראי — אסינכרוני</strong> — התאמה ללא טיימר, משפיע על הדירוג.</li>
+            <li><strong>משחק ברשת</strong> - משחק חי או אסינכרוני מול שחקנים אמיתיים.</li>
+            <li><strong>נגד המחשב</strong> - אימון מול בוט ברמות קושי שונות.</li>
+            <li><strong>שני שחקנים</strong> - משחק מקומי על אותו מכשיר.</li>
+            <li><strong>המשחקים שלי</strong> - חזרה למשחקים שמורים, משחקי תור ומשחקים שפג תוקפם.</li>
+            <li><strong>סרגל עליון</strong> - בית, עזרה, הגדרות, מוזיקה, פרופיל והתראות.</li>
           </ul>
-          <p><strong>תוקף הזמנות:</strong> קוד חדר תקף 30 דקות; הזמנה ישירה בחי — 5 דקות; הזמנה אסינכרונית — 7 ימים.</p>
         </div>
       </details>
 
-      <details class="guide-section" id="guide-rating">
-        <summary>דירוג ולוח שיאים</summary>
+      <details class="guide-section" id="guide-online">
+        <summary>משחקים ברשת וחברים</summary>
         <div class="guide-section-body">
-          <p>הדירוג פעיל במשחקים מקוונים (מול שחקנים אמיתיים). מתחילים מ-<strong>1000</strong> נקודות. כל ניצחון/הפסד משנה את הדירוג לפי חוזק היריב — ניצחון מול שחקן חזק שווה יותר נקודות מאשר ניצחון מול שחקן חלש.</p>
-          <p><strong>נוסחה:</strong> משתמשים בנוסחת Elo עם K=24 וסקאלה של 400. בקצרה — סיכוי הניצחון הצפוי מחושב מהפער בדירוג, ואז הדירוג שלך זז ב-עד 24 נקודות לטובה או לרעה.</p>
-          <p><strong>תגים לפי דירוג:</strong></p>
+          <p>אפשר לשחק מול חבר ידוע, דרך קוד חדר, או מול יריב אקראי. במשחק חי שני הצדדים משחקים באותו זמן; במשחק אסינכרוני כל שחקן משחק כשנוח לו.</p>
           <ul>
-            <li>🪙 מתחת ל-800</li>
-            <li>🥈 800–949</li>
-            <li>🥇 950–1199</li>
-            <li>💎 1200 ומעלה</li>
+            <li><strong>חי</strong> - יש שעון לכל תור, ונוכחות היריב חשובה.</li>
+            <li><strong>אסינכרוני</strong> - אין שעון תור; מקבלים התראה כשמגיע תורך.</li>
+            <li><strong>חברים</strong> - אפשר לשלוח בקשות חברות, להזמין חבר למשחק ולראות דירוג/אווטאר.</li>
+            <li><strong>הזמנות</strong> - קוד חדר תקף לזמן מוגבל; הזמנה ישירה למשחק חי קצרה יותר מהזמנה אסינכרונית.</li>
+            <li><strong>משחקים שפג תוקפם</strong> - משחק אסינכרוני נסגר אחרי 7 ימים בלי מהלך.</li>
           </ul>
-          <p><strong>לוח שיאים</strong> מציג את 10 השחקנים המובילים לפי דירוג.</p>
         </div>
       </details>
 
       <details class="guide-section" id="guide-actions">
-        <summary>פעולות מיוחדות בתור</summary>
+        <summary>כלי תור: מילון, החלפה, נעילה וג'וקר</summary>
         <div class="guide-section-body">
-          <p><strong>החלפת אות</strong> — אם אין לך אותיות טובות, אפשר להחליף אות אחת בחינם בתחילת המשחק. לחץ על "החלפת אות" בסרגל העליון, סמן אות מהמגש ואשר. החלפה צורכת את התור שלך.</p>
+          <figure class="guide-shot">
+            <img src="images/guide/shailta-overlay.png" alt="חלון מילון לבדיקת מילה" loading="lazy">
+            <figcaption>מילון: בדיקה מהירה לפני שמאשרים מהלך.</figcaption>
+          </figure>
+          <p><strong>מילון</strong> בודק אם מילה קיימת בלי לשחק אותה. הטיימר ממשיך לרוץ בזמן הבדיקה.</p>
           <figure class="guide-shot">
             <img src="images/guide/exchange-overlay.png" alt="חלון החלפת אות" loading="lazy">
-            <figcaption>חלון "החלפת אות": בחר אות מהמגש להחלפה מהשק (פעם אחת בתור).</figcaption>
+            <figcaption>החלפת אות: מסמנים אות מהמגש ומאשרים. ההחלפה צורכת תור.</figcaption>
           </figure>
-          <p><strong>מילון</strong> — בדוק אם מילה קיימת במילון בלי לסכן את התור. לחץ על "📖 מילון" בסרגל, הקלד מילה ולחץ "בדוק". זו בדיקה בלבד — לא מוציאה אותיות מהמגש. שים לב שטיימר התור ממשיך לרוץ.</p>
-          <figure class="guide-shot">
-            <img src="images/guide/shailta-overlay.png" alt="חלון מילון — בדיקת מילה במילון" loading="lazy">
-            <figcaption>חלון "מילון": בדיקת מילה במילון בלי לבזבז אותיות. הטיימר ממשיך לרוץ.</figcaption>
-          </figure>
-          <p><strong>נעילה</strong> — יש לך 3 נעילות בתחילת המשחק (בפאנל הימני "נעילות"). נעילה חוסמת משבצת מהיריב למספר תורים. בחר נעילה מהפאנל, סמן משבצת ריקה — היא תופיע כנעילה ממתינה. לחץ "שבץ ✓" לאישור, או "בטל ↩" כדי להתחרט.</p>
-          <p><strong>ג׳וקר 🃏</strong> — האריח עם "🃏" שווה 0 נקודות. הנח אותו על הלוח כחלק ממילה, ייפתח חלון שבו תבחר איזו אות הוא ייצג.</p>
-          <p><strong>בטל וסידור אותיות</strong> — לפני שלוחצים "שבץ", הקלדה כפולה על אות מחזירה אותה למגש; לחיצה על "בטל ↩" מחזירה את כל האותיות בבת אחת.</p>
+          <ul>
+            <li><strong>החלפת אות</strong> - מחזירה אות לשק ומושכת אות אחרת. ברוב המצבים זה מסיים את התור.</li>
+            <li><strong>נעילה</strong> - בוחרים מנעול ומסמנים משבצת ריקה כדי לחסום אותה ליריב לכמה תורות.</li>
+            <li><strong>בטל</strong> - מחזיר למגש את האותיות שהונחו לפני אישור המהלך.</li>
+            <li><strong>ג'וקר</strong> - גורר אות כללית, ואז בוחר איזו אות היא מייצגת.</li>
+          </ul>
         </div>
       </details>
 
       <details class="guide-section" id="guide-bonuses">
         <summary>בוסטים ומיני-משחקים</summary>
         <div class="guide-section-body">
-          <p>סביב הלוח יש 12 משבצות בוסט (3 בכל צד). מהלך שמתקרב למשבצת בוסט מפעיל את הבוסט שלה.</p>
-          <p><strong>סוגי בוסט:</strong></p>
-          <ul>
-            <li><strong>בוסט מיידי</strong> — מוסיף נקודות מיד (למשל +1, +25).</li>
-            <li><strong>מיני-משחק</strong> — חידה קצרה: סידור אותיות, חיפוש מילה, תשבץ, כוורת. הצלחה מזכה בנקודות.</li>
-            <li><strong>אפקט עתידי</strong> — תור נוסף, מכפיל ניקוד (×2 או ×4) למספר תורות, או דילוג על תור היריב.</li>
-            <li><strong>גלגל ההגרלה</strong> — תוצאה אקראית: בוסט נקודות, תור נוסף, מכפיל, זמן נוסף, או ביטול הבוסט הבא של היריב.</li>
-          </ul>
-          <p>מכפיל שאתה לא ניצלת בזמן (timeout או מילה לא תקינה) מתבטל.</p>
+          <p>משבצות הבוסט סביב הלוח מפעילות תוספות ניקוד, אפקטים עתידיים או מיני-משחקים קצרים. בוסט שהופעל יכול לתת נקודות מיד, תור נוסף, מכפיל ניקוד, דילוג על יריב, זמן נוסף או גלגל מזל.</p>
+          <figure class="guide-shot">
+            <img src="images/guide/minigames/hiddenword.png" alt="מיני משחק מילה נסתרת" loading="lazy">
+            <figcaption>מילה נסתרת: למצוא מילה בתוך רשת אותיות.</figcaption>
+          </figure>
+          <figure class="guide-shot">
+            <img src="images/guide/minigames/honeycomb.png" alt="מיני משחק כוורת" loading="lazy">
+            <figcaption>כוורת: להרכיב כמה שיותר מילים סביב האות המרכזית.</figcaption>
+          </figure>
+          <figure class="guide-shot">
+            <img src="images/guide/minigames/wheel.png" alt="גלגל מזל" loading="lazy">
+            <figcaption>גלגל מזל: פרס אקראי שיכול לשנות את התור הבא.</figcaption>
+          </figure>
+        </div>
+      </details>
 
-          <p style="margin-top:12px"><strong>איך נראים המיני-משחקים:</strong></p>
+      <details class="guide-section" id="guide-stats">
+        <summary>סטטיסטיקות, דירוג ותובנות</summary>
+        <div class="guide-section-body">
           <figure class="guide-shot">
-            <img src="images/guide/minigames/hiddenword.png" alt="מיני-משחק מילה נסתרת" loading="lazy">
-            <figcaption>🔍 <strong>מילה נסתרת</strong> — מצא מילה עברית נסתרת ברשת 4×4 תוך 10 שניות.</figcaption>
+            <img src="images/guide/stats.png" alt="מסך סטטיסטיקות" loading="lazy">
+            <figcaption>סטטיסטיקות: ניצחונות, רצפים, שיאים, דירוג ופרטי ביצועים.</figcaption>
           </figure>
           <figure class="guide-shot">
-            <img src="images/guide/minigames/letterspinner.png" alt="מיני-משחק אות פותחת" loading="lazy">
-            <figcaption>🎰 <strong>אות פותחת</strong> — עצור את האות, ואז חבר כמה שיותר מילים שמתחילות בה. מילה ארוכה יותר = יותר נקודות.</figcaption>
+            <img src="images/guide/stats-insights.png" alt="מסך תובנות סטטיסטיות" loading="lazy">
+            <figcaption>תובנות: מגמות, סגנון משחק, יריבים בולטים והתקדמות ליעדים.</figcaption>
           </figure>
-          <figure class="guide-shot">
-            <img src="images/guide/minigames/honeycomb.png" alt="מיני-משחק כוורת" loading="lazy">
-            <figcaption>🐝 <strong>כוורת</strong> — צור כמה שיותר מילים סביב האות המרכזית הצהובה.</figcaption>
-          </figure>
-          <figure class="guide-shot">
-            <img src="images/guide/minigames/unscramble.png" alt="מיני-משחק סידור מחדש" loading="lazy">
-            <figcaption>🔀 <strong>סידור מחדש</strong> — סדר את האותיות המעורבבות למילה תקינה.</figcaption>
-          </figure>
-          <figure class="guide-shot">
-            <img src="images/guide/minigames/crossing.png" alt="מיני-משחק מילים חוצות" loading="lazy">
-            <figcaption>✂️ <strong>מילים חוצות</strong> — מצא את האות המשותפת לשתי המילים המצטלבות.</figcaption>
-          </figure>
-          <figure class="guide-shot">
-            <img src="images/guide/minigames/fill-middle.png" alt="מיני-משחק מילה חסרה" loading="lazy">
-            <figcaption>💎 <strong>מילה חסרה</strong> — השלם את האותיות החסרות במילה.</figcaption>
-          </figure>
-          <figure class="guide-shot">
-            <img src="images/guide/minigames/wheel.png" alt="מיני-משחק גלגל המזל" loading="lazy">
-            <figcaption>🎡 <strong>גלגל המזל</strong> — סובב לפרס אקראי: נקודות, מכפיל, תור נוסף, או חסימת הבוסט הבא של היריב.</figcaption>
-          </figure>
+          <ul>
+            <li><strong>Elo</strong> משתנה במשחקים מקוונים מול שחקנים אמיתיים.</li>
+            <li><strong>לוח השיאים</strong> מציג את בעלי הדירוג הגבוה ביותר.</li>
+            <li><strong>תובנות</strong> מסכמות מגמות כמו רצף, יציבות, ימי משחק חזקים ויריבים קבועים.</li>
+            <li><strong>היסטוריית משחקים</strong> מזינה שיאים, מילים ייחודיות, בוסטים והישגים.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section" id="guide-profile">
+        <summary>פרופיל, אווטארים, מטבעות והישגים</summary>
+        <div class="guide-section-body">
+          <p>הפרופיל שומר את שם התצוגה, האווטאר, הדירוג וההתקדמות שלך. לחיצה על האווטאר או על חנות האווטארים פותחת את קטלוג האווטארים.</p>
+          <ul>
+            <li><strong>מטבעות</strong> מתקבלים מכניסה יומית ומהשלמת הישגים.</li>
+            <li><strong>חנות אווטארים</strong> כוללת אווטארים חינמיים ונרכשים ברמות נדירות שונות.</li>
+            <li><strong>הישגים</strong> נפתחים לפי פעילות: משחקים, ניצחונות, רצפים, חברים, מילים ייחודיות, הזמנות, קניות ועוד.</li>
+            <li><strong>אווטאר מצויד</strong> מופיע בפרופיל, בתור משחקים, מול יריבים וברשימת החברים.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section" id="guide-dictionary">
+        <summary>מילון והצעות מילים</summary>
+        <div class="guide-section-body">
+          <p>המילון בודק מילים עבריות ומכיר גם צורות נפוצות כמו ריבוי, נקבה, הטיות פועל, אותיות סופיות וכתיב מלא/חסר. אם מילה חסרה או מילה לא תקינה מופיעה כמותרת, אפשר לשלוח הצעה דרך ההגדרות.</p>
+          <ul>
+            <li><strong>הצעת מילה להוספה</strong> - מילה שתיבדק ותתווסף אם תאושר.</li>
+            <li><strong>בקשה להסרת מילה</strong> - דיווח על מילה שלא צריכה להיות חוקית.</li>
+            <li><strong>תורם מילים</strong> - הישג שמתקדם כשמילים שהצעת מתקבלות.</li>
+            <li><strong>דחייה במשחק</strong> - אם המילה לא תקינה, התור עובר אחרי רגע קצר.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section" id="guide-settings">
+        <summary>הגדרות, התראות ופרטיות</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li><strong>מוזיקה ואפקטים</strong> ניתנים להפעלה וכיבוי מהסרגל העליון או מההגדרות.</li>
+            <li><strong>התראות</strong> מודיעות על תורך, הזמנות, חברים ואירועים חשובים. צריך לאשר הרשאת דפדפן.</li>
+            <li><strong>רטט</strong> מופעל רק במכשירים שתומכים בכך.</li>
+            <li><strong>חשבון</strong> שומר התקדמות, חברים, דירוג, מטבעות ואווטארים בין מכשירים.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section" id="guide-contact">
+        <summary>צור קשר ודיווח על בעיה</summary>
+        <div class="guide-section-body">
+          <p>בתפריט העזרה בוחרים <strong>צור קשר</strong>. אפשר לבחור סיבה: דיווח על בעיה במשחק, מילון, חשבון/חברים/התראות, הצעת שיפור או אחר.</p>
+          <p>כשמדווחים על בעיה במשחק, המערכת מצרפת גם מידע טכני מהמשחק הפעיל כדי שיהיה קל יותר לבדוק מה קרה.</p>
         </div>
       </details>
 

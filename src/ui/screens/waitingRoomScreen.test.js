@@ -13,6 +13,7 @@ function makeEl(initial = {}) {
   const listeners = [];
   return {
     textContent: initial.textContent ?? '',
+    style: {},
     classList: {
       contains(c) { return cl.has(c); },
       add(c) { cl.add(c); }, remove(c) { cl.delete(c); },

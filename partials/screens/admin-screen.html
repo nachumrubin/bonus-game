@@ -13,6 +13,7 @@
       <button class="adm-tab adm-tab--active" data-adm-tab="stats" role="tab" aria-selected="true">📊 סטטיסטיקות</button>
       <button class="adm-tab" data-adm-tab="players" role="tab" aria-selected="false">👥 שחקנים</button>
       <button class="adm-tab" data-adm-tab="words" role="tab" aria-selected="false">📚 מילים</button>
+      <button class="adm-tab" data-adm-tab="reports" role="tab" aria-selected="false">פניות</button>
       <button class="adm-tab" data-adm-tab="debug" role="tab" aria-selected="false">🐞 דיבאג</button>
     </div>
 
@@ -123,7 +124,10 @@
           <input type="checkbox" id="adm-select-all">
           <span>בחר הכל</span>
         </label>
-        <button id="adm-bulk-approve-btn" class="adm-bulk-approve-btn" disabled>✓ אשר נבחרים</button>
+        <div class="adm-bulk-actions">
+          <button id="adm-bulk-reject-btn" class="adm-bulk-reject-btn" disabled>✕ הסר כל הנבחרים</button>
+          <button id="adm-bulk-approve-btn" class="adm-bulk-approve-btn" disabled>✓ אשר נבחרים</button>
+        </div>
       </div>
 
       <div id="adm-sugg-loading" class="adm-loading">טוען הצעות...</div>
@@ -154,6 +158,67 @@
       </div>
     </div>
 
+    <!-- ── Contact Reports Panel ─────────────────────────────── -->
+    <div id="adm-panel-reports" class="adm-panel" role="tabpanel" style="display:none">
+      <div class="adm-section">
+        <div class="adm-sec-hdr">פניות שחקנים</div>
+        <div class="adm-report-toolbar">
+          <input id="adm-report-search" class="adm-debug-input" type="text"
+                 placeholder="חיפוש לפי שם, הודעה, userId, משחק או גרסה">
+          <select id="adm-report-reason" class="adm-report-select" aria-label="סינון לפי סיבה">
+            <option value="all">כל הסיבות</option>
+            <option value="game-bug">דווח על בעיה במשחק</option>
+            <option value="dictionary">מילון או הצעת מילה</option>
+            <option value="account">חשבון, חברים או התראות</option>
+            <option value="feedback">הצעת שיפור</option>
+            <option value="other">אחר</option>
+          </select>
+          <select id="adm-report-status" class="adm-report-select" aria-label="סינון לפי סטטוס">
+            <option value="open">פתוחות</option>
+            <option value="resolved">סגורות</option>
+            <option value="all">הכל</option>
+          </select>
+          <button id="adm-report-load-btn" class="adm-debug-btn">רענן פניות</button>
+        </div>
+        <div class="adm-report-bulkbar">
+          <label class="adm-select-all-label">
+            <input type="checkbox" id="adm-report-select-all">
+            <span>בחר הכל</span>
+          </label>
+          <button id="adm-report-respond-btn" class="adm-report-respond-btn" disabled>השב וסגור</button>
+          <button id="adm-report-close-btn" class="adm-report-close-btn" disabled>סגור פניות</button>
+        </div>
+        <div class="adm-report-count" id="adm-report-count">0 / 0</div>
+        <div id="adm-report-list" class="adm-report-list">
+          <div class="adm-debug-empty">לחץ "רענן פניות" כדי לטעון את הפניות</div>
+        </div>
+        <div id="adm-report-response-modal" class="adm-report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="adm-report-response-title">
+          <div class="adm-report-modal-card">
+            <div id="adm-report-response-title" class="adm-report-modal-title">תגובה לפנייה</div>
+            <label class="adm-report-modal-field">
+              <span>סטטוס</span>
+              <select id="adm-report-response-outcome" class="adm-report-select">
+                <option value="handled">טופל</option>
+                <option value="rejected">נדחה</option>
+                <option value="appreciated">תודה על ההצעה</option>
+                <option value="need-more-info">צריך עוד פרטים</option>
+              </select>
+            </label>
+            <label class="adm-report-modal-field">
+              <span>הודעה אישית אופציונלית</span>
+              <textarea id="adm-report-response-message" class="adm-report-response-message" rows="4" maxlength="500"
+                placeholder="אם תשאיר ריק, תישלח הודעת ברירת מחדל"></textarea>
+            </label>
+            <div id="adm-report-response-count" class="adm-report-response-count"></div>
+            <div class="adm-report-modal-actions">
+              <button id="adm-report-response-cancel" class="adm-debug-btn adm-debug-btn--ghost">ביטול</button>
+              <button id="adm-report-response-send" class="adm-report-respond-btn">שלח וסגור</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Debug Panel ─────────────────────────────── -->
     <div id="adm-panel-debug" class="adm-panel" role="tabpanel" style="display:none">
       <div class="adm-section">
@@ -174,10 +239,6 @@
         </div>
         <div id="adm-debug-summary" class="adm-debug-summary"></div>
         <div id="adm-debug-warnings" class="adm-debug-warnings"></div>
-        <div class="adm-debug-section-title">ציר זמן</div>
-        <div id="adm-debug-timeline" class="adm-debug-timeline"></div>
-        <div class="adm-debug-section-title">דיווחים</div>
-        <div id="adm-debug-reports" class="adm-debug-reports"></div>
       </div>
     </div>
 

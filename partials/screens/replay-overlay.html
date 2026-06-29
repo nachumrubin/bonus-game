@@ -7,6 +7,8 @@
       <button id="replay-close" class="replay-x" aria-label="סגור">✕</button>
     </div>
 
+    <div id="replay-bonus" class="replay-bonus" hidden></div>
+
     <div class="replay-panels">
       <div class="replay-panel" id="replay-panel-p0">
         <div class="replay-panel-hdr">
@@ -35,11 +37,14 @@
       </div>
     </div>
 
+    <!-- Time-aligned timeline: one row per moment; each column = what that side
+         saw at that time (blank if nothing). Columns match the board order. -->
+    <div id="replay-timeline" class="replay-timeline" dir="rtl"></div>
+
     <div class="replay-transport">
-      <button id="replay-first" class="replay-tbtn" title="להתחלה">⏮</button>
-      <button id="replay-prev" class="replay-tbtn" title="אחורה">◀</button>
+      <button id="replay-prev" class="replay-tbtn" title="צעד אחורה">◀</button>
       <button id="replay-play" class="replay-tbtn" title="הפעל/השהה">▶</button>
-      <button id="replay-next" class="replay-tbtn" title="קדימה">▶▶</button>
+      <button id="replay-next" class="replay-tbtn" title="צעד קדימה">▶</button>
       <input id="replay-scrub" class="replay-scrub" type="range" min="0" max="0" value="0">
       <span id="replay-frame-label" class="replay-frame-label"></span>
     </div>

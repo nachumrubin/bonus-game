@@ -9,6 +9,7 @@ import {
 
 test('STORE_AVATARS has 44 entries with the expected per-category counts', () => {
   assert.equal(STORE_AVATARS.length, 44);
+  assert.ok(STORE_AVATARS.every((avatar) => typeof avatar.nameHe === 'string' && avatar.nameHe.trim()));
   const byCat = storeAvatarsByCategory();
   assert.equal(byCat.common.length, 17);
   assert.equal(byCat.rare.length, 12);
@@ -39,6 +40,7 @@ test('isStoreAvatarId / findStoreAvatar recognise catalog ids only', () => {
   assert.equal(isStoreAvatarId('crown'), false); // achievement avatar, not store
   assert.equal(isStoreAvatarId('legendary_6'), false); // out of range (5 legendaries)
   assert.equal(findStoreAvatar('epic_2')?.category, 'epic');
+  assert.equal(findStoreAvatar('legendary_4')?.nameHe, 'משה רבנו');
   assert.equal(findStoreAvatar('crown'), null);
 });
 

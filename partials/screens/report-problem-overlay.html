@@ -1,15 +1,27 @@
-<!-- REPORT A PROBLEM overlay (debug timeline) -->
+<!-- CONTACT overlay. One reason is the debug-backed "report a game problem" flow. -->
 <div id="ov-report" class="ov hidden">
-  <div class="ovc" dir="rtl" style="text-align:center;max-width:380px;">
-    <div class="ovic">🐞</div>
-    <div class="ovt">דווח על בעיה במשחק</div>
-    <div class="ovd">תאר/י מה קרה. נשמור תמונת מצב טכנית שתעזור לנו לבדוק — בלי צורך להסביר הכול.</div>
-    <textarea id="report-message" class="report-textarea" rows="4"
-              placeholder="לדוגמה: המילה נעלמה מהלוח / היריב לא רואה את המהלך שלי..."></textarea>
+  <div class="ovc contact-ovc" dir="rtl">
+    <div class="ovic">✉</div>
+    <div class="ovt">צור קשר</div>
+    <div class="ovd">בחרו סיבה וכתבו כמה מילים. אם מדובר בתקלה במשחק, נצרף גם תמונת מצב טכנית שתעזור לבדוק מה קרה.</div>
+
+    <label class="contact-field" for="report-reason">
+      <span class="contact-label">סיבת הפנייה</span>
+      <select id="report-reason" class="contact-select">
+        <option value="game-bug">דווח על בעיה במשחק</option>
+        <option value="dictionary">מילון או הצעת מילה</option>
+        <option value="account">חשבון, חברים או התראות</option>
+        <option value="feedback">הצעת שיפור</option>
+        <option value="other">אחר</option>
+      </select>
+    </label>
+
+    <textarea id="report-message" class="report-textarea" rows="5"
+              placeholder="לדוגמה: המילה נדחתה למרות שנראית תקינה / לא קיבלתי התראה / יש לי רעיון לשיפור..."></textarea>
     <div id="report-status" class="report-status"></div>
     <div class="ovbtns">
       <button class="ovb s" id="report-cancel">ביטול</button>
-      <button class="ovb p" id="report-send">שלח דיווח</button>
+      <button class="ovb p" id="report-send">שלח</button>
     </div>
   </div>
 </div>

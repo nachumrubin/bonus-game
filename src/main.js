@@ -33,7 +33,8 @@ import * as roomService from './game/online/roomService.js';
 import { mountDebugRecorder } from './game/debug/debugRecorder.js';
 import { configureDebugLogger, createDebugReport, getGameDebugTimeline, appVersion as debugAppVersion, platformInfo as debugPlatformInfo } from './game/debug/debugLogger.js';
 import { DEBUG_PATH } from './game/debug/debugSchema.js';
-import { framesFromTimeline } from './game/debug/replayPlayer.js';
+import { replayDataFromTimeline } from './game/debug/replayPlayer.js';
+import { buildDemoTimeline, DEMO_GAME_ID } from './game/debug/demoTimeline.js';
 import { mountReplayScreen, REPLAY_OPEN } from './ui/screens/replayScreen.js';
 import { mountReportProblemScreen, REPORT_SUBMIT, REPORT_DONE } from './ui/screens/reportProblemScreen.js';
 import * as inviteService from './game/online/inviteService.js';
@@ -503,6 +504,11 @@ async function boot() {
   globalThis.__spine.debug = {
     recorder: debugRecorder,
     createDebugReport: (report) => createDebugReport(activeFbDb, report),
+    // Open the scripted demo game in the replay overlay — no Firebase needed.
+    // Run `window.__spine.debug.openDemoReplay()` in the console to see what the
+    // recorder/replayer renders (board growth, boost squares, the bonus strip,
+    // and a turn-5 divergence). Same fixture the replay regression test pins.
+    openDemoReplay: () => bus.emit(REPLAY_OPEN, { gameId: DEMO_GAME_ID, ...replayDataFromTimeline(buildDemoTimeline()) }),
   };
 
   // Capture uncaught client errors into /debugReports with the current game
@@ -1433,15 +1439,18 @@ async function boot() {
     // reads `${PATH.invites}/{toUid}`.
     let activeInviteListener = null;
     let activeAckListener = null;
+    let activeSupportRepliesListener = null;
     let lastInviteCount = 0;
     let lastFriendRequestCount = 0;
+    let lastSupportReplyCount = 0;
     function refreshBadgeCount() {
-      bus.emit(MENU_REFRESH, { unreadCount: lastInviteCount + lastFriendRequestCount });
+      bus.emit(MENU_REFRESH, { unreadCount: lastInviteCount + lastFriendRequestCount + lastSupportReplyCount });
     }
     function bootInviteListenersFor(uid) {
       if (!uid) return;
       activeInviteListener?.();
       activeAckListener?.();
+      activeSupportRepliesListener?.();
       const fbDb = activeFbDb;
       if (!fbDb) return;
 
@@ -1490,6 +1499,35 @@ async function boot() {
         for (const inv of pending) seenIds.add(inv.inviteId);
         isFirstFire = false;
       });
+
+      const supportRef = fbDb.ref(`userNotifications/${uid}`);
+      const seenSupportIds = new Set();
+      let isFirstSupportFire = true;
+      const supportHandler = (snap) => {
+        const raw = snap?.val ? (snap.val() ?? {}) : {};
+        const replies = Object.entries(raw)
+          .map(([id, value]) => ({ id, ...(value && typeof value === 'object' ? value : {}) }))
+          .filter((reply) => reply.type === 'supportReply' && !reply.readAt)
+          .sort((a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0));
+        lastSupportReplyCount = replies.length;
+        bus.emit(NOTIF_RENDER, { supportReplies: replies });
+        refreshBadgeCount();
+
+        if (!isFirstSupportFire) {
+          const next = replies.find((reply) => !seenSupportIds.has(reply.id));
+          if (next) {
+            bus.emit(NOTIF_BANNER_SHOW, {
+              avatar: '🔔',
+              text: next.title ?? 'עדכון לפנייה שלך',
+              action: 'openNotifications',
+            });
+          }
+        }
+        for (const reply of replies) seenSupportIds.add(reply.id);
+        isFirstSupportFire = false;
+      };
+      supportRef.on('value', supportHandler);
+      activeSupportRepliesListener = () => supportRef.off('value', supportHandler);
 
       // Tracks acks already processed so stale data from a previous session
       // doesn't re-fire a banner every time the user signs in.
@@ -2274,6 +2312,44 @@ async function boot() {
     return activeFbServerTimestamp?.() ?? Date.now();
   }
 
+  const SUPPORT_REPLY_OUTCOMES = Object.freeze({
+    handled: {
+      label: 'טופל',
+      title: 'הפנייה שלך טופלה',
+      message: 'תודה שעדכנת אותנו. בדקנו את הפנייה והיא טופלה.',
+    },
+    rejected: {
+      label: 'נדחה',
+      title: 'עדכון לפנייה שלך',
+      message: 'תודה שפנית אלינו. בדקנו את הפנייה, אבל בשלב זה היא לא אושרה.',
+    },
+    appreciated: {
+      label: 'תודה על ההצעה',
+      title: 'תודה על ההצעה שלך',
+      message: 'תודה על ההצעה. קיבלנו אותה והיא עוזרת לנו לשפר את בונוס.',
+    },
+    'need-more-info': {
+      label: 'צריך עוד פרטים',
+      title: 'נשמח לעוד פרטים',
+      message: 'תודה שפנית אלינו. כדי לטפל בזה נצטרך עוד פרטים בפנייה נוספת.',
+    },
+  });
+
+  function supportReplyOutcome(outcome) {
+    return SUPPORT_REPLY_OUTCOMES[outcome] ? outcome : 'handled';
+  }
+
+  function supportReasonLabel(reason) {
+    const labels = {
+      'game-bug': 'דווח על בעיה במשחק',
+      dictionary: 'מילון או הצעת מילה',
+      account: 'חשבון, חברים או התראות',
+      feedback: 'הצעת שיפור',
+      other: 'אחר',
+    };
+    return labels[reason] ?? (reason || 'פנייה');
+  }
+
   // ── Admin screen handlers ────────────────────────────────────────────────
 
   bus.on(ADMIN_INTENT.BACK, () => { showLegacyScreen('sh'); });
@@ -2463,6 +2539,108 @@ async function boot() {
   });
 
   // ── Game Debug Timeline (admin) ──────────────────────────────────────────
+  bus.on(ADMIN_INTENT.LOAD_DEBUG_REPORTS, async () => {
+    const db = await getDictionaryDb();
+    if (!db) return;
+    try {
+      if (!activeFbCurrentUser?.uid) {
+        throw new Error('admin debug reports require a signed-in Firebase user');
+      }
+      const snap = await db.ref(DEBUG_PATH.debugReports).get();
+      const raw = snap?.val ? (snap.val() ?? {}) : {};
+      const reports = Object.entries(raw)
+        .map(([key, r]) => ({ key, ...(r && typeof r === 'object' ? r : { value: r }) }))
+        .sort((a, b) => {
+          const at = a.serverTimestamp ?? a.clientTimestamp ?? a.createdAt ?? 0;
+          const bt = b.serverTimestamp ?? b.clientTimestamp ?? b.createdAt ?? 0;
+          return Number(bt) - Number(at);
+        })
+        .slice(0, 500);
+      bus.emit(ADMIN_RENDER.DEBUG_REPORTS, { reports });
+    } catch (e) {
+      console.warn('[spine] admin debug reports', e);
+      bus.emit(ADMIN_RENDER.DEBUG_REPORTS, {
+        reports: [],
+        error: e?.code === 'PERMISSION_DENIED' || /permission/i.test(String(e?.message ?? e))
+          ? 'אין הרשאת מנהל לקריאת הפניות במכשיר הזה'
+          : 'טעינת הפניות נכשלה. בדוק חיבור ונסה שוב',
+      });
+    }
+  });
+
+  bus.on(ADMIN_INTENT.CLOSE_DEBUG_REPORTS, async ({ keys = [] } = {}) => {
+    const db = await getDictionaryDb();
+    const uniqueKeys = Array.from(new Set((Array.isArray(keys) ? keys : [])
+      .map((key) => String(key ?? '').trim())
+      .filter(Boolean)));
+    if (!db || uniqueKeys.length === 0) return;
+    try {
+      await Promise.all(uniqueKeys.map((key) =>
+        db.ref(`${DEBUG_PATH.debugReports}/${key}`).update({
+          status: 'resolved',
+          resolved: true,
+          resolvedAt: firebaseTimestamp(),
+          resolvedBy: activeFbCurrentUser?.uid ?? null,
+        })
+      ));
+      bus.emit(ADMIN_INTENT.LOAD_DEBUG_REPORTS, {});
+    } catch (e) {
+      console.warn('[spine] admin close debug reports', e);
+    }
+  });
+
+  bus.on(ADMIN_INTENT.RESPOND_DEBUG_REPORTS, async ({ keys = [], outcome = 'handled', message = '' } = {}) => {
+    const db = await getDictionaryDb();
+    const uniqueKeys = Array.from(new Set((Array.isArray(keys) ? keys : [])
+      .map((key) => String(key ?? '').trim())
+      .filter(Boolean)));
+    if (!db || uniqueKeys.length === 0) return;
+    const normalizedOutcome = supportReplyOutcome(outcome);
+    const outcomeInfo = SUPPORT_REPLY_OUTCOMES[normalizedOutcome];
+    const responseMessage = String(message ?? '').trim() || outcomeInfo.message;
+    const adminUid = activeFbCurrentUser?.uid ?? null;
+    try {
+      await Promise.all(uniqueKeys.map(async (key) => {
+        const reportRef = db.ref(`${DEBUG_PATH.debugReports}/${key}`);
+        const snap = await reportRef.get();
+        const report = snap?.val ? (snap.val() ?? {}) : {};
+        const originalMessage = String(report.userMessage ?? '').trim().slice(0, 500);
+        const stamp = firebaseTimestamp();
+        await reportRef.update({
+          status: 'resolved',
+          resolved: true,
+          resolvedAt: stamp,
+          resolvedBy: adminUid,
+          responseOutcome: normalizedOutcome,
+          responseMessage,
+          respondedAt: stamp,
+          respondedBy: adminUid,
+        });
+        const userId = String(report.userId ?? '').trim();
+        if (!userId) return;
+        const notificationRef = db.ref(`userNotifications/${userId}`).push();
+        await notificationRef.set({
+          id: notificationRef.key,
+          type: 'supportReply',
+          reportId: key,
+          reason: report.reason ?? 'other',
+          reasonLabel: supportReasonLabel(report.reason),
+          outcome: normalizedOutcome,
+          outcomeLabel: outcomeInfo.label,
+          title: outcomeInfo.title,
+          message: responseMessage,
+          originalMessage,
+          originalCreatedAt: report.serverTimestamp ?? report.clientTimestamp ?? report.createdAt ?? null,
+          createdAt: firebaseTimestamp(),
+          readAt: null,
+        });
+      }));
+      bus.emit(ADMIN_INTENT.LOAD_DEBUG_REPORTS, {});
+    } catch (e) {
+      console.warn('[spine] admin respond debug reports', e);
+    }
+  });
+
   bus.on(ADMIN_INTENT.LOAD_DEBUG_INDEX, async () => {
     const db = await getDictionaryDb();
     if (!db) return;
@@ -2489,16 +2667,19 @@ async function boot() {
     }
   });
 
-  bus.on(REPORT_SUBMIT, async ({ userMessage = '' } = {}) => {
+  bus.on(REPORT_SUBMIT, async ({ reason = 'game-bug', userMessage = '' } = {}) => {
     try {
+      const fbUser = await ensureAuthedUser();
+      const fbDb = activeFbDb ?? await firebaseClient.getDb();
       const ctx = debugRecorder.getContext?.() ?? null;
-      const reportId = await createDebugReport(activeFbDb, {
+      const reportId = await createDebugReport(fbDb, {
         kind: 'manual',
         gameId: ctx?.gameId ?? null,
-        userId: activeFbCurrentUser?.uid ?? null,
-        playerName: lastProfile?.displayName ?? activeFbCurrentUser?.displayName ?? null,
+        userId: fbUser?.uid ?? null,
+        playerName: lastProfile?.displayName ?? fbUser?.displayName ?? null,
         screen: globalThis.__spine?.activeGame ? 'GameScreen' : (globalThis.__spine?.currentScreen ?? null),
         appVersion: debugAppVersion(), ...debugPlatformInfo(),
+        reason: String(reason).slice(0, 80),
         userMessage: String(userMessage).slice(0, 1000),
         dictLoaded: (hebrewDictionary?.DICT?.size ?? 0) > 0, dictSize: hebrewDictionary?.DICT?.size ?? 0,
         lastKnownLocalState: debugRecorder.localSnapshot?.() ?? null,
@@ -2517,7 +2698,7 @@ async function boot() {
     if (!db || !gameId) return;
     try {
       const timeline = await getGameDebugTimeline(db, gameId);
-      bus.emit(REPLAY_OPEN, { gameId, frames: framesFromTimeline(timeline) });
+      bus.emit(REPLAY_OPEN, { gameId, ...replayDataFromTimeline(timeline) });
     } catch (e) {
       console.warn('[spine] admin replay', e);
     }
@@ -2608,7 +2789,16 @@ async function boot() {
 
       activeProfileWatch = profileService.watchProfile(fbDb, uid, (profile) => {
         const prev = lastProfile;
-        // Detect newly completed achievements before we overwrite lastProfile.
+        // Advance lastProfile/currentProfile BEFORE the achievement payout below.
+        // bumpCoins() runs a coins transaction whose optimistic local write
+        // synchronously re-fires this watcher; if prev were still stale at that
+        // point, the same false→true achievement transition would be detected
+        // again and pay forever (RangeError: Maximum call stack size exceeded).
+        // Advancing first makes the re-entrant fire diff profile-against-itself
+        // (stats/ownedAvatars unchanged → empty), so the payout runs exactly once.
+        lastProfile = profile;
+        globalThis.__spine.currentProfile = profile;
+        // Detect newly completed achievements (using the captured prev snapshot).
         // Each pays out tier-scaled coins and pops the completion overlay. Fires
         // only on the false→true transition between consecutive snapshots, and is
         // skipped on the first watch fire (prev=null), so already-earned
@@ -2625,8 +2815,6 @@ async function boot() {
             bus.emit(AV_UNLOCK_OPEN, { achievement: ach, coins: reward });
           }
         }
-        lastProfile = profile;
-        globalThis.__spine.currentProfile = profile;
         // Keep our name/avatar snapshot fresh in friends' lists when either
         // changes (equip, rename — including from another device/tab).
         syncMyProfileToFriends();
@@ -3018,9 +3206,30 @@ async function boot() {
     bus.on(FRIENDS_INTENT.COPY_MY_ID, async () => {
       const id = lastProfile?.userId;
       if (!id) return;
-      try { await globalThis.navigator?.clipboard?.writeText?.(id); } catch {}
-      bus.emit(FRIENDS_RENDER, { copyStatus: 'הועתק!' });
-      setTimeout(() => bus.emit(FRIENDS_RENDER, { copyStatus: '' }), 1500);
+      const nav = globalThis.navigator;
+      const url = String(globalThis.location?.href ?? '').split('#')[0];
+      const data = {
+        title: 'בוסט',
+        text: `זה הקוד שלי בבוסט: ${id}\nהוסף אותי כחבר ונשחק יחד!`,
+        url,
+      };
+      try {
+        if (typeof nav?.share === 'function') {
+          await nav.share(data);
+          bus.emit(FRIENDS_RENDER, { copyStatus: 'שותף!' });
+          setTimeout(() => bus.emit(FRIENDS_RENDER, { copyStatus: '' }), 1500);
+          return;
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+      }
+      try {
+        await nav?.clipboard?.writeText?.(id);
+        bus.emit(FRIENDS_RENDER, { copyStatus: 'הקוד הועתק!' });
+        setTimeout(() => bus.emit(FRIENDS_RENDER, { copyStatus: '' }), 1500);
+      } catch {
+        bus.emit(FRIENDS_RENDER, { copyStatus: id });
+      }
     });
     bus.on(FRIENDS_INTENT.BACK, () => {
       showLegacyScreen('sprofile');
@@ -3098,6 +3307,20 @@ async function boot() {
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !fromUid) return;
       await friendsService.rejectFriendRequest(fbDb, { fromUid, toUid: fbUser.uid });
+    });
+
+    bus.on(NOTIF_INTENT.MARK_SUPPORT_REPLY_READ, async ({ id } = {}) => {
+      const fbDb = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      const notificationId = String(id ?? '').trim();
+      if (!fbDb || !fbUser?.uid || !notificationId) return;
+      try {
+        await fbDb.ref(`userNotifications/${fbUser.uid}/${notificationId}`).update({
+          readAt: firebaseTimestamp(),
+        });
+      } catch (e) {
+        console.warn('[spine] mark support reply read', e);
+      }
     });
 
     // ── Auth intents (Firebase compat SDK) ──
@@ -3302,10 +3525,13 @@ async function boot() {
       try { await teardownCrossCuttingAuth(); } catch {}
       try { await activeFbAuth?.signOut?.(); } catch {}
       lastProfile = null; lastFriends = []; lastRequests = [];
-      lastInviteCount = 0; lastFriendRequestCount = 0;
+      lastInviteCount = 0; lastFriendRequestCount = 0; lastSupportReplyCount = 0;
       try { activeProfileWatch?.();  activeProfileWatch  = null; } catch {}
       try { activeRequestsWatch?.(); activeRequestsWatch = null; } catch {}
       try { activeFriendsWatch?.();  activeFriendsWatch  = null; } catch {}
+      try { activeInviteListener?.(); activeInviteListener = null; } catch {}
+      try { activeAckListener?.(); activeAckListener = null; } catch {}
+      try { activeSupportRepliesListener?.(); activeSupportRepliesListener = null; } catch {}
       for (const unsub of activePresenceUnsubs.values()) try { unsub(); } catch {}
       activePresenceUnsubs.clear();
       presenceCache.clear();
@@ -3866,32 +4092,22 @@ async function boot() {
         });
       }
     }
-    // Snapshot both players' globalRatings NOW (before any moves are played).
-    // At game end both clients use these frozen values so deltas are identical
-    // regardless of when each client's write resolves.
+    // Snapshot both players' globalRatings without blocking GAME_STARTED.
+    // Online sessions install Firebase watchers during createOnlineGameSession(),
+    // so waiting here lets remote move/completion events beat the game lifecycle.
+    // At game end both clients use these frozen values when available; if the
+    // async fill loses a race, ratingService falls back to live globalRatings.
     const _oppUidForRating = room.players?.[1 - mySlot]?.uid ?? null;
     const _myUidForRating  = room.players?.[mySlot]?.uid ?? null;
-    let preGameMyRating  = null;
-    let preGameOppRating = null;
-    let preGameTopUid = null;
-    let preGameTotalPlayers = 0;
-    if (_myUidForRating && _oppUidForRating) {
-      const [myR, oppR, leaderboardMeta] = await Promise.all([
-        ratingService.readRating(db, _myUidForRating).catch(() => null),
-        ratingService.readRating(db, _oppUidForRating).catch(() => null),
-        ratingService.getLeaderboardMeta(db).catch(() => ({ topUid: null, totalPlayers: 0 })),
-      ]);
-      preGameMyRating = myR;
-      preGameOppRating = oppR;
-      preGameTopUid = leaderboardMeta.topUid;
-      preGameTotalPlayers = leaderboardMeta.totalPlayers;
-    }
 
     // activeGame must be set BEFORE session.start() so that the debug recorder
     // can read session.roomId when EV.GAME_STARTED fires synchronously inside start().
-    globalThis.__spine.activeGame = {
+    const activeGame = {
       session, controller, animationController, screen, bonusFlow, timeoutWatchdog, reactionCtrl, online: true, isAsync, mySlot,
-      preGameMyRating, preGameOppRating, preGameTopUid, preGameTotalPlayers,
+      preGameMyRating: null,
+      preGameOppRating: null,
+      preGameTopUid: null,
+      preGameTotalPlayers: 0,
       end() {
         screen.unmount();
         animationController.dispose();
@@ -3905,6 +4121,8 @@ async function boot() {
         globalThis.__spine.activeGame = null;
       },
     };
+    globalThis.__spine.activeGame = activeGame;
+
     saveCurrentOnlineSession();
     updatePresenceRoom(room.roomId);
     syncRoomSubscriptionId(room.roomId, mySlot);
@@ -3912,6 +4130,19 @@ async function boot() {
     globalThis.__spine.turnTimerController?.sync?.();
     scheduleGameLayoutRefresh();
     session.start();
+    if (_myUidForRating && _oppUidForRating) {
+      Promise.all([
+        ratingService.readRating(db, _myUidForRating).catch(() => null),
+        ratingService.readRating(db, _oppUidForRating).catch(() => null),
+        ratingService.getLeaderboardMeta(db).catch(() => ({ topUid: null, totalPlayers: 0 })),
+      ]).then(([myR, oppR, leaderboardMeta]) => {
+        if (globalThis.__spine.activeGame !== activeGame) return;
+        activeGame.preGameMyRating = myR;
+        activeGame.preGameOppRating = oppR;
+        activeGame.preGameTopUid = leaderboardMeta?.topUid ?? null;
+        activeGame.preGameTotalPlayers = leaderboardMeta?.totalPlayers ?? 0;
+      }).catch((e) => console.warn('[spine] pre-game ratings', e));
+    }
     console.info('[spine] online game started', { roomId: room.roomId, mySlot, isAsync });
     return session;
   }
@@ -3997,7 +4228,7 @@ async function boot() {
       const wordList = Number.isFinite(cap) ? fullList.slice(0, cap) : fullList;
       // Per-level "thinking" delay — cosmetic only (does not affect move
       // strength), but reinforces the feel: easy answers fast, hard lingers.
-      const THINK_MS = [1000, 3000, 5000];
+      const THINK_MS = [3000, 5000, 7000];
       const thinkingMs = THINK_MS[difficulty] ?? 3000;
       attachBotPlayer(session, {
         slot: 1, wordList,
@@ -4227,6 +4458,7 @@ async function boot() {
   globalThis.__spine.claimStallController = claimStallCtl;
 
   console.info('[spine] ready. Try window.__spine.bootOffline2P() or .bootOfflineBot()');
+  console.info('[spine] replay demo: window.__spine.debug.openDemoReplay()');
 
   // App-loading overlay wiring (text cycle, tips carousel, hide-on-auth) is
   // set up at module-parse time via wireAppLoading() — see near the top of

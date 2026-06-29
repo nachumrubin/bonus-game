@@ -85,6 +85,44 @@ test('isCompatible: strict + mismatched timelimit → incompatible', () => {
   ), false);
 });
 
+test('isCompatible: BOTH strict + same timelimit but mismatched botTime → incompatible', () => {
+  // Regression: both players ticked "חיפוש מדויק" but one chose בזק (20s) and
+  // the other רגיל (40s). Both are live so `timelimit` matched on each side;
+  // the speed must be compared too when both are strict.
+  assert.equal(isCompatible(
+    { rating: 1000, settings: { strict: true, timelimit: true, botTime: 20 } },
+    { rating: 1000, settings: { strict: true, timelimit: true, botTime: 40 } },
+  ), false);
+});
+
+test('isCompatible: ONE strict + mismatched botTime → compatible (flexible adopts strict speed)', () => {
+  // Player 1 strict + רגיל (40), player 2 flexible + בזק (20). They pair — the
+  // flexible side adopts the strict side's speed (resolved in createRoomForPair).
+  assert.equal(isCompatible(
+    { rating: 1000, settings: { strict: true,  timelimit: true, botTime: 40 } },
+    { rating: 1000, settings: { strict: false, timelimit: true, botTime: 20 } },
+  ), true);
+  // Order-independent.
+  assert.equal(isCompatible(
+    { rating: 1000, settings: { strict: false, timelimit: true, botTime: 20 } },
+    { rating: 1000, settings: { strict: true,  timelimit: true, botTime: 40 } },
+  ), true);
+});
+
+test('isCompatible: strict + same timelimit and same botTime → compatible', () => {
+  assert.equal(isCompatible(
+    { rating: 1000, settings: { strict: true, timelimit: true, botTime: 40 } },
+    { rating: 1000, settings: { strict: true, timelimit: true, botTime: 40 } },
+  ), true);
+});
+
+test('isCompatible: neither strict + mismatched botTime → compatible', () => {
+  assert.equal(isCompatible(
+    { rating: 1000, settings: { strict: false, timelimit: true, botTime: 20 } },
+    { rating: 1000, settings: { strict: false, timelimit: true, botTime: 40 } },
+  ), true);
+});
+
 test('isCompatible: neither strict + mismatched timelimit → compatible', () => {
   assert.equal(isCompatible(
     { rating: 1000, settings: { strict: false, timelimit: true  } },
@@ -92,22 +130,35 @@ test('isCompatible: neither strict + mismatched timelimit → compatible', () =>
   ), true);
 });
 
-test('isCompatible: my ratingRange filters out high-rating partner', () => {
+test('isCompatible: a STRICT ratingRange hard-filters an out-of-range partner', () => {
   assert.equal(isCompatible(
-    { rating: 1000, settings: { ratingRange: 100 } },
+    { rating: 1000, settings: { strict: true, ratingRange: 100 } },
     { rating: 1500, settings: {} },
   ), false);
   assert.equal(isCompatible(
-    { rating: 1000, settings: { ratingRange: 100 } },
+    { rating: 1000, settings: { strict: true, ratingRange: 100 } },
     { rating: 1080, settings: {} },
   ), true);
 });
 
-test('isCompatible: partner ratingRange also enforced', () => {
+test('isCompatible: a strict partner ratingRange is also enforced', () => {
   assert.equal(isCompatible(
     { rating: 2000, settings: {} },
-    { rating: 1000, settings: { ratingRange: 100 } },
+    { rating: 1000, settings: { strict: true, ratingRange: 100 } },
   ), false);
+});
+
+test('isCompatible: a FLEXIBLE ratingRange does NOT hard-filter (it is only a preference)', () => {
+  // Flexible player with a ±100 preference still accepts a far-off opponent —
+  // the range only ranks candidates (matchDistance), it does not block.
+  assert.equal(isCompatible(
+    { rating: 1000, settings: { strict: false, ratingRange: 100 } },
+    { rating: 1500, settings: {} },
+  ), true);
+  assert.equal(isCompatible(
+    { rating: 2000, settings: {} },
+    { rating: 1000, settings: { strict: false, ratingRange: 100 } },
+  ), true);
 });
 
 test('tryPair: skips a strict-incompatible partner and reports no match', async () => {
@@ -131,11 +182,11 @@ test('tryPair: skips a strict-incompatible partner and reports no match', async 
   assert.equal(r.matched, false);
 });
 
-test('tryPair: rating-range filter skips out-of-range partner', async () => {
+test('tryPair: a STRICT rating-range filter skips an out-of-range partner', async () => {
   const db = makeMockDb();
   await joinQueue(db, {
     uid: 'me', mode: 'random-live',
-    profile: { rating: 1000 }, settings: { ratingRange: 100 },
+    profile: { rating: 1000 }, settings: { strict: true, ratingRange: 100 },
     serverTimestamp: 100,
   });
   await joinQueue(db, {
@@ -148,6 +199,54 @@ test('tryPair: rating-range filter skips out-of-range partner', async () => {
     createRoomFromPair: () => { throw new Error('should not be called'); },
   });
   assert.equal(r.matched, false);
+});
+
+test('tryPair: a FLEXIBLE searcher still pairs with an out-of-range partner', async () => {
+  const db = makeMockDb();
+  await joinQueue(db, {
+    uid: 'aaa', mode: 'random-live',
+    profile: { rating: 1000 }, settings: { strict: false, ratingRange: 100 },
+    serverTimestamp: 100,
+  });
+  await joinQueue(db, {
+    uid: 'zzz-far', mode: 'random-live',
+    profile: { rating: 1500 }, settings: {},
+    serverTimestamp: 200,
+  });
+  const r = await tryPair(db, {
+    uid: 'aaa', mode: 'random-live',
+    createRoomFromPair: async () => ({ roomId: 'r', room: {} }),
+  });
+  assert.equal(r.matched, true);
+  assert.equal(r.partnerUid, 'zzz-far');
+});
+
+test('tryPair: a flexible searcher prefers the CLOSEST candidate (same speed, then nearest rating)', async () => {
+  const db = makeMockDb();
+  // I am flexible, רגיל (40), rating 1000.
+  await joinQueue(db, {
+    uid: 'aaa-me', mode: 'random-live',
+    profile: { rating: 1000 }, settings: { strict: false, timelimit: true, botTime: 40 },
+    serverTimestamp: 300,
+  });
+  // Oldest candidate: same rating but DIFFERENT speed (בזק). Acceptable but not closest.
+  await joinQueue(db, {
+    uid: 'zzz-fast', mode: 'random-live',
+    profile: { rating: 1000 }, settings: { strict: false, timelimit: true, botTime: 20 },
+    serverTimestamp: 100,
+  });
+  // Newer candidate: SAME speed (רגיל), slightly farther rating. Should win on speed.
+  await joinQueue(db, {
+    uid: 'zzz-same', mode: 'random-live',
+    profile: { rating: 1150 }, settings: { strict: false, timelimit: true, botTime: 40 },
+    serverTimestamp: 200,
+  });
+  const r = await tryPair(db, {
+    uid: 'aaa-me', mode: 'random-live',
+    createRoomFromPair: async (_mine, theirs) => ({ roomId: `r-${theirs.uid}`, room: {} }),
+  });
+  assert.equal(r.matched, true);
+  assert.equal(r.partnerUid, 'zzz-same', 'same-speed partner preferred over an older different-speed one');
 });
 
 test('tryPair: prefers a compatible partner over an incompatible older one', async () => {

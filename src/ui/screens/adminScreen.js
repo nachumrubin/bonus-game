@@ -10,6 +10,9 @@ export const ADMIN_INTENT = Object.freeze({
   APPROVE_SUGGESTION:  'admin/approveSuggestion',
   REJECT_SUGGESTION:   'admin/rejectSuggestion',
   BACK:                'admin/back',
+  LOAD_DEBUG_REPORTS:  'admin/loadDebugReports',
+  CLOSE_DEBUG_REPORTS: 'admin/closeDebugReports',
+  RESPOND_DEBUG_REPORTS: 'admin/respondDebugReports',
   LOAD_DEBUG_INDEX:    'admin/loadDebugIndex',
   LOAD_DEBUG_TIMELINE: 'admin/loadDebugTimeline',
   REPLAY_GAME:         'admin/replayGame',
@@ -18,6 +21,7 @@ export const ADMIN_INTENT = Object.freeze({
 export const ADMIN_RENDER = Object.freeze({
   DATA:               'admin/render/data',
   SUGGESTION_DONE:    'admin/render/suggestionDone',
+  DEBUG_REPORTS:      'admin/render/debugReports',
   DEBUG_INDEX:        'admin/render/debugIndex',
   DEBUG_TIMELINE:     'admin/render/debugTimeline',
 });
@@ -52,10 +56,11 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
       b.classList.toggle('adm-tab--active', active);
       b.setAttribute('aria-selected', String(active));
     });
-    ['stats', 'players', 'words', 'debug'].forEach((t) => {
+    ['stats', 'players', 'words', 'reports', 'debug'].forEach((t) => {
       const panel = $(`#adm-panel-${t}`, screenEl);
       if (panel) panel.style.display = t === tab ? '' : 'none';
     });
+    if (tab === 'reports' && !reportsLoaded) bus.emit(ADMIN_INTENT.LOAD_DEBUG_REPORTS, {});
     if (tab === 'debug' && !debugIndexLoaded) bus.emit(ADMIN_INTENT.LOAD_DEBUG_INDEX, {});
   }
 
@@ -129,10 +134,17 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
 
   // ── Bulk approve ───────────────────────────────────────────────────────────
   const bulkApproveBtn = $('#adm-bulk-approve-btn', screenEl);
+  const bulkRejectBtn = $('#adm-bulk-reject-btn', screenEl);
+
+  function selectedSuggestionKeys() {
+    return Array.from(screenEl.querySelectorAll('.adm-sugg-cb:checked'))
+      .map((cb) => cb.dataset.admKey)
+      .filter(Boolean);
+  }
+
   if (bulkApproveBtn) {
     cleanups.push(on(bulkApproveBtn, 'click', () => {
-      const keys = Array.from(screenEl.querySelectorAll('.adm-sugg-cb:checked'))
-        .map((cb) => cb.dataset.admKey);
+      const keys = selectedSuggestionKeys();
       if (!keys.length) return;
       keys.forEach((key) => {
         const sugg = lastSuggestions.find((s) => s.key === key);
@@ -140,12 +152,24 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
       });
     }));
   }
+  if (bulkRejectBtn) {
+    cleanups.push(on(bulkRejectBtn, 'click', () => {
+      const keys = selectedSuggestionKeys();
+      if (!keys.length) return;
+      keys.forEach((key) => bus.emit(ADMIN_INTENT.REJECT_SUGGESTION, { key }));
+    }));
+  }
 
   function updateBulkBtn() {
-    if (!bulkApproveBtn) return;
-    const n = screenEl.querySelectorAll('.adm-sugg-cb:checked').length;
-    bulkApproveBtn.disabled = n === 0;
-    bulkApproveBtn.textContent = n > 0 ? `✓ אשר ${n} נבחרים` : '✓ אשר נבחרים';
+    const n = selectedSuggestionKeys().length;
+    if (bulkApproveBtn) {
+      bulkApproveBtn.disabled = n === 0;
+      bulkApproveBtn.textContent = n > 0 ? `✓ אשר ${n} נבחרים` : '✓ אשר נבחרים';
+    }
+    if (bulkRejectBtn) {
+      bulkRejectBtn.disabled = n === 0;
+      bulkRejectBtn.textContent = n > 0 ? `✕ הסר ${n} נבחרים` : '✕ הסר כל הנבחרים';
+    }
   }
 
   // ── Player search ──────────────────────────────────────────────────────────
@@ -409,6 +433,234 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     });
   }
 
+  // ── Contact reports tab ──────────────────────────────────────────────────
+  let reportsLoaded = false;
+  let debugReports = [];
+  let reportLoadError = '';
+
+  const reportSearch = $('#adm-report-search', screenEl);
+  const reportReason = $('#adm-report-reason', screenEl);
+  const reportStatus = $('#adm-report-status', screenEl);
+  const reportLoadBtn = $('#adm-report-load-btn', screenEl);
+  const reportSelectAll = $('#adm-report-select-all', screenEl);
+  const reportRespondBtn = $('#adm-report-respond-btn', screenEl);
+  const reportCloseBtn = $('#adm-report-close-btn', screenEl);
+  const reportListEl = $('#adm-report-list', screenEl);
+  const reportCountEl = $('#adm-report-count', screenEl);
+  const reportResponseModal = $('#adm-report-response-modal', screenEl);
+  const reportResponseOutcome = $('#adm-report-response-outcome', screenEl);
+  const reportResponseMessage = $('#adm-report-response-message', screenEl);
+  const reportResponseCount = $('#adm-report-response-count', screenEl);
+  const reportResponseCancel = $('#adm-report-response-cancel', screenEl);
+  const reportResponseSend = $('#adm-report-response-send', screenEl);
+
+  if (reportLoadBtn) cleanups.push(on(reportLoadBtn, 'click', () => bus.emit(ADMIN_INTENT.LOAD_DEBUG_REPORTS, {})));
+  if (reportSearch) cleanups.push(on(reportSearch, 'input', () => renderReports()));
+  if (reportReason) cleanups.push(on(reportReason, 'change', () => renderReports()));
+  if (reportStatus) cleanups.push(on(reportStatus, 'change', () => renderReports()));
+  if (reportSelectAll) {
+    cleanups.push(on(reportSelectAll, 'change', () => {
+      const checked = reportSelectAll.checked;
+      screenEl.querySelectorAll('.adm-report-cb:not(:disabled)').forEach((cb) => { cb.checked = checked; });
+      updateReportActionBtns();
+    }));
+  }
+  if (reportCloseBtn) {
+    cleanups.push(on(reportCloseBtn, 'click', () => {
+      const keys = selectedReportKeys();
+      if (!keys.length) return;
+      reportCloseBtn.disabled = true;
+      bus.emit(ADMIN_INTENT.CLOSE_DEBUG_REPORTS, { keys });
+    }));
+  }
+  if (reportRespondBtn) {
+    cleanups.push(on(reportRespondBtn, 'click', () => {
+      const keys = selectedReportKeys();
+      if (!keys.length) return;
+      openReportResponseModal(keys.length);
+    }));
+  }
+  if (reportResponseCancel) cleanups.push(on(reportResponseCancel, 'click', () => closeReportResponseModal()));
+  if (reportResponseModal) {
+    cleanups.push(on(reportResponseModal, 'click', (e) => {
+      if (e.target === reportResponseModal) closeReportResponseModal();
+    }));
+  }
+  if (reportResponseSend) {
+    cleanups.push(on(reportResponseSend, 'click', () => {
+      const keys = selectedReportKeys();
+      if (!keys.length) return;
+      const outcome = reportResponseOutcome?.value || 'handled';
+      const message = String(reportResponseMessage?.value ?? '').trim();
+      reportResponseSend.disabled = true;
+      if (reportRespondBtn) reportRespondBtn.disabled = true;
+      bus.emit(ADMIN_INTENT.RESPOND_DEBUG_REPORTS, { keys, outcome, message });
+      screenEl.querySelectorAll('.adm-report-cb:checked').forEach((cb) => { cb.checked = false; });
+      closeReportResponseModal();
+    }));
+  }
+
+  cleanups.push(bus.on(ADMIN_RENDER.DEBUG_REPORTS, ({ reports = [], error = '' } = {}) => {
+    reportsLoaded = true;
+    debugReports = reports;
+    reportLoadError = String(error || '');
+    renderReports();
+  }));
+
+  if (reportListEl) {
+    reportListEl.onclick = (e) => {
+      const gameId = e.target.closest?.('[data-report-game]')?.dataset?.reportGame;
+      if (!gameId) return;
+      switchTab('debug');
+      bus.emit(ADMIN_INTENT.LOAD_DEBUG_TIMELINE, { gameId });
+    };
+    cleanups.push(on(reportListEl, 'change', (e) => {
+      if (e.target.classList?.contains?.('adm-report-cb')) updateReportActionBtns();
+    }));
+  }
+
+  function renderReports() {
+    if (!reportListEl) return;
+    if (reportLoadError) {
+      if (reportCountEl) reportCountEl.textContent = `0 / ${debugReports.length.toLocaleString('he-IL')}`;
+      if (reportSelectAll) reportSelectAll.checked = false;
+      reportListEl.innerHTML = `<div class="adm-debug-empty">${esc(reportLoadError)}</div>`;
+      updateReportActionBtns();
+      return;
+    }
+    const q = (reportSearch?.value ?? '').trim().toLowerCase();
+    const reason = reportReason?.value ?? 'all';
+    const status = reportStatus?.value ?? 'open';
+    const filtered = debugReports.filter((r) => {
+      if (reason !== 'all' && r.reason !== reason) return false;
+      const resolved = isReportResolved(r);
+      if (status === 'open' && resolved) return false;
+      if (status === 'resolved' && !resolved) return false;
+      if (!q) return true;
+      return [
+        r.reportId, r.key, r.reason, r.status, r.userMessage, r.userId, r.playerName,
+        r.screen, r.gameId, r.appVersion, r.platform, r.resolvedBy, r.responseOutcome, r.responseMessage,
+      ].some((v) => String(v ?? '').toLowerCase().includes(q));
+    });
+    if (reportCountEl) {
+      reportCountEl.textContent = `${filtered.length.toLocaleString('he-IL')} / ${debugReports.length.toLocaleString('he-IL')}`;
+    }
+    if (reportSelectAll) reportSelectAll.checked = false;
+    const rows = filtered.slice(0, 200);
+    if (rows.length === 0) {
+      reportListEl.innerHTML = '<div class="adm-debug-empty">לא נמצאו פניות</div>';
+      updateReportActionBtns();
+      return;
+    }
+    reportListEl.innerHTML = rows.map((r) => {
+      const when = reportTime(r);
+      const msg = String(r.userMessage ?? '').trim();
+      const gameId = r.gameId ? String(r.gameId) : '';
+      const resolved = isReportResolved(r);
+      return `<div class="adm-report-row">
+        <div class="adm-report-head">
+          <label class="adm-report-check">
+            <input type="checkbox" class="adm-report-cb" data-report-key="${esc(r.key ?? r.reportId ?? '')}" ${resolved ? 'disabled' : ''}>
+          </label>
+          <span class="adm-report-reason adm-report-reason--${esc(cssToken(r.reason ?? 'unknown'))}">${esc(reasonLabel(r.reason))}</span>
+          ${resolved ? '<span class="adm-report-status">סגור</span>' : ''}
+          <span class="adm-report-player">${esc(r.playerName ?? r.userId ?? 'שחקן לא ידוע')}</span>
+          <span class="adm-report-time">${esc(when)}</span>
+        </div>
+        <div class="adm-report-msg">${esc(msg || 'לא צורף פירוט')}</div>
+        <div class="adm-report-meta">
+          ${gameId ? `<button class="adm-report-game" data-report-game="${esc(gameId)}">פתח משחק ${esc(gameId)}</button>` : '<span>ללא משחק מקושר</span>'}
+          <span>${esc(r.screen ?? 'מסך לא ידוע')}</span>
+          <span>v:${esc(r.appVersion ?? '—')}</span>
+          ${r.userId ? `<span class="adm-report-uid">${esc(r.userId)}</span>` : ''}
+          ${r.responseOutcome ? `<span class="adm-report-response-chip">${esc(outcomeLabel(r.responseOutcome))}</span>` : ''}
+        </div>
+        ${r.responseMessage ? `<div class="adm-report-response-preview">${esc(r.responseMessage)}</div>` : ''}
+      </div>`;
+    }).join('');
+    updateReportActionBtns();
+  }
+
+  function selectedReportKeys() {
+    return Array.from(screenEl.querySelectorAll('.adm-report-cb:checked'))
+      .map((cb) => cb.dataset.reportKey)
+      .filter(Boolean);
+  }
+
+  function updateReportActionBtns() {
+    const n = selectedReportKeys().length;
+    if (reportCloseBtn) {
+      reportCloseBtn.disabled = n === 0;
+      reportCloseBtn.textContent = n > 0 ? `סגור ${n} פניות` : 'סגור פניות';
+    }
+    if (reportRespondBtn) {
+      reportRespondBtn.disabled = n === 0;
+      reportRespondBtn.textContent = n > 0 ? `השב וסגור ${n}` : 'השב וסגור';
+    }
+    if (reportResponseModal && !reportResponseModal.classList.contains('hidden')) {
+      updateReportResponseCount(n);
+    }
+  }
+
+  function openReportResponseModal(count) {
+    if (!reportResponseModal) return;
+    if (reportResponseOutcome) reportResponseOutcome.value = 'handled';
+    if (reportResponseMessage) reportResponseMessage.value = '';
+    if (reportResponseSend) reportResponseSend.disabled = false;
+    updateReportResponseCount(count);
+    reportResponseModal.classList.remove('hidden');
+  }
+
+  function closeReportResponseModal() {
+    if (!reportResponseModal) return;
+    reportResponseModal.classList.add('hidden');
+    if (reportResponseSend) reportResponseSend.disabled = false;
+    updateReportActionBtns();
+  }
+
+  function updateReportResponseCount(count) {
+    if (!reportResponseCount) return;
+    reportResponseCount.textContent = count > 0
+      ? `${count.toLocaleString('he-IL')} פניות נבחרות. הודעה תישלח רק לפניות עם משתמש מחובר.`
+      : '';
+  }
+
+  function isReportResolved(report) {
+    return report?.status === 'resolved' || report?.resolved === true || report?.resolvedAt != null;
+  }
+
+  function reasonLabel(reason) {
+    const labels = {
+      'game-bug': 'דווח על בעיה במשחק',
+      dictionary: 'מילון או הצעת מילה',
+      account: 'חשבון, חברים או התראות',
+      feedback: 'הצעת שיפור',
+      other: 'אחר',
+    };
+    return labels[reason] ?? (reason || 'לא סווג');
+  }
+
+  function outcomeLabel(outcome) {
+    const labels = {
+      handled: 'טופל',
+      rejected: 'נדחה',
+      appreciated: 'תודה על ההצעה',
+      'need-more-info': 'צריך עוד פרטים',
+    };
+    return labels[outcome] ?? (outcome || 'תגובה נשלחה');
+  }
+
+  function reportTime(report) {
+    const ms = report.serverTimestamp ?? report.clientTimestamp ?? report.createdAt ?? null;
+    return typeof ms === 'number' && Number.isFinite(ms)
+      ? new Date(ms).toLocaleString('he-IL')
+      : 'זמן לא ידוע';
+  }
+
+  function cssToken(value) {
+    return String(value ?? '').replace(/[^a-z0-9_-]/gi, '-').toLowerCase();
+  }
+
   // ── Debug tab ──────────────────────────────────────────────────────────────
   let debugIndexLoaded = false;
   let debugIndex = [];          // [{ gameId, hostName, guestName, status, appVersion, createdAt, ... }]
@@ -498,32 +750,9 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
           </div>`).join('');
     }
 
-    const tlEl = $('#adm-debug-timeline', screenEl);
-    if (tlEl) {
-      const evs = timeline?.events ?? [];
-      tlEl.innerHTML = evs.length === 0 ? '<div class="adm-debug-empty">אין אירועים</div>'
-        : evs.map((e) => {
-            const when = e.serverTimestamp ?? e.clientTimestamp;
-            const t = typeof when === 'number' ? new Date(when).toLocaleTimeString('he-IL') : '';
-            return `<details class="adm-debug-evt">
-              <summary><span class="adm-debug-evt-type">${esc(e.type)}</span>
-                <span class="adm-debug-evt-sum">${esc(e.summary ?? '')}</span>
-                <span class="adm-debug-evt-time">${esc(t)}</span></summary>
-              <pre class="adm-debug-json">${esc(JSON.stringify(e, null, 2))}</pre>
-            </details>`;
-          }).join('');
-    }
-
-    const repEl = $('#adm-debug-reports', screenEl);
-    if (repEl) {
-      const reps = timeline?.reports ?? [];
-      repEl.innerHTML = reps.length === 0 ? '<div class="adm-debug-empty">אין דיווחים</div>'
-        : reps.map((r) => `<details class="adm-debug-evt adm-debug-report">
-            <summary><span class="adm-debug-evt-type">📣 ${esc(r.kind ?? 'report')}</span>
-              <span class="adm-debug-evt-sum">${esc(r.userMessage ?? '')}</span></summary>
-            <pre class="adm-debug-json">${esc(JSON.stringify(r, null, 2))}</pre>
-          </details>`).join('');
-    }
+    // The per-event timeline + reports lists were removed from the detail view —
+    // the replay overlay's time-aligned grid covers the event walkthrough. The
+    // header summary (counts) and the warnings (anomaly diagnostics) stay.
   }
 
   function esc(str) {

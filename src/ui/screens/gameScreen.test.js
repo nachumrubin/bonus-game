@@ -271,8 +271,8 @@ test('renderer reflects INVALID_MOVE_REJECTED reason in #sbar', () => {
   const { controller } = fresh();
   const { root, elements } = makeGameDom();
   mountGameScreen({ controller, root });
-  controller.placeTile({ r: 4, c: 4, letter: 'ת', val: 4 });
-  controller.confirmMove(); // 'ת' alone — word-too-short
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 }); // 'א' is in rack[0]
+  controller.confirmMove(); // single tile — word-too-short
   assert.equal(elements.get('sbar').textContent, 'המילה חייבת להיות לפחות 2 אותיות!');
 });
 
@@ -284,6 +284,10 @@ test('lock inventory click then board click places a spine lock', () => {
   const lockButton = elements.get('lock-inv-display').children[1];
   lockButton.fireClick();
   elements.get('game-grid').fireClick(elements.get('c4_4'));
+  // Locks now use a pending-then-confirm flow: the board click only previews
+  // the lock; שבץ (confirmMove) commits it to the engine.
+  assert.deepEqual(controller.view.pendingLock, { r: 4, c: 4, duration: 3 });
+  controller.confirmMove();
 
   assert.equal(session.state.currentTurnSlot, 1);
   assert.deepEqual(session.state.lockInventory[0], [3, 5]);
@@ -482,6 +486,9 @@ test('clicking an empty cell with nothing selected quick-places a lock with the 
   mountGameScreen({ controller, root });
 
   elements.get('game-grid').fireClick(elements.get('c4_4'));
+  // Quick-place previews a pending lock at the smallest duration; שבץ commits.
+  assert.deepEqual(controller.view.pendingLock, { r: 4, c: 4, duration: 3 });
+  controller.confirmMove();
 
   const lock = session.state.lockedCells.find(l => l.r === 4 && l.c === 4);
   assert.ok(lock, 'a lock should have been placed at (4,4)');

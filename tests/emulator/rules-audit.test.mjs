@@ -264,6 +264,28 @@ test('users/$uid/asyncRooms: either player can clear the index when game ends', 
   });
 });
 
+test('users/$uid/profile/stats: admin can grant moderation stats, non-admin cross-write fails', async () => {
+  await withTestEnv(async (env) => {
+    await seedWithoutRules(env, async (db) => {
+      await db.ref(`admins/${HOST_UID}`).set(true);
+      await db.ref(`users/${GUEST_UID}/profile/stats`).set({ wordsAccepted: 1 });
+    });
+
+    const admin = makeUserApp(env, HOST_UID);
+    await assertSucceeds(admin.ref(`users/${GUEST_UID}/profile/stats`).transaction((stats) => ({
+      ...(stats ?? {}),
+      wordsAccepted: (Number(stats?.wordsAccepted) || 0) + 2,
+    })));
+    assert.equal(await adminRead(env, `users/${GUEST_UID}/profile/stats/wordsAccepted`), 3);
+
+    const other = makeUserApp(env, OTHER_UID);
+    await assertFails(other.ref(`users/${GUEST_UID}/profile/stats`).transaction((stats) => ({
+      ...(stats ?? {}),
+      wordsAccepted: (Number(stats?.wordsAccepted) || 0) + 1,
+    })));
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────
 // invites / inviteAcks
 // ─────────────────────────────────────────────────────────────────────────

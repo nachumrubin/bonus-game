@@ -5,6 +5,7 @@ import { makeMockDb } from '../online/mockFirebase.js';
 import {
   configureDebugLogger, logGameEvent, createGameSnapshot, putClientSnapshot,
   createDebugWarning, createDebugReport, upsertGameIndex, getGameDebugTimeline,
+  pruneUndefined,
 } from './debugLogger.js';
 import { DEBUG_EVENT } from './debugSchema.js';
 
@@ -20,6 +21,20 @@ test('logGameEvent appends with a push-key eventId, gameId and timestamps', asyn
   assert.equal(stored.type, DEBUG_EVENT.WORD_ACCEPTED);
   assert.equal(stored.serverTimestamp, 1000);
   assert.ok(stored.clientTimestamp > 0);
+});
+
+test('pruneUndefined deep-strips undefined so Firebase set() never rejects', () => {
+  const cleaned = pruneUndefined({ a: 1, b: undefined, payload: { reason: undefined, score: 0 }, list: [1, undefined, { x: undefined, y: 2 }] });
+  assert.deepEqual(cleaned, { a: 1, payload: { score: 0 }, list: [1, null, { y: 2 }] });
+});
+
+test('logGameEvent stores no undefined fields (an absent reason must not break the write)', async () => {
+  const db = makeMockDb();
+  const id = await logGameEvent(db, 'room1', { type: DEBUG_EVENT.TURN_CHANGED, payload: { reason: undefined, turnNumber: 3 } });
+  assert.ok(id, 'write succeeds despite undefined reason');
+  const stored = db._data.gameEvents.room1[id];
+  assert.ok(!('reason' in stored.payload), 'undefined reason pruned');
+  assert.equal(stored.payload.turnNumber, 3);
 });
 
 test('createGameSnapshot keys server snapshots by version', async () => {

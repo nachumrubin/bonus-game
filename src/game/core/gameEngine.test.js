@@ -97,6 +97,7 @@ test('CONFIRM_MOVE rejects when validator fails (gap)', () => {
   seedDict(['אב']);
   const { state, eng } = freshEngine();
   const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
   state.currentTurnSlot = 0;
 
   eng.dispatch({
@@ -119,6 +120,7 @@ test('CONFIRM_MOVE rejects when a formed word is not in the dictionary', () => {
   seedDict(['אב']); // does NOT include 'גד'
   const { state, eng } = freshEngine();
   const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
   state.currentTurnSlot = 0;
 
   eng.dispatch({

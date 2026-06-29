@@ -40,8 +40,8 @@ export function createGameFlowController({
   // again — `button[onclick="openEndMenu()"]` matches nothing once the
   // attribute is gone.
   const endMenuBtn = root?.querySelector?.('button[onclick="openEndMenu()"]') ?? null;
-  const endMenuTx  = endMenuBtn?.querySelector?.('.tb-tx') ?? null;
-  wireButtons('button[onclick="openEndMenu()"]', () => bus.emit(BACK_OPEN, {}));
+  const endMenuTx  = endMenuBtn?.querySelector?.('.tb-tx') ?? endMenuBtn;
+  wireButtons('button[onclick="openEndMenu()"]', () => bus.emit(BACK_OPEN, { isLive: isLiveGame() }));
 
   // Offline modes can pause-and-save from the back-confirm overlay, so the
   // top-bar end button reads "סיים / שמור" to advertise the save path.
@@ -266,7 +266,15 @@ export function createGameFlowController({
   function currentPlayerPayload() {
     const state = activeGameRef()?.session?.state;
     const slot = state?.currentTurnSlot ?? 0;
-    return { playerName: state?.players?.[slot]?.displayName };
+    return { playerName: state?.players?.[slot]?.displayName, isLive: isLiveGame() };
+  }
+
+  // A live online game (real-time, not async). These games can't pause-and-save
+  // — the opponent's clock keeps running — so the pause/back overlays hide the
+  // "השהה ושמור" action for them (it would just resign, which is misleading).
+  function isLiveGame() {
+    const ag = activeGameRef();
+    return !!(ag?.online && !ag?.isAsync);
   }
 
   function endActiveGame() {

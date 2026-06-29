@@ -31,7 +31,8 @@ function makeInput(value = '') {
 
 function makeSetupDom() {
   const els = {
-    title:    { textContent: 'הגדרות', style: {} },
+    title:     { textContent: 'הגדרות', style: {} },
+    titleText: { textContent: 'הגדרות', style: {} },
     p1:       makeInput('שחקן 1'),
     p2:       makeInput('שחקן 2'),
     p2f:      { style: {} },
@@ -45,7 +46,8 @@ function makeSetupDom() {
   const ss = {
     querySelector(sel) {
       switch (sel) {
-        case '#stitle': return els.title;
+        case '#stitle':      return els.title;
+        case '#stitle-text': return els.titleText;
         case '#ip1':    return els.p1;
         case '#ip2':    return els.p2;
         case '#p2f':    return els.p2f;
@@ -81,7 +83,7 @@ test('SETUP_OPEN with mode=vs shows P2 input, hides difficulty', () => {
   bus.emit(SETUP_OPEN, { mode: 'vs' });
   assert.equal(els.p2f.style.display, '');
   assert.equal(els.dff.style.display, 'none');
-  assert.equal(els.title.textContent, 'שני שחקנים');
+  assert.equal(els.titleText.textContent, 'שני שחקנים');
 });
 
 test('SETUP_OPEN with mode=bot shows difficulty, hides P2', () => {
@@ -91,7 +93,7 @@ test('SETUP_OPEN with mode=bot shows difficulty, hides P2', () => {
   bus.emit(SETUP_OPEN, { mode: 'bot' });
   assert.equal(els.p2f.style.display, 'none');
   assert.equal(els.dff.style.display, '');
-  assert.equal(els.title.textContent, 'נגד המחשב');
+  assert.equal(els.titleText.textContent, 'נגד המחשב');
 });
 
 test('clicking the play button emits PLAY_CLICKED with names + difficulty + mode', () => {

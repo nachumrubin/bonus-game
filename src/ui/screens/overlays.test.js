@@ -305,6 +305,41 @@ test('backConfirmScreen: BACK_OPEN unhides; stay/leave emit intents', () => {
   assert.deepEqual(events, ['pauseSave']);
 });
 
+test('backConfirmScreen: live game hides "השהה ושמור", non-live shows it', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-back-confirm' });
+  const stay  = makeBtn({ onclick: 'backConfirmStay()' });
+  const pause = makeBtn({ onclick: 'pauseGame();backConfirmStay()' });
+  const leave = makeBtn({ onclick: 'backConfirmLeave()' });
+  elements.set('stay', stay); elements.set('pause', pause); elements.set('leave', leave);
+  const root = { querySelector: () => overlay };
+  mountBackConfirmScreen({ root, bus });
+
+  bus.emit(BACK_OPEN, { isLive: true });
+  assert.equal(pause.style.display, 'none', 'live game hides pause-and-save');
+
+  bus.emit(BACK_OPEN, { isLive: false });
+  assert.equal(pause.style.display, '', 'non-live game shows pause-and-save');
+});
+
+test('pauseScreen: live game hides "השהה ושמור", non-live shows it', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-pause' });
+  const resume = makeBtn({ onclick: 'resumeGame()' });
+  const save   = makeBtn({ onclick: 'savePauseAndHome()' });
+  const quit   = makeBtn({ onclick: 'discardPauseAndHome()' });
+  elements.set('resume', resume); elements.set('save', save); elements.set('quit', quit);
+  elements.set('pause-player-name', makeBtn());
+  const root = { querySelector: () => overlay };
+  mountPauseScreen({ root, bus });
+
+  bus.emit(PAUSE_OPEN, { isLive: true });
+  assert.equal(save.style.display, 'none', 'live game hides pause-and-save');
+
+  bus.emit(PAUSE_OPEN, { isLive: false });
+  assert.equal(save.style.display, '', 'non-live game shows pause-and-save');
+});
+
 // ─── Coin toss ────────────────────────────────────────────────────
 
 test('coinTossScreen: COIN_OPEN populates sub text and removes flipping class', () => {

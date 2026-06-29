@@ -50,6 +50,24 @@ test('firebase rules include dictionary moderation protections', () => {
   );
 });
 
+test('firebase rules allow admins to update user stats for moderation rewards', () => {
+  const rulesDoc = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+  const statsRules = rulesDoc.rules?.users?.$uid?.profile?.stats;
+  const adminOrSelf = "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true)";
+
+  assert.ok(statsRules, 'users/$uid/profile/stats rules should exist');
+  assert.equal(
+    statsRules['.read'],
+    adminOrSelf,
+    'stats transactions need read access for the owner or an admin',
+  );
+  assert.equal(
+    statsRules['.write'],
+    adminOrSelf,
+    'admins need write access to grant wordsAccepted moderation credit',
+  );
+});
+
 test('firebase rules protect the game-debug nodes (admin read, participant append-only)', () => {
   const rulesDoc = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
   const rules = rulesDoc.rules || {};
@@ -76,6 +94,42 @@ test('firebase rules protect the game-debug nodes (admin read, participant appen
     'clientSnapshots write must bind auth.uid to the $slot player'
   );
 
-  // debugReports: any authenticated user may file, append-only.
-  assert.equal(rules.debugReports.$reportId['.write'], 'auth != null && !data.exists()');
+  // debugReports: any authenticated user may file; only admins may update/resolve.
+  assert.equal(
+    rules.debugReports.$reportId['.write'],
+    "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)",
+  );
+});
+
+test('firebase rules protect user support notifications', () => {
+  const rulesDoc = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+  const rules = rulesDoc.rules || {};
+  const node = rules.userNotifications;
+
+  assert.ok(node, 'userNotifications path should exist');
+  assert.equal(
+    node.$uid['.read'],
+    'auth != null && auth.uid === $uid',
+    'users should only read their own notifications',
+  );
+  assert.match(
+    node.$uid.$notificationId['.write'],
+    /root\.child\('admins'\)\.child\(auth\.uid\)\.val\(\) === true/,
+    'admins should be able to create support notifications',
+  );
+  assert.match(
+    node.$uid.$notificationId['.write'],
+    /auth\.uid === \$uid && data\.exists\(\) && newData\.exists\(\)/,
+    'users should only update existing notifications under their uid',
+  );
+  assert.match(
+    node.$uid.$notificationId['.write'],
+    /newData\.child\('message'\)\.val\(\) === data\.child\('message'\)\.val\(\)/,
+    'user writes should preserve the admin message',
+  );
+  assert.match(
+    node.$uid.$notificationId['.write'],
+    /newData\.child\('originalMessage'\)\.val\(\) === data\.child\('originalMessage'\)\.val\(\)/,
+    'user writes should preserve the original request context',
+  );
 });

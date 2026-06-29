@@ -213,12 +213,32 @@ export async function bumpStats(db, uid, delta) {
 
 // ── Avatar-store economy I/O ──────────────────────────────────────────────
 
+// uids whose coins transaction is mid-apply. A transaction's optimistic local
+// write synchronously re-fires profile watchers, which can call bumpCoins again
+// for the same uid → unbounded recursion (RangeError). We block only that
+// *synchronous* re-entry: the flag is held just around the transaction call, not
+// across the await, so legitimate back-to-back payouts (e.g. several
+// achievements completing at once) still go through.
+const coinTxInFlight = new Set();
+
 // Add (or subtract, for spends) coins atomically. Floors at zero. Emits
 // PROFILE_EVT.CHANGED. Returns the new balance, or null on no-op.
 export async function bumpCoins(db, uid, amount) {
   if (!uid || !amount) return null;
+  if (coinTxInFlight.has(uid)) {
+    console.warn('[profileService.bumpCoins] re-entrant call suppressed for', uid);
+    return null;
+  }
   const ref = db.ref(`${PATH.users}/${uid}/profile/coins`);
-  const result = await ref.transaction((current) => clampCoins((current ?? 0) + amount));
+  let txPromise;
+  coinTxInFlight.add(uid);
+  try {
+    // The synchronous optimistic apply + watcher re-fire happen during this call.
+    txPromise = ref.transaction((current) => clampCoins((current ?? 0) + amount));
+  } finally {
+    coinTxInFlight.delete(uid);
+  }
+  const result = await txPromise;
   if (result?.committed) {
     bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: result.snapshot?.val?.() ?? null } });
   }

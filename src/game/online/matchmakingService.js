@@ -34,34 +34,64 @@ export async function leaveQueue(db, { uid, mode }) {
   await selfQueueRef(db, mode, uid).remove();
 }
 
-// Decide whether two queue entries should be allowed to pair. Honors:
-//   - settings.strict       (timelimit must match if either side is strict)
-//   - settings.ratingRange  (asymmetric: each side enforces their own range)
+// Decide whether two queue entries are ALLOWED to pair (a hard yes/no). Soft
+// preferences — how desirable a compatible candidate is — are scored separately
+// by matchDistance() and only affect which compatible candidate is chosen.
 //
 // Mode is implicitly enforced because queues are keyed by mode.
+//
+// "חיפוש מדויק" (exact search) is a per-player switch that makes ALL of that
+// player's settings HARD constraints. A flexible (unchecked) player imposes no
+// hard constraint — it will still pair with anyone in the pool, just preferring
+// the closest match (see matchDistance / tryPair). Specifically:
+//   - timelimit (live vs async) must match whenever EITHER side is strict.
+//   - botTime (the live turn speed: בזק 20 / רגיל 40 / איטי 60) must match only
+//     when BOTH sides are strict. If exactly one side is strict, they still pair
+//     and the flexible side adopts the strict side's speed (resolved in
+//     spineMatchmaking.createRoomForPair), so the strict player gets the pace it
+//     asked for.
+//   - ratingRange is a hard filter ONLY for the strict side(s). A flexible
+//     searcher may pair with an opponent outside its preferred range if that's
+//     all the pool offers; its range only influences candidate ranking.
 export function isCompatible(a, b) {
   const aSettings = a?.settings ?? {};
   const bSettings = b?.settings ?? {};
 
-  // Strict-search: timelimit must match if either side asked for strict.
   if ((aSettings.strict || bSettings.strict) &&
       aSettings.timelimit !== bSettings.timelimit) {
     return false;
   }
-
-  // Rating range: each side enforces its own filter on the other.
-  const aRating = a?.rating ?? 1000;
-  const bRating = b?.rating ?? 1000;
-  if (aSettings.ratingRange != null &&
-      Math.abs(aRating - bRating) > aSettings.ratingRange) {
+  if (aSettings.strict && bSettings.strict &&
+      (aSettings.botTime ?? null) !== (bSettings.botTime ?? null)) {
     return false;
   }
-  if (bSettings.ratingRange != null &&
-      Math.abs(aRating - bRating) > bSettings.ratingRange) {
+
+  // Rating range is a hard filter only for a STRICT searcher.
+  const ratingGap = Math.abs((a?.rating ?? 1000) - (b?.rating ?? 1000));
+  if (aSettings.strict && aSettings.ratingRange != null &&
+      ratingGap > aSettings.ratingRange) {
+    return false;
+  }
+  if (bSettings.strict && bSettings.ratingRange != null &&
+      ratingGap > bSettings.ratingRange) {
     return false;
   }
 
   return true;
+}
+
+// Score how close a (compatible) candidate is to `me`'s preferences — lower is
+// better. Used to pick the BEST partner from the pool, realizing the flexible
+// "pair me with the closest available player" semantics. Primary axis: the turn
+// speed (a different pace is the largest experience gap, so a same-speed partner
+// always wins over a different-speed one). Secondary axis: the rating gap.
+// Callers tie-break equal distances by queue age (oldest first).
+export function matchDistance(me, candidate) {
+  const ms = me?.settings ?? {};
+  const cs = candidate?.settings ?? {};
+  const speedMismatch = (ms.botTime ?? null) !== (cs.botTime ?? null) ? 1 : 0;
+  const ratingGap = Math.abs((me?.rating ?? 1000) - (candidate?.rating ?? 1000));
+  return { speedMismatch, ratingGap };
 }
 
 // Try to find a partner in the queue and pair atomically.
@@ -95,10 +125,18 @@ export async function tryPair(db, { uid, mode, createRoomFromPair }) {
   const myEntry = entries[uid];
   if (!myEntry) return { matched: false }; // we're not in the queue anymore
 
-  // Pick the oldest COMPATIBLE entry that is not us.
+  // Among COMPATIBLE candidates, pick the CLOSEST to my preferences (same turn
+  // speed first, then smallest rating gap), tie-breaking by queue age so an
+  // equally-good older waiter is served first.
   const others = Object.values(entries)
     .filter(e => e.uid !== uid && isCompatible(myEntry, e))
-    .sort((a, b) => (a.joinedAt ?? 0) - (b.joinedAt ?? 0));
+    .sort((a, b) => {
+      const da = matchDistance(myEntry, a);
+      const db = matchDistance(myEntry, b);
+      if (da.speedMismatch !== db.speedMismatch) return da.speedMismatch - db.speedMismatch;
+      if (da.ratingGap !== db.ratingGap) return da.ratingGap - db.ratingGap;
+      return (a.joinedAt ?? 0) - (b.joinedAt ?? 0);
+    });
   if (others.length === 0) return { matched: false };
   const partner = others[0];
 

@@ -90,10 +90,57 @@ export const STORE_TIERS = Object.freeze({
   },
 });
 
+export const STORE_AVATAR_NAMES = Object.freeze({
+  common_1: 'כדורסלן',
+  common_2: 'כדורגלנית',
+  common_3: 'אוהדת כדורסל',
+  common_4: 'גיימרית',
+  common_5: 'אוהדת נבחרת',
+  common_6: 'סופר סת"ם',
+  common_7: 'רופא',
+  common_8: 'לוחם אש',
+  common_9: 'גיימר',
+  common_10: 'האקר',
+  common_11: 'שוטר',
+  common_12: 'שף',
+  common_13: 'אוהד כדורגל',
+  common_14: 'כדורגלן',
+  common_15: 'חייל',
+  common_16: 'סופר',
+  common_17: 'אנונימי',
+  rare_1: 'דוד בן גוריון',
+  rare_2: 'גולדה מאיר',
+  rare_3: 'הרצל',
+  rare_4: 'אילן רמון',
+  rare_5: 'מרים פרץ',
+  rare_6: 'משה דיין',
+  rare_7: 'עפרה חזה',
+  rare_8: 'יצחק רבין',
+  rare_9: 'חנה סנש',
+  rare_10: 'אריק איינשטיין',
+  rare_11: 'הראי"ה קוק',
+  rare_12: 'אלברט איינשטיין',
+  epic_1: 'אסתר המלכה',
+  epic_2: 'יעקב אבינו',
+  epic_3: 'רחל אמנו',
+  epic_4: 'רות המואביה',
+  epic_5: 'שמואל הנביא',
+  epic_6: 'מרדכי היהודי',
+  epic_7: 'יהושע בן נון',
+  epic_8: 'הרמב"ם',
+  epic_9: 'אדם הראשון',
+  epic_10: 'יהודה המכבי',
+  legendary_1: 'אהרן הכהן',
+  legendary_2: 'דוד המלך',
+  legendary_3: 'יוסף הצדיק',
+  legendary_4: 'משה רבנו',
+  legendary_5: 'שמשון הגיבור',
+});
+
 // Order categories appear in the store (common first, legendary last).
 export const STORE_CATEGORY_ORDER = Object.freeze(['common', 'rare', 'epic', 'legendary']);
 
-// The avatar catalog: { id, category, src, price }. `src` is URL-encoded so
+// The avatar catalog: { id, category, src, price, nameHe }. `src` is URL-encoded so
 // descriptive filenames with spaces / Hebrew / mixed-case load in <img>.
 export const STORE_AVATARS = Object.freeze(
   STORE_CATEGORY_ORDER.flatMap((category) => {
@@ -110,6 +157,7 @@ export const STORE_AVATARS = Object.freeze(
         category,
         src: encodeURI(src),
         price: tier.price,
+        nameHe: STORE_AVATAR_NAMES[id] ?? id,
       });
     });
   }),

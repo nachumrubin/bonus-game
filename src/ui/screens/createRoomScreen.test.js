@@ -26,15 +26,18 @@ function makeBtn({ onclick, classes = [] } = {}) {
   };
 }
 
+// The create-room UI uses fixed speed cards (בזק 20 / רגיל 40 / איטי 60),
+// same as matchmaking. `botTime` selects which speed card is `.active`
+// (default רגיל=40); `timelimit` is derived purely from live vs async mode.
 function makeDom({
-  modeAsync = false, tlNo = false, botTime = '20', name = 'שחקן 1',
+  modeAsync = false, botTime = 40, name = 'שחקן 1',
 } = {}) {
   const els = {
     modeLive:  makeBtn({ classes: !modeAsync ? ['active'] : [] }),
     modeAsync: makeBtn({ classes: modeAsync  ? ['active'] : [] }),
-    tlYes:     makeBtn({ classes: !tlNo ? ['active'] : [] }),
-    tlNo:      makeBtn({ classes: tlNo  ? ['active'] : [] }),
-    timeVal:   { textContent: botTime },
+    spd20:     makeBtn({ classes: botTime === 20 ? ['active'] : [] }),
+    spd40:     makeBtn({ classes: botTime === 40 ? ['active'] : [] }),
+    spd60:     makeBtn({ classes: botTime === 60 ? ['active'] : [] }),
     nameInput: { value: name },
     confirm:   makeBtn({ onclick: 'crConfirm()' }),
     cancel:    makeBtn({ onclick: "ovClose('ov-create-room')" }),
@@ -44,9 +47,9 @@ function makeDom({
       switch (sel) {
         case '#cr-mode-live':  return els.modeLive;
         case '#cr-mode-async': return els.modeAsync;
-        case '#cr-tl-yes':     return els.tlYes;
-        case '#cr-tl-no':      return els.tlNo;
-        case '#cr-time-val':   return els.timeVal;
+        case '#cr-spd-20':     return els.spd20;
+        case '#cr-spd-40':     return els.spd40;
+        case '#cr-spd-60':     return els.spd60;
         case '#cr-name':       return els.nameInput;
         case 'button[onclick="crConfirm()"]': return els.confirm;
         case 'button[onclick="ovClose(\'ov-create-room\')"]': return els.cancel;
@@ -57,32 +60,31 @@ function makeDom({
   return { root, els };
 }
 
-test('readCreateRoomFilters: live defaults', () => {
+test('readCreateRoomFilters: live defaults (רגיל = 40s)', () => {
   const { root } = makeDom();
   assert.deepEqual(readCreateRoomFilters(root), {
     legacyMode: 'live',
     spineMode: 'friend-live',
     timelimit: true,
-    botTime: 20,
+    botTime: 40,
     name: 'שחקן 1',
   });
 });
 
 test('readCreateRoomFilters: async forces timelimit=false', () => {
-  const { root } = makeDom({ modeAsync: true, tlNo: false });
+  const { root } = makeDom({ modeAsync: true });
   const f = readCreateRoomFilters(root);
   assert.equal(f.spineMode, 'friend-async');
   assert.equal(f.timelimit, false);
 });
 
-test('readCreateRoomFilters: tl-no honored in live', () => {
-  const { root } = makeDom({ tlNo: true });
-  assert.equal(readCreateRoomFilters(root).timelimit, false);
+test('readCreateRoomFilters: timelimit is true in any live game', () => {
+  assert.equal(readCreateRoomFilters(makeDom({ botTime: 20 }).root).timelimit, true);
 });
 
-test('readCreateRoomFilters: parses botTime, falls back on NaN', () => {
-  assert.equal(readCreateRoomFilters(makeDom({ botTime: '45' }).root).botTime, 45);
-  assert.equal(readCreateRoomFilters(makeDom({ botTime: 'xx' }).root).botTime, 20);
+test('readCreateRoomFilters: reads the active speed card', () => {
+  assert.equal(readCreateRoomFilters(makeDom({ botTime: 20 }).root).botTime, 20);
+  assert.equal(readCreateRoomFilters(makeDom({ botTime: 60 }).root).botTime, 60);
 });
 
 test('readCreateRoomFilters: trims name; empty falls back to default', () => {
