@@ -24,7 +24,8 @@ import { registerAllBoosts, _resetAndRegister, BDEFS, BONUS_TYPES } from './game
 import { createLocalGameSession } from './game/sessions/localGameSession.js';
 import { attachBotPlayer } from './game/sessions/botGameSession.js';
 import { resolveProfile } from './game/sessions/botSearch.js';
-import { createRng, shuffle } from './util/rng.js';
+import * as botVocabulary from './game/sessions/botVocabulary.js';
+import { createRng } from './util/rng.js';
 import { attachScriptedTutorialBot, seedTutorialRack, seedTutorialBonusAssignment, TUTORIAL_WORDS } from './game/sessions/tutorialSession.js';
 import { createOnlineGameSession } from './game/sessions/onlineGameSession.js';
 
@@ -250,6 +251,7 @@ let activeFbAuth = null;
 let activeFbCurrentUser = null;
 let activeFbServerTimestamp = null;
 let dictionaryLoadPromise = null;
+let botWordsLoadPromise = null;
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCE-Im2HzYhJVlRd07uIHqcsCGTQQhYgDo',
   authDomain: 'boost-8ef11.firebaseapp.com',
@@ -266,6 +268,7 @@ const DEFAULT_FIREBASE_CONFIG = {
  * @property {number} stage
  * @property {typeof bus} bus
  * @property {() => Promise<number>} ensureDictionaryLoaded
+ * @property {() => Promise<number>} ensureBotWordsLoaded
  * @property {() => any} bootOffline2P
  * @property {(options?: { difficulty?: number }) => any} bootOfflineBot
  * @property {(options: object) => any} startGameViaSpine
@@ -310,9 +313,10 @@ async function boot() {
   _resetAndRegister();
 
   // ─── Dictionary ─────────────────────────────────────────
-  // Keep the first render path clear; the dictionary preloads in the
-  // background and every word-facing feature can retry on demand.
+  // Keep the first render path clear; the dictionary and bot vocabulary
+  // preload in the background and every word-facing feature can retry on demand.
   scheduleDictionaryPreload();
+  scheduleBotWordsPreload();
 
   // ─── Service worker registration ───────────────────────
   // Register the app's own service worker for offline caching + push.
@@ -422,6 +426,8 @@ async function boot() {
     get currentUser() { return activeFbCurrentUser; },
     hebrewDictionary,
     ensureDictionaryLoaded,
+    ensureBotWordsLoaded,
+    botVocabulary,
     createInitialState,
     sessions: { createLocalGameSession, attachBotPlayer, attachScriptedTutorialBot, createOnlineGameSession },
     online: { firebaseClient, roomService, inviteService, matchmakingService, presenceService, roomCodeService, asyncSessionService, asyncReminderService, sessionPersistence },
@@ -4203,35 +4209,34 @@ async function boot() {
 
     if (bot) {
       // Bot difficulty limits the candidate word pool:
-      //   easy   (0) → 2,000 words of length ≤3
-      //   medium (1) → 20,000 words of length ≤5
-      //   hard   (2) → full vocabulary of length ≤6
-      // Two things matter here, learned the hard way:
-      //   1. Cap on words the difficulty can actually USE. searchBotMove
-      //      filters candidates by profile.maxWordLen, so capping the raw
-      //      pool first (e.g. 2,000 words ≤6 letters) leaves the easy bot
-      //      with only a handful of ≤3-letter words to play. We pre-filter
-      //      to maxWordLen so the cap counts usable words.
-      //   2. Shuffle before slicing. DICT is alphabetical, so a raw prefix
-      //      is ~all א-words — the easy bot then can't move at all unless an
-      //      א is on the board/rack. A random sample spreads the vocabulary
-      //      across the whole alphabet.
+      //   easy   (0) -> 2,000 words of length <=3
+      //   medium (1) -> 20,000 words of length <=5
+      //   hard   (2) -> full vocabulary of length <=6
+      // data/bot-words.txt is frequency-sorted, so we preserve its order.
+      // If it is unavailable, the dictionary fallback is shuffled to avoid
+      // the old alphabetical-prefix bias.
+      ensureBotWordsLoaded().catch((e) => console.warn('[spine] bot wordlist preload before bot game failed:', e));
       const profile = resolveProfile(difficulty);
       const VOCAB_CAPS = [2000, 20000, Infinity];
       const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
-      const fullList = [...new Set(
-        [...hebrewDictionary.DICT]
-          .filter((w) => w.length >= 2 && w.length <= profile.maxWordLen)
-          .map((w) => hebrewDictionary.norm(w)),
-      )];
-      shuffle(fullList, createRng(Date.now() ^ (Math.random() * 0xffffffff)));
-      const wordList = Number.isFinite(cap) ? fullList.slice(0, cap) : fullList;
+      const makeWordList = () => {
+        const usingBotList = botVocabulary.BOT_WORDS.length > 0;
+        return botVocabulary.createBotWordList({
+          sourceWords: usingBotList ? botVocabulary.BOT_WORDS : [...hebrewDictionary.DICT],
+          maxWordLen: profile.maxWordLen,
+          cap,
+          isWordValid: (w) => hebrewDictionary.isValid(w),
+          preserveOrder: usingBotList,
+          rng: createRng(Date.now() ^ (Math.random() * 0xffffffff)),
+        });
+      };
+      const wordList = makeWordList();
       // Per-level "thinking" delay — cosmetic only (does not affect move
       // strength), but reinforces the feel: easy answers fast, hard lingers.
       const THINK_MS = [3000, 5000, 7000];
       const thinkingMs = THINK_MS[difficulty] ?? 3000;
       attachBotPlayer(session, {
-        slot: 1, wordList,
+        slot: 1, wordList, getWordList: makeWordList,
         isWordValid: (w) => hebrewDictionary.isValid(w),
         difficulty, thinkingMs,
       });
@@ -4996,10 +5001,41 @@ function ensureDictionaryLoaded() {
   return dictionaryLoadPromise;
 }
 
+function ensureBotWordsLoaded() {
+  if (botVocabulary.BOT_WORDS.length > 0) {
+    return Promise.resolve(botVocabulary.BOT_WORDS.length);
+  }
+  if (!botWordsLoadPromise) {
+    botWordsLoadPromise = botVocabulary.loadBotWords()
+      .then((size) => {
+        console.info('[spine] bot wordlist size:', size);
+        return size;
+      })
+      .catch((e) => {
+        botWordsLoadPromise = null;
+        throw e;
+      });
+  }
+  return botWordsLoadPromise;
+}
+
 function scheduleDictionaryPreload() {
   const preload = () => {
     ensureDictionaryLoaded().catch((e) => {
       console.warn('[spine] dictionary preload failed (will retry on demand):', e);
+    });
+  };
+  if (typeof globalThis.requestIdleCallback === 'function') {
+    globalThis.requestIdleCallback(preload, { timeout: 1500 });
+    return;
+  }
+  globalThis.setTimeout?.(preload, 0);
+}
+
+function scheduleBotWordsPreload() {
+  const preload = () => {
+    ensureBotWordsLoaded().catch((e) => {
+      console.warn('[spine] bot wordlist preload failed (will retry on demand):', e);
     });
   };
   if (typeof globalThis.requestIdleCallback === 'function') {

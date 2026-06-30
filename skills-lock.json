@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "hyperframes": {
+      "source": "NousResearch/hermes-agent",
+      "sourceType": "github",
+      "skillPath": "optional-skills/creative/hyperframes/SKILL.md",
+      "computedHash": "6bf271f5ad0c578315ab9275260de105341f8c8179aa04b9e92036f0c9c4865e"
+    },
+    "video-editing": {
+      "source": "affaan-m/ECC",
+      "sourceType": "github",
+      "skillPath": "skills/video-editing/SKILL.md",
+      "computedHash": "e7e2e4094feabe0f7739a6f5ecf582fc91a4b577637b3573eee3d7fd4473d072"
+    }
+  }
+}
