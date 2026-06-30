@@ -77,6 +77,31 @@ test('attachBotPlayer: bot moves on its turn', () => {
   assert.equal(session.state.currentTurnSlot, 0);
 });
 
+test('attachBotPlayer: getWordList is resolved when the bot acts', () => {
+  bus._reset();
+  DICT.clear();
+  const alef = '\u05d0';
+  const bet = '\u05d1';
+  const word = `${alef}${bet}`;
+  addWordsFromText(`${word}\n`);
+  const session = createLocalGameSession({ bus, mode: 'offline-solo', tileBagSeed: 'bot-provider', players, startingSlot: 1 });
+  session.state.racks[1] = [alef, bet, '\u05d2', '\u05d3', '\u05d4', '\u05d5', '\u05d6', '\u05d7'];
+
+  let calls = 0;
+  attachBotPlayer(session, {
+    slot: 1,
+    getWordList: () => { calls++; return [word]; },
+    isWordValid: () => true,
+    thinkingMs: 0,
+    scheduler: (fn) => fn(),
+  });
+
+  session.start();
+
+  assert.equal(calls, 1);
+  assert.equal(session.state.scores[1], 4);
+});
+
 test('attachBotPlayer: forwards thinkingMs as the scheduler delay', () => {
   bus._reset();
   DICT.clear();

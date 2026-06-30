@@ -19,7 +19,8 @@ import { searchBotMove, DIFFICULTY } from './botSearch.js';
  * @param {import('./localGameSession.js').LocalGameSession} session
  * @param {{
  *   slot: 0 | 1,
- *   wordList: string[],
+ *   wordList?: string[],
+ *   getWordList?: () => string[],
  *   isWordValid(word: string): boolean,
  *   difficulty?: number,
  *   thinkingMs?: number,
@@ -30,7 +31,8 @@ import { searchBotMove, DIFFICULTY } from './botSearch.js';
  */
 export function attachBotPlayer(session, {
   slot,
-  wordList,
+  wordList = null,
+  getWordList = null,
   isWordValid,
   difficulty = DIFFICULTY.MEDIUM,
   thinkingMs = 0,
@@ -40,7 +42,7 @@ export function attachBotPlayer(session, {
 }) {
   if (!session) throw new Error('attachBotPlayer: session is required');
   if (slot !== 0 && slot !== 1) throw new Error('attachBotPlayer: slot must be 0 or 1');
-  if (!Array.isArray(wordList)) throw new Error('attachBotPlayer: wordList must be an array');
+  if (!Array.isArray(wordList) && typeof getWordList !== 'function') throw new Error('attachBotPlayer: wordList must be an array');
   if (typeof isWordValid !== 'function') throw new Error('attachBotPlayer: isWordValid must be a function');
 
   const { bus, engine, state } = session;
@@ -77,7 +79,8 @@ export function attachBotPlayer(session, {
       if (detached) return;
       if (state.currentTurnSlot !== slot || state.status !== 'playing') return;
       if (bonusPauseCount > 0) { pendingActFor = slot; return; }
-      const result = searchBotMove(state, slot, wordList, isWordValid, { difficulty, rng });
+      const activeWordList = typeof getWordList === 'function' ? getWordList() : wordList;
+      const result = searchBotMove(state, slot, Array.isArray(activeWordList) ? activeWordList : [], isWordValid, { difficulty, rng });
       if (result) {
         engine.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: result.placed } });
       } else {
