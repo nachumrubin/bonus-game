@@ -1,5 +1,12 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Fix: TILE_COUNT_MISMATCH for bonus-square tiles — June 2026
+
+- [x] `boardCellsString` / `boardHash` / `boardTileCount` in `stateHash.js` now
+  accept an optional `bonusBoard` parameter; `compactSnapshot` passes
+  `state.bonusBoard` so off-grid perimeter tiles are counted and hashed.
+  3 new tests added. 1261 tests pass.
+
 ## Live pause + matchmaking + test gate — June 2026
 
 - [x] Live games no longer offer "השהה ושמור" (it only resigned); pause/back

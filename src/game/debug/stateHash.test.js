@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { boardCellsString, boardHash, compactSnapshot, hashState } from './stateHash.js';
+import { boardCellsString, boardHash, boardTileCount, compactSnapshot, hashState } from './stateHash.js';
 
 // A 2D board and the equivalent flat board for the same occupied cells.
 function board2d() {
@@ -73,4 +73,31 @@ test('hashState changes when a substantive field changes, ignores lastMove', () 
   assert.equal(h, hashState({ ...base, lastMove: { score: 99 } }), 'lastMove does not affect hash');
   assert.notEqual(h, hashState({ ...base, scores: { 0: 11, 1: 5 } }), 'score change affects hash');
   assert.notEqual(h, hashState({ ...base, turnNumber: 4 }), 'turn change affects hash');
+});
+
+test('boardTileCount includes bonus board tiles', () => {
+  const bonusBoard = new Map([['-1,1', { letter: 'א', val: 1 }], ['10,5', { letter: 'ב', val: 3 }]]);
+  assert.equal(boardTileCount(board2d(), bonusBoard), 4, '2 main-grid + 2 bonus-square tiles');
+  assert.equal(boardTileCount(board2d()), 2, 'omitted bonusBoard keeps original count');
+});
+
+test('boardHash changes when a bonus board tile is added', () => {
+  const bonusBoard = new Map([['-1,1', { letter: 'א', val: 1 }]]);
+  assert.notEqual(boardHash(board2d(), bonusBoard), boardHash(board2d()),
+    'bonus square tile must shift the hash');
+});
+
+test('compactSnapshot counts bonus board tiles and reflects them in boardHash', () => {
+  const bonusBoard = new Map([['-1,1', { letter: 'א', val: 1 }]]);
+  const base = {
+    status: 'playing', currentTurnSlot: 0, turnNumber: 1,
+    players: {}, scores: { 0: 0, 1: 0 }, racks: { 0: [], 1: [] },
+    board: board2d(), bag: [],
+  };
+  const withBonus = compactSnapshot({ ...base, bonusBoard });
+  const withoutBonus = compactSnapshot({ ...base, bonusBoard: new Map() });
+  assert.equal(withBonus.boardTileCount, 3, '2 main + 1 bonus square tile');
+  assert.equal(withoutBonus.boardTileCount, 2, 'empty bonus board = main-only count');
+  assert.notEqual(withBonus.boardHash, withoutBonus.boardHash,
+    'bonus square tile must be reflected in the board hash');
 });

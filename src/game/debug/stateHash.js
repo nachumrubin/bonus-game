@@ -23,26 +23,37 @@ function countTiles(racks, slot) {
 
 // Canonical, representation-independent string of occupied board cells.
 // Accepts a 2D array (board[r][c]) or a flat 100-cell array (index r*10+c).
-export function boardCellsString(board) {
-  if (!board) return '';
-  const is2d = Array.isArray(board) && Array.isArray(board[0]);
-  const cellAt = (i) => (is2d ? board[Math.floor(i / 10)]?.[i % 10] : board[i]);
+// bonusBoard is the off-grid perimeter Map (or plain object) — if provided,
+// its tiles are appended after the main-grid entries.
+export function boardCellsString(board, bonusBoard = null) {
   const out = [];
-  for (let i = 0; i < 100; i++) {
-    const t = cellAt(i);
-    if (t && t.letter != null) out.push(`${i}:${t.letter}${t.isJoker ? '*' : ''}`);
+  if (board) {
+    const is2d = Array.isArray(board) && Array.isArray(board[0]);
+    const cellAt = (i) => (is2d ? board[Math.floor(i / 10)]?.[i % 10] : board[i]);
+    for (let i = 0; i < 100; i++) {
+      const t = cellAt(i);
+      if (t && t.letter != null) out.push(`${i}:${t.letter}${t.isJoker ? '*' : ''}`);
+    }
+  }
+  if (bonusBoard) {
+    const entries = bonusBoard instanceof Map
+      ? [...bonusBoard.entries()]
+      : Object.entries(bonusBoard);
+    for (const [k, t] of entries.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) {
+      if (t && t.letter != null) out.push(`b${k}:${t.letter}${t.isJoker ? '*' : ''}`);
+    }
   }
   return out.join('|');
 }
 
 // 32-bit board signature as a short hex string.
-export function boardHash(board) {
-  return hashStringToU32(boardCellsString(board)).toString(16);
+export function boardHash(board, bonusBoard = null) {
+  return hashStringToU32(boardCellsString(board, bonusBoard)).toString(16);
 }
 
 // Number of occupied cells on the board (either representation).
-export function boardTileCount(board) {
-  const s = boardCellsString(board);
+export function boardTileCount(board, bonusBoard = null) {
+  const s = boardCellsString(board, bonusBoard);
   return s === '' ? 0 : s.split('|').length;
 }
 
@@ -63,8 +74,8 @@ export function compactSnapshot(state = {}) {
     guestScore:       Number(slotVal(scores, 1) ?? 0),
     hostTilesCount:   countTiles(racks, 0),
     guestTilesCount:  countTiles(racks, 1),
-    boardHash:        boardHash(state.board),
-    boardTileCount:   boardTileCount(state.board),
+    boardHash:        boardHash(state.board, state.bonusBoard),
+    boardTileCount:   boardTileCount(state.board, state.bonusBoard),
     tileBagCount:     Array.isArray(bag) ? bag.length : (Number.isFinite(state.tileBagCount) ? state.tileBagCount : null),
     lastMove:         state.lastMove ?? null,
   };

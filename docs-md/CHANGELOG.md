@@ -2,6 +2,25 @@
 
 ---
 
+## Fix: TILE_COUNT_MISMATCH for tiles placed on bonus squares — June 2026
+
+`boardTileCount` and `boardHash` in `src/game/debug/stateHash.js` only iterated
+over the main 10×10 grid (100 cells). Tiles committed to the 12 off-grid bonus
+squares live in `state.bonusBoard` (a Map), not `state.board`, so they were
+invisible to `compactSnapshot`. Each turn a tile landed on a bonus square the
+accounting sum fell short by one, triggering a spurious `TILE_COUNT_MISMATCH`
+warning in the debug timeline.
+
+Fix: `boardCellsString`, `boardHash`, and `boardTileCount` now accept an optional
+`bonusBoard` parameter (Map or plain object, default `null`). `compactSnapshot`
+passes `state.bonusBoard` to both, so the full tile population — main grid plus
+perimeter bonus squares — is counted and hashed correctly. Three new tests in
+`src/game/debug/stateHash.test.js` assert the corrected counts and hash changes.
+
+Files: `src/game/debug/stateHash.js`, `src/game/debug/stateHash.test.js`
+
+---
+
 ## Live-game pause fix, strict matchmaking by speed, and full test gate — June 2026
 
 Three changes:
