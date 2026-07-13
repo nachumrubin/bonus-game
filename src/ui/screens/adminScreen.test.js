@@ -86,9 +86,16 @@ function makeDom() {
     'adm-report-response-send',
     'adm-debug-games',
     'adm-debug-detail',
+    'adm-stat-card-pending',
+    'adm-stat-card-online',
+    'adm-word-modal',
+    'adm-word-modal-list',
+    'adm-word-modal-title',
+    'adm-word-modal-close',
   ]) {
     byId.set(id, makeEl({ id }));
   }
+  byId.get('adm-word-modal').style.display = 'none';
   byId.get('adm-report-reason').value = 'all';
   byId.get('adm-report-status').value = 'open';
   byId.get('adm-report-response-outcome').value = 'handled';
@@ -163,6 +170,45 @@ test('reports tab loads, renders, filters, and opens linked debug timeline', () 
 
   assert.deepEqual(timelines, [{ gameId: 'game-1' }]);
   assert.equal(byId.get('adm-panel-debug').style.display, '');
+});
+
+test('clicking the "הצעות ממתינות" card switches to the words tab', () => {
+  bus._reset();
+  const { root, byId } = makeDom();
+  mountAdminScreen({ root, bus });
+
+  byId.get('adm-stat-card-pending').click();
+
+  // switchTab('words') shows the words panel and hides the others.
+  assert.equal(byId.get('adm-panel-words').style.display, '');
+  assert.equal(byId.get('adm-panel-stats').style.display, 'none');
+});
+
+test('clicking the "מחוברים עכשיו" card opens a modal listing connected users', () => {
+  bus._reset();
+  const { root, byId } = makeDom();
+  mountAdminScreen({ root, bus });
+
+  bus.emit(ADMIN_RENDER.DATA, {
+    onlineNow: 2,
+    onlineUsers: [
+      { uid: 'u1', name: 'דנה', connected: true, backgrounded: false, currentRoom: 'room-9', lastSeen: Date.now() },
+      { uid: 'anon123456', name: '', connected: true, backgrounded: true, currentRoom: null, lastSeen: Date.now() - 120000 },
+    ],
+  });
+
+  const modal = byId.get('adm-word-modal');
+  assert.equal(modal.style.display, 'none', 'modal hidden until the card is clicked');
+
+  byId.get('adm-stat-card-online').click();
+
+  assert.equal(modal.style.display, '');
+  assert.match(byId.get('adm-word-modal-title').textContent, /מחוברים עכשיו \(2\)/);
+  const html = byId.get('adm-word-modal-list').innerHTML;
+  assert.match(html, /דנה/);
+  assert.match(html, /במשחק/);      // u1 has a currentRoom
+  assert.match(html, /אורח · anon12/); // anonymous user shown as guest with short uid
+  assert.match(html, /ברקע/);        // backgrounded flag surfaced
 });
 
 test('bulk reject emits REJECT_SUGGESTION for each checked suggestion', () => {

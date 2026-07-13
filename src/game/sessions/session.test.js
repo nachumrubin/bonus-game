@@ -122,15 +122,41 @@ test('attachBotPlayer: forwards thinkingMs as the scheduler delay', () => {
   assert.deepEqual(delays, [5000], 'the per-level thinkingMs is passed straight to the scheduler');
 });
 
-test('attachBotPlayer: passes when no valid move is available', () => {
+test('attachBotPlayer: exchanges tiles (not pass) when stuck but the bag can refill', () => {
   bus._reset();
   DICT.clear();
   const session = createLocalGameSession({ bus, mode: 'offline-solo', tileBagSeed: 'bot-pass', players, startingSlot: 1 });
   session.state.racks[1] = ['ת','ת','ת','ת','ת','ת','ת','ת'];
+  session.state.bag = ['א','ב','ג','ד','ה','ו','ז','ח','ט','י']; // plenty to draw from
+
+  let exchanged = null;
+  bus.on(EV.TILES_EXCHANGED, (p) => { exchanged = p; });
 
   attachBotPlayer(session, {
     slot: 1,
-    wordList: ['אב'], // bot can't spell this with all-ת rack
+    wordList: ['אב'], // bot can't spell this with an all-ת rack
+    isWordValid: () => true,
+    thinkingMs: 0,
+    scheduler: (fn) => fn(),
+  });
+
+  session.start();
+  // The bot swaps its dead rack instead of idly passing.
+  assert.ok(exchanged, 'bot dispatched an exchange');
+  assert.equal(exchanged.slot, 1);
+  assert.equal(session.state.currentTurnSlot, 0, 'turn advances after the exchange');
+});
+
+test('attachBotPlayer: passes when stuck AND the bag is empty', () => {
+  bus._reset();
+  DICT.clear();
+  const session = createLocalGameSession({ bus, mode: 'offline-solo', tileBagSeed: 'bot-pass2', players, startingSlot: 1 });
+  session.state.racks[1] = ['ת','ת','ת','ת','ת','ת','ת','ת'];
+  session.state.bag = []; // nothing to exchange into → must pass
+
+  attachBotPlayer(session, {
+    slot: 1,
+    wordList: ['אב'],
     isWordValid: () => true,
     thinkingMs: 0,
     scheduler: (fn) => fn(),
@@ -141,13 +167,15 @@ test('attachBotPlayer: passes when no valid move is available', () => {
   assert.equal(session.state.currentTurnSlot, 0);
 });
 
-test('attachBotPlayer: full game ends after six consecutive passes', () => {
+test('attachBotPlayer: full game ends after consecutive scoreless turns', () => {
   bus._reset();
   DICT.clear();
   const session = createLocalGameSession({ bus, mode: 'offline-solo', tileBagSeed: 'bot-end', players, startingSlot: 1 });
-  // Both players have racks that can't form anything from the wordList → pass-pass ends game
+  // Both players have racks that can't form anything from the wordList, and an
+  // empty bag so the bot can't exchange either → pass-pass ends the game.
   session.state.racks[0] = ['ת','ת','ת','ת','ת','ת','ת','ת'];
   session.state.racks[1] = ['ת','ת','ת','ת','ת','ת','ת','ת'];
+  session.state.bag = [];
 
   attachBotPlayer(session, {
     slot: 1,

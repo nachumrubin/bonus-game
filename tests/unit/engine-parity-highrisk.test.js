@@ -258,6 +258,38 @@ test('legacy triggerBonus/bonusOk: B1-B13 activation branches are represented th
   }
 });
 
+// A banked opponent cancel_next_opponent_bonus (won on the B13 wheel) vetoes
+// the placing player's next earned bonus: no boost / mini-game runs, the move
+// scores normally (no deferral), the cancel boost is spent, and EV.BONUS_VETOED
+// fires so the UI can show the vetoed player the forfeit overlay.
+test('cancel_next_opponent_bonus vetoes the opponent next bonus: no award, score commits, boost consumed, BONUS_VETOED emitted', async () => {
+  const { bus, commands, events, board, dict, state, eng } = await makeEngine({ seed: 'veto' });
+  seedDict(dict, ['בא']);
+  const seen = capture(bus, events);
+  state.firstMove = false;
+  state.racks[0] = ['ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+  // Opponent (slot 1) is holding the cancel shield.
+  state.activeBoosts = [{ slot: 1, boostId: 'cancel_next_opponent_bonus', payload: {}, turnNumber: 1 }];
+  // Slot 0's square is the wheel (B13) — normally a deferred pending bonus.
+  state.bonusAssignment[0] = { type: 'B13' };
+  board.setCommittedTile(state, 0, 1, { letter: 'א', val: 1, isJoker: false });
+
+  eng.dispatch({ type: commands.CMD.CONFIRM_MOVE, payload: { placed: [{ r: -1, c: 1, letter: 'ב', val: 3 }] } });
+
+  assert.equal(state.bonusSqUsed[0], true, 'the bonus square is still marked used');
+  assert.equal((state.pendingBonuses ?? []).length, 0, 'no mini-game / wheel is queued for a vetoed bonus');
+  assert.equal(state.activeBoosts.some(b => b.slot === 0), false, 'no boost is granted to the vetoed player');
+  assert.equal(state.activeBoosts.some(b => b.boostId === 'cancel_next_opponent_bonus'), false, 'the cancel boost is spent');
+  assert.equal(state.scores[0], 4, "base word בא = 4 scores normally (no deferral)");
+  assert.equal(state.currentTurnSlot, 1, 'turn advances to the opponent as usual');
+
+  const veto = seen.find(e => e.type === events.EV.BONUS_VETOED);
+  assert.ok(veto, 'BONUS_VETOED emitted');
+  assert.equal(veto.payload.slot, 0, 'vetoed (forfeiting) player is the mover');
+  assert.equal(veto.payload.cancelSlot, 1, 'cancel boost belonged to the opponent');
+  assert.deepEqual(veto.payload.bonusTypes, ['B13'], 'reports the forfeited bonus type');
+});
+
 test('legacy bonusOk B5: extra-turn bonus applies when the award overlay is acknowledged', async () => {
   const { commands, board, dict, state, eng } = await makeEngine();
   seedDict(dict, ['בא']);

@@ -17,9 +17,9 @@ export const BV_CLOSE = 'boostVeto/close';
 
 function describe(payload = {}) {
   const opponent = payload.opponentName ?? 'היריב';
-  if (payload.boostId === 'auto_extra_score') return `${opponent} ביטל את הבוסט שלך`;
-  if (payload.boostId)                        return `${opponent} ביטל את ${payload.boostId}`;
-  return `${opponent} ביטל את הבוסט שלך`;
+  // A cancel_next_opponent_bonus (won on the גלגל המזל wheel) forfeits the
+  // bonus the player just earned.
+  return `${opponent} קיבל "ביטול בוסט" בגלגל המזל — לכן הבוסט שזכית בו מבוטל.`;
 }
 
 export function mountBoostVetoScreen({ root = globalThis.document, bus } = {}) {

@@ -121,13 +121,14 @@ export function createGameController({ bus, session, mySlot = null }) {
   // exchange, or timeout — clear the last-move highlight accordingly.
   let tilesMoved = false;
   subs.push(bus.on(EV.GAME_STARTED, () => { syncFromState(); _onChange(); }));
-  subs.push(bus.on(EV.MOVE_CONFIRMED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra }) => {
+  subs.push(bus.on(EV.MOVE_CONFIRMED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra, multiplier }) => {
     tilesMoved = true;
     syncFromState();
     view.lastMove = {
       slot, score, words, wordTiles: wordTiles ?? [], placed: placed ?? [],
       baseScore: baseScore ?? score ?? 0,
       bonusExtra: bonusExtra ?? 0,
+      multiplier: multiplier ?? 1,
     };
     view.lastInvalidReason = null;
     view.placed = [];
@@ -135,24 +136,26 @@ export function createGameController({ bus, session, mySlot = null }) {
     view.pendingLock = null;
     _onChange();
   }));
-  subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra }) => {
+  subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra, multiplier }) => {
     tilesMoved = true;
     syncFromState();
     view.lastMove = {
       slot, score, words, wordTiles: wordTiles ?? [], placed: placed ?? [],
       baseScore: baseScore ?? score ?? 0,
       bonusExtra: bonusExtra ?? 0,
+      multiplier: multiplier ?? 1,
     };
     view.lastInvalidReason = null;
     _onChange();
   }));
-  subs.push(bus.on(EV.OPPONENT_MOVED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra }) => {
+  subs.push(bus.on(EV.OPPONENT_MOVED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra, multiplier }) => {
     tilesMoved = true;
     syncFromState();
     view.lastMove = {
       slot, score, words, wordTiles: wordTiles ?? [], placed: placed ?? [],
       baseScore: baseScore ?? score ?? 0,
       bonusExtra: bonusExtra ?? 0,
+      multiplier: multiplier ?? 1,
     };
     _onChange();
   }));

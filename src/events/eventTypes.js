@@ -15,6 +15,7 @@ export const EV = Object.freeze({
   SCORE_CHANGED:          'evt/SCORE_CHANGED',
   BOOST_ACTIVATED:        'evt/BOOST_ACTIVATED',
   BONUS_PENDING:          'bonus/pending',
+  BONUS_VETOED:           'evt/BONUS_VETOED',
   OPPONENT_MOVED:         'evt/OPPONENT_MOVED',
   GAME_COMPLETED:         'evt/GAME_COMPLETED',
   INVALID_MOVE_REJECTED:  'evt/INVALID_MOVE_REJECTED',

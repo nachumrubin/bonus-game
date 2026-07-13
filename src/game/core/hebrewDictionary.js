@@ -17,6 +17,14 @@ let validationLogger = null;
 // Populated at boot by syncBlockedDictionaryWordsOnce from /dictionaryRejected.
 export const BLOCKED_OVERLAY = new Set();
 
+// Runtime approved-overlay: words admins have explicitly ADDED to the
+// dictionary (mirror of /dictionaryApproved), tracked separately from the base
+// dictionary so the bot's curated word list can be augmented with them — a
+// word added through the settings screen should be playable by the bot too,
+// not just accepted from human players. Maintained alongside DICT wherever an
+// admin add/remove happens.
+export const APPROVED_OVERLAY = new Set();
+
 export const DICT_URL = './data/dictionary.txt';
 
 export function addWordsFromText(txt) {

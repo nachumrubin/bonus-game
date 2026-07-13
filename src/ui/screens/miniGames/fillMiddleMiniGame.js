@@ -389,12 +389,12 @@ export function mountFillMiddleMiniGame({
       </div>`;
     }
     if (result.success) {
-      const same = result.attempt === answer;
+      // Only show the word the player actually found. Revealing the "intended"
+      // word when they played a different valid one just causes confusion.
       return `<div class="bz-result is-win">
         <div class="bz-result-emoji">🎉</div>
         <div class="bz-result-headline" style="letter-spacing:2px;">${result.attempt}</div>
         <div class="bz-result-big">+${result.earnedPts} נק'</div>
-        ${same ? '' : `<div class="bz-result-sub">${answerLabel}</div>`}
       </div>`;
     }
     return `<div class="bz-result is-soft">

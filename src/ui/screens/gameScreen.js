@@ -34,10 +34,10 @@ import { EV } from '../../events/eventTypes.js';
 import {
   WORD_MERGE_STAGGER_MS as SCORE_MERGE_WORD_STAGGER_MS,
   WORD_MERGE_FLIGHT_MS  as SCORE_MERGE_WORD_FLIGHT_MS,
-  BOOST_MERGE_DELAY_MS  as SCORE_MERGE_BOOST_DELAY_MS,
   HOLD_AFTER_MERGE_MS   as SCORE_MERGE_HOLD_AFTER_MS,
   SUM_FLIGHT_MS         as SCORE_MERGE_SUM_FLIGHT_MS,
   SUM_CHIP_HOLD_MS,
+  mergeSequenceTiming,
 } from '../scoreAnimationTimings.js';
 
 export const GAME_SCREEN_INTENT = Object.freeze({
@@ -130,12 +130,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // Shared score-merge-sequence landing time (when the red sum chip lands
   // on the player's score box). Mirrors the constants in
   // animationController.scoreMergeTiming and gameScreen.playScoreMergeSequence.
-  function scoreAnimationLandingMs(wordCount, bonusExtra) {
+  function scoreAnimationLandingMs(wordCount, bonusExtra, multiplier = 1) {
     if (!wordCount && !bonusExtra) return 460;
-    const lastWordStart = wordCount > 0 ? (wordCount - 1) * SCORE_MERGE_WORD_STAGGER_MS : 0;
-    const boostStart    = bonusExtra > 0 ? lastWordStart + SCORE_MERGE_BOOST_DELAY_MS : lastWordStart;
-    const mergeEnd      = boostStart + SCORE_MERGE_WORD_FLIGHT_MS;
-    return mergeEnd + SCORE_MERGE_HOLD_AFTER_MS + SCORE_MERGE_SUM_FLIGHT_MS;
+    return mergeSequenceTiming({ wordCount, bonusExtra, multiplier }).totalToPanelLanding;
   }
   function lastMoveHighlightActive() {
     return lastMoveActive;
@@ -194,7 +191,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const v = controller.view;
       const wordCount = Array.isArray(v?.lastMove?.wordTiles) ? v.lastMove.wordTiles.length : 0;
       const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
-      const delay = scoreAnimationLandingMs(wordCount, bonusExtra);
+      const multiplier = Number(v?.lastMove?.multiplier) || 1;
+      const delay = scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
       animateScore(el, t, delay);
     }
   }
@@ -556,7 +554,16 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       setText($('#sbar', root), g('cancelBeforeSwap'));
       return;
     }
-    exchangeIsFreeSwap = !!freeSwap;
+    // If the local player has a banked free_tile_swap (won on the B13 wheel),
+    // spend it automatically — even when the swap was opened via the regular
+    // "החלפת אות" button rather than the 🔄 badge. Otherwise a player who won
+    // a free swap and then hit the ordinary exchange button would lose a turn
+    // while still holding the boost.
+    const localSlot = controller.view.mySlot ?? controller.view.currentTurnSlot;
+    const hasBankedSwap = (controller.view.activeBoosts ?? []).some(
+      b => b && b.boostId === 'free_tile_swap' && b.slot === localSlot,
+    );
+    exchangeIsFreeSwap = !!freeSwap || hasBankedSwap;
     exchangeOverlay.classList?.toggle?.('free-swap', exchangeIsFreeSwap);
     renderExchangeRack(new Set());
     exchangeOverlay.classList?.remove('hidden');
@@ -672,7 +679,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // takes SCORE_MERGE_SUM_FLIGHT_MS to fly to the panel.
     const wordCount  = Array.isArray(v?.lastMove?.wordTiles) ? v.lastMove.wordTiles.length : 0;
     const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
-    const countUpDelay = scoreAnimationLandingMs(wordCount, bonusExtra);
+    const multiplier = Number(v?.lastMove?.multiplier) || 1;
+    const countUpDelay = scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
     animateScore($('#sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#sv2', root), v.scores[1] ?? 0, countUpDelay);
     animateScore($('#is-sv1', root), v.scores[0] ?? 0, countUpDelay);
@@ -758,7 +766,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // (and include the score-merge sequence so the swap doesn't beat the
     // count-up).
     const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
-    const total = scoreAnimationLandingMs(wordCount, bonusExtra) + 900;
+    const multiplier = Number(v?.lastMove?.multiplier) || 1;
+    const total = scoreAnimationLandingMs(wordCount, bonusExtra, multiplier) + 900;
     activeSlotTimer = setTimeout(() => {
       activeSlotTimer = null;
       displayedTurnSlot = controller.view?.currentTurnSlot ?? target;
@@ -1483,6 +1492,21 @@ function flyScoreToPanel(root, { slot, score, wordTiles, placed, delayMs = 0, is
 // aliases preserve the descriptive `SCORE_MERGE_*` names used throughout
 // this file without re-declaring values.
 
+// Bounding rect of the slot's active ×N multiplier banner (mobile info-strip
+// `is-` variant first, then desktop side-panel `sc-`), or null when neither is
+// visible. Read synchronously at animation start because the boost is consumed
+// this turn and the banner is removed on the next render.
+function multiplierBannerRect(root, slot) {
+  const doc = ownerDocumentOf(root);
+  if (!doc?.getElementById) return null;
+  for (const suffix of [`is-${slot}`, `sc-${slot}`]) {
+    const el = doc.getElementById(`spine-multiplier-banner-${suffix}`);
+    const rect = el?.getBoundingClientRect?.();
+    if (rect && rect.width > 0 && rect.height > 0) return rect;
+  }
+  return null;
+}
+
 // The cohesive scoring animation. A red sum chip is planted above the
 // played word(s). Each scoring word's +N chip launches at the word's
 // anchor and flies into the sum chip, where it merges and bumps the
@@ -1492,10 +1516,11 @@ function flyScoreToPanel(root, { slot, score, wordTiles, placed, delayMs = 0, is
 // final beat as the old sequence, but now visibly the *total* of all the
 // per-word + bonus contributions instead of a separate value that
 // appears out of nowhere.
-function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseScore, bonusExtra } = {}) {
+function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseScore, bonusExtra, multiplier } = {}) {
   const total = Number(finalScore) || 0;
   const extra = Number(bonusExtra) || 0;
   const base  = baseScore != null ? Number(baseScore) : total - extra;
+  const mult  = Number(multiplier) || 1;
   if (total <= 0 && extra <= 0) return;
   const doc = ownerDocumentOf(root);
   if (!doc?.createElement) return;
@@ -1556,13 +1581,72 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
   });
 
   const wordCount = (words ?? []).filter(w => Number(w.wordScore) > 0).length;
-  const lastWordStart = wordCount > 0 ? (wordCount - 1) * SCORE_MERGE_WORD_STAGGER_MS : 0;
-  let mergeEnd = lastWordStart + SCORE_MERGE_WORD_FLIGHT_MS;
+  const rawTileSum = (words ?? []).reduce((a, w) => a + (Number(w.wordScore) || 0), 0);
+  const hasMult = mult > 1 && rawTileSum >= 0 && base > rawTileSum;
+  // What the ×N chip adds when it lands: the running word sum jumps from the
+  // raw tile value to the multiplied word score (`base`). Any bingo folded into
+  // `base` rides along in this jump (the bingo has its own +50 label already).
+  const multDelta = hasMult ? Math.max(0, base - rawTileSum) : 0;
 
-  // 3. Bonus extra — flies into the sum from above.
+  const { multStart, boostStart, mergeEnd } =
+    mergeSequenceTiming({ wordCount, bonusExtra: extra, multiplier: hasMult ? mult : 1 });
+
+  // 3. Multiplier chip — flies in from the player's ×N banner and multiplies
+  //    the running word sum (raw → ×N) the moment it lands. Purple for ×2, red
+  //    for ×4 (matching .spine-multiplier-banner). The banner is captured now
+  //    because the boost is consumed this turn and its banner may be removed
+  //    before the chip flies.
+  if (hasMult && multDelta > 0) {
+    const bannerRect = multiplierBannerRect(root, slot);
+    setTimeout(() => {
+      const chip = doc.createElement('div');
+      chip.className = 'scoring-float-label mult-merge';
+      chip.textContent = `×${mult}`;
+      const red = mult >= 4;
+      chip.style.background = red
+        ? 'linear-gradient(135deg, rgba(186,24,27,.97), rgba(255,91,46,.94))'
+        : 'linear-gradient(135deg, rgba(99,54,190,.97), rgba(193,75,255,.92))';
+      chip.style.color = '#fff';
+      chip.style.padding = '2px 9px';
+      chip.style.borderRadius = '11px';
+      chip.style.fontWeight = '900';
+      chip.style.boxShadow = '0 4px 12px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.25)';
+      chip.style.textShadow = red
+        ? '0 0 8px rgba(255,224,130,.75), 0 1px 2px rgba(0,0,0,.5)'
+        : '0 0 8px rgba(231,202,255,.7), 0 1px 2px rgba(0,0,0,.5)';
+      chip.style.transition = `transform ${SCORE_MERGE_WORD_FLIGHT_MS}ms cubic-bezier(.22,1,.36,1), opacity ${SCORE_MERGE_WORD_FLIGHT_MS}ms ease-out`;
+      const to = centerOf(sumChip);
+      let from = null;
+      if (bannerRect) {
+        from = { x: bannerRect.left + bannerRect.width / 2, y: bannerRect.top + bannerRect.height / 2 };
+      } else {
+        const sr = sumChip.getBoundingClientRect?.();
+        if (sr) from = { x: sr.left + sr.width / 2, y: sr.top - 64 };
+      }
+      if (from) {
+        chip.style.position = 'fixed';
+        chip.style.left = `${from.x}px`;
+        chip.style.top  = `${from.y}px`;
+        chip.style.transform = 'translateX(-50%)';
+      }
+      appendOverlay(root, chip);
+      setTimeout(() => {
+        if (from && to) {
+          chip.style.transform = `translateX(-50%) translate(${to.x - from.x}px, ${to.y - from.y}px) scale(.7)`;
+        }
+        chip.style.opacity = '0';
+      }, 20);
+      setTimeout(() => {
+        chip.remove?.();
+        runningSum += multDelta; // sum visibly jumps to the multiplied value
+        updateSumDisplay();
+      }, SCORE_MERGE_WORD_FLIGHT_MS);
+    }, multStart ?? 0);
+  }
+
+  // 4. Bonus extra — flies into the sum from above, AFTER the multiplier (the
+  //    bonus is never multiplied, so it merges on top of the multiplied word).
   if (extra > 0) {
-    const boostStart = lastWordStart + SCORE_MERGE_BOOST_DELAY_MS;
-    mergeEnd = boostStart + SCORE_MERGE_WORD_FLIGHT_MS;
     setTimeout(() => {
       const chip = doc.createElement('div');
       chip.className = 'scoring-float-label boost-merge';
@@ -1586,33 +1670,20 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
         runningSum += extra;
         updateSumDisplay();
       }, SCORE_MERGE_WORD_FLIGHT_MS);
-    }, boostStart);
+    }, boostStart ?? 0);
   }
 
-  // Defensive: if rounding / per-word filter dropped some points (e.g. a
-  // bonus that doesn't come from a word's tile values), top up the sum to
-  // the final score so the chip lands with the real total instead of an
-  // undercount.
-  //
-  // Two correctness rules learned the hard way (May 2026):
-  //   1. Only schedule the snap if the per-word renders + bonus extra
-  //      would NOT naturally reach `total`. Otherwise the snap races
-  //      against the per-word onLand callbacks (both fire ~380ms in) and
-  //      can run first, after which onLand adds its `ws` on top — the
-  //      chip ends up showing 2× the real score.
-  //   2. When the snap does run, ADD the missing delta rather than
-  //      overwriting `runningSum`. Overwriting also races with onLand and
-  //      double-counts.
-  const expectedFromMerges = (words ?? []).reduce(
-    (a, w) => a + (Number(w.wordScore) || 0),
-    0,
-  ) + extra;
-  if (expectedFromMerges < total) {
+  // Defensive top-up: add ONLY the delta the merges (words + multiplier chip +
+  // bonus) can't cover — e.g. a bingo/premium on a non-multiplied move. ADD (not
+  // overwrite) so it's order-independent against the per-chip onLand callbacks.
+  // When a multiplier is present the ×N chip already carries the full jump, so
+  // `missing` is 0.
+  const expectedFromMerges = rawTileSum + multDelta + extra;
+  const missing = total - expectedFromMerges;
+  if (missing > 0) {
     setTimeout(() => {
-      if (runningSum < total) {
-        runningSum = total;
-        updateSumDisplay();
-      }
+      runningSum += missing;
+      updateSumDisplay();
     }, mergeEnd + 20);
   }
 

@@ -906,7 +906,9 @@
 /* Circular chevron — hint only, all values ~20% more subtle than previous */
 .hm-card-chev {
   flex-shrink: 0;
-  margin-left: auto;
+  /* Sits flush-right because .hm-card-body is flex:1; the margin adds breathing
+     room between the title/subtitle and the chevron circle. */
+  margin-left: clamp(12px, 3.5vw, 24px);
   width: clamp(30px, min(8.5vw, 5.2svh), 52px);
   height: clamp(30px, min(8.5vw, 5.2svh), 52px);
   border-radius: 50%;
@@ -1942,7 +1944,10 @@
   box-shadow: 0 0 16px rgba(245,197,24,.2), inset 0 1px 0 rgba(255,255,255,.08);
 }
 
-.mf-opt-icon { font-size: 22px; line-height: 1; margin-bottom: 2px; }
+/* Explicit light color so text-glyph icons (e.g. ∞, 👁 rendered as a
+   text-presentation glyph) are visible on the dark card — full-color emoji
+   like ⚡🎯🐢🔒 ignore `color` and are unaffected. */
+.mf-opt-icon { font-size: 22px; line-height: 1; margin-bottom: 2px; color: #e8f4ff; }
 /* Bot difficulty icons: larger than generic ui-icon baseline */
 #dff .mf-opt-icon .ui-icon { width: 34px; height: 34px; vertical-align: middle; }
 .mf-opt-label {

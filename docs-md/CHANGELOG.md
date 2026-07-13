@@ -2,6 +2,304 @@
 
 ---
 
+## Score multiplier shown as its own ×N chip in the merge animation — July 2026
+
+Follow-up to the ×2/×4 double-count fix: instead of the multiplier silently
+topping up the running sum, it now flies in as its own chip. After the word
+chips merge into the red sum (showing the raw tile value), a **×N chip flies from
+the player's multiplier banner** into the sum and the total visibly multiplies
+(raw → ×N). The chip uses the banner's colors — **purple for ×2, red for ×4**.
+Any bonus-square extra then merges on top (it isn't multiplied), matching the
+scoring: total = word×N + extra.
+
+Plumbing:
+- The engine now records the applied multiplier
+  ([multiplyNextTurns.js](src/game/boosts/futureEffects/multiplyNextTurns.js)
+  `scoreMultiplier`) and emits it on `MOVE_CONFIRMED` / `MOVE_SCORE_COMMITTED`
+  ([gameEngine.js](src/game/core/gameEngine.js)); it rides through
+  [gameController.js](src/ui/controllers/gameController.js) `view.lastMove` and
+  [animationController.js](src/ui/controllers/animationController.js) into the
+  `scoreMergeSequence` directive.
+- New shared `mergeSequenceTiming` in
+  [scoreAnimationTimings.js](src/ui/scoreAnimationTimings.js) sequences the
+  phases (words → ×N chip → bonus) and keeps the panel count-up / word-glow
+  aligned; `playScoreMergeSequence`
+  ([gameScreen.js](src/ui/screens/gameScreen.js)) flies the chip from
+  `spine-multiplier-banner-*` and adds the multiplied delta on landing. All
+  additions are precomputed deltas, so the sum stays order-independent (no
+  double-count regression).
+
+Verified in a real browser: a ×4 word worth 12 shows a red "×4" chip and the sum
+lands on 48. Tests: multiplier flows into the merge directive (and defaults to 1).
+1274 unit tests pass.
+
+---
+
+## Fix: ×2/×4 score-sum animation double-counts the base score — July 2026
+
+Reported: with a ×4 multiplier active, playing a 12-point word flashed the red
+running-sum as **60** instead of **48** (12×4). The awarded score was correct — a
+UI-only bug in the score-merge animation.
+
+Root cause in [gameScreen.js](src/ui/screens/gameScreen.js) `playScoreMergeSequence`:
+the per-word "+N" chips fly into a running sum (adding the raw tile value, 12),
+and a follow-up "snap" tops the sum up to `finalScore` (48) because a multiplier
+makes the total exceed the tile-value sum. That snap **overwrote** the running sum
+(`runningSum = total`) — which races the per-word `onLand` callbacks. When the snap
+won the race it set 48, then `onLand` added the word's 12 on top → **60**. The
+function's own comment (rule #2, May 2026) already prescribed the fix — "ADD the
+missing delta rather than overwriting" — but the code overwrote anyway.
+
+Fix: add only the delta the merges can't cover
+(`runningSum += total - expectedFromMerges`). This is order-independent — whichever
+of the snap / word-onLand runs first, the final sum is
+`expectedFromMerges + missing === total`. Confirmed with a timing simulation: the
+old overwrite yields 60 when the snap wins the race; the new add yields 48 in both
+orderings. 1272 unit tests pass.
+
+---
+
+## Stats screen: shrink the always-visible identity block — July 2026
+
+The top "identity" band (title + hero KPIs + archetype card) is `flex-shrink:0`
+and was eating ~45% of the screen before the scrollable feed even started. Tightened
+it without dropping any content:
+
+- **Title** ([stats-screen.html](partials/screens/stats-screen.html)): icon + text
+  now sit on one compact row (was a stacked ~40px icon over the title) with less
+  padding.
+- **Hero panel** ([styles.css](styles.css) `.stats-hero`): padding `16/14 → 11/10`,
+  column gap `10 → 7`, `.stats-hero-insight` top margin `8 → 3`.
+- **Archetype card** (`.st-archetype-*`): padding `14 → 9/12`, icon `54 → 42`, name
+  `18 → 15`, tighter margins, and the blurb is now clamped to 2 lines
+  (`-webkit-line-clamp`) so a long playstyle description can't balloon the block.
+
+Measured in a real browser (412×820): the always-visible identity block dropped to
+**249px (~30% of the viewport)** from ~45%, so the feed (form/records/style/rivals)
+starts much higher. CSS/HTML only; 1272 unit tests pass.
+
+---
+
+## Setup screen: fix invisible ∞ / 👁 option icons — July 2026
+
+On the game-setup screen the "ללא" (∞, no time limit) and "פעיל" (👁, show both
+racks) option cards showed a near-black icon on the dark card — those two are
+text-presentation glyphs that inherit the button's default (dark) text color,
+unlike the full-color emoji (⚡🎯🐢🔒) which ignore `color`. Added an explicit
+light color to `.mf-opt-icon` ([menu-electric.css](menu-electric.css),
+`color:#e8f4ff`) so text-glyph icons are legible; color emoji are unaffected.
+Verified in a real browser (computed color `rgb(232,244,255)`). CSS-only change.
+
+---
+
+## Home game-mode cards: spacing between title and chevron — July 2026
+
+The three game-mode cards (משחק ברשת / נגד המחשב / שני שחקנים) had the title
+butting right up against the `❯` chevron circle (only the ~2–5px card `gap`).
+Added `margin-left: clamp(12px, 3.5vw, 24px)` to `.hm-card-chev`
+([menu-electric.css](menu-electric.css)) — the chevron still sits flush-right
+(the body is `flex:1`), but there's now clear breathing room between the text and
+the arrow (~18px at a 412px viewport, verified via Playwright). CSS-only change.
+
+---
+
+## Admin stats cards: clickable "מחוברים עכשיו" + "הצעות ממתינות" — July 2026
+
+Two admin-panel stat cards are now interactive:
+
+1. **מחוברים עכשיו** opens a modal listing *who* is connected right now (not just
+   the count). The `ADMIN_INTENT.LOAD` handler in [main.js](src/main.js) now builds
+   an `onlineUsers` array from `/presence` (uid → name via `globalRatings`;
+   anonymous users have no rating entry and show as "אורח · <short-uid>"), including
+   connected/backgrounded state, whether they're in a game (`currentRoom`), and a
+   relative "last seen". [adminScreen.js](src/ui/screens/adminScreen.js) reuses the
+   existing word-modal shell (`#adm-word-modal`) via `openOnlineModal`.
+2. **הצעות ממתינות** jumps straight to the מילים (words) tab where suggestions are
+   managed (`switchTab('words')`).
+
+Both cards are keyboard-accessible (`role="button"`, Enter/Space) with a hover/press
+affordance ([styles.css](styles.css), `.adm-stat-card--clickable`), and the labels
+gained a `›` chevron. Presence was already read for the online count, so no Firebase
+rules change was needed. Tests: two new cases in
+[adminScreen.test.js](src/ui/screens/adminScreen.test.js). 1272 unit tests pass.
+
+---
+
+## Anagram mini-game: rearrange the tiles into the answer on a miss — July 2026
+
+When the player runs out of time or submits an illegal word in the unscramble
+(anagram) mini-game, the tiles now physically **rearrange into the correct
+order** to spell the intended word, instead of just printing it as text — clearer,
+more satisfying feedback.
+
+[unscrambleMiniGame.js](src/ui/screens/miniGames/unscrambleMiniGame.js): on a
+failure/timeout, `finish` routes to `failReveal`. If the player actually
+**submitted** a wrong word, the tiles first flash red and **shake** (`failReveal`,
+via the Web Animations API) to reject it; a plain timeout skips the shake. Then
+`revealCorrectWord` runs a FLIP animation — it rebuilds every tile in its current
+order, records positions (FIRST), reorders the DOM to spell `puzzle.word` (LAST),
+then inverts and transitions each tile back to zero with an L→R stagger, so the
+letters slide into place. Header switches to "נגמר הזמן ⏰" / "לא נכון 😌" +
+"המילה הנכונה:", and the "בדוק" button becomes a continue button. Guards: falls
+back to the plain text result view when there's no `requestAnimationFrame` /
+`Element.animate` / measurable DOM; a `torn` flag + hard-teardown `unmount` stop
+any pending animation. Success still just shows the word the player made. Verified
+in a real browser (Playwright): the wrong tiles shake + flash red, then reassemble
+into the intended word. `letterSpinner`/`honeycomb` are "type words" games, not
+anagrams, so they're untouched.
+
+---
+
+## Dictionary edits reach the bot + mini-games stop revealing the "intended" word — July 2026
+
+Two fixes:
+
+1. **Dictionary add/remove now affects the bot's vocabulary, not just humans.**
+   The bot plays from a curated `bot-words.txt` list (`BOT_WORDS`), filtered by
+   `isValid`. Removals already propagated (a blocked word fails `isValid` → drops
+   out of the bot list), but **additions did not**: an admin-approved word lands
+   in `DICT` yet isn't in `bot-words.txt`, so the bot could accept it from a human
+   but never play it. Added `hebrewDictionary.APPROVED_OVERLAY` — a runtime mirror
+   of `/dictionaryApproved`, maintained at every admin add/remove site in
+   [main.js](src/main.js) and at boot (`syncApprovedDictionaryWordsOnce` gained an
+   optional overlay arg). The bot's `makeWordList` now **prepends** the approved
+   overlay to `BOT_WORDS` (prepend, not append, so the words survive the
+   easy/medium vocab cap that slices the list after building). Files:
+   [hebrewDictionary.js](src/game/core/hebrewDictionary.js),
+   [dictionaryService.js](src/game/account/dictionaryService.js),
+   [main.js](src/main.js).
+
+2. **Mini-games no longer reveal the "intended" word when the player found a
+   different valid one.** Playing a legit word that wasn't the picked answer used
+   to show "the word was: X", which just confused. Now on **success** the result
+   shows only the word the player actually made; the picked answer is still
+   revealed on failure/timeout. Fixed in
+   [fillMiddleMiniGame.js](src/ui/screens/miniGames/fillMiddleMiniGame.js) (dropped
+   the `answerLabel` on the win branch) and
+   [unscrambleMiniGame.js](src/ui/screens/miniGames/unscrambleMiniGame.js) (shows
+   the guess — "מצאת: …" — on success, the picked word only on failure).
+   `crossingWordsMiniGame` and `hiddenWordMiniGame` already did this correctly.
+
+Tests: overlay sync + prepend-under-cap coverage added. 1270 unit tests pass.
+
+---
+
+## Bot stops creating words on a crowded board — play-through fallback + exchange-when-stuck — July 2026
+
+Reported from a real offline-solo game: late in the game the bot stopped
+placing words and just ran out the clock. Root cause was in
+[src/game/sessions/botSearch.js](src/game/sessions/botSearch.js): `searchBotMove`
+pre-filters candidate words with `canMakeWord(word, rack)`, which requires the
+**entire** word to be spellable from the bot's rack alone. That ignores that
+`tryPlaceWord` can reuse letters already committed to the board. On an open
+board the bot spells whole words off anchors and it's fine; as the board fills,
+virtually every legal move is a "play-through" that reuses board letters, and
+the bot became blind to all of them — it returned `null` and passed.
+
+Reproduced from the saved game (bot rack `א,א,ק,ח,א,ש,פ,ח`): the strict search
+found **0** moves and the bot passed, yet **7** legal moves existed (e.g. play
+`ח` on the perimeter bonus square to make `חצי` off the committed `צי`, worth
+14 pts).
+
+Fixes:
+
+- **Play-through fallback** ([botSearch.js](src/game/sessions/botSearch.js)):
+  when the strict search finds nothing, `searchPlayThrough` retries with a
+  widened candidate set — short words (≤ `PLAYTHROUGH_MAX_LEN` = 4) the rack can
+  *complete* using committed letters (`canFormWithBoard`) — over all anchors
+  incl. bonus squares, with bonus-tile placements allowed (any legal move beats
+  passing). `tryPlaceWord` still validates the exact placement and every
+  cross-word. Difficulty still shapes the final pick via `pickMove`. The primary
+  search is unchanged, so open-board behaviour and all existing tests are
+  untouched. The bot now finds a move 10/10 on the reported board across all
+  difficulties (HARD takes the 14-pt `חצי`).
+- **Exchange instead of pass when stuck** ([botGameSession.js](src/game/sessions/botGameSession.js)):
+  if no move is found and the bag can still refill, the bot swaps its
+  most-duplicated tiles (`pickTilesToExchange`) rather than idling on a dead
+  rack; it only passes when the bag is empty.
+- Tests: play-through regression in `botSearch.test.js`; exchange-vs-pass
+  behaviour in `session.test.js`. 1268 unit tests pass.
+
+Files: `src/game/sessions/botSearch.js`, `src/game/sessions/botGameSession.js`,
+`src/game/sessions/botSearch.test.js`, `src/game/sessions/session.test.js`
+
+---
+
+## Wire up ביטול בוסט (cancel-boost) veto + forfeit overlay — July 2026
+
+The B13-wheel outcome `cancel_next_opponent_bonus` ("ביטול בוסט") was banked and
+showed a 🛡 badge, but never actually did anything: its plugin trigger
+(`AFTER_MOVE_VALIDATE`) is not run by the spine engine and `ctx.suppressBonus`
+was never read. The `boostVetoScreen` / `#ov-boost-veto` overlay existed but
+nothing ever emitted `BV_OPEN`.
+
+Now wired end-to-end:
+
+- **Engine** ([src/game/core/gameEngine.js](src/game/core/gameEngine.js)):
+  `confirmMove` checks, when the mover lands on a bonus square, whether the
+  opponent holds a banked `cancel_next_opponent_bonus`
+  (`cancelBoostOwnerAgainst`). If so the bonus is **vetoed**: the square is
+  marked used, no boost / mini-game / wheel is created, the move scores normally
+  (no deferred-score flow), ONE of the opponent's cancel boosts is spent, and the
+  engine emits the new `EV.BONUS_VETOED` (`{ slot, cancelSlot, bonusTypes }`)
+  plus a `BOOST_ACTIVATED { consumed: true }` for the shield.
+- **UI** ([src/main.js](src/main.js) `attachBonusFlow`): on `EV.BONUS_VETOED`,
+  the forfeited player (the mover, when local — not the bot) is shown the
+  `#ov-boost-veto` overlay via `BV_OPEN`. [boostVetoScreen.js](src/ui/screens/boostVetoScreen.js)
+  `describe()` now renders a clear message: *"{opponent} קיבל 'ביטול בוסט'
+  בגלגל המזל — לכן הבוסט שזכית בו מבוטל."*
+- New event `EV.BONUS_VETOED` in [src/events/eventTypes.js](src/events/eventTypes.js).
+- Test: `tests/unit/engine-parity-highrisk.test.js` asserts the full veto path
+  (no award, score commits, cancel boost consumed, `BONUS_VETOED` emitted). 1266
+  tests pass.
+
+Online: only the mover's client runs the engine on its own move, so the mover
+(the forfeiting player) is the one who sees the overlay; the committed state
+carries the spent cancel boost to the opponent.
+
+Files: `src/game/core/gameEngine.js`, `src/events/eventTypes.js`, `src/main.js`,
+`src/ui/screens/boostVetoScreen.js`, `tests/unit/engine-parity-highrisk.test.js`
+
+---
+
+## Three gameplay bug fixes: crossing-words letter variety, free tile-swap turn cost, anonymous ELO — July 2026
+
+Three unrelated bugs reported from play-testing:
+
+1. **מילים מצטלבות (crossing words) always asked for ב.** `findCrossingPair`
+   in [src/ui/screens/miniGames/crossingWordsMiniGame.js](src/ui/screens/miniGames/crossingWordsMiniGame.js)
+   capped the candidate pool (`slice(0, poolCap)`) **before** shuffling it. The
+   runtime dictionary is alphabetically sorted, so the leading 200 words of
+   length 3–6 all start with א — and since א is a blocked crossing letter, the
+   first usable shared letter was almost always ב (from the "אב…" cluster). Fix:
+   shuffle the whole candidate list first, then cap. The shared letter now
+   varies across the alphabet.
+
+2. **A free tile-swap won on the wheel (החלפת אות) still cost a turn.** The
+   free swap was only spent when redeemed via the small 🔄 boost badge; opening
+   the ordinary "החלפת אות" exchange button ran a normal turn-consuming
+   exchange while the player still held the boost. `openExchangeOverlay` in
+   [src/ui/screens/gameScreen.js](src/ui/screens/gameScreen.js) now detects a
+   banked `free_tile_swap` for the local slot and spends it automatically, so
+   any tile swap is free while the boost is held.
+
+3. **Anonymous (guest) players gained/lost ELO in online games.** The
+   `EV.GAME_COMPLETED` handler in [src/main.js](src/main.js) applied ELO for any
+   signed-in `fbUser`, including anonymous ones. Since each client writes only
+   its OWN rating, the handler now skips `applyEloForFinishedGame` when
+   `fbUser.isAnonymous` — guests stay out of the rating pool entirely.
+
+Files: `src/ui/screens/miniGames/crossingWordsMiniGame.js`,
+`src/ui/screens/gameScreen.js`, `src/main.js`
+
+---
+
+## 300-character summary ג€” June 2026 onward
+
+Since June 2026: rebuilt replay/debug tools, hardened matchmaking and live/async end flows, added avatar store, coins, richer stats and new mini-games, simplified dictionary/bot vocab, fixed bonus-square state counts, notifications, profile layout, and expanded tests to full coverage gate. CI-ready.
+
+---
+
 ## Fix: TILE_COUNT_MISMATCH for tiles placed on bonus squares — June 2026
 
 `boardTileCount` and `boardHash` in `src/game/debug/stateHash.js` only iterated

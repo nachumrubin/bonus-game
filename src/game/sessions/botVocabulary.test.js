@@ -42,6 +42,24 @@ test('createBotWordList preserves frequency order before applying the cap', () =
   }), [common]);
 });
 
+test('createBotWordList: prepended admin-approved words survive the vocab cap', () => {
+  // main.js prepends APPROVED_OVERLAY words to BOT_WORDS so a word added via
+  // the settings screen is playable by the bot even under the easy/medium cap.
+  // Here `approved` is prepended ahead of many bot words with cap=2 — it must
+  // survive; an appended word would have been sliced off.
+  const approved = `${GIMEL}${DALET}`;
+  const botWords = [`${ALEF}${BET}`, `${MEM}${LAMED}`, `${KAF}${VAV}`];
+  const list = createBotWordList({
+    sourceWords: [approved, ...botWords],
+    maxWordLen: 2,
+    cap: 2,
+    isWordValid: () => true,
+    preserveOrder: true,
+  });
+  assert.equal(list[0], approved, 'approved word is kept (and first) under the cap');
+  assert.equal(list.length, 2);
+});
+
 test('createBotWordList filters by length and dictionary validity', () => {
   const validShort = `${ALEF}${BET}`;
   const validLong = `${ALEF}${BET}${GIMEL}${DALET}${HE}${VAV}`;

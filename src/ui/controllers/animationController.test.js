@@ -183,6 +183,31 @@ test('MOVE_CONFIRMED carries wordTiles through scoring directives', () => {
   ac.dispose();
 });
 
+test('MOVE_CONFIRMED forwards the score multiplier to the merge sequence (for the ×N chip)', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, mySlot: 0 });
+  const wordTiles = [[{ r: 4, c: 4, letter: 'צ', val: 12 }]];
+  // ×4 word worth 12 raw → committed score 48.
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [], words: ['צ'], wordTiles, score: 48, multiplier: 4 });
+  const merge = ac._directives.find(d => d.kind === 'scoreMergeSequence');
+  assert.equal(merge.payload.multiplier, 4, 'multiplier flows through so gameScreen can fly the ×N chip');
+  assert.equal(merge.payload.finalScore, 48);
+  assert.equal(merge.payload.words[0].wordScore, 12, 'per-word chip shows the RAW tile value (pre-multiplier)');
+  ac.dispose();
+});
+
+test('merge sequence defaults multiplier to 1 when no boost was active', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, mySlot: 0 });
+  bus.emit(EV.MOVE_CONFIRMED, {
+    slot: 0, placed: [], words: ['א'],
+    wordTiles: [[{ r: 4, c: 4, letter: 'א', val: 1 }]], score: 1,
+  });
+  const merge = ac._directives.find(d => d.kind === 'scoreMergeSequence');
+  assert.equal(merge.payload.multiplier, 1);
+  ac.dispose();
+});
+
 test('GAME_COMPLETED triggers panel arrive + overlay card', () => {
   bus._reset();
   const ac = createAnimationController({ bus });

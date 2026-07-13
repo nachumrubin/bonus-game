@@ -27,6 +27,20 @@ test('syncApprovedDictionaryWordsOnce adds approved words to a dictionary Set', 
   assert.ok(dict.has('אחד'));
 });
 
+test('syncApprovedDictionaryWordsOnce also fills the optional approvedOverlay (bot vocab source)', async () => {
+  const db = makeMockDb();
+  await db.ref('dictionaryApproved/א').set({ word: 'אחד' });
+  await db.ref('dictionaryApproved/ב').set({ word: 'בית' });
+  const dict = new Set();
+  const overlay = new Set();
+  const count = await syncApprovedDictionaryWordsOnce(db, dict, overlay);
+  assert.equal(count, 2);
+  // Same words land in both sets: DICT (human validity) and the overlay
+  // (which augments the bot's word list).
+  assert.ok(dict.has('אחד') && dict.has('בית'));
+  assert.ok(overlay.has('אחד') && overlay.has('בית'));
+});
+
 // ── End-to-end: Firebase-approved words become valid in gameplay (GAP_REPORT item 11) ─
 // The gap raised the concern that approved words might not flow into the
 // active dictionary used by isValid(). This test wires the real

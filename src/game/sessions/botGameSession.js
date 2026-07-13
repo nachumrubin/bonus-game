@@ -14,6 +14,17 @@ import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
 import { searchBotMove, DIFFICULTY } from './botSearch.js';
 
+// Choose which rack tiles to dump when the bot can't move. Exchange the
+// most-duplicated letters first (a rack of 3×א is what usually strands the
+// bot), so a partial exchange still meaningfully diversifies the rack.
+function pickTilesToExchange(rack, count) {
+  const freq = new Map();
+  for (const l of rack) freq.set(l, (freq.get(l) ?? 0) + 1);
+  return [...rack]
+    .sort((a, b) => (freq.get(b) - freq.get(a)))
+    .slice(0, count);
+}
+
 /**
  * Attach an automated player to an existing local session.
  * @param {import('./localGameSession.js').LocalGameSession} session
@@ -84,7 +95,19 @@ export function attachBotPlayer(session, {
       if (result) {
         engine.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: result.placed } });
       } else {
-        engine.dispatch({ type: CMD.PASS_TURN });
+        // No legal move found. Rather than idly passing — which strands a bad,
+        // duplicate-heavy rack forever and just runs out the game on passes —
+        // swap tiles when the bag can still refill, so the bot gets a fresh
+        // rack and a chance to play again. Pass only when the bag is empty.
+        const rackTiles = (state.racks?.[slot] ?? []).filter(Boolean);
+        const bagLen = state.bag?.length ?? 0;
+        if (rackTiles.length > 0 && bagLen > 0) {
+          const count = Math.min(rackTiles.length, bagLen);
+          const letters = pickTilesToExchange(rackTiles, count);
+          engine.dispatch({ type: CMD.EXCHANGE_TILE, payload: { letters, freeSwap: false } });
+        } else {
+          engine.dispatch({ type: CMD.PASS_TURN });
+        }
       }
     }, thinkingMs);
   }
