@@ -279,7 +279,11 @@ test('online session: no-lastMove timeout snapshot resyncs remote turn state', a
   await sessB.dispose();
 });
 
-test('online session: deferred bonus scoring commits once on MOVE_SCORE_COMMITTED', async () => {
+// Two-phase commit for a bonus-square move. The FIRST commit publishes the tiles
+// immediately (so the opponent can see what was played during a mini-game that
+// may run 60s) but does NOT rotate the turn or award any score. The SECOND commit,
+// on MOVE_SCORE_COMMITTED, adds the bonus points and rotates the turn.
+test('online session: deferred bonus move publishes tiles immediately, scores + rotates only on MOVE_SCORE_COMMITTED', async () => {
   bus._reset();
   DICT.clear();
   const ALEF = '\u05d0';
@@ -312,14 +316,20 @@ test('online session: deferred bonus scoring commits once on MOVE_SCORE_COMMITTE
   });
   await new Promise(r => setTimeout(r, 0));
 
-  assert.equal(db._data.rooms['online-room'].version, 1, 'deferred MOVE_CONFIRMED must not commit yet');
-  assert.equal(db._data.rooms['online-room'].scores[0], 0);
+  // Phase 1: the tiles are published right away so the opponent isn't left
+  // staring at a blank board for the length of the mini-game...
+  const deferredRoom = db._data.rooms['online-room'];
+  assert.equal(deferredRoom.version, 2, 'deferred MOVE_CONFIRMED publishes the move');
+  assert.equal(deferredRoom.bonusBoard['-1,1'].letter, BET, 'opponent can see the played tile');
+  // ...but the score is withheld and the turn does NOT rotate.
+  assert.equal(deferredRoom.scores[0], 0, 'score stays deferred until the bonus resolves');
+  assert.equal(deferredRoom.currentTurnSlot, 0, 'turn must NOT rotate on the deferred commit');
 
   sessA.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, bonusIdx: 0, extra: 20 } });
   await new Promise(r => setTimeout(r, 0));
 
   const roomNow = db._data.rooms['online-room'];
-  assert.equal(roomNow.version, 2, 'MOVE_SCORE_COMMITTED commits the final scored move exactly once');
+  assert.equal(roomNow.version, 3, 'MOVE_SCORE_COMMITTED commits the final scored move exactly once');
   assert.equal(roomNow.scores[0], 24);
   assert.equal(roomNow.currentTurnSlot, 1);
   assert.equal(roomNow.lastMove.score, 24);

@@ -14,6 +14,8 @@ import { createLocalGameSession } from '../../game/sessions/localGameSession.js'
 import { createGameController } from '../controllers/gameController.js';
 import { createAnimationController } from '../controllers/animationController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT } from './gameScreen.js';
+import { setCommittedTile } from '../../game/core/board.js';
+import { BDEFS } from '../../game/boosts/data.js';
 
 const _origLog = console.log;
 console.log = () => {};
@@ -120,9 +122,15 @@ function makeGameDom() {
   reg('brack');
   const exchangeOverlay = reg('ov-exch', ['hidden']);
   const exchRack = reg('exch-rack');
+  // Both the ✕ (#exch-close) and "ביטול" (#exch-cancel) close the overlay, and
+  // both ship with the same inline onclick — which is exactly what made the old
+  // attribute-selector lookup bind only one of them.
+  const exchClose = reg('exch-close');
   const exchCancel = reg('exch-cancel');
+  exchClose._attrs.onclick = "ovClose('ov-exch')";
   exchCancel._attrs.onclick = "ovClose('ov-exch')";
   exchangeOverlay.appendChild(exchRack);
+  exchangeOverlay.appendChild(exchClose);
   exchangeOverlay.appendChild(exchCancel);
   const body = reg('body');
 
@@ -137,6 +145,10 @@ function makeGameDom() {
       return null;
     },
   };
+  // gameScreen's ensureBsqTileWrap() creates the bonus-square tile host via
+  // `root.ownerDocument ?? globalThis.document`. Neither exists on the stub in
+  // node, so point ownerDocument at the stub itself (it has createElement).
+  root.ownerDocument = root;
   return { root, elements };
 }
 
@@ -172,6 +184,33 @@ test('mount: clicking #btn-play with placed tiles dispatches CONFIRM_MOVE', () =
   elements.get('btn-play').fireClick();
   assert.equal(session.state.scores[0], 4);
   assert.equal(session.state.currentTurnSlot, 1);
+});
+
+// Regression: swapping a rack tile onto a committed tile that sits on a PERIMETER
+// BONUS SQUARE used to keep painting the OLD letter until the move was confirmed.
+// The bsq render loop checked `committed` (still the old tile — the engine only
+// applies swaps on confirm) but had no `swapHere` branch, unlike the in-grid loop.
+test('render: a pending swap on a bonus square shows the NEW letter, not the old one', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  const { br, bc } = BDEFS[0];
+  // An opponent-committed tile already sits on the bonus square.
+  setCommittedTile(session.state, br, bc, { letter: 'ז', val: 8, isJoker: false });
+
+  // Swap in 'א' (rack slot 0) over it.
+  const ok = controller.swapBoardTile?.({ r: br, c: bc, letter: 'א', val: 1, isJoker: false, rackIndex: 0 });
+  assert.equal(ok, true, 'swap should be accepted on a bonus square');
+
+  // The bsq paints into a child `.bsq-tile-wrap` (ensureBsqTileWrap), and the
+  // DOM stub's querySelector always returns null, so read the newest child.
+  const bsq = elements.get('bsq-0');
+  const wrap = bsq.children[bsq.children.length - 1];
+  assert.ok(wrap, 'bonus square has a tile wrap');
+  assert.match(wrap.innerHTML, /א/, 'bonus square renders the swapped-IN letter');
+  assert.doesNotMatch(wrap.innerHTML, /ז/, 'bonus square must not still show the replaced letter');
+  assert.ok(bsq.classList.contains('swap-pending'), 'bsq is flagged .swap-pending');
 });
 
 test('mount: clicking #btn-recall clears placed tiles', () => {
@@ -212,6 +251,40 @@ test('exchange overlay cancel closes without dispatching exchange', () => {
 
   assert.ok(elements.get('ov-exch').classList.contains('hidden'));
   assert.equal(session.state.currentTurnSlot, 0);
+});
+
+test('exchange overlay ✕ (#exch-close) closes it too', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  elements.get('btn-exchange').fireClick();
+  assert.ok(!elements.get('ov-exch').classList.contains('hidden'), 'overlay opened');
+  elements.get('exch-close').fireClick();
+
+  assert.ok(elements.get('ov-exch').classList.contains('hidden'), '✕ closes the overlay');
+  assert.equal(session.state.currentTurnSlot, 0, 'closing must not burn a turn');
+});
+
+// Regression: the ✕ and "ביטול" both ship `onclick="ovClose('ov-exch')"`. The old
+// lookup used that attribute as a selector, so it matched the ✕ (first in DOM)
+// and STRIPPED its onclick. On a re-mount the ✕ no longer matched, the selector
+// fell through to "ביטול", and the ✕ was left with no onclick and no listener —
+// a dead button. Both must stay wired across mounts.
+test('exchange overlay ✕ still closes after a re-mount', () => {
+  const { controller } = fresh();
+  const { root, elements } = makeGameDom();
+  const first = mountGameScreen({ controller, root });
+  first?.unmount?.();
+  mountGameScreen({ controller, root });
+
+  elements.get('btn-exchange').fireClick();
+  elements.get('exch-close').fireClick();
+  assert.ok(elements.get('ov-exch').classList.contains('hidden'), '✕ must survive a re-mount');
+
+  elements.get('btn-exchange').fireClick();
+  elements.get('exch-cancel').fireClick();
+  assert.ok(elements.get('ov-exch').classList.contains('hidden'), 'ביטול must survive a re-mount');
 });
 
 test('mount: score values reflect view-model on initial render', () => {

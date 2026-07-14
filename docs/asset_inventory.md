@@ -1,9 +1,24 @@
 # Asset Inventory
 
-## Missing
+## Missing (bespoke art — interim icons are in place, nothing is broken)
 
-* None
-  (stats-letter-icon.png was proposed for the favorite-letter card, but that card
+The three boosts below used bare emoji in the award overlay, which rendered as
+meaningless gold discs. They now use **interim** icons; bespoke Boost-family art
+is still wanted so they match `assets/rewards/extra turn.png`. Generation prompts
+are in `docs-md/CHANGELOG.md`. Swapping in real art is a one-line `image:` change
+each in `describeBoost` (`src/ui/screens/gameScreen.js`).
+
+* assets/rewards/skip turn.png — `skip_opponent_turn`.
+  Interim: `assets/ui/pause.png` (already Boost-family; reads as "turn halted").
+* assets/rewards/tile swap.png — `free_tile_swap`.
+  Interim: `assets/ui/rematch.png` (already Boost-family; circular swap arrows —
+  a genuinely good fit, lowest priority to replace).
+* assets/rewards/cancel boost.png — `cancel_next_opponent_bonus`.
+  Interim: 🛡️ emoji (no usable shield asset exists — the achievements shield is a
+  multi-object sheet with a baked-in background). **Highest priority**: it's the
+  only boost still without an icon.
+
+* (stats-letter-icon.png was proposed for the favorite-letter card, but that card
   renders the actual Hebrew letter dynamically — no static icon needed.)
 
 ## Existing

@@ -83,15 +83,30 @@ export function mountUnscrambleMiniGame({
   if (!bus) throw new Error('mountUnscrambleMiniGame: bus required');
   if (!Array.isArray(words)) throw new Error('mountUnscrambleMiniGame: words[] required');
 
+  // Signal that this mini-game's result screen has been dismissed, so the
+  // bonusActivationController finalizes the staged award and passes the turn.
+  // Fired ONCE, from every close path (continue button, fail/timeout continue,
+  // hard-teardown, and the no-word degrade). Guarded so a double close can't
+  // finalize twice.
+  let closedEmitted = false;
+  function emitClosed() {
+    if (closedEmitted) return;
+    closedEmitted = true;
+    try { bus.emit('bonus/minigame-closed', {}); } catch { /* swallow */ }
+  }
+
   const cfg = tierConfig(tier);
   const puzzle = pickPuzzle(words, cfg.wordLen, rng);
 
   if (!puzzle) {
     // No word of that length in the dictionary — degrade to "auto failure"
-    // so we don't block the turn.
+    // so we don't block the turn. There's no result screen to dismiss here, so
+    // emit MINIGAME_CLOSED immediately after staging the (losing) result so the
+    // controller finalizes and the turn passes.
     queueMicrotask(() => {
       bus.emit(UNS_INTENT.RESULT, { success: false, earnedPts: 0, reason: 'no-word' });
       onResult({ success: false, earnedPts: 0, reason: 'no-word' });
+      emitClosed();
     });
     return { unmount() {}, _puzzle: null };
   }
@@ -338,7 +353,7 @@ export function mountUnscrambleMiniGame({
     cont.className = 'bz-btn bz-btn-gold';
     cont.style.cssText = oldBtn.style.cssText;
     cont.textContent = g('continueMiniGame', getGender());
-    cont.addEventListener('click', () => { try { host.remove(); } catch { /* swallow */ } });
+    cont.addEventListener('click', () => { try { host.remove(); } catch { /* swallow */ } emitClosed(); });
     oldBtn.replaceWith(cont);
   }
   function showResultView(success, guess = '') {
@@ -366,6 +381,7 @@ export function mountUnscrambleMiniGame({
     if (contBtn) contBtn.textContent = g('continueMiniGame', getGender());
     contBtn?.addEventListener('click', () => {
       try { host.remove(); } catch { /* swallow */ }
+      emitClosed();
     });
   }
 
@@ -414,6 +430,7 @@ export function mountUnscrambleMiniGame({
       onResult(r);
     }
     try { host.remove(); } catch { /* swallow */ }
+    emitClosed();
   }
 
   return {

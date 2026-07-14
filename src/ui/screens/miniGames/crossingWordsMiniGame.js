@@ -206,41 +206,38 @@ export function mountCrossingWordsMiniGame({
     const gridRows = pair.v.length;
     const gridCols = pair.h.length;
     const wrap = doc.createElement('div');
-    wrap.style.cssText = `display:grid;grid-template-columns:repeat(${gridCols},32px);gap:2px;background:#2a5878;border:2px solid #2a5878;border-radius:3px;margin:8px auto;width:fit-content;`;
+    wrap.className = 'cw-mini-grid';
+    wrap.style.setProperty('--cw-cols', String(gridCols));
     let input = null;
     for (let r = 0; r < gridRows; r++) {
       for (let c = 0; c < gridCols; c++) {
         const cell = doc.createElement('div');
-        cell.style.cssText = 'width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;';
+        cell.className = 'cw-cell is-empty';
         const isCross = r === pair.vpos && c === pair.hpos;
         const isHCell = r === pair.vpos;
         const isVCell = c === pair.hpos;
         if (isCross) {
-          cell.style.background = '#5ba3cc';
-          cell.style.border = '2px solid #e8d040';
-          cell.style.color = '#e8d040';
+          cell.className = 'cw-cell is-cross';
           if (withInput) {
             input = doc.createElement('input');
             input.type = 'text';
             input.maxLength = 1;
             input.dir = 'rtl';
             input.placeholder = '?';
+            input.className = 'cw-input';
             input.setAttribute('aria-label', 'האות המשותפת');
-            input.style.cssText = 'width:28px;height:28px;background:transparent;border:none;outline:none;text-align:center;font-size:18px;font-weight:900;color:#e8d040;font-family:inherit;padding:0;caret-color:#e8d040;';
             cell.appendChild(input);
           } else {
             cell.textContent = '?';
           }
         } else if (isHCell && c < pair.h.length) {
-          cell.style.background = '#e8e0c8';
-          cell.style.color = '#111';
+          cell.className = 'cw-cell is-letter';
           cell.textContent = pair.h[c];
         } else if (isVCell && r < pair.v.length) {
-          cell.style.background = '#e8e0c8';
-          cell.style.color = '#111';
+          cell.className = 'cw-cell is-letter';
           cell.textContent = pair.v[r];
         } else {
-          cell.style.background = 'transparent';
+          cell.className = 'cw-cell is-empty';
         }
         wrap.appendChild(cell);
       }

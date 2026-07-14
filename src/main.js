@@ -84,7 +84,7 @@ import { mountAsyncGamesScreen, MG_INTENT, MG_RENDER } from './ui/screens/asyncG
 import { mountAsyncHomeButton, AH_INTENT, AH_SHOW, AH_HIDE } from './ui/screens/asyncHomeButton.js';
 import * as asyncTurnBanner from './notifications/asyncTurnBanner.js';
 import * as browserNotificationFallback from './notifications/browserNotificationFallback.js';
-import { createBonusActivationController, BONUS_PENDING, BONUS_RESOLVED } from './ui/controllers/bonusActivationController.js';
+import { createBonusActivationController, BONUS_PENDING, BONUS_RESOLVED, MINIGAME_CLOSED } from './ui/controllers/bonusActivationController.js';
 import { mountBonusIntroScreen, BI_INTENT, BI_OPEN, BI_CLOSE, describeBonus } from './ui/screens/bonusIntroScreen.js';
 import { mountBonusSpectatorScreen } from './ui/screens/bonusSpectatorScreen.js';
 import { mountBoostVetoScreen, BV_INTENT, BV_OPEN, BV_CLOSE } from './ui/screens/boostVetoScreen.js';
@@ -3893,15 +3893,34 @@ async function boot() {
       // opponent's snapshot briefly showed liveBonus without the `active`
       // flag, which collapsed the spectator overlay mid-mini-game.
       let currentLiveBonus = null;
+      // The move that triggered this bonus flow. Its tiles are committed to the
+      // room right away (the deferred commit in onlineGameSession), but its SCORE
+      // is withheld until the mini-game resolves — and the spectator overlay
+      // covers the opponent's board the whole time. So ride the word + base score
+      // along on liveBonus and show them in the overlay; otherwise the opponent
+      // spends up to 60s not knowing what was played.
+      let lastDeferredMove = null; // { words: string[], score: number }
+      subs.push(bus.on(EV.MOVE_CONFIRMED, ({ slot, words, score, scoringDeferred }) => {
+        if (slot !== onlineMySlot || !scoringDeferred) return;
+        lastDeferredMove = {
+          words: Array.isArray(words) ? words.filter(Boolean) : [],
+          score: Number(score) || 0,
+        };
+      }));
       const writeLiveBonus = (payload) => {
-        currentLiveBonus = payload;
+        // Stamp the triggering move onto every liveBonus write, so a progress
+        // update or the award payload never drops it.
+        const withMove = payload && lastDeferredMove
+          ? { ...payload, words: lastDeferredMove.words, moveScore: lastDeferredMove.score }
+          : payload;
+        currentLiveBonus = withMove;
         const db = activeFbDb;
         if (!db) return;
-        roomService.setLiveBonus(db, onlineRoomId, payload).catch((e) => {
+        roomService.setLiveBonus(db, onlineRoomId, withMove).catch((e) => {
           console.warn('[spine] setLiveBonus', e);
         });
       };
-      const clearLiveBonus = () => writeLiveBonus(null);
+      const clearLiveBonus = () => { lastDeferredMove = null; writeLiveBonus(null); };
       let bonusFlowActive = false;
 
       subs.push(bus.on(BONUS_PENDING, (pending) => {
@@ -4615,8 +4634,15 @@ function installCutoverGlobals() {
   // The new spine never defined bonusOk, so that restored onclick threw
   // `ReferenceError: bonusOk is not defined` and the overlay stayed open.
   // This stub matches the legacy behaviour: just hide #ov-bonus.
+  //
+  // This is ALSO the single choke point where a legacy-path mini-game's result
+  // screen (#ov-bonus, shared #bok "continue" button) is dismissed. Emitting
+  // MINIGAME_CLOSED here lets the bonusActivationController finalize the staged
+  // award (pass the turn) only once the player closes the result screen — not
+  // while it is still up. Self-hosted games (unscramble, wheel) emit their own.
   globalThis.bonusOk = globalThis.bonusOk ?? function bonusOk() {
     globalThis.document?.getElementById?.('ov-bonus')?.classList?.add('hidden');
+    try { bus.emit(MINIGAME_CLOSED, {}); } catch { /* swallow */ }
   };
   globalThis.showSc = globalThis.showSc ?? function showSc(id) {
     spineShowScreen(id, { doc: globalThis.document });

@@ -20,6 +20,7 @@ export function mountBonusSpectatorScreen({ root = globalThis.document, bus, ses
   const iconEl  = $('#bspec-ic',           root);
   const titleEl = $('#bspec-title',        root);
   const descEl  = $('#bspec-desc',         root);
+  const moveEl  = $('#bspec-move',         root);
   const progEl  = $('#bspec-progress',     root);
 
   if (!overlay) {
@@ -43,6 +44,7 @@ export function mountBonusSpectatorScreen({ root = globalThis.document, bus, ses
     setText(iconEl, liveBonus.icon || '⚡');
     setText(titleEl, liveBonus.title || 'היריב מקבל בוסט!');
     setText(descEl, liveBonus.desc || '');
+    setText(moveEl, formatPlayedMove(liveBonus));
     setText(progEl, formatProgress(liveBonus.progress));
     overlay.classList?.remove?.('hidden');
   }));
@@ -54,6 +56,17 @@ export function mountBonusSpectatorScreen({ root = globalThis.document, bus, ses
   }
 
   return { unmount };
+}
+
+// "שיחק: מילה (+12)" — the word(s) the active player laid down and their base,
+// pre-bonus score. Empty string when the move isn't known (e.g. an auto bonus
+// with no deferred move, or an older client that didn't publish it).
+export function formatPlayedMove(liveBonus) {
+  const words = Array.isArray(liveBonus?.words) ? liveBonus.words.filter(Boolean) : [];
+  if (words.length === 0) return '';
+  const score = Number(liveBonus?.moveScore);
+  const label = `שיחק: ${words.join(' · ')}`;
+  return Number.isFinite(score) && score > 0 ? `${label} (+${score})` : label;
 }
 
 export function formatProgress(progress) {

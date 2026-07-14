@@ -253,12 +253,22 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   const btnDirV = $('#bv', root);
   const exchangeOverlay = $('#ov-exch', root);
   const exchangeRack = $('#exch-rack', root);
-  const exchangeCancel = $('button[onclick="ovClose(\'ov-exch\')"]', root);
+  // Both the ✕ and the "ביטול" button close the exchange overlay. Select them by
+  // ID, NOT by their onclick attribute: both shipped with the identical
+  // `onclick="ovClose('ov-exch')"`, so an attribute selector matched whichever
+  // came first (the ✕) — and since mount STRIPS that onclick, a re-mount no
+  // longer matched the ✕ and silently bound the "ביטול" button instead. The ✕
+  // was then left with neither an onclick (stripped) nor a listener (cleaned up
+  // on unmount), i.e. a dead button.
+  const exchangeCloseButtons = [
+    $('#exch-close', root),
+    $('#exch-cancel', root),
+  ].filter(Boolean);
   const lockInvDisplay = $('#lock-inv-display', root);
   btnPlay?.removeAttribute('onclick');
   btnRecall?.removeAttribute('onclick');
   btnExchange?.removeAttribute('onclick');
-  exchangeCancel?.removeAttribute('onclick');
+  for (const btn of exchangeCloseButtons) btn.removeAttribute?.('onclick');
   btnDirH?.removeAttribute('onclick');
   btnDirV?.removeAttribute('onclick');
   // Ensure btn-play / btn-recall (data-gm-html) show the right gender on mount.
@@ -308,7 +318,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       try { renderRack(controller.view); } catch { /* swallow */ }
     }));
   }
-  cleanups.push(on(exchangeCancel, 'click', (e) => { e.preventDefault?.(); closeExchangeOverlay(); }));
+  for (const btn of exchangeCloseButtons) {
+    cleanups.push(on(btn, 'click', (e) => { e.preventDefault?.(); closeExchangeOverlay(); }));
+  }
   cleanups.push(on(btnDirH, 'click', (e) => { e.preventDefault?.(); controller.setPlacementDirection?.('H'); }));
   cleanups.push(on(btnDirV, 'click', (e) => { e.preventDefault?.(); controller.setPlacementDirection?.('V'); }));
 
@@ -932,14 +944,26 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       if (!bsq) continue;
       const { br, bc } = BDEFS[i];
       const placedHere = v.placed?.find(p => p.r === br && p.c === bc);
+      const swapHere = v.swappedTiles?.find(s => s.r === br && s.c === bc);
       const committed = boardTileAt(v, br, bc);
       const opponentPreviewTile = (!placedHere && !committed && isOpponentPreview(v, br, bc))
         ? previewTileAt(v, br, bc)
         : null;
-      bsq.classList?.remove('bsq-tile-host', 'np', 'selected-placed', 'spine-live-preview', 'last-move');
+      bsq.classList?.remove('bsq-tile-host', 'np', 'selected-placed', 'spine-live-preview', 'last-move', 'swap-pending');
       const iconEl = bsq.querySelector?.('.bsq-ic, .bsq-tile-wrap');
       const tileTarget = bsq.querySelector?.('.bsq-tile-wrap');
-      if (committed) {
+      if (swapHere) {
+        // A pending swap must be checked BEFORE `committed` — the engine only
+        // applies the swap on confirm, so the committed tile here is still the
+        // OLD letter. Without this branch the bsq fell through to the
+        // `committed` case and kept showing the letter being replaced until the
+        // move was finalized. Mirrors the in-grid cell loop above.
+        bsq.classList?.add('bsq-tile-host', 'np', 'swap-pending');
+        ensureBsqTileWrap(bsq).innerHTML = tileHTML(
+          { letter: swapHere.letter, val: swapHere.val, isJoker: !!swapHere.isJoker },
+          /*isPlaced=*/true,
+        );
+      } else if (committed) {
         bsq.classList?.add('bsq-tile-host');
         if (lastMoveCoords.has(`${br},${bc}`)) bsq.classList?.add('last-move');
         ensureBsqTileWrap(bsq).innerHTML = tileHTML(committed, /*isPlaced=*/false);
@@ -1798,18 +1822,36 @@ function describeBoost(boostId, payload, extra) {
     }
     case 'timer_bonus':
       return {
-        title: 'בוסט זמן ⏱',
+        title: 'בוסט זמן',
         bigText: `+${Number(p.seconds ?? 0)} שניות`,
         sub: 'יתווסף לזמן התור הבא',
       };
+    // The next three used bare emoji, which the overlay painted gold (see
+    // showBonusAwardOverlay) — they showed up as meaningless yellow discs.
+    // pause.png / rematch.png are already Boost-family art (blue sphere, cyan
+    // ring, glossy 3D), so they slot in next to 'extra turn.png' cleanly.
+    // Bespoke artwork is still tracked in docs/asset_inventory.md.
     case 'free_tile_swap':
-      return { title: 'החלפת אות חינם 🔄', bigText: '🔄', sub: 'תוכל להחליף אותיות בלי לוותר על התור' };
+      return {
+        title: 'החלפת אות חינם',
+        image: 'assets/ui/rematch.png',       // circular swap arrows
+        bigEmoji: '🔄',
+        sub: 'תוכל להחליף אותיות בלי לוותר על התור',
+      };
     case 'skip_opponent_turn':
-      return { title: 'דילוג על תור היריב 🚫', bigText: '🚫', sub: 'היריב יפסיד את התור הבא' };
+      return {
+        title: 'דילוג על תור היריב',
+        image: 'assets/ui/pause.png',         // the opponent's turn is halted
+        bigEmoji: '⏭️',
+        sub: 'היריב יפסיד את התור הבא',
+      };
     case 'cancel_next_opponent_bonus':
-      return { title: 'ביטול בוסט יריב 🛡', bigText: '🛡', sub: 'הבוסט הבא של היריב יבוטל' };
+      // No usable shield asset (the achievements shield is a multi-object sheet
+      // with a baked-in background), so this stays an emoji — but as bigEmoji it
+      // renders as a real colour shield instead of a gold blob.
+      return { title: 'ביטול בוסט יריב', bigEmoji: '🛡️', sub: 'הבוסט הבא של היריב יבוטל' };
     default:
-      return { title: 'בוסט הופעל', bigText: '⚡', sub: '' };
+      return { title: 'בוסט הופעל', bigEmoji: '⚡', sub: '' };
   }
 }
 
@@ -1835,9 +1877,21 @@ function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bo
     'transition:transform .35s cubic-bezier(.22,1.4,.36,1)',
     'min-width:240px','max-width:340px','pointer-events:auto',
   ].join(';');
+  // Three ways to render the big icon, in priority order:
+  //   image    — real artwork (best; e.g. 'extra turn.png')
+  //   bigEmoji — an emoji glyph. Rendered WITHOUT `color`, because glyphs like
+  //              🛡/⏱ default to TEXT presentation (monochrome) and a `color`
+  //              override paints them as a solid gold disc — the "meaningless
+  //              yellow circle". Left untinted they render as real color emoji.
+  //   bigText  — actual text (e.g. '×2', "+50 נק'"), which SHOULD be gold.
+  const BIG_TEXT_CSS  = 'font-size:32px;font-weight:900;color:var(--by);margin-bottom:4px;';
+  const BIG_EMOJI_CSS = 'font-size:56px;line-height:1.1;margin-bottom:4px;';
+  const bigFallback = info.bigEmoji
+    ? `<div class="ovd" style="${BIG_EMOJI_CSS}">${escapeForOverlay(info.bigEmoji)}</div>`
+    : `<div class="ovd" style="${BIG_TEXT_CSS}">${escapeForOverlay(info.bigText ?? '')}</div>`;
   const bigBlock = info.image
-    ? `<div class="ovd" style="margin-bottom:4px;"><img src="${escapeForOverlay(info.image)}" alt="${escapeForOverlay(info.title)}" style="width:72px;height:72px;object-fit:contain;"></div>`
-    : `<div class="ovd" style="font-size:32px;font-weight:900;color:var(--by);margin-bottom:4px;">${escapeForOverlay(info.bigText)}</div>`;
+    ? `<div class="ovd" style="margin-bottom:4px;"><img data-boost-img src="${escapeForOverlay(info.image)}" alt="${escapeForOverlay(info.title)}" style="width:72px;height:72px;object-fit:contain;"></div>`
+    : bigFallback;
   card.innerHTML = `
     <div class="ovic">⚡</div>
     <div class="ovt">${escapeForOverlay(info.title)}</div>
@@ -1848,6 +1902,18 @@ function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bo
   `;
   positioner.appendChild(card);
   appendOverlay(root, positioner);
+  // If a boost's artwork is missing (asset not shipped / cache miss), swap the
+  // broken <img> for the text fallback rather than showing a broken-image box.
+  const boostImg = card.querySelector?.('[data-boost-img]');
+  if (boostImg && (info.bigEmoji || info.bigText)) {
+    boostImg.addEventListener?.('error', () => {
+      const fallback = doc.createElement('div');
+      fallback.className = 'ovd';
+      fallback.style.cssText = info.bigEmoji ? BIG_EMOJI_CSS : BIG_TEXT_CSS;
+      fallback.textContent = info.bigEmoji ?? info.bigText;
+      boostImg.replaceWith?.(fallback);
+    });
+  }
   requestAnimationFrameSafe(() => {
     positioner.style.opacity = '1';
     card.style.transform = 'scale(1)';

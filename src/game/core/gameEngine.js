@@ -572,7 +572,7 @@ export function createEngine({ state, bus }) {
     emit(EV.BOOST_ACTIVATED, { slot: s, boostId, payload, turnNumber: state.turnNumber, bonusIdx });
   }
 
-  function handleFinalizeBoostAward({ slot, extra = 0, bonusIdx = null } = {}) {
+  function handleFinalizeBoostAward({ slot, extra = 0, bonusIdx = null, queueBoosts = [] } = {}) {
     const s = (slot === 0 || slot === 1) ? slot : state.currentTurnSlot;
     markBonusUsed(state, bonusIdx);
     clearPendingBonus(state, bonusIdx);
@@ -589,6 +589,18 @@ export function createEngine({ state, bus }) {
         history.bonusExtra = n;
       }
       state.pendingScoreCommit = null;
+
+      // Future-effect boosts won on the wheel (extra_turn, multiply_next_turns,
+      // skip_opponent_turn, free_tile_swap, cancel_next_opponent_bonus,
+      // timer_bonus) are queued here rather than via a separate ACTIVATE_BOOST
+      // (which would pop the redundant award modal). Push BEFORE advanceTurn /
+      // ON_TURN_END so extra_turn's repeatTurn sees the boost on this turn-end.
+      if (Array.isArray(queueBoosts) && queueBoosts.length) {
+        for (const b of queueBoosts) {
+          if (!b || !b.boostId) continue;
+          state.activeBoosts.push({ ...b, slot: (b.slot === 0 || b.slot === 1) ? b.slot : s });
+        }
+      }
 
       let ctx = {
         state,

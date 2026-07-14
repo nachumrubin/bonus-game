@@ -35,18 +35,22 @@ test('drawCrosswordPool: pads with commonLetters when bag is short', () => {
   assert.deepEqual(pool.slice(1), ['X','Y','X','Y']);
 });
 
-test('scanCrosswordWords: detects horizontal and vertical runs ≥ 2', () => {
-  // 3×3 grid with horizontal 'אב' on row 0 and vertical 'אג' on col 0.
+// Horizontal runs read RIGHT-TO-LEFT (Hebrew): the board is direction:ltr, so
+// column 0 is the LEFTMOST cell — i.e. the LAST letter of the word. Tiles
+// א(c0) ב(c1) therefore read "בא", not "אב". Vertical runs read top-to-bottom.
+test('scanCrosswordWords: horizontal runs read RTL, vertical runs read top-down', () => {
+  // 3×3 grid: horizontal run א(c0) ב(c1) on row 0 → reads "בא".
+  //           vertical   run א(r0) ג(r1) on col 0 → reads "אג".
   const P = (l,v) => ({ l, v });
   const placements = [
     [P('א',1), P('ב',3), null],
     [P('ג',3), null,      null],
     [null,     null,      null],
   ];
-  const validator = (w) => w === 'אב' || w === 'אג';
+  const validator = (w) => w === 'בא' || w === 'אג';
   const r = scanCrosswordWords(placements, { validator, rows: 3, cols: 3 });
-  assert.deepEqual(Object.keys(r.legal).sort(), ['אב', 'אג']);
-  assert.equal(r.legal['אב'], 4);
+  assert.deepEqual(Object.keys(r.legal).sort(), ['אג', 'בא']);
+  assert.equal(r.legal['בא'], 4);
   assert.equal(r.legal['אג'], 4);
   assert.equal(r.score, 8);
   assert.equal(r.hasIllegal, false);
@@ -61,7 +65,7 @@ test('scanCrosswordWords: tags illegal runs in `illegal` (any → bonus zero)', 
   const r = scanCrosswordWords(placements, { validator: () => false, rows: 2, cols: 3 });
   assert.equal(r.score, 0);
   assert.equal(r.hasIllegal, true);
-  assert.deepEqual(Object.keys(r.illegal), ['אב']);
+  assert.deepEqual(Object.keys(r.illegal), ['בא']);
 });
 
 test('scanCrosswordWords: ignores single-tile runs', () => {
@@ -81,14 +85,15 @@ test('scanCrosswordWords: dedups repeated words', () => {
     [P('א',1), P('ב',3), null, P('א',1), P('ב',3)],
   ];
   const r = scanCrosswordWords(placements, { validator: () => true, rows: 1, cols: 5 });
-  assert.deepEqual(Object.keys(r.legal), ['אב']);
+  assert.deepEqual(Object.keys(r.legal), ['בא']);
 });
 
 test('mount (no-DOM): place + submit scores legal words by tile-value sum', () => {
   bus._reset();
   const events = [];
   bus.on(CW_INTENT.RESULT, r => events.push(r));
-  const validator = (w) => w === 'אב';
+  // א at (0,0) + ב at (0,1) reads RTL as "בא" (c0 is the leftmost cell).
+  const validator = (w) => w === 'בא';
   const game = mountCrosswordMiniGame({
     bus,
     bag: ['א', 'ב'],
@@ -117,7 +122,7 @@ test('mount (no-DOM): any illegal run zeros the whole bonus', () => {
   bus._reset();
   const events = [];
   bus.on(CW_INTENT.RESULT, r => events.push(r));
-  const validator = (w) => w === 'אב'; // 'אד' is illegal
+  const validator = (w) => w === 'בא'; // row 2 reads "דא" (RTL) → illegal
   const game = mountCrosswordMiniGame({
     bus,
     bag: ['א','ב','א','ד'],
@@ -183,7 +188,7 @@ test('mount (no-DOM): expire scores whatever is on the board (timedOut flag set)
   const game = mountCrosswordMiniGame({
     bus,
     bag: ['א','ב'],
-    validator: (w) => w === 'אב',
+    validator: (w) => w === 'בא', // א(c0) ב(c1) reads RTL as "בא"
     hv: HV_TEST,
     rows: 1, cols: 2, poolSize: 2,
     rng: rngSeed(1), doc: null,

@@ -7,7 +7,7 @@ import { CMD } from '../../events/commands.js';
 import { BDEFS } from '../../game/boosts/data.js';
 import {
   createBonusActivationController,
-  BONUS_PENDING, BONUS_RESOLVED,
+  BONUS_PENDING, BONUS_RESOLVED, MINIGAME_CLOSED,
 } from './bonusActivationController.js';
 
 function makeSession(state) {
@@ -72,14 +72,21 @@ test('mini-game bonus emits BONUS_PENDING; resolveMiniGame(success) dispatches e
   // Engine has not been touched yet
   assert.equal(session._dispatched.length, 0);
 
-  // Player wins the mini-game
+  // Player wins the mini-game: resolveMiniGame STAGES the award but does not
+  // finalize (or emit BONUS_RESOLVED) until the result screen is dismissed.
   ctl.resolveMiniGame({ success: true, earnedPts: 100 });
+  assert.equal(session._dispatched.length, 0, 'no dispatch until the result screen closes');
+  assert.equal(resolved.length, 0, 'BONUS_RESOLVED deferred until close');
+
+  // Player dismisses the mini-game's own result screen → finalize + pass turn.
+  bus.emit(MINIGAME_CLOSED, {});
   assert.equal(session._dispatched.length, 1);
-  assert.equal(session._dispatched[0].payload.payload.extra, 100);
+  assert.equal(session._dispatched[0].type, CMD.FINALIZE_BOOST_AWARD);
+  assert.equal(session._dispatched[0].payload.extra, 100);
   assert.equal(resolved.at(-1).success, true);
 });
 
-test('mini-game failure finalizes the pending move with zero bonus', () => {
+test('mini-game failure finalizes the pending move with zero bonus on close', () => {
   bus._reset();
   const bonusAssignment = new Array(BDEFS.length).fill({ type: 'B3' });
   const session = makeSession({ bonusAssignment, bonusSqUsed: {}, turnNumber: 1 });
@@ -87,13 +94,15 @@ test('mini-game failure finalizes the pending move with zero bonus', () => {
 
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [bonusAt(0)] });
   ctl.resolveMiniGame({ success: false, earnedPts: 40 });
+  assert.equal(session._dispatched.length, 0);
 
+  bus.emit(MINIGAME_CLOSED, {});
   assert.equal(session._dispatched.length, 1);
   assert.equal(session._dispatched[0].type, CMD.FINALIZE_BOOST_AWARD);
   assert.equal(session._dispatched[0].payload.extra, 0);
 });
 
-test('wheel bonus emits BONUS_PENDING with kind=wheel; resolveWheel dispatches outcome', () => {
+test('wheel points outcome folds into the finalize extra on close', () => {
   bus._reset();
   const bonusAssignment = new Array(BDEFS.length).fill({ type: 'B13' });
   const session = makeSession({ bonusAssignment, bonusSqUsed: {}, turnNumber: 5 });
@@ -106,9 +115,30 @@ test('wheel bonus emits BONUS_PENDING with kind=wheel; resolveWheel dispatches o
   assert.equal(pending.length, 1);
   assert.equal(pending[0].kind, 'wheel');
   ctl.resolveWheel({ outcomeId: 'pts_50' });
+  assert.equal(session._dispatched.length, 0, 'staged until the wheel result closes');
+
+  bus.emit(MINIGAME_CLOSED, {});
   assert.equal(session._dispatched.length, 1);
-  assert.equal(session._dispatched[0].payload.boostId, 'auto_extra_score');
-  assert.equal(session._dispatched[0].payload.payload.extra, 50);
+  assert.equal(session._dispatched[0].type, CMD.FINALIZE_BOOST_AWARD);
+  assert.equal(session._dispatched[0].payload.extra, 50);
+  assert.deepEqual(session._dispatched[0].payload.queueBoosts, []);
+});
+
+test('wheel future-effect outcome is queued via finalize (no award modal) on close', () => {
+  bus._reset();
+  const bonusAssignment = new Array(BDEFS.length).fill({ type: 'B13' });
+  const session = makeSession({ bonusAssignment, bonusSqUsed: {}, turnNumber: 5 });
+  const ctl = createBonusActivationController({ bus, session });
+
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [bonusAt(1)] });
+  ctl.resolveWheel({ outcomeId: 'extra_turn' });
+  bus.emit(MINIGAME_CLOSED, {});
+
+  assert.equal(session._dispatched.length, 1);
+  assert.equal(session._dispatched[0].type, CMD.FINALIZE_BOOST_AWARD);
+  assert.equal(session._dispatched[0].payload.extra, 0);
+  assert.equal(session._dispatched[0].payload.queueBoosts.length, 1);
+  assert.equal(session._dispatched[0].payload.queueBoosts[0].boostId, 'extra_turn');
 });
 
 test('does not refire when the same MOVE_CONFIRMED slot reactivates', () => {
