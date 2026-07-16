@@ -16,11 +16,8 @@ import { EV } from '../../events/eventTypes.js';
 import { RACK_SIZE } from '../../game/core/tileBag.js';
 import {
   WORD_MERGE_STAGGER_MS,
-  WORD_MERGE_FLIGHT_MS,
-  BOOST_MERGE_DELAY_MS,
-  HOLD_AFTER_MERGE_MS,
-  SUM_FLIGHT_MS,
   COUNTUP_PEAK_MS,
+  mergeSequenceTiming,
 } from '../scoreAnimationTimings.js';
 
 export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false }) {
@@ -54,17 +51,14 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   // word's +N chip flies to a central sum chip; once all words + bonus
   // extra have merged, the sum holds briefly then flies into the score box.
 
-  // Returns { mergeEnd, totalToPanelLanding } so callers can align their
-  // own timing (count-up, glow duration, etc.) to the merge sequence.
-  function scoreMergeTiming({ wordCount, bonusExtra }) {
-    const lastWordStart = wordCount > 0 ? (wordCount - 1) * WORD_MERGE_STAGGER_MS : 0;
-    const boostStart    = bonusExtra > 0 ? lastWordStart + BOOST_MERGE_DELAY_MS : lastWordStart;
-    const mergeEnd      = boostStart + WORD_MERGE_FLIGHT_MS;
-    const totalToPanelLanding = mergeEnd + HOLD_AFTER_MERGE_MS + SUM_FLIGHT_MS;
-    return { mergeEnd, totalToPanelLanding };
+  // Delegates to the shared mergeSequenceTiming (single source of truth) so the
+  // per-word glow durations stay aligned with the chip flights, including the
+  // ×N multiplier phase.
+  function scoreMergeTiming({ wordCount, bonusExtra, multiplier }) {
+    return mergeSequenceTiming({ wordCount, bonusExtra, multiplier });
   }
 
-  function emitScoreSequence({ slot, placed, wordTiles, score, baseScore, bonusExtra }) {
+  function emitScoreSequence({ slot, placed, wordTiles, score, baseScore, bonusExtra, multiplier }) {
     const validWords = Array.isArray(wordTiles)
       ? wordTiles.filter(wt => Array.isArray(wt) && wt.length > 0)
       : [];
@@ -75,20 +69,21 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     const total = Number(score) || 0;
     const base  = baseScore != null ? Number(baseScore) : total;
     const extra = Number(bonusExtra) || 0;
+    const mult  = Number(multiplier) || 1;
 
     // Single merge directive — gameScreen orchestrates the per-word chip
-    // flights, the running-sum count-up, the boost extra merge, and the
-    // final flight to the score panel as one cohesive sequence.
+    // flights, the running-sum count-up, the ×N multiplier chip, the boost
+    // extra merge, and the final flight to the score panel as one sequence.
     trigger({
       kind: 'scoreMergeSequence',
-      payload: { slot, placed, words: wordsForRender, finalScore: total, baseScore: base, bonusExtra: extra },
+      payload: { slot, placed, words: wordsForRender, finalScore: total, baseScore: base, bonusExtra: extra, multiplier: mult },
     });
 
     // Per-word glow timed to the per-word chip launches — each word
     // lights up when its +N chip leaves and stays glowing until the
     // panel count-up finishes.
     if (wordsForRender.length > 0) {
-      const { totalToPanelLanding } = scoreMergeTiming({ wordCount: wordsForRender.length, bonusExtra: extra });
+      const { totalToPanelLanding } = scoreMergeTiming({ wordCount: wordsForRender.length, bonusExtra: extra, multiplier: mult });
       const glowEnd = totalToPanelLanding + COUNTUP_PEAK_MS;
       wordsForRender.forEach((w, i) => {
         const start = i * WORD_MERGE_STAGGER_MS;
@@ -100,7 +95,7 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     }
   }
 
-  function emitMoveAnimations({ slot, placed, words, wordTiles, score, opponent = false, scoringDeferred = false }) {
+  function emitMoveAnimations({ slot, placed, words, wordTiles, score, multiplier, opponent = false, scoringDeferred = false }) {
     trigger({ kind: 'tilePlaceIn',     payload: { slot, placed, opponent } });
     if (!opponent) trigger({ kind: 'validFlash', payload: { slot, words, wordTiles, placed } });
     if ((placed?.length ?? 0) >= RACK_SIZE) {
@@ -115,7 +110,7 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
       trigger({ kind: 'tileCascadeIn', payload: { slot, count: placed.length } });
     }
     if (scoringDeferred) return;
-    emitScoreSequence({ slot, placed, wordTiles, score });
+    emitScoreSequence({ slot, placed, wordTiles, score, multiplier });
   }
 
   function emitScoreCommitAnimations(payload) {

@@ -128,14 +128,19 @@ export async function removeWordsFromDictionary(db, {
 
 // Boot-time sync: merge /dictionaryApproved into the runtime DICT set so
 // admin-added words validate in gameplay.
-export async function syncApprovedDictionaryWordsOnce(db, dictSet) {
+// `approvedOverlay` (optional) receives the same words so the runtime can keep
+// a separate record of admin-added words (used to augment the bot vocabulary).
+export async function syncApprovedDictionaryWordsOnce(db, dictSet, approvedOverlay = null) {
   if (!db) throw new Error('syncApprovedDictionaryWordsOnce: db required');
   if (!dictSet || typeof dictSet.add !== 'function') {
     throw new Error('syncApprovedDictionaryWordsOnce: dictSet required');
   }
   const snap = await db.ref(DICTIONARY_APPROVED_PATH).get();
   const words = wordsFromRecord(snap?.val ? snap.val() : null);
-  for (const word of words) dictSet.add(word);
+  for (const word of words) {
+    dictSet.add(word);
+    if (approvedOverlay && typeof approvedOverlay.add === 'function') approvedOverlay.add(word);
+  }
   return words.size;
 }
 

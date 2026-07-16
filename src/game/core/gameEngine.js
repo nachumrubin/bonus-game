@@ -312,7 +312,25 @@ export function createEngine({ state, bus }) {
     // applyMove only knows about regular `placed` tiles — it sets them on
     // the board (already done by the swap loop above, no-op for those) and
     // removes the played letters from the rack.
-    const hasBonusAwardFlow = findBonusActivationIdxs(state, ctx.placed).length > 0;
+    const bonusIdxs = findBonusActivationIdxs(state, ctx.placed);
+    // A banked opponent `cancel_next_opponent_bonus` (won on the B13 wheel)
+    // vetoes this move's bonus: the boost / mini-game / wheel is skipped, the
+    // move scores normally (no deferral), and we notify the UI so the placing
+    // player sees the veto overlay. Detect it up-front so the deferred-score
+    // flow isn't entered for a bonus that will never resolve.
+    const vetoCancelSlot = bonusIdxs.length > 0 ? cancelBoostOwnerAgainst(state, slot) : -1;
+    const vetoBonus = vetoCancelSlot >= 0;
+    const vetoedBonusTypes = [];
+    if (vetoBonus) {
+      // Mark the squares used now so neither the deferred flow nor
+      // collectBonusActivations re-triggers them, and capture their types
+      // for the veto event.
+      for (const idx of bonusIdxs) {
+        vetoedBonusTypes.push(bonusTypeForIdx(state, idx));
+        markBonusUsed(state, idx);
+      }
+    }
+    const hasBonusAwardFlow = bonusIdxs.length > 0 && !vetoBonus;
     applyMove(state, placed, hasBonusAwardFlow ? 0 : ctx.score, {
       commitScore: !hasBonusAwardFlow,
       advance: !hasBonusAwardFlow,
@@ -347,6 +365,7 @@ export function createEngine({ state, bus }) {
       state.pendingScoreCommit = {
         slot,
         baseScore: ctx.score,
+        multiplier: ctx.scoreMultiplier ?? 1,
         historyIndex: state.moveHistory.length - 1,
         movePayload,
       };
@@ -372,6 +391,17 @@ export function createEngine({ state, bus }) {
     // boosts don't re-fire on every subsequent turn.
     replaceActiveBoosts(state, ctx.activeBoosts);
 
+    // Spend ONE of the opponent's cancel_next_opponent_bonus boosts that just
+    // vetoed this move's bonus (one-shot defensive ability). Done after
+    // replaceActiveBoosts so it operates on the final, persisted array.
+    if (vetoBonus) {
+      const boosts = state.activeBoosts ?? [];
+      const ci = boosts.findIndex(
+        b => b && b.slot === vetoCancelSlot && b.boostId === 'cancel_next_opponent_bonus',
+      );
+      if (ci >= 0) boosts.splice(ci, 1);
+    }
+
     if (ctx.repeatTurn) {
       state.currentTurnSlot = slot;
       state.turnNumber = Math.max(1, (state.turnNumber ?? 1) - 1);
@@ -386,8 +416,13 @@ export function createEngine({ state, bus }) {
       words: words.map(w => w.map(t => t.letter).join('')),
       wordTiles: words.map(w => w.map(t => ({ r: t.r, c: t.c, letter: t.letter, val: t.val, ex: !!t.ex }))),
       score: ctx.score,
+      multiplier: ctx.scoreMultiplier ?? 1,
     });
     emitBonusActivations(bonusActivations, emit);
+    if (vetoBonus) {
+      emit(EV.BOOST_ACTIVATED, { slot: vetoCancelSlot, boostId: 'cancel_next_opponent_bonus', consumed: true });
+      emit(EV.BONUS_VETOED, { slot, cancelSlot: vetoCancelSlot, bonusTypes: vetoedBonusTypes });
+    }
     emitTurnStartEffects(turnStartEffects, emit);
     emit(EV.SCORE_CHANGED, { slot, score: state.scores[slot] });
     emit(EV.LOCKS_CHANGED, { lockedCells: [...state.lockedCells], lockInventory: cloneLockInventory(state) });
@@ -579,6 +614,7 @@ export function createEngine({ state, bus }) {
         score: total,
         baseScore,
         bonusExtra: n,
+        multiplier: pending.multiplier ?? 1,
       });
       emitTurnStartEffects(turnStartEffects, emit);
       emit(EV.SCORE_CHANGED, { slot: s, score: state.scores[s] });
@@ -628,6 +664,17 @@ function replaceActiveBoosts(state, activeBoosts) {
   if (!Array.isArray(activeBoosts)) return;
   state.activeBoosts.length = 0;
   state.activeBoosts.push(...activeBoosts);
+}
+
+// Returns the opponent slot when the opponent (not `slot`) is holding a
+// banked cancel_next_opponent_bonus, otherwise -1. That boost vetoes `slot`'s
+// next earned bonus.
+function cancelBoostOwnerAgainst(state, slot) {
+  const opp = slot === 0 ? 1 : 0;
+  const has = (state.activeBoosts ?? []).some(
+    b => b && b.slot === opp && b.boostId === 'cancel_next_opponent_bonus',
+  );
+  return has ? opp : -1;
 }
 
 function findBonusActivationIdxs(state, placed) {

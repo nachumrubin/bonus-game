@@ -125,7 +125,7 @@ export function mountUnscrambleMiniGame({
       <div class="bz-card">
         <div class="bz-bolt">🔤</div>
         <div class="bz-title" data-uns="build-title"></div>
-        <div class="bz-sub">
+        <div class="bz-sub" data-uns="sub">
           <span data-uns="timer">${Math.floor(cfg.durationMs/1000)}</span> שניות · עד ${cfg.earnedPts} נקודות
         </div>
         <div class="tw" style="margin-bottom:14px;"><div data-uns="bar" class="tbar2" style="width:100%;transition:width ${cfg.durationMs}ms linear, background .5s;"></div></div>
@@ -191,29 +191,173 @@ export function mountUnscrambleMiniGame({
   }
 
   let resolved = false;
-  function finish(success) {
+  let revealTimer = null;
+  let torn = false;
+  function finish(success, guess = '') {
     if (resolved) return;
     resolved = true;
     clearInterval(timer);
-    // Show the correct word + outcome before dismissing — same overlay
-    // used during play, just swapped to a result view.
-    try { showResultView(success); } catch { /* swallow */ }
     const r = { success, earnedPts: success ? cfg.earnedPts : 0 };
     bus.emit(UNS_INTENT.RESULT, r);
     onResult(r);
+    // Visual outcome. On success we print the word the player made. On a
+    // failure/timeout, physically rearrange the scrambled tiles into the
+    // correct order — better UX than just printing the answer.
+    try {
+      if (success) showResultView(true, guess);
+      else if (canAnimateReveal()) failReveal(guess);
+      else showResultView(false, guess);
+    } catch { try { showResultView(success, guess); } catch { /* swallow */ } }
   }
-  function showResultView(success) {
+
+  // Failure ending. If the player actually submitted a (wrong) word, reject it
+  // first with a red flash + shake, then rearrange into the answer. A timeout
+  // (no guess) skips the rejection and goes straight to the rearrange.
+  function failReveal(guess = '') {
+    const answerWrap = host.querySelector('[data-uns="answer"]');
+    const attempted = !!guess;
+    if (!attempted || !answerWrap || typeof answerWrap.animate !== 'function') {
+      revealCorrectWord(guess);
+      return;
+    }
+    for (const t of [...(answerWrap.children || [])]) {
+      t.style.background = 'linear-gradient(180deg,#ff9a9a,#e0503f)';
+      t.style.color = '#5a0000';
+      t.style.boxShadow = 'inset 0 2px 0 rgba(255,255,255,.5),0 0 12px rgba(231,76,60,.6)';
+    }
+    let advanced = false;
+    const proceed = () => {
+      if (advanced || torn) return;
+      advanced = true;
+      revealCorrectWord(guess);
+    };
+    try {
+      const anim = answerWrap.animate([
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-9px)' },
+        { transform: 'translateX(8px)' },
+        { transform: 'translateX(-6px)' },
+        { transform: 'translateX(4px)' },
+        { transform: 'translateX(0)' },
+      ], { duration: 400, easing: 'ease-in-out' });
+      anim.onfinish = proceed;
+      revealTimer = setTimeout(proceed, 480); // fallback if onfinish doesn't fire
+    } catch { proceed(); }
+  }
+
+  function canAnimateReveal() {
+    return !!host?.parentNode
+      && typeof host.querySelector === 'function'
+      && typeof globalThis.requestAnimationFrame === 'function';
+  }
+
+  // Correct-answer tile styling (matches a "placed" answer tile).
+  const REVEAL_TILE_CSS = 'width:40px;height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#3a2400;background:linear-gradient(180deg,#ffe884,#ffc31f);box-shadow:inset 0 2px 0 rgba(255,255,255,.8),0 0 12px rgba(255,200,40,.6);will-change:transform;';
+
+  // Rearrange the tiles (a FLIP animation) from their current order into the
+  // correct order so the player watches the intended word assemble itself.
+  function revealCorrectWord(guess = '') {
+    if (torn) return;
+    const answerWrap = host.querySelector('[data-uns="answer"]');
+    const bankWrap   = host.querySelector('[data-uns="bank"]');
+    const titleEl    = host.querySelector('[data-uns="build-title"]');
+    const subEl      = host.querySelector('[data-uns="sub"]');
+    if (!answerWrap) { showResultView(false, guess); return; }
+
+    // Header: the tiles themselves are the reveal, so just label them.
+    const timedOut = !guess;
+    if (titleEl) titleEl.textContent = timedOut ? 'נגמר הזמן ⏰' : 'לא נכון 😌';
+    if (subEl)   subEl.textContent   = 'המילה הנכונה:';
+
+    // Current visual order: filled answer slots (L→R) then leftover bank tiles.
+    // Both together are always exactly the puzzle's letters (tiles are
+    // conserved), so every target letter has a matching tile.
+    const current = [...placedSlots.filter(Boolean), ...scrambled];
+    const target  = puzzle.word.split('');
+
+    // Rebuild all tiles in the answer row in their CURRENT order.
+    answerWrap.style.flexWrap = 'wrap';
+    answerWrap.innerHTML = '';
+    if (bankWrap) bankWrap.innerHTML = '';
+    const tiles = current.map((ch) => {
+      const t = doc.createElement('div');
+      t.textContent = ch;
+      t.dataset.ch = ch;
+      t.style.cssText = REVEAL_TILE_CSS;
+      answerWrap.appendChild(t);
+      return t;
+    });
+
+    const canMeasure = tiles.length > 0 && tiles.every(t => typeof t.getBoundingClientRect === 'function');
+    const first = canMeasure ? tiles.map(t => t.getBoundingClientRect()) : null;
+
+    // Assign each target letter to an unused tile of that letter, then reorder
+    // the DOM to the target sequence (this is the "LAST" of the FLIP).
+    const used = new Array(tiles.length).fill(false);
+    const ordered = [];
+    for (const L of target) {
+      let idx = tiles.findIndex((t, k) => !used[k] && t.dataset.ch === L);
+      if (idx < 0) idx = used.indexOf(false);
+      if (idx < 0) break;
+      used[idx] = true;
+      ordered.push(tiles[idx]);
+    }
+    ordered.forEach(t => answerWrap.appendChild(t));
+    // Defensive: drop any tile not used in the target sequence so the row shows
+    // exactly the correct word (normally there are none — tiles are conserved).
+    tiles.forEach(t => { if (!ordered.includes(t)) { try { t.remove(); } catch { /* swallow */ } } });
+
+    if (!first) { showFailureChrome(); return; }
+
+    // Invert (FIRST − LAST) then play back to identity so each tile slides
+    // from where it was into its correct slot, staggered L→R.
+    globalThis.requestAnimationFrame(() => {
+      ordered.forEach((t) => {
+        const f = first[tiles.indexOf(t)];
+        const l = t.getBoundingClientRect();
+        t.style.transition = 'none';
+        t.style.transform  = `translate(${f.left - l.left}px, ${f.top - l.top}px)`;
+      });
+      globalThis.requestAnimationFrame(() => {
+        ordered.forEach((t, i) => {
+          t.style.transition = `transform .45s cubic-bezier(.2,.9,.3,1.35) ${i * 70}ms`;
+          t.style.transform  = 'translate(0, 0)';
+        });
+      });
+      revealTimer = setTimeout(showFailureChrome, 450 + ordered.length * 70 + 200);
+    });
+  }
+
+  // After the rearrange settles, swap the "בדוק" button for a continue button.
+  function showFailureChrome() {
+    if (!host?.parentNode) return;
+    const oldBtn = host.querySelector('[data-uns="submit"]');
+    if (!oldBtn) return;
+    const cont = oldBtn.cloneNode(false); // drop the submit listener
+    cont.removeAttribute('data-uns');
+    cont.className = 'bz-btn bz-btn-gold';
+    cont.style.cssText = oldBtn.style.cssText;
+    cont.textContent = g('continueMiniGame', getGender());
+    cont.addEventListener('click', () => { try { host.remove(); } catch { /* swallow */ } });
+    oldBtn.replaceWith(cont);
+  }
+  function showResultView(success, guess = '') {
     if (!host?.parentNode) return;
     const ok = success
       ? `<div class="bz-result-headline">כל הכבוד!</div><div class="bz-result-big">+${cfg.earnedPts} נק'</div>`
       : `<div class="bz-result-headline">לא נכון</div>`;
+    // On success show only the word the player actually made — the player may
+    // have formed a different valid word than the picked one, and revealing the
+    // "intended" word just confuses. On failure, reveal the picked answer.
+    const revealLabel = success ? 'מצאת:' : 'המילה הנכונה היא:';
+    const revealWord  = success ? guess  : puzzle.word;
     host.innerHTML = `
       <div class="bz-card">
         <div class="bz-result ${success ? 'is-win' : 'is-soft'}">
           <div class="bz-result-emoji">${success ? '🎉' : '😌'}</div>
           ${ok}
-          <div class="bz-result-sub">המילה הנכונה היא:</div>
-          <div style="font-size:30px;font-weight:900;color:#ffd23f;letter-spacing:2px;margin:6px 0 16px;filter:drop-shadow(0 0 10px rgba(255,190,40,.5));">${puzzle.word}</div>
+          <div class="bz-result-sub">${revealLabel}</div>
+          <div style="font-size:30px;font-weight:900;color:#ffd23f;letter-spacing:2px;margin:6px 0 16px;filter:drop-shadow(0 0 10px rgba(255,190,40,.5));">${revealWord}</div>
           <button data-uns="continue" class="bz-btn bz-btn-gold" style="width:100%;"></button>
         </div>
       </div>`;
@@ -229,7 +373,8 @@ export function mountUnscrambleMiniGame({
   doc.body?.appendChild(host);
   render();
   host.querySelector('[data-uns="submit"]')?.addEventListener('click', () => {
-    finish(isCorrectAnswer(placedSlots.join(''), puzzle.word, validator));
+    const guess = placedSlots.join('');
+    finish(isCorrectAnswer(guess, puzzle.word, validator), guess);
   });
 
   // Countdown. Also broadcast progress to any online spectator: the
@@ -255,8 +400,24 @@ export function mountUnscrambleMiniGame({
     } catch { /* swallow — best-effort spectator broadcast */ }
   }
 
+  // Hard teardown for external callers — resolve as a loss and remove the
+  // overlay immediately, WITHOUT the reveal animation (which is only for the
+  // in-overlay timeout/illegal-word ending the player actually sees).
+  function hardTeardown() {
+    torn = true;
+    if (revealTimer) { clearTimeout(revealTimer); revealTimer = null; }
+    if (!resolved) {
+      resolved = true;
+      clearInterval(timer);
+      const r = { success: false, earnedPts: 0 };
+      bus.emit(UNS_INTENT.RESULT, r);
+      onResult(r);
+    }
+    try { host.remove(); } catch { /* swallow */ }
+  }
+
   return {
-    unmount: () => finish(false),
+    unmount: hardTeardown,
     _puzzle: puzzle,
     _cfg: cfg,
   };

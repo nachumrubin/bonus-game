@@ -2097,9 +2097,11 @@ async function boot() {
         bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: reason, isError: true });
         return;
       }
-      // Mirror into runtime sets so the change is visible immediately.
+      // Mirror into runtime sets so the change is visible immediately —
+      // including the bot's vocabulary (APPROVED_OVERLAY).
       for (const w of result.added) {
         hebrewDictionary.DICT.add(w);
+        hebrewDictionary.APPROVED_OVERLAY.add(w);
         hebrewDictionary.BLOCKED_OVERLAY.delete(w);
       }
       const skipped = result.skipped?.length ?? 0;
@@ -2150,10 +2152,12 @@ async function boot() {
         });
         return;
       }
-      // Mirror into runtime sets so the change is visible immediately.
+      // Mirror into runtime sets so the change is visible immediately —
+      // drop it from the bot's vocabulary too (APPROVED_OVERLAY).
       for (const w of result.removed) {
         hebrewDictionary.BLOCKED_OVERLAY.add(w);
         hebrewDictionary.DICT.delete(w);
+        hebrewDictionary.APPROVED_OVERLAY.delete(w);
       }
       const skipped = result.skipped?.length ?? 0;
       let message = result.removed.length === 1
@@ -2427,11 +2431,24 @@ async function boot() {
       const approvedCount = approvedWords.length;
       const blockedCount  = blockedWords.length;
 
-      // Online now: presence entries with connected===true OR lastSeen within the heartbeat window
+      // Online now: presence entries with connected===true OR lastSeen within the heartbeat window.
+      // Build the full connected-user list (uid → name via globalRatings) for the
+      // admin "מחוברים עכשיו" modal; anonymous users have no rating entry so their
+      // name is left blank (the modal shows them as an "אורח").
       const presenceVal = presenceSnap?.val ? presenceSnap.val() ?? {} : {};
-      const onlineNow = Object.values(presenceVal).filter((p) =>
-        p?.connected === true || (typeof p?.lastSeen === 'number' && p.lastSeen > onlineThreshold)
-      ).length;
+      const nameByUid = new Map(players.map((p) => [p.uid, p.name]));
+      const onlineUsers = Object.entries(presenceVal)
+        .filter(([, p]) => p?.connected === true || (typeof p?.lastSeen === 'number' && p.lastSeen > onlineThreshold))
+        .map(([uid, p]) => ({
+          uid,
+          name: nameByUid.get(uid) || '',
+          connected: p?.connected === true,
+          backgrounded: p?.backgrounded === true,
+          currentRoom: p?.currentRoom ?? null,
+          lastSeen: typeof p?.lastSeen === 'number' ? p.lastSeen : 0,
+        }))
+        .sort((a, b) => (Number(b.connected) - Number(a.connected)) || (b.lastSeen - a.lastSeen));
+      const onlineNow = onlineUsers.length;
 
       // Queue depth: count all uid entries across all modes in matchmakingQueue
       const queueVal = queueSnap?.val ? queueSnap.val() ?? {} : {};
@@ -2465,6 +2482,7 @@ async function boot() {
         blockedWords,
         tierCounts,
         onlineNow,
+        onlineUsers,
         queueDepth,
         players,
         suggestions,
@@ -2492,6 +2510,7 @@ async function boot() {
           for (const w of result.removed) {
             hebrewDictionary.BLOCKED_OVERLAY.add(w);
             hebrewDictionary.DICT.delete(w);
+            hebrewDictionary.APPROVED_OVERLAY.delete(w);
           }
           await awardSuggestionCreditsForWords(db, [word], 'remove');
         }
@@ -2504,6 +2523,7 @@ async function boot() {
         if (result.ok) {
           for (const w of result.added) {
             hebrewDictionary.DICT.add(w);
+            hebrewDictionary.APPROVED_OVERLAY.add(w);
             hebrewDictionary.BLOCKED_OVERLAY.delete(w);
           }
           await awardSuggestionCreditsForWords(db, [word], 'add');
@@ -2724,7 +2744,7 @@ async function boot() {
       await ensureDictionaryLoaded();
       const db = activeFbDb;
       if (!db) return;
-      const count = await dictionaryService.syncApprovedDictionaryWordsOnce(db, hebrewDictionary.DICT);
+      const count = await dictionaryService.syncApprovedDictionaryWordsOnce(db, hebrewDictionary.DICT, hebrewDictionary.APPROVED_OVERLAY);
       if (count > 0) {
         console.info('[spine] approved dictionary merged:', count, 'new size:', hebrewDictionary.DICT.size);
         if (globalThis.HebrewValidator) globalThis.HebrewValidator.init?.(hebrewDictionary.DICT);
@@ -3509,15 +3529,20 @@ async function boot() {
 
       // Rating (only when both players have profiles, AND at least one move
       // was actually played — an instant resign/abandonment with a 0-0 score
-      // shouldn't move anyone's ELO).
+      // shouldn't move anyone's ELO). Anonymous (guest) users aren't rated, so
+      // they never gain or lose ELO — each client only writes its OWN rating,
+      // so skipping here when the local user is anonymous keeps guests out of
+      // the rating pool entirely.
       const movesPlayed = Number(session?.state?.moveHistory?.length ?? 0);
-      if (oppUid && oppUid !== fbUser.uid && movesPlayed > 0) {
+      if (oppUid && oppUid !== fbUser.uid && movesPlayed > 0 && !fbUser.isAnonymous) {
         await ratingService.applyEloForFinishedGame(fbDb, {
           myUid: fbUser.uid, oppUid, result,
           preGameMyRating:  ag.preGameMyRating  ?? null,
           preGameOppRating: ag.preGameOppRating ?? null,
         }).catch((e) => console.warn('[spine] elo', e));
         refreshChampions('end');
+      } else if (oppUid && oppUid !== fbUser.uid && fbUser.isAnonymous) {
+        console.info('[spine] skipping ELO — anonymous (unrated) player', { roomId: ag?.session?.state?.roomId });
       } else if (oppUid && oppUid !== fbUser.uid) {
         console.info('[spine] skipping ELO — no moves were played', { roomId: ag?.session?.state?.roomId, movesPlayed });
       }
@@ -3671,6 +3696,23 @@ async function boot() {
         return;
       }
       bus.emit(BI_OPEN, payload);
+    }));
+
+    // EV.BONUS_VETOED → the opponent's banked "ביטול בוסט" (cancel_next_opponent_bonus,
+    // won on the wheel) suppressed the bonus this player just earned. Show the
+    // veto overlay only to the player whose bonus was forfeited (the mover),
+    // and only when that player is local — not the bot.
+    subs.push(bus.on(EV.BONUS_VETOED, ({ slot, cancelSlot } = {}) => {
+      const mySlot = session?.mySlot;
+      const isLocalVictim = (mySlot != null) ? (slot === mySlot)
+                          : (botSlot != null) ? (slot !== botSlot)
+                          : true;
+      if (!isLocalVictim) return;
+      const players = session?.state?.players ?? {};
+      bus.emit(BV_OPEN, {
+        opponentName: players[cancelSlot]?.displayName ?? undefined,
+        boostId: 'cancel_next_opponent_bonus',
+      });
     }));
 
     // Lazy word-list selectors — building the filtered arrays is non-trivial
@@ -4221,8 +4263,18 @@ async function boot() {
       const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
       const makeWordList = () => {
         const usingBotList = botVocabulary.BOT_WORDS.length > 0;
+        // Augment the curated bot vocabulary with admin-approved words so a
+        // word added through the settings screen is playable by the bot too
+        // (removals are already handled by the isWordValid filter below).
+        // Prepend approved words (not append): createBotWordList caps the list
+        // by length AFTER building, so words tacked on the end would be sliced
+        // off for the easy/medium vocab caps. Putting them first guarantees
+        // they survive the cap.
+        const sourceWords = usingBotList
+          ? [...hebrewDictionary.APPROVED_OVERLAY, ...botVocabulary.BOT_WORDS]
+          : [...hebrewDictionary.DICT];
         return botVocabulary.createBotWordList({
-          sourceWords: usingBotList ? botVocabulary.BOT_WORDS : [...hebrewDictionary.DICT],
+          sourceWords,
           maxWordLen: profile.maxWordLen,
           cap,
           isWordValid: (w) => hebrewDictionary.isValid(w),

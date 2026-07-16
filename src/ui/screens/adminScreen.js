@@ -42,6 +42,8 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   // Approved/blocked word arrays for the health modal
   let approvedWordsCache = [];
   let blockedWordsCache  = [];
+  // Currently-connected users, for the "מחוברים עכשיו" modal
+  let onlineUsersCache   = [];
 
   // ── Tab switching ──────────────────────────────────────────────────────────
   const tabBtns = Array.from(screenEl.querySelectorAll('.adm-tab'));
@@ -62,6 +64,26 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     });
     if (tab === 'reports' && !reportsLoaded) bus.emit(ADMIN_INTENT.LOAD_DEBUG_REPORTS, {});
     if (tab === 'debug' && !debugIndexLoaded) bus.emit(ADMIN_INTENT.LOAD_DEBUG_INDEX, {});
+  }
+
+  // ── Clickable stat cards ────────────────────────────────────────────────────
+  // "הצעות ממתינות" jumps to the words tab (where suggestions are managed).
+  const pendingCard = $('#adm-stat-card-pending', screenEl);
+  if (pendingCard) {
+    const goWords = () => switchTab('words');
+    cleanups.push(on(pendingCard, 'click', goWords));
+    cleanups.push(on(pendingCard, 'keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goWords(); }
+    }));
+  }
+  // "מחוברים עכשיו" opens a modal listing who is connected right now.
+  const onlineCard = $('#adm-stat-card-online', screenEl);
+  if (onlineCard) {
+    const showOnline = () => openOnlineModal(onlineUsersCache);
+    cleanups.push(on(onlineCard, 'click', showOnline));
+    cleanups.push(on(onlineCard, 'keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showOnline(); }
+    }));
   }
 
   // ── Refresh button ─────────────────────────────────────────────────────────
@@ -197,6 +219,41 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     wordModal.style.display = '';
   }
 
+  // Reuse the word modal shell to list the currently-connected users.
+  function openOnlineModal(users) {
+    if (!wordModal || !wordModalList || !wordModalTitle) return;
+    wordModalTitle.textContent = `🟢 מחוברים עכשיו (${users.length})`;
+    if (!users.length) {
+      wordModalList.innerHTML = '<div class="adm-word-modal-empty">אין משתמשים מחוברים</div>';
+    } else {
+      wordModalList.innerHTML = users.map((u) => {
+        const name = u.name ? esc(u.name) : `אורח · ${esc(String(u.uid).slice(0, 6))}`;
+        const bits = [];
+        if (u.backgrounded) bits.push('ברקע');
+        if (u.currentRoom)  bits.push('במשחק');
+        else                bits.push('בתפריט');
+        if (u.lastSeen)     bits.push(relTime(u.lastSeen));
+        return `<div class="adm-online-row">
+          <span class="adm-online-dot${u.backgrounded ? ' adm-online-dot--bg' : ''}"></span>
+          <span class="adm-online-name">${name}</span>
+          <span class="adm-online-meta">${bits.map(esc).join(' · ')}</span>
+        </div>`;
+      }).join('');
+    }
+    wordModal.style.display = '';
+  }
+
+  // Short "x minutes ago" style label from an epoch-ms timestamp.
+  function relTime(ms) {
+    const diff = Date.now() - Number(ms || 0);
+    if (!Number.isFinite(diff) || diff < 0) return '';
+    const mins = Math.floor(diff / 60000);
+    if (mins <= 0) return 'עכשיו';
+    if (mins < 60) return `לפני ${mins} ד׳`;
+    const hrs = Math.floor(mins / 60);
+    return `לפני ${hrs} ש׳`;
+  }
+
   function closeWordModal() {
     if (wordModal) wordModal.style.display = 'none';
   }
@@ -244,6 +301,7 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
     blockedWords = [],
     tierCounts = null,
     onlineNow = null,
+    onlineUsers = [],
     queueDepth = null,
     players = [],
     suggestions = [],
@@ -252,6 +310,7 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
   } = {}) {
     approvedWordsCache = approvedWords;
     blockedWordsCache  = blockedWords;
+    onlineUsersCache   = Array.isArray(onlineUsers) ? onlineUsers : [];
     // Stats cards
     setVal('#adm-stat-total',   totalPlayers);
     setVal('#adm-stat-week',    activeThisWeek);

@@ -102,6 +102,28 @@ test('searchBotMove: first move places a candidate near the centre', () => {
   assert.equal(move.placed[0].r, 5);
 });
 
+test('searchBotMove: play-through fallback finds a move that reuses board letters', () => {
+  // Regression for "the bot stops creating words" on a crowded board: the
+  // strict search only tries words the rack can spell in FULL, so it misses
+  // moves that hang a rack tile off letters already committed. Here צ,י are on
+  // the board and the bot holds ח (but no צ/י) — the only move is to play ח on
+  // the bonus square left of צ to make חצי, reusing the committed צ and י.
+  const s = fresh({ firstMove: false });
+  setCommittedTile(s, 1, 0, { letter: 'צ', val: 9 });
+  setCommittedTile(s, 1, 1, { letter: 'י', val: 1 });
+  s.racks[1] = ['ח','א','א','א','ש','פ','ק','ח'];
+  s.currentTurnSlot = 1;
+
+  const dict = new Set(['חצי']);
+  const move = searchBotMove(s, 1, ['חצי'], (w) => dict.has(w), { difficulty: DIFFICULTY.HARD });
+
+  assert.ok(move, 'bot should find the play-through move instead of giving up');
+  assert.equal(move.word, 'חצי');
+  // Only ח is newly placed; צ and י are reused from the board.
+  assert.equal(move.placed.length, 1);
+  assert.equal(move.placed[0].letter, 'ח');
+});
+
 test('searchBotMove: returns null when rack cannot spell anything from the list', () => {
   const s = fresh();
   s.racks[1] = ['ת','ת','ת','ת','ת','ת','ת','ת']; // only ת
@@ -294,9 +316,10 @@ test('searchBotMove: opts.profile overrides the difficulty-derived profile', () 
 //     a board where vertical wins is fragile (depends on `getAllWords`
 //     extending through committed letters in scoring-engine-specific ways).
 //     `tryPlaceWord` is unit-tested for both axes.
-//   - Joker in full search: `canMakeWord` conservatively requires the rack
-//     to spell the WHOLE word from scratch (doesn't account for committed
-//     letters supplying some), so the joker-in-search path is exercised
-//     only when the rack has both the joker AND the literal it replaces.
-//     The joker code in `canMakeWord` and `tryPlaceWord` is unit-tested
-//     directly. This is an intentional bot simplification, not a bug.
+//   - Joker in the PRIMARY search: `canMakeWord` requires the rack to spell
+//     the whole word from scratch, so the joker-in-primary path is exercised
+//     only when the rack has both the joker AND the literal it replaces. The
+//     joker code in `canMakeWord` and `tryPlaceWord` is unit-tested directly.
+//     (The play-through FALLBACK — `canFormWithBoard` — lifts the
+//     spell-the-whole-word restriction so the bot can reuse committed letters
+//     on a crowded board; see the play-through regression test above.)

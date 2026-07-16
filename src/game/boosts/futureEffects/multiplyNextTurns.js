@@ -26,7 +26,10 @@ export default {
 
   apply(ctx, entry) {
     const m = entry.payload?.multiplier ?? 1;
-    return { ...ctx, score: Math.round((ctx.score ?? 0) * m) };
+    // Record the applied multiplier (product if boosts stack) so the score
+    // animation can show a ×N chip flying into the sum. Purely informational —
+    // the score itself is what's committed.
+    return { ...ctx, score: Math.round((ctx.score ?? 0) * m), scoreMultiplier: (ctx.scoreMultiplier ?? 1) * m };
   },
 
   consume(entry) {
@@ -40,7 +43,8 @@ export default {
   },
 
   applyRemote(payload, ctx) {
-    return { ...ctx, score: Math.round((ctx.score ?? 0) * (payload.multiplier ?? 1)) };
+    const m = payload.multiplier ?? 1;
+    return { ...ctx, score: Math.round((ctx.score ?? 0) * m), scoreMultiplier: (ctx.scoreMultiplier ?? 1) * m };
   },
 
   animationKey: 'multiplierFlash',

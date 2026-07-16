@@ -1,5 +1,99 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Score multiplier ×N chip animation — July 2026
+
+- [x] Multiplier now shown as a ×N chip that flies from the player's multiplier
+  banner into the sum, multiplying the total on landing (purple ×2 / red ×4).
+- [x] Engine emits `multiplier` on MOVE_CONFIRMED / MOVE_SCORE_COMMITTED
+  (`multiplyNextTurns.scoreMultiplier`); threaded via gameController.view.lastMove
+  → animationController → `scoreMergeSequence`. Shared `mergeSequenceTiming`
+  sequences words → ×N chip → bonus and keeps count-up/glow aligned.
+- Note: bonus-square extra is added AFTER the multiplier (not multiplied),
+  matching the engine (total = word×N + extra). Bingo (+50) rides along inside
+  the ×N chip's jump (it has its own label).
+
+## Fix: ×2/×4 score-sum animation double-count — July 2026
+
+- [x] `playScoreMergeSequence` (gameScreen.js) snap now ADDs the missing delta
+  instead of overwriting `runningSum = total`, so a ×N word's running-sum no
+  longer shows base+total (e.g. 60 instead of 48) when the snap wins the race
+  against the per-word onLand. UI-only; awarded score was always correct.
+- Note: `playScoreMergeSequence` is DOM + setTimeout bound and not exported, so
+  the race isn't unit-tested; verified via a timing simulation (old→60, new→48).
+
+## Admin clickable stat cards — July 2026
+
+- [x] "מחוברים עכשיו" card opens a modal of connected users (`onlineUsers` built in
+  main.js `ADMIN_INTENT.LOAD` from `/presence` + `globalRatings` names; reuses the
+  `#adm-word-modal` shell via `openOnlineModal`).
+- [x] "הצעות ממתינות" card jumps to the מילים (words) tab.
+- Note: the online list is a snapshot from the last stats load (refresh / "רענן
+  נתונים" to update); it is not live-subscribed.
+
+## Anagram tile-rearrange reveal — July 2026
+
+- [x] `unscrambleMiniGame` now FLIP-animates the scrambled tiles into the correct
+  order on timeout/illegal-word (`revealCorrectWord`), instead of printing the
+  answer. On a submitted wrong word it first flashes red + shakes (`failReveal`)
+  to reject it; a timeout skips the shake. Verified in a real browser via Playwright.
+- Note: the FLIP path only runs with a real DOM + `requestAnimationFrame`; it
+  falls back to the text result view otherwise, and `unmount` is a hard teardown
+  that skips the animation. Success path unchanged (shows the word the player made).
+
+## Dictionary edits reach the bot + mini-game answer reveal — July 2026
+
+- [x] Admin dictionary ADD now reaches the bot: new `hebrewDictionary.APPROVED_OVERLAY`
+  mirrors `/dictionaryApproved` and is prepended into the bot's `makeWordList`
+  source (prepend so it survives the easy/medium vocab cap). Removals already
+  worked via the `isValid` filter.
+- [x] Mini-games (`fillMiddleMiniGame`, `unscrambleMiniGame`) no longer reveal the
+  picked/intended word on success — they show only the word the player made. The
+  intended word is still revealed on failure/timeout.
+- Note: `APPROVED_OVERLAY` is maintained at 5 sites in main.js (boot sync + 2 add
+  + 2 remove). If a new admin dictionary-mutation path is added, mirror it there.
+
+## Bot "stops creating words" fix — July 2026
+
+- [x] Root cause: `botSearch.js` `canMakeWord` pre-filter required the whole word
+  to be spellable from the rack, hiding all "play-through" moves that reuse
+  committed board letters. On a full board the bot found nothing and passed.
+- [x] Added `searchPlayThrough` fallback (`canFormWithBoard` + short-word,
+  all-anchor search) that fires only when the strict search finds nothing.
+- [x] Bot now exchanges its most-duplicated tiles instead of passing when stuck
+  and the bag can refill (`botGameSession.pickTilesToExchange`).
+- [ ] Follow-up (optional): the primary search is still word-first + longest-first
+  and can miss high-value play-throughs mid-game (it only falls back on a total
+  miss). A future anchor-first solver would find stronger moves earlier.
+- Note: the play-through fallback caps at `PLAYTHROUGH_MAX_LEN=4` for cost;
+  raise if bots should attempt longer hooks on dense boards.
+
+## ביטול בוסט veto wired up — July 2026
+
+- [x] `cancel_next_opponent_bonus` (won on the B13 wheel) now actually suppresses
+  the opponent's next earned bonus in the engine (`confirmMove` /
+  `cancelBoostOwnerAgainst`), scores the move normally, consumes the shield, and
+  emits the new `EV.BONUS_VETOED`.
+- [x] The forfeiting player now sees the `#ov-boost-veto` overlay (`BV_OPEN`
+  emitted from `attachBonusFlow` on `EV.BONUS_VETOED`); `boostVetoScreen.describe`
+  message rewritten to explain the ביטול בוסט forfeit.
+- Note: the old `cancelNextOpponentBonus.js` plugin (trigger `AFTER_MOVE_VALIDATE`,
+  never run by the spine) is now redundant for suppression but still supplies the
+  boost id / name / 🛡 badge / sync payload — left in place.
+
+## Three gameplay bug fixes — July 2026
+
+- [x] Crossing-words (מילים מצטלבות) shared letter was always ב — `findCrossingPair`
+  now shuffles the candidate list before capping the pool (the sorted dictionary
+  made the pre-cap pool all-א words). `crossingWordsMiniGame.js`.
+- [x] Free tile-swap (החלפת אות) won on the B13 wheel no longer costs a turn when
+  the swap is done via the regular exchange button — `openExchangeOverlay` in
+  `gameScreen.js` auto-spends a banked `free_tile_swap`.
+- [x] Anonymous (guest) players no longer gain/lose ELO in online games — the
+  `EV.GAME_COMPLETED` handler in `main.js` skips ELO when `fbUser.isAnonymous`.
+- [ ] Rated player vs anonymous opponent still moves the rated player's ELO
+  (defaults the guest to `RATING_START`); fully excluding such games would need an
+  anonymity/`rated` flag on the room's player records.
+
 ## Fix: TILE_COUNT_MISMATCH for bonus-square tiles — June 2026
 
 - [x] `boardCellsString` / `boardHash` / `boardTileCount` in `stateHash.js` now

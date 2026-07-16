@@ -65,7 +65,12 @@ export function findCrossingPair(words, {
   if (!Array.isArray(words)) return null;
   const candidates = words.filter(w => typeof w === 'string' && w.length >= minLen && w.length <= maxLen && isMiniGameWord(w));
   if (candidates.length === 0) return null;
-  const wc = candidates.slice(0, poolCap).slice().sort(() => rng() - 0.5);
+  // Shuffle the WHOLE candidate list before capping. The runtime dictionary
+  // is alphabetically sorted, so slicing first (the old order) restricted the
+  // pool to the leading run of words — all starting with א — which made the
+  // crossing letter almost always ב (the first non-blocked letter of the
+  // "אב…" cluster). Shuffling first draws a representative sample.
+  const wc = candidates.slice().sort(() => rng() - 0.5).slice(0, poolCap);
   for (let i = 0; i < wc.length; i++) {
     const h = wc[i];
     const upper = Math.min(i + scanWindow, wc.length);

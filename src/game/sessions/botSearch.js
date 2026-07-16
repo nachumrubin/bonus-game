@@ -109,6 +109,52 @@ export function canMakeWord(word, rack) {
   return true;
 }
 
+// Longest word length the play-through fallback will consider. Play-through
+// moves on a crowded board are almost always short (they hang 1–2 rack tiles
+// off committed letters), and keeping this small bounds the fallback's cost.
+export const PLAYTHROUGH_MAX_LEN = 4;
+
+// Looser variant of canMakeWord for the play-through fallback: a word is
+// viable if the rack can supply the letters that aren't already sitting on the
+// board — letters present in `boardLetters` are assumed reusable and the exact
+// placement is still validated by tryPlaceWord. Requires at least one rack
+// tile to be spent (a move must place something new).
+//
+// This is what lets the bot keep finding moves once the board fills up:
+// canMakeWord requires the WHOLE word to come from the rack, so it blinds the
+// bot to every "play through an existing letter" move — the bread-and-butter
+// of a late-game board.
+export function canFormWithBoard(word, rack, boardLetters) {
+  const a = [...rack];
+  let usedRack = 0;
+  for (const ch of word) {
+    const i = a.indexOf(ch);
+    if (i >= 0) { a.splice(i, 1); usedRack++; continue; }
+    const j = a.indexOf('?');
+    if (j >= 0) { a.splice(j, 1); usedRack++; continue; }
+    if (boardLetters && boardLetters.has(ch)) continue; // may come from a committed tile
+    return false;
+  }
+  return usedRack >= 1;
+}
+
+// Every distinct letter currently committed to the board (main grid + off-grid
+// bonus squares). Used to gate the play-through candidate set.
+export function collectBoardLetters(state) {
+  const set = new Set();
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      const t = getCommittedTile(state, r, c);
+      if (t) set.add(t.letter);
+    }
+  }
+  for (const b of BDEFS) {
+    const t = getCommittedTile(state, b.br, b.bc);
+    if (t) set.add(t.letter);
+  }
+  return set;
+}
+
 // Try to lay `word` starting at (sr, sc) going in direction `dir` ('H' or 'V').
 // Returns the array of placements [{r,c,letter,val,isJoker}] or null if it
 // doesn't fit (off-board, conflicting committed tile, no rack tile available,
@@ -254,5 +300,51 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
     }
   }
 
+  if (found.length > 0) return pickMove(found, profile, rng);
+
+  // Play-through fallback. The strict candidates (words the rack can spell in
+  // full) produced no legal placement — the usual late-game situation, where
+  // every open cell is boxed in and the only moves reuse committed letters.
+  // Widen the candidate set to short play-through words and try them across
+  // ALL anchors (bonus squares included, and bonus-tile placements allowed):
+  // any legal move beats passing with a stuck rack. Difficulty still shapes
+  // the final pick via pickMove.
+  return searchPlayThrough(state, slot, wordList, isWordValid, profile, rng);
+}
+
+// Fallback search used when the primary (rack-spellable) search finds nothing.
+// Considers words the rack can COMPLETE using letters already on the board.
+function searchPlayThrough(state, slot, wordList, isWordValid, profile, rng) {
+  const rack = state.racks[slot];
+  const boardLetters = collectBoardLetters(state);
+  const maxLen = Math.min(profile.maxWordLen, PLAYTHROUGH_MAX_LEN);
+  // Short words first — likelier to fit a tight board and cheaper to try.
+  const candidates = wordList
+    .filter(w => w.length >= 2 && w.length <= maxLen && canFormWithBoard(w, rack, boardLetters))
+    .sort((a, b) => a.length - b.length);
+  if (candidates.length === 0) return null;
+
+  // Recompute anchors with bonus squares included regardless of difficulty:
+  // on a locked board the perimeter bonus squares are often the only openings.
+  const anchors = findAnchors(state, { includeBonusSquares: true });
+  const found = [];
+  for (const w of candidates) {
+    for (const { r, c } of anchors) {
+      const isBonus = isBonusPos(r, c);
+      const dirs = isBonus ? (r === -1 || r === BOARD_SIZE ? ['V'] : ['H']) : ['H', 'V'];
+      for (const dir of dirs) {
+        const offsets = isBonus ? [0] : Array.from({ length: w.length }, (_, k) => k);
+        for (const offset of offsets) {
+          const sr = dir === 'H' ? r : r - offset;
+          const sc = dir === 'H' ? c - offset : c;
+          const placed = tryPlaceWord(state, w, sr, sc, dir, slot);
+          if (!placed) continue;
+          const words = getAllWords(state, placed);
+          if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
+          found.push({ placed, word: w, score: scoreMove(words, placed.length) });
+        }
+      }
+    }
+  }
   return pickMove(found, profile, rng);
 }
