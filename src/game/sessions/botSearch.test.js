@@ -6,7 +6,9 @@ import { setCommittedTile, isBonusPos } from '../core/board.js';
 import {
   canMakeWord, tryPlaceWord, findAnchors, searchBotMove, pickMove,
   resolveProfile, DIFFICULTY, DIFFICULTY_PROFILES,
+  remainingBonusEstimate, rankScoreFor,
 } from './botSearch.js';
+import { BONUS_ESTIMATED_VALUE } from '../boosts/bonusTileDefs.js';
 
 const acceptAll = () => true;
 
@@ -308,6 +310,84 @@ test('searchBotMove: opts.profile overrides the difficulty-derived profile', () 
     profile: { ...resolveProfile(DIFFICULTY.HARD), maxWordLen: 1 },
   });
   assert.equal(move, null, 'profile.maxWordLen=1 filters out every candidate');
+});
+
+// ── Bonus-square ranking weight (medium/hard) ────────────────────────
+
+test('remainingBonusEstimate: with nothing revealed, averages ALL known types', () => {
+  const s = fresh({ firstMove: false });
+  s.bonusSqUsed = {};
+  const allTypes = Object.keys(BONUS_ESTIMATED_VALUE);
+  const expected = allTypes.reduce((sum, t) => sum + BONUS_ESTIMATED_VALUE[t], 0) / allTypes.length;
+  assert.equal(remainingBonusEstimate(s), expected);
+});
+
+test('remainingBonusEstimate: fairness — ignores the hidden assignment of unplayed squares', () => {
+  const s = fresh({ firstMove: false });
+  s.bonusSqUsed = {}; // nothing revealed yet
+  s.bonusAssignment = [
+    { type: 'B1' }, { type: 'B2' }, { type: 'B3' }, { type: 'B4' },
+    { type: 'B5' }, { type: 'B6' }, { type: 'B7' }, { type: 'B9' },
+    { type: 'B10' }, { type: 'B11' }, { type: 'B12' }, { type: 'B14' },
+  ];
+  const estimateA = remainingBonusEstimate(s);
+  // A totally different secret assignment, same (empty) reveal state — a fair
+  // heuristic must produce the SAME estimate, since no human (or bot) can
+  // tell these two boards apart before any square is played.
+  s.bonusAssignment = [...s.bonusAssignment].reverse();
+  const estimateB = remainingBonusEstimate(s);
+  assert.equal(estimateA, estimateB);
+});
+
+test('remainingBonusEstimate: crossing off a revealed high-value type lowers the remaining average', () => {
+  const s = fresh({ firstMove: false });
+  s.bonusAssignment = [
+    { type: 'B1' }, { type: 'B2' }, { type: 'B3' }, { type: 'B4' },
+    { type: 'B5' }, { type: 'B6' }, { type: 'B7' }, { type: 'B9' },
+    { type: 'B10' }, { type: 'B11' }, { type: 'B12' }, { type: 'B14' },
+  ];
+  s.bonusSqUsed = {};
+  const before = remainingBonusEstimate(s);
+  s.bonusSqUsed = { 0: true }; // slot 0 revealed as B1 (worth 100 — the richest type)
+  const after = remainingBonusEstimate(s);
+  assert.ok(after < before, `expected estimate to drop once B1 is crossed off (before=${before}, after=${after})`);
+});
+
+test('remainingBonusEstimate: only counts squares actually marked used', () => {
+  const s = fresh({ firstMove: false });
+  s.bonusAssignment = [{ type: 'B4' }]; // B4 is the cheapest type (worth 1)
+  s.bonusSqUsed = { 0: false }; // present in the map, but not yet used
+  const withFalse = remainingBonusEstimate(s);
+  s.bonusSqUsed = {};
+  const withEmpty = remainingBonusEstimate(s);
+  assert.equal(withFalse, withEmpty, 'an unused slot must not be treated as revealed');
+});
+
+test('rankScoreFor: adds the estimate once per unplayed bonus square touched, only when the profile opts in', () => {
+  const s = fresh({ firstMove: false });
+  s.bonusSqUsed = {};
+  const placedWithBonus = [{ r: 4, c: 4 }, { r: -1, c: 1 }]; // second cell is a BDEFS position
+  const plain = [{ r: 4, c: 4 }, { r: 4, c: 5 }];
+  const estimate = remainingBonusEstimate(s);
+
+  assert.equal(rankScoreFor({ weighBonusSquares: true }, s, 10, placedWithBonus), 10 + estimate);
+  assert.equal(rankScoreFor({ weighBonusSquares: true }, s, 10, plain), 10, 'no bonus square touched → unchanged');
+  assert.equal(rankScoreFor({ weighBonusSquares: false }, s, 10, placedWithBonus), 10, 'opted out (easy) → unchanged');
+});
+
+test('pickMove: HARD prefers a lower-scoring move whose placement carries a higher rankScore', () => {
+  const found = [
+    { score: 30, rankScore: 30 },   // plain higher-scoring move
+    { score: 10, rankScore: 55 },   // lower real score, but lands on a bonus square
+  ];
+  const move = pickMove(found, { select: 'best', scoreCeiling: Infinity });
+  assert.equal(move.score, 10, 'HARD should rank by rankScore, not raw score');
+});
+
+test('DIFFICULTY_PROFILES: weighBonusSquares is on for medium/hard, off for easy', () => {
+  assert.equal(DIFFICULTY_PROFILES[DIFFICULTY.EASY].weighBonusSquares, undefined);
+  assert.equal(DIFFICULTY_PROFILES[DIFFICULTY.MEDIUM].weighBonusSquares, true);
+  assert.equal(DIFFICULTY_PROFILES[DIFFICULTY.HARD].weighBonusSquares, true);
 });
 
 // Note on coverage NOT added:

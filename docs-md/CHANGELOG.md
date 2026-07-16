@@ -2,6 +2,49 @@
 
 ---
 
+## Bot now weighs bonus (boost) squares when ranking moves — July 2026
+
+Reported: the bot rarely placed tiles on boost squares. Root cause:
+`scoreMove()` (`scoringEngine.js`) only sums letter face values — it has no
+notion of bonus squares — so `botSearch.js`'s move ranking (`pickMove`,
+`select: 'best'`/`'topN'`) always favored a higher-raw-score plain word over
+a lower-scoring one that happened to land on a boost square, even though the
+boost square usually pays out more overall.
+
+Fix, scoped to `src/game/sessions/botSearch.js` (medium/hard only — easy
+already avoids bonus tiles via the existing `avoidBonusTiles` lever):
+
+- Added `rankScore` alongside the real `score` on each candidate move.
+  `rankScore = score + (unplayed bonus squares touched) × remainingBonusEstimate(state)`.
+  `pickMove()` now ranks by `rankScore` (falling back to `score` when absent,
+  so existing callers/tests are unaffected) — but `scoreCeiling` still checks
+  the real `score`, and the real awarded score is untouched: `searchBotMove`'s
+  `score` field was already unused for anything but internal ranking —
+  `botGameSession.js` only forwards `.placed` to `CMD.CONFIRM_MOVE`, and the
+  actual points are computed by the standard commit path as always.
+- Rejected a flat "+30 points" heuristic (the user's original proposal) as
+  inaccurate — boost values range from +1 to +100+ — but also rejected simply
+  reading the real assigned type of an unplayed square (`state.bonusAssignment`),
+  since that's hidden from human players until a tile lands there (confirmed:
+  every unplayed bonus square renders the same generic ⚡ icon regardless of
+  type). Landed on a fairness-preserving middle ground: `remainingBonusEstimate()`
+  tracks which bonus types have already been **revealed** (`state.bonusSqUsed`)
+  and averages the expected value only over types that haven't shown up yet —
+  the same "cross it off the list" reasoning an attentive human could do, and
+  it provably can't be influenced by the hidden assignment of unplayed squares
+  (see the fairness test in `botSearch.test.js`).
+- Per-type expected values (`BONUS_ESTIMATED_VALUE`, new export in
+  `bonusTileDefs.js`): exact `autoExtra` for the 3 auto types, `tilePts` for
+  types where a real display value already exists, and a derived fallback
+  (average of the known values, ≈40) for the 5 types whose value only exists
+  as a mini-game/future-effect outcome (B5, B6, B7, B8, B13).
+
+Tests: 7 new tests in `botSearch.test.js` (fairness, narrowing as squares are
+revealed, `rankScoreFor` wiring, `pickMove` ranking by `rankScore`, and the
+per-difficulty `weighBonusSquares` flag). 1281 unit tests pass (was 1274).
+
+---
+
 ## Score multiplier shown as its own ×N chip in the merge animation — July 2026
 
 Follow-up to the ×2/×4 double-count fix: instead of the multiplier silently

@@ -1,5 +1,22 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Bot weighs bonus squares when ranking moves — July 2026
+
+- [x] `botSearch.js` candidates now carry a `rankScore` (real score + expected
+  bonus-square value) that `pickMove` ranks by; medium/hard only
+  (`weighBonusSquares` profile lever). Easy is unchanged (still avoids bonus
+  tiles via `avoidBonusTiles`).
+- [x] Expected value per bonus type lives in `bonusTileDefs.js` as
+  `BONUS_ESTIMATED_VALUE`; the bot only ever reads which types have already
+  been **revealed** (`state.bonusSqUsed`) and averages over the rest — never
+  peeks at the hidden assignment of an unplayed square.
+- Note: this only changes which move the bot picks; the actual awarded score
+  on commit is untouched (`searchBotMove`'s `.score` was already internal-only
+  — `botGameSession.js` forwards just `.placed`).
+- [ ] Follow-up (optional): `BONUS_ESTIMATED_VALUE`'s fallback for the 5
+  variable-outcome types (B5/B6/B7/B8/B13) is a derived average (~40), not a
+  measured one — could be tuned later with real mini-game/wheel payout data.
+
 ## Score multiplier ×N chip animation — July 2026
 
 - [x] Multiplier now shown as a ×N chip that flies from the player's multiplier
