@@ -6,7 +6,10 @@
 //   - a list of candidate Hebrew words (already validated against the dictionary),
 //   - difficulty level (0=easy, 1=medium, 2=hard),
 //
-// Returns either { placed, word, score } or null if no move can be found.
+// Returns either { placed, word, score, rankScore? } or null if no move can
+// be found. `rankScore` is present on medium/hard non-opening moves — it's
+// the value pickMove() actually ranks by (real score + expected bonus-square
+// value); callers should still use `score` for the real, awarded points.
 //
 // Algorithm (ported from index.html:3979 doBotSearch):
 //   1. Filter words the rack can spell.

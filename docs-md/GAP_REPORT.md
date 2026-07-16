@@ -310,6 +310,18 @@ Words submitted to `/dictionaryApproved` are not proven to be used in game valid
 
 ---
 
+### 18. Bot Bonus-Square Value Estimates Are Approximated, Not Measured *(Tuning Risk)* — ⚠️ ACCEPTED APPROXIMATION
+
+**Context:** July 2026 fix (see `DECISIONS.md` D-bot-boost-ranking) made medium/hard bot move ranking weigh unplayed bonus squares by `remainingBonusEstimate()`, using `BONUS_ESTIMATED_VALUE` (`bonusTileDefs.js`).
+
+**Risk:** for the 9 types with a real fixed/advertised value this is exact or close to it (`autoExtra` for auto types, `tilePts` elsewhere). For the 5 types whose real payout is a mini-game/future-effect/wheel outcome (B5, B6, B7, B8, B13) — `tilePts` is 0, so the estimate falls back to a derived average (≈40) of the other 9 types' values. This is a reasonable placeholder, not a measured average mini-game/wheel payout — if real payouts differ meaningfully from ≈40, the bot's bonus-square preference is mistuned (too eager or too reluctant) for those 5 types specifically.
+
+**Also unverified:** whether the overall weight magnitude (~40, comparable to a full medium/hard move's mean score of ~30–34 per the Bot Mode measured spread) is well-tuned relative to how good a plain alternative move needs to be before the bot should skip the bonus square. No in-app playtest was done to confirm the resulting bot "feel" — this shipped on unit-test verification of the ranking mechanism only.
+
+**Recommendation:** if bot boost-square frequency still looks off after playtesting, revisit the fallback constant and/or the per-type minigame/wheel estimates in `bonusTileDefs.js`'s `BONUS_ESTIMATED_VALUE` — ideally backed by logged real average payouts per type once available, rather than the current derived placeholder.
+
+---
+
 ## Fragile Modules
 
 ### `gameScreen.js` — ⚠️ remains fragile (architectural)

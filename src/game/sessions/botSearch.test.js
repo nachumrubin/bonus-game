@@ -390,6 +390,34 @@ test('DIFFICULTY_PROFILES: weighBonusSquares is on for medium/hard, off for easy
   assert.equal(DIFFICULTY_PROFILES[DIFFICULTY.HARD].weighBonusSquares, true);
 });
 
+test('searchBotMove: end-to-end — HARD picks a lower-scoring bonus-square word over a higher-scoring plain word', () => {
+  const s = fresh({ firstMove: false });
+  // Plain anchor: extending the committed 'א' rightwards with 'ה' scores א(1)+ה(4)=5.
+  setCommittedTile(s, 4, 5, { letter: 'א', val: 1 });
+  // Bonus anchor: BDEFS left-side square (br:1, bc:-1) registers once its
+  // adjacent on-grid cell (1,0) is committed. Playing 'י' there completes
+  // 'יו' = י(1)+ו(1)=2 — deliberately lower than the plain word's 5.
+  setCommittedTile(s, 1, 0, { letter: 'ו', val: 1 });
+  s.racks[1] = ['א', 'ה', 'י', 'ו', 'ב', 'ג', 'ד', 'ח'];
+  s.currentTurnSlot = 1;
+  const dict = new Set(['אה', 'יו']);
+  const isWordValid = (w) => dict.has(w);
+
+  const weighted = searchBotMove(s, 1, ['אה', 'יו'], isWordValid, { difficulty: DIFFICULTY.HARD });
+  assert.ok(weighted);
+  assert.equal(weighted.word, 'יו', 'HARD should favor the lower-scoring move that lands on an unplayed bonus square');
+
+  // Same board, same words — but with weighBonusSquares off, the plain
+  // higher-scoring word wins as before. Proves the flag (not something else
+  // in the search) drives the difference.
+  const unweighted = searchBotMove(s, 1, ['אה', 'יו'], isWordValid, {
+    difficulty: DIFFICULTY.HARD,
+    profile: { ...resolveProfile(DIFFICULTY.HARD), weighBonusSquares: false },
+  });
+  assert.ok(unweighted);
+  assert.equal(unweighted.word, 'אה', 'without the weight, raw score alone picks the plain word');
+});
+
 // Note on coverage NOT added:
 //   - Vertical-only placement: the search algorithm always tries both H
 //     and V at every anchor, then picks the highest-scoring. Constructing
