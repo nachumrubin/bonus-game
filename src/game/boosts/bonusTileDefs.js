@@ -91,6 +91,30 @@ export const BONUS_TILE_DEFS = {
   },
 };
 
+// Expected point value per bonus type, used ONLY by the bot's move-ranking
+// heuristic (botSearch.js) to weigh candidate placements that land on a
+// bonus square. NOT the actual award — that's still autoExtra / mini-game
+// outcome / future effect, computed at activation time as usual.
+//
+// For 'auto' types this is exact (autoExtra). For everything else it falls
+// back to tilePts, which is already the codebase's existing "advertised"
+// value for a type (see comment above). Five types (B5, B6, B7, B8, B13)
+// have tilePts=0 because their real value is a mini-game/future-effect
+// outcome rather than a flat point add — for those we substitute the
+// average of the other types' known values so the bot doesn't treat them
+// as worthless.
+const KNOWN_VALUES = Object.values(BONUS_TILE_DEFS)
+  .map(d => (d.category === 'auto' ? d.autoExtra : d.tilePts))
+  .filter(v => v > 0);
+const FALLBACK_ESTIMATE = Math.round(KNOWN_VALUES.reduce((a, b) => a + b, 0) / KNOWN_VALUES.length);
+
+export const BONUS_ESTIMATED_VALUE = Object.fromEntries(
+  Object.entries(BONUS_TILE_DEFS).map(([type, def]) => {
+    const known = def.category === 'auto' ? def.autoExtra : def.tilePts;
+    return [type, known > 0 ? known : FALLBACK_ESTIMATE];
+  })
+);
+
 // Wheel-of-fortune outcomes that B13 can roll into. The UI spins the wheel
 // locally and dispatches a single ACTIVATE_BOOST with one of these as the
 // boostId/payload.

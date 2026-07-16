@@ -6,7 +6,10 @@
 //   - a list of candidate Hebrew words (already validated against the dictionary),
 //   - difficulty level (0=easy, 1=medium, 2=hard),
 //
-// Returns either { placed, word, score } or null if no move can be found.
+// Returns either { placed, word, score, rankScore? } or null if no move can
+// be found. `rankScore` is present on medium/hard non-opening moves — it's
+// the value pickMove() actually ranks by (real score + expected bonus-square
+// value); callers should still use `score` for the real, awarded points.
 //
 // Algorithm (ported from index.html:3979 doBotSearch):
 //   1. Filter words the rack can spell.
@@ -25,6 +28,7 @@ import { BOARD_SIZE, isOnGrid, isBonusPos, getCommittedTile } from '../core/boar
 import { HV } from '../core/letterDistribution.js';
 import { getAllWords, scoreMove } from '../core/scoringEngine.js';
 import { BDEFS } from '../boosts/data.js';
+import { BONUS_ESTIMATED_VALUE } from '../boosts/bonusTileDefs.js';
 
 export const DIFFICULTY = Object.freeze({ EASY: 0, MEDIUM: 1, HARD: 2 });
 
@@ -51,17 +55,27 @@ export const DIFFICULTY_PROFILES = Object.freeze({
     includeBonusSquares: true, avoidBonusTiles: false,
     select: 'topN', topN: 3, scoreCeiling: 25,
     weakenFirstMove: false, blunderChance: 0.05,
+    weighBonusSquares: true,
   }),
   [DIFFICULTY.HARD]: Object.freeze({
     maxWordLen: 6, tries: 120, anchLimit: 20,
     includeBonusSquares: true, avoidBonusTiles: false,
     select: 'best', scoreCeiling: Infinity,
     weakenFirstMove: false, blunderChance: 0,
+    weighBonusSquares: true,
   }),
 });
 
 export function resolveProfile(difficulty) {
   return DIFFICULTY_PROFILES[difficulty] ?? DIFFICULTY_PROFILES[DIFFICULTY.MEDIUM];
+}
+
+// The key pickMove ranks by. `rankScore` (when present) is the bot's internal
+// search-time ranking value — real `score` plus an expected-bonus-square
+// weight (see `remainingBonusEstimate`) — never the actual awarded score.
+// Falls back to `score` for callers/tests that don't set rankScore.
+function rankKey(m) {
+  return m.rankScore ?? m.score;
 }
 
 // Choose one move from the candidates found, per the profile's strategy.
@@ -72,7 +86,8 @@ export function resolveProfile(difficulty) {
 //                     with `blunderChance`, sometimes the single worst move.
 // A finite `scoreCeiling` first restricts to moves at/below it (falling back
 // to the single lowest move if every option exceeds the ceiling), so the easy
-// bot can't accidentally drop a monster word.
+// bot can't accidentally drop a monster word. The ceiling is checked against
+// the real `score`, not `rankScore` — it's a cap on actual points awarded.
 export function pickMove(found, profile, rng = Math.random) {
   if (!found || found.length === 0) return null;
 
@@ -83,14 +98,14 @@ export function pickMove(found, profile, rng = Math.random) {
   }
 
   if (profile.select === 'best') {
-    return pool.reduce((a, b) => b.score > a.score ? b : a);
+    return pool.reduce((a, b) => rankKey(b) > rankKey(a) ? b : a);
   }
   if (profile.select === 'topN') {
-    const sorted = [...pool].sort((a, b) => b.score - a.score);
+    const sorted = [...pool].sort((a, b) => rankKey(b) - rankKey(a));
     return sorted[Math.floor(rng() * Math.min(profile.topN ?? 3, sorted.length))];
   }
   // 'percentile' — lowest slice, with an occasional all-out blunder.
-  const sorted = [...pool].sort((a, b) => a.score - b.score);
+  const sorted = [...pool].sort((a, b) => rankKey(a) - rankKey(b));
   if (profile.blunderChance > 0 && rng() < profile.blunderChance) return sorted[0];
   const cut = Math.max(1, Math.ceil(sorted.length * (profile.percentile ?? 0.5)));
   const weak = sorted.slice(0, cut);
@@ -224,6 +239,47 @@ export function findAnchors(state, { includeBonusSquares = false } = {}) {
   return anchors;
 }
 
+// Expected point value of landing on a not-yet-played bonus square, given
+// what has already been revealed. Bonus types are assigned to the 12 board
+// slots once at game start (state.bonusAssignment) and never repeat within
+// a game, but which type sits on any UNPLAYED square is hidden from human
+// players until a tile actually lands there (see docs-md/docs/ui-rules.md —
+// every unplayed bonus square renders the same generic icon). The bot must
+// not read `state.bonusAssignment` for an unplayed slot — that would be
+// information no human opponent has. Instead it tracks the same thing an
+// attentive human could: the set of already-revealed types (via
+// `state.bonusSqUsed`), and estimates an unplayed square as the average
+// value over whichever types haven't shown up yet. This average tightens
+// over the course of the game as more squares get revealed and can be
+// crossed off the list.
+export function remainingBonusEstimate(state) {
+  const revealed = new Set();
+  const used = state.bonusSqUsed ?? {};
+  const assignment = state.bonusAssignment ?? [];
+  for (const idx of Object.keys(used)) {
+    if (!used[idx]) continue;
+    const type = assignment[idx]?.type;
+    if (type) revealed.add(type);
+  }
+  const remaining = Object.keys(BONUS_ESTIMATED_VALUE).filter(t => !revealed.has(t));
+  if (remaining.length === 0) return 0;
+  const sum = remaining.reduce((s, t) => s + BONUS_ESTIMATED_VALUE[t], 0);
+  return sum / remaining.length;
+}
+
+// Adds the bonus-square ranking weight to a candidate's real score, if the
+// profile opts in (medium/hard only — easy already avoids bonus tiles via
+// `avoidBonusTiles`). `placed` entries on a bonus square are always
+// not-yet-played ones: `tryPlaceWord` only adds a cell to `placed` when it's
+// currently empty, so an already-used bonus square would instead show up as
+// a committed-tile walk-through and never reach this count.
+export function rankScoreFor(profile, state, score, placed) {
+  if (!profile.weighBonusSquares) return score;
+  const touched = placed.filter(p => isBonusPos(p.r, p.c)).length;
+  if (touched === 0) return score;
+  return score + touched * remainingBonusEstimate(state);
+}
+
 function shuffleInPlace(arr, rng = Math.random) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
@@ -294,7 +350,8 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
           const words = getAllWords(state, placed);
           if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
           const score = scoreMove(words, placed.length);
-          found.push({ placed, word: w, score });
+          const rankScore = rankScoreFor(profile, state, score, placed);
+          found.push({ placed, word: w, score, rankScore });
         }
       }
     }
@@ -341,7 +398,9 @@ function searchPlayThrough(state, slot, wordList, isWordValid, profile, rng) {
           if (!placed) continue;
           const words = getAllWords(state, placed);
           if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
-          found.push({ placed, word: w, score: scoreMove(words, placed.length) });
+          const score = scoreMove(words, placed.length);
+          const rankScore = rankScoreFor(profile, state, score, placed);
+          found.push({ placed, word: w, score, rankScore });
         }
       }
     }

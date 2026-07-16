@@ -97,6 +97,22 @@ coin loop). Tests: `avatarStore.test.js`, `avatarStoreScreen.test.js`, extended 
 
 ---
 
+## D-bot-boost-ranking: bot values boost squares by expected remaining value, never the hidden real one — July 2026
+
+**Problem:** the bot rarely played onto boost squares. `scoreMove()` only sums letter face values, so `botSearch.js`'s "pick the highest score" ranking always preferred a plain word worth a few more raw points over a boost-square placement, even though the boost square usually pays out more overall.
+
+**Rejected: flat `+30`.** The user's first proposal — add a constant 30 points to any move touching a boost square — was rejected as too coarse. Boost values genuinely range from +1 (B4) to +100 (B1), plus persistent effects (extra turn, 2×/4× multiplier) and a wheel spin with 8 outcomes; a single flat number either overvalues the cheap types or undervalues the rich ones.
+
+**Rejected: reading the real assigned type.** `state.bonusAssignment[idx]` holds the true type for all 12 board slots from turn 1 — technically readable at any time. Using it directly (e.g. "this exact unplayed square is a B1, weight it 100") would be more *accurate*, but it's an unfair information advantage: the UI renders every unplayed boost square with the same generic ⚡ icon (`docs/ui-rules.md`), so a human player has no way to know which type sits where until a tile actually lands on it.
+
+**Decision:** the bot only uses what a human could also, in principle, work out — which types have already been **revealed** (`state.bonusSqUsed`) — and estimates any unplayed square as the average expected value over whichever of the 14 types haven't shown up yet (`remainingBonusEstimate` in `botSearch.js`, using `BONUS_ESTIMATED_VALUE` from `bonusTileDefs.js`). This is the same "cross it off the list" reasoning an attentive human opponent could do: the estimate is identical regardless of the hidden assignment when nothing has been revealed, and it narrows automatically as more squares get played. Gated behind a new `weighBonusSquares` profile lever — on for medium/hard, off for easy (which already avoids boost tiles entirely via `avoidBonusTiles`).
+
+**Why this can't leak into the real score:** `searchBotMove`'s returned `score` was already internal-only — `botGameSession.js` forwards just `.placed` to `CMD.CONFIRM_MOVE`; the actual awarded points are always computed by the standard commit path. The new `rankScore` field is used only inside `pickMove` for move selection and never reaches gameplay state.
+
+**Evidence:** `src/game/sessions/botSearch.js` (`remainingBonusEstimate`, `rankScoreFor`, `rankKey`), `src/game/boosts/bonusTileDefs.js` (`BONUS_ESTIMATED_VALUE`); tests in `botSearch.test.js` (fairness — identical estimate under two different hidden assignments when nothing is revealed; narrows once a type is crossed off).
+
+---
+
 ## D-async-end: "סיום" ends an async game (resign); the home button leaves-and-resumes — June 2026
 
 **Decision:** The in-game top-bar **סיום** (🏁) button — which opens the back-confirm overlay → "leave" → `BACK_INTENT.LEAVE` — now **resigns** for *all* online games, async included. The separate async-only **home** button (`#btn-async-home` → `AH_INTENT.GO_HOME`) is the leave-and-resume path.

@@ -1,69 +1,21 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
-## Fix: tile swap on a bonus square painted the old letter — July 2026
+## Bot weighs bonus squares when ranking moves — July 2026
 
-- [x] `gameScreen.js` renders perimeter bonus squares (`#bsq-{idx}`) in a separate
-  loop from the in-grid cells, and that loop had no `swapHere` branch — so it fell
-  through to `committed` (still the OLD tile until confirm) and showed the letter
-  being replaced. Added the branch, mirroring the in-grid loop.
-- [x] Swap logic/CSS were already correct (bsq clicks share `onCellClick`;
-  `.bsq.swap-pending` existed in styles.css) — only the render was missing.
-- [x] Regression test added. Also gave the gameScreen DOM stub an `ownerDocument`
-  (needed by `ensureBsqTileWrap`) — no prior test landed a tile on a bonus square.
-- Watch: the two render loops are easy to drift apart. Any new cell state
-  (preview, lock, selection…) must be added to BOTH.
-
-## Fix: B10 crossing-words rendered the horizontal word backwards — July 2026
-
-- [x] `.cw-mini-grid` shared a CSS rule with `.xw-board` that forced
-  `direction: ltr`, so column 0 (where `buildMiniGrid` puts `pair.h[0]`, the
-  word's first letter) rendered leftmost → `תפוח` drew as `חופת`.
-- [x] Split the rule: `.cw-mini-grid` → `direction: rtl` (col 0 = rightmost).
-  `.xw-board` keeps `ltr` — its cells are empty so flow direction is invisible;
-  its RTL correctness lives in `scanCrosswordWords` instead.
-- Note: the two RTL bugs have DIFFERENT fixes because one grid renders a
-  pre-filled word (direction matters visually) and the other is empty cells the
-  player fills (only the run-reading matters). Don't "unify" them.
-
-## Fix: B8 crossword read horizontal words LTR instead of RTL — July 2026
-
-- [x] `scanCrosswordWords` walked columns left→right and appended, so a Hebrew
-  word placed correctly (first letter in the rightmost cell) was read backwards
-  ("גיא" → "איג") and scored 0. Now prepends → reads RTL. Vertical unchanged.
-- [x] Intentional divergence from the legacy `buildCrossword` port (same defect).
-  Tests in `crosswordMiniGame.test.js` + `engine-parity-highrisk.test.js` updated.
-- Note: surfaced only after the post-mini-game award modal was removed — the modal
-  used to cover the crossword's result/status screen.
-
-## Open: fill-middle (B1) has no letter-rearranging reveal
-
-- [ ] The unscramble half of B1 animates the tiles rearranging into the correct
-  word on a miss (`revealCorrectWord` FLIP in `unscrambleMiniGame.js`). The
-  fill-middle half (`fillMiddleMiniGame.js`) only prints a static
-  "המילה הייתה: X" (`renderResult`) — it has never had any animation code.
-- Not a regression: it became visible once the award modal (which covered the
-  result screen) was removed. Worth porting the FLIP reveal to fill-middle for
-  consistency; the other mini-games' result screens are static too.
-
-## Fix: turn passed mid-boost — dropped redundant post-mini-game award modal — July 2026
-
-- [x] Root cause: mini-game/wheel outcomes showed TWO overlays (the game's own
-  result screen + a second award modal), and `FINALIZE_BOOST_AWARD` (turn pass)
-  was wired to the award modal's OK. Turn advanced while the result screen was
-  still up (most visible in 1vBot: the bot moved immediately).
-- [x] Dropped the award modal for mini-game/wheel. `resolveMiniGame`/`resolveWheel`
-  now stage the outcome; a new `MINIGAME_CLOSED` (`bonus/minigame-closed`) event
-  finalizes on result-screen dismissal. Points fold into `extra`; wheel future
-  effects ride `queueBoosts` on `FINALIZE_BOOST_AWARD` (new engine param).
-- [x] Central close hook: global `bonusOk()` (shared `#ov-bonus` continue) emits
-  `MINIGAME_CLOSED` — covers the 6 legacy-overlay games. `unscramble` + `wheel`
-  (self-hosted) emit it directly; wheel gained a "המשך" continue button.
-- [x] B2/B4/B9 auto bonuses unchanged (keep the award modal — no mini-game screen).
-- [x] Tests updated/added; full unit suite (1277) passes.
-- Risk note: if any legacy game ever fails to restore the `#bok` `onclick=bonusOk`
-  on its result screen, that game's turn would hang (no close signal). All 6
-  currently restore `prevOnclick`; `#ov-bonus` is a full-screen blocking overlay
-  so the turn can't otherwise proceed. Not covered by an e2e test yet.
+- [x] `botSearch.js` candidates now carry a `rankScore` (real score + expected
+  bonus-square value) that `pickMove` ranks by; medium/hard only
+  (`weighBonusSquares` profile lever). Easy is unchanged (still avoids bonus
+  tiles via `avoidBonusTiles`).
+- [x] Expected value per bonus type lives in `bonusTileDefs.js` as
+  `BONUS_ESTIMATED_VALUE`; the bot only ever reads which types have already
+  been **revealed** (`state.bonusSqUsed`) and averages over the rest — never
+  peeks at the hidden assignment of an unplayed square.
+- Note: this only changes which move the bot picks; the actual awarded score
+  on commit is untouched (`searchBotMove`'s `.score` was already internal-only
+  — `botGameSession.js` forwards just `.placed`).
+- [ ] Follow-up (optional): `BONUS_ESTIMATED_VALUE`'s fallback for the 5
+  variable-outcome types (B5/B6/B7/B8/B13) is a derived average (~40), not a
+  measured one — could be tuned later with real mini-game/wheel payout data.
 
 ## Score multiplier ×N chip animation — July 2026
 

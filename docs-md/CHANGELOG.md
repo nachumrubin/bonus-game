@@ -2,276 +2,46 @@
 
 ---
 
-## Online: opponent now sees the word during a bonus mini-game — July 2026
+## Bot now weighs bonus (boost) squares when ranking moves — July 2026
 
-**Bug:** In online play, a move that lands on a bonus square was invisible to the
-opponent until the mini-game finished — up to 60s (B8 crossword) of staring at an
-unchanged board with no idea what was played.
+Reported: the bot rarely placed tiles on boost squares. Root cause:
+`scoreMove()` (`scoringEngine.js`) only sums letter face values — it has no
+notion of bonus squares — so `botSearch.js`'s move ranking (`pickMove`,
+`select: 'best'`/`'topN'`) always favored a higher-raw-score plain word over
+a lower-scoring one that happened to land on a boost square, even though the
+boost square usually pays out more overall.
 
-**Two causes, both had to be fixed:**
+Fix, scoped to `src/game/sessions/botSearch.js` (medium/hard only — easy
+already avoids bonus tiles via the existing `avoidBonusTiles` lever):
 
-1. **No data.** `onlineGameSession` deliberately skipped the Firebase write while
-   scoring was deferred (`MOVE_CONFIRMED{scoringDeferred:true}` → set a flag and
-   `return`). Nothing reached the room until `MOVE_SCORE_COMMITTED`.
-2. **No view.** Even with the data, the opponent has a full-screen spectator
-   overlay up (`.ov` = `position:fixed; inset:0; rgba(0,0,0,.72)`) for the whole
-   mini-game, and it only closes on `MOVE_SCORE_COMMITTED` — i.e. exactly when the
-   move would have landed anyway. Fixing the sync alone would have changed nothing
-   visible.
+- Added `rankScore` alongside the real `score` on each candidate move.
+  `rankScore = score + (unplayed bonus squares touched) × remainingBonusEstimate(state)`.
+  `pickMove()` now ranks by `rankScore` (falling back to `score` when absent,
+  so existing callers/tests are unaffected) — but `scoreCeiling` still checks
+  the real `score`, and the real awarded score is untouched: `searchBotMove`'s
+  `score` field was already unused for anything but internal ranking —
+  `botGameSession.js` only forwards `.placed` to `CMD.CONFIRM_MOVE`, and the
+  actual points are computed by the standard commit path as always.
+- Rejected a flat "+30 points" heuristic (the user's original proposal) as
+  inaccurate — boost values range from +1 to +100+ — but also rejected simply
+  reading the real assigned type of an unplayed square (`state.bonusAssignment`),
+  since that's hidden from human players until a tile lands there (confirmed:
+  every unplayed bonus square renders the same generic ⚡ icon regardless of
+  type). Landed on a fairness-preserving middle ground: `remainingBonusEstimate()`
+  tracks which bonus types have already been **revealed** (`state.bonusSqUsed`)
+  and averages the expected value only over types that haven't shown up yet —
+  the same "cross it off the list" reasoning an attentive human could do, and
+  it provably can't be influenced by the hidden assignment of unplayed squares
+  (see the fairness test in `botSearch.test.js`).
+- Per-type expected values (`BONUS_ESTIMATED_VALUE`, new export in
+  `bonusTileDefs.js`): exact `autoExtra` for the 3 auto types, `tilePts` for
+  types where a real display value already exists, and a derived fallback
+  (average of the known values, ≈40) for the 5 types whose value only exists
+  as a mini-game/future-effect outcome (B5, B6, B7, B8, B13).
 
-**Fix — two-phase commit** ([onlineGameSession.js](src/game/sessions/onlineGameSession.js)):
-- Commit #1 fires on the deferred `MOVE_CONFIRMED`: publishes board + tiles, but
-  does **not** rotate the turn and awards **no** score (the engine already left
-  both untouched — `applyMove` ran with `advance:false, commitScore:false`). The
-  DB rules permit an active-player `version+1` write that doesn't rotate the turn
-  (same shape free-exchange already uses), so no rules change was needed.
-- Commit #2 fires on `MOVE_SCORE_COMMITTED` as before: bonus points + turn rotation.
-- Both commits pass the **same `lastMove` object**, hence the same `ts` — so the
-  opponent's watcher sees `isNewMove === false` on the second one and resyncs
-  score/turn *without* replaying the tiles or re-firing `OPPONENT_MOVED`. No
-  double animation, and this fell out of the existing echo logic for free.
-- A new `deferred` flag stops commit #1 being misread as an **extra turn** (which
-  would have refreshed `turnDeadlineMs`), and clears the now-stale `livePreview`
-  ghosts so they don't render alongside the committed tiles.
-
-**Fix — spectator overlay:** `liveBonus` now carries the played `words` + base
-`moveScore` (`setLiveBonus`, no rules change — the node has no field validation),
-and the overlay renders `שיחק: <מילה> (+N)` via the new `formatPlayedMove`
-([bonusSpectatorScreen.js](src/ui/screens/bonusSpectatorScreen.js)).
-
-Side effect (intended): the opponent now sees the tiles land immediately but the
-score only appears once the bonus resolves — the base score is genuinely not
-committed until then. Reconnecting mid-bonus also now restores the played tiles.
-
-Tests: rewrote the deferred-commit test to assert tiles-visible / score-withheld /
-turn-not-rotated after phase 1; new `bonusSpectatorScreen.test.js`. Suite 1286.
-
----
-
-## Exchange overlay: dead ✕ button + wrong tile font — July 2026
-
-### 1. The ✕ close button did nothing (re-mount bug)
-
-`#ov-exch` has two close controls — the ✕ and "🗑 ביטול" — and both shipped with
-the **identical** `onclick="ovClose('ov-exch')"`. `gameScreen.js` looked the button
-up with an *attribute selector* on that onclick, which returns the first match in
-document order (the ✕), then **stripped the onclick** and attached a listener.
-
-On a **re-mount** (new game, resume…) the ✕ no longer carried that onclick, so the
-selector fell through to the "ביטול" button instead. The ✕ was left with neither an
-onclick (stripped on the first mount) nor a listener (removed by cleanup on
-unmount) — a permanently dead button.
-
-**Fix:** gave both buttons stable IDs (`#exch-close`, `#exch-cancel` in
-`partials/screens/exchange.html`) and wired **both** by ID. This kills the
-self-invalidating "select by onclick, then remove the onclick" pattern.
-`menuScreen.js` still uses onclick-attribute selectors (per `docs/ui-rules.md`) —
-those are safe only because it never strips the attribute; worth auditing.
-
-### 2. Exchange tiles used a different font from the rack
-
-The rack builds tiles as `<div class="bt2">` but the exchange overlay builds them
-as `<button class="bt2">`. `.bt2` never declared a `font-family`, and **form
-controls don't inherit it** — so the overlay's tiles fell back to the UA font while
-the rack's inherited Heebo from `body`.
-
-**Fix:** `.bt2 { font-family: inherit; }` (styles.css), so a tile renders
-identically whichever element it's built from.
-
-Tests: added ✕-closes and ✕-survives-a-re-mount cases in `gameScreen.test.js`
-(the DOM stub now registers `#exch-close`). Suite 1280.
-
----
-
-## B11 מילה נסתרת: pre-game overlay now explains how to select a word — July 2026
-
-The bonus-intro overlay only said *"מצא מילה נסתרת ברשת 4×4 תוך 10 שניות"* — it
-never told the player **how** to make a selection, so the mechanic had to be
-guessed. Rewrote `descB11` ([genderText.js](src/ui/genderText.js), M/F forms) to
-state the mechanic, verified against the implementation:
-
-- **Tap the first letter, then the last** — `checkSelection(from, to)` reads the
-  line between the two taps (`hiddenWordMiniGame.js`).
-- **Exactly 3 letters** — `DEFAULT_WORD_LEN = 3`; `checkSelection` rejects any run
-  whose length ≠ `wordLen`, so incidental 2-letter words don't count.
-- **Horizontal, vertical or diagonal, in either direction** — `readLine()` allows
-  any straight run, and the word is accepted forwards *or* reversed.
-- 10 seconds (`DEFAULT_DURATION_MS`), 4×4 grid, 30 pts.
-
-Not changed: the in-game overlay's own line (`hiddenWordMiniGame.js:285`,
-*"מצא מילה אחת באורך N אותיות תוך N שניות"*) is equally silent on the mechanic —
-worth aligning if the intro copy proves insufficient.
-
----
-
-## Boost award overlay: emoji icons rendered as meaningless gold discs — July 2026
-
-**Bug:** The `skip_opponent_turn` award overlay showed a featureless yellow/gold
-circle as its icon (and a second one beside the heading). Same latent issue in
-`free_tile_swap` and `cancel_next_opponent_bonus`.
-
-**Root cause:** the overlay's big-icon slot is styled
-`font-size:32px; color: var(--by)`. Emoji such as `🛡` / `⏱` default to **text
-presentation** (monochrome), so the `color` override painted them as a solid gold
-blob. Emoji were never a viable icon here.
-
-**Fix** (`describeBoost` + `showBonusAwardOverlay`,
-[gameScreen.js](src/ui/screens/gameScreen.js)):
-
-- The big icon now has three tiers: `image` (real art) → `bigEmoji` (rendered
-  **untinted** at 56px, so emoji show as real colour glyphs) → `bigText` (actual
-  text like `×2` / `+50 נק'`, which *should* stay gold). The bug was conflating
-  the last two.
-- Interim icons wired up — both are already Boost-family art (blue sphere, cyan
-  ring, glossy 3D), so they sit correctly next to `assets/rewards/extra turn.png`:
-  - `skip_opponent_turn` → `assets/ui/pause.png` (opponent's turn halted)
-  - `free_tile_swap` → `assets/ui/rematch.png` (circular swap arrows)
-  - `cancel_next_opponent_bonus` → `🛡️` as `bigEmoji` (no usable shield asset
-    exists; it now renders as a real colour shield, not a gold blob)
-- Emoji stripped from the `title` strings (that was the small disc next to the
-  heading) — also from `timer_bonus`.
-- The `<img>` now has an `error` handler that swaps in the fallback rather than
-  showing a broken-image box; this also protects the existing `extra turn.png`.
-
-**Bespoke art still wanted** (tracked in `docs/asset_inventory.md`). No
-image-generation API key is configured here, so generate with these Boost
-icon-designer prompts and drop the PNGs in `assets/rewards/` — swapping each in is
-a one-line `image:` change:
-
-*`skip turn.png`* — Create a **skip-turn symbol — a circular turn arrow struck
-through by a bold red prohibition slash** icon for the mobile word game Boost.
-Place the object inside the signature glowing blue energy sphere. Maintain the
-exact Boost icon style: electric blue and cyan palette, soft 3D rendering, glossy
-highlights, magical energy ring, subtle lightning details, floating particles,
-strong readability at small sizes, transparent background, no scenery, no text,
-premium casual mobile game artwork. The icon must look like it belongs in the same
-set as the existing Boost globe icon.
-
-*`tile swap.png`* — Create a **letter-tile swap symbol — two glossy game letter
-tiles exchanging places along a pair of curved circular swap arrows** icon for the
-mobile word game Boost. …(same style clause as above).
-
-*`cancel boost.png`* — Create a **boost-cancelling shield — a glossy energy shield
-deflecting an incoming lightning bolt, the bolt shattering against its surface**
-icon for the mobile word game Boost. …(same style clause as above).
-
----
-
-## Tile swap on a bonus square showed the OLD letter until confirm — July 2026
-
-**Bug:** Swapping a rack tile onto a committed tile that sits on a perimeter
-**bonus square** left the square painted with the letter being *replaced*. The
-correct letter only appeared once the move was finalized. (Swaps on normal grid
-cells were fine.)
-
-**Cause:** `gameScreen.js` renders perimeter bonus squares (`#bsq-{idx}`) in a
-**separate loop** from the in-grid cells (`#c{r}_{c}`). The in-grid loop checks
-`swapHere` *before* `committed`, but the bonus-square loop only had `committed` /
-`placedHere` branches — no `swapHere`. Since the engine only applies a swap on
-confirm, `committed` is still the OLD tile, so the bsq fell through to it and
-painted the stale letter. The swap *logic* was always correct (bsq clicks route
-through the same `onCellClick`), and `styles.css` already had `.bsq.swap-pending`
-rules — only the render branch was missing.
-
-**Fix:** added the `swapHere` branch to the bonus-square loop, mirroring the
-in-grid one (renders the swapped-IN tile, adds `.bsq-tile-host .np .swap-pending`).
-
-Regression test added in `gameScreen.test.js`. This also required giving the DOM
-stub an `ownerDocument` — `ensureBsqTileWrap()` needs it, and no previous test
-ever landed a tile on a bonus square, so the gap was never hit. Suite now 1278.
-
----
-
-## B10 crossing-words: horizontal word rendered mirror-reversed — July 2026
-
-**Bug:** The B10 "שתי מילים חוצות" puzzle drew its horizontal word backwards —
-e.g. the fallback pair's `תפוח` rendered as `חופת`.
-
-**Cause:** `buildMiniGrid`
-([crossingWordsMiniGame.js](src/ui/screens/miniGames/crossingWordsMiniGame.js))
-puts `pair.h[0]` — the word's FIRST letter — in **column 0**. But `.cw-mini-grid`
-was sharing a CSS rule with the crossword board that forced `direction: ltr`
-(menu-electric.css), making column 0 the **leftmost** cell. In an RTL language
-the first letter must land in the **rightmost** cell, so the row read mirrored.
-
-**Fix:** split the shared rule. `.cw-mini-grid` now sets `direction: rtl` (column
-0 = rightmost → `h[0]` reads first), while `.xw-board` keeps `direction: ltr` —
-the crossword is a grid of *empty* cells, so its flow direction is visually
-invisible and its RTL correctness is handled in `scanCrosswordWords` instead.
-The vertical word is a single column and reads top-down either way, and the
-crossing cell at `(vpos, hpos)` stays aligned automatically.
-
-Both classes are used by exactly one mini-game each, so the split is isolated.
-Full unit suite (1277) passes.
-
----
-
-## B8 crossword: horizontal words now read right-to-left (Hebrew) — July 2026
-
-**Bug:** The B8 crossword scored horizontal runs **left-to-right**, so a validly
-placed Hebrew word was read backwards and marked illegal — e.g. "גיא" (ג in the
-rightmost cell, as Hebrew is written) was scanned as "איג", scored 0, and shown
-as ✗ in the live status bar. Vertical runs were fine.
-
-**Cause:** `scanCrosswordWords`
-([crosswordMiniGame.js](src/ui/screens/miniGames/crosswordMiniGame.js)) walked
-columns `0 → cols` and **appended** each letter. The board is laid out
-`direction: ltr` (`.xw-board`, menu-electric.css), so column 0 is the *leftmost*
-cell — i.e. the word's *last* letter. Walking left→right therefore visits a
-Hebrew word backwards.
-
-**Fix:** the horizontal pass now **prepends** each letter (`word = cell.l + word`),
-assembling the run as it actually reads. Vertical runs are unchanged (Hebrew
-stacks top-to-bottom). This corrects both the live ✓/✗ status readout and the
-final score.
-
-Note: this is an **intentional divergence** from the legacy `buildCrossword`
-port, which had the same left-to-right defect. Unit tests that encoded the old
-LTR reading (`crosswordMiniGame.test.js`, `engine-parity-highrisk.test.js`) were
-updated to the correct RTL expectation. Full unit suite (1277) passes.
-
----
-
-## Turn no longer passes mid-boost: dropped the redundant post-mini-game award modal — July 2026
-
-**Bug:** After an interactive bonus (mini-game or wheel), the turn passed to the
-opponent while the player was still looking at an overlay. Root cause: two
-overlays appeared at once — the mini-game's own result screen (its "המשך"
-continue button) AND a second bonus **award modal** — and the turn-passing
-`FINALIZE_BOOST_AWARD` was wired to the award modal's OK button. Dismissing the
-award modal advanced the turn (and, in 1vBot, let the bot move) while the
-mini-game's result screen was still on screen. Every mini-game hit this because
-each called `onResult` (→ `resolveMiniGame`) at `finish()`, popping the award
-modal concurrently with its result screen.
-
-**Fix:** For mini-game/wheel outcomes the award modal is gone; the game's own
-result screen is the single acknowledgment, and closing it passes the turn.
-- [bonusActivationController.js](src/ui/controllers/bonusActivationController.js):
-  `resolveMiniGame` / `resolveWheel` now **stage** the outcome instead of
-  dispatching `ACTIVATE_BOOST` (which popped the modal). A new
-  `MINIGAME_CLOSED` (`bonus/minigame-closed`) event — emitted when the result
-  screen is dismissed — triggers `FINALIZE_BOOST_AWARD`, folding earned points
-  into `extra` and passing wheel future-effects via `queueBoosts`. `BONUS_RESOLVED`
-  now also fires at close, so the paused bot/turn-timer resume at the right time.
-- [gameEngine.js](src/game/core/gameEngine.js): `handleFinalizeBoostAward`
-  accepts `queueBoosts` and pushes future-effect boosts onto `activeBoosts`
-  before `advanceTurn`/`ON_TURN_END` (so a wheel `extra_turn` still keeps the turn).
-- [main.js](src/main.js): the shared `#ov-bonus` continue button's global
-  `bonusOk()` now emits `MINIGAME_CLOSED` — one choke point for the six
-  legacy-overlay mini-games (fill-middle, honeycomb, crossword, hidden-word,
-  crossing-words, letter-spinner).
-- [unscrambleMiniGame.js](src/ui/screens/miniGames/unscrambleMiniGame.js) (always
-  self-hosted) emits `MINIGAME_CLOSED` from every close path (continue, fail/
-  timeout continue, hard-teardown, no-word degrade).
-- [wheelMiniGame.js](src/ui/screens/miniGames/wheelMiniGame.js) now shows a
-  "המשך" continue button after it lands (replacing the 1.2s auto-dismiss) and
-  emits `MINIGAME_CLOSED` on tap.
-- B2/B4/B9 **auto** bonuses are unchanged — they have no mini-game screen, so
-  they keep the award modal (engine emits `BOOST_ACTIVATED` → modal → OK).
-
-Tests: updated `bonusActivationController.test.js` for the staged/close flow;
-added `queueBoosts` engine tests in `engine-parity-highrisk.test.js`. Full unit
-suite (1277) passes.
+Tests: 7 new tests in `botSearch.test.js` (fairness, narrowing as squares are
+revealed, `rankScoreFor` wiring, `pickMove` ranking by `rankScore`, and the
+per-difficulty `weighBonusSquares` flag). 1281 unit tests pass (was 1274).
 
 ---
 

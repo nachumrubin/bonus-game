@@ -343,8 +343,30 @@ Source: `src/game/sessions/botGameSession.js`, `botSearch.js`
   | move selection | lowest 25th-percentile (+20% chance of its single worst move) | random of top-3 | highest |
   | `scoreCeiling` (soft max points) | 12 | ∞ | ∞ |
   | weakened opening move | yes | no | no |
+  | `weighBonusSquares` (rank by expected bonus value, not just raw score) | no | yes | yes |
 
   Easy is intentionally a **beginner**: only 2–3 letter words, low-value plays, weak opener, never uses bonus squares. (Measured spread on a representative board: easy mean ≈ 8, medium ≈ 30, hard ≈ 34.)
+
+  **Boost-square ranking (medium/hard, July 2026):** `scoreMove()` only sums
+  letter face values, so without help the search's "highest score wins" logic
+  routinely skipped a boost-square placement in favor of a plain word worth a
+  few more raw points — even though the boost square usually pays out more
+  overall. Medium/hard candidates now carry a `rankScore` = real score +
+  (unplayed bonus squares touched) × `remainingBonusEstimate(state)`, and
+  `pickMove` ranks by `rankScore` instead of raw `score`. The real awarded
+  score on commit is unaffected — `rankScore` only steers which move the bot
+  picks.
+
+  `remainingBonusEstimate` (`botSearch.js`) is deliberately **not** allowed to
+  read the true type assigned to an unplayed bonus square
+  (`state.bonusAssignment[idx]`) — the UI renders every unplayed square with
+  the same generic icon, so a human opponent can't tell them apart either
+  (see `docs/ui-rules.md`). Instead it tracks only what's publicly knowable:
+  which types have already been revealed via `state.bonusSqUsed`, and
+  averages the expected value (`BONUS_ESTIMATED_VALUE`, `bonusTileDefs.js`)
+  over whichever types haven't shown up yet — the estimate narrows as more
+  squares get played, the same way an attentive human could "cross off" seen
+  types.
 - **Vocabulary** (`main.js`): the bot draws from the legacy ~40K frequency-sorted corpus (kept stable for calibration), capped per level — `VOCAB_CAPS = [2000, 20000, 40000]` (easy/medium/hard). Combined with `maxWordLen`, easy effectively uses only the most common short words.
 - **Think time** (`main.js`, cosmetic — no strength effect): `THINK_MS = [1000, 3000, 5000]` ms (easy snappy, hard lingers), passed to `attachBotPlayer` as `thinkingMs`.
 
