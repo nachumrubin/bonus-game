@@ -166,7 +166,18 @@ export function applyMove(state, placed, score, { commitScore = true, advance = 
   if (advance) advanceTurn(state);
 }
 
-export function applyLock(state, { r, c, duration, slot = state.currentTurnSlot } = {}) {
+// Spend one lock of `duration` from the slot's inventory and put it on the
+// board. Does NOT advance the turn — callers decide, because the two lock
+// paths differ in when the tick happens relative to this call:
+//
+//   lock-only turn (applyLock)  — createLock, then advance with tickLocks:false
+//   word + lock (CONFIRM_MOVE)  — applyMove advances and ticks FIRST, then
+//                                 createLock, so the fresh lock keeps its full
+//                                 duration while existing locks still count down
+//
+// In both cases the lock being placed is exempt from that turn's tick, which is
+// the point: a 3-turn lock should last 3 more turns, not 2.
+export function createLock(state, { r, c, duration, slot = state.currentTurnSlot } = {}) {
   ensureLockState(state);
   const inventory = state.lockInventory?.[slot] ?? [];
   const idx = inventory.indexOf(duration);
@@ -180,6 +191,10 @@ export function applyLock(state, { r, c, duration, slot = state.currentTurnSlot 
     remainingTurns: duration,
   });
   state.passCount = 0;
+}
+
+export function applyLock(state, { r, c, duration, slot = state.currentTurnSlot } = {}) {
+  createLock(state, { r, c, duration, slot });
   advanceTurn(state, { tickLocks: false });
 }
 

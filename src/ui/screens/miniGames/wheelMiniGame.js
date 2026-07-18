@@ -108,6 +108,9 @@ export function mountWheelMiniGame({
     bus.emit(WHEEL_INTENT.RESULT, { outcomeId: chosen.id, label: labelFor(chosen) });
     onResult({ outcomeId: chosen.id, label: labelFor(chosen) });
     try { host?.remove?.(); } catch {}
+    // The wheel's result IS the single acknowledgment (no separate award
+    // modal). Closing it finalizes the staged award and passes the turn.
+    try { bus.emit('bonus/minigame-closed', {}); } catch { /* swallow */ }
   }
 
   if (!doc?.createElement) {
@@ -213,7 +216,17 @@ export function mountWheelMiniGame({
       try {
         bus?.emit?.('liveBonus/progress', { secsLeft: 0, label: labelFor(chosen) });
       } catch { /* swallow */ }
-      setTimeout(finish, 1200); // tiny pause so the user reads the result
+      // Turn the spin button into a "continue" button: the wheel result is the
+      // single acknowledgment now (the redundant award modal is gone), so the
+      // turn passes only when the player taps continue.
+      if (spinBtn) {
+        spinBtn.disabled = false;
+        spinBtn.textContent = g('continueMiniGame', getGender());
+        spinBtn.removeEventListener('click', doSpin);
+        spinBtn.addEventListener('click', finish, { once: true });
+      } else {
+        setTimeout(finish, 1200); // no button (defensive) — auto-continue
+      }
     }, spinDurationMs);
   }
 

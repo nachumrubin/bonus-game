@@ -107,7 +107,7 @@ Two paths exist; the active one is selected by `setDictionaryMode('v1' | 'v2')`,
   3. Strip verb conjugation suffixes
   4. Strip ה (feminine marker, with heuristics)
   5. All candidates tested with spelling variants (כתיב-חסר and כתיב-מלא)
-- **Explicit rejects:** Firebase `/dictionaryRejected` → `BLOCKED_OVERLAY`, checked before any positive lookup (always invalid). *(The old in-code `EXACT_REJECTS` list was removed June 2026 — see `docs-md/dictionary-firebase-seed.txt` for the migrated words.)*
+- **Explicit rejects:** Firebase `/dictionaryRejected` → `BLOCKED_OVERLAY`, checked before any positive lookup (always invalid) via `isBlocked()`, which folds terminal final forms in both directions — an entry stored as `ואכן` also blocks the board form `ואכנ`, and vice versa. *(The old in-code `EXACT_REJECTS` list was removed June 2026 — see `docs-md/dictionary-firebase-seed.txt` for the migrated words.)*
 - **Explicit allows:** Firebase `/dictionaryApproved` → merged into `DICT`. *(The old in-code `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` lists were removed June 2026 and migrated to that path.)*
 - **External validator:** If `globalThis.HebrewValidator` is loaded and ready, `hv.validate(w)` is called as the primary check; `analyze()` is fallback
 

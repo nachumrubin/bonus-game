@@ -385,6 +385,18 @@ export function isLiveOnlineMode(mode) {
   return typeof mode === 'string' && mode.endsWith('-live');
 }
 
+export function isAsyncOnlineMode(mode) {
+  return typeof mode === 'string' && mode.endsWith('-async');
+}
+
+// Any real online game — live OR async. Both count toward stats + recent games
+// (July 2026). Async games were previously excluded; the only stats that don't
+// apply to them are wall-clock-based (a turn can be days apart) — those are
+// guarded individually below.
+export function isOnlineMode(mode) {
+  return isLiveOnlineMode(mode) || isAsyncOnlineMode(mode);
+}
+
 export function computeLiveGameStatsDelta({
   state,
   room,
@@ -395,8 +407,13 @@ export function computeLiveGameStatsDelta({
   botTime = null,
 } = {}) {
   const mode = room?.mode ?? state?.mode;
-  if (!state || !isLiveOnlineMode(mode)) return null;
+  // Both live AND async online games count now (July 2026). Async games span
+  // real-world days, so wall-clock-derived stats (fastestWinMs, moveSpeedStats)
+  // are guarded below; everything else — win/loss, scores, words, rivals,
+  // recent-games history — applies equally.
+  if (!state || !isOnlineMode(mode)) return null;
   if (mySlot !== 0 && mySlot !== 1) return null;
+  const asyncGame = isAsyncOnlineMode(mode);
 
   const scores = state.scores ?? {};
   const myScore = Number(scores?.[mySlot]) || 0;
@@ -439,7 +456,10 @@ export function computeLiveGameStatsDelta({
   const bestMoveScore = myMoves.reduce((max, m) => Math.max(max, Number(m?.score) || 0), 0);
   const newStreak = result === 'win' ? currentStreak + 1 : 0;
   const gameDurationMs = gameDurationFromMoves(moves);
-  const fastestWinMs = result === 'win' && gameDurationMs > 0
+  // fastestWinMs is wall-clock: an async game's turns can be days apart, so its
+  // "duration" is meaningless as a fastest-win. Only live games contribute.
+  // (moveSpeedStats self-excludes too — async games carry no botTime.)
+  const fastestWinMs = !asyncGame && result === 'win' && gameDurationMs > 0
     ? fastestPositive(Number(currentStats.fastestWinMs) || 0, gameDurationMs)
     : Number(currentStats.fastestWinMs) || 0;
 

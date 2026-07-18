@@ -31,6 +31,12 @@ import {
 // a mini-game; the UI responds by calling resolveMiniGame()/resolveWheel().
 export const BONUS_PENDING = 'bonus/pending';
 export const BONUS_RESOLVED = 'bonus/resolved';
+// Emitted by a mini-game / wheel when the player dismisses its OWN result
+// screen (the "המשך" continue button). This is the moment the turn is allowed
+// to pass — see resolveMiniGame / resolveWheel below. Mini-game/wheel outcomes
+// no longer pop a second award modal; the game's own result screen is the
+// single acknowledgment, and closing it finalizes the deferred move.
+export const MINIGAME_CLOSED = 'bonus/minigame-closed';
 
 function findActivatedIdxs(placed, state) {
   const used = state.bonusSqUsed ?? {};
@@ -58,6 +64,13 @@ export function createBonusActivationController({ bus, session, dispatch } = {})
   // update bonusSqUsed (the engine flow may rely on a follow-up patch).
   const localUsed = new Set();
   let pendingQueue = []; // [{ idx, bonusType, slot, turnNumber }]
+
+  // A mini-game / wheel outcome that has been resolved (points computed, future
+  // effects collected) but not yet finalized. We hold it until the player
+  // dismisses the game's own result screen (MINIGAME_CLOSED) so the turn passes
+  // only after the LAST overlay is gone — not while the result screen is still
+  // up. { slot, idx, extra, queueBoosts, resolved } or null.
+  let pendingAward = null;
 
   // The engine emits EV.BONUS_PENDING directly from collectBonusActivations
   // (it pre-marks state.bonusSqUsed before MOVE_CONFIRMED fires, so the
@@ -121,20 +134,25 @@ export function createBonusActivationController({ bus, session, dispatch } = {})
     }
   });
 
-  // Mini-game callback: produces an auto_extra_score entry and dispatches it.
+  // Mini-game callback: compute the earned points and STAGE the award. The
+  // actual FINALIZE_BOOST_AWARD (which passes the turn) is deferred until the
+  // mini-game's own result screen is dismissed — see finalizePendingAward,
+  // driven by MINIGAME_CLOSED. We no longer dispatch ACTIVATE_BOOST here (that
+  // was what popped the redundant second award modal on top of the result
+  // screen); the points fold straight into the finalize `extra`.
   function resolveMiniGame({ success, earnedPts } = {}) {
     const top = pendingQueue.shift();
     if (!top || top.kind !== 'minigame') return { ok: false, reason: 'no-pending' };
     const { entries } = resolveMiniGameResult({
       slot: top.slot, turnNumber: top.turnNumber, success: !!success, earnedPts,
     });
-    for (const entry of entries) {
-      dispatchFn({ type: CMD.ACTIVATE_BOOST, payload: { ...entry, bonusIdx: top.idx } });
-    }
-    if (entries.length === 0) {
-      dispatchFn({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: top.slot, extra: 0, bonusIdx: top.idx } });
-    }
-    bus.emit(BONUS_RESOLVED, { ...top, success: !!success, earnedPts: earnedPts ?? 0, kind: 'minigame' });
+    // A mini-game only ever yields a single auto_extra_score entry (or none on
+    // failure). Fold its points into the finalize extra.
+    const extra = entries.reduce((sum, e) => sum + (Number(e.payload?.extra) || 0), 0);
+    pendingAward = {
+      slot: top.slot, idx: top.idx, extra, queueBoosts: [],
+      resolved: { ...top, success: !!success, earnedPts: earnedPts ?? 0, kind: 'minigame' },
+    };
     return { ok: true, entries };
   }
 
@@ -148,15 +166,43 @@ export function createBonusActivationController({ bus, session, dispatch } = {})
       console.warn('[bonusActivation.wheel]', error);
       return { ok: false, reason: error };
     }
+    // Wheel outcomes are either points (auto_extra_score → folds into `extra`)
+    // or a future-effect boost (extra_turn / multiply / skip / swap / cancel /
+    // timer). Future effects are queued onto activeBoosts by the engine during
+    // finalize (queueBoosts) instead of via a modal-popping ACTIVATE_BOOST.
+    let extra = 0;
+    const queueBoosts = [];
     for (const entry of entries) {
-      dispatchFn({ type: CMD.ACTIVATE_BOOST, payload: { ...entry, bonusIdx: top.idx } });
+      if (entry.boostId === 'auto_extra_score') extra += Number(entry.payload?.extra) || 0;
+      else queueBoosts.push(entry);
     }
-    if (entries.length === 0) {
-      dispatchFn({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: top.slot, extra: 0, bonusIdx: top.idx } });
-    }
-    bus.emit(BONUS_RESOLVED, { ...top, outcomeId, kind: 'wheel' });
+    pendingAward = {
+      slot: top.slot, idx: top.idx, extra, queueBoosts,
+      resolved: { ...top, outcomeId, kind: 'wheel' },
+    };
     return { ok: true, entries };
   }
+
+  // Fired when the mini-game / wheel result screen is dismissed. Finalizes the
+  // staged award (commits the deferred score, queues any wheel future-effects,
+  // advances the turn) and emits BONUS_RESOLVED so the paused bot / turn timer
+  // resume. Idempotent — a stray close with nothing staged is a no-op.
+  function finalizePendingAward() {
+    const award = pendingAward;
+    if (!award) return;
+    pendingAward = null;
+    dispatchFn({
+      type: CMD.FINALIZE_BOOST_AWARD,
+      payload: {
+        slot: award.slot,
+        extra: award.extra,
+        bonusIdx: award.idx,
+        queueBoosts: award.queueBoosts,
+      },
+    });
+    bus.emit(BONUS_RESOLVED, award.resolved);
+  }
+  const offClosed = bus.on(MINIGAME_CLOSED, finalizePendingAward);
 
   // Auto-resolve the next pending mini-game/wheel without playing UI. Used
   // when the placing slot isn't the local player (e.g. the bot triggered the
@@ -177,7 +223,9 @@ export function createBonusActivationController({ bus, session, dispatch } = {})
   function dispose() {
     try { offMove(); } catch {}
     try { offEnginePending(); } catch {}
+    try { offClosed(); } catch {}
     pendingQueue = [];
+    pendingAward = null;
     localUsed.clear();
   }
 

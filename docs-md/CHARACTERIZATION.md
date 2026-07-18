@@ -76,19 +76,46 @@ Source: `src/ui/screens/gameScreen.js`, `src/ui/controllers/gameController.js`
 Source: `gameEngine.js` → `handleConfirmMove()`
 
 1. Check placed tiles not on locked cells
-2. Snapshot swap tiles for rollback
-3. Apply swaps to board pre-validation
-4. Run `BEFORE_MOVE_VALIDATE` boost hooks
-5. `validateMove()` — geometry check
-6. `getAllWords()` — word extraction
-7. `isValid()` — dictionary check on each word
-8. Run `BEFORE_SCORE_COMMIT` boost hooks (multipliers applied here)
-9. If bonus activation pending AND mini-game needed: defer score, emit `MOVE_CONFIRMED{scoringDeferred:true}`
-10. Otherwise: commit score, emit `MOVE_CONFIRMED{scoringDeferred:false}`
-11. Run `ON_TURN_END` hooks (may set `repeatTurn:true`)
-12. Apply turn-start effects (skip-opponent, free-tile-swap on next turn)
-13. If not `repeatTurn`: advance turn
-14. Check `isGameOver()` → if true: `finishGame()`
+2. Validate `payload.lock` if present (word + lock in one turn) — bounds, duration,
+   cell free, not colliding with this move's own tiles, duration in inventory.
+   Rejects the whole turn before any mutation, so a bad word never burns a lock.
+3. Snapshot swap tiles for rollback
+4. Apply swaps to board pre-validation
+5. Run `BEFORE_MOVE_VALIDATE` boost hooks
+6. `validateMove()` — geometry check
+7. `getAllWords()` — word extraction
+8. `isValid()` — dictionary check on each word
+9. Run `BEFORE_SCORE_COMMIT` boost hooks (multipliers applied here)
+10. If bonus activation pending AND mini-game needed: defer score (lock rides on
+    `pendingScoreCommit.lock`), emit `MOVE_CONFIRMED{scoringDeferred:true}`
+11. Otherwise: commit score, place the lock (if any) AFTER `applyMove`'s tick,
+    emit `MOVE_CONFIRMED{scoringDeferred:false}`
+12. Run `ON_TURN_END` hooks (may set `repeatTurn:true`)
+13. Apply turn-start effects (skip-opponent, free-tile-swap on next turn)
+14. If not `repeatTurn`: advance turn
+15. Check `isGameOver()` → if true: `finishGame()`
+
+### Locks: the two paths
+
+| | Lock alone | Word + lock |
+|---|---|---|
+| Command | `CMD.PLACE_LOCK` | `CMD.CONFIRM_MOVE` with `payload.lock` |
+| Existing locks tick? | **No** — `applyLock` advances with `tickLocks:false` | **Yes** — a move turn ticks |
+| New lock ticks? | No | No |
+| Emits | `LOCK_PLACED` + `LOCKS_CHANGED` | `MOVE_CONFIRMED` + `LOCKS_CHANGED` |
+
+In both paths the lock being placed is exempt from that turn's tick — a 3-turn
+lock lasts 3 more turns. The combined path achieves this by placing the lock
+*after* `applyMove` has already advanced/ticked (and, on the deferred-score
+path, after `FINALIZE_BOOST_AWARD`'s `advanceTurn`).
+
+**The combined path must not emit `EV.LOCK_PLACED`** — `onlineGameSession`
+commits to Firebase on that event, and `MOVE_CONFIRMED` already commits the
+same turn. Emitting both would push the turn twice.
+
+Note the asymmetry in the "existing locks tick?" row: a lock-only turn freezes
+*everyone's* lock timers. That's a side effect of `applyLock`'s `tickLocks:false`
+(which exists to protect the fresh lock), not a deliberate rule — see TASKS.md.
 
 ---
 

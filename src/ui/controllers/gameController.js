@@ -308,7 +308,17 @@ export function createGameController({ bus, session, mySlot = null }) {
     return true;
   }
   function unswapBoardTile(r, c) {
+    const swap = view.swappedTiles.find(s => s.r === r && s.c === c);
     view.swappedTiles = view.swappedTiles.filter(s => !(s.r === r && s.c === c));
+    // The swap handed the displaced board letter back to rack slot
+    // `swap.rackIndex` (see displayRackTile), so the player may already have
+    // played it elsewhere this turn. Undoing the swap puts that letter back on
+    // the board — any placement drawn from that slot now has no tile behind it,
+    // and would duplicate the letter while the swapped-in one vanishes. Recall
+    // the dependent placement along with the swap.
+    if (swap && swap.rackIndex != null) {
+      view.placed = view.placed.filter(p => p.rackIndex !== swap.rackIndex);
+    }
     _onChange();
   }
   function setPlacementDirection(direction) {
@@ -320,10 +330,9 @@ export function createGameController({ bus, session, mySlot = null }) {
   function confirmMove() {
     // Pending lock takes the same Confirm path as a tile placement — when
     // the player tapped an empty cell with no rack tile selected, the lock
-    // sat in view.pendingLock as a preview; שבץ commits it. Tile placement
-    // and lock placement are mutually exclusive in a turn (engine doesn't
-    // combine them); we treat pendingLock and `placed` as alternative
-    // commit paths.
+    // sat in view.pendingLock as a preview; שבץ commits it. A lock ALONE is
+    // its own turn (CMD.PLACE_LOCK); a lock alongside a word rides on the
+    // CONFIRM_MOVE payload below, so the engine commits both atomically.
     if (view.pendingLock && !view.placed.length) {
       if (mySlot != null && view.currentTurnSlot !== mySlot) {
         view.pendingLock = null;
@@ -358,6 +367,12 @@ export function createGameController({ bus, session, mySlot = null }) {
         swappedTiles: view.swappedTiles.map(s => ({
           r: s.r, c: s.c, letter: s.letter, val: s.val, isJoker: !!s.isJoker,
         })),
+        // Word + lock in one turn. The engine validates the lock before it
+        // touches anything, so a rejected word leaves the lock unspent and
+        // still sitting in the preview for the player to retry.
+        lock: view.pendingLock
+          ? { r: view.pendingLock.r, c: view.pendingLock.c, duration: view.pendingLock.duration }
+          : null,
       },
     });
     return true;
@@ -386,11 +401,18 @@ export function createGameController({ bus, session, mySlot = null }) {
   }
 
   function boardTileAt(r, c) {
-    if (r >= 0 && r < 10 && c >= 0 && c < 10) {
-      return view._board?.[r]?.[c] ?? null;
+    const raw = (r >= 0 && r < 10 && c >= 0 && c < 10)
+      ? (view._board?.[r]?.[c] ?? null)
+      // Off-grid perimeter (bonus square) coords live in state.bonusBoard.
+      : (view._bonusBoard?.get?.(`${r},${c}`) ?? null);
+    // A truthy-but-letterless object is malformed board state (see gameScreen's
+    // isRealTile / bug 5). Treated as empty so placeTile / swapBoardTile don't
+    // reject the cell as "occupied" while it renders blank — otherwise the cell
+    // is a dead square until an app restart re-reads the clean board.
+    if (raw && typeof raw === 'object' && !raw.isJoker && (raw.letter == null || raw.letter === '')) {
+      return null;
     }
-    // Off-grid perimeter (bonus square) coords live in state.bonusBoard.
-    return view._bonusBoard?.get?.(`${r},${c}`) ?? null;
+    return raw;
   }
 
   // Return the letter/value/joker info that should be VISIBLE in rack slot

@@ -264,6 +264,15 @@ export async function setLiveBonus(db, roomId, payload) {
     title: payload.title ? String(payload.title) : null,
     desc: payload.desc ? String(payload.desc) : null,
     icon: payload.icon ? String(payload.icon) : null,
+    // The word(s) the active player just laid down, and their base (pre-bonus)
+    // score. The move itself is committed but its SCORE is deferred until the
+    // mini-game resolves, so the spectator overlay shows these to the opponent —
+    // otherwise they'd sit for up to 60s with no idea what was played.
+    // NOTE: distinct from `progress.score`, which is the mini-game's running score.
+    words: Array.isArray(payload.words)
+      ? payload.words.map(w => String(w)).filter(Boolean).slice(0, 8)
+      : null,
+    moveScore: Number.isFinite(Number(payload.moveScore)) ? Math.floor(Number(payload.moveScore)) : null,
     progress: payload.progress && typeof payload.progress === 'object'
       ? sanitiseProgress(payload.progress)
       : null,

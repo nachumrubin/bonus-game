@@ -96,10 +96,45 @@ test('computeLiveGameStatsDelta: derives live aggregate and rich stats', () => {
   assert.equal(d.rivalStats.set.u2.won, 1);
 });
 
-test('computeLiveGameStatsDelta: excludes async and offline modes', () => {
-  const state = { mode: 'friend-async', scores: { 0: 1, 1: 0 }, moveHistory: [] };
-  assert.equal(computeLiveGameStatsDelta({ state, mySlot: 0 }), null);
-  assert.equal(computeLiveGameStatsDelta({ state: { ...state, mode: 'offline-solo' }, mySlot: 0 }), null);
+test('computeLiveGameStatsDelta: excludes offline/bot modes only (async now counts)', () => {
+  const base = { scores: { 0: 1, 1: 0 }, moveHistory: [] };
+  assert.equal(computeLiveGameStatsDelta({ state: { ...base, mode: 'offline-solo' }, mySlot: 0 }), null);
+  assert.equal(computeLiveGameStatsDelta({ state: { ...base, mode: 'offline-2p' }, mySlot: 0 }), null);
+  // Async is no longer excluded.
+  assert.ok(computeLiveGameStatsDelta({ state: { ...base, mode: 'friend-async' }, mySlot: 0 }));
+});
+
+// July 2026: async friend games must count toward stats + recent games. They
+// were previously dropped entirely.
+test('computeLiveGameStatsDelta: records an async game (win, recent-games, rivals)', () => {
+  const state = {
+    mode: 'friend-async',
+    scores: { 0: 478, 1: 395 },
+    players: { 0: { uid: 'me', displayName: 'Me' }, 1: { uid: 'opp', displayName: 'Opp' } },
+    moveHistory: [
+      { slot: 0, tiles: [{ r: 4, c: 4, letter: 'א' }], words: ['אב'], score: 12, ts: 1_000 },
+      // A day later — realistic async gap.
+      { slot: 1, tiles: [{ r: 5, c: 5, letter: 'ג' }], words: ['גד'], score: 8, ts: 86_400_000 },
+    ],
+  };
+  const d = computeLiveGameStatsDelta({
+    state,
+    room: { mode: 'friend-async', players: state.players },
+    mySlot: 0,
+    result: 'win',
+    currentStats: {},
+    now: 90_000_000,
+  });
+  assert.ok(d, 'async game produces a stats delta');
+  assert.equal(d.gamesPlayed, 1);
+  assert.equal(d.gamesWon, 1);
+  assert.equal(d.totalScore, 478);
+  assert.equal(d.recentGames.set.length, 1, 'the async game lands in recent games');
+  assert.equal(d.recentGames.set[0].mode, 'friend-async');
+  assert.equal(d.rivalStats.set.opp.won, 1);
+  // Wall-clock stats must NOT be polluted by the multi-day span.
+  assert.equal(d.fastestWinMs.set, 0, 'async duration does not set a fastest-win');
+  assert.deepEqual(d.moveSpeedStats.set, {}, 'async carries no botTime, so no move-speed bucket');
 });
 
 test('computeLiveGameStatsDelta: caps recent games and word counts', () => {

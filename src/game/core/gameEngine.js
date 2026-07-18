@@ -19,7 +19,7 @@ import { validateMove } from './moveValidator.js';
 import { getAllWords, scoreMove } from './scoringEngine.js';
 import { isValid as isWordValid } from './hebrewDictionary.js';
 import {
-  applyMove, applyPass, applyExchange, applyFreeExchange, applyResign, applyLock,
+  applyMove, applyPass, applyExchange, applyFreeExchange, applyResign, applyLock, createLock,
   advanceTurn, ensureLockState, isCellLocked, isGameOver, winnerSlot,
   canClaimStallEnd,
 } from './turnManager.js';
@@ -147,7 +147,32 @@ export function createEngine({ state, bus }) {
     }
   }
 
-  function handleConfirmMove({ placed = [], swappedTiles = [] }) {
+  // Validate an optional lock riding along with a CONFIRM_MOVE. Returns
+  // { ok: true, lock } | { ok: false, reason }. Pure — no mutation — so the
+  // caller can reject the whole turn before anything is spent. `placed` is
+  // needed because this turn's own tiles are not on the board yet at
+  // validation time, and a lock may not land on one of them.
+  function validateMoveLock(lockReq, placed, swaps) {
+    if (lockReq == null) return { ok: true, lock: null };
+    const rr = Number(lockReq.r);
+    const cc = Number(lockReq.c);
+    const d  = Number(lockReq.duration);
+    const slot = state.currentTurnSlot;
+    if (!Number.isInteger(rr) || !Number.isInteger(cc) || !isOnGrid(rr, cc)) {
+      return { ok: false, reason: 'lock-out-of-bounds' };
+    }
+    if (!Number.isInteger(d) || d <= 0) return { ok: false, reason: 'lock-invalid-duration' };
+    if (getCommittedTile(state, rr, cc)) return { ok: false, reason: 'lock-cell-occupied' };
+    if (isCellLocked(state, rr, cc)) return { ok: false, reason: 'lock-cell-already-locked' };
+    // The lock cannot sit on a cell this same move fills — including a swap
+    // target, which is occupied by definition.
+    const collides = [...placed, ...swaps].some(p => Number(p.r) === rr && Number(p.c) === cc);
+    if (collides) return { ok: false, reason: 'lock-cell-occupied' };
+    if (!(state.lockInventory?.[slot] ?? []).includes(d)) return { ok: false, reason: 'lock-unavailable' };
+    return { ok: true, lock: { r: rr, c: cc, duration: d, slot } };
+  }
+
+  function handleConfirmMove({ placed = [], swappedTiles = [], lock = null }) {
     const lockedPlacement = placed.find(p => isCellLocked(state, p.r, p.c));
     if (lockedPlacement) {
       emit(EV.INVALID_MOVE_REJECTED, { reason: 'cell-locked', placed, lockedCell: lockedPlacement });
@@ -193,6 +218,21 @@ export function createEngine({ state, bus }) {
         return;
       }
     }
+
+    // An optional lock riding along with this move (word + lock in one turn).
+    // Validated here, BEFORE any board/rack mutation, so a move rejected later
+    // (bad word, bad geometry) never spends the lock from the inventory. The
+    // lock is only applied once the move is fully committed, below.
+    const lockCheck = validateMoveLock(lock, placed, swaps);
+    if (!lockCheck.ok) {
+      emit(EV.INVALID_MOVE_REJECTED, {
+        reason: lockCheck.reason,
+        placed, swappedTiles: swaps,
+        r: Number(lock?.r), c: Number(lock?.c), duration: Number(lock?.duration),
+      });
+      return;
+    }
+    const moveLock = lockCheck.lock;
 
     // Defensive: every placed / swapped-in tile must correspond to a real
     // letter in the active player's rack. Production UI only ever drags
@@ -336,6 +376,14 @@ export function createEngine({ state, bus }) {
       advance: !hasBonusAwardFlow,
     });
 
+    // Place the move's lock (if any) AFTER applyMove, so applyMove's advance
+    // has already ticked the existing locks and the fresh one keeps its full
+    // duration. When the move defers scoring for a bonus award, applyMove did
+    // not advance yet — the tick comes later in FINALIZE_BOOST_AWARD — so the
+    // lock rides along on pendingScoreCommit and is placed there instead, on
+    // the far side of that tick. Same rule either way.
+    if (moveLock && !hasBonusAwardFlow) createLock(state, moveLock);
+
     state.moveHistory.push({
       slot,
       tiles: ctx.placed.map(p => ({ r: p.r, c: p.c, letter: p.letter, val: p.val, isJoker: !!p.isJoker })),
@@ -368,6 +416,7 @@ export function createEngine({ state, bus }) {
         multiplier: ctx.scoreMultiplier ?? 1,
         historyIndex: state.moveHistory.length - 1,
         movePayload,
+        lock: moveLock,
       };
       emit(EV.MOVE_CONFIRMED, { ...movePayload, score: ctx.score, scoringDeferred: true });
       emitBonusActivations(bonusActivations, emit);
@@ -572,7 +621,7 @@ export function createEngine({ state, bus }) {
     emit(EV.BOOST_ACTIVATED, { slot: s, boostId, payload, turnNumber: state.turnNumber, bonusIdx });
   }
 
-  function handleFinalizeBoostAward({ slot, extra = 0, bonusIdx = null } = {}) {
+  function handleFinalizeBoostAward({ slot, extra = 0, bonusIdx = null, queueBoosts = [] } = {}) {
     const s = (slot === 0 || slot === 1) ? slot : state.currentTurnSlot;
     markBonusUsed(state, bonusIdx);
     clearPendingBonus(state, bonusIdx);
@@ -590,6 +639,18 @@ export function createEngine({ state, bus }) {
       }
       state.pendingScoreCommit = null;
 
+      // Future-effect boosts won on the wheel (extra_turn, multiply_next_turns,
+      // skip_opponent_turn, free_tile_swap, cancel_next_opponent_bonus,
+      // timer_bonus) are queued here rather than via a separate ACTIVATE_BOOST
+      // (which would pop the redundant award modal). Push BEFORE advanceTurn /
+      // ON_TURN_END so extra_turn's repeatTurn sees the boost on this turn-end.
+      if (Array.isArray(queueBoosts) && queueBoosts.length) {
+        for (const b of queueBoosts) {
+          if (!b || !b.boostId) continue;
+          state.activeBoosts.push({ ...b, slot: (b.slot === 0 || b.slot === 1) ? b.slot : s });
+        }
+      }
+
       let ctx = {
         state,
         placed: pending.movePayload?.placed ?? [],
@@ -599,6 +660,16 @@ export function createEngine({ state, bus }) {
       };
       ctx = runHook(TRIGGERS.AFTER_SCORE_COMMIT, ctx) ?? ctx;
       advanceTurn(state);
+      // The lock from a word+lock move whose scoring was deferred for this
+      // bonus award. Placed after advanceTurn's tick so it keeps its full
+      // duration, matching the non-deferred path. Validated back at
+      // CONFIRM_MOVE against a board that only this move has touched since,
+      // so createLock cannot fail here — guard anyway rather than let a lock
+      // throw take down the score commit.
+      if (pending.lock) {
+        try { createLock(state, pending.lock); }
+        catch (e) { console.warn('[gameEngine] deferred lock placement failed', e); }
+      }
       ctx.endingSlot = s;
       ctx = runHook(TRIGGERS.ON_TURN_END, ctx) ?? ctx;
       replaceActiveBoosts(state, ctx.activeBoosts);

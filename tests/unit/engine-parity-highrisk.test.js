@@ -427,6 +427,51 @@ test('legacy B13 wheel lifecycle: future and auto outcomes clear pending state t
   assert.equal(state.scores[0], baseScore + 50);
 });
 
+// New wheel path (no award modal): the bonusActivationController stages the
+// wheel outcome and passes queueBoosts on FINALIZE_BOOST_AWARD instead of a
+// separate ACTIVATE_BOOST. Future-effect outcomes must be queued onto
+// activeBoosts BEFORE the turn advances, so an extra_turn keeps the turn.
+test('FINALIZE_BOOST_AWARD queueBoosts: wheel extra_turn keeps the turn and queues before advance', async () => {
+  const { commands, board, dict, state, eng } = await makeEngine({ seed: 'wheel-queue' });
+  seedDict(dict, ['בא']);
+  state.firstMove = false;
+  state.racks[0] = ['ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+  state.bonusAssignment[0] = { type: 'B13' };
+  board.setCommittedTile(state, 0, 1, { letter: 'א', val: 1, isJoker: false });
+
+  eng.dispatch({ type: commands.CMD.CONFIRM_MOVE, payload: { placed: [{ r: -1, c: 1, letter: 'ב', val: 3 }] } });
+  const baseScore = state.pendingScoreCommit?.baseScore ?? 0;
+
+  eng.dispatch({
+    type: commands.CMD.FINALIZE_BOOST_AWARD,
+    payload: { slot: 0, bonusIdx: 0, extra: 0, queueBoosts: [{ slot: 0, boostId: 'extra_turn', payload: {}, turnNumber: state.turnNumber }] },
+  });
+
+  assert.equal(state.scores[0], baseScore, 'base word commits, no extra points');
+  assert.equal(state.currentTurnSlot, 0, 'extra_turn queued before advance keeps the turn with slot 0');
+  // extra_turn is a one-shot: consumed once it fires on this turn-end.
+  assert.equal(state.activeBoosts.some(b => b.boostId === 'extra_turn'), false, 'extra_turn consumed after firing');
+});
+
+test('FINALIZE_BOOST_AWARD queueBoosts: wheel multiply_next_turns is banked for the player next turn', async () => {
+  const { commands, board, dict, state, eng } = await makeEngine({ seed: 'wheel-queue-mult' });
+  seedDict(dict, ['בא']);
+  state.firstMove = false;
+  state.racks[0] = ['ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+  state.bonusAssignment[0] = { type: 'B13' };
+  board.setCommittedTile(state, 0, 1, { letter: 'א', val: 1, isJoker: false });
+
+  eng.dispatch({ type: commands.CMD.CONFIRM_MOVE, payload: { placed: [{ r: -1, c: 1, letter: 'ב', val: 3 }] } });
+
+  eng.dispatch({
+    type: commands.CMD.FINALIZE_BOOST_AWARD,
+    payload: { slot: 0, bonusIdx: 0, extra: 0, queueBoosts: [{ slot: 0, boostId: 'multiply_next_turns', payload: { multiplier: 2, turnsRemaining: 2 }, turnNumber: state.turnNumber }] },
+  });
+
+  assert.equal(state.currentTurnSlot, 1, 'a multiplier does not keep the turn — it advances normally');
+  assert.ok(state.activeBoosts.some(b => b.boostId === 'multiply_next_turns'), 'multiplier banked on activeBoosts');
+});
+
 test('legacy computeExpiredOnlineTurnState/shouldClaimExpiredOnlineTurn: online timeout claim helpers are exported', async () => {
   const { roomService } = await loadModules();
 
@@ -485,8 +530,9 @@ test('legacy buildCrossword: modular crossword draws 20 non-joker tiles and reje
   placements[0][1] = { l: 'ב', v: 3 };
   placements[1][0] = { l: 'ז', v: 8 };
   placements[1][1] = { l: 'ז', v: 8 };
-  const result = crossword.scanCrosswordWords(placements, { validator: word => word === 'אב' });
-  assert.equal(result.legal['אב'], 4);
+  // Horizontal runs read RTL (c0 is the leftmost cell), so א(c0) ב(c1) → "בא".
+  const result = crossword.scanCrosswordWords(placements, { validator: word => word === 'בא' });
+  assert.equal(result.legal['בא'], 4);
   assert.equal(result.illegal['זז'], 16);
   assert.equal(result.hasIllegal, true);
 });

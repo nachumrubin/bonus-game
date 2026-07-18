@@ -366,7 +366,7 @@ Words explicitly excluded from gameplay. Two kinds of entries (distinguished by 
 - **`'add-rejected'`** — an add-suggestion was rejected by an admin. The word was never valid; this entry only prevents re-submission.
 - **`'remove-approved'`** — a remove-suggestion was approved by an admin. The word was valid; this entry blocks it at runtime.
 
-Both kinds are merged into `hebrewDictionary.BLOCKED_OVERLAY` at boot by `syncBlockedDictionaryWordsOnce`. `isValid()` consults this set before any positive lookup, so a blocked word always rejects regardless of its presence in DICT, the DAWG, or `/dictionaryApproved`.
+Both kinds are merged into `hebrewDictionary.BLOCKED_OVERLAY` at boot by `syncBlockedDictionaryWordsOnce`. Words are stored in whatever form the admin typed, so `isValid()` consults the set through `isBlocked()`, which folds terminal final forms both ways (an entry stored `ואכן` also blocks the board form `ואכנ`). A blocked word always rejects, regardless of its presence in DICT, the DAWG, or `/dictionaryApproved`.
 
 ---
 

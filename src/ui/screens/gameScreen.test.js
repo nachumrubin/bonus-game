@@ -14,6 +14,8 @@ import { createLocalGameSession } from '../../game/sessions/localGameSession.js'
 import { createGameController } from '../controllers/gameController.js';
 import { createAnimationController } from '../controllers/animationController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT } from './gameScreen.js';
+import { setCommittedTile } from '../../game/core/board.js';
+import { BDEFS } from '../../game/boosts/data.js';
 
 const _origLog = console.log;
 console.log = () => {};
@@ -120,9 +122,15 @@ function makeGameDom() {
   reg('brack');
   const exchangeOverlay = reg('ov-exch', ['hidden']);
   const exchRack = reg('exch-rack');
+  // Both the ✕ (#exch-close) and "ביטול" (#exch-cancel) close the overlay, and
+  // both ship with the same inline onclick — which is exactly what made the old
+  // attribute-selector lookup bind only one of them.
+  const exchClose = reg('exch-close');
   const exchCancel = reg('exch-cancel');
+  exchClose._attrs.onclick = "ovClose('ov-exch')";
   exchCancel._attrs.onclick = "ovClose('ov-exch')";
   exchangeOverlay.appendChild(exchRack);
+  exchangeOverlay.appendChild(exchClose);
   exchangeOverlay.appendChild(exchCancel);
   const body = reg('body');
 
@@ -137,6 +145,10 @@ function makeGameDom() {
       return null;
     },
   };
+  // gameScreen's ensureBsqTileWrap() creates the bonus-square tile host via
+  // `root.ownerDocument ?? globalThis.document`. Neither exists on the stub in
+  // node, so point ownerDocument at the stub itself (it has createElement).
+  root.ownerDocument = root;
   return { root, elements };
 }
 
@@ -155,6 +167,83 @@ function fresh() {
   return { session, controller };
 }
 
+// ─── Live avatar lookup ─────────────────────────────────────────────────
+// Rooms freeze players[n].avatar at invite/accept time. gameScreen resolves the
+// player's CURRENT avatar by uid instead, so an async game that outlives an
+// avatar change (or predates avatars entirely, landing on the 👑 fallback)
+// still shows the right one. Rooms are not backfilled — this is read-time only.
+
+// The avatar element renders either an <img> (store/achievement ids) or text
+// (emoji). Read whichever the stub captured.
+function avatarOf(el) {
+  return el.innerHTML || el.textContent || '';
+}
+
+function playersWithAvatar(avatar0) {
+  return { 0: { uid: 'a', displayName: 'A', avatar: avatar0 }, 1: { uid: 'b', displayName: 'B' } };
+}
+
+function freshWithPlayers(players) {
+  bus._reset();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const session = createLocalGameSession({
+    bus, mode: 'offline-2p', tileBagSeed: 'gs-test', players,
+  });
+  const controller = createGameController({ bus, session, mySlot: null });
+  return { session, controller };
+}
+
+test('render: live avatar by uid replaces the one frozen into the room', async () => {
+  // Room was created before the player had an avatar → stored null → 👑.
+  const { controller } = freshWithPlayers(playersWithAvatar(null));
+  const { root, elements } = makeGameDom();
+  const asked = [];
+  mountGameScreen({
+    controller, root,
+    resolveAvatar: async (uid) => { asked.push(uid); return uid === 'a' ? '🦁' : null; },
+  });
+
+  await new Promise(r => setTimeout(r, 0)); // let the lookup settle
+  assert.deepEqual(asked.filter(u => u === 'a').length, 1, 'looked the player up by uid');
+  assert.match(avatarOf(elements.get('is-av1')), /🦁/, 'renders the CURRENT avatar, not the crown fallback');
+});
+
+test('render: falls back to the room-stored avatar when there is no live one', async () => {
+  const { controller } = freshWithPlayers(playersWithAvatar('🐸'));
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root, resolveAvatar: async () => null });
+
+  await new Promise(r => setTimeout(r, 0));
+  assert.match(avatarOf(elements.get('is-av1')), /🐸/, 'stored avatar still renders when no profile avatar exists');
+});
+
+test('render: a failing avatar lookup keeps the stored avatar and is not retried', async () => {
+  const { controller } = freshWithPlayers(playersWithAvatar('🐸'));
+  const { root, elements } = makeGameDom();
+  let calls = 0;
+  const origWarn = console.warn;
+  console.warn = () => {};
+  try {
+    mountGameScreen({
+      controller, root,
+      resolveAvatar: async (uid) => { if (uid === 'a') calls++; throw new Error('offline'); },
+    });
+    await new Promise(r => setTimeout(r, 0));
+    controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 }); // forces re-render
+    await new Promise(r => setTimeout(r, 0));
+    assert.equal(calls, 1, 'a failed lookup is cached, not re-fetched on every render');
+    assert.match(avatarOf(elements.get('is-av1')), /🐸/, 'stored avatar survives the failure');
+  } finally { console.warn = origWarn; }
+});
+
+test('render: no resolveAvatar wired → stored avatar renders unchanged', () => {
+  const { controller } = freshWithPlayers(playersWithAvatar('🐸'));
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+  assert.match(avatarOf(elements.get('is-av1')), /🐸/);
+});
+
 test('mount: removes inline onclick from #btn-play and #btn-recall', () => {
   const { controller } = fresh();
   const { root, elements } = makeGameDom();
@@ -172,6 +261,84 @@ test('mount: clicking #btn-play with placed tiles dispatches CONFIRM_MOVE', () =
   elements.get('btn-play').fireClick();
   assert.equal(session.state.scores[0], 4);
   assert.equal(session.state.currentTurnSlot, 1);
+});
+
+// Regression: swapping a rack tile onto a committed tile that sits on a PERIMETER
+// BONUS SQUARE used to keep painting the OLD letter until the move was confirmed.
+// The bsq render loop checked `committed` (still the old tile — the engine only
+// applies swaps on confirm) but had no `swapHere` branch, unlike the in-grid loop.
+test('render: a pending swap on a bonus square shows the NEW letter, not the old one', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  const { br, bc } = BDEFS[0];
+  // An opponent-committed tile already sits on the bonus square.
+  setCommittedTile(session.state, br, bc, { letter: 'ז', val: 8, isJoker: false });
+
+  // Swap in 'א' (rack slot 0) over it.
+  const ok = controller.swapBoardTile?.({ r: br, c: bc, letter: 'א', val: 1, isJoker: false, rackIndex: 0 });
+  assert.equal(ok, true, 'swap should be accepted on a bonus square');
+
+  // The bsq paints into a child `.bsq-tile-wrap` (ensureBsqTileWrap), and the
+  // DOM stub's querySelector always returns null, so read the newest child.
+  const bsq = elements.get('bsq-0');
+  const wrap = bsq.children[bsq.children.length - 1];
+  assert.ok(wrap, 'bonus square has a tile wrap');
+  assert.match(wrap.innerHTML, /א/, 'bonus square renders the swapped-IN letter');
+  assert.doesNotMatch(wrap.innerHTML, /ז/, 'bonus square must not still show the replaced letter');
+  assert.ok(bsq.classList.contains('swap-pending'), 'bsq is flagged .swap-pending');
+});
+
+// ─── Bug 5: malformed (letterless) board cell → empty-looking but unclickable
+// A truthy-but-letterless object in _board rendered as a glyph-less .btile (a
+// blank square) that still blocked placement, so the cell looked empty yet
+// rejected tiles until an app restart re-read the clean board. No persisted
+// room carries such a cell (audited), so it's a transient in-memory corruption;
+// the fix treats a letterless cell as empty so the square self-heals.
+test('render: a malformed (letterless) board cell renders empty, not a blank tile', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  session.state.board[4][4] = {}; // corruption: object with no letter
+  const origWarn = console.warn; console.warn = () => {};
+  try {
+    mountGameScreen({ controller, root });
+    controller.recallAll(); // force a re-render through the change listener
+    const cell = elements.get('c4_4');
+    assert.equal(cell.innerHTML, '', 'the malformed cell paints empty, not a blank .btile');
+    assert.ok(!cell.classList.contains('lk'), 'and is not flagged as a committed tile');
+  } finally { console.warn = origWarn; }
+});
+
+test('placement: a malformed board cell accepts a tile instead of blocking it', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  session.state.board[4][4] = { letter: null, val: null }; // corruption
+  const origWarn = console.warn; console.warn = () => {};
+  try {
+    mountGameScreen({ controller, root, bus });
+    // Select rack slot 0 ('א'), then place it on the malformed cell via the
+    // real grid-delegation click path.
+    const brack = elements.get('brack');
+    const rackTile = makeEl({ id: 'rt0', classes: ['bt2'] });
+    brack.appendChild(rackTile);
+    brack.fireClick(rackTile);
+    elements.get('game-grid').fireClick(elements.get('c4_4'));
+    assert.equal(controller.view.placed.length, 1, 'the tile is placed — the cell is no longer a dead blocker');
+    assert.equal(controller.view.placed[0].r, 4);
+    assert.equal(controller.view.placed[0].c, 4);
+  } finally { console.warn = origWarn; }
+});
+
+test('render: a real committed tile still blocks and renders normally', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  session.state.board[4][4] = { letter: 'ז', val: 7, isJoker: false };
+  mountGameScreen({ controller, root });
+  controller.recallAll();
+  const cell = elements.get('c4_4');
+  assert.match(cell.innerHTML, /ז/, 'a real tile still renders its glyph');
+  assert.ok(cell.classList.contains('lk'), 'and is still flagged committed');
 });
 
 test('mount: clicking #btn-recall clears placed tiles', () => {
@@ -212,6 +379,40 @@ test('exchange overlay cancel closes without dispatching exchange', () => {
 
   assert.ok(elements.get('ov-exch').classList.contains('hidden'));
   assert.equal(session.state.currentTurnSlot, 0);
+});
+
+test('exchange overlay ✕ (#exch-close) closes it too', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  elements.get('btn-exchange').fireClick();
+  assert.ok(!elements.get('ov-exch').classList.contains('hidden'), 'overlay opened');
+  elements.get('exch-close').fireClick();
+
+  assert.ok(elements.get('ov-exch').classList.contains('hidden'), '✕ closes the overlay');
+  assert.equal(session.state.currentTurnSlot, 0, 'closing must not burn a turn');
+});
+
+// Regression: the ✕ and "ביטול" both ship `onclick="ovClose('ov-exch')"`. The old
+// lookup used that attribute as a selector, so it matched the ✕ (first in DOM)
+// and STRIPPED its onclick. On a re-mount the ✕ no longer matched, the selector
+// fell through to "ביטול", and the ✕ was left with no onclick and no listener —
+// a dead button. Both must stay wired across mounts.
+test('exchange overlay ✕ still closes after a re-mount', () => {
+  const { controller } = fresh();
+  const { root, elements } = makeGameDom();
+  const first = mountGameScreen({ controller, root });
+  first?.unmount?.();
+  mountGameScreen({ controller, root });
+
+  elements.get('btn-exchange').fireClick();
+  elements.get('exch-close').fireClick();
+  assert.ok(elements.get('ov-exch').classList.contains('hidden'), '✕ must survive a re-mount');
+
+  elements.get('btn-exchange').fireClick();
+  elements.get('exch-cancel').fireClick();
+  assert.ok(elements.get('ov-exch').classList.contains('hidden'), 'ביטול must survive a re-mount');
 });
 
 test('mount: score values reflect view-model on initial render', () => {

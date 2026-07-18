@@ -315,6 +315,209 @@ test('PLACE_LOCK consumes inventory, blocks the cell, and advances turn', () => 
   assert.ok(events.some(e => e.type === EV.LOCKS_CHANGED));
 });
 
+// ─── Word + lock in a single turn (CONFIRM_MOVE payload.lock) ───────────
+
+test('CONFIRM_MOVE with a lock commits word and lock together in one turn', () => {
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1 },
+        { r: 4, c: 5, letter: 'ב', val: 3 },
+      ],
+      lock: { r: 7, c: 7, duration: 3 },
+    },
+  });
+
+  assert.ok(events.some(e => e.type === EV.MOVE_CONFIRMED), 'the word scores');
+  assert.ok(state.scores[0] > 0);
+  assert.equal(state.lockedCells.length, 1, 'the lock landed');
+  assert.equal(state.lockedCells[0].remainingTurns, 3, 'fresh lock keeps its full duration');
+  assert.equal(state.lockedCells[0].ownerSlot, 0);
+  assert.deepEqual(state.lockInventory[0], [3, 5], 'exactly one lock spent');
+  assert.equal(state.currentTurnSlot, 1, 'the turn advances exactly once');
+  assert.equal(state.turnNumber, 2);
+  // The online session commits on LOCK_PLACED; emitting it here as well as
+  // MOVE_CONFIRMED would push the same turn to Firebase twice.
+  assert.equal(events.filter(e => e.type === EV.LOCK_PLACED).length, 0,
+    'combined move must not emit LOCK_PLACED — MOVE_CONFIRMED already commits it');
+  assert.ok(events.some(e => e.type === EV.LOCKS_CHANGED), 'lock state still broadcast');
+});
+
+test('CONFIRM_MOVE with a lock: a rejected word leaves the lock unspent', () => {
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      // גד is not in the dictionary — the whole turn must be refused.
+      placed: [
+        { r: 4, c: 4, letter: 'ג', val: 1 },
+        { r: 4, c: 5, letter: 'ד', val: 3 },
+      ],
+      lock: { r: 7, c: 7, duration: 3 },
+    },
+  });
+
+  const rej = events.find(e => e.type === EV.INVALID_MOVE_REJECTED);
+  assert.equal(rej?.payload?.reason, 'word-not-in-dictionary');
+  assert.equal(state.lockedCells.length, 0, 'no lock on the board');
+  assert.deepEqual(state.lockInventory[0], [3, 3, 5], 'inventory untouched — lock is not burned');
+  assert.equal(state.currentTurnSlot, 0, 'still the same player to move');
+});
+
+test('CONFIRM_MOVE with an unavailable lock rejects before the word is applied', () => {
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.lockInventory[0] = [5];
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1 },
+        { r: 4, c: 5, letter: 'ב', val: 3 },
+      ],
+      lock: { r: 7, c: 7, duration: 3 },
+    },
+  });
+
+  const rej = events.find(e => e.type === EV.INVALID_MOVE_REJECTED);
+  assert.equal(rej?.payload?.reason, 'lock-unavailable');
+  assert.equal(state.scores[0], 0, 'the word must not score');
+  assert.equal(state.board[4][4], null, 'the board must be untouched');
+  assert.deepEqual(state.racks[0], ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'], 'rack untouched');
+  assert.equal(state.currentTurnSlot, 0);
+});
+
+test('CONFIRM_MOVE rejects a lock on a cell the same move fills', () => {
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1 },
+        { r: 4, c: 5, letter: 'ב', val: 3 },
+      ],
+      lock: { r: 4, c: 5, duration: 3 },
+    },
+  });
+
+  const rej = events.find(e => e.type === EV.INVALID_MOVE_REJECTED);
+  assert.equal(rej?.payload?.reason, 'lock-cell-occupied');
+  assert.equal(state.lockedCells.length, 0);
+  assert.deepEqual(state.lockInventory[0], [3, 3, 5]);
+});
+
+test('CONFIRM_MOVE with a lock ticks existing locks but not the new one', () => {
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.lockedCells = [
+    { id: 'old', r: 9, c: 9, ownerSlot: 1, remainingTurns: 2 },
+  ];
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1 },
+        { r: 4, c: 5, letter: 'ב', val: 3 },
+      ],
+      lock: { r: 7, c: 7, duration: 3 },
+    },
+  });
+
+  const oldLock = state.lockedCells.find(l => l.r === 9 && l.c === 9);
+  const newLock = state.lockedCells.find(l => l.r === 7 && l.c === 7);
+  assert.equal(oldLock?.remainingTurns, 1, 'existing lock counts down like any move turn');
+  assert.equal(newLock?.remainingTurns, 3, 'the lock placed this turn is exempt from its own tick');
+});
+
+// When a move lands on a bonus square, scoring (and the turn advance) defer
+// until FINALIZE_BOOST_AWARD. A lock riding on that move must survive the wait
+// and land on the far side of the deferred tick, exactly like the direct path.
+test('FINALIZE_BOOST_AWARD places a deferred word+lock move\'s lock after the tick', () => {
+  const { state, eng } = freshEngine();
+  state.currentTurnSlot = 0;
+  state.lockedCells = [{ id: 'old', r: 9, c: 9, ownerSlot: 1, remainingTurns: 2 }];
+  // Stand in for a CONFIRM_MOVE that deferred its score for a bonus award.
+  state.pendingScoreCommit = {
+    slot: 0,
+    baseScore: 10,
+    multiplier: 1,
+    historyIndex: -1,
+    movePayload: { slot: 0, placed: [], words: [] },
+    lock: { r: 7, c: 7, duration: 3, slot: 0 },
+  };
+
+  eng.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, extra: 5 } });
+
+  assert.equal(state.scores[0], 15, 'base + bonus committed');
+  const newLock = state.lockedCells.find(l => l.r === 7 && l.c === 7);
+  assert.equal(newLock?.remainingTurns, 3, 'deferred lock keeps its full duration');
+  assert.equal(newLock?.ownerSlot, 0);
+  assert.deepEqual(state.lockInventory[0], [3, 5], 'inventory spent once, at finalize');
+  const oldLock = state.lockedCells.find(l => l.r === 9 && l.c === 9);
+  assert.equal(oldLock?.remainingTurns, 1, 'existing lock still ticked');
+  assert.equal(state.currentTurnSlot, 1);
+});
+
+test('FINALIZE_BOOST_AWARD without a lock leaves the inventory alone', () => {
+  const { state, eng } = freshEngine();
+  state.currentTurnSlot = 0;
+  state.pendingScoreCommit = {
+    slot: 0, baseScore: 10, multiplier: 1, historyIndex: -1,
+    movePayload: { slot: 0, placed: [], words: [] },
+    lock: null,
+  };
+
+  eng.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, extra: 5 } });
+
+  assert.equal(state.lockedCells.length, 0);
+  assert.deepEqual(state.lockInventory[0], [3, 3, 5]);
+});
+
+test('CONFIRM_MOVE without a lock is unaffected', () => {
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1 },
+        { r: 4, c: 5, letter: 'ב', val: 3 },
+      ],
+    },
+  });
+
+  assert.equal(state.lockedCells.length, 0);
+  assert.deepEqual(state.lockInventory[0], [3, 3, 5], 'no lock spent when none requested');
+  assert.ok(state.scores[0] > 0);
+});
+
 test('locked cells reject tile placement until countdown expires', () => {
   seedDict(['׳׳‘']);
   const { state, eng } = freshEngine();

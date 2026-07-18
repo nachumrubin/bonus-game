@@ -3265,6 +3265,217 @@
 }
 .spine-mini-overlay .ri:focus, #ov-bonus .ri:focus { border-color: rgba(0,210,255,.7) !important; box-shadow: inset 0 1px 3px rgba(0,0,0,.4), 0 0 12px rgba(0,180,255,.35) !important; }
 
+/* Crossword-style mini-games (B8/B10). Shares the ceramic tile language used
+   by hidden-word, fill-middle, and unscramble instead of the old flat blue grid. */
+.spine-mini-overlay .cw-mini-grid,
+#ov-bonus .cw-mini-grid,
+.spine-mini-overlay .xw-board,
+#ov-bonus .xw-board {
+  display: grid;
+  gap: 6px;
+  margin: 10px auto 8px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(2,12,36,.34);
+  border: 1px solid rgba(0,170,255,.22);
+  box-shadow: inset 0 1px 12px rgba(0,40,120,.28), 0 8px 22px rgba(0,0,0,.3);
+}
+/* B10 crossing-words renders a PRE-FILLED Hebrew word across the row:
+   buildMiniGrid puts pair.h[0] (the word's FIRST letter) in column 0, so the
+   grid must flow RTL for column 0 to be the RIGHTMOST cell. Under `ltr` the
+   horizontal word rendered mirror-reversed (תפוח → חופת). The vertical word is
+   a single column and reads top-down either way. */
+.spine-mini-overlay .cw-mini-grid,
+#ov-bonus .cw-mini-grid {
+  grid-template-columns: repeat(var(--cw-cols, 5), 36px);
+  direction: rtl;
+  width: max-content;
+  max-width: 100%;
+}
+.spine-mini-overlay .cw-cell,
+#ov-bonus .cw-cell,
+.spine-mini-overlay .xw-cell,
+#ov-bonus .xw-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  user-select: none;
+  transition: transform .1s, box-shadow .12s, border-color .12s;
+}
+.spine-mini-overlay .cw-cell,
+#ov-bonus .cw-cell {
+  width: 36px;
+  height: 40px;
+  font-size: 20px;
+  font-weight: 900;
+}
+.spine-mini-overlay .cw-cell.is-letter,
+#ov-bonus .cw-cell.is-letter,
+.spine-mini-overlay .xw-cell.is-filled,
+#ov-bonus .xw-cell.is-filled {
+  background: linear-gradient(180deg, #fbf4dd, #ddcfa6);
+  border: 1px solid rgba(120,90,30,.4);
+  color: #1a1206;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.7), inset 0 -3px 5px rgba(120,90,30,.28), 0 3px 6px rgba(0,0,0,.4);
+}
+.spine-mini-overlay .cw-cell.is-cross,
+#ov-bonus .cw-cell.is-cross {
+  background: linear-gradient(180deg, #ffe884, #ffc31f);
+  border: 1px solid rgba(192,168,0,.72);
+  color: #3a2400;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.8), 0 0 16px rgba(255,200,40,.72);
+}
+.spine-mini-overlay .cw-cell.is-empty,
+#ov-bonus .cw-cell.is-empty {
+  background: rgba(255,255,255,.035);
+  border: 1px dashed rgba(140,180,230,.2);
+  box-shadow: inset 0 0 10px rgba(0,60,140,.16);
+}
+.spine-mini-overlay .cw-input,
+#ov-bonus .cw-input {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #3a2400;
+  caret-color: #3a2400;
+  text-align: center;
+  font-family: inherit;
+  font-size: 21px;
+  font-weight: 900;
+}
+.spine-mini-overlay .cw-input::placeholder,
+#ov-bonus .cw-input::placeholder { color: rgba(58,36,0,.72); }
+/* B8 crossword is a grid of EMPTY cells the player fills, so the flow direction
+   is visually invisible; it stays `ltr` and `scanCrosswordWords` reads each
+   horizontal run right-to-left instead (see crosswordMiniGame.js). */
+.spine-mini-overlay .xw-board,
+#ov-bonus .xw-board {
+  grid-template-columns: repeat(var(--xw-cols, 7), minmax(0, 1fr));
+  direction: ltr;
+  width: 100%;
+  max-width: 302px;
+}
+.spine-mini-overlay .xw-cell,
+#ov-bonus .xw-cell {
+  aspect-ratio: 1;
+  min-width: 0;
+  cursor: pointer;
+  flex-direction: column;
+  background: rgba(255,255,255,.05);
+  border: 2px dashed rgba(140,180,230,.34);
+  box-shadow: inset 0 0 12px rgba(0,60,140,.2);
+}
+.spine-mini-overlay .xw-board.is-armed .xw-cell:not(.is-filled),
+#ov-bonus .xw-board.is-armed .xw-cell:not(.is-filled) {
+  border-color: rgba(255,220,90,.62);
+  box-shadow: inset 0 0 12px rgba(0,60,140,.2), 0 0 10px rgba(255,200,40,.18);
+}
+.spine-mini-overlay .xw-cell:active,
+#ov-bonus .xw-cell:active { transform: scale(.96); }
+.spine-mini-overlay .xw-letter,
+#ov-bonus .xw-letter {
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+}
+.spine-mini-overlay .xw-value,
+#ov-bonus .xw-value {
+  font-size: 8px;
+  color: rgba(58,36,0,.68);
+  line-height: 1;
+  margin-top: 1px;
+}
+.spine-mini-overlay .xw-pool,
+#ov-bonus .xw-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  justify-content: center;
+  max-width: 304px;
+  margin: 2px auto 0;
+  direction: rtl;
+}
+.spine-mini-overlay .xw-pool-tile,
+#ov-bonus .xw-pool-tile {
+  width: 34px !important;
+  height: 38px !important;
+  flex-shrink: 0;
+  position: relative;
+  font-size: 17px !important;
+  transition: transform .1s, filter .1s, box-shadow .12s;
+}
+.spine-mini-overlay .xw-pool-tile.is-selected,
+#ov-bonus .xw-pool-tile.is-selected {
+  background: linear-gradient(180deg, #ffe884, #ffc31f) !important;
+  color: #3a2400 !important;
+  transform: translateY(-4px);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.8), 0 0 16px rgba(255,200,40,.75) !important;
+}
+.spine-mini-overlay .xw-pool-placeholder,
+#ov-bonus .xw-pool-placeholder {
+  width: 34px;
+  height: 38px;
+  flex-shrink: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.spine-mini-overlay .xw-recall,
+#ov-bonus .xw-recall {
+  width: 34px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(0,170,255,.28);
+  background: rgba(2,12,36,.48);
+  color: rgba(220,236,255,.82);
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1);
+}
+.spine-mini-overlay .xw-word-list,
+#ov-bonus .xw-word-list {
+  background: rgba(2,12,36,.44);
+  border: 1px solid rgba(0,170,255,.18);
+  border-radius: 12px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #eaf4ff;
+  line-height: 1.7;
+  box-shadow: inset 0 1px 8px rgba(0,0,0,.24);
+}
+.spine-mini-overlay .xw-word-row,
+#ov-bonus .xw-word-row,
+.spine-mini-overlay .xw-total-row,
+#ov-bonus .xw-total-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding: 1px 0;
+}
+.spine-mini-overlay .xw-total-row,
+#ov-bonus .xw-total-row {
+  border-top: 2px solid rgba(255,255,255,.18);
+  border-bottom: none;
+  margin-top: 3px;
+  padding-top: 5px;
+  font-weight: 900;
+}
+.spine-mini-overlay .xw-word-ok,
+#ov-bonus .xw-word-ok { color: #8eff8e; font-weight: 900; margin-inline-start: 4px; }
+.spine-mini-overlay .xw-word-bad,
+#ov-bonus .xw-word-bad { color: #ff8e8e; font-weight: 900; margin-inline-start: 4px; }
+.spine-mini-overlay .xw-word-invalid,
+#ov-bonus .xw-word-invalid { color: #ff9c9c; text-decoration: line-through; font-weight: 900; }
+
 /* Reward chip (found-word chips) */
 .bz-chip {
   font-size: 11px; font-weight: 800;

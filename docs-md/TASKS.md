@@ -61,13 +61,113 @@
 
 - [x] Admin dictionary ADD now reaches the bot: new `hebrewDictionary.APPROVED_OVERLAY`
   mirrors `/dictionaryApproved` and is prepended into the bot's `makeWordList`
-  source (prepend so it survives the easy/medium vocab cap). Removals already
-  worked via the `isValid` filter.
+  source (prepend so it survives the easy/medium vocab cap). Removals were
+  believed to work via the `isValid` filter — they only did for words with no
+  final letter; see the final-form leak fix below.
 - [x] Mini-games (`fillMiddleMiniGame`, `unscrambleMiniGame`) no longer reveal the
   picked/intended word on success — they show only the word the player made. The
   intended word is still revealed on failure/timeout.
 - Note: `APPROVED_OVERLAY` is maintained at 5 sites in main.js (boot sync + 2 add
   + 2 remove). If a new admin dictionary-mutation path is added, mirror it there.
+
+## Stats + rating for friend/async games — July 2026
+
+- [x] **Async games now count in stats + "last 5 games".** Removed the two gates
+  that dropped them: `if (!ag.isAsync)` in main.js and the live-only bail in
+  `computeLiveGameStatsDelta`. Wall-clock stats (`fastestWinMs`, `moveSpeedStats`)
+  are excluded for async since turns span days; everything else counts. Rating
+  was never gated, so it already worked for async. See CHANGELOG.
+- [x] **Investigated: room-code games ARE rated** (reporter was unsure). No
+  room-code/mode gate on rating exists; verified in prod (15 `fc_` games with
+  both players rated, 0 with only one, incl. the reporter's own). Unrated
+  room-code games are anonymous-guest games (no profile → unrated by design).
+  - [ ] Optional follow-up if desired: rate guests too. Needs guest profiles /
+    a rating record for anonymous uids — a real design change, not a bug fix.
+
+## Async-game bug sweep — July 2026
+
+Five issues reported from one async online game. Status:
+
+- [x] **Swap-cancel duplicated the displaced letter.** `unswapBoardTile` now
+  recalls the placement made from the swap-freed rack slot. See CHANGELOG.
+- [x] **Word + lock in the same turn.** Done via optional `payload.lock` on
+  `CMD.CONFIRM_MOVE` (one command = one Firebase commit = atomic turn). See
+  CHANGELOG and the "Locks: the two paths" table in CHARACTERIZATION.md.
+- [ ] Follow-up from the above: a lock-only turn freezes *all* lock timers
+  (`applyLock` → `advanceTurn({ tickLocks: false })`). That looks like a side
+  effect of protecting the fresh lock rather than an intended rule — the new
+  combined path places the lock after the tick instead, which needs no such
+  exemption. Consider giving `applyLock` the same treatment so a lock-only turn
+  ticks existing locks normally. **Gameplay change — needs a product call.**
+- [ ] Follow-up: `pendingScoreCommit` (now carrying `.lock`) is engine-local and
+  never serialized. If a client dies mid-mini-game the lock is dropped along
+  with the deferred score. Pre-existing exposure, now slightly wider.
+- [x] **Stale avatar in async games.** gameScreen now resolves the current
+  avatar by uid (`resolveAvatar` dep, wired to `resolveAvatarForUid` in main.js
+  at the online mount site) and falls back to the room's stored value. Existing
+  rooms are **not** backfilled — read-time fix, per product call. See CHANGELOG.
+- [ ] Follow-up: `sendInvite` is passed `fromAvatar: fbUser.photoURL` — the
+  Firebase **auth** photo, not `avatarEmoji(profile.equippedAvatar)`. That's why
+  invite-created rooms store a null avatar for anyone without a Google photo
+  (→ the 👑 fallback). Same class of bug as the matchmaking-queue one fixed
+  earlier (see the comment at main.js ~1128). The render-time lookup makes this
+  moot for the game screen, but any other `fromAvatar` consumer (invite modals)
+  still shows the wrong thing. One-line fix at the call site; affects new rooms
+  only, so it is not a backfill.
+- [ ] **Bag count differed between players (2 vs 0).** Not reproduced. The
+  reporter's theory (joker's chosen letter drawn from the bag) is not supported
+  by the code — no path removes the assigned letter from the bag; `applyMove`
+  removes `'?'` from the rack and refills, and the swap path is explicitly
+  parity-neutral. `bagRemaining` is just `state.bag.length` off shared state.
+  Needs a room dump / repro before a fix; suspect a display-time skew or a real
+  parity break elsewhere. Consider a bag-parity invariant check on load.
+- [~] **Empty squares sometimes unclickable until app restart.** Mechanism
+  pinpointed and made self-healing + observable; the *source* of the corruption
+  is still unproven (it's transient in-memory, not reproducible from stored
+  state). Third pass — findings:
+  - **Disproven** (with evidence): a malformed cell in *persisted* state —
+    audited all 268 prod `/rooms`, zero malformed cells, zero stuck/mislocated
+    locks. So the earlier "add a shape guard to `deserializeBoard`" plan would
+    not have helped; the bad cell never comes from Firebase.
+  - **Disproven**: `committedTileAt` vs `boardTileAt` divergence (identical
+    code); phantom lock (renders a 🔒 badge, not empty); grid listener/lifecycle
+    (`buildSpineUnifiedGrid` is deterministic and keeps the same `#game-grid`
+    container, so delegation survives); leaked score-animation overlay (all
+    `.scoring-float-label` / `.score-hit-burst` have `pointer-events: none`).
+  - **Confirmed mechanism**: a truthy-but-**letterless** object in `_board`
+    (e.g. `{}` / `{ letter: null }`) renders via `tileHTML` as a glyph-less
+    `.btile` — a blank square — while every "occupied?" check treats it as
+    filled. Exactly matches "looks empty, won't take a tile, restart fixes it."
+  - **Fix (defensive + diagnostic)**: `isRealTile()` guard in `gameScreen.js`
+    (`committedTileAt` → `boardTileAt` / `isCellBlockedForPlacement`) and the
+    matching guard in `gameController.boardTileAt`, so a letterless cell is
+    treated as empty at both the render and the placement layers → the square
+    self-heals instead of needing a restart. `reportMalformedCell()` logs the
+    offending `{r,c,tile}` once, so the next prod occurrence reveals the writer.
+  - [ ] **Still open**: find what writes a letterless tile into in-memory
+    `_board`. Prime suspects now that persistence is cleared: the optimistic
+    `applyOpponentMove` / deferred-commit paths in `onlineGameSession`. Wait for
+    the new warn to fire in prod, then trace from the logged coordinate.
+- [x] Robustness gap found during the bug-5 hunt: the lock-only `PLACE_LOCK`
+  commit path had no synchronous rollback on a failed commit (only
+  `forceResync`), unlike `CONFIRM_MOVE`. `dispatch()` now snapshots before a
+  `PLACE_LOCK` too, and the `EV.LOCK_PLACED` handler restores it (undoing the
+  inventory spend, board lock, and turn advance) and emits a `commit-rollback`
+  `TURN_CHANGED` + `LOCKS_CHANGED` on a lost version race — same shape as the
+  move path. The combined word+lock move already went through `CONFIRM_MOVE`, so
+  it was covered. See CHANGELOG.
+
+## Blocked-word final-form leak — July 2026
+
+- [x] `isValid()` matched `BLOCKED_OVERLAY` by exact string while the `DICT`
+  check folded final forms, so the board/bot form of a removed word (`ואכנ` for
+  an entry stored `ואכן`) validated anyway. New `hebrewDictionary.isBlocked()`
+  folds both directions; `isValid()` uses it. Affected every blocked word ending
+  in ך/ם/ן/ף/ץ, for bot and human submissions alike.
+- Note: the overlay holds words in whatever form the admin typed. Any new code
+  reading `BLOCKED_OVERLAY` directly must go through `isBlocked()`, not `.has()`.
+- [ ] Consider normalising on write (store both forms at the `/dictionaryRejected`
+  write + boot sync) so the read path doesn't carry the folding burden.
 
 ## Bot "stops creating words" fix — July 2026
 

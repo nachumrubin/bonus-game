@@ -2,6 +2,242 @@
 
 ---
 
+## Async games now count toward stats + recent games — July 2026
+
+Reported: an async friend game didn't appear in "last 5 games" and seemed to be
+missing from statistics entirely.
+
+It was: two gates dropped async games from the stats write. In `main.js`'s
+`GAME_COMPLETED` handler the stats block was wrapped in `if (!ag.isAsync)`, and
+`profileService.computeLiveGameStatsDelta` itself bailed on
+`!isLiveOnlineMode(mode)` (live-only). Rating was never gated this way, so async
+games already moved ELO — only the stats/recent-games history was missing.
+
+Fix — async games are recorded like live ones, with wall-clock stats guarded:
+- **`profileService.js`**: new `isAsyncOnlineMode` / `isOnlineMode`; the delta
+  gate is now `isOnlineMode(mode)` (live OR async). `fastestWinMs` is skipped for
+  async games — a turn can be days apart, so the game's wall-clock span is a
+  meaningless "fastest win." (`moveSpeedStats` already self-excludes: async games
+  carry no `botTime`.) Offline/bot games still return null, so nothing is written
+  for those.
+- **`main.js`**: dropped the `if (!ag.isAsync)` wrapper so the stats delta runs
+  for async finishes too (still behind the `_eloApplied` double-fire guard).
+
+The stat consumers (`statsScreen`, the friend "last 5 games" strip) read
+`recentGames` without mode filtering, so async games now show with no display
+change. Tests: async game produces a delta with recent-games + rival stats, and
+`fastestWinMs` / `moveSpeedStats` stay unpolluted; the old "async excluded" test
+became "offline/bot excluded, async counts." Full suite 1318 passing.
+
+### Investigated, not a bug: room-code games and rating
+
+Also reported (tentatively): games joined by room code don't award rating. They
+do — there is no room-code-specific or mode gate on rating; room-code and invite
+games create identical rooms and run the same ELO path. Verified against prod
+`/rooms` + `/globalRatings`: 15 finished room-code (`fc_`) games have both
+players rated and **zero** have only one rated, including the reporter's own two
+`fc_` games (their leaderboard rating was in fact last updated by an async game).
+The unrated room-code games are a mid-May cluster consistent with anonymous
+guests — a player with no profile can't be rated (each client only writes its
+OWN rating), which is by design. No code change.
+
+---
+
+## Lock-only turn now rolls back synchronously on a lost commit — July 2026
+
+A `CMD.PLACE_LOCK` turn optimistically spends a lock from the inventory, drops
+it on the board, and advances the turn — all before the Firebase commit. If that
+commit lost the version race (opponent's watchdog claimed the turn, opponent
+moved first), the handler only called `forceResync`, so the phantom lock sat on
+the board — inventory spent, turn rotated — until the resync's network round-trip
+returned, and persisted if that read silently failed. `CONFIRM_MOVE` already
+guarded against this with a synchronous rollback; the lock path did not.
+
+Fix, in `onlineGameSession.js` (mirrors the `CONFIRM_MOVE` path exactly):
+- `dispatch()` captures `snapshotForRollback()` before a `PLACE_LOCK` reaches the
+  engine (the snapshot already includes `lockedCells` + `lockInventory`).
+- The `EV.LOCK_PLACED` handler claims that snapshot and, on commit failure,
+  `restoreFromRollback()`s it and emits `LOCKS_CHANGED` + a `commit-rollback`
+  `TURN_CHANGED` — undoing the lock, refunding the inventory, and flipping the
+  turn back immediately, before `forceResync` runs as belt-and-suspenders.
+
+The combined word+lock move (July 2026) commits via `CONFIRM_MOVE`, so it was
+already covered — this closes the lock-*only* path. Test: a lock commit forced
+to lose the version race asserts the synchronous `commit-rollback` fires and the
+lock/inventory/turn are restored. Full suite 1317 passing.
+
+---
+
+## Malformed board cell no longer leaves an empty square unclickable — July 2026
+
+Reported (twice): some empty squares can't be played on; closing and reopening
+the app fixes it.
+
+Root-caused the *mechanism*: a truthy-but-letterless object in the in-memory
+board (`{}` or `{ letter: null }`) rendered through `tileHTML` as a glyph-less
+`.btile` — a blank square — while every "is this cell occupied?" check treated
+it as filled. The cell therefore looked empty but rejected placement, and only
+an app restart (which re-reads the clean authoritative board) cleared it.
+
+Investigation ruled out the leading theories with evidence:
+- **Not persisted state.** Audited all 268 prod `/rooms`: zero malformed board
+  cells, zero stuck/mislocated locks. The bad cell never comes from Firebase, so
+  a `deserializeBoard` shape-guard (the previously-suspected fix) would not have
+  helped. The corruption is transient and in-memory.
+- Not a `committedTileAt`/`boardTileAt` mismatch (identical code), not a phantom
+  lock (renders a 🔒 badge, not empty), not a grid listener/lifecycle issue
+  (`buildSpineUnifiedGrid` keeps the same `#game-grid`, so delegation survives),
+  not a leaked score chip (all animation overlays are `pointer-events: none`).
+
+Fix (defensive + diagnostic — the *writer* of the bad cell is still unproven):
+- **`gameScreen.js`**: `isRealTile()` predicate; `committedTileAt` (and, through
+  it, `boardTileAt` + `isCellBlockedForPlacement`) now treat a letterless
+  non-joker cell as empty, so it renders blank AND accepts a tile.
+- **`gameController.js`**: the same guard in `boardTileAt`, so `placeTile` /
+  `swapBoardTile` don't reject the cell as "occupied" at the placement layer.
+- **`reportMalformedCell()`**: logs the offending `{r,c,tile}` once per cell, so
+  the next occurrence in prod reveals which write introduced it.
+
+Net effect: the square self-heals instead of requiring a restart, and we finally
+have the instrumentation to catch the source. Tests: 3 in `gameScreen.test.js`
+(malformed cell renders empty; accepts a placed tile; a real tile still blocks).
+Full suite 1316 passing.
+
+---
+
+## Game screen renders players' current avatars, not the room's snapshot — July 2026
+
+Reported: an async online game showed the reporter's avatar as the old 👑 even
+though their equipped avatar was different.
+
+👑 is the *fallback* `renderScores` uses when `players[0].avatar` is null — so
+the room had no avatar stored at all. Room documents snapshot
+`players[n].avatar` at invite/accept time (`inviteService.sendInvite` →
+`fromAvatar`; `accepterProfile.avatar` on accept) and never refresh it, so a
+long-running async game renders whatever was true the day the room was created.
+
+Fix (read-time only — **existing rooms are deliberately not backfilled**):
+- **`gameScreen.js`**: new optional `resolveAvatar(uid) => Promise<avatar|null>`
+  dependency. `avatarFor(player)` prefers the looked-up current avatar and falls
+  back to the room's stored value (bots/guests have no profile; the lookup is
+  async, so the stored value renders until it lands). Results are cached per
+  uid — including misses, so an absent profile isn't re-fetched every render.
+  Player names + avatars moved out of `renderScores` into `renderPlayerIdentity`
+  so a late-arriving avatar repaints without restarting the score count-up.
+- **`main.js`**: `resolveAvatarForUid()` reads the profile and translates
+  `equippedAvatar` through `avatarEmoji()`. Wired at the **online** mount site
+  only — offline/bot games build players from the live profile at start, so a
+  lookup there would be a redundant read.
+
+Tests: 4 in `gameScreen.test.js` (live avatar wins; stored-value fallback;
+failed lookup degrades and isn't retried; no-resolver path unchanged). Full
+suite 1313 passing.
+
+Related, not fixed: `sendInvite` is called with `fromAvatar: fbUser.photoURL`,
+i.e. the Firebase **auth photo**, not the player's equipped avatar — which is
+why invite-created rooms store null for anyone without a Google photo. The
+render-time lookup above makes this moot for the game screen, but other
+`fromAvatar` consumers still see it. Logged in TASKS.md.
+
+---
+
+## Word + lock in the same turn — July 2026
+
+Reported: a player could place a word *or* a lock in a turn, never both.
+
+This was by construction, not a bug: `gameController.confirmMove` committed a
+pending lock only when `!view.placed.length`, and `CMD.PLACE_LOCK` /
+`CMD.CONFIRM_MOVE` were separate engine commands with separate turn advances.
+The UI already allowed a lock preview to sit alongside pending tiles — only the
+commit path forced the either/or.
+
+**Approach.** `CMD.CONFIRM_MOVE` now takes an optional `payload.lock`
+(`{ r, c, duration }`) rather than a new command, so one turn stays one command
+and — importantly for online play — one `commitTransaction`. A separate command
+would have meant two writes and a non-atomic turn.
+
+- **`turnManager.js`**: new `createLock()` — spend from inventory + place, no
+  turn advance. `applyLock()` is now `createLock()` + the same
+  `advanceTurn({ tickLocks: false })` it always did, so the lock-only path is
+  behaviourally identical.
+- **`gameEngine.js`**: `validateMoveLock()` checks the lock (bounds, duration,
+  cell free, no collision with the move's own tiles/swaps, duration in
+  inventory) *before* any board/rack mutation — a rejected word leaves the lock
+  unspent and still in the player's preview. On the normal path the lock is
+  placed after `applyMove`; on the deferred-score path (move landed on a bonus
+  square) it rides on `pendingScoreCommit.lock` and is placed after
+  `FINALIZE_BOOST_AWARD`'s `advanceTurn`.
+- **`gameController.js`**: `confirmMove` sends `lock` with the move. A lock with
+  no tiles still takes the old `CMD.PLACE_LOCK` path.
+
+**Tick rule** (confirmed with the product owner): a combined turn is a move
+turn — existing locks count down, the lock just placed keeps its full duration.
+The lock-only path still freezes all timers, as before.
+
+**Deliberately not emitting `EV.LOCK_PLACED`** from the combined path:
+`onlineGameSession` calls `commitTransaction` on it, and `MOVE_CONFIRMED`
+already commits the same turn — emitting both would push it to Firebase twice.
+`LOCKS_CHANGED` is still emitted, and the opponent picks the lock up from the
+authoritative room snapshot (`lockedCells` is resynced for every move type).
+
+No schema change — `lockedCells` / `lockInventory` already persist. Tests: 8 new
+(6 engine incl. both deferred-path cases, 3 controller). Full suite 1309 passing.
+
+---
+
+## Cancelling a board-tile swap could duplicate the displaced letter — July 2026
+
+Reported from an async online game. Repro: swap מ from the rack onto a
+committed ז, play the displaced ז (now shown in the swapped rack slot) next to
+it, then tap the מ to cancel the swap. Result: ז appeared on the board twice and
+the מ vanished.
+
+Root cause: `swapBoardTile` hands the displaced letter back to rack slot
+`swap.rackIndex` (via `displayRackTile`) so it can be played in the same turn,
+but `unswapBoardTile` only dropped the `swappedTiles` entry. The placement made
+out of that slot stayed in `view.placed` while the swap's revert restored the
+displaced letter to the board — the same tile in two places. The מ was invisible
+because `displayRackTile` masks a slot consumed by a pending placement.
+
+Fix, scoped to `unswapBoardTile` (`gameController.js`): cancelling a swap now
+also recalls any placement whose `rackIndex` matches the swap's, since that
+placement only had a tile behind it by virtue of the swap. Placements from other
+rack slots are untouched.
+
+Engine was never reachable here — the duplicate lived in the pre-confirm view
+state, and `CONFIRM_MOVE`'s rack check would have rejected the move. Tests: two
+cases in `gameController.test.js` (dependent placement recalled; unrelated
+placement preserved). Full suite 1298 passing.
+
+---
+
+## Removed words could still be played (final-form leak in `BLOCKED_OVERLAY`) — July 2026
+
+Reported: `ואכן` was removed from the dictionary, the admin panel confirmed
+`"ואכן" כבר הוסרה מהמילון`, yet the bot kept playing it.
+
+Root cause: `isValid()` matched `BLOCKED_OVERLAY` by exact string, while the
+positive `DICT` check folded terminal final forms. An admin removal stores the
+word as typed — final form, `ואכן` — but the board has no final letters, and
+both `parseBotWordsText` and `createBotWordList` (`botVocabulary.js`) run every
+word through `norm()`, so the bot's vocabulary holds `ואכנ`. That form missed
+the overlay, hit `DICT` via the final-form fold, and validated. The bot's
+`isWordValid` filter therefore never dropped it. This affected **any** blocked
+word ending in ך/ם/ן/ף/ץ, and human submissions equally — the board form of a
+removed word was accepted from either player.
+
+Fix, scoped to `src/game/core/hebrewDictionary.js`:
+- New exported `isBlocked(word)` folds final forms in both directions — checks
+  `terminalFinalVariants(word)` against the overlay (non-final input vs. a
+  final-form entry) and `norm(word)` (final input vs. a non-final entry).
+- `isValid()` step 2 now calls `isBlocked()` instead of `BLOCKED_OVERLAY.has()`.
+
+No change to overlay storage or the Firebase paths — entries in either form now
+match. Tests: two regression cases in `hebrewDictionary.test.js` covering both
+fold directions. Full suite 1296 passing.
+
+---
+
 ## Bot now weighs bonus (boost) squares when ranking moves — July 2026
 
 Reported: the bot rarely placed tiles on boost squares. Root cause:

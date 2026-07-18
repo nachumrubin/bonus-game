@@ -504,6 +504,11 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
   cursor:pointer; position:relative; user-select:none; -webkit-user-select:none;
   box-shadow:0 3px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.6);
   transition:transform .1s,box-shadow .1s;
+  /* The rack renders .bt2 as a <div> (inherits Heebo from body), but the
+     exchange overlay renders it as a <button> — and form controls do NOT
+     inherit font-family, so those tiles fell back to the UA font. Inherit
+     explicitly so a .bt2 looks identical whichever element it's built from. */
+  font-family:inherit;
 }
 .bt2.sel{background:#ffe870;border-color:#c0a800;transform:translateY(-6px);box-shadow:0 8px 0 var(--tshadow),0 8px 12px rgba(0,0,0,.25);}
 .bt2.emp{background:rgba(255,255,255,.04);border:2px dashed rgba(255,255,255,.12);box-shadow:none;cursor:default;}

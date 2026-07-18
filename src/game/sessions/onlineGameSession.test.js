@@ -279,7 +279,11 @@ test('online session: no-lastMove timeout snapshot resyncs remote turn state', a
   await sessB.dispose();
 });
 
-test('online session: deferred bonus scoring commits once on MOVE_SCORE_COMMITTED', async () => {
+// Two-phase commit for a bonus-square move. The FIRST commit publishes the tiles
+// immediately (so the opponent can see what was played during a mini-game that
+// may run 60s) but does NOT rotate the turn or award any score. The SECOND commit,
+// on MOVE_SCORE_COMMITTED, adds the bonus points and rotates the turn.
+test('online session: deferred bonus move publishes tiles immediately, scores + rotates only on MOVE_SCORE_COMMITTED', async () => {
   bus._reset();
   DICT.clear();
   const ALEF = '\u05d0';
@@ -312,14 +316,20 @@ test('online session: deferred bonus scoring commits once on MOVE_SCORE_COMMITTE
   });
   await new Promise(r => setTimeout(r, 0));
 
-  assert.equal(db._data.rooms['online-room'].version, 1, 'deferred MOVE_CONFIRMED must not commit yet');
-  assert.equal(db._data.rooms['online-room'].scores[0], 0);
+  // Phase 1: the tiles are published right away so the opponent isn't left
+  // staring at a blank board for the length of the mini-game...
+  const deferredRoom = db._data.rooms['online-room'];
+  assert.equal(deferredRoom.version, 2, 'deferred MOVE_CONFIRMED publishes the move');
+  assert.equal(deferredRoom.bonusBoard['-1,1'].letter, BET, 'opponent can see the played tile');
+  // ...but the score is withheld and the turn does NOT rotate.
+  assert.equal(deferredRoom.scores[0], 0, 'score stays deferred until the bonus resolves');
+  assert.equal(deferredRoom.currentTurnSlot, 0, 'turn must NOT rotate on the deferred commit');
 
   sessA.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, bonusIdx: 0, extra: 20 } });
   await new Promise(r => setTimeout(r, 0));
 
   const roomNow = db._data.rooms['online-room'];
-  assert.equal(roomNow.version, 2, 'MOVE_SCORE_COMMITTED commits the final scored move exactly once');
+  assert.equal(roomNow.version, 3, 'MOVE_SCORE_COMMITTED commits the final scored move exactly once');
   assert.equal(roomNow.scores[0], 24);
   assert.equal(roomNow.currentTurnSlot, 1);
   assert.equal(roomNow.lastMove.score, 24);
@@ -466,6 +476,49 @@ test('online session: applies settings updates without requiring a version bump'
 
   assert.equal(settingsEvents.length, 1);
   assert.deepEqual(sessA.state.settings, { timelimit: false, botTime: 35 });
+  await sessA.dispose();
+});
+
+// A lock-only turn (CMD.PLACE_LOCK) optimistically spends a lock, drops it on
+// the board, and advances the turn before the commit. If that commit loses the
+// version race, the phantom lock used to sit on the board until forceResync's
+// network round-trip returned (and forever if that read failed) — unlike
+// CONFIRM_MOVE, which rolled back synchronously. This verifies the lock path
+// now rolls back synchronously too.
+test('online session: a lock commit that loses the version race rolls back synchronously', async () => {
+  bus._reset();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const db = makeMockDb();
+  await setupRoom(db);
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+
+  assert.equal(sessA.state.currentTurnSlot, 0, 'baseline: slot 0 to move');
+  const inv0Before = [...sessA.state.lockInventory[0]];
+
+  const turnChanges = [];
+  bus.on(EV.TURN_CHANGED, p => turnChanges.push(p));
+  const rejected = [];
+  bus.on('evt/SYNC_REJECTED', p => rejected.push(p));
+
+  // Stale the session out WITHOUT notifying it: bump the stored room version
+  // directly (not via .ref().update(), which would fire the watcher and let the
+  // session catch up). The lock commit's version guard now aborts.
+  db._data.rooms['online-room'].version += 5;
+
+  sessA.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 7, c: 7, duration: 3 } });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.ok(rejected.length >= 1, 'a stale-version rejection fired');
+  // The tell for the SYNCHRONOUS rollback (vs. forceResync cleaning up later):
+  // the commit-rollback turn change, emitted only by the rollback path.
+  assert.ok(turnChanges.some(t => t.reason === 'commit-rollback'),
+    'the lock rollback flipped the turn back synchronously');
+  // Net effect: no phantom lock, inventory restored, still slot 0 to move.
+  assert.equal(sessA.state.lockedCells.length, 0, 'no phantom lock left on the board');
+  assert.deepEqual(sessA.state.lockInventory[0], inv0Before, 'the spent lock is returned');
+  assert.equal(sessA.state.currentTurnSlot, 0, 'the turn did not advance');
+
   await sessA.dispose();
 });
 

@@ -207,7 +207,39 @@ export async function createOnlineGameSession({
     const rollback = pendingCommitRollback;
     pendingCommitRollback = null;
     if (scoringDeferred) {
+      // Deferred-scoring move (landed on a bonus square). We STILL push the move
+      // now — board + tiles — but WITHOUT rotating the turn and WITHOUT the score
+      // (the engine left both untouched: applyMove ran with advance:false /
+      // commitScore:false). Previously we skipped this write entirely, so during
+      // a mini-game the opponent's board stayed blank for up to 60s and they had
+      // no idea what was played. The rules permit an active-player write that
+      // doesn't rotate the turn (same shape as free-exchange).
+      //
+      // The second commit (on MOVE_SCORE_COMMITTED) adds the bonus points and
+      // rotates the turn. BOTH commits carry the SAME `lastMove` object — hence
+      // the same `ts` — so the opponent's watcher treats the second one as
+      // "not a new move" (isNewMove === false) and resyncs score/turn WITHOUT
+      // replaying the tiles or re-firing OPPONENT_MOVED. No double animation.
       deferredCommitPending = true;
+      const deferredResult = await commitCurrentState({
+        lastMove: state.moveHistory[state.moveHistory.length - 1] ?? null,
+        deferred: true,
+      });
+      if (deferredResult.committed) {
+        advanceVersionCursor(deferredResult);
+      } else {
+        deferredCommitPending = false;
+        if (rollback) {
+          restoreFromRollback(rollback);
+          bus.emit(EV.TURN_CHANGED, {
+            currentTurnSlot: state.currentTurnSlot,
+            turnNumber: state.turnNumber,
+            reason: 'commit-rollback',
+          });
+        }
+        bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
+        forceResync('stale-version').catch(() => { /* swallow */ });
+      }
       return;
     }
     deferredCommitPending = false;
@@ -252,6 +284,9 @@ export async function createOnlineGameSession({
 
   subs.push(bus.on(EV.LOCK_PLACED, async ({ slot, lock }) => {
     if (slot !== mySlot) return;
+    // Claim the rollback snapshot captured in dispatch() before applyLock ran.
+    const rollback = pendingCommitRollback;
+    pendingCommitRollback = null;
     const result = await commitCurrentState({
       lastMove: {
         slot,
@@ -264,6 +299,22 @@ export async function createOnlineGameSession({
     if (result.committed) {
       advanceVersionCursor(result);
     } else {
+      // Synchronous rollback first — undo the optimistic lock (inventory spend,
+      // board lock, turn advance) NOW, before forceResync's round-trip. Without
+      // this the phantom lock flashes on the board (and persists if the resync
+      // read fails) until the next snapshot. Mirrors the CONFIRM_MOVE path.
+      if (rollback) {
+        restoreFromRollback(rollback);
+        bus.emit(EV.LOCKS_CHANGED, {
+          lockedCells: [...(state.lockedCells ?? [])],
+          lockInventory: state.lockInventory,
+        });
+        bus.emit(EV.TURN_CHANGED, {
+          currentTurnSlot: state.currentTurnSlot,
+          turnNumber: state.turnNumber,
+          reason: 'commit-rollback',
+        });
+      }
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
       forceResync('stale-version').catch(() => { /* swallow */ });
     }
@@ -545,6 +596,16 @@ export async function createOnlineGameSession({
       // MOVE_CONFIRMED handler can restore synchronously if the commit fails.
       pendingCommitRollback = snapshotForRollback();
     }
+    if (cmd?.type === CMD.PLACE_LOCK) {
+      // Same synchronous-rollback safety as CONFIRM_MOVE. applyLock spends a
+      // lock from the inventory, drops it on the board, and advances the turn —
+      // all optimistically, before the commit. Without a snapshot, a lost
+      // version race leaves that phantom lock (and the consumed inventory +
+      // rotated turn) on screen until forceResync's network round-trip returns,
+      // and forever if that read fails. Snapshot here; the LOCK_PLACED handler
+      // restores it on commit failure.
+      pendingCommitRollback = snapshotForRollback();
+    }
     engine.dispatch(cmd);
   }
 
@@ -620,14 +681,16 @@ export async function createOnlineGameSession({
   // SYNC_REJECTED + forceResync recovery path instead of leaking an
   // unhandled rejection out of the bus subscriber. Surfaced by the
   // simulator's e2e forced-deadline-loss scenario.
-  async function commitCurrentState({ lastMove = null } = {}) {
+  async function commitCurrentState({ lastMove = null, deferred = false } = {}) {
     try {
-      return await rawCommitCurrentState({ lastMove });
+      return await rawCommitCurrentState({ lastMove, deferred });
     } catch (err) {
       return { committed: false, room: null, error: err };
     }
   }
-  function rawCommitCurrentState({ lastMove = null } = {}) {
+  // `deferred` = the first of the two writes for a bonus-square move: the tiles
+  // land, but the turn does not rotate and no score is awarded yet.
+  function rawCommitCurrentState({ lastMove = null, deferred = false } = {}) {
     // A timer_bonus boost (B13 wheel +Ns) queued for the slot whose turn is
     // starting was recorded on state.turnTimerBonusMs by the engine's
     // applyTurnStartEffects. The committing client is authoritative for the
@@ -650,7 +713,13 @@ export async function createOnlineGameSession({
       // but the turn did not rotate. free-exchange is excluded — it's a
       // within-turn action that continues the SAME turn, not a new one.
       const isMove = lastMove && (lastMove.type === undefined || lastMove.type === 'move');
-      const isExtraTurn = !turnChanged && !!isMove
+      // A deferred bonus-square commit ALSO looks like "a move landed but the turn
+      // didn't rotate" — but it is NOT an extra turn, so it must not refresh the
+      // deadline. Leaving the deadline alone keeps this identical to the old
+      // behaviour (which wrote nothing at all here); the opponent's watchdog is
+      // gated on liveBonus.active for the duration of the mini-game anyway, and
+      // the second commit rotates the turn and sets a fresh deadline.
+      const isExtraTurn = !turnChanged && !!isMove && !deferred
         && Number(lastMove.slot) === Number(state.currentTurnSlot);
       const shouldRunTimer = shouldUseSharedTurnTimer(currentRoom.mode ?? room.mode, settings);
       let turnDeadlineMs = shouldRunTimer ? (state.turnDeadlineMs ?? currentRoom.turnDeadlineMs ?? null) : null;
@@ -699,7 +768,11 @@ export async function createOnlineGameSession({
         lastMove,
         updatedAt: Date.now(),
       };
-      if (turnChanged && lastMove?.type !== 'free-exchange') {
+      // Clear the tentative-tile preview once the move is real. The deferred
+      // commit doesn't rotate the turn, but the tiles ARE now committed, so its
+      // live-preview ghosts must go too — otherwise the opponent would see the
+      // preview ghosts and the committed tiles at the same time.
+      if ((turnChanged || deferred) && lastMove?.type !== 'free-exchange') {
         patch.livePreview = null;
       }
       return patch;

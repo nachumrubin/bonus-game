@@ -82,15 +82,23 @@ export function scanCrosswordWords(placements, {
     else illegal[word] = pts;
   };
 
+  // Horizontal runs read RIGHT-TO-LEFT (Hebrew). The board is laid out
+  // `direction: ltr` (column 0 = leftmost cell), so a player spelling a Hebrew
+  // word puts its FIRST letter in the RIGHTMOST cell of the run. Walking the
+  // columns left→right therefore visits the word backwards — we PREPEND each
+  // letter so the assembled string is the word as it actually reads. Appending
+  // here (the old behaviour) scored e.g. "גיא" as "איג" and marked it illegal.
   for (let r = 0; r < rows; r++) {
     let word = '', pts = 0, len = 0;
     for (let c = 0; c < cols; c++) {
       const cell = placements[r]?.[c];
-      if (cell) { word += cell.l; pts += cell.v ?? 0; len++; }
+      if (cell) { word = cell.l + word; pts += cell.v ?? 0; len++; }
       else { if (len >= 2) record(word, pts); word = ''; pts = 0; len = 0; }
     }
     if (len >= 2) record(word, pts);
   }
+  // Vertical runs are unaffected: Hebrew stacks top-to-bottom, so appending
+  // while walking rows downward already yields the correct reading order.
   for (let c = 0; c < cols; c++) {
     let word = '', pts = 0, len = 0;
     for (let r = 0; r < rows; r++) {
@@ -260,19 +268,17 @@ export function mountCrosswordMiniGame({
 
   function repaintGrid() {
     if (!gridEl) return;
+    gridEl.classList?.toggle?.('is-armed', selectedPoolIdx >= 0);
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const el = gridEl.querySelector(`[data-mb="${r}-${c}"]`);
         if (!el) continue;
         const t = placements[r][c];
-        el.style.outline = selectedPoolIdx >= 0 ? '2px solid rgba(232,200,64,.5)' : 'none';
         if (t) {
-          el.style.background = '#e8e0c8';
-          el.style.color = '#111';
-          el.innerHTML = `<div style="font-size:13px;font-weight:900;color:#111;line-height:1">${t.l}</div><div style="font-size:7px;color:#666;line-height:1">${t.v || ''}</div>`;
+          el.className = 'xw-cell is-filled';
+          el.innerHTML = `<span class="xw-letter">${t.l}</span>`;
         } else {
-          el.style.background = '#5ba3cc';
-          el.style.color = '';
+          el.className = 'xw-cell';
           el.innerHTML = '';
         }
       }
@@ -285,13 +291,13 @@ export function mountCrosswordMiniGame({
     pool.forEach((l, i) => {
       const t = doc.createElement('div');
       if (l == null) {
-        t.style.cssText = 'width:28px;height:32px;opacity:0;pointer-events:none;flex-shrink:0;';
+        t.className = 'xw-pool-placeholder';
         poolEl.appendChild(t);
         return;
       }
       const sel = i === selectedPoolIdx;
-      t.style.cssText = `width:28px;height:32px;background:${sel ? '#ffe870' : '#e8e0c8'};border:2px solid ${sel ? '#c0a800' : '#9a9080'};border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#111;cursor:pointer;box-shadow:0 ${sel ? '0' : '2'}px 0 #666050;transform:${sel ? 'translateY(-4px)' : 'none'};transition:all .1s;position:relative;`;
-      t.innerHTML = `<span style="line-height:1">${l}</span><span style="font-size:7px;color:#666;position:absolute;bottom:2px;left:3px">${valueOf(l) || 0}</span>`;
+      t.className = `ut xw-pool-tile${sel ? ' is-selected' : ''}`;
+      t.innerHTML = `<span class="xw-letter">${l}</span>`;
       t.addEventListener('click', () => {
         selectedPoolIdx = (selectedPoolIdx === i) ? -1 : i;
         repaintPool();
@@ -300,7 +306,7 @@ export function mountCrosswordMiniGame({
       poolEl.appendChild(t);
     });
     const rec = doc.createElement('div');
-    rec.style.cssText = 'width:28px;height:32px;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.2);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;color:rgba(255,255,255,.7);';
+    rec.className = 'xw-recall';
     rec.textContent = '↩';
     rec.title = 'החזר הכל';
     rec.addEventListener('click', () => {
@@ -333,12 +339,13 @@ export function mountCrosswordMiniGame({
 
   function buildGrid() {
     const g = doc.createElement('div');
-    g.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);gap:2px;background:#2a5878;border:2px solid #2a5878;border-radius:4px;margin-bottom:4px;width:100%;max-width:${cols * 32}px;`;
+    g.className = 'xw-board';
+    g.style.setProperty('--xw-cols', String(cols));
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const cell = doc.createElement('div');
         cell.dataset.mb = `${r}-${c}`;
-        cell.style.cssText = 'height:28px;background:#5ba3cc;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;border-radius:1px;';
+        cell.className = 'xw-cell';
         cell.addEventListener('click', () => {
           const changed = place(r, c);
           if (!changed) return;
@@ -369,7 +376,7 @@ export function mountCrosswordMiniGame({
     wrap.appendChild(gridEl);
 
     poolEl = doc.createElement('div');
-    poolEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;justify-content:center;padding:2px 0;';
+    poolEl.className = 'xw-pool';
     wrap.appendChild(poolEl);
 
     bchal.appendChild(wrap);
@@ -465,11 +472,10 @@ export function mountCrosswordMiniGame({
     card.appendChild(statusLine);
 
     gridEl = buildGrid();
-    gridEl.style.margin = '0 auto 4px';
     card.appendChild(gridEl);
 
     poolEl = doc.createElement('div');
-    poolEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:3px;justify-content:center;padding:2px 0;';
+    poolEl.className = 'xw-pool';
     card.appendChild(poolEl);
 
     const submitBtn = doc.createElement('button');
