@@ -683,6 +683,33 @@ async function boot() {
   //
   // Returns null if every source is empty so the caller can decide whether to
   // fall back to a generic placeholder.
+  // Look up a player's CURRENT avatar by uid, for gameScreen's identity strip.
+  //
+  // Room documents freeze `players[n].avatar` at invite/accept time and never
+  // refresh it, so a long-running async game renders whatever was true when the
+  // room was created — including nothing at all for rooms made before the
+  // player had an avatar, which then shows the 👑 fallback forever. Reading the
+  // profile at render time keeps the strip current without touching the room.
+  //
+  // Returns null when there's no profile / no avatar equipped, which tells
+  // gameScreen to keep using the value stored on the room.
+  async function resolveAvatarForUid(uid) {
+    if (!uid || !activeFbDb) return null;
+    try {
+      const profile = await profileService.readProfile(activeFbDb, uid);
+      // The profile's choice lives in `equippedAvatar` (an id like 'diamond'
+      // or a store id like 'rare_3'); `avatar` is only on legacy profiles.
+      // avatarEmoji() translates ids to the emoji/store-id form that
+      // setAvatarEl renders — and defaults to 👑, so only call it when the
+      // player actually has something equipped.
+      const equipped = profile?.equippedAvatar ?? profile?.avatar ?? null;
+      return equipped != null ? (avatarEmoji(equipped) ?? null) : null;
+    } catch (e) {
+      console.warn('[spine] resolveAvatarForUid read', e);
+      return null;
+    }
+  }
+
   async function resolveMyDisplayName() {
     const fbUser = activeFbCurrentUser;
     const spineName = globalThis.__spine?.currentProfile?.displayName;
@@ -3503,8 +3530,11 @@ async function boot() {
 
       // Stats — pass the winnerSlot-based result so history always agrees
       // with the ELO outcome (score-based result can differ on
-      // timeout/abandonment finishes).
-      if (!ag.isAsync) {
+      // timeout/abandonment finishes). Both live AND async online games are
+      // recorded now (July 2026); computeLiveGameStatsDelta guards the
+      // wall-clock stats that don't apply to async play. (Offline/bot games
+      // still return null from it, so nothing is written for those.)
+      {
         const statsDelta = profileService.computeLiveGameStatsDelta({
           state: session?.state,
           room: {
@@ -4130,6 +4160,11 @@ async function boot() {
       animationController,
       jokerPicker: globalThis.__spine?.jokerPicker ?? null,
       bus,
+      // Online rooms carry an avatar snapshotted when the room was created;
+      // render the players' current avatars instead. Online only — offline /
+      // bot games build their players from the live profile at start, so a
+      // lookup there would be a redundant read.
+      resolveAvatar: resolveAvatarForUid,
     });
     const bonusFlow = attachBonusFlow(session);
     const reactionCtrl = mountReactionController({

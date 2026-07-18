@@ -26,6 +26,23 @@ function fresh({ mySlot = 0 } = {}) {
   return { session, controller };
 }
 
+// A board with one committed ז at (4,4), for the swap tests. The tile has to
+// exist before the controller is built — the view snapshots board + rack on
+// creation.
+function freshWithCommittedTile() {
+  bus._reset();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const session = createLocalGameSession({
+    bus, mode: 'offline-2p', tileBagSeed: 'gc-test', players: PLAYERS,
+  });
+  session.state.racks[0] = ['א','ב','ג','ד','ה','ו','ז','ח'];
+  session.state.racks[1] = ['ט','י','כ','ל','מ','נ','ס','ע'];
+  session.state.board[4][4] = { letter: 'ז', val: 7, isJoker: false };
+  const controller = createGameController({ bus, session, mySlot: 0 });
+  return { session, controller };
+}
+
 test('view-model reflects initial state on creation', () => {
   const { controller } = fresh({ mySlot: 0 });
   assert.equal(controller.view.scores[0], 0);
@@ -49,12 +66,94 @@ test('placeTile / recallTile / recallAll mutate the placed list and notify liste
   assert.equal(updates[3].length, 0);
 });
 
+// Regression: swap מ (rack) onto a committed ז, play the displaced ז from that
+// same rack slot, then cancel the swap. The ז must not end up on the board
+// twice with the מ nowhere — cancelling the swap reclaims the displaced letter,
+// so the placement that borrowed it has to be recalled with it.
+test('unswapBoardTile recalls a tile played from the swap-freed rack slot', () => {
+  const { controller } = freshWithCommittedTile();
+
+  // Rack slot 0 ('א') replaces the committed ז on the board.
+  assert.equal(controller.swapBoardTile({ r: 4, c: 4, letter: 'א', val: 1, rackIndex: 0 }), true);
+  // Rack slot 0 now shows the displaced ז, playable this same turn.
+  assert.deepEqual(controller.displayRackTile(0), { letter: 'ז', val: 7, isJoker: false });
+  controller.placeTile({ r: 4, c: 5, letter: 'ז', val: 7, rackIndex: 0 });
+
+  controller.unswapBoardTile(4, 4);
+
+  assert.equal(controller.view.swappedTiles.length, 0, 'swap is cancelled');
+  assert.equal(
+    controller.view.placed.filter(p => p.letter === 'ז').length, 0,
+    'the ז played out of the swapped slot must not survive as a second ז',
+  );
+  assert.deepEqual(controller.displayRackTile(0), { letter: 'א', val: 1, isJoker: false },
+    'the swapped-in tile returns to its rack slot rather than vanishing');
+});
+
+test('unswapBoardTile keeps placements made from other rack slots', () => {
+  const { controller } = freshWithCommittedTile();
+
+  controller.swapBoardTile({ r: 4, c: 4, letter: 'א', val: 1, rackIndex: 0 });
+  controller.placeTile({ r: 6, c: 6, letter: 'ב', val: 3, rackIndex: 1 });
+  controller.unswapBoardTile(4, 4);
+
+  assert.equal(controller.view.placed.length, 1, 'unrelated placement survives');
+  assert.equal(controller.view.placed[0].letter, 'ב');
+});
+
 test('confirmMove dispatches CONFIRM_MOVE with the placed tiles', () => {
   const { session, controller } = fresh();
   controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 });
   controller.placeTile({ r: 4, c: 5, letter: 'ב', val: 3 });
   controller.confirmMove();
   assert.equal(session.state.scores[0], 4);
+  assert.equal(session.state.currentTurnSlot, 1);
+});
+
+// Word + lock in the same turn. Before this, confirmMove treated a pending
+// lock and pending tiles as alternative commit paths, so the lock was silently
+// dropped whenever the player had also placed a word.
+test('confirmMove sends a pending lock along with the word in one turn', () => {
+  const { session, controller } = fresh();
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 });
+  controller.placeTile({ r: 4, c: 5, letter: 'ב', val: 3 });
+  controller.setPendingLock({ r: 7, c: 7, duration: 3 });
+
+  assert.equal(controller.confirmMove(), true);
+
+  assert.equal(session.state.scores[0], 4, 'the word scored');
+  assert.equal(session.state.lockedCells.length, 1, 'the lock landed in the same turn');
+  assert.equal(session.state.lockedCells[0].remainingTurns, 3);
+  assert.equal(session.state.currentTurnSlot, 1, 'turn advanced exactly once');
+  assert.equal(controller.view.pendingLock, null, 'preview cleared after commit');
+  assert.equal(controller.view.placed.length, 0);
+});
+
+// A correctable rejection (gap in the word) leaves the move on the board, so
+// the lock preview must survive alongside it — the player fixes the word and
+// resubmits with the same lock. (An illegal WORD is different: that forfeits
+// the turn via the auto-pass path, and TURN_CHANGED clears the preview. Either
+// way the lock is never spent — see the engine tests.)
+test('confirmMove: a correctable rejection keeps the pending lock for a retry', () => {
+  const { session, controller } = fresh();
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 });
+  controller.placeTile({ r: 4, c: 6, letter: 'ב', val: 3 }); // gap at (4,5)
+  controller.setPendingLock({ r: 7, c: 7, duration: 3 });
+  controller.confirmMove();
+
+  assert.equal(controller.view.lastInvalidReason, 'has-gaps');
+  assert.equal(session.state.lockedCells.length, 0, 'no lock placed');
+  assert.deepEqual(session.state.lockInventory[0], [3, 3, 5], 'lock not burned by the bad move');
+  assert.deepEqual(controller.view.pendingLock, { r: 7, c: 7, duration: 3 },
+    'the lock preview survives so the player can fix the word and resubmit');
+  assert.equal(controller.view.placed.length, 2, 'and so do the tiles');
+});
+
+test('confirmMove with a lock and no tiles still takes the lock-only path', () => {
+  const { session, controller } = fresh();
+  controller.setPendingLock({ r: 7, c: 7, duration: 3 });
+  assert.equal(controller.confirmMove(), true);
+  assert.equal(session.state.lockedCells.length, 1);
   assert.equal(session.state.currentTurnSlot, 1);
 });
 

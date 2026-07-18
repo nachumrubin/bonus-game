@@ -58,10 +58,18 @@ function cellIdFor(r, c) {
   return null;
 }
 
-export function mountGameScreen({ controller, animationController, jokerPicker = null, bus = null, root = globalThis.document }) {
+// `resolveAvatar(uid) => Promise<avatar|null>` (optional): looks up a player's
+// CURRENT avatar, so the identity strip doesn't render the copy frozen into the
+// room document at invite time. Omitted → the stored room avatar is used as-is.
+export function mountGameScreen({ controller, animationController, jokerPicker = null, bus = null, resolveAvatar = null, root = globalThis.document }) {
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
+  // uid → current avatar (null = looked up, none found). Populated lazily by
+  // requestLiveAvatar; a cached null stops us re-fetching a missing profile.
+  const liveAvatarByUid = new Map();
+  const avatarLookupsInFlight = new Set();
+  let disposed = false;
   let selectedRackIndex = null;
   let pendingJokerPlacement = null;        // { r, c } awaiting letter pick
   let jokerPickedSub = null;
@@ -697,7 +705,23 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     animateScore($('#sv2', root), v.scores[1] ?? 0, countUpDelay);
     animateScore($('#is-sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#is-sv2', root), v.scores[1] ?? 0, countUpDelay);
-    // Player names + avatars (mobile info-strip and desktop labels).
+    renderPlayerIdentity(v);
+    // Desktop side-panel boxes use `.scbox.act`; the mobile info-strip cards
+    // use `.is-pcard.act-cell` (different class name, see styles.css). When
+    // a scoring sequence is in flight we keep the previous player's glow lit
+    // until the count-up finishes — otherwise the box highlight swaps to the
+    // opponent before they actually see the score change. `displayedTurnSlot`
+    // is bumped to the engine's `currentTurnSlot` by `maybeScheduleActiveSlotSwap`.
+    const glowSlot = displayedTurnSlot ?? v.currentTurnSlot;
+    applyActiveSlotGlow(glowSlot);
+    maybeScheduleActiveSlotSwap(v, wordCount);
+  }
+
+  // Player names + avatars (mobile info-strip and desktop labels). Split out
+  // of renderScores so a late-arriving live avatar can repaint the identity
+  // without re-entering renderScores — that would restart the score count-up
+  // animations mid-flight.
+  function renderPlayerIdentity(v) {
     const p0 = v._players?.[0] ?? null;
     const p1 = v._players?.[1] ?? null;
     if (p0?.displayName) {
@@ -708,18 +732,51 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       setText($('#sn2', root), p1.displayName);
       setText($('#is-sn2', root), p1.displayName);
     }
-    const p1Avatar = p1?.avatar === 'bot' && p1?.displayName !== COMPUTER_NAME_HE ? null : p1?.avatar;
-    setAvatarEl($('#is-av1', root), p0?.avatar ?? null, { fallback: '\uD83D\uDC51' });
-    setAvatarEl($('#is-av2', root), p1Avatar ?? null, { fallback: '\uD83D\uDC64' });
-    // Desktop side-panel boxes use `.scbox.act`; the mobile info-strip cards
-    // use `.is-pcard.act-cell` (different class name, see styles.css). When
-    // a scoring sequence is in flight we keep the previous player's glow lit
-    // until the count-up finishes — otherwise the box highlight swaps to the
-    // opponent before they actually see the score change. `displayedTurnSlot`
-    // is bumped to the engine's `currentTurnSlot` by `maybeScheduleActiveSlotSwap`.
-    const glowSlot = displayedTurnSlot ?? v.currentTurnSlot;
-    applyActiveSlotGlow(glowSlot);
-    maybeScheduleActiveSlotSwap(v, wordCount);
+    // 'bot' is a sentinel avatar, not a real one — only honour it for the
+    // actual computer opponent.
+    const rawP1Avatar = avatarFor(p1);
+    const p1Avatar = rawP1Avatar === 'bot' && p1?.displayName !== COMPUTER_NAME_HE ? null : rawP1Avatar;
+    setAvatarEl($('#is-av1', root), avatarFor(p0) ?? null, { fallback: '👑' });
+    setAvatarEl($('#is-av2', root), p1Avatar ?? null, { fallback: '👤' });
+  }
+
+  // Prefer the player's CURRENT avatar over the one stored on the room.
+  //
+  // Room documents snapshot players[n].avatar at invite/accept time and never
+  // refresh it, so a room opened from a connection made before the player last
+  // changed their avatar shows the stale one — or, for rooms that predate
+  // avatars entirely, no avatar at all, which falls through to the 👑/👤
+  // fallback for the life of the game. We look the avatar up by uid instead and
+  // fall back to the stored value (bots and guests have no profile to read, and
+  // the lookup is async — the stored value renders until it lands).
+  //
+  // Existing rooms are deliberately NOT backfilled; this is a read-time fix.
+  function avatarFor(player) {
+    if (!player?.uid) return player?.avatar ?? null;
+    if (liveAvatarByUid.has(player.uid)) {
+      return liveAvatarByUid.get(player.uid) ?? player.avatar ?? null;
+    }
+    requestLiveAvatar(player.uid);
+    return player.avatar ?? null;
+  }
+
+  function requestLiveAvatar(uid) {
+    if (!resolveAvatar || !uid || avatarLookupsInFlight.has(uid)) return;
+    avatarLookupsInFlight.add(uid);
+    Promise.resolve()
+      .then(() => resolveAvatar(uid))
+      .then((avatar) => {
+        if (disposed) return;
+        liveAvatarByUid.set(uid, avatar ?? null);
+        renderPlayerIdentity(controller.view);
+      })
+      .catch((e) => {
+        // Cache the miss so a failing/absent profile doesn't re-fetch on
+        // every render; the stored room avatar keeps rendering.
+        if (!disposed) liveAvatarByUid.set(uid, null);
+        console.warn('[gameScreen] live avatar lookup failed', e);
+      })
+      .finally(() => avatarLookupsInFlight.delete(uid));
   }
 
   // Currently-displayed active slot is tracked in `lastAppliedActiveSlot`
@@ -1238,6 +1295,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   }
 
   function unmount() {
+    // Stops an in-flight avatar lookup from painting a torn-down screen.
+    disposed = true;
     clearJokerSubs();
     for (const state of scoreTweens.values()) {
       if (state.raf)   try { cafFn(state.raf); } catch { /* swallow */ }
@@ -1335,24 +1394,50 @@ function coordsForInvalid(invalidWordTiles, placed) {
   return out;
 }
 
+// A cell holds a REAL tile only if it has a letter (or is a joker, which always
+// carries its chosen letter). A truthy-but-letterless object — e.g. `{}` or
+// `{ letter: null }` — is malformed: tileHTML renders it as a glyph-less .btile
+// (a blank square) and every "occupied?" check below treats it as filled, so
+// the cell looks empty yet rejects placement and can't be cleared without an
+// app restart (which re-reads the clean authoritative board). This has been
+// reported ("empty squares sometimes disabled"); no persisted room carries such
+// a cell (audited across prod /rooms), so the corruption is transient and
+// in-memory. Treating a malformed cell as EMPTY makes the symptom self-heal,
+// and reportMalformedCell() logs it so the source can finally be caught.
+function isRealTile(tile) {
+  if (!tile || typeof tile !== 'object') return false;
+  if (tile.isJoker) return true;
+  return tile.letter != null && tile.letter !== '';
+}
+
+const _reportedMalformedCells = new Set();
+function reportMalformedCell(r, c, tile) {
+  const key = `${r},${c}`;
+  if (_reportedMalformedCells.has(key)) return;
+  _reportedMalformedCells.add(key);
+  try {
+    console.warn('[gameScreen] malformed board cell treated as empty', { r, c, tile: JSON.stringify(tile) });
+  } catch { /* JSON.stringify guard */ }
+}
+
+// Real committed tile at (r,c), or null. A malformed (letterless) object is
+// reported and treated as empty. On-grid uses _board; perimeter uses _bonusBoard.
 function committedTileAt(view, r, c) {
-  if (r >= 0 && r < 10 && c >= 0 && c < 10) {
-    return view?._board?.[r]?.[c] ?? null;
-  }
-  return view?._bonusBoard?.get?.(`${r},${c}`) ?? null;
+  const raw = (r >= 0 && r < 10 && c >= 0 && c < 10)
+    ? (view?._board?.[r]?.[c] ?? null)
+    : (view?._bonusBoard?.get?.(`${r},${c}`) ?? null);
+  if (raw && !isRealTile(raw)) { reportMalformedCell(r, c, raw); return null; }
+  return raw;
 }
 
 function isCellBlockedForPlacement(view, r, c) {
   // Locked by an active lock.
   const locked = (view?.lockedCells ?? []).some(l => l.r === r && l.c === c && (l.remainingTurns ?? 0) > 0);
   if (locked) return true;
-  // Has a committed tile (on-grid or perimeter bonus square).
-  if (r >= 0 && r < 10 && c >= 0 && c < 10) {
-    if (view?._board?.[r]?.[c]) return true;
-  } else if (view?._bonusBoard?.get?.(`${r},${c}`)) {
-    return true;
-  }
-  return false;
+  // Has a real committed tile (on-grid or perimeter bonus square). Goes through
+  // committedTileAt so a malformed cell is treated as empty here too — otherwise
+  // the cell would block placement while rendering blank.
+  return committedTileAt(view, r, c) != null;
 }
 
 function lastMoveCoordSet(view) {
@@ -1366,15 +1451,13 @@ function lastMoveCoordSet(view) {
   return set;
 }
 
+// Real committed tile at (r,c) for the RENDERER. On-grid (0..9 × 0..9) reads
+// the 2D array; off-grid perimeter coords (br/bc ∈ {-1, 10}) read _bonusBoard
+// (a Map keyed "r,c") — without that fallback tiles on a perimeter bonus vanish
+// on commit. Delegates to committedTileAt so a malformed cell renders as empty
+// (rather than a glyph-less .btile) and stays consistent with the block check.
 function boardTileAt(view, r, c) {
-  // On-grid (0..9 × 0..9): regular 2D array. Off-grid perimeter coords
-  // (br/bc ∈ {-1, 10}) — tiles committed there live in view._bonusBoard,
-  // a Map keyed "r,c". Without this fallback the bonus-square renderer
-  // can't see tiles placed on a perimeter bonus, so they vanish on commit.
-  if (r >= 0 && r < 10 && c >= 0 && c < 10) {
-    return view._board?.[r]?.[c] ?? null;
-  }
-  return view._bonusBoard?.get?.(`${r},${c}`) ?? null;
+  return committedTileAt(view, r, c);
 }
 
 function lockAt(view, r, c) {

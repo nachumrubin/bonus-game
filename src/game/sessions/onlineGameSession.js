@@ -284,6 +284,9 @@ export async function createOnlineGameSession({
 
   subs.push(bus.on(EV.LOCK_PLACED, async ({ slot, lock }) => {
     if (slot !== mySlot) return;
+    // Claim the rollback snapshot captured in dispatch() before applyLock ran.
+    const rollback = pendingCommitRollback;
+    pendingCommitRollback = null;
     const result = await commitCurrentState({
       lastMove: {
         slot,
@@ -296,6 +299,22 @@ export async function createOnlineGameSession({
     if (result.committed) {
       advanceVersionCursor(result);
     } else {
+      // Synchronous rollback first — undo the optimistic lock (inventory spend,
+      // board lock, turn advance) NOW, before forceResync's round-trip. Without
+      // this the phantom lock flashes on the board (and persists if the resync
+      // read fails) until the next snapshot. Mirrors the CONFIRM_MOVE path.
+      if (rollback) {
+        restoreFromRollback(rollback);
+        bus.emit(EV.LOCKS_CHANGED, {
+          lockedCells: [...(state.lockedCells ?? [])],
+          lockInventory: state.lockInventory,
+        });
+        bus.emit(EV.TURN_CHANGED, {
+          currentTurnSlot: state.currentTurnSlot,
+          turnNumber: state.turnNumber,
+          reason: 'commit-rollback',
+        });
+      }
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
       forceResync('stale-version').catch(() => { /* swallow */ });
     }
@@ -575,6 +594,16 @@ export async function createOnlineGameSession({
       }
       // Capture a rollback snapshot BEFORE the engine mutates state, so the
       // MOVE_CONFIRMED handler can restore synchronously if the commit fails.
+      pendingCommitRollback = snapshotForRollback();
+    }
+    if (cmd?.type === CMD.PLACE_LOCK) {
+      // Same synchronous-rollback safety as CONFIRM_MOVE. applyLock spends a
+      // lock from the inventory, drops it on the board, and advances the turn —
+      // all optimistically, before the commit. Without a snapshot, a lost
+      // version race leaves that phantom lock (and the consumed inventory +
+      // rotated turn) on screen until forceResync's network round-trip returns,
+      // and forever if that read fails. Snapshot here; the LOCK_PLACED handler
+      // restores it on commit failure.
       pendingCommitRollback = snapshotForRollback();
     }
     engine.dispatch(cmd);

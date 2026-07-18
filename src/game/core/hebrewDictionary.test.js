@@ -113,6 +113,27 @@ test('isValid: BLOCKED_OVERLAY rejects a word even when it is in the dict', () =
   } finally { BLOCKED_OVERLAY.delete('בית'); resetDict(); }
 });
 
+// Regression: an admin removal stores the word as typed (final form, "ואכן"),
+// but board words carry no final letters ("ואכנ"). An exact-match overlay check
+// let the non-final form back into play — the bot kept playing removed words.
+test('isValid: BLOCKED_OVERLAY rejects the board (non-final) form of a final-form entry', () => {
+  try {
+    loadWords('ואכן');
+    BLOCKED_OVERLAY.add('ואכן');
+    assert.equal(isValid('ואכן'), false, 'final form must reject');
+    assert.equal(isValid('ואכנ'), false, 'board form must reject via final-form fold');
+  } finally { BLOCKED_OVERLAY.delete('ואכן'); resetDict(); }
+});
+
+test('isValid: BLOCKED_OVERLAY rejects the final form of a non-final entry', () => {
+  try {
+    loadWords('ואכן');
+    BLOCKED_OVERLAY.add('ואכנ');
+    assert.equal(isValid('ואכנ'), false, 'non-final form must reject');
+    assert.equal(isValid('ואכן'), false, 'final form must reject via norm fold');
+  } finally { BLOCKED_OVERLAY.delete('ואכנ'); resetDict(); }
+});
+
 test('isValid: Firebase-approved overlay (DICT.add after load) is honored', () => {
   try {
     loadWords('שלום');

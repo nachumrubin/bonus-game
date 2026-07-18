@@ -73,6 +73,19 @@ export function* terminalFinalVariants(word) {
   if (toFinal[last]) yield* em(word.slice(0, -1) + toFinal[last]);
 }
 
+// Blocked-overlay lookup, folded across final forms in both directions.
+// The overlay stores words as typed by the admin (usually the final form,
+// "ואכן"), but gameplay words arrive off the board in non-final form
+// ("ואכנ") — an exact-match check would miss them and let a removed word
+// back into play. Checking the terminal-final variants covers a non-final
+// input against a final-form entry; the norm() check covers the reverse.
+export function isBlocked(word) {
+  for (const variant of terminalFinalVariants(word)) {
+    if (BLOCKED_OVERLAY.has(variant)) return true;
+  }
+  return BLOCKED_OVERLAY.has(norm(word));
+}
+
 export function dictHas(word) {
   for (const variant of terminalFinalVariants(word)) {
     if (DICT.has(variant)) return true;
@@ -190,7 +203,9 @@ export function isMiniGameWord(word) {
 //
 // Policy order (first match wins):
 //   1. Clean input to Hebrew letters only; empty → invalid.
-//   2. BLOCKED_OVERLAY hit → invalid (Firebase /dictionaryRejected, synced at boot).
+//   2. isBlocked() hit → invalid (Firebase /dictionaryRejected, synced at boot);
+//      matched across final-form variants, so a board-form word cannot slip past
+//      an overlay entry stored in final form.
 //   3. DICT.has(word or terminal-final variant) → valid.
 //      DICT contains both dictionary.txt words and Firebase-approved overlay words.
 //   4. Otherwise invalid.
@@ -200,7 +215,7 @@ export function isValid(rawWord) {
     validationLogger?.('[isValid]', JSON.stringify(rawWord), '->', '✗ INVALID', '| empty');
     return false;
   }
-  if (BLOCKED_OVERLAY.has(word)) {
+  if (isBlocked(word)) {
     validationLogger?.('[isValid]', JSON.stringify(word), '->', '✗ INVALID', '| blocked-overlay');
     return false;
   }

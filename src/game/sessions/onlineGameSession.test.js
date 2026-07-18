@@ -479,6 +479,49 @@ test('online session: applies settings updates without requiring a version bump'
   await sessA.dispose();
 });
 
+// A lock-only turn (CMD.PLACE_LOCK) optimistically spends a lock, drops it on
+// the board, and advances the turn before the commit. If that commit loses the
+// version race, the phantom lock used to sit on the board until forceResync's
+// network round-trip returned (and forever if that read failed) — unlike
+// CONFIRM_MOVE, which rolled back synchronously. This verifies the lock path
+// now rolls back synchronously too.
+test('online session: a lock commit that loses the version race rolls back synchronously', async () => {
+  bus._reset();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const db = makeMockDb();
+  await setupRoom(db);
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+
+  assert.equal(sessA.state.currentTurnSlot, 0, 'baseline: slot 0 to move');
+  const inv0Before = [...sessA.state.lockInventory[0]];
+
+  const turnChanges = [];
+  bus.on(EV.TURN_CHANGED, p => turnChanges.push(p));
+  const rejected = [];
+  bus.on('evt/SYNC_REJECTED', p => rejected.push(p));
+
+  // Stale the session out WITHOUT notifying it: bump the stored room version
+  // directly (not via .ref().update(), which would fire the watcher and let the
+  // session catch up). The lock commit's version guard now aborts.
+  db._data.rooms['online-room'].version += 5;
+
+  sessA.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 7, c: 7, duration: 3 } });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.ok(rejected.length >= 1, 'a stale-version rejection fired');
+  // The tell for the SYNCHRONOUS rollback (vs. forceResync cleaning up later):
+  // the commit-rollback turn change, emitted only by the rollback path.
+  assert.ok(turnChanges.some(t => t.reason === 'commit-rollback'),
+    'the lock rollback flipped the turn back synchronously');
+  // Net effect: no phantom lock, inventory restored, still slot 0 to move.
+  assert.equal(sessA.state.lockedCells.length, 0, 'no phantom lock left on the board');
+  assert.deepEqual(sessA.state.lockInventory[0], inv0Before, 'the spent lock is returned');
+  assert.equal(sessA.state.currentTurnSlot, 0, 'the turn did not advance');
+
+  await sessA.dispose();
+});
+
 async function readRoom(db) {
   const snap = await db.ref('rooms/online-room').get();
   return snap.val();
