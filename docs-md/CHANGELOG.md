@@ -2,6 +2,30 @@
 
 ---
 
+## Fill-middle mini-game rearranges tiles into the answer on a miss — July 2026
+
+Reported: the "מלא את החסר" anagram (arrange the middle letters between a fixed
+first and last) still showed a static "the word was …" overlay on a miss,
+instead of rearranging the tiles into the correct order like the unscramble
+mini-game does.
+
+`fillMiddleMiniGame` now ports unscramble's reveal. On a miss (wrong word or
+timeout) with a real DOM + `requestAnimationFrame`, `revealMiddleWord` rebuilds
+the frame's middle tiles and FLIP-reorders them into the answer's order between
+the immovable green first/last bookends — the player watches the correct word
+assemble. The overlay header switches to "לא נכון 😌" / "נגמר הזמן ⏰" +
+"המילה הנכונה:". A win still shows the word the player actually made; contexts
+without rAF/DOM fall back to the existing text `renderResult`.
+
+Mechanics are copied from `unscrambleMiniGame.revealCorrectWord` (FIRST/LAST
+measure → invert → play to identity, staggered L→R), adapted for the fixed
+bookends. Only the miss *visual* changed — success/points/turn flow is
+untouched. Tests: a stub-DOM unit test asserts the reorder (no-measure branch);
+the animation was verified in a real browser via Playwright (tiles settle to the
+answer with transforms back at identity). Full suite 1319 passing.
+
+---
+
 ## Async games now count toward stats + recent games — July 2026
 
 Reported: an async friend game didn't appear in "last 5 games" and seemed to be

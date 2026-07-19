@@ -53,6 +53,14 @@
   order on timeout/illegal-word (`revealCorrectWord`), instead of printing the
   answer. On a submitted wrong word it first flashes red + shakes (`failReveal`)
   to reject it; a timeout skips the shake. Verified in a real browser via Playwright.
+- [x] **`fillMiddleMiniGame` (B1 "מלא את החסר") now does the same on a miss**
+  (reported: it still showed the static answer overlay). `revealMiddleWord`
+  rebuilds the frame's middle tiles and FLIP-reorders them into the answer's
+  order between the fixed green first/last bookends; the header switches to
+  "המילה הנכונה:". Success still shows the word the player made; no-rAF/no-DOM
+  contexts fall back to the text `renderResult`. Unit test covers the reorder
+  (stub DOM, no-measure branch); the animation itself verified in a real browser
+  via Playwright (tiles settle to `מסויגת`, transforms back to identity).
 - Note: the FLIP path only runs with a real DOM + `requestAnimationFrame`; it
   falls back to the text result view otherwise, and `unmount` is a hard teardown
   that skips the animation. Success path unchanged (shows the word the player made).
