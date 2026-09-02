@@ -1,5 +1,35 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Boost Motion Spec (Phase 2A) — approved contract, September 2026
+
+The motion contract is now `docs-md/BOOST_MOTION_SPEC.md` (supersedes the
+audit's §H/§I recommendations where they conflict). Still spec-only — no code
+changed. Before any implementation (Phase 2B), an agent MUST run the runtime
+verification plan (spec §11); several changes are gated on its results:
+
+- [ ] **T1 (gates gate-flooring):** prove the interaction gate is visual, not a
+  correctness barrier — engine must reject early/out-of-turn commands.
+- [ ] **T2 (gates freeze-flooring):** prove the clock freeze is fairness, not
+  correctness — a shortened freeze must not cause a spurious auto-pass.
+- [ ] **T3 (gates overlay rewrite):** prove the overlay poll *can* deadlock
+  before replacing it with the event-driven overlay-state source.
+- [ ] **T4:** confirm the ~300ms score-animation vs timer-resume overlap.
+- [ ] **T5:** confirm unmount-surviving timers (`activeSlotTimer`,
+  `recentlyArrivedClearTimer`) fire post-unmount before clearing them.
+- [ ] **T6:** confirm accordion `max-height` jank on a low-end profile before
+  rewriting it.
+- [ ] Implementation then follows the spec's 6-phase roadmap (§12): tokens &
+  mechanical hygiene → primitives & reduced-motion model → gameplay motion →
+  reward motion → overlay architecture & performance.
+
+Design decisions locked by the spec (for implementers, do not re-litigate):
+remove `multiplierLabel` (misleading bare `×`); demote the 2200ms boost-badge
+pulse to a one-shot + static state; add rack-pickup and tentative-placement
+feedback (tentative must not duplicate the committed pop); differentiate
+victory/draw/defeat end-game motion (confetti = victory only); product language
+is "Reduced motion" (not "Animations enabled"); the OS reduced-motion preference
+is read live and never persisted.
+
 ## Animation & motion system — follow-up work (from September 2026 audit)
 
 Full audit: `docs-md/ANIMATION_AUDIT.md`. This pass was investigation-only —

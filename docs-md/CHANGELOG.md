@@ -2,6 +2,39 @@
 
 ---
 
+## Boost Motion Specification (Phase 2A) — September 2026
+
+Architecture-validation-only pass (no production code changed). Challenged the
+September animation audit against the actual source and produced the approved
+motion contract for future implementation agents: `docs-md/BOOST_MOTION_SPEC.md`.
+
+Key corrections to the audit made after re-reading the code directly:
+- The `turnTimerController.js` score-animation freeze is **fairness/polish**, not
+  the state-correctness "bug" the audit implied — it grants the incoming player
+  clock-grace during the score animation and suppresses auto-pass; a 300ms
+  under-count is an imprecision, not corruption. Reframed as a legitimately
+  animation-coupled timer whose *minimum* must stay independent of animation.
+- The reduced-motion defect is larger than "no UI toggle": the CSS `@media`
+  rule hides visuals, but the JS choreography timers (interaction gate,
+  clock freeze) keep running — so a reduced-motion player currently sees nothing
+  animate yet still waits ~2-3s. Reduced motion must reach those timers.
+- Confirmed by code that disabling animations does **not** shorten the
+  interaction gate (`activeSlotTimer` is a gameScreen render-path timer,
+  independent of `animationController.setEnabled`).
+- Confirmed `multiplierLabel` fires on multi-word moves (not score multipliers)
+  and renders a misleading bare `×` — decision is to remove it, not repair it.
+
+The spec defines: 4 duration tokens + 3 easing tokens + 2 press-scale categories,
+a three-tier motion hierarchy (UI/Gameplay/Reward), the ten core interaction
+choreographies, a 1-5 reward-intensity ranking, a complete reduced-motion policy
+with an effective-preference model (explicit → OS → normal, OS pref never
+persisted), the engine/UI timing boundary (visual vs choreography vs
+gameplay-safe timing kept separate), what stays bespoke, a 6-test runtime
+verification plan gating the risky changes, and a conservative 6-phase roadmap.
+No code changed — implementation is a later, separately-approved phase.
+
+---
+
 ## Animation & motion system audit — September 2026
 
 Investigation-only pass (no production code changed) mapping every animation
