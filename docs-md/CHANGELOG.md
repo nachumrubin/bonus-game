@@ -2,6 +2,38 @@
 
 ---
 
+## Animation & motion system audit — September 2026
+
+Investigation-only pass (no production code changed) mapping every animation
+in Boost — CSS `@keyframes`, `animationController.js` directives, `gameScreen.js`
+renderer code, mini-game effects, screen transitions, and reward/celebration
+motion — ahead of establishing a centralized motion system.
+
+Full report: `docs-md/ANIMATION_AUDIT.md`. Highlights:
+- Confirmed the system is 100% hand-rolled (CSS keyframes + classList +
+  setTimeout), with a single deliberate Web Animations API use in the anagram
+  mini-game's shake effect. No animation library.
+- `scoreAnimationTimings.js`'s "single source of truth" has partially eroded:
+  `turnTimerController.js` re-derives its own copy of the merge-sequence
+  constants and silently omits the multiplier-chip phase (clock can resume
+  ~300ms early on multiplier+multi-word moves); `gameScreen.js` hardcodes
+  `900` twice instead of importing `COUNTUP_PEAK_MS`.
+- Two independent, uncoordinated 100ms overlay-presence pollers
+  (`animationController.js` and `gameScreen.js`) duplicate the same
+  detection logic with no shared source of truth or timeout.
+- Found and catalogued a dead/shadowed `@keyframes bonusPulse` (defined
+  twice, second silently wins), a dead `multPulse` keyframe, a broken
+  `multiplierLabel` directive (renders a bare `×` with no number), and 9+
+  divergent button `:active` press-scale values.
+- `domHelpers.js`'s `flashAnimation()` reusable primitive has zero call
+  sites — 7+ files hand-roll the identical reflow-restart idiom instead.
+- `animationsEnabled` (reduced motion) is fully wired end-to-end and unit
+  tested but has no settings-screen control exposing it to players.
+- No code changes made; see the audit's "Recommended Implementation Order"
+  (§I) for the proposed phased follow-up work.
+
+---
+
 ## Async games now count toward stats + recent games — July 2026
 
 Reported: an async friend game didn't appear in "last 5 games" and seemed to be

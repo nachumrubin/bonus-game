@@ -1,5 +1,43 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Animation & motion system — follow-up work (from September 2026 audit)
+
+Full audit: `docs-md/ANIMATION_AUDIT.md`. This pass was investigation-only —
+nothing below has been implemented yet. Proposed phased order lives in the
+audit's §I; short list of concrete follow-ups it surfaced:
+
+- [ ] `turnTimerController.js` re-derives its own (incomplete) copy of
+  `scoreAnimationTimings.js`'s constants instead of importing them, and its
+  formula omits the multiplier-chip phase — can resume the turn clock ~300ms
+  before a multiplier+multi-word move's animation actually finishes.
+- [ ] `gameScreen.js` hardcodes `900` twice (`animateScore`,
+  `maybeScheduleActiveSlotSwap`) instead of importing `COUNTUP_PEAK_MS`.
+- [ ] Two independent 100ms overlay-presence pollers
+  (`animationController.js` + `gameScreen.js`) duplicate detection logic and
+  have no shared source of truth/timeout — candidate for one shared utility.
+- [ ] Dead/shadowed CSS: two `@keyframes bonusPulse` blocks (second silently
+  shadows the first at `styles.css:357` vs `:1463`); dead `multPulse`
+  keyframe (`:1023`, never referenced).
+- [ ] `multiplierLabel` directive (`gameScreen.js:1266`) renders a literal
+  `'×'` with no number — either wire the real value or retire it (the
+  correct `×N` chip already exists inside `playScoreMergeSequence`).
+- [ ] `domHelpers.js`'s `flashAnimation()` primitive is unused; 7+ files
+  hand-roll the same reflow-restart idiom independently — worth
+  consolidating onto the shared helper.
+- [ ] `animationsEnabled` (reduced motion) has no settings-screen toggle
+  despite being fully wired end-to-end; also needs verification of whether
+  it actually shortens `gameScreen.js`'s interaction-gate delay
+  (`activeSlotTimer`) or only suppresses visual flourishes.
+- [ ] `scoreBonusAnimation.js` (a second, parallel "+N" float
+  implementation) has no confirmed call site — verify and likely delete as
+  dead code.
+- [ ] End-of-game victory/defeat screen and the Elo-delta reveal have zero
+  build-up animation (static instant swaps) despite mid-game word scoring
+  getting an elaborate multi-second choreographed sequence — candidate to
+  reuse the already-shared `bonusFx.js` confetti/count-up primitives.
+- [ ] 9+ divergent button `:active` press-scale values with no shared token
+  — candidate for a single `--press-scale` CSS custom property.
+
 ## Bot weighs bonus squares when ranking moves — July 2026
 
 - [x] `botSearch.js` candidates now carry a `rankScore` (real score + expected
