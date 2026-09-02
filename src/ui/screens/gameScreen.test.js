@@ -779,11 +779,14 @@ test('animation renderer lights word tiles, floats score, and flashes score pane
     elements.get('body').children.some(el => el.classList.contains('scoring-float-label')),
     'the +TOTAL sum chip should be in the overlay during the merge sequence',
   );
-  // score-pop fires when the sum chip lands (~740 ms) and lingers ~500
-  // ms. Sample inside that window.
+  // The single landing response — the panel-arrive pulse on the score target —
+  // fires when the sum chip lands (~740 ms) and lingers ~360 ms. There is no
+  // longer a separate score-pop or radial burst on this frame (Phase 3B).
   await new Promise(r => setTimeout(r, 600));
-  assert.ok(elements.get('sv1').classList.contains('score-pop'),
-    'sv1 should receive score-pop once the sum chip arrives');
+  assert.ok(elements.get('sv1').classList.contains('score-panel-arrive'),
+    'the score target receives the one landing pulse when the sum chip arrives');
+  assert.ok(!elements.get('sv1').classList.contains('score-pop'),
+    'the redundant number score-pop no longer fires on the landing frame');
   animationController.dispose();
 });
 
@@ -909,8 +912,9 @@ test('animation renderer adds illegal-tile + is-invalid then rollback-pop on INV
   assert.ok(elements.get('c2_2').classList.contains('is-invalid'),
     'tile target (cell fallback) should receive is-invalid');
 
-  // After 700ms the rollback-pop kicks in and illegal-tile is removed.
-  await new Promise(r => setTimeout(r, 720));
+  // After the (shortened, Phase 3B) ~500ms hold the rollback-pop kicks in and
+  // the static red is removed — well within the 1100ms gameplay auto-pass hold.
+  await new Promise(r => setTimeout(r, 560));
   assert.ok(!elements.get('c2_2').classList.contains('illegal-tile'),
     'illegal-tile should be removed before rollback');
   assert.ok(elements.get('c2_2').classList.contains('rollback-pop'),

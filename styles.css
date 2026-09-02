@@ -88,6 +88,10 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 @media(max-height:700px){.hbtns .bd{min-height:clamp(42px,6svh,52px);}.bd-sub{display:none;}.hlogo{margin-top:4px;margin-bottom:4px;}.hbtns{gap:clamp(4px,.75svh,6px);}}
 @media(max-height:580px){.hbtns .bd{min-height:40px;border-radius:11px;}.hlogo img{max-width:230px !important;}.credit{display:none;}}
 
+/* Static strong red — the shake supplies the motion ("no"), this identifies
+   WHICH placement is illegal. Phase 3B dropped the infinite alternate pulse:
+   a looping red on top of the shake was two effects saying the same thing and
+   it kept animating after the meaning was clear (BOOST_MOTION_SPEC §5.5). */
 .illegal-tile{
   background:linear-gradient(180deg,#ffbcbc,#ff8f8f)!important;
   border:2px solid #d42323!important;
@@ -97,7 +101,6 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
     inset 0 0 0 1px rgba(255,255,255,.35) !important;
   outline:2px solid #ff2a2a !important;
   outline-offset:1px;
-  animation:illegalPulse .35s ease-in-out infinite alternate;
   z-index:5;
   position:relative;
 }
@@ -111,10 +114,6 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
   box-shadow:0 0 14px rgba(255,80,80,.85) !important;
   z-index:6 !important;
   position:relative !important;
-}
-@keyframes illegalPulse{
-  from{transform:scale(1);     box-shadow:0 0 0 2px #ff3232, 0 0 10px rgba(255,80,80,.7),  inset 0 0 0 1px rgba(255,255,255,.3);}
-  to  {transform:scale(1.06);  box-shadow:0 0 0 3px #ff5050, 0 0 22px rgba(255,80,80,1),   inset 0 0 0 1px rgba(255,255,255,.5);}
 }
 .rollback-pop{
   transition:transform .25s ease, opacity .25s ease, filter .25s ease;
@@ -1782,12 +1781,16 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 }
 .bt2.bt2-returned { animation: tileReturned var(--motion-fast) var(--ease-standard) both; }
 
-/* ── 4. Valid word gold flash ── */
+/* ── 4. Valid word gold flash ──
+   The acceptance beat: "the game took this word". Phase 3B shortened it to the
+   gameplay token (was 0.5s) and softened the brightness so it reads as a brief
+   confirm rather than competing with the score choreography that follows it
+   (BOOST_MOTION_SPEC §4/§6.4). */
 @keyframes validFlash {
-  0%   { filter: brightness(1.7) drop-shadow(0 0 7px rgba(255,220,0,.95)); }
+  0%   { filter: brightness(1.4) drop-shadow(0 0 5px rgba(255,220,0,.8)); }
   100% { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
 }
-.is-valid { animation: validFlash 0.5s ease-out both; }
+.is-valid { animation: validFlash var(--motion-fast) var(--ease-standard) both; }
 
 /* ── 5. Invalid word shake ── */
 @keyframes shakeWord {
@@ -1799,7 +1802,7 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   75%     { transform: translateX(-3px); }
   90%     { transform: translateX(3px); }
 }
-.is-invalid { animation: shakeWord 0.28s ease-out both; }
+.is-invalid { animation: shakeWord var(--motion-fast) ease-out both; }
 
 /* ── 6. Bonus square activation flash ── */
 @keyframes bonusActivate {
@@ -1850,16 +1853,15 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 .score-pop { animation: scorePop 0.42s cubic-bezier(0.22,1,0.36,1) both; }
 
 /* ── Scoring animation: word glow (electric blue + gold) ──
-   Looping pulse — the class is added when the word's +N float appears and
-   removed when the score panel finishes counting up. Each iteration breathes
-   the brightness/drop-shadow so the highlighted word stays clearly lit while
-   the score is being awarded. */
+   A single brief flash as each word's +N chip launches — lights the word just
+   long enough to read which one is contributing, then settles. Phase 3B
+   replaced the old ~1.5s breathing loop (the main "why is it still animating?"
+   offender) with this one-shot pulse (BOOST_MOTION_SPEC §6.6). */
 @keyframes scoringWordGlow {
-  0%   { filter: brightness(1.5) drop-shadow(0 0 6px rgba(68,170,255,.55)) drop-shadow(0 0 4px rgba(255,232,112,.45)); }
-  50%  { filter: brightness(2.3) drop-shadow(0 0 14px rgba(68,170,255,.95)) drop-shadow(0 0 10px rgba(255,232,112,.85)); }
-  100% { filter: brightness(1.5) drop-shadow(0 0 6px rgba(68,170,255,.55)) drop-shadow(0 0 4px rgba(255,232,112,.45)); }
+  0%   { filter: brightness(2.1) drop-shadow(0 0 12px rgba(68,170,255,.9)) drop-shadow(0 0 8px rgba(255,232,112,.8)); }
+  100% { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
 }
-.scoring-word-glow { animation: scoringWordGlow 0.8s ease-in-out infinite; will-change: filter; }
+.scoring-word-glow { animation: scoringWordGlow var(--motion-fast) var(--ease-standard) both; will-change: filter; }
 
 /* ── Scoring animation: floating +points text ── */
 @keyframes scoringPointsFloat {
@@ -1895,43 +1897,18 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   transform: translateX(-50%);
 }
 
-/* ── Scoring animation: score panel pulse on point arrival ── */
+/* ── Scoring animation: score panel pulse on point arrival ──
+   The ONE landing response: "the score landed here." Phase 3B softened it
+   (scale 1.18 → 1.12, 0.62s → the normal token) and removed the radial hit
+   burst that used to fire on the same frame — one clear emphasis plus the
+   number count-up, not a stack of scale + glow + burst (BOOST_MOTION_SPEC §12). */
 @keyframes scorePanelArrive {
   0%   { transform: scale(1);    filter: drop-shadow(0 0 0px transparent); }
-  30%  { transform: scale(1.18); filter: drop-shadow(0 0 24px rgba(255,232,112,1))
-                                          drop-shadow(0 0 14px rgba(255,140,80,.95)); }
-  60%  { transform: scale(.94);  filter: drop-shadow(0 0 14px rgba(68,170,255,.85)); }
+  35%  { transform: scale(1.12); filter: drop-shadow(0 0 16px rgba(255,232,112,.95))
+                                          drop-shadow(0 0 9px rgba(255,140,80,.85)); }
   100% { transform: scale(1);    filter: drop-shadow(0 0 0px transparent); }
 }
-.score-panel-arrive { animation: scorePanelArrive 0.62s cubic-bezier(0.22,1,0.36,1) both; }
-
-/* Radial burst spawned at the score panel center the moment the sum
-   chip lands. Pure decoration — no layout impact (position: fixed,
-   pointer-events: none). Scales outward from the centre and fades. */
-@keyframes scoreHitBurst {
-  0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.35); }
-  20%  { opacity: 1;   transform: translate(-50%, -50%) scale(0.9); }
-  60%  { opacity: 0.55; transform: translate(-50%, -50%) scale(1.35); }
-  100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.8); }
-}
-.score-hit-burst {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9998;
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 3px rgba(255,200,90,.9),
-    0 0 24px 10px rgba(255,150,70,.55),
-    0 0 44px 20px rgba(255,232,112,.32);
-  background: radial-gradient(circle,
-    rgba(255,210,110,.5) 0%,
-    rgba(255,150,70,.22) 55%,
-    rgba(255,150,70,0)   100%);
-  animation: scoreHitBurst 0.7s cubic-bezier(0.22,1,0.36,1) both;
-  will-change: transform, opacity;
-}
+.score-panel-arrive { animation: scorePanelArrive var(--motion-normal) var(--ease-standard) both; }
 
 /* Multiplier banner sits as the last child of the boosted player's score
    box (mobile `.is-pcard` or desktop `.scbox`), absolutely positioned at

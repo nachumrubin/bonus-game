@@ -17,9 +17,12 @@ import { RACK_SIZE } from '../../game/core/tileBag.js';
 import { bonusOverlayOpen } from '../domHelpers.js';
 import {
   WORD_MERGE_STAGGER_MS,
-  COUNTUP_PEAK_MS,
   mergeSequenceTiming,
 } from '../scoreAnimationTimings.js';
+
+// How long each per-word glow stays applied (kept re-applied across re-renders
+// during the merge sequence). Brief and non-looping — see emitScoreSequence.
+const SCORING_WORD_GLOW_MS = 360;
 
 export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false }) {
   if (!bus) throw new Error('createAnimationController: bus required');
@@ -80,17 +83,17 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
       payload: { slot, placed, words: wordsForRender, finalScore: total, baseScore: base, bonusExtra: extra, multiplier: mult },
     });
 
-    // Per-word glow timed to the per-word chip launches — each word
-    // lights up when its +N chip leaves and stays glowing until the
-    // panel count-up finishes.
+    // Per-word glow timed to the per-word chip launches — each word lights up
+    // with a single brief flash as its +N chip leaves. Phase 3B: this used to
+    // stay lit (a breathing loop) until the count-up finished ~1.5s later; now
+    // it is a short one-shot so the word reads as "this contributed" without the
+    // sequence appearing to still be animating (BOOST_MOTION_SPEC §6.6).
     if (wordsForRender.length > 0) {
-      const { totalToPanelLanding } = scoreMergeTiming({ wordCount: wordsForRender.length, bonusExtra: extra, multiplier: mult });
-      const glowEnd = totalToPanelLanding + COUNTUP_PEAK_MS;
       wordsForRender.forEach((w, i) => {
         const start = i * WORD_MERGE_STAGGER_MS;
         trigger({
           kind: 'scoringWordGlow',
-          payload: { slot, wordTiles: [w.wordTiles], placed, delayMs: start, durationMs: Math.max(280, glowEnd - start) },
+          payload: { slot, wordTiles: [w.wordTiles], placed, delayMs: start, durationMs: SCORING_WORD_GLOW_MS },
         });
       });
     }

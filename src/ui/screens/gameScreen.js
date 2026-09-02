@@ -1245,7 +1245,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           if (tile) flashClass(tile, 'tile-place-in', 260);
         }
       },
-      validFlash:         (payload) => flashWordTiles(root, payload, 'is-valid', 520),
+      validFlash:         (payload) => flashWordTiles(root, payload, 'is-valid', 260),
       shakeWord:          ({ placed, invalidWordTiles } = {}) => {
         // Tile-level shake: flash `is-invalid` on the .btile inside each
         // affected cell. Prefer the full illegal-word tiles when the engine
@@ -1256,14 +1256,16 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           const cell = $(`#c${r}_${c}`, root);
           if (!cell) continue;
           const target = cell.querySelector?.('.btile') ?? cell;
-          flashClass(target, 'is-invalid', 300);
+          flashClass(target, 'is-invalid', 260);
         }
       },
       illegalPulse:       ({ placed, invalidWordTiles } = {}) => {
-        // Paint the red pulsing border on the .btile itself (the cell's
+        // Paint a static strong-red border on the .btile itself (the cell's
         // children fill 100% of the cell, so a cell-level border ends up
         // hidden behind them). The .cell still gets `illegal-tile-host` so
-        // CSS can knock back the cell's tile background too.
+        // CSS can knock back the cell's tile background too. The red is held
+        // briefly then released; the shake supplies the motion (Phase 3B —
+        // no looping pulse, no second red effect saying the same thing).
         //
         // Highlight the whole illegal word — placed letters AND any existing
         // tiles that formed the bad word — when the engine supplies their
@@ -1294,7 +1296,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
             // recalled). Existing committed tiles stay put.
             if (isPlaced) flashClass(cell, 'rollback-pop', 260);
           }
-        }, 700);
+        }, 500);
       },
       scoringWordGlow:    (payload) => {
         const { delayMs = 0, durationMs = 420 } = payload ?? {};
@@ -1653,8 +1655,7 @@ function flyScoreToPanel(root, { slot, score, wordTiles, placed, delayMs = 0, is
       }, 20 + hold);
     }
     setTimeout(() => {
-      flashClass(to, 'score-panel-arrive', 620);
-      if (isSum) spawnScoreHitBurst(root, to);
+      flashClass(to, 'score-panel-arrive', 360);
       chip.remove?.();
     }, 480 + hold);
   };
@@ -1875,28 +1876,13 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
       }, 20);
     }
     setTimeout(() => {
-      flashClass(targetEl, 'score-panel-arrive', 620);
-      spawnScoreHitBurst(root, targetEl);
-      flashClass($(`#sv${slot + 1}`, root), 'score-pop', 500);
-      flashClass($(`#is-sv${slot + 1}`, root), 'score-pop', 500);
+      // One clear landing response — the panel pulse — plus the count-up on the
+      // number. Phase 3B removed the radial hit-burst and the separate score-pop
+      // that used to fire on this same frame (three emphases for one moment).
+      flashClass(targetEl, 'score-panel-arrive', 360);
       sumChip.remove?.();
     }, SCORE_MERGE_SUM_FLIGHT_MS);
   }, mergeEnd + SCORE_MERGE_HOLD_AFTER_MS);
-}
-
-// Spawned at the score-panel center when the sum chip lands. A short-lived
-// radial ring + glow that punches the moment the points "hit" the box.
-function spawnScoreHitBurst(root, target) {
-  if (!target) return;
-  const doc = ownerDocumentOf(root);
-  const center = centerOf(target);
-  if (!center || !doc?.createElement) return;
-  const burst = doc.createElement('div');
-  burst.className = 'score-hit-burst';
-  burst.style.left = `${center.x}px`;
-  burst.style.top  = `${center.y}px`;
-  appendOverlay(root, burst);
-  setTimeout(() => burst.remove?.(), 720);
 }
 
 function firstAnchorElement(root, wordTiles, placed) {
