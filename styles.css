@@ -512,7 +512,9 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   cursor:pointer; position:relative; user-select:none; -webkit-user-select:none;
   box-shadow:0 3px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.6);
-  transition:transform .1s,box-shadow .1s;
+  /* Motion token: game-piece selection lift settles in on the persistent node
+     (gameScreen toggles .sel in place, not via a rebuild). See BOOST_MOTION_SPEC §6.1. */
+  transition:transform var(--motion-micro) var(--ease-standard),box-shadow var(--motion-micro) var(--ease-standard);
   /* The rack renders .bt2 as a <div> (inherits Heebo from body), but the
      exchange overlay renders it as a <button> — and form controls do NOT
      inherit font-family, so those tiles fell back to the UA font. Inherit
@@ -1758,6 +1760,27 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   100% { opacity: 1;   transform: scale(1); }
 }
 .tile-place-in { animation: tilePlaceIn 0.22s cubic-bezier(0.22,1,0.36,1) both; will-change: transform; }
+
+/* ── 3b. Tentative tile placement (Phase 3A) ──
+   Fires ONCE when the player taps a tile onto an empty board cell, BEFORE
+   pressing Play. Deliberately gentler than the committed tilePlaceIn above:
+   a small scale-in settle, no opacity fade and no overshoot, so "I put it
+   here" never reads as "the move was accepted". See BOOST_MOTION_SPEC §6.2. */
+@keyframes tileTentativeIn {
+  0%   { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+.btile.tile-tentative-in { animation: tileTentativeIn var(--motion-fast) var(--ease-standard) both; will-change: transform; }
+
+/* ── 3c. Tentative tile returned to the rack (Phase 3A) ──
+   Fires ONCE on the rack slot a single tentative tile settles back into when
+   the player taps it off the board. Quick fade+settle: "that placement was
+   undone". Intensity 1–2. See BOOST_MOTION_SPEC §6.3. */
+@keyframes tileReturned {
+  0%   { transform: translateY(-3px) scale(0.9); opacity: 0.55; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.bt2.bt2-returned { animation: tileReturned var(--motion-fast) var(--ease-standard) both; }
 
 /* ── 4. Valid word gold flash ── */
 @keyframes validFlash {

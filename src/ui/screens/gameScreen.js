@@ -87,6 +87,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // timeout is tracked so a second exchange resets it cleanly.
   let recentlyArrivedRackIdxs = new Set();
   let recentlyArrivedClearTimer = null;
+  // One-shot "just placed tentatively" board coords ("r,c"). renderBoard injects
+  // the tile-tentative-in entrance class the first time it paints each coord,
+  // then consumes it — so the settle plays exactly once, on the placement render,
+  // and never re-fires on an unrelated board re-render. (Phase 3A.)
+  const tentativeEntryCoords = new Set();
+  // One-shot rack indices a single tentative tile just returned to. renderRack
+  // injects the bt2-returned settle onto that slot, then the set is cleared.
+  const returnedRackIdxs = new Set();
   // (r, c) of a pending tile currently highlighted on the board. Click-to-
   // select / click-again-to-recall semantics. Cleared on confirm, recall-all,
   // exchange, or any other action that empties view.placed.
@@ -387,9 +395,27 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     selectedLockDuration = null;
     selectedPlacedCoord = null;
     selectedRackIndex = (selectedRackIndex === i) ? null : i;
-    renderRack(controller.view);
+    // Toggle .sel on the LIVE rack nodes instead of rebuilding the rack. The
+    // node survives, so the .bt2 transform transition animates the lift in/out,
+    // and an A→B switch settles A down while B lifts — no flicker, no rebuild.
+    // A full renderRack would recreate the nodes and kill the transition.
+    applyRackSelection();
     renderBoard(controller.view);
     renderLockInventory(controller.view);
+  }
+
+  // Reflect selectedRackIndex onto the existing rack tiles by toggling `.sel`.
+  // Indexing matches the click handler (position in brack.children). In a
+  // non-DOM test stub brack has no children, so this is a safe no-op and the
+  // selection state (selectedRackIndex) remains the source of truth.
+  function applyRackSelection() {
+    if (!brack) return;
+    const tiles = brack.children ?? [];
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i];
+      const isSel = i === selectedRackIndex && !tile.classList?.contains?.('emp');
+      tile.classList?.[isSel ? 'add' : 'remove']?.('sel');
+    }
   }
 
   function isSamePlaced(a, b) {
@@ -405,6 +431,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       //   click on another empty cell while selected → move tile there
       if (isSamePlaced(selectedPlacedCoord, { r, c })) {
         selectedPlacedCoord = null;
+        // Deliberate single-tile return: mark the origin rack slot so it plays
+        // the "returned" settle when the tile reappears there on the next
+        // rack render. (displayRackTile empties slot `rackIndex` while placed.)
+        const returningIdx = existing?.rackIndex;
+        if (Number.isInteger(returningIdx)) returnedRackIdxs.add(returningIdx);
         controller.recallTile(r, c);
         return;
       }
@@ -482,11 +513,16 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const blocked = isCellBlockedForPlacement(controller.view, r, c);
       if (blocked) { renderBoard(controller.view); return; }
       controller.recallTile(srcCoord.r, srcCoord.c);
-      controller.placeTile({
+      // Repositioning: the destination "receives" the tile and settles (same
+      // tentative entrance as a fresh placement); the source cell just empties.
+      const moveKey = `${r},${c}`;
+      tentativeEntryCoords.add(moveKey);
+      const moved = controller.placeTile({
         r, c,
         letter: src.letter, val: src.val,
         isJoker: !!src.isJoker, rackIndex: src.rackIndex ?? null,
       });
+      if (moved === false) tentativeEntryCoords.delete(moveKey);
       return;
     }
     if (selectedLockDuration != null) {
@@ -544,7 +580,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       jokerPickedSub = bus.on('joker/picked', ({ letter: picked }) => {
         if (!pendingJokerPlacement) return;
         const { r: pr, c: pc, rackIndex: ri } = pendingJokerPlacement;
+        const jokerKey = `${pr},${pc}`;
+        tentativeEntryCoords.add(jokerKey);
         const placed = controller.placeTile({ r: pr, c: pc, letter: picked, val: 0, isJoker: true, rackIndex: ri });
+        if (placed === false) tentativeEntryCoords.delete(jokerKey);
         clearJokerSubs();
         if (placed !== false) selectedRackIndex = null;
         renderRack(controller.view);
@@ -557,8 +596,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return;
     }
 
+    const entryKey = `${r},${c}`;
+    tentativeEntryCoords.add(entryKey);
     const placed = controller.placeTile({ r, c, letter, val: rackTile.val ?? 0, isJoker: false, rackIndex: selectedRackIndex });
     if (placed !== false) selectedRackIndex = null;
+    else tentativeEntryCoords.delete(entryKey);
     renderRack(controller.view);
   }
 
@@ -965,7 +1007,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           cell.classList?.add('ht', 'lk');
           if (lastMoveCoords.has(`${r},${c}`)) cell.classList?.add('last-move');
         } else if (placedHere) {
-          cell.innerHTML = tileHTML(placedHere, /*isPlaced=*/true);
+          // Consume a one-shot tentative-entry marker so the settle plays only
+          // on the placement render, never on an unrelated board re-render.
+          const entering = tentativeEntryCoords.delete(`${r},${c}`);
+          cell.innerHTML = tileHTML(placedHere, /*isPlaced=*/true, entering ? 'tile-tentative-in' : '');
           cell.classList?.add('ht', 'np');
           if (selectedPlacedCoord && selectedPlacedCoord.r === r && selectedPlacedCoord.c === c) {
             cell.classList?.add('selected-placed');
@@ -1028,8 +1073,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         if (lastMoveCoords.has(`${br},${bc}`)) bsq.classList?.add('last-move');
         ensureBsqTileWrap(bsq).innerHTML = tileHTML(committed, /*isPlaced=*/false);
       } else if (placedHere) {
+        const entering = tentativeEntryCoords.delete(`${br},${bc}`);
         bsq.classList?.add('bsq-tile-host', 'np');
-        ensureBsqTileWrap(bsq).innerHTML = tileHTML(placedHere, /*isPlaced=*/true);
+        ensureBsqTileWrap(bsq).innerHTML = tileHTML(placedHere, /*isPlaced=*/true, entering ? 'tile-tentative-in' : '');
         if (selectedPlacedCoord && selectedPlacedCoord.r === br && selectedPlacedCoord.c === bc) {
           bsq.classList?.add('selected-placed');
         }
@@ -1134,14 +1180,19 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       // glow class so the user can see what's new. Cleared after 2s by
       // the EV.TILES_EXCHANGED subscriber.
       const arrived = recentlyArrivedRackIdxs.has(i) ? ' bt2-just-arrived' : '';
+      // One-shot "returned to rack" settle for a single tile just recalled.
+      const returned = returnedRackIdxs.has(i) ? ' bt2-returned' : '';
       const display = isJoker
         ? `<span class="jok-sym"><img class="jok-img" src="jocker.PNG" alt=""></span>`
         : letter;
       const valDisplay = isJoker ? '' : val;
       const anim = shouldAnimate ? ` anim-in" style="animation:tileDropIn .35s cubic-bezier(.22,.68,0,1.2) both;animation-delay:${i * 35}ms"` : '"';
       const dataLetter = isJoker ? '?' : letter;
-      html += `<div class="bt2${sel}${jok}${arrived}${anim} data-rack-letter="${dataLetter}" data-rack-idx="${i}"><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
+      html += `<div class="bt2${sel}${jok}${arrived}${returned}${anim} data-rack-letter="${dataLetter}" data-rack-idx="${i}"><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
     }
+    // Consume the one-shot return markers so the settle plays only on this
+    // rebuild, not on any later rack render.
+    returnedRackIdxs.clear();
     brack.innerHTML = html;
   }
 
@@ -1312,11 +1363,19 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     if (countUpPollHandle) { try { clearInterval(countUpPollHandle); } catch { /* swallow */ } countUpPollHandle = null; }
     if (activeSlotTimer) { try { clearTimeout(activeSlotTimer); } catch { /* swallow */ } activeSlotTimer = null; }
     if (recentlyArrivedClearTimer) { try { clearTimeout(recentlyArrivedClearTimer); } catch { /* swallow */ } recentlyArrivedClearTimer = null; }
+    tentativeEntryCoords.clear();
+    returnedRackIdxs.clear();
     for (const off of cleanups) try { off(); } catch { /* swallow */ }
     cleanups.length = 0;
   }
 
-  return { unmount };
+  return {
+    unmount,
+    // Test-only seams (the DOM stub can't parse rack children, so selection
+    // state isn't observable via innerHTML). Prefixed `_`, unused in production.
+    _getSelectedRackIndex: () => selectedRackIndex,
+    _selectRack: (i) => selectRack(i),
+  };
 }
 
 function makeExchangeTile(root, letter, index, selected) {
@@ -1485,9 +1544,9 @@ function isOpponentPreview(view, r, c) {
   return !!previewTileAt(view, r, c);
 }
 
-function tileHTML(tile, isPlaced) {
+function tileHTML(tile, isPlaced, extraClass = '') {
   const isJoker = !!tile.isJoker;
-  const cls = `btile${isPlaced ? ' nw' : ''}${isJoker ? ' jk' : ''}`;
+  const cls = `btile${isPlaced ? ' nw' : ''}${isJoker ? ' jk' : ''}${extraClass ? ` ${extraClass}` : ''}`;
   // Pure-joker (no chosen letter) shows the jocker.PNG image; a joker that
   // has been resolved to a real letter shows the picked letter (no image).
   const display = isJoker && !tile.letter

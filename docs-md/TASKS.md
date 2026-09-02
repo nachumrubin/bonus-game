@@ -5,6 +5,23 @@
 The motion contract is `docs-md/BOOST_MOTION_SPEC.md` (supersedes the audit's
 §H/§I recommendations where they conflict).
 
+**Phase 3A (Core Tile Tactility) — DONE (September 2026).** First visible motion
+pass, scoped to rack selection, tentative placement, and tentative return. See
+CHANGELOG. New semantic classes: `.btile.tile-tentative-in`, `.bt2.bt2-returned`;
+`.bt2` selection lift now animated via an in-place `.sel` toggle; local confirm
+no longer re-pops tiles (opponent arrival keeps `tilePlaceIn`). Zero new JS
+timers; reduced motion handled entirely by existing CSS rules.
+
+Deferred findings logged during 3A (out of scope, for later phases):
+- `body.tile-selected` (the bonus-square "pulse when a tile is selected") is
+  never toggled by the spine — legacy/dead. The `#bsq` pulse relies on it, so it
+  currently doesn't fire. Revisit when Boost-square feedback is designed.
+- `.selected-placed` (a placed tile tapped to reposition/recall) uses a LOOPING
+  pulse (`selectedPlacedPulse .9s infinite`) — a persistent-state loop the spec
+  generally discourages. Left as-is (not one of the three 3A interactions).
+- The two duplicate `.bt2` / `.bt2.sel` CSS blocks (509/522 and 1507/1516) remain
+  — not normalized (would be a broader tile-CSS refactor, out of 3A scope).
+
 **Phase 2B (Motion Foundation & Timing Integrity) — DONE (September 2026).**
 Tokens, effective reduced-motion preference model + settings toggle, timing
 ownership + reduced-motion floors, lifecycle/dead-code cleanup, and the removal

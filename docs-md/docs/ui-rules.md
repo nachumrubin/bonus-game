@@ -436,6 +436,32 @@ Both collapse to a small non-zero floor (`REDUCED_MOTION_GATE_MS` /
 `REDUCED_MOTION_GRACE_MS`) under reduced motion — never zero (misclick + clock
 grace are preserved).
 
+### Tile tactility (Phase 3A)
+The three highest-frequency tile interactions have dedicated, semantic motion —
+all pure CSS (one transition + two keyframes), so reduced motion makes them
+instant with no JS involved:
+
+- **Rack selection** — `selectRack` toggles `.sel` on the LIVE rack node
+  (`applyRackSelection`), NOT a rebuild, so the `.bt2` transform transition
+  (`--motion-micro`/`--ease-standard`) animates the `translateY(-7px)` lift in and
+  out. A rebuild would recreate the node and kill the transition.
+- **Tentative placement** — `.btile.tile-tentative-in` (`@keyframes tileTentativeIn`,
+  `--motion-fast`, scale 0.88→1, no overshoot). Applied one-shot via
+  `tentativeEntryCoords` consumed in `renderBoard` (grid + bonus squares) so it
+  fires only on the placement render. Deliberately gentler than committed
+  `tilePlaceIn`. Repositioning reuses it on the destination cell.
+- **Tentative return** — `.bt2.bt2-returned` (`@keyframes tileReturned`,
+  `--motion-fast`) on the origin rack slot (resolved from the tile's `rackIndex`),
+  applied one-shot via `returnedRackIdxs` consumed in `renderRack`.
+- **No double-pop on confirm** — `animationController` emits `tilePlaceIn` for
+  OPPONENT moves only; local tiles already played their tentative settle, so a
+  local confirm shows `validFlash` + the score sequence instead.
+
+`tileHTML(tile, isPlaced, extraClass)` takes an optional `extraClass` so a
+one-shot animation class can be baked into the render string (browser-correct and
+observable in the DOM-stub tests). `mountGameScreen` exposes `_getSelectedRackIndex`
+/ `_selectRack` test seams (the stub can't parse rack children).
+
 ### Motion tokens & reduced motion
 - Canonical motion constants (durations `MOTION_MICRO/FAST/NORMAL/REWARD`,
   easings `EASE_STANDARD/EXIT/BOUNCE`, press scales) live in

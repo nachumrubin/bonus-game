@@ -2,6 +2,54 @@
 
 ---
 
+## Core Tile Tactility (Phase 3A) — September 2026
+
+First *visible* motion pass, scoped strictly to the three highest-frequency
+physical tile interactions. Default look is unchanged except for these three
+moments feeling more tactile.
+
+**Rack tile selection** now animates a subtle lift. `selectRack` toggles `.sel`
+on the LIVE rack node instead of rebuilding the rack (`applyRackSelection`), so
+the existing `.bt2` transform transition (retimed to `--motion-micro` /
+`--ease-standard`) animates the lift in and out and an A→B switch settles A down
+while B lifts — no flicker, no rebuild, no loop. The selected state is unchanged
+(`translateY(-7px)` + gold); only its *entrance* is now animated.
+
+**Tentative tile placement** (before Play) gets a new gentle settle
+(`tileTentativeIn`, `--motion-fast`, scale 0.88→1, no opacity fade, no overshoot)
+— deliberately lighter than the committed `tilePlaceIn` so "I put it here" never
+reads as "the move was accepted". Applied one-shot via a coord set consumed in
+`renderBoard` (grid + perimeter bonus squares), so it fires only on the placement
+render, never on an unrelated board re-render. Repositioning a tentative tile
+reuses the same entrance on the destination cell.
+
+**Returning a tentative tile** to the rack (tap-off) plays a quick settle
+(`tileReturned`, `--motion-fast`) on the origin rack slot — resolved from the
+tile's `rackIndex`, applied one-shot in `renderRack`.
+
+**No double-pop on confirm.** `animationController` no longer emits `tilePlaceIn`
+for LOCAL moves — those tiles already played their tentative settle, so
+confirmation is communicated by `validFlash` + the score sequence. OPPONENT tiles
+(not previously visible as local tentative tiles) keep their `tilePlaceIn`
+arrival pop. This preserves the local-vs-opponent semantic distinction (§13).
+
+Reduced motion needs no new code: all three are pure CSS (a transition and two
+keyframes), so the existing `@media` / `data-reduced-motion` rules make them
+instant while the selected/tentative/committed *states* stay fully legible.
+**Phase 3A adds zero JS timers.**
+
+Runtime validation (headless Chromium against the offline 2P game): the selected
+tile computes `translateY(-7px)` on the live node; under `data-reduced-motion`
+the same lift is present with `transition-duration: 1e-05s` (state kept, motion
+removed); a placed cell renders `btile nw tile-tentative-in` (tentative, distinct
+from committed). The project's `@playwright/test` remains uninstalled (no project
+`node_modules`), so `npm run test:e2e` still can't run and the capture used the
+global `playwright` library directly.
+
+Unit suite: 1343 → 1347 passing.
+
+---
+
 ## Motion Foundation & Timing Integrity (Phase 2B) — September 2026
 
 First implementation phase of the motion system (`docs-md/BOOST_MOTION_SPEC.md`).

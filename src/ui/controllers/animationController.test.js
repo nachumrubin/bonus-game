@@ -16,7 +16,10 @@ test('MOVE_CONFIRMED triggers the expected animation directives', () => {
     score: 4,
   });
   const kinds = ac._directives.map(d => d.kind);
-  assert.ok(kinds.includes('tilePlaceIn'));
+  // A LOCAL move does NOT re-pop the tiles on confirm — they already played
+  // their tentative-placement settle in gameScreen (Phase 3A). Confirmation is
+  // communicated by validFlash + the score sequence instead.
+  assert.ok(!kinds.includes('tilePlaceIn'), 'local confirm must not re-pop the placed tiles');
   assert.ok(kinds.includes('validFlash'));
   assert.ok(kinds.includes('scoringWordGlow'));
   // The score sequence is now a single merge directive — per-word chips

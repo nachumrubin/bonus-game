@@ -97,7 +97,12 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   }
 
   function emitMoveAnimations({ slot, placed, words, wordTiles, score, multiplier, opponent = false, scoringDeferred = false }) {
-    trigger({ kind: 'tilePlaceIn',     payload: { slot, placed, opponent } });
+    // Local tiles already played their tentative-placement settle in gameScreen
+    // when the player put them down (Phase 3A) — re-popping them on confirm would
+    // double-animate. Confirmation is instead communicated by validFlash + the
+    // score sequence below. Opponent tiles were NOT previously visible as local
+    // tentative tiles, so they still get an arrival pop (BOOST_MOTION_SPEC §6/§13).
+    if (opponent) trigger({ kind: 'tilePlaceIn', payload: { slot, placed, opponent } });
     if (!opponent) trigger({ kind: 'validFlash', payload: { slot, words, wordTiles, placed } });
     if ((placed?.length ?? 0) >= RACK_SIZE) {
       trigger({ kind: 'bingoLabel', payload: { slot, placed, wordTiles } });

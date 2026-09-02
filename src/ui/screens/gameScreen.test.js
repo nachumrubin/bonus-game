@@ -788,7 +788,7 @@ test('animation renderer lights word tiles, floats score, and flashes score pane
   animationController.dispose();
 });
 
-test('animation renderer applies tile-place-in and is-valid on MOVE_CONFIRMED', () => {
+test('local MOVE_CONFIRMED flashes is-valid but does NOT re-pop tiles (no double placement)', () => {
   const { controller } = fresh();
   const animationController = createAnimationController({ bus, mySlot: null });
   const { root, elements } = makeGameDom();
@@ -802,11 +802,94 @@ test('animation renderer applies tile-place-in and is-valid on MOVE_CONFIRMED', 
     score: 1,
   });
 
-  assert.ok(elements.get('c3_3').classList.contains('tile-place-in'),
-    'placed cell should receive tile-place-in');
+  // Confirmation = validity flash; the tentative-placement settle already
+  // happened when the tile was put down, so no committed re-pop (Phase 3A).
   assert.ok(elements.get('c3_3').classList.contains('is-valid'),
     'placed cell should receive is-valid (valid word flash)');
+  assert.ok(!elements.get('c3_3').classList.contains('tile-place-in'),
+    'local committed tiles must not re-pop on confirm');
   animationController.dispose();
+});
+
+test('opponent OPPONENT_MOVED still pops arriving tiles (tile-place-in)', () => {
+  const { controller } = fresh();
+  const animationController = createAnimationController({ bus, mySlot: 0 });
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, animationController, root });
+
+  bus.emit(EV.OPPONENT_MOVED, {
+    slot: 1,
+    placed: [{ r: 6, c: 6, letter: 'ב', val: 3 }],
+    words: ['ב'],
+    wordTiles: [[{ r: 6, c: 6, letter: 'ב', val: 3 }]],
+    score: 3,
+  });
+
+  // Opponent tiles were not previously visible as local tentative tiles, so an
+  // arrival pop is still the right feedback.
+  assert.ok(elements.get('c6_6').classList.contains('tile-place-in'),
+    'opponent-arriving tiles should receive tile-place-in');
+  animationController.dispose();
+});
+
+// ─── Phase 3A: tile tactility ───────────────────────────────────────────
+
+test('tentative placement: a newly placed tile settles once (tile-tentative-in), not on re-render', () => {
+  const { controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  // Select rack slot 0 ('א') and place it on an empty cell via the real click paths.
+  const brack = elements.get('brack');
+  const rackTile = makeEl({ id: 'rt0', classes: ['bt2'] });
+  brack.appendChild(rackTile);
+  brack.fireClick(rackTile);
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+
+  assert.equal(controller.view.placed.length, 1, 'tile placed tentatively');
+  assert.match(elements.get('c4_4').innerHTML, /tile-tentative-in/,
+    'placement plays the tentative settle exactly once');
+  // It must be a tentative (nw) tile, never the committed styling.
+  assert.match(elements.get('c4_4').innerHTML, /btile nw/, 'still tentative, not committed');
+
+  // Re-render the board by selecting the placed tile — the settle must NOT re-fire.
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  assert.ok(!/tile-tentative-in/.test(elements.get('c4_4').innerHTML),
+    'no re-animation on an unrelated board re-render');
+});
+
+test('returning a tentative tile settles its rack slot once (bt2-returned)', () => {
+  const { controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  // Place a tile that originated from rack slot 0, then tap it off the board.
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1, rackIndex: 0 });
+  elements.get('game-grid').fireClick(elements.get('c4_4')); // select the placed tile
+  elements.get('game-grid').fireClick(elements.get('c4_4')); // tap again → return to rack
+
+  assert.equal(controller.view.placed.length, 0, 'tile returned to the rack');
+  assert.match(elements.get('brack').innerHTML, /bt2-returned/,
+    'the origin rack slot plays the return settle');
+
+  // A later rack render must not re-apply it (one-shot).
+  controller.recallAll();
+  assert.ok(!/bt2-returned/.test(elements.get('brack').innerHTML),
+    'return settle plays once, not on subsequent rack renders');
+});
+
+test('rack selection state: switching moves selection cleanly; re-tap toggles off', () => {
+  const { controller } = fresh();
+  const { root } = makeGameDom();
+  const screen = mountGameScreen({ controller, root });
+
+  assert.equal(screen._getSelectedRackIndex(), null, 'nothing selected initially');
+  screen._selectRack(2);
+  assert.equal(screen._getSelectedRackIndex(), 2, 'select A');
+  screen._selectRack(5);
+  assert.equal(screen._getSelectedRackIndex(), 5, 'switch A→B leaves only B selected');
+  screen._selectRack(5);
+  assert.equal(screen._getSelectedRackIndex(), null, 're-tapping B deselects');
 });
 
 test('animation renderer adds illegal-tile + is-invalid then rollback-pop on INVALID_MOVE_REJECTED', async () => {
