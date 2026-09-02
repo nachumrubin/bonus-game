@@ -37,7 +37,7 @@ import {
   HOLD_AFTER_MERGE_MS   as SCORE_MERGE_HOLD_AFTER_MS,
   SUM_FLIGHT_MS         as SCORE_MERGE_SUM_FLIGHT_MS,
   SUM_CHIP_HOLD_MS,
-  COUNTUP_PEAK_MS,
+  countUpDurationMs,
   mergeSequenceTiming,
   scoreSequenceLandingMs,
   scoreInteractionGateMs,
@@ -244,7 +244,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const startTime = nowFn();
       const startValue = state.current;
       const delta = state.target - startValue;
-      const durationMs = Math.min(COUNTUP_PEAK_MS, 350 + Math.abs(delta) * 12);
+      // Bounded count-up curve owned by scoreAnimationTimings (BOOST_MOTION_SPEC
+      // §11): small deltas feel near-instant, large deltas earn a slightly
+      // longer climb, never a long latency just because the score grew.
+      const durationMs = countUpDurationMs(delta);
       const tick = (t) => {
         const elapsed = Math.min(1, (t - startTime) / durationMs);
         const eased = 1 - Math.pow(1 - elapsed, 3);

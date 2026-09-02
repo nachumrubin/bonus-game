@@ -770,19 +770,18 @@ test('animation renderer lights word tiles, floats score, and flashes score pane
   // Score-merge sequence: sum chip plants at the word, the word's +N
   // chip flies into the sum, then after a hold the sum flies into the
   // player panel. Timing for one word + no bonus extra:
-  //   merge end  = 0 + 380 ms        (single word's flight)
-  //   hold       = 420 ms
-  //   sum flight = 480 ms
-  //   → sum lands ~1280 ms after MOVE_CONFIRMED.
-  assert.ok(elements.get('c4_4').classList.contains('scoring-word-glow'));
+  //   merge end  = 0 + 240 ms        (single word's flight)
+  //   hold       = 200 ms
+  //   sum flight = 300 ms
+  //   → sum lands ~740 ms after MOVE_CONFIRMED (Phase 3B retiming).
   await new Promise(r => setTimeout(r, 200));
   assert.ok(
     elements.get('body').children.some(el => el.classList.contains('scoring-float-label')),
     'the +TOTAL sum chip should be in the overlay during the merge sequence',
   );
-  // score-pop fires when the sum chip lands (~1280 ms) and lingers ~500
+  // score-pop fires when the sum chip lands (~740 ms) and lingers ~500
   // ms. Sample inside that window.
-  await new Promise(r => setTimeout(r, 1200));
+  await new Promise(r => setTimeout(r, 600));
   assert.ok(elements.get('sv1').classList.contains('score-pop'),
     'sv1 should receive score-pop once the sum chip arrives');
   animationController.dispose();

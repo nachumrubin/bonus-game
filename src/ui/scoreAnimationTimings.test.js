@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 
 import {
   COUNTUP_PEAK_MS,
+  COUNTUP_BASE_MS,
   MULT_MERGE_DELAY_MS,
+  GATE_SETTLE_TAIL_MS,
   mergeSequenceTiming,
+  countUpDurationMs,
   scoreSequenceLandingMs,
   scoreInteractionGateMs,
   scoreClockGraceMs,
@@ -13,15 +16,27 @@ import {
 } from './scoreAnimationTimings.js';
 
 test('scoreSequenceLandingMs: bare move lands after a fixed short beat; scored move tracks the merge timeline', () => {
-  assert.equal(scoreSequenceLandingMs({ wordCount: 0, bonusExtra: 0 }), 460);
+  assert.equal(scoreSequenceLandingMs({ wordCount: 0, bonusExtra: 0 }), 360);
   const scored = scoreSequenceLandingMs({ wordCount: 2, bonusExtra: 0, multiplier: 1 });
   assert.equal(scored, mergeSequenceTiming({ wordCount: 2, bonusExtra: 0, multiplier: 1 }).totalToPanelLanding);
 });
 
-test('scoreInteractionGateMs preserves the historical gate value (landing + count-up peak)', () => {
-  // Historical formula was scoreAnimationLandingMs(...) + 900.
+test('scoreInteractionGateMs is the chip landing plus a short fixed settle tail (decoupled from the count-up peak)', () => {
+  // Phase 3B: the input gate no longer waits out the whole count-up — it reopens
+  // a short beat after the sum chip lands; the count-up keeps climbing harmlessly.
   const gate = scoreInteractionGateMs({ wordCount: 2, bonusExtra: 5, multiplier: 1 });
-  assert.equal(gate, scoreSequenceLandingMs({ wordCount: 2, bonusExtra: 5, multiplier: 1 }) + COUNTUP_PEAK_MS);
+  assert.equal(gate, scoreSequenceLandingMs({ wordCount: 2, bonusExtra: 5, multiplier: 1 }) + GATE_SETTLE_TAIL_MS);
+  // And it is strictly shorter than the clock grace, which stays conservative.
+  assert.ok(gate < scoreClockGraceMs({ wordCount: 2, bonusExtra: 5, multiplier: 1 }),
+    'input reopens before the (fairness-conservative) clock grace elapses');
+});
+
+test('countUpDurationMs: small deltas are near-instant, large deltas are bounded by the peak', () => {
+  assert.equal(countUpDurationMs(0), COUNTUP_BASE_MS);
+  assert.equal(countUpDurationMs(2), COUNTUP_BASE_MS + 24);
+  assert.equal(countUpDurationMs(-2), COUNTUP_BASE_MS + 24, 'magnitude only (sign-independent)');
+  assert.equal(countUpDurationMs(10000), COUNTUP_PEAK_MS, 'never exceeds the peak');
+  assert.ok(countUpDurationMs(4) < 300, 'a small everyday score resolves in well under 300ms');
 });
 
 test('scoreClockGraceMs now includes the ×N multiplier phase (the bug the old local copy omitted)', () => {
