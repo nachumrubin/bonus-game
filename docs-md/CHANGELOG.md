@@ -2,6 +2,62 @@
 
 ---
 
+## Motion Foundation & Timing Integrity (Phase 2B) — September 2026
+
+First implementation phase of the motion system (`docs-md/BOOST_MOTION_SPEC.md`).
+Foundation only — the default (non-reduced) visual experience is unchanged;
+the work is underneath. Landed as four reviewable commits.
+
+**Motion tokens & reduced-motion preference.** New `src/ui/motionTokens.js`
+(canonical duration/easing/press-scale constants, mirrored as `:root` CSS
+custom properties) and `src/ui/motionPreference.js` (the single source of truth
+for the effective reduced-motion preference: explicit tri-state → legacy flag →
+OS `prefers-reduced-motion` → normal). The OS preference is read live and never
+persisted as an explicit choice. `settingsCompat` gained a `reducedMotion`
+`'auto'|'on'|'off'` tri-state with migration from the legacy
+`skipAnimations`/`animationsEnabled` flags; a "תנועה מופחתת" (Reduced motion)
+toggle was added to the settings overlay. A `:root[data-reduced-motion]` CSS
+hook mirrors the existing `@media` rule so an explicit choice also drives CSS.
+
+**Timing ownership + reduced-motion floors** (after runtime verification, below).
+`scoreAnimationTimings.js` gained named shared helpers that make the spec's
+distinction explicit: `scoreInteractionGateMs` (visual/coherence input gating)
+and `scoreClockGraceMs` (incoming-clock fairness), each with a reduced-motion
+floor (never zero). `turnTimerController.js` dropped its duplicated local
+constants/formula and uses `scoreClockGraceMs` — which also **fixes the omitted
+×N multiplier phase** so the freeze matches the visible sequence. `gameScreen.js`
+dropped the two hardcoded `900`s (now `COUNTUP_PEAK_MS`) and routes the gate +
+count-up start through the shared helpers. Under reduced motion these JS
+choreography timers now shrink to their floors, so a reduced-motion player
+interacts promptly instead of waiting ~2–3s for animations that don't play.
+The duplicated bonus-overlay predicate was centralised into
+`domHelpers.bonusOverlayOpen` (used by both the score-commit gate and the
+count-up gate).
+
+**Lifecycle + dead-code cleanup.** `gameScreen.js` now uses the shared
+`flashAnimation` primitive (was a byte-identical local copy) and cancels its
+three screen-lifetime timers on unmount. Removed the shadowed duplicate
+`@keyframes bonusPulse` and the dead `@keyframes multPulse`, and the misleading
+`multiplierLabel` directive (it rendered a bare "×" for multi-word moves — not
+an actual multiplier; the real ×N chip is unaffected).
+
+**Runtime verification (spec §11, `tests/unit/motion-timing-verification.test.js`):**
+- **T1** — the engine binds every action to `currentTurnSlot` and mutates
+  synchronously, so the interaction gate is visual coherence, not a correctness
+  barrier → safe to floor.
+- **T2** — the clock freeze suppresses auto-pass while it holds and rebuilds a
+  fresh deadline on resume, so a shortened freeze causes no spurious auto-pass →
+  it is clock fairness, safe to floor.
+- **T3** — a leaked overlay count defers the score-commit *animation*
+  indefinitely, but the score is already committed in engine state (a dropped
+  visual, never a state bug); normal balanced-event flows flush fine → no
+  polling rewrite this phase, only the duplicated predicate centralised.
+
+Unit suite: 1318 → 1343 passing (+25). No engine, Firebase-rule, or default
+visual behaviour changed.
+
+---
+
 ## Boost Motion Specification (Phase 2A) — September 2026
 
 Architecture-validation-only pass (no production code changed). Challenged the

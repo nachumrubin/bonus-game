@@ -626,9 +626,12 @@ the player has separately muted them.
 
 ## 11. Runtime Verification Plan
 
+> **Phase 2B results (September 2026).** T1–T3 were run as deterministic tests
+> exercising the real engine/controllers (`tests/unit/motion-timing-verification.test.js`).
+> Outcomes are recorded inline under each test below; T4–T6 remain planned.
+
 Only tests that cannot be settled by static reading. Each: scenario →
-instrumentation → expected observation → decision implied by each outcome. **No
-implementation in this phase.**
+instrumentation → expected observation → decision implied by each outcome.
 
 ### T1 — Is the interaction gate a correctness barrier or only visual? *(gates §1.9, §9.3)*
 - **Scenario:** after an opponent/bot move, during the `activeSlotTimer` window,
@@ -640,6 +643,10 @@ implementation in this phase.**
 - **Decision:** if rejected everywhere → gate is visual → **safe to floor under
   reduced motion.** If any command is accepted and mutates state → gate is
   load-bearing → **keep it; do not floor.**
+- **RESULT (Phase 2B): visual.** The engine's `handleConfirmMove`/`handlePass`
+  bind every action to `state.currentTurnSlot` and mutate synchronously; two
+  passes advance 0→1→0, so a UI acting "early" can never move out of turn or
+  twice as one slot. Gate floored under reduced motion (`REDUCED_MOTION_GATE_MS`).
 
 ### T2 — Does the clock freeze / its duration affect correctness? *(gates §1.2, §9.4)*
 - **Scenario:** offline timed game and a live online game; make a
@@ -653,6 +660,12 @@ implementation in this phase.**
 - **Decision:** if no spurious pass and deadlines stay correct → freeze is fairness
   → **floor it under reduced motion.** If a shorter freeze causes a wrong/early
   auto-pass → **freeze has a correctness role; keep a real minimum.**
+- **RESULT (Phase 2B): fairness.** While frozen the timer suppresses the
+  auto-pass dispatch even past the deadline; on resume the offline deadline is
+  rebuilt fresh. Both the full freeze and the shortened reduced-motion freeze
+  (`REDUCED_MOTION_GRACE_MS`) produce zero spurious auto-passes. Freeze floored
+  under reduced motion; its duration now also includes the ×N multiplier phase
+  (via the shared `scoreClockGraceMs`), fixing the old under-count.
 
 ### T3 — Can the overlay gate deadlock the score animation? *(gates §5.4)*
 - **Scenario:** force `overlayCount` to leak positive — dispose the controller
@@ -664,6 +677,13 @@ implementation in this phase.**
 - **Decision:** if it can hang → **the event-driven source + bounded timeout (§5.4)
   is a real fix.** If it always self-heals → the rewrite is a *simplification*
   only; schedule it lower priority.
+- **RESULT (Phase 2B): defers a VISUAL only, and not under realistic flows.** A
+  dropped `bonus/resolved` holds the score-commit animation indefinitely, but the
+  score is already committed in engine state — never a state problem. A normal
+  balanced `pending`/`resolved` flow flushes it. Per the stop-condition, **no
+  polling rewrite this phase**; only the duplicated overlay predicate was
+  centralised (`domHelpers.bonusOverlayOpen`), which is semantics-preserving. The
+  event-driven source + bounded safety timeout (§5.4) remains deferred.
 
 ### T4 — Do score animation and timer resume actually overlap by ~300ms? *(gates §1.2)*
 - **Scenario:** multiplier + multi-word move.

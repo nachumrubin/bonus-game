@@ -2,25 +2,43 @@
 
 ## Boost Motion Spec (Phase 2A) — approved contract, September 2026
 
-The motion contract is now `docs-md/BOOST_MOTION_SPEC.md` (supersedes the
-audit's §H/§I recommendations where they conflict). Still spec-only — no code
-changed. Before any implementation (Phase 2B), an agent MUST run the runtime
-verification plan (spec §11); several changes are gated on its results:
+The motion contract is `docs-md/BOOST_MOTION_SPEC.md` (supersedes the audit's
+§H/§I recommendations where they conflict).
 
-- [ ] **T1 (gates gate-flooring):** prove the interaction gate is visual, not a
-  correctness barrier — engine must reject early/out-of-turn commands.
-- [ ] **T2 (gates freeze-flooring):** prove the clock freeze is fairness, not
-  correctness — a shortened freeze must not cause a spurious auto-pass.
-- [ ] **T3 (gates overlay rewrite):** prove the overlay poll *can* deadlock
-  before replacing it with the event-driven overlay-state source.
-- [ ] **T4:** confirm the ~300ms score-animation vs timer-resume overlap.
-- [ ] **T5:** confirm unmount-surviving timers (`activeSlotTimer`,
-  `recentlyArrivedClearTimer`) fire post-unmount before clearing them.
+**Phase 2B (Motion Foundation & Timing Integrity) — DONE (September 2026).**
+Tokens, effective reduced-motion preference model + settings toggle, timing
+ownership + reduced-motion floors, lifecycle/dead-code cleanup, and the removal
+of the misleading `multiplierLabel`. See CHANGELOG. Runtime verification results:
+
+- [x] **T1 (gate-flooring):** verified the interaction gate is visual, not a
+  correctness barrier (engine binds actions to `currentTurnSlot`). Gate floored
+  under reduced motion.
+- [x] **T2 (freeze-flooring):** verified the clock freeze is fairness (suppresses
+  auto-pass; a shortened freeze causes no spurious pass). Freeze floored under
+  reduced motion; ×N multiplier phase fixed.
+- [x] **T3 (overlay):** reproduced only a deferred *visual* (never a state bug),
+  and not under realistic flows → no polling rewrite; duplicated predicate
+  centralised into `domHelpers.bonusOverlayOpen`.
+
+Still open (later phases):
+
+- [ ] **T4:** confirm the ~300ms score-animation vs timer-resume overlap
+  (now moot for the freeze — it consumes the shared timing — but still worth a
+  visual check in the visual phase).
+- [ ] **T5:** superseded — unmount now cancels `activeSlotTimer`,
+  `recentlyArrivedClearTimer`, and `countUpPollHandle` (guarded no-ops), with a
+  mock-timer regression test. Broader stale-render audit can continue if needed.
 - [ ] **T6:** confirm accordion `max-height` jank on a low-end profile before
-  rewriting it.
-- [ ] Implementation then follows the spec's 6-phase roadmap (§12): tokens &
-  mechanical hygiene → primitives & reduced-motion model → gameplay motion →
-  reward motion → overlay architecture & performance.
+  rewriting it (Phase 5).
+- [ ] **Deferred overlay work:** the event-driven overlay-state source + bounded
+  safety timeout (spec §5.4) — only if a realistic deadlock is ever observed.
+- [ ] **Visual phases (spec §12 Phases 3–5):** gameplay motion (rack pickup,
+  tentative placement, retimed valid/invalid/boost feedback), reward motion
+  (victory/draw/defeat, Elo reveal), and polish/perf. Not started — Phase 2B is
+  foundation only.
+- [ ] **Press-scale migration:** the `--press-scale-control` / `--press-scale-tile`
+  tokens exist but the ad-hoc `:active` scales were intentionally NOT migrated in
+  2B (visual-adjacent) — do in a later pass.
 
 Design decisions locked by the spec (for implementers, do not re-litigate):
 remove `multiplierLabel` (misleading bare `×`); demote the 2200ms boost-badge

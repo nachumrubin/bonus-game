@@ -390,7 +390,6 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `tilePlaceIn` | Tile placed on board |
 | `validFlash` | Move accepted |
 | `bingoLabel` | 8-tile bingo achieved |
-| `multiplierLabel` | Score multiplier active |
 | `tileCascadeIn` | Tiles refilled from bag |
 | `scoreMergeSequence` | Score animates from board to scoreboard |
 | `scoringWordGlow` | Words glow during score calculation |
@@ -408,16 +407,55 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `bagBounce` | Tile bag bounce |
 
 ### Timing Constants
-Defined in both `animationController.js` and `gameScreen.js` (must match):
+All score-sequence timing lives in the shared module
+[src/ui/scoreAnimationTimings.js](../../src/ui/scoreAnimationTimings.js) —
+`animationController.js`, `gameScreen.js`, and `turnTimerController.js` all
+import from it (no local copies; the old duplicates were removed).
 
 ```javascript
 WORD_MERGE_STAGGER_MS = 250    // delay between word merge steps
 WORD_MERGE_FLIGHT_MS  = 380    // duration of word-to-score flight
+MULT_MERGE_DELAY_MS   = 300    // gap before the ×N multiplier chip flies in
 BOOST_MERGE_DELAY_MS  = 250    // delay before boost merge
 HOLD_AFTER_MERGE_MS   = 420    // hold after merge completes
 SUM_FLIGHT_MS         = 480    // total score flight
 COUNTUP_PEAK_MS       = 900    // score count-up peak
 ```
+
+The module also exports two **named helpers that separate visual timing from
+gameplay-safe timing** (see `docs-md/BOOST_MOTION_SPEC.md` §9):
+- `scoreInteractionGateMs(...)` — how long the primary controls stay blocked
+  after a scored move (visual coherence + misclick avoidance; NOT correctness).
+  Consumed by `gameScreen.js`'s active-slot swap / interaction gate.
+- `scoreClockGraceMs(...)` — how long the incoming player's clock is frozen
+  during the score animation (fairness; NOT correctness). Consumed by
+  `turnTimerController.js`'s score-animation freeze — which now includes the ×N
+  multiplier phase.
+
+Both collapse to a small non-zero floor (`REDUCED_MOTION_GATE_MS` /
+`REDUCED_MOTION_GRACE_MS`) under reduced motion — never zero (misclick + clock
+grace are preserved).
+
+### Motion tokens & reduced motion
+- Canonical motion constants (durations `MOTION_MICRO/FAST/NORMAL/REWARD`,
+  easings `EASE_STANDARD/EXIT/BOUNCE`, press scales) live in
+  [src/ui/motionTokens.js](../../src/ui/motionTokens.js), mirrored as `:root`
+  CSS custom properties (`--motion-*`, `--ease-*`, `--press-scale-*`) in
+  `styles.css` (kept in lockstep by hand).
+- The effective reduced-motion preference is resolved in ONE place,
+  [src/ui/motionPreference.js](../../src/ui/motionPreference.js): explicit
+  tri-state (`uiPreferences.reducedMotion`) → legacy flag → OS
+  `prefers-reduced-motion` → normal. Nothing else calls `matchMedia` directly.
+  It stamps `data-reduced-motion` on the document root; `styles.css` honours both
+  that attribute and the `@media (prefers-reduced-motion: reduce)` rule. The OS
+  value is read live and never persisted.
+- The directive layer respects it via `animationController.setEnabled(...)`
+  (driven from `motionPreference`); the non-directive JS timers (interaction
+  gate, clock freeze, count-up start) respect it via the floors above.
+- Shared reflow-restart primitive: `domHelpers.flashAnimation(el, cls, ms)`
+  (used by `gameScreen.js`); shared overlay predicate:
+  `domHelpers.bonusOverlayOpen(doc)` (used by both the score-commit gate in
+  `animationController.js` and the count-up gate in `gameScreen.js`).
 
 ### Bonus Overlay Gating
 The score-commit animation is **held** while bonus overlays are visible. `animationController` polls for overlay close every 100ms:
