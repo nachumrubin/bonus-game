@@ -1266,7 +1266,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       },
       scoreMergeSequence: (payload) => playScoreMergeSequence(root, payload),
       bingoLabel:         (payload) => floatBonusLabel(root, payload, 'BINGO +50', 'bingo-label'),
-      multiplierLabel:    (payload) => floatBonusLabel(root, payload, '×', 'multiplier-label'),
+      // multiplierLabel renderer removed — the directive no longer fires (it
+      // rendered a misleading bare "×"; see animationController + spec §1.5).
       // bonusExtraLabel is intentionally not wired — every bonus-square
       // activation now opens the modal `bonusAwardOverlay` so the player
       // can't miss it. Leaving the renderer keyed but unused would let a

@@ -364,10 +364,9 @@ body.tile-selected .bsq:not(.used){
   animation: bonusPulse 1s ease-in-out infinite;
   cursor:pointer;
 }
-@keyframes bonusPulse{
-  0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.45);}
-  50%{box-shadow:0 0 10px rgba(232,200,64,.8),inset 0 1px 0 rgba(255,255,255,.45);}
-}
+/* @keyframes bonusPulse is defined once, further down (the gold-glow version).
+   A duplicate definition here used to be silently shadowed by it (CSS keeps the
+   last @keyframes of a given name) — removed to avoid the footgun. */
 .bsq.used{background:#b0aa88;border-color:#888060;opacity:.6;cursor:default;}
 /* When a tile lands on a bonus square, an absolutely-positioned wrapper
    carries the .btile HTML. We hide the lightning glyph so only the tile
@@ -1030,7 +1029,6 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .td2{width:5px;height:5px;border-radius:50%;background:var(--by);animation:tp 1.1s ease-in-out infinite;}
 .td2:nth-child(2){animation-delay:.2s;}.td2:nth-child(3){animation-delay:.4s;}
 @keyframes tp{0%,100%{opacity:.25;transform:scale(.65)}50%{opacity:1;transform:scale(1.3)}}
-@keyframes multPulse{from{opacity:.7;transform:scale(.97)}to{opacity:1;transform:scale(1.03)}}
 
 /* Settings overlay controls */
 .sopt-btn{

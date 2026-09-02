@@ -75,7 +75,7 @@ test('MOVE_CONFIRMED skips bingoLabel for partial placements', () => {
   ac.dispose();
 });
 
-test('MOVE_CONFIRMED emits multiplierLabel when more than one word is formed', () => {
+test('MOVE_CONFIRMED does NOT emit a multiplierLabel for a multi-word move (misleading bare "×" removed)', () => {
   bus._reset();
   const ac = createAnimationController({ bus, mySlot: 0 });
   bus.emit(EV.MOVE_CONFIRMED, {
@@ -86,7 +86,10 @@ test('MOVE_CONFIRMED emits multiplierLabel when more than one word is formed', (
     score: 6,
   });
   const kinds = ac._directives.map(d => d.kind);
-  assert.ok(kinds.includes('multiplierLabel'));
+  assert.ok(!kinds.includes('multiplierLabel'), 'the removed directive no longer fires');
+  // The real score choreography still runs — the multiple word chips flying to
+  // the sum are what communicate a multi-word move.
+  assert.ok(kinds.includes('scoreMergeSequence'), 'the score sequence still animates the move');
   ac.dispose();
 });
 

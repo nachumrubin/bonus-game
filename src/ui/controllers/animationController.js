@@ -102,9 +102,11 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     if ((placed?.length ?? 0) >= RACK_SIZE) {
       trigger({ kind: 'bingoLabel', payload: { slot, placed, wordTiles } });
     }
-    if ((words?.length ?? 0) > 1) {
-      trigger({ kind: 'multiplierLabel', payload: { slot, words, wordTiles } });
-    }
+    // (A multi-word move used to emit a `multiplierLabel` directive that
+    // rendered a misleading bare "×" — it meant "more than one word", not a
+    // score multiplier, and the real ×N multiplier already has its own chip in
+    // the score-merge sequence. Removed per BOOST_MOTION_SPEC §1.5; the multiple
+    // word chips flying to the sum already communicate the multi-word move.)
     // The booster's rack just got refilled from the bag — cascade the new
     // tiles in. Opponent moves don't touch the local rack so skip there.
     if (!opponent && (placed?.length ?? 0) > 0) {
