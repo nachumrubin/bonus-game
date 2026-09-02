@@ -1245,7 +1245,13 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           if (tile) flashClass(tile, 'tile-place-in', 260);
         }
       },
-      validFlash:         (payload) => flashWordTiles(root, payload, 'is-valid', 260),
+      validFlash:         (payload) => {
+        // Under reduced motion the animated gold flash (a keyframe) is killed by
+        // the reduced-motion CSS blanket, so paint a brief STATIC brightness lift
+        // instead — the "accepted" information survives without movement (§15).
+        const cls = (payload?.reducedMotion || prefersReducedMotion()) ? 'rm-accept' : 'is-valid';
+        flashWordTiles(root, payload, cls, 420);
+      },
       shakeWord:          ({ placed, invalidWordTiles } = {}) => {
         // Tile-level shake: flash `is-invalid` on the .btile inside each
         // affected cell. Prefer the full illegal-word tiles when the engine

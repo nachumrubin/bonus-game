@@ -4160,7 +4160,7 @@ async function boot() {
     }
     const session = await createOnlineGameSession({ bus, db, room, mySlot });
     const controller = createGameController({ bus, session, mySlot });
-    const animationController = createAnimationController({ bus, mySlot });
+    const animationController = createAnimationController({ bus, mySlot, reducedMotion: () => getMotionPreference().isReduced() });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
       controller,
@@ -4365,7 +4365,7 @@ async function boot() {
     // detection silently stopped working).
     const humanSlot = (bot || mode === 'tutorial') ? 0 : null;
     const controller = createGameController({ bus, session, mySlot: humanSlot });
-    const animationController = createAnimationController({ bus, mySlot: humanSlot, showOpponentBoostOverlay: !!bot });
+    const animationController = createAnimationController({ bus, mySlot: humanSlot, showOpponentBoostOverlay: !!bot, reducedMotion: () => getMotionPreference().isReduced() });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
       controller,

@@ -258,6 +258,56 @@ test('setEnabled(false) makes all triggers no-ops at the renderer level', () => 
   ac.dispose();
 });
 
+test('reduced motion: choreography off, but accept/reject INFO still reaches the renderer as static cues', () => {
+  bus._reset();
+  const calls = [];
+  const ac = createAnimationController({ bus, reducedMotion: () => true });
+  ac.setRenderer({
+    validFlash:         (p) => calls.push(['validFlash', p]),
+    shakeWord:          (p) => calls.push(['shakeWord', p]),
+    illegalPulse:       (p) => calls.push(['illegalPulse', p]),
+    scoreMergeSequence: (p) => calls.push(['scoreMergeSequence', p]),
+    scoringWordGlow:    (p) => calls.push(['scoringWordGlow', p]),
+  });
+  ac.setEnabled(false); // reduced motion disables the full choreography
+
+  bus.emit(EV.MOVE_CONFIRMED, {
+    slot: 0, placed: [{ r: 4, c: 4, letter: 'א', val: 1 }], words: ['א'],
+    wordTiles: [[{ r: 4, c: 4, letter: 'א', val: 1 }]], score: 1,
+  });
+  bus.emit(EV.INVALID_MOVE_REJECTED, {
+    reason: 'word-not-in-dictionary', placed: [{ r: 2, c: 2, letter: 'א', val: 1 }], invalidWords: ['אא'],
+  });
+
+  const invoked = calls.map(c => c[0]);
+  // The two information-critical cues get through, flagged reducedMotion.
+  assert.ok(invoked.includes('validFlash'), 'accepted-move cue still renders');
+  assert.ok(invoked.includes('illegalPulse'), 'rejected-move cue still renders');
+  assert.equal(calls.find(c => c[0] === 'validFlash')[1].reducedMotion, true);
+  assert.equal(calls.find(c => c[0] === 'illegalPulse')[1].reducedMotion, true);
+  // The moving choreography stays off — no chip flight, and no separate shake
+  // (illegalPulse's static red already carries "rejected").
+  assert.ok(!invoked.includes('scoreMergeSequence'), 'no chip flight under reduced motion');
+  assert.ok(!invoked.includes('scoringWordGlow'), 'no per-word glow under reduced motion');
+  assert.ok(!invoked.includes('shakeWord'), 'the shake (pure motion) is skipped under reduced motion');
+  ac.dispose();
+});
+
+test('disabled WITHOUT reduced motion stays a full no-op (animations simply off)', () => {
+  bus._reset();
+  let rendererCalls = 0;
+  const ac = createAnimationController({ bus, reducedMotion: () => false });
+  ac.setRenderer({ validFlash: () => { rendererCalls++; }, illegalPulse: () => { rendererCalls++; } });
+  ac.setEnabled(false);
+  bus.emit(EV.MOVE_CONFIRMED, {
+    slot: 0, placed: [{ r: 4, c: 4, letter: 'א', val: 1 }], words: ['א'],
+    wordTiles: [[{ r: 4, c: 4, letter: 'א', val: 1 }]], score: 1,
+  });
+  bus.emit(EV.INVALID_MOVE_REJECTED, { reason: 'word-not-in-dictionary', placed: [], invalidWords: ['אא'] });
+  assert.equal(rendererCalls, 0, 'reduced-motion fall-through only applies when reduced motion is actually on');
+  ac.dispose();
+});
+
 test('renderer errors do not break the controller', () => {
   bus._reset();
   const ac = createAnimationController({ bus });

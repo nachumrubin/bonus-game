@@ -24,7 +24,7 @@ import {
 // during the merge sequence). Brief and non-looping — see emitScoreSequence.
 const SCORING_WORD_GLOW_MS = 360;
 
-export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false }) {
+export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false, reducedMotion = () => false }) {
   if (!bus) throw new Error('createAnimationController: bus required');
 
   let enabled = true;
@@ -33,19 +33,41 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   function setEnabled(on) { enabled = !!on; }
   function setRenderer(r) { renderer = r; }
 
+  // Directives whose INFORMATION the player must still receive under reduced
+  // motion, even though the full choreography is disabled — an accepted move
+  // and a rejected move. The renderer paints these as a STATIC emphasis (no
+  // travel). Everything else stays a no-op while disabled. Sound/haptic are
+  // unaffected (they aren't motion). BOOST_MOTION_SPEC §15.
+  //   - validFlash  → a brief static brightness lift on the played tiles.
+  //   - illegalPulse → the static red that identifies the illegal placement
+  //     (the shake is skipped; illegalPulse already carries the "rejected" info).
+  const REDUCED_MOTION_INFO = new Set(['validFlash', 'illegalPulse']);
+
   // Translate an engine event payload into an animation directive that the
   // renderer can act on. Keeping the directives data-only means tests can
   // assert on them without a DOM.
   const directives = []; // append-only log of triggered animations (for tests)
+  function callRenderer(kind, payload) {
+    try {
+      const fn = renderer[kind];
+      if (fn) fn(payload);
+    } catch (e) {
+      console.warn('[anim]', kind, e);
+    }
+  }
   function trigger(directive) {
     directives.push(directive);
-    if (!enabled || !renderer) return;
-    try {
-      const fn = renderer[directive.kind];
-      if (fn) fn(directive.payload);
-    } catch (e) {
-      console.warn('[anim]', directive.kind, e);
+    if (!renderer) return;
+    if (!enabled) {
+      // Choreography off. Under reduced motion, still forward the small set of
+      // information-critical directives so the player gets a static accept/reject
+      // cue; the renderer branches on its own reduced-motion flag.
+      if (reducedMotion() && REDUCED_MOTION_INFO.has(directive.kind)) {
+        callRenderer(directive.kind, { ...directive.payload, reducedMotion: true });
+      }
+      return;
     }
+    callRenderer(directive.kind, directive.payload);
   }
 
   const subs = [];

@@ -813,6 +813,50 @@ test('local MOVE_CONFIRMED flashes is-valid but does NOT re-pop tiles (no double
   animationController.dispose();
 });
 
+test('reduced motion: accepted move paints a static rm-accept cue (no animated is-valid)', () => {
+  const { controller } = fresh();
+  const animationController = createAnimationController({ bus, mySlot: null, reducedMotion: () => true });
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, animationController, root, prefersReducedMotion: () => true });
+  animationController.setEnabled(false); // reduced motion disables the choreography
+
+  bus.emit(EV.MOVE_CONFIRMED, {
+    slot: 0,
+    placed: [{ r: 3, c: 3, letter: 'א', val: 1 }],
+    words: ['א'],
+    wordTiles: [[{ r: 3, c: 3, letter: 'א', val: 1 }]],
+    score: 1,
+  });
+
+  assert.ok(elements.get('c3_3').classList.contains('rm-accept'),
+    'accepted move shows the static brightness cue under reduced motion');
+  assert.ok(!elements.get('c3_3').classList.contains('is-valid'),
+    'the animated gold flash (killed by the reduced-motion blanket) is not used');
+  animationController.dispose();
+});
+
+test('reduced motion: rejected move still shows the static red identification', () => {
+  const { controller } = fresh();
+  const animationController = createAnimationController({ bus, mySlot: null, reducedMotion: () => true });
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, animationController, root, prefersReducedMotion: () => true });
+  animationController.setEnabled(false);
+
+  bus.emit(EV.INVALID_MOVE_REJECTED, {
+    reason: 'word-not-in-dictionary',
+    placed: [{ r: 2, c: 2, letter: 'א', val: 1 }],
+    invalidWords: ['אא'],
+  });
+
+  // illegalPulse still runs under reduced motion (it is already a static red);
+  // the shake (pure motion) is skipped.
+  assert.ok(elements.get('c2_2').classList.contains('illegal-tile'),
+    'the illegal placement is still identified in red under reduced motion');
+  assert.ok(!elements.get('c2_2').classList.contains('is-invalid'),
+    'the shake is not applied under reduced motion');
+  animationController.dispose();
+});
+
 test('opponent OPPONENT_MOVED still pops arriving tiles (tile-place-in)', () => {
   const { controller } = fresh();
   const animationController = createAnimationController({ bus, mySlot: 0 });

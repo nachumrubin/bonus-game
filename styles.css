@@ -1792,6 +1792,13 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 }
 .is-valid { animation: validFlash var(--motion-fast) var(--ease-standard) both; }
 
+/* Reduced-motion accept cue. A STATIC brightness lift painted via a plain
+   `filter` property (no keyframe, no transition) so it survives the
+   reduced-motion blanket above, which sets animation:none. The renderer holds
+   it briefly then removes it. Its reject counterpart needs no dedicated class —
+   `.illegal-tile` is already a static red (BOOST_MOTION_SPEC §15). */
+.rm-accept { filter: brightness(1.4) drop-shadow(0 0 4px rgba(255,220,0,.7)); }
+
 /* ── 5. Invalid word shake ── */
 @keyframes shakeWord {
   0%,100% { transform: translateX(0); }
