@@ -59,6 +59,7 @@ import { startMatchmaking } from './game/online/spineMatchmaking.js';
 
 import { createGameController } from './ui/controllers/gameController.js';
 import { createAnimationController } from './ui/controllers/animationController.js';
+import { getMotionPreference } from './ui/motionPreference.js';
 import { createGameFlowController } from './ui/controllers/gameFlowController.js';
 import { createTurnTimerController } from './ui/controllers/turnTimerController.js';
 import { createDisconnectController } from './ui/controllers/disconnectController.js';
@@ -388,6 +389,12 @@ async function boot() {
   });
 
   const uiPreferences = settingsCompat.loadUiPreferences(globalThis.localStorage);
+  // Resolve the effective reduced-motion preference once at boot and stamp the
+  // root attribute so CSS honours an explicit choice (the OS case is covered by
+  // the @media rule regardless). This is the single source of truth for motion
+  // preference; other UI code reads it, never matchMedia directly.
+  const motionPref = getMotionPreference();
+  motionPref.applyToRoot();
   const bootSettings = settingsCompat.loadGameSettings(globalThis.localStorage, globalThis);
   settingsCompat.applyGameSettingsToGlobals(globalThis, {
     ...bootSettings,
@@ -4154,7 +4161,7 @@ async function boot() {
     const session = await createOnlineGameSession({ bus, db, room, mySlot });
     const controller = createGameController({ bus, session, mySlot });
     const animationController = createAnimationController({ bus, mySlot });
-    animationController.setEnabled(settingsCompat.loadUiPreferences(globalThis.localStorage).animationsEnabled);
+    animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
       controller,
       animationController,
@@ -4358,7 +4365,7 @@ async function boot() {
     const humanSlot = (bot || mode === 'tutorial') ? 0 : null;
     const controller = createGameController({ bus, session, mySlot: humanSlot });
     const animationController = createAnimationController({ bus, mySlot: humanSlot, showOpponentBoostOverlay: !!bot });
-    animationController.setEnabled(settingsCompat.loadUiPreferences(globalThis.localStorage).animationsEnabled);
+    animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
       controller,
       animationController,
@@ -4486,6 +4493,7 @@ async function boot() {
     bus,
     getSettings: () => settingsCompat.settingsFromLegacyGlobals(globalThis, globalThis.__spine?.activeGame?.session?.state?.settings ?? {}),
     getUiPrefs:  () => settingsCompat.loadUiPreferences(globalThis.localStorage),
+    getReducedMotion: () => getMotionPreference().isReduced(),
   });
   const disconnect    = mountDisconnectScreen({ bus });
   const resignConfirm = mountResignConfirmScreen({ bus });

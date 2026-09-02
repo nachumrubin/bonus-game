@@ -7,6 +7,16 @@
   --lcd:#c8ff00;
   --p1:#e74c8b; --p2:#f5a623;
 }
+/* Motion tokens — mirror of src/ui/motionTokens.js (kept in lockstep by hand;
+   see docs-md/BOOST_MOTION_SPEC.md §4). CSS-only animations read these; JS
+   schedulers read the JS module. */
+:root{
+  --motion-micro:120ms; --motion-fast:220ms; --motion-normal:320ms; --motion-reward:600ms;
+  --ease-standard:cubic-bezier(0.22,1,0.36,1);
+  --ease-exit:cubic-bezier(0.4,0,1,1);
+  --ease-bounce:cubic-bezier(0.34,1.56,0.64,1);
+  --press-scale-control:0.96; --press-scale-tile:0.92;
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 *{scrollbar-width:none!important;-ms-overflow-style:none!important;}
 *::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}
@@ -1695,12 +1705,23 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
    ANIMATION SYSTEM — smooth, mobile-first, performance-safe
 ══════════════════════════════════════════════════════════════ */
 
-/* Respect user reduced-motion preference */
+/* Respect user reduced-motion preference.
+   Two triggers, same effect:
+   - the OS setting (the @media rule), and
+   - an EXPLICIT in-app "Reduced motion" choice, which motionPreference.js
+     stamps as [data-reduced-motion] on the root even when the OS has no
+     preference. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none !important;
     transition-duration: 0.01ms !important;
   }
+}
+:root[data-reduced-motion] *,
+:root[data-reduced-motion] *::before,
+:root[data-reduced-motion] *::after {
+  animation: none !important;
+  transition-duration: 0.01ms !important;
 }
 
 /* ── 1. Screen transition ── */
