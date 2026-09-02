@@ -14,6 +14,7 @@
 
 import { EV } from '../../events/eventTypes.js';
 import { RACK_SIZE } from '../../game/core/tileBag.js';
+import { bonusOverlayOpen } from '../domHelpers.js';
 import {
   WORD_MERGE_STAGGER_MS,
   COUNTUP_PEAK_MS,
@@ -126,18 +127,8 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   let pendingCommitPayload = null;
   let pollHandle = null;
 
-  function bonusOverlayPresentDom() {
-    const doc = globalThis.document;
-    if (!doc) return false;
-    for (const id of ['ov-bonus', 'ov-bonus-intro']) {
-      const el = doc.getElementById?.(id);
-      if (el && !el.classList?.contains?.('hidden')) return true;
-    }
-    if (doc.querySelector?.('.bonus-award-positioner')) return true;
-    return false;
-  }
   function isOverlayActive() {
-    return overlayCount > 0 || bonusOverlayPresentDom();
+    return overlayCount > 0 || bonusOverlayOpen(globalThis.document);
   }
   function flushScoreCommit() {
     if (!pendingCommitPayload || isOverlayActive()) return;

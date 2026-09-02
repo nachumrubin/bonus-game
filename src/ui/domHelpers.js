@@ -35,3 +35,18 @@ export function flashAnimation(el, className, removeAfterMs = 600) {
     setTimeout(() => el.classList?.remove(className), removeAfterMs);
   }
 }
+
+// True while a bonus overlay that should hold the score-commit / count-up
+// animation is on screen: the mini-game intro, the mini-game UI, or the bonus
+// award modal. Single shared predicate so animationController (score-commit
+// gate) and gameScreen (count-up gate) can't drift apart — the two used to keep
+// byte-identical private copies (see ANIMATION_AUDIT §D, BOOST_MOTION_SPEC §5.4).
+export function bonusOverlayOpen(doc = globalThis.document) {
+  if (!doc) return false;
+  for (const id of ['ov-bonus', 'ov-bonus-intro']) {
+    const el = doc.getElementById?.(id);
+    if (el && !el.classList?.contains?.('hidden')) return true;
+  }
+  if (doc.querySelector?.('.bonus-award-positioner')) return true;
+  return false;
+}

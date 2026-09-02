@@ -24,7 +24,7 @@
 // The tile HTML structure mirrors legacy renderBoard() / renderRack() so
 // the existing CSS keyframes and layout rules apply unchanged.
 
-import { $, on, setText, setClass } from '../domHelpers.js';
+import { $, on, setText, setClass, bonusOverlayOpen } from '../domHelpers.js';
 import { setAvatarEl } from './avatarScreens.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
@@ -37,7 +37,10 @@ import {
   HOLD_AFTER_MERGE_MS   as SCORE_MERGE_HOLD_AFTER_MS,
   SUM_FLIGHT_MS         as SCORE_MERGE_SUM_FLIGHT_MS,
   SUM_CHIP_HOLD_MS,
+  COUNTUP_PEAK_MS,
   mergeSequenceTiming,
+  scoreSequenceLandingMs,
+  scoreInteractionGateMs,
 } from '../scoreAnimationTimings.js';
 
 export const GAME_SCREEN_INTENT = Object.freeze({
@@ -61,7 +64,7 @@ function cellIdFor(r, c) {
 // `resolveAvatar(uid) => Promise<avatar|null>` (optional): looks up a player's
 // CURRENT avatar, so the identity strip doesn't render the copy frozen into the
 // room document at invite time. Omitted → the stored room avatar is used as-is.
-export function mountGameScreen({ controller, animationController, jokerPicker = null, bus = null, resolveAvatar = null, root = globalThis.document }) {
+export function mountGameScreen({ controller, animationController, jokerPicker = null, bus = null, resolveAvatar = null, root = globalThis.document, prefersReducedMotion = () => false }) {
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
@@ -135,12 +138,17 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     lastMoveActive = placed.length > 0;
   }
 
-  // Shared score-merge-sequence landing time (when the red sum chip lands
-  // on the player's score box). Mirrors the constants in
-  // animationController.scoreMergeTiming and gameScreen.playScoreMergeSequence.
+  // When the red sum chip lands on the player's score box. Delegates to the
+  // shared timing (single source of truth) so this can't drift from
+  // animationController / playScoreMergeSequence.
   function scoreAnimationLandingMs(wordCount, bonusExtra, multiplier = 1) {
-    if (!wordCount && !bonusExtra) return 460;
-    return mergeSequenceTiming({ wordCount, bonusExtra, multiplier }).totalToPanelLanding;
+    return scoreSequenceLandingMs({ wordCount, bonusExtra, multiplier });
+  }
+  // The count-up should start the moment the sum chip lands — except under
+  // reduced motion, where the chip choreography is skipped entirely (the
+  // animation controller is disabled), so there is nothing to wait for.
+  function countUpStartDelayMs(wordCount, bonusExtra, multiplier = 1) {
+    return prefersReducedMotion() ? 0 : scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
   }
   function lastMoveHighlightActive() {
     return lastMoveActive;
@@ -164,14 +172,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // hold while any of these are open so the count-up doesn't fire under
   // a still-visible overlay.
   function bonusOverlayPresent() {
-    const doc = ownerDocumentOf(root) ?? globalThis.document;
-    if (!doc) return false;
-    for (const id of ['ov-bonus', 'ov-bonus-intro']) {
-      const el = doc.getElementById?.(id);
-      if (el && !el.classList?.contains?.('hidden')) return true;
-    }
-    if (doc.querySelector?.('.bonus-award-positioner')) return true;
-    return false;
+    return bonusOverlayOpen(ownerDocumentOf(root) ?? globalThis.document);
   }
 
   let countUpPollHandle = null;
@@ -200,7 +201,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const wordCount = Array.isArray(v?.lastMove?.wordTiles) ? v.lastMove.wordTiles.length : 0;
       const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
       const multiplier = Number(v?.lastMove?.multiplier) || 1;
-      const delay = scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
+      const delay = countUpStartDelayMs(wordCount, bonusExtra, multiplier);
       animateScore(el, t, delay);
     }
   }
@@ -235,7 +236,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const startTime = nowFn();
       const startValue = state.current;
       const delta = state.target - startValue;
-      const durationMs = Math.min(900, 350 + Math.abs(delta) * 12);
+      const durationMs = Math.min(COUNTUP_PEAK_MS, 350 + Math.abs(delta) * 12);
       const tick = (t) => {
         const elapsed = Math.min(1, (t - startTime) / durationMs);
         const eased = 1 - Math.pow(1 - elapsed, 3);
@@ -700,7 +701,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const wordCount  = Array.isArray(v?.lastMove?.wordTiles) ? v.lastMove.wordTiles.length : 0;
     const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
     const multiplier = Number(v?.lastMove?.multiplier) || 1;
-    const countUpDelay = scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
+    const countUpDelay = countUpStartDelayMs(wordCount, bonusExtra, multiplier);
     animateScore($('#sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#sv2', root), v.scores[1] ?? 0, countUpDelay);
     animateScore($('#is-sv1', root), v.scores[0] ?? 0, countUpDelay);
@@ -831,12 +832,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return;
     }
     if (activeSlotTimer) return;
-    // count-up finishes ~900ms after it starts; align swap with that
-    // (and include the score-merge sequence so the swap doesn't beat the
-    // count-up).
+    // Hold the previous player's glow + block input until the score animation
+    // settles (chip landing + count-up peak). This is visual coherence +
+    // misclick avoidance, NOT a correctness barrier — the engine validates
+    // every command regardless (see BOOST_MOTION_SPEC §9). Under reduced motion
+    // it collapses to a small misclick floor.
     const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
     const multiplier = Number(v?.lastMove?.multiplier) || 1;
-    const total = scoreAnimationLandingMs(wordCount, bonusExtra, multiplier) + 900;
+    const total = scoreInteractionGateMs({ wordCount, bonusExtra, multiplier, reducedMotion: prefersReducedMotion() });
     activeSlotTimer = setTimeout(() => {
       activeSlotTimer = null;
       displayedTurnSlot = controller.view?.currentTurnSlot ?? target;

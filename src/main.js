@@ -4172,6 +4172,7 @@ async function boot() {
       // bot games build their players from the live profile at start, so a
       // lookup there would be a redundant read.
       resolveAvatar: resolveAvatarForUid,
+      prefersReducedMotion: () => getMotionPreference().isReduced(),
     });
     const bonusFlow = attachBonusFlow(session);
     const reactionCtrl = mountReactionController({
@@ -4371,6 +4372,7 @@ async function boot() {
       animationController,
       jokerPicker: globalThis.__spine?.jokerPicker ?? null,
       bus,
+      prefersReducedMotion: () => getMotionPreference().isReduced(),
     });
 
     const bonusFlow = attachBonusFlow(session, { botSlot: bot ? 1 : null });
@@ -4507,6 +4509,7 @@ async function boot() {
   const turnTimer     = createTurnTimerController({
     bus,
     sessionRef: () => globalThis.__spine?.activeGame?.session ?? null,
+    prefersReducedMotion: () => getMotionPreference().isReduced(),
   });
   const disconnectCtl = createDisconnectController({
     bus,
