@@ -2,6 +2,66 @@
 
 ---
 
+## Word Resolution & Score Feedback (Phase 3B) — September 2026
+
+Made the end of a turn feel fast and causal instead of ceremonial. Scoped to
+what happens after Play: valid/invalid acknowledgement, rollback, and the
+score-merge choreography. No victory/Elo/achievement/boost-badge/transition work.
+
+**Brisk timing model.** The score-merge flight/hold/stagger constants
+(`scoreAnimationTimings.js`) were roughly halved. The causal story is unchanged
+(per-word chip → ×N → bonus → sum → panel → count-up), it just plays faster. An
+ordinary one-word move's sum chip now lands ~740ms after Play (was ~1280ms) and
+the whole thing settles ~1.3s (was ~2.2s). Representative gate durations dropped
+~50% (simple 2180→1000ms, 2-word 2430→1150ms, 2-word+×2+bonus 2980→1490ms).
+
+**Bounded count-up.** The count-up duration is now an owned, tested curve
+(`countUpDurationMs` = `min(800, 200 + |Δ|·12)`) instead of a hardcoded
+`min(900, 350 + Δ·12)`: a small +2 resolves in ~224ms (was 374ms), big moves stay
+capped. Small deltas feel near-instant.
+
+**Decoupled interaction gate.** The input gate now reopens a short fixed settle
+(`GATE_SETTLE_TAIL_MS` = 260) after the sum chip lands, rather than waiting out
+the full count-up peak — the count-up keeps climbing harmlessly after input is
+live. The clock-freeze grace stays conservative (full count-up peak) for
+fairness. The two are now explicitly separate numbers (BOOST_MOTION_SPEC §14).
+
+**De-stacked feedback (fewer simultaneous signals).**
+- `validFlash` shortened (0.5s → the gameplay token) and softened — a brief
+  "accepted" beat, no longer competing with the score glow.
+- `scoringWordGlow` was a ~1.5s breathing loop that ran until the count-up
+  finished (the main "why is it still animating?" offender) → a single brief
+  one-shot flash as each word's chip launches.
+- Invalid word: dropped the infinite red pulse loop (the shake already supplies
+  the motion) → a static strong red that identifies the bad placement, held
+  ~500ms (was 700) then rolled back — still inside the 1100ms gameplay auto-pass
+  hold, which is unchanged (owned by `gameController`, not motion).
+- Score landing: ONE response — a softened panel-arrive pulse (scale 1.18→1.12,
+  0.62s → normal token) plus the count-up — removing the radial hit-burst
+  (`spawnScoreHitBurst` + CSS deleted) and the separate number `score-pop` that
+  used to fire on the same frame.
+
+**Reduced-motion scoring.** Under reduced motion the choreography is skipped (no
+chip flight — correct) and the count-up runs directly (arithmetic preserved). The
+accept/reject *information*, previously dropped entirely, now survives: the
+animation controller forwards a small whitelist (`validFlash`, `illegalPulse`)
+even while disabled, and the renderer paints them static — an accepted word gets
+`.rm-accept` (a plain-`filter` brightness lift that survives the reduced-motion
+CSS blanket), a rejected word keeps the static red `.illegal-tile`; the shake
+(pure motion) is skipped. Sound/haptic are untouched (not motion).
+
+**Multiplier / bonus preserved.** The real ×N chip and the bonus-extra chip keep
+their semantic roles in the merge sequence (arithmetic stays legible), just
+retimed. `multiplierLabel` remains removed (Phase 2B).
+
+Runtime-validated in headless Chromium with timestamped DOM/computed-style traces
+over the full sequence (normal + reduced motion) — see the Phase 3B verification
+note in `BOOST_MOTION_SPEC.md` §11. Files: `scoreAnimationTimings.js`,
+`controllers/animationController.js`, `screens/gameScreen.js`, `styles.css`,
+`main.js`, plus their tests.
+
+---
+
 ## Core Tile Tactility (Phase 3A) — September 2026
 
 First *visible* motion pass, scoped strictly to the three highest-frequency

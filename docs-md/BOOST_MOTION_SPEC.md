@@ -629,6 +629,20 @@ the player has separately muted them.
 > **Phase 2B results (September 2026).** T1–T3 were run as deterministic tests
 > exercising the real engine/controllers (`tests/unit/motion-timing-verification.test.js`).
 > Outcomes are recorded inline under each test below; T4–T6 remain planned.
+>
+> **Phase 3B runtime observation (September 2026).** The retimed score/reject
+> choreography was validated in headless Chromium (global `playwright`, offline
+> 2P) with timestamped DOM/computed-style traces sampled across each sequence —
+> evidence type 3 in §19 (continuous video capture was not available in this
+> environment; frame grabs were taken as supplemental). Confirmed over time:
+> a simple accepted move's `validFlash` + one-shot word glow both clear by
+> ~500ms and the sum chip lands at ~740ms (was ~1280ms); a 2-word + ×2 + bonus
+> move stages word chips → ×N → bonus → sum (+24) and lands ~1230ms, settling
+> ~1600ms; the removed radial hit-burst never appears; an invalid word shows the
+> shake to ~260ms and the static red to ~500ms then rolls back, all inside the
+> unchanged 1100ms auto-pass hold; and under OS reduced-motion no chips fire at
+> all while `.rm-accept` / static `.illegal-tile` still convey accept/reject and
+> `#sv` transition-duration collapses to ~0. T4–T6 remain planned.
 
 Only tests that cannot be settled by static reading. Each: scenario →
 instrumentation → expected observation → decision implied by each outcome.

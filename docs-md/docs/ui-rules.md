@@ -413,24 +413,33 @@ All score-sequence timing lives in the shared module
 import from it (no local copies; the old duplicates were removed).
 
 ```javascript
-WORD_MERGE_STAGGER_MS = 250    // delay between word merge steps
-WORD_MERGE_FLIGHT_MS  = 380    // duration of word-to-score flight
-MULT_MERGE_DELAY_MS   = 300    // gap before the ×N multiplier chip flies in
-BOOST_MERGE_DELAY_MS  = 250    // delay before boost merge
-HOLD_AFTER_MERGE_MS   = 420    // hold after merge completes
-SUM_FLIGHT_MS         = 480    // total score flight
-COUNTUP_PEAK_MS       = 900    // score count-up peak
+// Phase 3B retiming — brisk per-turn scoring (~50% shorter than Phase 2B).
+WORD_MERGE_STAGGER_MS = 150    // delay between word merge steps
+WORD_MERGE_FLIGHT_MS  = 240    // duration of word-to-score flight
+MULT_MERGE_DELAY_MS   = 180    // gap before the ×N multiplier chip flies in
+BOOST_MERGE_DELAY_MS  = 160    // delay before boost merge
+HOLD_AFTER_MERGE_MS   = 200    // hold after merge completes
+SUM_FLIGHT_MS         = 300    // total score flight
+COUNTUP_PEAK_MS       = 800    // score count-up ceiling
+GATE_SETTLE_TAIL_MS   = 260    // input reopens this long after the sum lands
+// countUpDurationMs(delta) = min(800, 200 + |delta|·12)  — bounded count-up curve
 ```
 
-The module also exports two **named helpers that separate visual timing from
-gameplay-safe timing** (see `docs-md/BOOST_MOTION_SPEC.md` §9):
+The module also exports **named helpers that separate visual timing from
+gameplay-safe timing** (see `docs-md/BOOST_MOTION_SPEC.md` §9/§14):
 - `scoreInteractionGateMs(...)` — how long the primary controls stay blocked
   after a scored move (visual coherence + misclick avoidance; NOT correctness).
-  Consumed by `gameScreen.js`'s active-slot swap / interaction gate.
+  Since Phase 3B this is `sum-chip landing + GATE_SETTLE_TAIL_MS` — a short fixed
+  tail, NOT the full count-up peak: input reopens while the count-up keeps
+  climbing (harmless; the engine already advanced). Consumed by `gameScreen.js`'s
+  active-slot swap / interaction gate.
 - `scoreClockGraceMs(...)` — how long the incoming player's clock is frozen
-  during the score animation (fairness; NOT correctness). Consumed by
-  `turnTimerController.js`'s score-animation freeze — which now includes the ×N
-  multiplier phase.
+  during the score animation (fairness; NOT correctness). Deliberately more
+  conservative than the input gate (it carries the full count-up peak) so an
+  instant commit can't shave a slice off the incoming first tick. Consumed by
+  `turnTimerController.js`'s score-animation freeze — includes the ×N phase.
+- `countUpDurationMs(delta)` — the bounded count-up curve (small deltas
+  near-instant, capped at the peak). Consumed by `gameScreen.js`'s `animateScore`.
 
 Both collapse to a small non-zero floor (`REDUCED_MOTION_GATE_MS` /
 `REDUCED_MOTION_GRACE_MS`) under reduced motion — never zero (misclick + clock
@@ -461,6 +470,33 @@ instant with no JS involved:
 one-shot animation class can be baked into the render string (browser-correct and
 observable in the DOM-stub tests). `mountGameScreen` exposes `_getSelectedRackIndex`
 / `_selectRack` test seams (the stub can't parse rack children).
+
+### Word resolution & score feedback (Phase 3B)
+Scoped to what happens after Play. The causal story is unchanged (per-word chip →
+×N → bonus → sum → panel → count-up); the choreography was made brisk and each
+moment given ONE signal:
+
+- **Accepted word** — `validFlash` (`--motion-fast`, softened) is the brief
+  "accepted" beat; `scoringWordGlow` is now a single one-shot flash per word (was
+  a ~1.5s breathing loop). Both clear well before the count-up finishes.
+- **Score landing** — ONE response: the softened `score-panel-arrive` pulse
+  (scale 1.12, `--motion-normal`) plus the count-up. The radial hit-burst
+  (`spawnScoreHitBurst` + `.score-hit-burst`) and the separate number `score-pop`
+  on the landing frame were removed.
+- **Invalid word** — `is-invalid` shake (`--motion-fast`) supplies the motion;
+  `.illegal-tile` is now a STATIC strong red (the infinite `illegalPulse` loop was
+  removed) held ~500ms then `rollback-pop`. The 1100ms auto-pass hold is unchanged
+  and stays owned by `gameController` — motion never shortens it.
+- **Reduced motion** — the controller is disabled (no chip flight) but a whitelist
+  (`validFlash`, `illegalPulse`) is still forwarded so the accept/reject INFO
+  survives as a static cue: accepted → `.rm-accept` (a plain-`filter` brightness
+  lift that survives the reduced-motion blanket that sets `animation:none`);
+  rejected → the static `.illegal-tile` red; the shake is skipped. The count-up
+  runs directly (arithmetic preserved). Sound/haptic are untouched.
+
+`createAnimationController({ reducedMotion })` takes a reduced-motion predicate so
+the whitelist fall-through only applies when reduced motion is actually on
+(disabled-without-reduced-motion stays a full no-op).
 
 ### Motion tokens & reduced motion
 - Canonical motion constants (durations `MOTION_MICRO/FAST/NORMAL/REWARD`,

@@ -5,6 +5,33 @@
 The motion contract is `docs-md/BOOST_MOTION_SPEC.md` (supersedes the audit's
 §H/§I recommendations where they conflict).
 
+**Phase 3B (Word Resolution & Score Feedback) — DONE (September 2026).** Made the
+end of a turn feel fast and causal: halved the score-merge timing constants
+(simple move settles ~1.3s, was ~2.2s), replaced the hardcoded count-up with the
+bounded `countUpDurationMs` curve, decoupled the input gate (`GATE_SETTLE_TAIL_MS`)
+from the fairness clock-grace, de-stacked feedback (brief `validFlash`; one-shot
+word glow instead of a ~1.5s loop; static red instead of the infinite illegal
+pulse; single panel-arrive landing instead of arrive+burst+score-pop; removed
+`spawnScoreHitBurst`), and made reduced-motion accept/reject cues survive the
+disabled controller (`.rm-accept` + static `.illegal-tile`). The ×N and bonus
+chips keep their semantic roles. 1100ms auto-pass hold unchanged (gameplay-owned).
+See CHANGELOG and BOOST_MOTION_SPEC §11 (Phase 3B runtime note).
+
+Deferred findings logged during 3B (out of scope, for later phases):
+- **Reduced-motion bonus-award overlay:** on `BOOST_ACTIVATED` the animation
+  controller increments `overlayCount` but the `bonusAwardOverlay` directive is a
+  no-op while disabled (reduced motion), so under reduced motion the award modal
+  may not open through this path. This is boost-activation flow (out of Phase 3B
+  scope) and likely pre-existing since Phase 2B — verify and address in the boost
+  phase before relying on reduced-motion bonus play.
+- **Dead score renderers:** `scoringPointsFloat`, `scoreFlyToPanel`, `scorePop`
+  renderer methods are never triggered (the merge sequence supersedes them);
+  `flyScoreToPanel` is also dead. Safe to delete in a later cleanup pass (left in
+  place this phase to keep the diff scoped to live behavior).
+- **Audio/haptic on score landing:** there is currently NO accept/score sound
+  (only the invalid buzz + boost chirp, both already aligned). No mismatch to fix
+  per §16; a soft score-landing tick remains an optional future addition.
+
 **Phase 3A (Core Tile Tactility) — DONE (September 2026).** First visible motion
 pass, scoped to rack selection, tentative placement, and tentative return. See
 CHANGELOG. New semantic classes: `.btile.tile-tentative-in`, `.bt2.bt2-returned`;
