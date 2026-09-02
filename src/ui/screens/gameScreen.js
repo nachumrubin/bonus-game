@@ -24,7 +24,7 @@
 // The tile HTML structure mirrors legacy renderBoard() / renderRack() so
 // the existing CSS keyframes and layout rules apply unchanged.
 
-import { $, on, setText, setClass, bonusOverlayOpen } from '../domHelpers.js';
+import { $, on, setText, setClass, bonusOverlayOpen, flashAnimation } from '../domHelpers.js';
 import { setAvatarEl } from './avatarScreens.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
@@ -1306,6 +1306,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       if (state.timer) try { clearTimeout(state.timer); } catch { /* swallow */ }
     }
     scoreTweens.clear();
+    // Cancel the screen-lifetime timers so they can't fire a stale render (or
+    // re-render the rack) against a torn-down screen after unmount.
+    if (countUpPollHandle) { try { clearInterval(countUpPollHandle); } catch { /* swallow */ } countUpPollHandle = null; }
+    if (activeSlotTimer) { try { clearTimeout(activeSlotTimer); } catch { /* swallow */ } activeSlotTimer = null; }
+    if (recentlyArrivedClearTimer) { try { clearTimeout(recentlyArrivedClearTimer); } catch { /* swallow */ } recentlyArrivedClearTimer = null; }
     for (const off of cleanups) try { off(); } catch { /* swallow */ }
     cleanups.length = 0;
   }
@@ -1507,13 +1512,9 @@ function lockSummaryText(inventory) {
   return locks.map(n => `🔒${n}`).join('  ');
 }
 
-function flashClass(el, cls, durationMs) {
-  if (!el) return;
-  el.classList?.remove(cls);
-  void el.offsetWidth;
-  el.classList?.add(cls);
-  if (durationMs > 0) setTimeout(() => el.classList?.remove(cls), durationMs);
-}
+// The shared reflow-restart primitive (this was a byte-identical local copy).
+// Same behaviour: remove class → force reflow → re-add → auto-remove after ms.
+const flashClass = flashAnimation;
 
 function flashWordTiles(root, { wordTiles, placed } = {}, className, durationMs) {
   const coords = uniqueTileCoords(wordTiles, placed);

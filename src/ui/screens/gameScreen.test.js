@@ -912,4 +912,26 @@ test('animation renderer bounces bag and cascades rack on exchange', () => {
   animationController.dispose();
 });
 
+test('unmount cancels the exchange rack-refresh timer (no stale re-render after teardown)', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const { controller } = fresh();
+  const animationController = createAnimationController({ bus, mySlot: null });
+  const { root, elements } = makeGameDom();
+  const screen = mountGameScreen({ controller, animationController, root });
+
+  // Exchange schedules a 2000ms timer that would re-render the rack.
+  bus.emit(EV.TILES_EXCHANGED, { count: 2 });
+  const brack = elements.get('brack');
+  assert.match(brack.innerHTML, /anim-in/, 'arrived tiles rendered with the cascade animation');
+
+  screen.unmount();
+  const afterUnmount = brack.innerHTML;
+
+  // Advance well past the 2000ms clear timer. If unmount cancelled it, the rack
+  // HTML is untouched; if it fired, renderRack would strip the cascade markup.
+  t.mock.timers.tick(5000);
+  assert.equal(brack.innerHTML, afterUnmount, 'rack was NOT re-rendered by a timer after unmount');
+  animationController.dispose();
+});
+
 console.log = _origLog;
