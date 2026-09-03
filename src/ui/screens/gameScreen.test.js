@@ -770,25 +770,27 @@ test('animation renderer lights word tiles, floats score, and flashes score pane
   // Score-merge sequence: sum chip plants at the word, the word's +N
   // chip flies into the sum, then after a hold the sum flies into the
   // player panel. Timing for one word + no bonus extra:
-  //   merge end  = 0 + 380 ms        (single word's flight)
-  //   hold       = 420 ms
-  //   sum flight = 480 ms
-  //   → sum lands ~1280 ms after MOVE_CONFIRMED.
-  assert.ok(elements.get('c4_4').classList.contains('scoring-word-glow'));
+  //   merge end  = 0 + 240 ms        (single word's flight)
+  //   hold       = 200 ms
+  //   sum flight = 300 ms
+  //   → sum lands ~740 ms after MOVE_CONFIRMED (Phase 3B retiming).
   await new Promise(r => setTimeout(r, 200));
   assert.ok(
     elements.get('body').children.some(el => el.classList.contains('scoring-float-label')),
     'the +TOTAL sum chip should be in the overlay during the merge sequence',
   );
-  // score-pop fires when the sum chip lands (~1280 ms) and lingers ~500
-  // ms. Sample inside that window.
-  await new Promise(r => setTimeout(r, 1200));
-  assert.ok(elements.get('sv1').classList.contains('score-pop'),
-    'sv1 should receive score-pop once the sum chip arrives');
+  // The single landing response — the panel-arrive pulse on the score target —
+  // fires when the sum chip lands (~740 ms) and lingers ~360 ms. There is no
+  // longer a separate score-pop or radial burst on this frame (Phase 3B).
+  await new Promise(r => setTimeout(r, 600));
+  assert.ok(elements.get('sv1').classList.contains('score-panel-arrive'),
+    'the score target receives the one landing pulse when the sum chip arrives');
+  assert.ok(!elements.get('sv1').classList.contains('score-pop'),
+    'the redundant number score-pop no longer fires on the landing frame');
   animationController.dispose();
 });
 
-test('animation renderer applies tile-place-in and is-valid on MOVE_CONFIRMED', () => {
+test('local MOVE_CONFIRMED flashes is-valid but does NOT re-pop tiles (no double placement)', () => {
   const { controller } = fresh();
   const animationController = createAnimationController({ bus, mySlot: null });
   const { root, elements } = makeGameDom();
@@ -802,11 +804,138 @@ test('animation renderer applies tile-place-in and is-valid on MOVE_CONFIRMED', 
     score: 1,
   });
 
-  assert.ok(elements.get('c3_3').classList.contains('tile-place-in'),
-    'placed cell should receive tile-place-in');
+  // Confirmation = validity flash; the tentative-placement settle already
+  // happened when the tile was put down, so no committed re-pop (Phase 3A).
   assert.ok(elements.get('c3_3').classList.contains('is-valid'),
     'placed cell should receive is-valid (valid word flash)');
+  assert.ok(!elements.get('c3_3').classList.contains('tile-place-in'),
+    'local committed tiles must not re-pop on confirm');
   animationController.dispose();
+});
+
+test('reduced motion: accepted move paints a static rm-accept cue (no animated is-valid)', () => {
+  const { controller } = fresh();
+  const animationController = createAnimationController({ bus, mySlot: null, reducedMotion: () => true });
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, animationController, root, prefersReducedMotion: () => true });
+  animationController.setEnabled(false); // reduced motion disables the choreography
+
+  bus.emit(EV.MOVE_CONFIRMED, {
+    slot: 0,
+    placed: [{ r: 3, c: 3, letter: 'א', val: 1 }],
+    words: ['א'],
+    wordTiles: [[{ r: 3, c: 3, letter: 'א', val: 1 }]],
+    score: 1,
+  });
+
+  assert.ok(elements.get('c3_3').classList.contains('rm-accept'),
+    'accepted move shows the static brightness cue under reduced motion');
+  assert.ok(!elements.get('c3_3').classList.contains('is-valid'),
+    'the animated gold flash (killed by the reduced-motion blanket) is not used');
+  animationController.dispose();
+});
+
+test('reduced motion: rejected move still shows the static red identification', () => {
+  const { controller } = fresh();
+  const animationController = createAnimationController({ bus, mySlot: null, reducedMotion: () => true });
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, animationController, root, prefersReducedMotion: () => true });
+  animationController.setEnabled(false);
+
+  bus.emit(EV.INVALID_MOVE_REJECTED, {
+    reason: 'word-not-in-dictionary',
+    placed: [{ r: 2, c: 2, letter: 'א', val: 1 }],
+    invalidWords: ['אא'],
+  });
+
+  // illegalPulse still runs under reduced motion (it is already a static red);
+  // the shake (pure motion) is skipped.
+  assert.ok(elements.get('c2_2').classList.contains('illegal-tile'),
+    'the illegal placement is still identified in red under reduced motion');
+  assert.ok(!elements.get('c2_2').classList.contains('is-invalid'),
+    'the shake is not applied under reduced motion');
+  animationController.dispose();
+});
+
+test('opponent OPPONENT_MOVED still pops arriving tiles (tile-place-in)', () => {
+  const { controller } = fresh();
+  const animationController = createAnimationController({ bus, mySlot: 0 });
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, animationController, root });
+
+  bus.emit(EV.OPPONENT_MOVED, {
+    slot: 1,
+    placed: [{ r: 6, c: 6, letter: 'ב', val: 3 }],
+    words: ['ב'],
+    wordTiles: [[{ r: 6, c: 6, letter: 'ב', val: 3 }]],
+    score: 3,
+  });
+
+  // Opponent tiles were not previously visible as local tentative tiles, so an
+  // arrival pop is still the right feedback.
+  assert.ok(elements.get('c6_6').classList.contains('tile-place-in'),
+    'opponent-arriving tiles should receive tile-place-in');
+  animationController.dispose();
+});
+
+// ─── Phase 3A: tile tactility ───────────────────────────────────────────
+
+test('tentative placement: a newly placed tile settles once (tile-tentative-in), not on re-render', () => {
+  const { controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  // Select rack slot 0 ('א') and place it on an empty cell via the real click paths.
+  const brack = elements.get('brack');
+  const rackTile = makeEl({ id: 'rt0', classes: ['bt2'] });
+  brack.appendChild(rackTile);
+  brack.fireClick(rackTile);
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+
+  assert.equal(controller.view.placed.length, 1, 'tile placed tentatively');
+  assert.match(elements.get('c4_4').innerHTML, /tile-tentative-in/,
+    'placement plays the tentative settle exactly once');
+  // It must be a tentative (nw) tile, never the committed styling.
+  assert.match(elements.get('c4_4').innerHTML, /btile nw/, 'still tentative, not committed');
+
+  // Re-render the board by selecting the placed tile — the settle must NOT re-fire.
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  assert.ok(!/tile-tentative-in/.test(elements.get('c4_4').innerHTML),
+    'no re-animation on an unrelated board re-render');
+});
+
+test('returning a tentative tile settles its rack slot once (bt2-returned)', () => {
+  const { controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+
+  // Place a tile that originated from rack slot 0, then tap it off the board.
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1, rackIndex: 0 });
+  elements.get('game-grid').fireClick(elements.get('c4_4')); // select the placed tile
+  elements.get('game-grid').fireClick(elements.get('c4_4')); // tap again → return to rack
+
+  assert.equal(controller.view.placed.length, 0, 'tile returned to the rack');
+  assert.match(elements.get('brack').innerHTML, /bt2-returned/,
+    'the origin rack slot plays the return settle');
+
+  // A later rack render must not re-apply it (one-shot).
+  controller.recallAll();
+  assert.ok(!/bt2-returned/.test(elements.get('brack').innerHTML),
+    'return settle plays once, not on subsequent rack renders');
+});
+
+test('rack selection state: switching moves selection cleanly; re-tap toggles off', () => {
+  const { controller } = fresh();
+  const { root } = makeGameDom();
+  const screen = mountGameScreen({ controller, root });
+
+  assert.equal(screen._getSelectedRackIndex(), null, 'nothing selected initially');
+  screen._selectRack(2);
+  assert.equal(screen._getSelectedRackIndex(), 2, 'select A');
+  screen._selectRack(5);
+  assert.equal(screen._getSelectedRackIndex(), 5, 'switch A→B leaves only B selected');
+  screen._selectRack(5);
+  assert.equal(screen._getSelectedRackIndex(), null, 're-tapping B deselects');
 });
 
 test('animation renderer adds illegal-tile + is-invalid then rollback-pop on INVALID_MOVE_REJECTED', async () => {
@@ -827,8 +956,9 @@ test('animation renderer adds illegal-tile + is-invalid then rollback-pop on INV
   assert.ok(elements.get('c2_2').classList.contains('is-invalid'),
     'tile target (cell fallback) should receive is-invalid');
 
-  // After 700ms the rollback-pop kicks in and illegal-tile is removed.
-  await new Promise(r => setTimeout(r, 720));
+  // After the (shortened, Phase 3B) ~500ms hold the rollback-pop kicks in and
+  // the static red is removed — well within the 1100ms gameplay auto-pass hold.
+  await new Promise(r => setTimeout(r, 560));
   assert.ok(!elements.get('c2_2').classList.contains('illegal-tile'),
     'illegal-tile should be removed before rollback');
   assert.ok(elements.get('c2_2').classList.contains('rollback-pop'),
@@ -909,6 +1039,28 @@ test('animation renderer bounces bag and cascades rack on exchange', () => {
 
   assert.ok(elements.get('bag-display').classList.contains('bag-bounce'));
   assert.match(elements.get('brack').innerHTML, /anim-in/);
+  animationController.dispose();
+});
+
+test('unmount cancels the exchange rack-refresh timer (no stale re-render after teardown)', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+  const { controller } = fresh();
+  const animationController = createAnimationController({ bus, mySlot: null });
+  const { root, elements } = makeGameDom();
+  const screen = mountGameScreen({ controller, animationController, root });
+
+  // Exchange schedules a 2000ms timer that would re-render the rack.
+  bus.emit(EV.TILES_EXCHANGED, { count: 2 });
+  const brack = elements.get('brack');
+  assert.match(brack.innerHTML, /anim-in/, 'arrived tiles rendered with the cascade animation');
+
+  screen.unmount();
+  const afterUnmount = brack.innerHTML;
+
+  // Advance well past the 2000ms clear timer. If unmount cancelled it, the rack
+  // HTML is untouched; if it fired, renderRack would strip the cascade markup.
+  t.mock.timers.tick(5000);
+  assert.equal(brack.innerHTML, afterUnmount, 'rack was NOT re-rendered by a timer after unmount');
   animationController.dispose();
 });
 

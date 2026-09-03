@@ -390,7 +390,6 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `tilePlaceIn` | Tile placed on board |
 | `validFlash` | Move accepted |
 | `bingoLabel` | 8-tile bingo achieved |
-| `multiplierLabel` | Score multiplier active |
 | `tileCascadeIn` | Tiles refilled from bag |
 | `scoreMergeSequence` | Score animates from board to scoreboard |
 | `scoringWordGlow` | Words glow during score calculation |
@@ -408,16 +407,117 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `bagBounce` | Tile bag bounce |
 
 ### Timing Constants
-Defined in both `animationController.js` and `gameScreen.js` (must match):
+All score-sequence timing lives in the shared module
+[src/ui/scoreAnimationTimings.js](../../src/ui/scoreAnimationTimings.js) —
+`animationController.js`, `gameScreen.js`, and `turnTimerController.js` all
+import from it (no local copies; the old duplicates were removed).
 
 ```javascript
-WORD_MERGE_STAGGER_MS = 250    // delay between word merge steps
-WORD_MERGE_FLIGHT_MS  = 380    // duration of word-to-score flight
-BOOST_MERGE_DELAY_MS  = 250    // delay before boost merge
-HOLD_AFTER_MERGE_MS   = 420    // hold after merge completes
-SUM_FLIGHT_MS         = 480    // total score flight
-COUNTUP_PEAK_MS       = 900    // score count-up peak
+// Phase 3B retiming — brisk per-turn scoring (~50% shorter than Phase 2B).
+WORD_MERGE_STAGGER_MS = 150    // delay between word merge steps
+WORD_MERGE_FLIGHT_MS  = 240    // duration of word-to-score flight
+MULT_MERGE_DELAY_MS   = 180    // gap before the ×N multiplier chip flies in
+BOOST_MERGE_DELAY_MS  = 160    // delay before boost merge
+HOLD_AFTER_MERGE_MS   = 200    // hold after merge completes
+SUM_FLIGHT_MS         = 300    // total score flight
+COUNTUP_PEAK_MS       = 800    // score count-up ceiling
+GATE_SETTLE_TAIL_MS   = 260    // input reopens this long after the sum lands
+// countUpDurationMs(delta) = min(800, 200 + |delta|·12)  — bounded count-up curve
 ```
+
+The module also exports **named helpers that separate visual timing from
+gameplay-safe timing** (see `docs-md/BOOST_MOTION_SPEC.md` §9/§14):
+- `scoreInteractionGateMs(...)` — how long the primary controls stay blocked
+  after a scored move (visual coherence + misclick avoidance; NOT correctness).
+  Since Phase 3B this is `sum-chip landing + GATE_SETTLE_TAIL_MS` — a short fixed
+  tail, NOT the full count-up peak: input reopens while the count-up keeps
+  climbing (harmless; the engine already advanced). Consumed by `gameScreen.js`'s
+  active-slot swap / interaction gate.
+- `scoreClockGraceMs(...)` — how long the incoming player's clock is frozen
+  during the score animation (fairness; NOT correctness). Deliberately more
+  conservative than the input gate (it carries the full count-up peak) so an
+  instant commit can't shave a slice off the incoming first tick. Consumed by
+  `turnTimerController.js`'s score-animation freeze — includes the ×N phase.
+- `countUpDurationMs(delta)` — the bounded count-up curve (small deltas
+  near-instant, capped at the peak). Consumed by `gameScreen.js`'s `animateScore`.
+
+Both collapse to a small non-zero floor (`REDUCED_MOTION_GATE_MS` /
+`REDUCED_MOTION_GRACE_MS`) under reduced motion — never zero (misclick + clock
+grace are preserved).
+
+### Tile tactility (Phase 3A)
+The three highest-frequency tile interactions have dedicated, semantic motion —
+all pure CSS (one transition + two keyframes), so reduced motion makes them
+instant with no JS involved:
+
+- **Rack selection** — `selectRack` toggles `.sel` on the LIVE rack node
+  (`applyRackSelection`), NOT a rebuild, so the `.bt2` transform transition
+  (`--motion-micro`/`--ease-standard`) animates the `translateY(-7px)` lift in and
+  out. A rebuild would recreate the node and kill the transition.
+- **Tentative placement** — `.btile.tile-tentative-in` (`@keyframes tileTentativeIn`,
+  `--motion-fast`, scale 0.88→1, no overshoot). Applied one-shot via
+  `tentativeEntryCoords` consumed in `renderBoard` (grid + bonus squares) so it
+  fires only on the placement render. Deliberately gentler than committed
+  `tilePlaceIn`. Repositioning reuses it on the destination cell.
+- **Tentative return** — `.bt2.bt2-returned` (`@keyframes tileReturned`,
+  `--motion-fast`) on the origin rack slot (resolved from the tile's `rackIndex`),
+  applied one-shot via `returnedRackIdxs` consumed in `renderRack`.
+- **No double-pop on confirm** — `animationController` emits `tilePlaceIn` for
+  OPPONENT moves only; local tiles already played their tentative settle, so a
+  local confirm shows `validFlash` + the score sequence instead.
+
+`tileHTML(tile, isPlaced, extraClass)` takes an optional `extraClass` so a
+one-shot animation class can be baked into the render string (browser-correct and
+observable in the DOM-stub tests). `mountGameScreen` exposes `_getSelectedRackIndex`
+/ `_selectRack` test seams (the stub can't parse rack children).
+
+### Word resolution & score feedback (Phase 3B)
+Scoped to what happens after Play. The causal story is unchanged (per-word chip →
+×N → bonus → sum → panel → count-up); the choreography was made brisk and each
+moment given ONE signal:
+
+- **Accepted word** — `validFlash` (`--motion-fast`, softened) is the brief
+  "accepted" beat; `scoringWordGlow` is now a single one-shot flash per word (was
+  a ~1.5s breathing loop). Both clear well before the count-up finishes.
+- **Score landing** — ONE response: the softened `score-panel-arrive` pulse
+  (scale 1.12, `--motion-normal`) plus the count-up. The radial hit-burst
+  (`spawnScoreHitBurst` + `.score-hit-burst`) and the separate number `score-pop`
+  on the landing frame were removed.
+- **Invalid word** — `is-invalid` shake (`--motion-fast`) supplies the motion;
+  `.illegal-tile` is now a STATIC strong red (the infinite `illegalPulse` loop was
+  removed) held ~500ms then `rollback-pop`. The 1100ms auto-pass hold is unchanged
+  and stays owned by `gameController` — motion never shortens it.
+- **Reduced motion** — the controller is disabled (no chip flight) but a whitelist
+  (`validFlash`, `illegalPulse`) is still forwarded so the accept/reject INFO
+  survives as a static cue: accepted → `.rm-accept` (a plain-`filter` brightness
+  lift that survives the reduced-motion blanket that sets `animation:none`);
+  rejected → the static `.illegal-tile` red; the shake is skipped. The count-up
+  runs directly (arithmetic preserved). Sound/haptic are untouched.
+
+`createAnimationController({ reducedMotion })` takes a reduced-motion predicate so
+the whitelist fall-through only applies when reduced motion is actually on
+(disabled-without-reduced-motion stays a full no-op).
+
+### Motion tokens & reduced motion
+- Canonical motion constants (durations `MOTION_MICRO/FAST/NORMAL/REWARD`,
+  easings `EASE_STANDARD/EXIT/BOUNCE`, press scales) live in
+  [src/ui/motionTokens.js](../../src/ui/motionTokens.js), mirrored as `:root`
+  CSS custom properties (`--motion-*`, `--ease-*`, `--press-scale-*`) in
+  `styles.css` (kept in lockstep by hand).
+- The effective reduced-motion preference is resolved in ONE place,
+  [src/ui/motionPreference.js](../../src/ui/motionPreference.js): explicit
+  tri-state (`uiPreferences.reducedMotion`) → legacy flag → OS
+  `prefers-reduced-motion` → normal. Nothing else calls `matchMedia` directly.
+  It stamps `data-reduced-motion` on the document root; `styles.css` honours both
+  that attribute and the `@media (prefers-reduced-motion: reduce)` rule. The OS
+  value is read live and never persisted.
+- The directive layer respects it via `animationController.setEnabled(...)`
+  (driven from `motionPreference`); the non-directive JS timers (interaction
+  gate, clock freeze, count-up start) respect it via the floors above.
+- Shared reflow-restart primitive: `domHelpers.flashAnimation(el, cls, ms)`
+  (used by `gameScreen.js`); shared overlay predicate:
+  `domHelpers.bonusOverlayOpen(doc)` (used by both the score-commit gate in
+  `animationController.js` and the count-up gate in `gameScreen.js`).
 
 ### Bonus Overlay Gating
 The score-commit animation is **held** while bonus overlays are visible. `animationController` polls for overlay close every 100ms:

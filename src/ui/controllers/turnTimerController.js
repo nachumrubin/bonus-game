@@ -2,6 +2,7 @@ import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
 import { modeDescriptor } from '../../game/sessions/modes.js';
 import { $, setText } from '../domHelpers.js';
+import { scoreClockGraceMs } from '../scoreAnimationTimings.js';
 
 export function createTurnTimerController({
   bus,
@@ -10,12 +11,16 @@ export function createTurnTimerController({
   now = () => Date.now(),
   setIntervalFn = globalThis.setInterval?.bind(globalThis),
   clearIntervalFn = globalThis.clearInterval?.bind(globalThis),
+  setTimeoutFn = globalThis.setTimeout?.bind(globalThis),
+  clearTimeoutFn = globalThis.clearTimeout?.bind(globalThis),
+  prefersReducedMotion = () => false,
   tickMs = 250,
 } = {}) {
   if (!bus) throw new Error('createTurnTimerController: bus required');
 
   const cleanups = [];
   let interval = null;
+  let scoreFreezeTimer = null;
   let timedOutKey = null;
   // Last second-boundary value emitted on 'timer/tick'. Keyed by turn so a
   // fresh turn re-arms ticks even if the previous turn fired them already.
@@ -105,28 +110,16 @@ export function createTurnTimerController({
   }));
   cleanups.push(bus.on('bonus/award-acknowledged', resumeFromBonus));
 
-  // Score-animation pause. After a move commits the score-merge sequence
-  // (per-word chips → sum chip → boost merge → hold → flight → count-up)
-  // runs for ~2 s before the next player effectively gets their clock.
-  // Without this freeze, TURN_CHANGED would fire mid-animation and the
-  // new player would lose those seconds while watching the previous
-  // player's score pop in. Constants mirror gameScreen.playScoreMergeSequence
-  // / animationController.scoreMergeTiming.
-  const WORD_MERGE_STAGGER_MS = 250;
-  const WORD_MERGE_FLIGHT_MS  = 380;
-  const BOOST_MERGE_DELAY_MS  = 250;
-  const HOLD_AFTER_MERGE_MS   = 420;
-  const SUM_FLIGHT_MS         = 480;
-  const COUNTUP_PEAK_MS       = 900;
-  function scoreAnimationDurationMs(wordTiles, bonusExtra) {
-    const wordCount = Array.isArray(wordTiles) ? wordTiles.length : 0;
-    const extra = Number(bonusExtra) || 0;
-    if (wordCount === 0 && extra === 0) return COUNTUP_PEAK_MS;
-    const lastWordStart = wordCount > 0 ? (wordCount - 1) * WORD_MERGE_STAGGER_MS : 0;
-    const boostStart    = extra > 0 ? lastWordStart + BOOST_MERGE_DELAY_MS : lastWordStart;
-    const mergeEnd      = boostStart + WORD_MERGE_FLIGHT_MS;
-    return mergeEnd + HOLD_AFTER_MERGE_MS + SUM_FLIGHT_MS + COUNTUP_PEAK_MS;
-  }
+  // Score-animation pause. After a move commits, the score-merge sequence
+  // (per-word chips → ×N multiplier → sum chip → boost merge → hold → flight →
+  // count-up) plays for ~2 s. This freeze holds the incoming player's clock for
+  // that long so they don't lose seconds watching the previous player's score
+  // pop in. This is CLOCK-FAIRNESS grace, not a correctness gate: the engine has
+  // already advanced the turn, and after the freeze the deadline is rebuilt
+  // fresh. Its DURATION tracks the visible sequence (via the shared
+  // scoreClockGraceMs — including the ×N phase the old local copy omitted);
+  // its EXISTENCE/floor is independent of animation, so under reduced motion it
+  // shrinks to a short grace rather than vanishing (BOOST_MOTION_SPEC §9).
   function freezeForScoreAnimation(payload) {
     // The deferred-bonus MOVE_CONFIRMED carries scoringDeferred=true — the
     // bonus pause path already covers that case (and the per-word floats
@@ -138,11 +131,21 @@ export function createTurnTimerController({
       sync();
       return;
     }
-    const ms = scoreAnimationDurationMs(payload?.wordTiles, payload?.bonusExtra);
+    const wordCount = Array.isArray(payload?.wordTiles) ? payload.wordTiles.length : 0;
+    const ms = scoreClockGraceMs({
+      wordCount,
+      bonusExtra: payload?.bonusExtra,
+      multiplier: payload?.multiplier,
+      reducedMotion: !!prefersReducedMotion(),
+    });
     if (ms <= 0) { sync(); return; }
     pauseForBonus();
     sync();
-    setTimeout(resumeFromBonus, ms);
+    if (scoreFreezeTimer != null) clearTimeoutFn?.(scoreFreezeTimer);
+    scoreFreezeTimer = setTimeoutFn?.(() => {
+      scoreFreezeTimer = null;
+      resumeFromBonus();
+    }, ms);
   }
   cleanups.push(bus.on(EV.MOVE_CONFIRMED,       freezeForScoreAnimation));
   cleanups.push(bus.on(EV.MOVE_SCORE_COMMITTED, freezeForScoreAnimation));
@@ -390,6 +393,10 @@ export function createTurnTimerController({
     if (interval != null) {
       clearIntervalFn?.(interval);
       interval = null;
+    }
+    if (scoreFreezeTimer != null) {
+      clearTimeoutFn?.(scoreFreezeTimer);
+      scoreFreezeTimer = null;
     }
     for (const off of cleanups.splice(0)) {
       try { off(); } catch {}
