@@ -384,6 +384,232 @@ bookends. Only the miss *visual* changed — success/points/turn flow is
 untouched. Tests: a stub-DOM unit test asserts the reorder (no-measure branch);
 the animation was verified in a real browser via Playwright (tiles settle to the
 answer with transforms back at identity). Full suite 1319 passing.
+## Word Resolution & Score Feedback (Phase 3B) — September 2026
+
+Made the end of a turn feel fast and causal instead of ceremonial. Scoped to
+what happens after Play: valid/invalid acknowledgement, rollback, and the
+score-merge choreography. No victory/Elo/achievement/boost-badge/transition work.
+
+**Brisk timing model.** The score-merge flight/hold/stagger constants
+(`scoreAnimationTimings.js`) were roughly halved. The causal story is unchanged
+(per-word chip → ×N → bonus → sum → panel → count-up), it just plays faster. An
+ordinary one-word move's sum chip now lands ~740ms after Play (was ~1280ms) and
+the whole thing settles ~1.3s (was ~2.2s). Representative gate durations dropped
+~50% (simple 2180→1000ms, 2-word 2430→1150ms, 2-word+×2+bonus 2980→1490ms).
+
+**Bounded count-up.** The count-up duration is now an owned, tested curve
+(`countUpDurationMs` = `min(800, 200 + |Δ|·12)`) instead of a hardcoded
+`min(900, 350 + Δ·12)`: a small +2 resolves in ~224ms (was 374ms), big moves stay
+capped. Small deltas feel near-instant.
+
+**Decoupled interaction gate.** The input gate now reopens a short fixed settle
+(`GATE_SETTLE_TAIL_MS` = 260) after the sum chip lands, rather than waiting out
+the full count-up peak — the count-up keeps climbing harmlessly after input is
+live. The clock-freeze grace stays conservative (full count-up peak) for
+fairness. The two are now explicitly separate numbers (BOOST_MOTION_SPEC §14).
+
+**De-stacked feedback (fewer simultaneous signals).**
+- `validFlash` shortened (0.5s → the gameplay token) and softened — a brief
+  "accepted" beat, no longer competing with the score glow.
+- `scoringWordGlow` was a ~1.5s breathing loop that ran until the count-up
+  finished (the main "why is it still animating?" offender) → a single brief
+  one-shot flash as each word's chip launches.
+- Invalid word: dropped the infinite red pulse loop (the shake already supplies
+  the motion) → a static strong red that identifies the bad placement, held
+  ~500ms (was 700) then rolled back — still inside the 1100ms gameplay auto-pass
+  hold, which is unchanged (owned by `gameController`, not motion).
+- Score landing: ONE response — a softened panel-arrive pulse (scale 1.18→1.12,
+  0.62s → normal token) plus the count-up — removing the radial hit-burst
+  (`spawnScoreHitBurst` + CSS deleted) and the separate number `score-pop` that
+  used to fire on the same frame.
+
+**Reduced-motion scoring.** Under reduced motion the choreography is skipped (no
+chip flight — correct) and the count-up runs directly (arithmetic preserved). The
+accept/reject *information*, previously dropped entirely, now survives: the
+animation controller forwards a small whitelist (`validFlash`, `illegalPulse`)
+even while disabled, and the renderer paints them static — an accepted word gets
+`.rm-accept` (a plain-`filter` brightness lift that survives the reduced-motion
+CSS blanket), a rejected word keeps the static red `.illegal-tile`; the shake
+(pure motion) is skipped. Sound/haptic are untouched (not motion).
+
+**Multiplier / bonus preserved.** The real ×N chip and the bonus-extra chip keep
+their semantic roles in the merge sequence (arithmetic stays legible), just
+retimed. `multiplierLabel` remains removed (Phase 2B).
+
+Runtime-validated in headless Chromium with timestamped DOM/computed-style traces
+over the full sequence (normal + reduced motion) — see the Phase 3B verification
+note in `BOOST_MOTION_SPEC.md` §11. Files: `scoreAnimationTimings.js`,
+`controllers/animationController.js`, `screens/gameScreen.js`, `styles.css`,
+`main.js`, plus their tests.
+
+---
+
+## Core Tile Tactility (Phase 3A) — September 2026
+
+First *visible* motion pass, scoped strictly to the three highest-frequency
+physical tile interactions. Default look is unchanged except for these three
+moments feeling more tactile.
+
+**Rack tile selection** now animates a subtle lift. `selectRack` toggles `.sel`
+on the LIVE rack node instead of rebuilding the rack (`applyRackSelection`), so
+the existing `.bt2` transform transition (retimed to `--motion-micro` /
+`--ease-standard`) animates the lift in and out and an A→B switch settles A down
+while B lifts — no flicker, no rebuild, no loop. The selected state is unchanged
+(`translateY(-7px)` + gold); only its *entrance* is now animated.
+
+**Tentative tile placement** (before Play) gets a new gentle settle
+(`tileTentativeIn`, `--motion-fast`, scale 0.88→1, no opacity fade, no overshoot)
+— deliberately lighter than the committed `tilePlaceIn` so "I put it here" never
+reads as "the move was accepted". Applied one-shot via a coord set consumed in
+`renderBoard` (grid + perimeter bonus squares), so it fires only on the placement
+render, never on an unrelated board re-render. Repositioning a tentative tile
+reuses the same entrance on the destination cell.
+
+**Returning a tentative tile** to the rack (tap-off) plays a quick settle
+(`tileReturned`, `--motion-fast`) on the origin rack slot — resolved from the
+tile's `rackIndex`, applied one-shot in `renderRack`.
+
+**No double-pop on confirm.** `animationController` no longer emits `tilePlaceIn`
+for LOCAL moves — those tiles already played their tentative settle, so
+confirmation is communicated by `validFlash` + the score sequence. OPPONENT tiles
+(not previously visible as local tentative tiles) keep their `tilePlaceIn`
+arrival pop. This preserves the local-vs-opponent semantic distinction (§13).
+
+Reduced motion needs no new code: all three are pure CSS (a transition and two
+keyframes), so the existing `@media` / `data-reduced-motion` rules make them
+instant while the selected/tentative/committed *states* stay fully legible.
+**Phase 3A adds zero JS timers.**
+
+Runtime validation (headless Chromium against the offline 2P game): the selected
+tile computes `translateY(-7px)` on the live node; under `data-reduced-motion`
+the same lift is present with `transition-duration: 1e-05s` (state kept, motion
+removed); a placed cell renders `btile nw tile-tentative-in` (tentative, distinct
+from committed). The project's `@playwright/test` remains uninstalled (no project
+`node_modules`), so `npm run test:e2e` still can't run and the capture used the
+global `playwright` library directly.
+
+Unit suite: 1343 → 1347 passing.
+
+---
+
+## Motion Foundation & Timing Integrity (Phase 2B) — September 2026
+
+First implementation phase of the motion system (`docs-md/BOOST_MOTION_SPEC.md`).
+Foundation only — the default (non-reduced) visual experience is unchanged;
+the work is underneath. Landed as four reviewable commits.
+
+**Motion tokens & reduced-motion preference.** New `src/ui/motionTokens.js`
+(canonical duration/easing/press-scale constants, mirrored as `:root` CSS
+custom properties) and `src/ui/motionPreference.js` (the single source of truth
+for the effective reduced-motion preference: explicit tri-state → legacy flag →
+OS `prefers-reduced-motion` → normal). The OS preference is read live and never
+persisted as an explicit choice. `settingsCompat` gained a `reducedMotion`
+`'auto'|'on'|'off'` tri-state with migration from the legacy
+`skipAnimations`/`animationsEnabled` flags; a "תנועה מופחתת" (Reduced motion)
+toggle was added to the settings overlay. A `:root[data-reduced-motion]` CSS
+hook mirrors the existing `@media` rule so an explicit choice also drives CSS.
+
+**Timing ownership + reduced-motion floors** (after runtime verification, below).
+`scoreAnimationTimings.js` gained named shared helpers that make the spec's
+distinction explicit: `scoreInteractionGateMs` (visual/coherence input gating)
+and `scoreClockGraceMs` (incoming-clock fairness), each with a reduced-motion
+floor (never zero). `turnTimerController.js` dropped its duplicated local
+constants/formula and uses `scoreClockGraceMs` — which also **fixes the omitted
+×N multiplier phase** so the freeze matches the visible sequence. `gameScreen.js`
+dropped the two hardcoded `900`s (now `COUNTUP_PEAK_MS`) and routes the gate +
+count-up start through the shared helpers. Under reduced motion these JS
+choreography timers now shrink to their floors, so a reduced-motion player
+interacts promptly instead of waiting ~2–3s for animations that don't play.
+The duplicated bonus-overlay predicate was centralised into
+`domHelpers.bonusOverlayOpen` (used by both the score-commit gate and the
+count-up gate).
+
+**Lifecycle + dead-code cleanup.** `gameScreen.js` now uses the shared
+`flashAnimation` primitive (was a byte-identical local copy) and cancels its
+three screen-lifetime timers on unmount. Removed the shadowed duplicate
+`@keyframes bonusPulse` and the dead `@keyframes multPulse`, and the misleading
+`multiplierLabel` directive (it rendered a bare "×" for multi-word moves — not
+an actual multiplier; the real ×N chip is unaffected).
+
+**Runtime verification (spec §11, `tests/unit/motion-timing-verification.test.js`):**
+- **T1** — the engine binds every action to `currentTurnSlot` and mutates
+  synchronously, so the interaction gate is visual coherence, not a correctness
+  barrier → safe to floor.
+- **T2** — the clock freeze suppresses auto-pass while it holds and rebuilds a
+  fresh deadline on resume, so a shortened freeze causes no spurious auto-pass →
+  it is clock fairness, safe to floor.
+- **T3** — a leaked overlay count defers the score-commit *animation*
+  indefinitely, but the score is already committed in engine state (a dropped
+  visual, never a state bug); normal balanced-event flows flush fine → no
+  polling rewrite this phase, only the duplicated predicate centralised.
+
+Unit suite: 1318 → 1343 passing (+25). No engine, Firebase-rule, or default
+visual behaviour changed.
+
+---
+
+## Boost Motion Specification (Phase 2A) — September 2026
+
+Architecture-validation-only pass (no production code changed). Challenged the
+September animation audit against the actual source and produced the approved
+motion contract for future implementation agents: `docs-md/BOOST_MOTION_SPEC.md`.
+
+Key corrections to the audit made after re-reading the code directly:
+- The `turnTimerController.js` score-animation freeze is **fairness/polish**, not
+  the state-correctness "bug" the audit implied — it grants the incoming player
+  clock-grace during the score animation and suppresses auto-pass; a 300ms
+  under-count is an imprecision, not corruption. Reframed as a legitimately
+  animation-coupled timer whose *minimum* must stay independent of animation.
+- The reduced-motion defect is larger than "no UI toggle": the CSS `@media`
+  rule hides visuals, but the JS choreography timers (interaction gate,
+  clock freeze) keep running — so a reduced-motion player currently sees nothing
+  animate yet still waits ~2-3s. Reduced motion must reach those timers.
+- Confirmed by code that disabling animations does **not** shorten the
+  interaction gate (`activeSlotTimer` is a gameScreen render-path timer,
+  independent of `animationController.setEnabled`).
+- Confirmed `multiplierLabel` fires on multi-word moves (not score multipliers)
+  and renders a misleading bare `×` — decision is to remove it, not repair it.
+
+The spec defines: 4 duration tokens + 3 easing tokens + 2 press-scale categories,
+a three-tier motion hierarchy (UI/Gameplay/Reward), the ten core interaction
+choreographies, a 1-5 reward-intensity ranking, a complete reduced-motion policy
+with an effective-preference model (explicit → OS → normal, OS pref never
+persisted), the engine/UI timing boundary (visual vs choreography vs
+gameplay-safe timing kept separate), what stays bespoke, a 6-test runtime
+verification plan gating the risky changes, and a conservative 6-phase roadmap.
+No code changed — implementation is a later, separately-approved phase.
+
+---
+
+## Animation & motion system audit — September 2026
+
+Investigation-only pass (no production code changed) mapping every animation
+in Boost — CSS `@keyframes`, `animationController.js` directives, `gameScreen.js`
+renderer code, mini-game effects, screen transitions, and reward/celebration
+motion — ahead of establishing a centralized motion system.
+
+Full report: `docs-md/ANIMATION_AUDIT.md`. Highlights:
+- Confirmed the system is 100% hand-rolled (CSS keyframes + classList +
+  setTimeout), with a single deliberate Web Animations API use in the anagram
+  mini-game's shake effect. No animation library.
+- `scoreAnimationTimings.js`'s "single source of truth" has partially eroded:
+  `turnTimerController.js` re-derives its own copy of the merge-sequence
+  constants and silently omits the multiplier-chip phase (clock can resume
+  ~300ms early on multiplier+multi-word moves); `gameScreen.js` hardcodes
+  `900` twice instead of importing `COUNTUP_PEAK_MS`.
+- Two independent, uncoordinated 100ms overlay-presence pollers
+  (`animationController.js` and `gameScreen.js`) duplicate the same
+  detection logic with no shared source of truth or timeout.
+- Found and catalogued a dead/shadowed `@keyframes bonusPulse` (defined
+  twice, second silently wins), a dead `multPulse` keyframe, a broken
+  `multiplierLabel` directive (renders a bare `×` with no number), and 9+
+  divergent button `:active` press-scale values.
+- `domHelpers.js`'s `flashAnimation()` reusable primitive has zero call
+  sites — 7+ files hand-roll the identical reflow-restart idiom instead.
+- `animationsEnabled` (reduced motion) is fully wired end-to-end and unit
+  tested but has no settings-screen control exposing it to players.
+- No code changes made; see the audit's "Recommended Implementation Order"
+  (§I) for the proposed phased follow-up work.
 
 ---
 

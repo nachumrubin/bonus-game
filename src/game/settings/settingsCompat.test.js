@@ -68,6 +68,7 @@ test('UI preferences support animation skip, music, and last display name', () =
   const s = storage();
   saveUiPreferences(s, { skipAnimations: true, music: false, lastDisplayName: '  Alice  ' });
   assert.deepEqual(JSON.parse(s.getItem(UI_PREFERENCES_KEY)), {
+    reducedMotion: 'on',   // legacy skipAnimations:true migrates to explicit 'on'
     animationsEnabled: false,
     music: false,
     soundFx: true,    // default applied by normalizer when not provided
@@ -79,6 +80,35 @@ test('UI preferences support animation skip, music, and last display name', () =
   const next = mergeUiPreferences(s, { music: true });
   assert.equal(next.music, true);
   assert.equal(next.animationsEnabled, false);
+});
+
+test('reducedMotion tri-state: defaults to auto, round-trips on/off, derives animationsEnabled', () => {
+  const s = storage();
+  // Absent → 'auto', and animationsEnabled defaults true (OS applied at runtime).
+  assert.equal(loadUiPreferences(s).reducedMotion, 'auto');
+  assert.equal(loadUiPreferences(s).animationsEnabled, true);
+
+  saveUiPreferences(s, { reducedMotion: 'on' });
+  assert.equal(loadUiPreferences(s).reducedMotion, 'on');
+  assert.equal(loadUiPreferences(s).animationsEnabled, false, "explicit 'on' disables animations");
+
+  saveUiPreferences(s, { reducedMotion: 'off' });
+  assert.equal(loadUiPreferences(s).reducedMotion, 'off');
+  assert.equal(loadUiPreferences(s).animationsEnabled, true, "explicit 'off' enables animations");
+});
+
+test('reducedMotion migration: legacy animationsEnabled:false becomes explicit on', () => {
+  const s = storage();
+  s.setItem(UI_PREFERENCES_KEY, JSON.stringify({ animationsEnabled: false }));
+  assert.equal(loadUiPreferences(s).reducedMotion, 'on');
+  assert.equal(loadUiPreferences(s).animationsEnabled, false);
+});
+
+test('uiPreferencePatchFromSettings maps the reducedMotion boolean toggle to on/off', () => {
+  assert.deepEqual(uiPreferencePatchFromSettings({ reducedMotion: true }), { reducedMotion: 'on' });
+  assert.deepEqual(uiPreferencePatchFromSettings({ reducedMotion: false }), { reducedMotion: 'off' });
+  // A bare gameplay change carries no motion patch.
+  assert.deepEqual(uiPreferencePatchFromSettings({ botTime: 20 }), {});
 });
 
 test('UI preferences: gender persists and normalizes', () => {

@@ -16,7 +16,10 @@ test('MOVE_CONFIRMED triggers the expected animation directives', () => {
     score: 4,
   });
   const kinds = ac._directives.map(d => d.kind);
-  assert.ok(kinds.includes('tilePlaceIn'));
+  // A LOCAL move does NOT re-pop the tiles on confirm — they already played
+  // their tentative-placement settle in gameScreen (Phase 3A). Confirmation is
+  // communicated by validFlash + the score sequence instead.
+  assert.ok(!kinds.includes('tilePlaceIn'), 'local confirm must not re-pop the placed tiles');
   assert.ok(kinds.includes('validFlash'));
   assert.ok(kinds.includes('scoringWordGlow'));
   // The score sequence is now a single merge directive — per-word chips
@@ -75,7 +78,7 @@ test('MOVE_CONFIRMED skips bingoLabel for partial placements', () => {
   ac.dispose();
 });
 
-test('MOVE_CONFIRMED emits multiplierLabel when more than one word is formed', () => {
+test('MOVE_CONFIRMED does NOT emit a multiplierLabel for a multi-word move (misleading bare "×" removed)', () => {
   bus._reset();
   const ac = createAnimationController({ bus, mySlot: 0 });
   bus.emit(EV.MOVE_CONFIRMED, {
@@ -86,7 +89,10 @@ test('MOVE_CONFIRMED emits multiplierLabel when more than one word is formed', (
     score: 6,
   });
   const kinds = ac._directives.map(d => d.kind);
-  assert.ok(kinds.includes('multiplierLabel'));
+  assert.ok(!kinds.includes('multiplierLabel'), 'the removed directive no longer fires');
+  // The real score choreography still runs — the multiple word chips flying to
+  // the sum are what communicate a multi-word move.
+  assert.ok(kinds.includes('scoreMergeSequence'), 'the score sequence still animates the move');
   ac.dispose();
 });
 
@@ -249,6 +255,56 @@ test('setEnabled(false) makes all triggers no-ops at the renderer level', () => 
   ac.setEnabled(true);
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [], words: [], score: 0 });
   assert.ok(rendererCalls > 0);
+  ac.dispose();
+});
+
+test('reduced motion: choreography off, but accept/reject INFO still reaches the renderer as static cues', () => {
+  bus._reset();
+  const calls = [];
+  const ac = createAnimationController({ bus, reducedMotion: () => true });
+  ac.setRenderer({
+    validFlash:         (p) => calls.push(['validFlash', p]),
+    shakeWord:          (p) => calls.push(['shakeWord', p]),
+    illegalPulse:       (p) => calls.push(['illegalPulse', p]),
+    scoreMergeSequence: (p) => calls.push(['scoreMergeSequence', p]),
+    scoringWordGlow:    (p) => calls.push(['scoringWordGlow', p]),
+  });
+  ac.setEnabled(false); // reduced motion disables the full choreography
+
+  bus.emit(EV.MOVE_CONFIRMED, {
+    slot: 0, placed: [{ r: 4, c: 4, letter: 'א', val: 1 }], words: ['א'],
+    wordTiles: [[{ r: 4, c: 4, letter: 'א', val: 1 }]], score: 1,
+  });
+  bus.emit(EV.INVALID_MOVE_REJECTED, {
+    reason: 'word-not-in-dictionary', placed: [{ r: 2, c: 2, letter: 'א', val: 1 }], invalidWords: ['אא'],
+  });
+
+  const invoked = calls.map(c => c[0]);
+  // The two information-critical cues get through, flagged reducedMotion.
+  assert.ok(invoked.includes('validFlash'), 'accepted-move cue still renders');
+  assert.ok(invoked.includes('illegalPulse'), 'rejected-move cue still renders');
+  assert.equal(calls.find(c => c[0] === 'validFlash')[1].reducedMotion, true);
+  assert.equal(calls.find(c => c[0] === 'illegalPulse')[1].reducedMotion, true);
+  // The moving choreography stays off — no chip flight, and no separate shake
+  // (illegalPulse's static red already carries "rejected").
+  assert.ok(!invoked.includes('scoreMergeSequence'), 'no chip flight under reduced motion');
+  assert.ok(!invoked.includes('scoringWordGlow'), 'no per-word glow under reduced motion');
+  assert.ok(!invoked.includes('shakeWord'), 'the shake (pure motion) is skipped under reduced motion');
+  ac.dispose();
+});
+
+test('disabled WITHOUT reduced motion stays a full no-op (animations simply off)', () => {
+  bus._reset();
+  let rendererCalls = 0;
+  const ac = createAnimationController({ bus, reducedMotion: () => false });
+  ac.setRenderer({ validFlash: () => { rendererCalls++; }, illegalPulse: () => { rendererCalls++; } });
+  ac.setEnabled(false);
+  bus.emit(EV.MOVE_CONFIRMED, {
+    slot: 0, placed: [{ r: 4, c: 4, letter: 'א', val: 1 }], words: ['א'],
+    wordTiles: [[{ r: 4, c: 4, letter: 'א', val: 1 }]], score: 1,
+  });
+  bus.emit(EV.INVALID_MOVE_REJECTED, { reason: 'word-not-in-dictionary', placed: [], invalidWords: ['אא'] });
+  assert.equal(rendererCalls, 0, 'reduced-motion fall-through only applies when reduced motion is actually on');
   ac.dispose();
 });
 

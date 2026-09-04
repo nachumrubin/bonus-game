@@ -24,7 +24,7 @@
 // The tile HTML structure mirrors legacy renderBoard() / renderRack() so
 // the existing CSS keyframes and layout rules apply unchanged.
 
-import { $, on, setText, setClass } from '../domHelpers.js';
+import { $, on, setText, setClass, bonusOverlayOpen, flashAnimation } from '../domHelpers.js';
 import { setAvatarEl } from './avatarScreens.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
@@ -38,7 +38,10 @@ import {
   HOLD_AFTER_MERGE_MS   as SCORE_MERGE_HOLD_AFTER_MS,
   SUM_FLIGHT_MS         as SCORE_MERGE_SUM_FLIGHT_MS,
   SUM_CHIP_HOLD_MS,
+  countUpDurationMs,
   mergeSequenceTiming,
+  scoreSequenceLandingMs,
+  scoreInteractionGateMs,
 } from '../scoreAnimationTimings.js';
 
 export const GAME_SCREEN_INTENT = Object.freeze({
@@ -67,7 +70,7 @@ function cellIdFor(r, c) {
 // `resolveAvatar(uid) => Promise<avatar|null>` (optional): looks up a player's
 // CURRENT avatar, so the identity strip doesn't render the copy frozen into the
 // room document at invite time. Omitted → the stored room avatar is used as-is.
-export function mountGameScreen({ controller, animationController, jokerPicker = null, bus = null, resolveAvatar = null, root = globalThis.document }) {
+export function mountGameScreen({ controller, animationController, jokerPicker = null, bus = null, resolveAvatar = null, root = globalThis.document, prefersReducedMotion = () => false }) {
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
@@ -94,6 +97,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // timeout is tracked so a second exchange resets it cleanly.
   let recentlyArrivedRackIdxs = new Set();
   let recentlyArrivedClearTimer = null;
+  // One-shot "just placed tentatively" board coords ("r,c"). renderBoard injects
+  // the tile-tentative-in entrance class the first time it paints each coord,
+  // then consumes it — so the settle plays exactly once, on the placement render,
+  // and never re-fires on an unrelated board re-render. (Phase 3A.)
+  const tentativeEntryCoords = new Set();
+  // One-shot rack indices a single tentative tile just returned to. renderRack
+  // injects the bt2-returned settle onto that slot, then the set is cleared.
+  const returnedRackIdxs = new Set();
   // (r, c) of a pending tile currently highlighted on the board. Click-to-
   // select / click-again-to-recall semantics. Cleared on confirm, recall-all,
   // exchange, or any other action that empties view.placed.
@@ -150,12 +161,17 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     lastMoveActive = placed.length > 0;
   }
 
-  // Shared score-merge-sequence landing time (when the red sum chip lands
-  // on the player's score box). Mirrors the constants in
-  // animationController.scoreMergeTiming and gameScreen.playScoreMergeSequence.
+  // When the red sum chip lands on the player's score box. Delegates to the
+  // shared timing (single source of truth) so this can't drift from
+  // animationController / playScoreMergeSequence.
   function scoreAnimationLandingMs(wordCount, bonusExtra, multiplier = 1) {
-    if (!wordCount && !bonusExtra) return 460;
-    return mergeSequenceTiming({ wordCount, bonusExtra, multiplier }).totalToPanelLanding;
+    return scoreSequenceLandingMs({ wordCount, bonusExtra, multiplier });
+  }
+  // The count-up should start the moment the sum chip lands — except under
+  // reduced motion, where the chip choreography is skipped entirely (the
+  // animation controller is disabled), so there is nothing to wait for.
+  function countUpStartDelayMs(wordCount, bonusExtra, multiplier = 1) {
+    return prefersReducedMotion() ? 0 : scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
   }
   function lastMoveHighlightActive() {
     return lastMoveActive;
@@ -179,14 +195,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // hold while any of these are open so the count-up doesn't fire under
   // a still-visible overlay.
   function bonusOverlayPresent() {
-    const doc = ownerDocumentOf(root) ?? globalThis.document;
-    if (!doc) return false;
-    for (const id of ['ov-bonus', 'ov-bonus-intro']) {
-      const el = doc.getElementById?.(id);
-      if (el && !el.classList?.contains?.('hidden')) return true;
-    }
-    if (doc.querySelector?.('.bonus-award-positioner')) return true;
-    return false;
+    return bonusOverlayOpen(ownerDocumentOf(root) ?? globalThis.document);
   }
 
   let countUpPollHandle = null;
@@ -215,7 +224,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const wordCount = Array.isArray(v?.lastMove?.wordTiles) ? v.lastMove.wordTiles.length : 0;
       const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
       const multiplier = Number(v?.lastMove?.multiplier) || 1;
-      const delay = scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
+      const delay = countUpStartDelayMs(wordCount, bonusExtra, multiplier);
       animateScore(el, t, delay);
     }
   }
@@ -250,7 +259,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const startTime = nowFn();
       const startValue = state.current;
       const delta = state.target - startValue;
-      const durationMs = Math.min(900, 350 + Math.abs(delta) * 12);
+      // Bounded count-up curve owned by scoreAnimationTimings (BOOST_MOTION_SPEC
+      // §11): small deltas feel near-instant, large deltas earn a slightly
+      // longer climb, never a long latency just because the score grew.
+      const durationMs = countUpDurationMs(delta);
       const tick = (t) => {
         const elapsed = Math.min(1, (t - startTime) / durationMs);
         const eased = 1 - Math.pow(1 - elapsed, 3);
@@ -402,9 +414,27 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     selectedPlacedCoord = null;
     pendingLockSelected = false;
     selectedRackIndex = (selectedRackIndex === i) ? null : i;
-    renderRack(controller.view);
+    // Toggle .sel on the LIVE rack nodes instead of rebuilding the rack. The
+    // node survives, so the .bt2 transform transition animates the lift in/out,
+    // and an A→B switch settles A down while B lifts — no flicker, no rebuild.
+    // A full renderRack would recreate the nodes and kill the transition.
+    applyRackSelection();
     renderBoard(controller.view);
     renderLockInventory(controller.view);
+  }
+
+  // Reflect selectedRackIndex onto the existing rack tiles by toggling `.sel`.
+  // Indexing matches the click handler (position in brack.children). In a
+  // non-DOM test stub brack has no children, so this is a safe no-op and the
+  // selection state (selectedRackIndex) remains the source of truth.
+  function applyRackSelection() {
+    if (!brack) return;
+    const tiles = brack.children ?? [];
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i];
+      const isSel = i === selectedRackIndex && !tile.classList?.contains?.('emp');
+      tile.classList?.[isSel ? 'add' : 'remove']?.('sel');
+    }
   }
 
   function isSamePlaced(a, b) {
@@ -420,6 +450,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       //   click on another empty cell while selected → move tile there
       if (isSamePlaced(selectedPlacedCoord, { r, c })) {
         selectedPlacedCoord = null;
+        // Deliberate single-tile return: mark the origin rack slot so it plays
+        // the "returned" settle when the tile reappears there on the next
+        // rack render. (displayRackTile empties slot `rackIndex` while placed.)
+        const returningIdx = existing?.rackIndex;
+        if (Number.isInteger(returningIdx)) returnedRackIdxs.add(returningIdx);
         controller.recallTile(r, c);
         return;
       }
@@ -504,11 +539,16 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const blocked = isCellBlockedForPlacement(controller.view, r, c);
       if (blocked) { renderBoard(controller.view); return; }
       controller.recallTile(srcCoord.r, srcCoord.c);
-      controller.placeTile({
+      // Repositioning: the destination "receives" the tile and settles (same
+      // tentative entrance as a fresh placement); the source cell just empties.
+      const moveKey = `${r},${c}`;
+      tentativeEntryCoords.add(moveKey);
+      const moved = controller.placeTile({
         r, c,
         letter: src.letter, val: src.val,
         isJoker: !!src.isJoker, rackIndex: src.rackIndex ?? null,
       });
+      if (moved === false) tentativeEntryCoords.delete(moveKey);
       return;
     }
     if (pendingLockSelected && controller.view.pendingLock) {
@@ -558,7 +598,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       jokerPickedSub = bus.on('joker/picked', ({ letter: picked }) => {
         if (!pendingJokerPlacement) return;
         const { r: pr, c: pc, rackIndex: ri } = pendingJokerPlacement;
+        const jokerKey = `${pr},${pc}`;
+        tentativeEntryCoords.add(jokerKey);
         const placed = controller.placeTile({ r: pr, c: pc, letter: picked, val: 0, isJoker: true, rackIndex: ri });
+        if (placed === false) tentativeEntryCoords.delete(jokerKey);
         clearJokerSubs();
         if (placed !== false) selectedRackIndex = null;
         renderRack(controller.view);
@@ -571,8 +614,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return;
     }
 
+    const entryKey = `${r},${c}`;
+    tentativeEntryCoords.add(entryKey);
     const placed = controller.placeTile({ r, c, letter, val: rackTile.val ?? 0, isJoker: false, rackIndex: selectedRackIndex });
     if (placed !== false) selectedRackIndex = null;
+    else tentativeEntryCoords.delete(entryKey);
     renderRack(controller.view);
   }
 
@@ -738,6 +784,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
     }
     const countUpDelay = delay;
+    const countUpDelay = countUpStartDelayMs(wordCount, bonusExtra, multiplier);
     animateScore($('#sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#sv2', root), v.scores[1] ?? 0, countUpDelay);
     animateScore($('#is-sv1', root), v.scores[0] ?? 0, countUpDelay);
@@ -926,12 +973,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return;
     }
     if (activeSlotTimer) return;
-    // count-up finishes ~900ms after it starts; align swap with that
-    // (and include the score-merge sequence so the swap doesn't beat the
-    // count-up).
+    // Hold the previous player's glow + block input until the score animation
+    // settles (chip landing + count-up peak). This is visual coherence +
+    // misclick avoidance, NOT a correctness barrier — the engine validates
+    // every command regardless (see BOOST_MOTION_SPEC §9). Under reduced motion
+    // it collapses to a small misclick floor.
     const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
     const multiplier = Number(v?.lastMove?.multiplier) || 1;
-    const total = scoreAnimationLandingMs(wordCount, bonusExtra, multiplier) + 900;
+    const total = scoreInteractionGateMs({ wordCount, bonusExtra, multiplier, reducedMotion: prefersReducedMotion() });
     activeSlotTimer = setTimeout(() => {
       activeSlotTimer = null;
       displayedTurnSlot = controller.view?.currentTurnSlot ?? target;
@@ -1057,7 +1106,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           cell.classList?.add('ht', 'lk');
           if (lastMoveCoords.has(`${r},${c}`)) cell.classList?.add('last-move');
         } else if (placedHere) {
-          cell.innerHTML = tileHTML(placedHere, /*isPlaced=*/true);
+          // Consume a one-shot tentative-entry marker so the settle plays only
+          // on the placement render, never on an unrelated board re-render.
+          const entering = tentativeEntryCoords.delete(`${r},${c}`);
+          cell.innerHTML = tileHTML(placedHere, /*isPlaced=*/true, entering ? 'tile-tentative-in' : '');
           cell.classList?.add('ht', 'np');
           if (selectedPlacedCoord && selectedPlacedCoord.r === r && selectedPlacedCoord.c === c) {
             cell.classList?.add('selected-placed');
@@ -1126,8 +1178,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         if (lastMoveCoords.has(`${br},${bc}`)) bsq.classList?.add('last-move');
         ensureBsqTileWrap(bsq).innerHTML = tileHTML(committed, /*isPlaced=*/false);
       } else if (placedHere) {
+        const entering = tentativeEntryCoords.delete(`${br},${bc}`);
         bsq.classList?.add('bsq-tile-host', 'np');
-        ensureBsqTileWrap(bsq).innerHTML = tileHTML(placedHere, /*isPlaced=*/true);
+        ensureBsqTileWrap(bsq).innerHTML = tileHTML(placedHere, /*isPlaced=*/true, entering ? 'tile-tentative-in' : '');
         if (selectedPlacedCoord && selectedPlacedCoord.r === br && selectedPlacedCoord.c === bc) {
           bsq.classList?.add('selected-placed');
         }
@@ -1232,14 +1285,19 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       // glow class so the user can see what's new. Cleared after 2s by
       // the EV.TILES_EXCHANGED subscriber.
       const arrived = recentlyArrivedRackIdxs.has(i) ? ' bt2-just-arrived' : '';
+      // One-shot "returned to rack" settle for a single tile just recalled.
+      const returned = returnedRackIdxs.has(i) ? ' bt2-returned' : '';
       const display = isJoker
         ? `<span class="jok-sym"><img class="jok-img" src="jocker.PNG" alt=""></span>`
         : letter;
       const valDisplay = isJoker ? '' : val;
       const anim = shouldAnimate ? ` anim-in" style="animation:tileDropIn .35s cubic-bezier(.22,.68,0,1.2) both;animation-delay:${i * 35}ms"` : '"';
       const dataLetter = isJoker ? '?' : letter;
-      html += `<div class="bt2${sel}${jok}${arrived}${anim} data-rack-letter="${dataLetter}" data-rack-idx="${i}"><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
+      html += `<div class="bt2${sel}${jok}${arrived}${returned}${anim} data-rack-letter="${dataLetter}" data-rack-idx="${i}"><span class="bt2-l">${display}</span><span class="bt2-v">${valDisplay}</span></div>`;
     }
+    // Consume the one-shot return markers so the settle plays only on this
+    // rebuild, not on any later rack render.
+    returnedRackIdxs.clear();
     brack.innerHTML = html;
   }
 
@@ -1354,7 +1412,13 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           if (tile) flashClass(tile, 'tile-place-in', 260);
         }
       },
-      validFlash:         (payload) => flashWordTiles(root, payload, 'is-valid', 520),
+      validFlash:         (payload) => {
+        // Under reduced motion the animated gold flash (a keyframe) is killed by
+        // the reduced-motion CSS blanket, so paint a brief STATIC brightness lift
+        // instead — the "accepted" information survives without movement (§15).
+        const cls = (payload?.reducedMotion || prefersReducedMotion()) ? 'rm-accept' : 'is-valid';
+        flashWordTiles(root, payload, cls, 420);
+      },
       shakeWord:          ({ placed, invalidWordTiles } = {}) => {
         // Tile-level shake: flash `is-invalid` on the .btile inside each
         // affected cell. Prefer the full illegal-word tiles when the engine
@@ -1365,14 +1429,16 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           const cell = $(`#c${r}_${c}`, root);
           if (!cell) continue;
           const target = cell.querySelector?.('.btile') ?? cell;
-          flashClass(target, 'is-invalid', 300);
+          flashClass(target, 'is-invalid', 260);
         }
       },
       illegalPulse:       ({ placed, invalidWordTiles } = {}) => {
-        // Paint the red pulsing border on the .btile itself (the cell's
+        // Paint a static strong-red border on the .btile itself (the cell's
         // children fill 100% of the cell, so a cell-level border ends up
         // hidden behind them). The .cell still gets `illegal-tile-host` so
-        // CSS can knock back the cell's tile background too.
+        // CSS can knock back the cell's tile background too. The red is held
+        // briefly then released; the shake supplies the motion (Phase 3B —
+        // no looping pulse, no second red effect saying the same thing).
         //
         // Highlight the whole illegal word — placed letters AND any existing
         // tiles that formed the bad word — when the engine supplies their
@@ -1403,7 +1469,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
             // recalled). Existing committed tiles stay put.
             if (isPlaced) flashClass(cell, 'rollback-pop', 260);
           }
-        }, 700);
+        }, 500);
       },
       scoringWordGlow:    (payload) => {
         const { delayMs = 0, durationMs = 420 } = payload ?? {};
@@ -1429,7 +1495,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       },
       scoreMergeSequence: (payload) => playScoreMergeSequence(root, payload),
       bingoLabel:         (payload) => floatBonusLabel(root, payload, 'BINGO +50', 'bingo-label'),
-      multiplierLabel:    (payload) => floatBonusLabel(root, payload, '×', 'multiplier-label'),
+      // multiplierLabel renderer removed — the directive no longer fires (it
+      // rendered a misleading bare "×"; see animationController + spec §1.5).
       // bonusExtraLabel is intentionally not wired — every bonus-square
       // activation now opens the modal `bonusAwardOverlay` so the player
       // can't miss it. Leaving the renderer keyed but unused would let a
@@ -1470,11 +1537,24 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       if (state.timer) try { clearTimeout(state.timer); } catch { /* swallow */ }
     }
     scoreTweens.clear();
+    // Cancel the screen-lifetime timers so they can't fire a stale render (or
+    // re-render the rack) against a torn-down screen after unmount.
+    if (countUpPollHandle) { try { clearInterval(countUpPollHandle); } catch { /* swallow */ } countUpPollHandle = null; }
+    if (activeSlotTimer) { try { clearTimeout(activeSlotTimer); } catch { /* swallow */ } activeSlotTimer = null; }
+    if (recentlyArrivedClearTimer) { try { clearTimeout(recentlyArrivedClearTimer); } catch { /* swallow */ } recentlyArrivedClearTimer = null; }
+    tentativeEntryCoords.clear();
+    returnedRackIdxs.clear();
     for (const off of cleanups) try { off(); } catch { /* swallow */ }
     cleanups.length = 0;
   }
 
-  return { unmount };
+  return {
+    unmount,
+    // Test-only seams (the DOM stub can't parse rack children, so selection
+    // state isn't observable via innerHTML). Prefixed `_`, unused in production.
+    _getSelectedRackIndex: () => selectedRackIndex,
+    _selectRack: (i) => selectRack(i),
+  };
 }
 
 function makeExchangeTile(root, letter, index, selected) {
@@ -1643,9 +1723,9 @@ function isOpponentPreview(view, r, c) {
   return !!previewTileAt(view, r, c);
 }
 
-function tileHTML(tile, isPlaced) {
+function tileHTML(tile, isPlaced, extraClass = '') {
   const isJoker = !!tile.isJoker;
-  const cls = `btile${isPlaced ? ' nw' : ''}${isJoker ? ' jk' : ''}`;
+  const cls = `btile${isPlaced ? ' nw' : ''}${isJoker ? ' jk' : ''}${extraClass ? ` ${extraClass}` : ''}`;
   // Pure-joker (no chosen letter) shows the jocker.PNG image; a joker that
   // has been resolved to a real letter shows the picked letter (no image).
   const display = isJoker && !tile.letter
@@ -1697,13 +1777,9 @@ function normalizeInventory(inventory) {
     .map(Number);
 }
 
-function flashClass(el, cls, durationMs) {
-  if (!el) return;
-  el.classList?.remove(cls);
-  void el.offsetWidth;
-  el.classList?.add(cls);
-  if (durationMs > 0) setTimeout(() => el.classList?.remove(cls), durationMs);
-}
+// The shared reflow-restart primitive (this was a byte-identical local copy).
+// Same behaviour: remove class → force reflow → re-add → auto-remove after ms.
+const flashClass = flashAnimation;
 
 function flashWordTiles(root, { wordTiles, placed } = {}, className, durationMs) {
   const coords = uniqueTileCoords(wordTiles, placed);
@@ -1779,8 +1855,7 @@ function flyScoreToPanel(root, { slot, score, wordTiles, placed, delayMs = 0, is
       }, 20 + hold);
     }
     setTimeout(() => {
-      flashClass(to, 'score-panel-arrive', 620);
-      if (isSum) spawnScoreHitBurst(root, to);
+      flashClass(to, 'score-panel-arrive', 360);
       chip.remove?.();
     }, 480 + hold);
   };
@@ -2001,28 +2076,13 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
       }, 20);
     }
     setTimeout(() => {
-      flashClass(targetEl, 'score-panel-arrive', 620);
-      spawnScoreHitBurst(root, targetEl);
-      flashClass($(`#sv${slot + 1}`, root), 'score-pop', 500);
-      flashClass($(`#is-sv${slot + 1}`, root), 'score-pop', 500);
+      // One clear landing response — the panel pulse — plus the count-up on the
+      // number. Phase 3B removed the radial hit-burst and the separate score-pop
+      // that used to fire on this same frame (three emphases for one moment).
+      flashClass(targetEl, 'score-panel-arrive', 360);
       sumChip.remove?.();
     }, SCORE_MERGE_SUM_FLIGHT_MS);
   }, mergeEnd + SCORE_MERGE_HOLD_AFTER_MS);
-}
-
-// Spawned at the score-panel center when the sum chip lands. A short-lived
-// radial ring + glow that punches the moment the points "hit" the box.
-function spawnScoreHitBurst(root, target) {
-  if (!target) return;
-  const doc = ownerDocumentOf(root);
-  const center = centerOf(target);
-  if (!center || !doc?.createElement) return;
-  const burst = doc.createElement('div');
-  burst.className = 'score-hit-burst';
-  burst.style.left = `${center.x}px`;
-  burst.style.top  = `${center.y}px`;
-  appendOverlay(root, burst);
-  setTimeout(() => burst.remove?.(), 720);
 }
 
 function firstAnchorElement(root, wordTiles, placed) {

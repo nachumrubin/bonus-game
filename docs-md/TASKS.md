@@ -145,6 +145,135 @@ Traced from prod room `fc_1786040881489_8bjchc` (client `295–222` vs server
 - [ ] Follow-up (optional): consider showing a small "−10" flyout on the score
   panel the moment a lock is placed, for stronger feedback than the count-down
   animation alone.
+## Boost Motion Spec (Phase 2A) — approved contract, September 2026
+
+The motion contract is `docs-md/BOOST_MOTION_SPEC.md` (supersedes the audit's
+§H/§I recommendations where they conflict).
+
+**Phase 3B (Word Resolution & Score Feedback) — DONE (September 2026).** Made the
+end of a turn feel fast and causal: halved the score-merge timing constants
+(simple move settles ~1.3s, was ~2.2s), replaced the hardcoded count-up with the
+bounded `countUpDurationMs` curve, decoupled the input gate (`GATE_SETTLE_TAIL_MS`)
+from the fairness clock-grace, de-stacked feedback (brief `validFlash`; one-shot
+word glow instead of a ~1.5s loop; static red instead of the infinite illegal
+pulse; single panel-arrive landing instead of arrive+burst+score-pop; removed
+`spawnScoreHitBurst`), and made reduced-motion accept/reject cues survive the
+disabled controller (`.rm-accept` + static `.illegal-tile`). The ×N and bonus
+chips keep their semantic roles. 1100ms auto-pass hold unchanged (gameplay-owned).
+See CHANGELOG and BOOST_MOTION_SPEC §11 (Phase 3B runtime note).
+
+Deferred findings logged during 3B (out of scope, for later phases):
+- **Reduced-motion bonus-award overlay:** on `BOOST_ACTIVATED` the animation
+  controller increments `overlayCount` but the `bonusAwardOverlay` directive is a
+  no-op while disabled (reduced motion), so under reduced motion the award modal
+  may not open through this path. This is boost-activation flow (out of Phase 3B
+  scope) and likely pre-existing since Phase 2B — verify and address in the boost
+  phase before relying on reduced-motion bonus play.
+- **Dead score renderers:** `scoringPointsFloat`, `scoreFlyToPanel`, `scorePop`
+  renderer methods are never triggered (the merge sequence supersedes them);
+  `flyScoreToPanel` is also dead. Safe to delete in a later cleanup pass (left in
+  place this phase to keep the diff scoped to live behavior).
+- **Audio/haptic on score landing:** there is currently NO accept/score sound
+  (only the invalid buzz + boost chirp, both already aligned). No mismatch to fix
+  per §16; a soft score-landing tick remains an optional future addition.
+
+**Phase 3A (Core Tile Tactility) — DONE (September 2026).** First visible motion
+pass, scoped to rack selection, tentative placement, and tentative return. See
+CHANGELOG. New semantic classes: `.btile.tile-tentative-in`, `.bt2.bt2-returned`;
+`.bt2` selection lift now animated via an in-place `.sel` toggle; local confirm
+no longer re-pops tiles (opponent arrival keeps `tilePlaceIn`). Zero new JS
+timers; reduced motion handled entirely by existing CSS rules.
+
+Deferred findings logged during 3A (out of scope, for later phases):
+- `body.tile-selected` (the bonus-square "pulse when a tile is selected") is
+  never toggled by the spine — legacy/dead. The `#bsq` pulse relies on it, so it
+  currently doesn't fire. Revisit when Boost-square feedback is designed.
+- `.selected-placed` (a placed tile tapped to reposition/recall) uses a LOOPING
+  pulse (`selectedPlacedPulse .9s infinite`) — a persistent-state loop the spec
+  generally discourages. Left as-is (not one of the three 3A interactions).
+- The two duplicate `.bt2` / `.bt2.sel` CSS blocks (509/522 and 1507/1516) remain
+  — not normalized (would be a broader tile-CSS refactor, out of 3A scope).
+
+**Phase 2B (Motion Foundation & Timing Integrity) — DONE (September 2026).**
+Tokens, effective reduced-motion preference model + settings toggle, timing
+ownership + reduced-motion floors, lifecycle/dead-code cleanup, and the removal
+of the misleading `multiplierLabel`. See CHANGELOG. Runtime verification results:
+
+- [x] **T1 (gate-flooring):** verified the interaction gate is visual, not a
+  correctness barrier (engine binds actions to `currentTurnSlot`). Gate floored
+  under reduced motion.
+- [x] **T2 (freeze-flooring):** verified the clock freeze is fairness (suppresses
+  auto-pass; a shortened freeze causes no spurious pass). Freeze floored under
+  reduced motion; ×N multiplier phase fixed.
+- [x] **T3 (overlay):** reproduced only a deferred *visual* (never a state bug),
+  and not under realistic flows → no polling rewrite; duplicated predicate
+  centralised into `domHelpers.bonusOverlayOpen`.
+
+Still open (later phases):
+
+- [ ] **T4:** confirm the ~300ms score-animation vs timer-resume overlap
+  (now moot for the freeze — it consumes the shared timing — but still worth a
+  visual check in the visual phase).
+- [ ] **T5:** superseded — unmount now cancels `activeSlotTimer`,
+  `recentlyArrivedClearTimer`, and `countUpPollHandle` (guarded no-ops), with a
+  mock-timer regression test. Broader stale-render audit can continue if needed.
+- [ ] **T6:** confirm accordion `max-height` jank on a low-end profile before
+  rewriting it (Phase 5).
+- [ ] **Deferred overlay work:** the event-driven overlay-state source + bounded
+  safety timeout (spec §5.4) — only if a realistic deadlock is ever observed.
+- [ ] **Visual phases (spec §12 Phases 3–5):** gameplay motion (rack pickup,
+  tentative placement, retimed valid/invalid/boost feedback), reward motion
+  (victory/draw/defeat, Elo reveal), and polish/perf. Not started — Phase 2B is
+  foundation only.
+- [ ] **Press-scale migration:** the `--press-scale-control` / `--press-scale-tile`
+  tokens exist but the ad-hoc `:active` scales were intentionally NOT migrated in
+  2B (visual-adjacent) — do in a later pass.
+
+Design decisions locked by the spec (for implementers, do not re-litigate):
+remove `multiplierLabel` (misleading bare `×`); demote the 2200ms boost-badge
+pulse to a one-shot + static state; add rack-pickup and tentative-placement
+feedback (tentative must not duplicate the committed pop); differentiate
+victory/draw/defeat end-game motion (confetti = victory only); product language
+is "Reduced motion" (not "Animations enabled"); the OS reduced-motion preference
+is read live and never persisted.
+
+## Animation & motion system — follow-up work (from September 2026 audit)
+
+Full audit: `docs-md/ANIMATION_AUDIT.md`. This pass was investigation-only —
+nothing below has been implemented yet. Proposed phased order lives in the
+audit's §I; short list of concrete follow-ups it surfaced:
+
+- [ ] `turnTimerController.js` re-derives its own (incomplete) copy of
+  `scoreAnimationTimings.js`'s constants instead of importing them, and its
+  formula omits the multiplier-chip phase — can resume the turn clock ~300ms
+  before a multiplier+multi-word move's animation actually finishes.
+- [ ] `gameScreen.js` hardcodes `900` twice (`animateScore`,
+  `maybeScheduleActiveSlotSwap`) instead of importing `COUNTUP_PEAK_MS`.
+- [ ] Two independent 100ms overlay-presence pollers
+  (`animationController.js` + `gameScreen.js`) duplicate detection logic and
+  have no shared source of truth/timeout — candidate for one shared utility.
+- [ ] Dead/shadowed CSS: two `@keyframes bonusPulse` blocks (second silently
+  shadows the first at `styles.css:357` vs `:1463`); dead `multPulse`
+  keyframe (`:1023`, never referenced).
+- [ ] `multiplierLabel` directive (`gameScreen.js:1266`) renders a literal
+  `'×'` with no number — either wire the real value or retire it (the
+  correct `×N` chip already exists inside `playScoreMergeSequence`).
+- [ ] `domHelpers.js`'s `flashAnimation()` primitive is unused; 7+ files
+  hand-roll the same reflow-restart idiom independently — worth
+  consolidating onto the shared helper.
+- [ ] `animationsEnabled` (reduced motion) has no settings-screen toggle
+  despite being fully wired end-to-end; also needs verification of whether
+  it actually shortens `gameScreen.js`'s interaction-gate delay
+  (`activeSlotTimer`) or only suppresses visual flourishes.
+- [ ] `scoreBonusAnimation.js` (a second, parallel "+N" float
+  implementation) has no confirmed call site — verify and likely delete as
+  dead code.
+- [ ] End-of-game victory/defeat screen and the Elo-delta reveal have zero
+  build-up animation (static instant swaps) despite mid-game word scoring
+  getting an elaborate multi-second choreographed sequence — candidate to
+  reuse the already-shared `bonusFx.js` confetti/count-up primitives.
+- [ ] 9+ divergent button `:active` press-scale values with no shared token
+  — candidate for a single `--press-scale` CSS custom property.
 
 ## Bot weighs bonus squares when ranking moves — July 2026
 

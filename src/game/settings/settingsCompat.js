@@ -15,6 +15,14 @@ export const DEFAULT_GAME_SETTINGS = Object.freeze({
 });
 
 export const DEFAULT_UI_PREFERENCES = Object.freeze({
+  // reducedMotion is the tri-state source of truth for motion preference:
+  //   'auto' — follow the OS prefers-reduced-motion setting (default)
+  //   'on'   — explicitly reduce motion regardless of OS
+  //   'off'  — explicitly keep full motion regardless of OS
+  // The OS resolution happens at runtime in src/ui/motionPreference.js; this
+  // pure module never reads matchMedia. `animationsEnabled` below is the
+  // legacy boolean derived from reducedMotion for backward compatibility.
+  reducedMotion: 'auto',
   animationsEnabled: true,
   music: true,
   soundFx: true,
@@ -22,6 +30,20 @@ export const DEFAULT_UI_PREFERENCES = Object.freeze({
   lastDisplayName: '',
   gender: 'זכר',
 });
+
+// Normalize any inbound value into the reducedMotion tri-state, migrating the
+// legacy `skipAnimations` / `animationsEnabled` flags. An explicit legacy
+// "animations off" (skipAnimations:true or animationsEnabled:false) becomes
+// 'on'; anything unrecognised or absent becomes 'auto' (follow the OS), so
+// existing stored preferences transparently start honouring the OS setting.
+export function normalizeReducedMotion(raw = {}) {
+  const rm = raw.reducedMotion;
+  if (rm === 'on' || rm === true) return 'on';
+  if (rm === 'off' || rm === false) return 'off';
+  if (rm === 'auto') return 'auto';
+  if (raw.skipAnimations === true || raw.animationsEnabled === false) return 'on';
+  return 'auto';
+}
 
 export function normalizeGameSettings(input = {}) {
   const s = { ...DEFAULT_GAME_SETTINGS, ...(input ?? {}) };
@@ -86,12 +108,21 @@ export function saveGameSettings(storage, settings) {
 
 export function normalizeUiPreferences(input = {}) {
   const raw = input ?? {};
-  const animationsEnabled = raw.animationsEnabled != null
-    ? !!raw.animationsEnabled
-    : raw.skipAnimations != null
-      ? !raw.skipAnimations
-      : DEFAULT_UI_PREFERENCES.animationsEnabled;
+  const reducedMotion = normalizeReducedMotion(raw);
+  // animationsEnabled is derived from the tri-state for legacy consumers.
+  // An explicit reducedMotion wins; 'auto' keeps any legacy flag (or the
+  // default true) — the OS is applied at runtime by motionPreference, not here.
+  const animationsEnabled = reducedMotion === 'on'
+    ? false
+    : reducedMotion === 'off'
+      ? true
+      : raw.animationsEnabled != null
+        ? !!raw.animationsEnabled
+        : raw.skipAnimations != null
+          ? !raw.skipAnimations
+          : DEFAULT_UI_PREFERENCES.animationsEnabled;
   return {
+    reducedMotion,
     animationsEnabled,
     music: raw.music != null ? !!raw.music : DEFAULT_UI_PREFERENCES.music,
     soundFx: raw.soundFx != null ? !!raw.soundFx : DEFAULT_UI_PREFERENCES.soundFx,
@@ -128,6 +159,14 @@ export function uiPreferencePatchFromSettings(changes = {}) {
   if (Object.prototype.hasOwnProperty.call(changes, 'vibration')) patch.vibration = !!changes.vibration;
   if (Object.prototype.hasOwnProperty.call(changes, 'animationsEnabled')) patch.animationsEnabled = !!changes.animationsEnabled;
   if (Object.prototype.hasOwnProperty.call(changes, 'skipAnimations')) patch.animationsEnabled = !changes.skipAnimations;
+  // The "Reduced motion" settings toggle emits a boolean; store it as the
+  // explicit tri-state 'on'/'off' (never 'auto' — touching the control is an
+  // explicit choice that overrides the OS default).
+  if (Object.prototype.hasOwnProperty.call(changes, 'reducedMotion')) {
+    patch.reducedMotion = changes.reducedMotion === 'on' || changes.reducedMotion === 'off'
+      ? changes.reducedMotion
+      : (changes.reducedMotion ? 'on' : 'off');
+  }
   return patch;
 }
 

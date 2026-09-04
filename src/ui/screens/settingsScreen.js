@@ -45,7 +45,13 @@ const VALUE_SELECTS = [
 
 const COUNTERS = [];
 
-export function mountSettingsScreen({ root = globalThis.document, bus, getSettings = () => globalThis.gameSettings, getUiPrefs = () => ({}) } = {}) {
+// The "Reduced motion" control is a UI preference (not a gameSettings key), so
+// it's wired separately from TOGGLES. Its displayed state is the EFFECTIVE
+// preference (explicit choice, else the OS setting), read via getReducedMotion.
+const REDUCED_MOTION_YES = 'sett-reducedmotion-yes';
+const REDUCED_MOTION_NO  = 'sett-reducedmotion-no';
+
+export function mountSettingsScreen({ root = globalThis.document, bus, getSettings = () => globalThis.gameSettings, getUiPrefs = () => ({}), getReducedMotion = () => false } = {}) {
   if (!bus) throw new Error('mountSettingsScreen: bus required');
   const overlay = $('#ov-settings', root);
   if (!overlay) {
@@ -54,6 +60,34 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
   }
 
   const cleanups = [];
+
+  // ─── Reduced-motion toggle (UI preference, effective state) ─────────
+  function paintReducedMotion(value) {
+    const yes = $(`#${REDUCED_MOTION_YES}`, overlay);
+    const no  = $(`#${REDUCED_MOTION_NO}`, overlay);
+    if (yes?.classList) (value ? yes.classList.add('active-yes') : yes.classList.remove('active-yes'));
+    if (no?.classList)  (value ? no.classList.remove('active-no') : no.classList.add('active-no'));
+  }
+  {
+    const yes = $(`#${REDUCED_MOTION_YES}`, overlay);
+    const no  = $(`#${REDUCED_MOTION_NO}`, overlay);
+    if (yes) {
+      yes.removeAttribute('onclick');
+      cleanups.push(on(yes, 'click', (e) => {
+        e.preventDefault?.();
+        paintReducedMotion(true);
+        bus.emit(SETTINGS_CHANGED, { reducedMotion: true });
+      }));
+    }
+    if (no) {
+      no.removeAttribute('onclick');
+      cleanups.push(on(no, 'click', (e) => {
+        e.preventDefault?.();
+        paintReducedMotion(false);
+        bus.emit(SETTINGS_CHANGED, { reducedMotion: false });
+      }));
+    }
+  }
 
   // ─── Toggles ────────────────────────────────────────────
   for (const tog of TOGGLES) {
@@ -209,6 +243,7 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
     closeTip();
     const uiPrefs = getUiPrefs?.() ?? {};
     refreshControls(normalizeGameSettings(getSettings?.() ?? {}), uiPrefs);
+    paintReducedMotion(!!getReducedMotion?.());
     applyGenderToRoot(overlay, uiPrefs.gender);
     overlay.classList?.remove('hidden');
   }));

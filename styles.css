@@ -7,6 +7,16 @@
   --lcd:#c8ff00;
   --p1:#e74c8b; --p2:#f5a623;
 }
+/* Motion tokens — mirror of src/ui/motionTokens.js (kept in lockstep by hand;
+   see docs-md/BOOST_MOTION_SPEC.md §4). CSS-only animations read these; JS
+   schedulers read the JS module. */
+:root{
+  --motion-micro:120ms; --motion-fast:220ms; --motion-normal:320ms; --motion-reward:600ms;
+  --ease-standard:cubic-bezier(0.22,1,0.36,1);
+  --ease-exit:cubic-bezier(0.4,0,1,1);
+  --ease-bounce:cubic-bezier(0.34,1.56,0.64,1);
+  --press-scale-control:0.96; --press-scale-tile:0.92;
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 *{scrollbar-width:none!important;-ms-overflow-style:none!important;}
 *::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}
@@ -78,6 +88,10 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
 @media(max-height:700px){.hbtns .bd{min-height:clamp(42px,6svh,52px);}.bd-sub{display:none;}.hlogo{margin-top:4px;margin-bottom:4px;}.hbtns{gap:clamp(4px,.75svh,6px);}}
 @media(max-height:580px){.hbtns .bd{min-height:40px;border-radius:11px;}.hlogo img{max-width:230px !important;}.credit{display:none;}}
 
+/* Static strong red — the shake supplies the motion ("no"), this identifies
+   WHICH placement is illegal. Phase 3B dropped the infinite alternate pulse:
+   a looping red on top of the shake was two effects saying the same thing and
+   it kept animating after the meaning was clear (BOOST_MOTION_SPEC §5.5). */
 .illegal-tile{
   background:linear-gradient(180deg,#ffbcbc,#ff8f8f)!important;
   border:2px solid #d42323!important;
@@ -87,7 +101,6 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
     inset 0 0 0 1px rgba(255,255,255,.35) !important;
   outline:2px solid #ff2a2a !important;
   outline-offset:1px;
-  animation:illegalPulse .35s ease-in-out infinite alternate;
   z-index:5;
   position:relative;
 }
@@ -101,10 +114,6 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
   box-shadow:0 0 14px rgba(255,80,80,.85) !important;
   z-index:6 !important;
   position:relative !important;
-}
-@keyframes illegalPulse{
-  from{transform:scale(1);     box-shadow:0 0 0 2px #ff3232, 0 0 10px rgba(255,80,80,.7),  inset 0 0 0 1px rgba(255,255,255,.3);}
-  to  {transform:scale(1.06);  box-shadow:0 0 0 3px #ff5050, 0 0 22px rgba(255,80,80,1),   inset 0 0 0 1px rgba(255,255,255,.5);}
 }
 .rollback-pop{
   transition:transform .25s ease, opacity .25s ease, filter .25s ease;
@@ -375,10 +384,9 @@ body.tile-selected .bsq:not(.used){
   animation: bonusPulse 1s ease-in-out infinite;
   cursor:pointer;
 }
-@keyframes bonusPulse{
-  0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.45);}
-  50%{box-shadow:0 0 10px rgba(232,200,64,.8),inset 0 1px 0 rgba(255,255,255,.45);}
-}
+/* @keyframes bonusPulse is defined once, further down (the gold-glow version).
+   A duplicate definition here used to be silently shadowed by it (CSS keeps the
+   last @keyframes of a given name) — removed to avoid the footgun. */
 .bsq.used{background:#b0aa88;border-color:#888060;opacity:.6;cursor:default;}
 /* When a tile lands on a bonus square, an absolutely-positioned wrapper
    carries the .btile HTML. We hide the lightning glyph so only the tile
@@ -524,7 +532,9 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   cursor:pointer; position:relative; user-select:none; -webkit-user-select:none;
   box-shadow:0 3px 0 var(--tshadow),inset 0 1px 0 rgba(255,255,255,.6);
-  transition:transform .1s,box-shadow .1s;
+  /* Motion token: game-piece selection lift settles in on the persistent node
+     (gameScreen toggles .sel in place, not via a rebuild). See BOOST_MOTION_SPEC §6.1. */
+  transition:transform var(--motion-micro) var(--ease-standard),box-shadow var(--motion-micro) var(--ease-standard);
   /* The rack renders .bt2 as a <div> (inherits Heebo from body), but the
      exchange overlay renders it as a <button> — and form controls do NOT
      inherit font-family, so those tiles fell back to the UA font. Inherit
@@ -1041,7 +1051,6 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .td2{width:5px;height:5px;border-radius:50%;background:var(--by);animation:tp 1.1s ease-in-out infinite;}
 .td2:nth-child(2){animation-delay:.2s;}.td2:nth-child(3){animation-delay:.4s;}
 @keyframes tp{0%,100%{opacity:.25;transform:scale(.65)}50%{opacity:1;transform:scale(1.3)}}
-@keyframes multPulse{from{opacity:.7;transform:scale(.97)}to{opacity:1;transform:scale(1.03)}}
 
 /* Settings overlay controls */
 .sopt-btn{
@@ -1771,12 +1780,23 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
    ANIMATION SYSTEM — smooth, mobile-first, performance-safe
 ══════════════════════════════════════════════════════════════ */
 
-/* Respect user reduced-motion preference */
+/* Respect user reduced-motion preference.
+   Two triggers, same effect:
+   - the OS setting (the @media rule), and
+   - an EXPLICIT in-app "Reduced motion" choice, which motionPreference.js
+     stamps as [data-reduced-motion] on the root even when the OS has no
+     preference. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation: none !important;
     transition-duration: 0.01ms !important;
   }
+}
+:root[data-reduced-motion] *,
+:root[data-reduced-motion] *::before,
+:root[data-reduced-motion] *::after {
+  animation: none !important;
+  transition-duration: 0.01ms !important;
 }
 
 /* ── 1. Screen transition ── */
@@ -1816,12 +1836,44 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 }
 .tile-place-in { animation: tilePlaceIn 0.22s cubic-bezier(0.22,1,0.36,1) both; will-change: transform; }
 
-/* ── 4. Valid word gold flash ── */
+/* ── 3b. Tentative tile placement (Phase 3A) ──
+   Fires ONCE when the player taps a tile onto an empty board cell, BEFORE
+   pressing Play. Deliberately gentler than the committed tilePlaceIn above:
+   a small scale-in settle, no opacity fade and no overshoot, so "I put it
+   here" never reads as "the move was accepted". See BOOST_MOTION_SPEC §6.2. */
+@keyframes tileTentativeIn {
+  0%   { transform: scale(0.88); }
+  100% { transform: scale(1); }
+}
+.btile.tile-tentative-in { animation: tileTentativeIn var(--motion-fast) var(--ease-standard) both; will-change: transform; }
+
+/* ── 3c. Tentative tile returned to the rack (Phase 3A) ──
+   Fires ONCE on the rack slot a single tentative tile settles back into when
+   the player taps it off the board. Quick fade+settle: "that placement was
+   undone". Intensity 1–2. See BOOST_MOTION_SPEC §6.3. */
+@keyframes tileReturned {
+  0%   { transform: translateY(-3px) scale(0.9); opacity: 0.55; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.bt2.bt2-returned { animation: tileReturned var(--motion-fast) var(--ease-standard) both; }
+
+/* ── 4. Valid word gold flash ──
+   The acceptance beat: "the game took this word". Phase 3B shortened it to the
+   gameplay token (was 0.5s) and softened the brightness so it reads as a brief
+   confirm rather than competing with the score choreography that follows it
+   (BOOST_MOTION_SPEC §4/§6.4). */
 @keyframes validFlash {
-  0%   { filter: brightness(1.7) drop-shadow(0 0 7px rgba(255,220,0,.95)); }
+  0%   { filter: brightness(1.4) drop-shadow(0 0 5px rgba(255,220,0,.8)); }
   100% { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
 }
-.is-valid { animation: validFlash 0.5s ease-out both; }
+.is-valid { animation: validFlash var(--motion-fast) var(--ease-standard) both; }
+
+/* Reduced-motion accept cue. A STATIC brightness lift painted via a plain
+   `filter` property (no keyframe, no transition) so it survives the
+   reduced-motion blanket above, which sets animation:none. The renderer holds
+   it briefly then removes it. Its reject counterpart needs no dedicated class —
+   `.illegal-tile` is already a static red (BOOST_MOTION_SPEC §15). */
+.rm-accept { filter: brightness(1.4) drop-shadow(0 0 4px rgba(255,220,0,.7)); }
 
 /* ── 5. Invalid word shake ── */
 @keyframes shakeWord {
@@ -1833,7 +1885,7 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   75%     { transform: translateX(-3px); }
   90%     { transform: translateX(3px); }
 }
-.is-invalid { animation: shakeWord 0.28s ease-out both; }
+.is-invalid { animation: shakeWord var(--motion-fast) ease-out both; }
 
 /* ── 6. Bonus square activation flash ── */
 @keyframes bonusActivate {
@@ -1884,16 +1936,15 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 .score-pop { animation: scorePop 0.42s cubic-bezier(0.22,1,0.36,1) both; }
 
 /* ── Scoring animation: word glow (electric blue + gold) ──
-   Looping pulse — the class is added when the word's +N float appears and
-   removed when the score panel finishes counting up. Each iteration breathes
-   the brightness/drop-shadow so the highlighted word stays clearly lit while
-   the score is being awarded. */
+   A single brief flash as each word's +N chip launches — lights the word just
+   long enough to read which one is contributing, then settles. Phase 3B
+   replaced the old ~1.5s breathing loop (the main "why is it still animating?"
+   offender) with this one-shot pulse (BOOST_MOTION_SPEC §6.6). */
 @keyframes scoringWordGlow {
-  0%   { filter: brightness(1.5) drop-shadow(0 0 6px rgba(68,170,255,.55)) drop-shadow(0 0 4px rgba(255,232,112,.45)); }
-  50%  { filter: brightness(2.3) drop-shadow(0 0 14px rgba(68,170,255,.95)) drop-shadow(0 0 10px rgba(255,232,112,.85)); }
-  100% { filter: brightness(1.5) drop-shadow(0 0 6px rgba(68,170,255,.55)) drop-shadow(0 0 4px rgba(255,232,112,.45)); }
+  0%   { filter: brightness(2.1) drop-shadow(0 0 12px rgba(68,170,255,.9)) drop-shadow(0 0 8px rgba(255,232,112,.8)); }
+  100% { filter: brightness(1)   drop-shadow(0 0 0px transparent); }
 }
-.scoring-word-glow { animation: scoringWordGlow 0.8s ease-in-out infinite; will-change: filter; }
+.scoring-word-glow { animation: scoringWordGlow var(--motion-fast) var(--ease-standard) both; will-change: filter; }
 
 /* ── Scoring animation: floating +points text ── */
 @keyframes scoringPointsFloat {
@@ -1983,43 +2034,18 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   .turn-effect-banner { transition: opacity .28s ease; transform: translate(-50%, 0); }
 }
 
-/* ── Scoring animation: score panel pulse on point arrival ── */
+/* ── Scoring animation: score panel pulse on point arrival ──
+   The ONE landing response: "the score landed here." Phase 3B softened it
+   (scale 1.18 → 1.12, 0.62s → the normal token) and removed the radial hit
+   burst that used to fire on the same frame — one clear emphasis plus the
+   number count-up, not a stack of scale + glow + burst (BOOST_MOTION_SPEC §12). */
 @keyframes scorePanelArrive {
   0%   { transform: scale(1);    filter: drop-shadow(0 0 0px transparent); }
-  30%  { transform: scale(1.18); filter: drop-shadow(0 0 24px rgba(255,232,112,1))
-                                          drop-shadow(0 0 14px rgba(255,140,80,.95)); }
-  60%  { transform: scale(.94);  filter: drop-shadow(0 0 14px rgba(68,170,255,.85)); }
+  35%  { transform: scale(1.12); filter: drop-shadow(0 0 16px rgba(255,232,112,.95))
+                                          drop-shadow(0 0 9px rgba(255,140,80,.85)); }
   100% { transform: scale(1);    filter: drop-shadow(0 0 0px transparent); }
 }
-.score-panel-arrive { animation: scorePanelArrive 0.62s cubic-bezier(0.22,1,0.36,1) both; }
-
-/* Radial burst spawned at the score panel center the moment the sum
-   chip lands. Pure decoration — no layout impact (position: fixed,
-   pointer-events: none). Scales outward from the centre and fades. */
-@keyframes scoreHitBurst {
-  0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.35); }
-  20%  { opacity: 1;   transform: translate(-50%, -50%) scale(0.9); }
-  60%  { opacity: 0.55; transform: translate(-50%, -50%) scale(1.35); }
-  100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.8); }
-}
-.score-hit-burst {
-  position: fixed;
-  pointer-events: none;
-  z-index: 9998;
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 3px rgba(255,200,90,.9),
-    0 0 24px 10px rgba(255,150,70,.55),
-    0 0 44px 20px rgba(255,232,112,.32);
-  background: radial-gradient(circle,
-    rgba(255,210,110,.5) 0%,
-    rgba(255,150,70,.22) 55%,
-    rgba(255,150,70,0)   100%);
-  animation: scoreHitBurst 0.7s cubic-bezier(0.22,1,0.36,1) both;
-  will-change: transform, opacity;
-}
+.score-panel-arrive { animation: scorePanelArrive var(--motion-normal) var(--ease-standard) both; }
 
 /* Multiplier banner sits as the last child of the boosted player's score
    box (mobile `.is-pcard` or desktop `.scbox`), absolutely positioned at

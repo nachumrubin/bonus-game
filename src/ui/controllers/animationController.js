@@ -14,13 +14,17 @@
 
 import { EV } from '../../events/eventTypes.js';
 import { RACK_SIZE } from '../../game/core/tileBag.js';
+import { bonusOverlayOpen } from '../domHelpers.js';
 import {
   WORD_MERGE_STAGGER_MS,
-  COUNTUP_PEAK_MS,
   mergeSequenceTiming,
 } from '../scoreAnimationTimings.js';
 
-export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false }) {
+// How long each per-word glow stays applied (kept re-applied across re-renders
+// during the merge sequence). Brief and non-looping — see emitScoreSequence.
+const SCORING_WORD_GLOW_MS = 360;
+
+export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false, reducedMotion = () => false }) {
   if (!bus) throw new Error('createAnimationController: bus required');
 
   let enabled = true;
@@ -29,19 +33,41 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   function setEnabled(on) { enabled = !!on; }
   function setRenderer(r) { renderer = r; }
 
+  // Directives whose INFORMATION the player must still receive under reduced
+  // motion, even though the full choreography is disabled — an accepted move
+  // and a rejected move. The renderer paints these as a STATIC emphasis (no
+  // travel). Everything else stays a no-op while disabled. Sound/haptic are
+  // unaffected (they aren't motion). BOOST_MOTION_SPEC §15.
+  //   - validFlash  → a brief static brightness lift on the played tiles.
+  //   - illegalPulse → the static red that identifies the illegal placement
+  //     (the shake is skipped; illegalPulse already carries the "rejected" info).
+  const REDUCED_MOTION_INFO = new Set(['validFlash', 'illegalPulse']);
+
   // Translate an engine event payload into an animation directive that the
   // renderer can act on. Keeping the directives data-only means tests can
   // assert on them without a DOM.
   const directives = []; // append-only log of triggered animations (for tests)
+  function callRenderer(kind, payload) {
+    try {
+      const fn = renderer[kind];
+      if (fn) fn(payload);
+    } catch (e) {
+      console.warn('[anim]', kind, e);
+    }
+  }
   function trigger(directive) {
     directives.push(directive);
-    if (!enabled || !renderer) return;
-    try {
-      const fn = renderer[directive.kind];
-      if (fn) fn(directive.payload);
-    } catch (e) {
-      console.warn('[anim]', directive.kind, e);
+    if (!renderer) return;
+    if (!enabled) {
+      // Choreography off. Under reduced motion, still forward the small set of
+      // information-critical directives so the player gets a static accept/reject
+      // cue; the renderer branches on its own reduced-motion flag.
+      if (reducedMotion() && REDUCED_MOTION_INFO.has(directive.kind)) {
+        callRenderer(directive.kind, { ...directive.payload, reducedMotion: true });
+      }
+      return;
     }
+    callRenderer(directive.kind, directive.payload);
   }
 
   const subs = [];
@@ -79,31 +105,38 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
       payload: { slot, placed, words: wordsForRender, finalScore: total, baseScore: base, bonusExtra: extra, multiplier: mult },
     });
 
-    // Per-word glow timed to the per-word chip launches — each word
-    // lights up when its +N chip leaves and stays glowing until the
-    // panel count-up finishes.
+    // Per-word glow timed to the per-word chip launches — each word lights up
+    // with a single brief flash as its +N chip leaves. Phase 3B: this used to
+    // stay lit (a breathing loop) until the count-up finished ~1.5s later; now
+    // it is a short one-shot so the word reads as "this contributed" without the
+    // sequence appearing to still be animating (BOOST_MOTION_SPEC §6.6).
     if (wordsForRender.length > 0) {
-      const { totalToPanelLanding } = scoreMergeTiming({ wordCount: wordsForRender.length, bonusExtra: extra, multiplier: mult });
-      const glowEnd = totalToPanelLanding + COUNTUP_PEAK_MS;
       wordsForRender.forEach((w, i) => {
         const start = i * WORD_MERGE_STAGGER_MS;
         trigger({
           kind: 'scoringWordGlow',
-          payload: { slot, wordTiles: [w.wordTiles], placed, delayMs: start, durationMs: Math.max(280, glowEnd - start) },
+          payload: { slot, wordTiles: [w.wordTiles], placed, delayMs: start, durationMs: SCORING_WORD_GLOW_MS },
         });
       });
     }
   }
 
   function emitMoveAnimations({ slot, placed, words, wordTiles, score, multiplier, opponent = false, scoringDeferred = false }) {
-    trigger({ kind: 'tilePlaceIn',     payload: { slot, placed, opponent } });
+    // Local tiles already played their tentative-placement settle in gameScreen
+    // when the player put them down (Phase 3A) — re-popping them on confirm would
+    // double-animate. Confirmation is instead communicated by validFlash + the
+    // score sequence below. Opponent tiles were NOT previously visible as local
+    // tentative tiles, so they still get an arrival pop (BOOST_MOTION_SPEC §6/§13).
+    if (opponent) trigger({ kind: 'tilePlaceIn', payload: { slot, placed, opponent } });
     if (!opponent) trigger({ kind: 'validFlash', payload: { slot, words, wordTiles, placed } });
     if ((placed?.length ?? 0) >= RACK_SIZE) {
       trigger({ kind: 'bingoLabel', payload: { slot, placed, wordTiles } });
     }
-    if ((words?.length ?? 0) > 1) {
-      trigger({ kind: 'multiplierLabel', payload: { slot, words, wordTiles } });
-    }
+    // (A multi-word move used to emit a `multiplierLabel` directive that
+    // rendered a misleading bare "×" — it meant "more than one word", not a
+    // score multiplier, and the real ×N multiplier already has its own chip in
+    // the score-merge sequence. Removed per BOOST_MOTION_SPEC §1.5; the multiple
+    // word chips flying to the sum already communicate the multi-word move.)
     // The booster's rack just got refilled from the bag — cascade the new
     // tiles in. Opponent moves don't touch the local rack so skip there.
     if (!opponent && (placed?.length ?? 0) > 0) {
@@ -126,18 +159,8 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   let pendingCommitPayload = null;
   let pollHandle = null;
 
-  function bonusOverlayPresentDom() {
-    const doc = globalThis.document;
-    if (!doc) return false;
-    for (const id of ['ov-bonus', 'ov-bonus-intro']) {
-      const el = doc.getElementById?.(id);
-      if (el && !el.classList?.contains?.('hidden')) return true;
-    }
-    if (doc.querySelector?.('.bonus-award-positioner')) return true;
-    return false;
-  }
   function isOverlayActive() {
-    return overlayCount > 0 || bonusOverlayPresentDom();
+    return overlayCount > 0 || bonusOverlayOpen(globalThis.document);
   }
   function flushScoreCommit() {
     if (!pendingCommitPayload || isOverlayActive()) return;

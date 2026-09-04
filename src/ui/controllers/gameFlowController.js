@@ -17,6 +17,7 @@ import {
 import * as audioService from '../audioService.js';
 import { saveLocalGame, clearLocalGame } from '../../game/sessions/localSaveService.js';
 import { MENU_REFRESH } from '../screens/menuScreen.js';
+import { getMotionPreference } from '../motionPreference.js';
 
 export function createGameFlowController({
   bus,
@@ -219,7 +220,13 @@ export function createGameFlowController({
     const prefPatch = uiPreferencePatchFromSettings(changes);
     if (Object.keys(prefPatch).length) {
       const prefs = mergeUiPreferences(globalThis.localStorage, prefPatch);
-      activeGameRef()?.animationController?.setEnabled?.(prefs.animationsEnabled);
+      // Re-resolve the effective motion preference (explicit choice → OS →
+      // normal) and re-stamp the root attribute, then push the derived
+      // enable/disable to the live animation controller. Reduced-motion and
+      // the legacy animations flag both flow through here.
+      const motionPref = getMotionPreference();
+      motionPref.refresh();
+      activeGameRef()?.animationController?.setEnabled?.(motionPref.animationsEnabled());
       if (Object.prototype.hasOwnProperty.call(prefPatch, 'music')) {
         audioService.setEnabled(prefs.music);
       }

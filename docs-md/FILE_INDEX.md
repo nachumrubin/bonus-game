@@ -155,7 +155,10 @@ See `/partials/screens/` for corresponding HTML templates.
 |------|------|
 | `audioService.js` | Background music control. |
 | `feedbackService.js` | Haptic/visual feedback. |
-| `domHelpers.js` | DOM utility functions. |
+| `domHelpers.js` | DOM utility functions. Includes `flashAnimation()` (shared reflow-restart primitive) and `bonusOverlayOpen()` (shared bonus-overlay predicate). |
+| `motionTokens.js` | Canonical motion vocabulary — duration/easing/press-scale constants, mirrored as `:root` CSS custom properties. |
+| `motionPreference.js` | Single source of truth for the effective reduced-motion preference (explicit tri-state → legacy flag → OS → normal); stamps `data-reduced-motion` on the root. |
+| `scoreAnimationTimings.js` | Shared score-sequence timing: `mergeSequenceTiming()` choreography + `scoreInteractionGateMs`/`scoreClockGraceMs` (visual-gate vs clock-fairness, with reduced-motion floors). |
 | `screenPartialManifest.js` | Screen partial registry. |
 | `screenPartials.js` | Partial HTML loading system. |
 
