@@ -227,6 +227,31 @@ Source: `turnManager.js`, `gameEngine.js`
 - Locked cell cannot be played on while `remainingTurns > 0`
 - Lock duration decrements each turn (`tickLocks` on `advanceTurn`)
 - Lock ID: `"${turnNumber}:${slot}:${r}:${c}:${duration}"`
+- **Point cost (July 2026):** spending a lock charges the placing player
+  `LOCK_POINT_COST = 10` points, clamped so a score never goes negative. The
+  charge is applied in `createLock()` — the single choke point for both lock
+  paths (lock-only `CMD.PLACE_LOCK` and word+lock `CMD.CONFIRM_MOVE`, including
+  the deferred-bonus finalize) — so it can never be double-charged or skipped.
+  The lock picker (`נעילות (־10 נק')`) and guide screen surface the cost so the
+  player weighs it before spending.
+- **Affordability gate (July 2026):** a lock can only be placed when the
+  player's **current** score (before this move's word is scored) is at least
+  `LOCK_POINT_COST`. Below that, locks are unavailable — the engine rejects with
+  `INVALID_MOVE_REJECTED` / reason `'lock-insufficient-points'` (checked in both
+  `handlePlaceLock` and `validateMoveLock`), and the UI greys out the lock
+  picker (`canAffordLock` in `gameScreen.js`) until the player earns enough.
+  Because a lock is never placed below 10 points, the clamp in `createLock` is
+  now purely defensive.
+- **Cost feedback (July 2026):** while a lock sits unconfirmed on the board, a
+  red `−10` price tag shows on the lock cell and on the owner's score card — a
+  *preview* only; the engine score is unchanged and nothing is charged if the
+  lock is returned. On `שבץ` the `−10` flies from the lock into the score panel
+  and the score counts down. See `CHARACTERIZATION.md`.
+- **Placing a lock (July 2026)** works like placing a letter tile: pick the lock
+  in the box (it glows) → click an empty cell (the lock leaves the box and
+  previews there) → `שבץ` commits it. The previewed lock can be selected and
+  moved to another cell, or clicked twice to go back in the box. Nothing is ever
+  auto-placed. See `CHARACTERIZATION.md` for the full interaction.
 
 ---
 
@@ -367,6 +392,19 @@ Source: `src/game/sessions/botGameSession.js`, `botSearch.js`
   over whichever types haven't shown up yet — the estimate narrows as more
   squares get played, the same way an attentive human could "cross off" seen
   types.
+- **Locked-cell awareness (July 2026):** `tryPlaceWord` now rejects any
+  placement whose word would cross a locked cell, and `findAnchors` no longer
+  offers a locked cell as an anchor. Previously the bot could pick a "best" move
+  that dropped a tile on a locked square, get it refused by the engine
+  (`cell-locked`), and waste the turn — then re-propose the same doomed move
+  next round. It now routes around locks like a human would.
+- **Opener keeps clear of bonus squares (July 2026):** on its first move the bot
+  prefers an opener where no placed tile sits orthogonally adjacent to a bonus
+  square (`adjacentToBonusSquare`). Because openers extend from the centre toward
+  an edge, the longest word often parked its last tile one cell short of a
+  perimeter bonus square, visually "boxing it in". The search now skips such
+  openers when a cleaner one exists (falling back to a crowding opener only if
+  nothing else fits).
 - **Vocabulary** (`main.js`): the bot draws from the legacy ~40K frequency-sorted corpus (kept stable for calibration), capped per level — `VOCAB_CAPS = [2000, 20000, 40000]` (easy/medium/hard). Combined with `maxWordLen`, easy effectively uses only the most common short words.
 - **Think time** (`main.js`, cosmetic — no strength effect): `THINK_MS = [1000, 3000, 5000]` ms (easy snappy, hard lingers), passed to `attachBotPlayer` as `thinkingMs`.
 

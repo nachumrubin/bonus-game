@@ -304,6 +304,7 @@ test('PLACE_LOCK consumes inventory, blocks the cell, and advances turn', () => 
   const { state, eng } = freshEngine();
   const events = captureEvents();
   state.currentTurnSlot = 0;
+  state.scores[0] = 20; // enough to afford the 10-pt lock cost
 
   eng.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 4, c: 4, duration: 3 } });
 
@@ -315,14 +316,40 @@ test('PLACE_LOCK consumes inventory, blocks the cell, and advances turn', () => 
   assert.ok(events.some(e => e.type === EV.LOCKS_CHANGED));
 });
 
-// ─── Word + lock in a single turn (CONFIRM_MOVE payload.lock) ───────────
+test('PLACE_LOCK charges the placing player 10 points', () => {
+  const { state, eng } = freshEngine();
+  state.currentTurnSlot = 0;
+  state.scores[0] = 30;
 
-test('CONFIRM_MOVE with a lock commits word and lock together in one turn', () => {
+  eng.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 4, c: 4, duration: 3 } });
+
+  assert.equal(state.scores[0], 20, '30 − 10-pt lock cost');
+  assert.equal(state.lockedCells.length, 1);
+});
+
+test('PLACE_LOCK is rejected when the player cannot afford the 10-pt cost', () => {
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.currentTurnSlot = 0;
+  state.scores[0] = 4; // fewer than the 10-pt lock cost
+
+  eng.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 4, c: 4, duration: 3 } });
+
+  const rej = events.find(e => e.type === EV.INVALID_MOVE_REJECTED);
+  assert.equal(rej?.payload?.reason, 'lock-insufficient-points');
+  assert.equal(state.scores[0], 4, 'score untouched — no lock spent');
+  assert.equal(state.lockedCells.length, 0, 'no lock placed');
+  assert.deepEqual(state.lockInventory[0], [3, 3, 5], 'inventory untouched');
+  assert.equal(state.currentTurnSlot, 0, 'still the same player to move');
+});
+
+test('CONFIRM_MOVE with a lock is rejected when the player cannot afford it', () => {
   seedDict(['אב']);
   const { state, eng } = freshEngine();
   const events = captureEvents();
   state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
   state.currentTurnSlot = 0;
+  state.scores[0] = 4; // fewer than the 10-pt lock cost
 
   eng.dispatch({
     type: CMD.CONFIRM_MOVE,
@@ -335,8 +362,40 @@ test('CONFIRM_MOVE with a lock commits word and lock together in one turn', () =
     },
   });
 
-  assert.ok(events.some(e => e.type === EV.MOVE_CONFIRMED), 'the word scores');
-  assert.ok(state.scores[0] > 0);
+  const rej = events.find(e => e.type === EV.INVALID_MOVE_REJECTED);
+  assert.equal(rej?.payload?.reason, 'lock-insufficient-points');
+  assert.equal(state.scores[0], 4, 'the word must not score — whole move refused');
+  assert.equal(state.board[4][4], null, 'the board is untouched');
+  assert.deepEqual(state.lockInventory[0], [3, 3, 5], 'inventory untouched');
+  assert.equal(state.currentTurnSlot, 0, 'still the same player to move');
+});
+
+// ─── Word + lock in a single turn (CONFIRM_MOVE payload.lock) ───────────
+
+test('CONFIRM_MOVE with a lock commits word and lock together in one turn', () => {
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.scores[0] = 10; // must be able to afford the lock before the move
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: {
+      placed: [
+        { r: 4, c: 4, letter: 'א', val: 1 },
+        { r: 4, c: 5, letter: 'ב', val: 3 },
+      ],
+      lock: { r: 7, c: 7, duration: 3 },
+    },
+  });
+
+  const confirmed = events.find(e => e.type === EV.MOVE_CONFIRMED);
+  assert.ok(confirmed, 'the word scores');
+  assert.equal(confirmed.payload.score, 4, 'the word itself is worth 4 (א=1 + ב=3)');
+  // 10 start + 4-pt word − 10-pt lock cost = 4.
+  assert.equal(state.scores[0], 4, '10 + word 4 − 10-pt lock cost');
   assert.equal(state.lockedCells.length, 1, 'the lock landed');
   assert.equal(state.lockedCells[0].remainingTurns, 3, 'fresh lock keeps its full duration');
   assert.equal(state.lockedCells[0].ownerSlot, 0);
@@ -356,6 +415,7 @@ test('CONFIRM_MOVE with a lock: a rejected word leaves the lock unspent', () => 
   const events = captureEvents();
   state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
   state.currentTurnSlot = 0;
+  state.scores[0] = 10; // affords the lock, so the reject is about the word
 
   eng.dispatch({
     type: CMD.CONFIRM_MOVE,
@@ -432,6 +492,7 @@ test('CONFIRM_MOVE with a lock ticks existing locks but not the new one', () => 
   const { state, eng } = freshEngine();
   state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
   state.currentTurnSlot = 0;
+  state.scores[0] = 10; // affords the lock
   state.lockedCells = [
     { id: 'old', r: 9, c: 9, ownerSlot: 1, remainingTurns: 2 },
   ];
@@ -472,7 +533,7 @@ test('FINALIZE_BOOST_AWARD places a deferred word+lock move\'s lock after the ti
 
   eng.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, extra: 5 } });
 
-  assert.equal(state.scores[0], 15, 'base + bonus committed');
+  assert.equal(state.scores[0], 5, 'base 10 + bonus 5 − 10-pt lock cost');
   const newLock = state.lockedCells.find(l => l.r === 7 && l.c === 7);
   assert.equal(newLock?.remainingTurns, 3, 'deferred lock keeps its full duration');
   assert.equal(newLock?.ownerSlot, 0);
@@ -524,6 +585,7 @@ test('locked cells reject tile placement until countdown expires', () => {
   const events = captureEvents();
   state.racks[0] = ['׳', '׳‘', '׳’', '׳“', '׳”', '׳•', '׳–', '׳—'];
   state.currentTurnSlot = 0;
+  state.scores[0] = 10; // affords the lock
   state.lockInventory[0] = [1];
 
   eng.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 4, c: 4, duration: 1 } });
@@ -567,6 +629,69 @@ test('CONFIRM_MOVE with extra_turn boost banked keeps the same player on turn', 
   assert.equal(state.currentTurnSlot, 0, 'extra_turn must keep the same player');
   assert.equal(state.turnNumber, turnBefore, 'turn number should not advance on a repeat turn');
   assert.equal(state.activeBoosts.length, 0, 'extra_turn entry is consumed after firing');
+});
+
+// The opponent has no other way to learn an extra turn happened: the boost is
+// granted and consumed inside a single turn-end, so it never reaches their
+// activeBoosts snapshot. Without this event the turn just fails to arrive.
+test('extra_turn emits TURN_EFFECTS_APPLIED and records state.lastTurnEffects', () => {
+  resetBoostRegistry();
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.activeBoosts = [{ slot: 0, boostId: 'extra_turn', payload: {}, turnNumber: 1 }];
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+
+  const ev = events.find(e => e.type === EV.TURN_EFFECTS_APPLIED);
+  assert.ok(ev, 'TURN_EFFECTS_APPLIED must fire so the opponent can be told');
+  assert.deepEqual(ev.payload.effects, [{ type: 'extra-turn', slot: 0 }]);
+  assert.deepEqual(state.lastTurnEffects, [{ type: 'extra-turn', slot: 0 }],
+    'onlineGameSession ships lastTurnEffects with the commit');
+});
+
+test('skip_opponent_turn emits TURN_EFFECTS_APPLIED naming victim and instigator', () => {
+  resetBoostRegistry();
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.activeBoosts = [{ slot: 0, boostId: 'skip_opponent_turn', payload: {}, turnNumber: 1 }];
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+
+  const ev = events.find(e => e.type === EV.TURN_EFFECTS_APPLIED);
+  assert.ok(ev, 'the skipped player must be told why their turn vanished');
+  assert.deepEqual(ev.payload.effects, [{ type: 'skip-turn', slot: 1, bySlot: 0 }]);
+});
+
+// A plain move must not leave the previous turn's effects on state, or the
+// next Firebase commit would re-ship them and re-fire the notice.
+test('a move with no turn-flow boost clears lastTurnEffects and emits nothing', () => {
+  resetBoostRegistry();
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  const events = captureEvents();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.lastTurnEffects = [{ type: 'extra-turn', slot: 1 }]; // stale, from a prior turn
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+
+  assert.deepEqual(state.lastTurnEffects, [], 'stale effects must not survive a clean turn');
+  assert.equal(events.filter(e => e.type === EV.TURN_EFFECTS_APPLIED).length, 0);
 });
 
 // Regression guard for the reported "×2 boost triples the score" bug. The

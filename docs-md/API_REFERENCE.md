@@ -42,6 +42,23 @@ createEngine(opts: {
 | `PLACE_TILES` | UI-only, not tracked by engine |
 | `QUERY_DICT` | UI-only, answered by hebrewDictionary |
 
+**`state.lastTurnEffects`** — turn-FLOW effects of the turn that just resolved:
+
+```typescript
+type TurnEffect =
+  | { type: 'extra-turn', slot: 0 | 1 }              // slot replays
+  | { type: 'skip-turn',  slot: 0 | 1, bySlot: 0 | 1 } // slot was skipped by bySlot
+```
+
+Rewritten (to `[]` when nothing fired) on every turn resolution, and emitted as
+`EV.TURN_EFFECTS_APPLIED { effects }`. `onlineGameSession` copies it to the room's
+`turnEffects` field so the opponent can be told — neither effect survives in
+`activeBoosts` long enough to be derived from a snapshot.
+
+> **Ordering contract:** it is recorded *before* `MOVE_CONFIRMED` /
+> `MOVE_SCORE_COMMITTED` are emitted, because the online session commits the room
+> from those subscribers. Do not move the recording after the emit.
+
 ---
 
 ## Board (`src/game/core/board.js`)

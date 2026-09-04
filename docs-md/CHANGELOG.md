@@ -2,6 +2,367 @@
 
 ---
 
+## Turn deadlines now run on the server clock — August 2026
+
+**The race behind the phantom-score bug below.** `turnDeadlineMs` is an absolute
+epoch timestamp: one client stamps it (`commitTime + limitMs`) and the *other*
+enforces it. Three consumers compared it against raw `Date.now()` — the
+late-commit gate in `onlineGameSession.dispatch()`, `shouldClaimExpiredOnlineTurn`
+(opponent watchdog), and the countdown/auto-pass in `turnTimerController`. So the
+deadline only meant the same instant on both devices if their system clocks
+agreed. Phone clocks drift by seconds.
+
+In prod room `fc_1786040881489_8bjchc` that produced turn rotations firing 1-2 s
+*before* their computed deadlines, and — fatally — a `CONFIRM_MOVE` accepted 5 s
+after a deadline the opponent's watchdog had already claimed, because on that
+device `Date.now()` had not yet passed `deadline + grace`. The commit lost the
+version race and was dropped.
+
+**The fix — one shared time base.** New `src/game/online/serverClock.js`:
+- `startServerClock({ db, bus })` subscribes to RTDB's `.info/serverTimeOffset`
+  (the SDK maintains it and re-estimates on every reconnect); called from
+  `main.js` immediately after `ensureApp()`, before any room is joined.
+- `serverNow()` = `Date.now() + offset`. The offset starts at 0, so every call
+  site degrades to exactly the old behaviour before sync and in offline modes
+  (where the same device both writes and reads the deadline).
+
+Call sites moved onto it:
+- `onlineGameSession` — the late-commit gate, and the deadline it *writes* on
+  commit (stamping with a skewed clock hands the opponent a skewed deadline).
+- `roomService` — `initialTurnDeadlineMs`, plus the `nowMs` fallbacks in
+  `computeExpiredOnlineTurnState` / `shouldClaimExpiredOnlineTurn`.
+- `main.js` — passes `now: serverNow` into `createTimeoutWatchdog` and
+  `createTurnTimerController`, both of which already had injectable clocks.
+
+**Tests:** 6 in `serverClock.test.js` (offset applied, re-estimates on reconnect,
+negative offset, idempotent subscribe, hostile/absent `.info` tree, non-numeric
+values ignored) and 3 in `onlineGameSession.test.js` — a late commit is refused
+even when the *local* clock says there is time left; the identical move at the
+identical local time still commits when the clocks agree; and the committed
+deadline is server-stamped. The first and third were **verified to fail** with
+the fix reverted. 1365 unit tests pass.
+
+**Still open:** the score-animation timer freeze (`GAP_REPORT.md` §-0.5) and the
+menu-pause path's local mutation of `state.turnDeadlineMs` — both distort the
+timer independently of clock skew.
+
+---
+
+## Phantom score from a rolled-back bonus move — August 2026
+
+**Reported:** in prod room `fc_1786040881489_8bjchc`, הודיה's client showed
+`295–222` while the server (and the opponent's client) showed `295–190` at the
+**same room version, v36**. She then appeared to "lose connection" and forfeited
+on missed turns.
+
+**What actually happened:** at 21:43:55 the opponent's watchdog claimed her
+expired turn (v35). Four seconds later her client committed `זוטר`/`זקנ` for 32
+points onto a bonus square. The commit lost the version race and was dropped —
+the server has no such move, `racks[1]` still holds the `ז`/`ט` she "played",
+and the multiply square she landed on is still `bonusSqUsed = false`. Her client
+kept the 32 points anyway.
+
+**Root cause — two defects in the deferred (bonus-square) commit path:**
+
+1. `snapshotForRollback()` did not include **`state.pendingScoreCommit`** — the
+   withheld base score of a bonus move. So the phase-1 rollback restored the
+   board but left the pending commit intact; the in-flight bonus flow then
+   resolved and `handleFinalizeBoostAward` committed `baseScore + extra` for a
+   move that no longer existed. The rollback ran *before* the points landed.
+2. The **phase-2 commit had no rollback at all**. The `MOVE_SCORE_COMMITTED`
+   handler relied solely on `forceResync`, whose failure is swallowed
+   (`.catch(() => {})`). The client that loses a race is usually the one with
+   the bad connection, so that resync is exactly what fails — leaving the bonus
+   points and the rotated turn in local state permanently.
+
+**The fix:**
+- `pendingScoreCommit` added to `snapshotForRollback()` / `restoreFromRollback()`.
+- `dispatch()` now takes a rollback snapshot before `CMD.FINALIZE_BOOST_AWARD`,
+  and the `MOVE_SCORE_COMMITTED` handler restores from it (emitting the
+  `commit-rollback` `TURN_CHANGED` + `SCORE_CHANGED`) like `CONFIRM_MOVE` and
+  `LOCK_PLACED` already did.
+- New bus event **`bonus/aborted`** (`BONUS_ABORTED`, declared in both
+  `onlineGameSession.js` and `bonusActivationController.js` — the game layer must
+  not import from `ui/`). The session emits it on a failed deferred commit;
+  `bonusActivationController` drops the pending queue + staged award so
+  `FINALIZE_BOOST_AWARD` is never dispatched for a rolled-back move. This is
+  necessary because with no `pendingScoreCommit` the engine still falls through
+  to `if (n) scores[s] += n` and would credit the bonus. The abort also releases
+  the local one-shot marker, so replaying the move re-arms the square — correct,
+  since the server never recorded it as used.
+
+**Tests:** 2 in `onlineGameSession.test.js` (phase-1 clears `pendingScoreCommit`;
+phase-2 rolls back score + turn), 3 in `bonusActivationController.test.js`
+(abort drops the award; re-arms the square; is slot-scoped). 1356 unit tests pass.
+
+**Not fixed here — see `GAP_REPORT.md`:** why the late commit was allowed at all
+(no clock synchronisation between clients) and the score-animation timer freeze.
+
+---
+
+## Players are now told when a turn is taken or repeated — August 2026
+
+**Reported:** "If my opponent wins an extra turn or I lose my next turn, I
+should be informed." Two distinct gaps, one of which was silent in *every* mode:
+
+1. **Online: opponent boosts were invisible.** The winner's client shows them a
+   modal award card, but the observer's client resyncs the room snapshot and
+   never emits `EV.BOOST_ACTIVATED` — and `animationController` deliberately
+   drops opponent activations for a pinned seat anyway. The turn just stopped
+   coming back, with no explanation.
+2. **The skip firing was silent for everyone.** `emitTurnStartEffects` emits the
+   skip as `BOOST_ACTIVATED { consumed: true }`, and `consumed` events return
+   early before any overlay (correctly — a spend is not a grant). Offline, bot,
+   and online alike, nothing told the victim. The 🚫 badge on the opponent's
+   panel vanished at the same moment, because the boost leaves `activeBoosts`
+   when it fires.
+
+**Root cause of why this couldn't just be derived client-side:** both
+`extra_turn` and `skip_opponent_turn` are granted *and* consumed inside a single
+turn-end on the mover's device, so neither ever appears in the `activeBoosts`
+snapshot the opponent resyncs. The facts have to be shipped explicitly.
+
+**The fix:**
+- New `EV.TURN_EFFECTS_APPLIED` carrying `[{ type:'extra-turn', slot }, { type:
+  'skip-turn', slot, bySlot }]`, where `slot` is the *affected* player.
+- `gameEngine.recordTurnEffects()` writes them to `state.lastTurnEffects` at all
+  five `applyTurnStartEffects` call sites. It runs **before** `MOVE_CONFIRMED` /
+  `MOVE_SCORE_COMMITTED` on purpose: `onlineGameSession` commits the room from
+  those subscribers, and recording afterwards shipped an empty list (caught by
+  the online round-trip test).
+- New room field `turnEffects` (see `docs/db-schema.md`). Kept off `lastMove` —
+  that object *is* the `moveHistory` entry, so writing to it rewrites history.
+- The online watcher re-emits `TURN_EFFECTS_APPLIED` on the receiving client.
+  Own-move echoes already return early, so the mover can't double-fire.
+- UI: non-blocking `.turn-effect-banner` (new `turnEffectBanner` directive) with
+  copy from the pure, exported `describeTurnEffect(effect, mySlot)`. Chosen over
+  the modal award card because it fires while the opponent is acting — and so it
+  stays out of `overlayCount`, which must only hold score animations behind a
+  modal that actually needs acknowledging.
+
+No Firebase rules change: `turnEffects` sits alongside `lastMove`/`activeBoosts`,
+none of which have dedicated rule entries, and there is no room-level `.validate`.
+
+15 new tests (1336 → 1351), covering the engine emission, staleness clearing,
+the online round-trip both directions, echo suppression, per-reader copy, and a
+guard that the banner never gates the score-commit animation.
+
+## Firebase-approved words absorbed into dictionary.txt — August 2026
+
+Ran `scripts/absorb-firebase-dict.mjs --commit`. `/dictionaryApproved` held 141
+words (18 already present); the remaining **123 new words were merged into
+`data/dictionary.txt`, 70,774 → 70,897 words**, and the `/dictionaryApproved`
+node was removed from prod. `dictionary.txt` is again the single source of truth
+for accepted words; runtime approval-overlay sync (`syncApprovedDictionaryWordsOnce`)
+is unchanged and simply sees an empty node until new words are approved.
+
+**Script fix:** the delete step passed `firebase database:remove … --yes`, which
+firebase-tools 15.x rejects with `unknown option '--yes'`. The script caught the
+failure and blamed it on not being logged in — misleading, and it fires *after*
+`dictionary.txt` has already been rewritten. Now uses `--force` (both in the
+`execSync` call and the printed manual-recovery command).
+
+## Mini-game outcomes recorded for debugging + a debug-online-game skill — August 2026
+
+**The game recorder now captures what happened inside a boost mini-game.** Until
+now `debugRecorder` only logged `BOOST_ACTIVATED` ("a boost fired for +N") — it
+never showed the puzzle or whether the player won. Two new timeline events:
+- `MINIGAME_STARTED` — which square/type/slot triggered a mini-game or wheel
+  (captured from `EV.BONUS_PENDING`).
+- `MINIGAME_RESOLVED` — `success`, `earnedPts`, and a `detail` object with the
+  puzzle **and** the player's answer. For **B10** that's `{ h, v, hpos, vpos,
+  shared, attempt }` — the two crossing words, the intersection, the correct
+  letter, and what the player typed — so "landed on B10, earned 0" is now
+  decidable ("won/lost"). The recorder subscribes to every mini-game's
+  `*_INTENT.RESULT` bus event (registry: `MINIGAME_RESULT_EVENTS` in
+  `debugSchema.js`) and pairs each result to its pending challenge.
+
+To feed this, `crossingWordsMiniGame` now includes the full puzzle (`h/v/hpos/
+vpos`) in its result payload, and `unscrambleMiniGame` includes `answer`/
+`attempt`. Both changes are purely additive.
+
+**New `debug-online-game` skill + `scripts/debug-game.mjs`.** Given a room id
+(e.g. `fc_1783939961090_ukvp3f`), the script pulls the world-readable prod
+`/rooms` doc and prints the bonus-square table (assignment → category → used →
+which move landed on it), the annotated move list with `[base=… bonus=…]`, and a
+pre-flagged "landed-on-bonus-but-earned-0" section with the "is this a bug?"
+guidance inline. The skill documents the game-state model (off-grid bonus
+squares, `bonusSqUsed`, the `baseScore`/`bonusExtra` provenance, veto logic,
+async vs live) and how to escalate to the admin debug timeline for puzzle-level
+detail.
+
+---
+
+## Lock cost is now visible: preview while pending, −10 flies on commit — July 2026
+
+The 10-point lock charge happened silently — the score just dropped. Now the
+cost is attached to the lock itself while the player is still deciding, and is
+animated into the score when it's actually taken.
+
+**Preview (while the lock sits unconfirmed on the board):**
+- A red `−10` price tag rides on the pending lock cell (`.spine-lock-cost`).
+- The owner's score card shows a pulsing `−10` (`#is-cost-1` / `#is-cost-2`,
+  `renderPendingLockCost`).
+- Both disappear if the lock is returned to the box; moving it carries them along.
+
+**Commit (שבץ):** a red `−10` chip flies from the lock cell into the owner's
+score panel (`playLockCostFlight`, reusing the existing `.scoring-float-label`
+motion language and `scoreTargetForSlot`), and the score count-down is held for
+`LOCK_COST_FLIGHT_MS` (520ms) so the number and the chip land together.
+
+**The real score is never touched before commit.** A pending lock can still be
+moved, returned, or lost to a rejected word (the engine never burns a lock on
+rejection), and online scores only change through `commitTransaction` — so the
+preview is view-layer only. Newly committed locks are detected by diffing lock
+ids in `renderAll` (`detectCommittedLock`), seeded at mount so a resumed game
+with locks already on the board doesn't fire a flight.
+
+RTL note: `−10` renders as `10−` inside the RTL layout, so all three elements
+set `direction: ltr; unicode-bidi: isolate`.
+
+New DOM ids `#is-cost-1` / `#is-cost-2` registered in `docs/ui-rules.md`.
+
+Tests: 3 new real-browser tests in `tests/e2e/lock-box.spec.js` (preview shown
+without charging; return-to-box clears it and charges nothing; commit flies the
+chip, holds the count-down, then settles on the charged value). The mid-flight
+assertion uses a single synchronous snapshot — auto-retrying matchers poll past
+the 520ms flight and miss the held value. 7 lock e2e tests passing (verified
+with `--repeat-each=2`); unit suite 1333 passing.
+
+---
+
+## Fix: the lock box was invisible, so locks were unclickable — July 2026
+
+Reported: "the locks aren't clickable", still true with 10+ points.
+
+Root cause: `#lock-inv-display` — the only lock UI the code rendered into —
+lives inside `.right-panel`, which the retired side-panel layout hides with
+`display:none !important` (`styles.css:190`). The box was being filled with
+correct, enabled buttons that were **zero-sized and invisible** in the real app.
+This was survivable while locks could be auto-placed by tapping an empty cell;
+once that quick-place path was removed in favour of pick-from-box-then-place,
+there was no reachable way to place a lock at all.
+
+Why the unit tests missed it: `gameScreen.test.js` renders into a synthetic DOM
+stub with no stylesheet, so a button that is `display:none` in production is
+happily "clickable" there. Stub-DOM tests cannot see layout or CSS.
+
+Fix — render the lock box where the player can actually see it:
+
+- `renderLockInventory` now paints the **acting player's** `is-pclocks` strip in
+  their info-strip score card (`#is-locks-1` / `#is-locks-2`) with the same
+  interactive buttons; the opponent's card keeps the read-only text summary.
+  The legacy `#lock-inv-display` is still filled so the picker works if the side
+  panel ever returns. Button building moved into a shared `fillLockBox` helper.
+- `.is-pclocks` became a centred flex row that can wrap, and lock buttons inside
+  it get a larger (30×24) tap target instead of inheriting 9px summary text.
+- Unaffordable locks now visibly grey out where the player can see them (the
+  `is-disabled` opacity applied to a hidden element did nothing before).
+
+**Follow-up — both cards keep their lock borders.** The non-acting player's
+locks rendered as a plain `🔒3 🔒3 🔒5` text summary, so in hot-seat/bot play a
+card visibly lost its lock frames the moment the turn passed. `fillLockBox` now
+takes an `{ interactive }` flag: the other player's box gets the same bordered
+chips, just inert (`.lock-inv-btn--static` — disabled, `tabindex=-1`, no
+listener, `opacity:1` to defeat the browser's default disabled dimming).
+`lockSummaryText` was removed in favour of `normalizeInventory`.
+
+Added `tests/e2e/lock-box.spec.js` — a real-browser regression guard that
+asserts the lock box is visible, that the button is genuinely the element under
+its own centre point (a zero-sized or covered button fails), that pick-then-place
+previews the lock and removes it from the box, and that an unaffordable box is
+greyed and disabled. This is the class of bug the unit suite structurally cannot
+catch.
+
+Note: the pre-existing e2e suite has 12 failures on a clean tree (capture-*
+screenshot specs, menu-routing, non-menu-buttons, spine-boot) unrelated to this
+change; verified by stashing and re-running. Unit suite 1333 passing.
+
+---
+
+## Lock placement reworked to mirror tile placement — July 2026
+
+Locks were auto-placed: clicking any empty cell with nothing selected dropped a
+lock there using the smallest available duration. That made locks easy to place
+by accident, gave no way to choose which lock, and needed a 500 ms
+`suppressQuickPlaceAt` window so a double-tap on a pending lock didn't clear it
+and immediately re-place it.
+
+Locks now follow exactly the same interaction as letter tiles:
+
+- **Pick, then place.** Click a lock in the box → it **glows**
+  (`.lock-inv-btn.active`, now with a pulsing `lockSelectedGlow` animation).
+  Click an empty on-grid cell → the lock previews there. Clicking the glowing
+  lock again de-selects it. Clicking an empty cell with nothing selected now
+  does nothing.
+- **Selection is index-based.** `selectedLock = { index, duration }` replaces
+  `selectedLockDuration`, so the default `[3, 3, 5]` box lights only the button
+  actually clicked instead of every button sharing that number.
+- **The lock leaves the box when placed.** New `displayLockInventory(view)`
+  renders the engine inventory minus the pending lock, and it reappears when the
+  lock is returned.
+- **Move / return.** Clicking the previewed lock once selects it (it takes the
+  same `.selected-placed` highlight as a selected tile); a click on another
+  empty cell moves it there; a second click on the lock itself returns it to the
+  box — so a double-click on the placed lock puts it back.
+- Removed the quick-place branch and `suppressQuickPlaceAt` entirely; the
+  double-tap bug it worked around can no longer happen, since click 1 selects
+  rather than clears.
+
+Destinations are still validated before preview (on-grid only, not committed,
+not already locked), and `שבץ` commits via `CMD.PLACE_LOCK` as before.
+
+Tests: replaced the quick-place test with six covering the new flow — no
+auto-place, glow-on-select, place-and-vanish-from-box, duplicate-duration
+glow isolation, de-select, select-then-move, and double-click-returns-to-box.
+Full suite 1333 passing.
+
+---
+
+## Bot lock-awareness + non-crowding opener, and locks now cost 10 points — July 2026
+
+Three related fixes around locks and the bot:
+
+1. **Bot no longer targets locked cells.** `tryPlaceWord` (`botSearch.js`) now
+   returns null when a word would cross a locked cell, and `findAnchors` skips
+   locked cells. Before this, the bot could choose a top-ranked move that landed
+   on a lock, have the engine reject it (`INVALID_MOVE_REJECTED` / `cell-locked`),
+   and forfeit the turn — re-proposing the same doomed move on later rounds.
+   The bot now routes around locks and plays a legal alternative.
+
+2. **Bot opener stops boxing in bonus squares.** New helper
+   `adjacentToBonusSquare(r,c)`; the first-move search prefers openers with no
+   placed tile orthogonally adjacent to a bonus square, falling back to a
+   crowding opener only if nothing cleaner fits. Fixes the recurring "the last
+   tile lands just before a bonus square" look when the bot opened.
+
+3. **Locks cost points.** Spending a lock now charges the placing player
+   `LOCK_POINT_COST = 10` points (new export in `turnManager.js`), clamped so a
+   score never goes negative. Charged once in `createLock()`, the single choke
+   point for every lock path (lock-only turn, word+lock, and the deferred-bonus
+   finalize). The lock picker label (`נעילות (־10 נק')`) and the guide screen
+   now state the cost so the player weighs it before using one of their three
+   locks. Online rollback already snapshots `scores` before the optimistic lock,
+   so a lost version race restores the pre-charge score.
+
+**Affordability gate (follow-up):** a lock can only be placed when the player's
+current score (before the move's word is scored) is ≥ 10. Below that the engine
+rejects with `lock-insufficient-points` (in both `handlePlaceLock` and
+`validateMoveLock`), and the UI greys out the lock picker and disables
+quick-place (`canAffordLock` in `gameScreen.js`) until the player earns enough —
+locks are literally disabled until they can pay. The `createLock` clamp is now
+defensive only (a lock never lands below 10 points).
+
+Tests: added engine tests (`PLACE_LOCK` charges 10; `PLACE_LOCK` /
+word+lock rejected with `lock-insufficient-points` when unaffordable; word+lock
+and deferred-bonus nets updated) plus a gameScreen test that the picker is
+disabled and quick-place is a no-op when unaffordable; bot tests (locked-cell
+`tryPlaceWord` / `findAnchors` / `searchBotMove`; `adjacentToBonusSquare`;
+non-crowding opener). Existing lock tests now seed ≥ 10 points before placing a
+lock. Full suite 1328 passing.
+
+---
+
 ## Fill-middle mini-game rearranges tiles into the answer on a miss — July 2026
 
 Reported: the "מלא את החסר" anagram (arrange the middle letters between a fixed

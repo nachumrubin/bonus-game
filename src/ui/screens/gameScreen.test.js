@@ -13,7 +13,7 @@ import { DICT, addWordsFromText } from '../../game/core/hebrewDictionary.js';
 import { createLocalGameSession } from '../../game/sessions/localGameSession.js';
 import { createGameController } from '../controllers/gameController.js';
 import { createAnimationController } from '../controllers/animationController.js';
-import { mountGameScreen, GAME_SCREEN_INTENT } from './gameScreen.js';
+import { mountGameScreen, GAME_SCREEN_INTENT, describeTurnEffect } from './gameScreen.js';
 import { setCommittedTile } from '../../game/core/board.js';
 import { BDEFS } from '../../game/boosts/data.js';
 
@@ -479,6 +479,8 @@ test('renderer reflects INVALID_MOVE_REJECTED reason in #sbar', () => {
 
 test('lock inventory click then board click places a spine lock', () => {
   const { session, controller } = fresh();
+  session.state.scores[0] = 10; // afford the 10-pt lock cost
+  bus.emit(EV.SCORE_CHANGED, {}); // sync the view before mounting
   const { root, elements } = makeGameDom();
   mountGameScreen({ controller, root });
 
@@ -680,23 +682,130 @@ test('live preview renders opponent ghost tiles', () => {
   assert.match(elements.get('c5_6').innerHTML, /׳˜/);
 });
 
-test('clicking an empty cell with nothing selected quick-places a lock with the smallest available duration', () => {
+// ─── Lock interaction: pick from the box, then pick the square ──────────────
+// Locks are never auto-placed. The player selects a lock in the box (it glows),
+// taps a square to preview it there (and it leaves the box), then may select
+// the placed lock to move it, or click it twice to send it back to the box.
+
+// Mounts a screen whose acting player can afford a lock.
+function freshAffordableLocks() {
   const { session, controller } = fresh();
-  // Default LEGACY_LOCK_INVENTORY = [3, 3, 5]; expect a 3-turn lock to land.
+  session.state.scores[0] = 10; // afford the 10-pt lock cost
+  bus.emit(EV.SCORE_CHANGED, {}); // sync the view before mounting
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+  return { session, controller, root, elements };
+}
+
+test('clicking an empty cell with nothing selected does NOT place a lock', () => {
+  const { session, controller, elements } = freshAffordableLocks();
+
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+
+  assert.equal(controller.view.pendingLock, null, 'no lock is auto-placed');
+  assert.equal(session.state.lockedCells.length, 0);
+});
+
+test('selecting a lock in the box glows it, then a cell click places it and it leaves the box', () => {
+  const { session, controller, elements } = freshAffordableLocks();
+  const box = elements.get('lock-inv-display');
+  // Default LEGACY_LOCK_INVENTORY = [3, 3, 5] → three buttons.
+  assert.equal(box.children.length, 3, 'box starts with three locks');
+
+  // Pick the 5-turn lock (index 2) — it glows, and only it.
+  box.children[2].fireClick();
+  const glowing = [...elements.get('lock-inv-display').children]
+    .filter(b => b.classList.contains('active'));
+  assert.equal(glowing.length, 1, 'exactly one lock glows');
+  assert.equal(glowing[0].textContent, '🔒 5', 'the picked lock is the glowing one');
+
+  // Now pick the square.
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  assert.deepEqual(controller.view.pendingLock, { r: 4, c: 4, duration: 5 });
+  // It vanished from the box: the remaining two are the 3s.
+  const remaining = [...elements.get('lock-inv-display').children].map(b => b.textContent);
+  assert.deepEqual(remaining, ['🔒 3', '🔒 3'], 'the placed lock left the box');
+
+  controller.confirmMove();
+  const lock = session.state.lockedCells.find(l => l.r === 4 && l.c === 4);
+  assert.ok(lock, 'a lock landed at (4,4)');
+  assert.equal(lock.remainingTurns, 5, 'the picked duration is the one placed');
+  assert.deepEqual(session.state.lockInventory[0].slice().sort((a, b) => a - b), [3, 3]);
+});
+
+test('selecting a lock with duplicate durations glows only the one clicked', () => {
+  const { elements } = freshAffordableLocks();
+  const box = elements.get('lock-inv-display');
+  // Inventory [3, 3, 5]: click the SECOND 3 — the first must not glow.
+  box.children[1].fireClick();
+  const children = [...elements.get('lock-inv-display').children];
+  assert.equal(children[0].classList.contains('active'), false, 'first 3 stays unlit');
+  assert.equal(children[1].classList.contains('active'), true, 'clicked 3 glows');
+});
+
+test('clicking a glowing lock again de-selects it, so a cell click places nothing', () => {
+  const { controller, elements } = freshAffordableLocks();
+  const box = elements.get('lock-inv-display');
+  box.children[0].fireClick();
+  elements.get('lock-inv-display').children[0].fireClick(); // toggle off
+
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  assert.equal(controller.view.pendingLock, null, 'de-selected → nothing to place');
+});
+
+test('clicking the placed lock once selects it, then a cell click moves it', () => {
+  const { controller, elements } = freshAffordableLocks();
+  elements.get('lock-inv-display').children[0].fireClick();
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  assert.deepEqual(controller.view.pendingLock, { r: 4, c: 4, duration: 3 });
+
+  // Select the placed lock — it takes the same highlight a selected tile gets.
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  assert.ok(elements.get('c4_4').classList.contains('selected-placed'),
+    'the placed lock shows as selected');
+
+  // Move it to another square.
+  elements.get('game-grid').fireClick(elements.get('c6_6'));
+  assert.deepEqual(controller.view.pendingLock, { r: 6, c: 6, duration: 3 },
+    'the lock moved to the new square');
+  assert.equal(elements.get('c4_4').classList.contains('spine-pending-lock-cell'), false,
+    'the old square no longer shows a lock');
+});
+
+test('double-clicking the placed lock returns it to the box', () => {
+  const { controller, elements } = freshAffordableLocks();
+  elements.get('lock-inv-display').children[2].fireClick(); // the 5
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  assert.deepEqual(controller.view.pendingLock, { r: 4, c: 4, duration: 5 });
+  assert.equal(elements.get('lock-inv-display').children.length, 2, 'left the box');
+
+  // Click 1 selects, click 2 sends it back — i.e. a double-click returns it.
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+
+  assert.equal(controller.view.pendingLock, null, 'the lock is off the board');
+  const back = [...elements.get('lock-inv-display').children].map(b => b.textContent);
+  assert.deepEqual(back, ['🔒 3', '🔒 3', '🔒 5'], 'the lock is back in the box');
+});
+
+test('lock picker is disabled when the player cannot afford a lock', () => {
+  const { session, controller } = fresh();
+  // Default score is 0 (< 10), so locks are unaffordable.
   const { root, elements } = makeGameDom();
   mountGameScreen({ controller, root });
 
-  elements.get('game-grid').fireClick(elements.get('c4_4'));
-  // Quick-place previews a pending lock at the smallest duration; שבץ commits.
-  assert.deepEqual(controller.view.pendingLock, { r: 4, c: 4, duration: 3 });
-  controller.confirmMove();
+  // Every lock button is rendered disabled.
+  const buttons = elements.get('lock-inv-display').children;
+  assert.ok(buttons.length > 0, 'inventory buttons still render');
+  for (const btn of buttons) {
+    assert.equal(btn.disabled, true, 'lock button is disabled while unaffordable');
+  }
 
-  const lock = session.state.lockedCells.find(l => l.r === 4 && l.c === 4);
-  assert.ok(lock, 'a lock should have been placed at (4,4)');
-  assert.equal(lock.remainingTurns, 3, 'smallest available duration is used');
-  // One 3-turn lock consumed → inventory should still have one 3 and one 5.
-  const inv = session.state.lockInventory[0].slice().sort((a, b) => a - b);
-  assert.deepEqual(inv, [3, 5]);
+  // Clicking a disabled lock then a cell places nothing.
+  buttons[0].fireClick();
+  elements.get('game-grid').fireClick(elements.get('c4_4'));
+  assert.equal(controller.view.pendingLock, null, 'no pending lock previewed');
+  assert.equal(session.state.lockedCells.length, 0, 'no lock placed');
 });
 
 test('clicking an empty cell with no locks available is a no-op', () => {
@@ -913,3 +1022,49 @@ test('animation renderer bounces bag and cascades rack on exchange', () => {
 });
 
 console.log = _origLog;
+
+// ── Turn-flow notice copy ─────────────────────────────────────────────
+// The reported gap: the player whose turn was eaten was never told. Each
+// case below is a distinct reader, so the copy must be written from their
+// side, not the boost owner's.
+
+test('describeTurnEffect: the skipped player is told they lost the turn', () => {
+  const out = describeTurnEffect({ type: 'skip-turn', slot: 1, bySlot: 0 }, 1);
+  assert.equal(out.tone, 'warn');
+  assert.match(out.text, /הפסדת את התור/);
+});
+
+test('describeTurnEffect: the instigator sees it from the other side', () => {
+  const out = describeTurnEffect({ type: 'skip-turn', slot: 1, bySlot: 0 }, 0);
+  assert.equal(out.tone, 'good');
+  assert.match(out.text, /היריב/);
+  assert.doesNotMatch(out.text, /הפסדת/, 'must not tell the winner they lost a turn');
+});
+
+test('describeTurnEffect: opponent winning an extra turn warns me', () => {
+  const out = describeTurnEffect({ type: 'extra-turn', slot: 0 }, 1);
+  assert.equal(out.tone, 'warn');
+  assert.match(out.text, /היריב זכה בתור נוסף/);
+});
+
+test('describeTurnEffect: my own extra turn reads as a win, not a warning', () => {
+  const out = describeTurnEffect({ type: 'extra-turn', slot: 0 }, 0);
+  assert.equal(out.tone, 'good');
+  assert.match(out.text, /זכית/);
+});
+
+// Shared-screen 2P has no "me" — copy addressed to "you" would be ambiguous
+// about which of the two players sitting at the device it means.
+test('describeTurnEffect: shared-screen 2P names the player instead of "you"', () => {
+  const skip = describeTurnEffect({ type: 'skip-turn', slot: 1, bySlot: 0 }, null);
+  assert.equal(skip.tone, 'info');
+  assert.match(skip.text, /שחקן 2/);
+  const extra = describeTurnEffect({ type: 'extra-turn', slot: 0 }, null);
+  assert.match(extra.text, /שחקן 1/);
+});
+
+test('describeTurnEffect: unknown or empty effects produce no banner', () => {
+  assert.equal(describeTurnEffect(null, 0), null);
+  assert.equal(describeTurnEffect({}, 0), null);
+  assert.equal(describeTurnEffect({ type: 'tile-swap', slot: 0 }, 0), null);
+});

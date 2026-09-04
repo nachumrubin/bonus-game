@@ -35,6 +35,8 @@ export const DEBUG_EVENT = Object.freeze({
   TILES_SWAPPED:        'TILES_SWAPPED',
   LOCK_PLACED:          'LOCK_PLACED',
   BOOST_ACTIVATED:      'BOOST_ACTIVATED',
+  MINIGAME_STARTED:     'MINIGAME_STARTED',   // player landed on a mini-game / wheel bonus square
+  MINIGAME_RESOLVED:    'MINIGAME_RESOLVED',  // mini-game / wheel finished — carries puzzle + outcome
   PLAYER_RESIGNED:      'PLAYER_RESIGNED',
   GAME_PAUSED:          'GAME_PAUSED',
   GAME_RESUMED:         'GAME_RESUMED',
@@ -43,6 +45,26 @@ export const DEBUG_EVENT = Object.freeze({
   BOT_MOVE_COMPLETED:   'BOT_MOVE_COMPLETED',
   ERROR_OCCURRED:       'ERROR_OCCURRED',
   CLIENT_STATE_MISMATCH:'CLIENT_STATE_MISMATCH',
+});
+
+// Mini-game / wheel result bus events → the default boost/mini-game key they
+// belong to. These are the `*_INTENT.RESULT` strings emitted by each mini-game
+// in src/ui/screens/miniGames/*. The debug recorder subscribes to every one of
+// them to capture the puzzle detail (e.g. B10's two crossing words) and the
+// win/lose outcome that plain engine events (BOOST_ACTIVATED) don't carry.
+//
+// KEEP IN SYNC: if a mini-game renames its RESULT intent, update it here too.
+// The recorder prefers the live `miniGameKey` from the BONUS_PENDING event; the
+// value below is only a fallback label when no pending was captured.
+export const MINIGAME_RESULT_EVENTS = Object.freeze({
+  'crossingWords/result': 'b10_crossing_words',
+  'crossword/result':     'b8_crossword_60s',
+  'fillMiddle/result':    'b1_unscramble_or_fillmiddle',
+  'hiddenWord/result':    'b11_hidden_word',
+  'honeycomb/result':     'b12_honeycomb',
+  'letterSpinner/result': 'b14_letter_spinner',
+  'unscramble/result':    'b3_unscramble_medium',
+  'wheel/result':         'b13_wheel_of_fortune',
 });
 
 // Warning types raised by gameStateValidator.

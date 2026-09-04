@@ -6,7 +6,7 @@ import { setCommittedTile, isBonusPos } from '../core/board.js';
 import {
   canMakeWord, tryPlaceWord, findAnchors, searchBotMove, pickMove,
   resolveProfile, DIFFICULTY, DIFFICULTY_PROFILES,
-  remainingBonusEstimate, rankScoreFor,
+  remainingBonusEstimate, rankScoreFor, adjacentToBonusSquare,
 } from './botSearch.js';
 import { BONUS_ESTIMATED_VALUE } from '../boosts/bonusTileDefs.js';
 
@@ -416,6 +416,77 @@ test('searchBotMove: end-to-end — HARD picks a lower-scoring bonus-square word
   });
   assert.ok(unweighted);
   assert.equal(unweighted.word, 'אה', 'without the weight, raw score alone picks the plain word');
+});
+
+// ─── Locked-cell awareness (the bot must not target a locked square) ────────
+
+test('tryPlaceWord: returns null when a placement would land on a locked cell', () => {
+  const s = fresh({ firstMove: false });
+  setCommittedTile(s, 4, 4, { letter: 'א', val: 1 });
+  // (4,5) is empty but locked — the engine would reject a tile dropped here.
+  s.lockedCells = [{ id: 'x', r: 4, c: 5, ownerSlot: 1, remainingTurns: 2 }];
+  s.racks[0] = ['ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+  // 'אבג' would walk א(committed) → ב onto the locked (4,5) → rejected.
+  const placed = tryPlaceWord(s, 'אבג', 4, 4, 'H', 0);
+  assert.equal(placed, null, 'a word crossing a locked cell is not placeable');
+});
+
+test('findAnchors: a locked cell is not offered as an anchor', () => {
+  const s = fresh({ firstMove: false });
+  setCommittedTile(s, 4, 4, { letter: 'א', val: 1 });
+  s.lockedCells = [{ id: 'x', r: 4, c: 5, ownerSlot: 1, remainingTurns: 2 }];
+  const anchors = findAnchors(s);
+  assert.ok(!anchors.some(a => a.r === 4 && a.c === 5), 'locked (4,5) excluded');
+  // The other empty neighbours of the committed tile are still anchors.
+  assert.ok(anchors.some(a => a.r === 3 && a.c === 4));
+});
+
+test('searchBotMove: never proposes a move that lands on a locked cell', () => {
+  const makeBoard = () => {
+    const s = fresh({ firstMove: false });
+    setCommittedTile(s, 4, 4, { letter: 'א', val: 1 });
+    s.racks[0] = ['ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+    return s;
+  };
+  const dict = new Set(['אב']);
+  const isValid = (w) => dict.has(w);
+
+  // Baseline: with nothing locked, extending 'א' rightward onto (4,5) is a
+  // legal move the search will happily take.
+  const open = searchBotMove(makeBoard(), 0, ['אב'], isValid, { difficulty: DIFFICULTY.HARD });
+  assert.ok(open, 'a move exists on the open board');
+
+  // Now lock (4,5): the bot must route around it and never place there.
+  const s = makeBoard();
+  s.lockedCells = [{ id: 'x', r: 4, c: 5, ownerSlot: 1, remainingTurns: 2 }];
+  const move = searchBotMove(s, 0, ['אב'], isValid, { difficulty: DIFFICULTY.HARD });
+  assert.ok(
+    !move || move.placed.every(p => !(p.r === 4 && p.c === 5)),
+    'no placed tile lands on the locked cell',
+  );
+});
+
+// ─── First move keeps clear of the bonus squares ────────────────────────────
+
+test('adjacentToBonusSquare: flags on-grid cells next to a bonus square', () => {
+  // (5,9) sits directly left of the right-side bonus square at (5,10).
+  assert.equal(adjacentToBonusSquare(5, 9), true);
+  // A central cell touches no bonus square.
+  assert.equal(adjacentToBonusSquare(5, 5), false);
+});
+
+test('searchBotMove: the opener does not box in a bonus square', () => {
+  const s = fresh({ firstMove: true });
+  s.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  const dict = new Set(['אבגדה', 'אבג']);
+  const move = searchBotMove(s, 0, ['אבגדה', 'אבג'], (w) => dict.has(w), {
+    difficulty: DIFFICULTY.HARD,
+  });
+  assert.ok(move, 'an opener is found');
+  assert.ok(
+    move.placed.every(p => !adjacentToBonusSquare(p.r, p.c)),
+    'no placed tile sits immediately beside a bonus square',
+  );
 });
 
 // Note on coverage NOT added:

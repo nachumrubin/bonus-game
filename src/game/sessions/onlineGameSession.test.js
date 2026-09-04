@@ -13,6 +13,9 @@ import { makeMockDb } from '../online/mockFirebase.js';
 import { createRoom } from '../online/roomService.js';
 import { createInitialState } from '../core/gameEngine.js';
 import { createOnlineGameSession } from './onlineGameSession.js';
+import {
+  _setServerTimeOffsetForTests, _resetServerClockForTests,
+} from '../online/serverClock.js';
 import { _resetAndRegister as registerBoosts } from '../boosts/index.js';
 
 const _origLog = console.log;
@@ -338,6 +341,263 @@ test('online session: deferred bonus move publishes tiles immediately, scores + 
   await sessA.dispose();
 });
 
+// Regression: prod room fc_1786040881489_8bjchc. A bonus-square move whose
+// PHASE-1 commit lost the version race was rolled back on the board — but
+// `pendingScoreCommit` survived the rollback, so when the in-flight bonus flow
+// resolved, handleFinalizeBoostAward committed `baseScore + extra` for a move
+// the server never accepted. The client kept +32 the room never had, and every
+// later snapshot was discarded, freezing that client on a divergent score.
+test('online session: a deferred bonus commit that loses the race clears pendingScoreCommit', async () => {
+  bus._reset();
+  DICT.clear();
+  const ALEF = 'א';
+  const BET = 'ב';
+  addWordsFromText(`${BET}${ALEF}\n`);
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live');
+
+  const board = new Array(100).fill(null);
+  board[1] = { letter: ALEF, val: 1, isJoker: false };
+  await db.ref('rooms/online-room').update({
+    board,
+    racks: {
+      0: [BET, 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'],
+      1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+    },
+    currentTurnSlot: 0,
+    firstMove: false,
+    bonusAssignment: [{ type: 'B2', pts: 40, ic: '*' }],
+    bonusSqUsed: {},
+  });
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.firstMove = false;
+
+  const aborted = [];
+  bus.on('bonus/aborted', p => aborted.push(p));
+
+  // Stale the session out without notifying it, exactly as the opponent's
+  // watchdog does when it claims an expired turn: the phase-1 commit's version
+  // guard will now abort.
+  db._data.rooms['online-room'].version += 5;
+
+  sessA.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: -1, c: 1, letter: BET, val: 3 }] },
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.equal(sessA.state.pendingScoreCommit ?? null, null,
+    'the withheld base score must not survive the rollback');
+  assert.equal(sessA.state.scores[0], 0, 'no points for a move the server rejected');
+  assert.equal(sessA.state.currentTurnSlot, 0, 'the turn did not rotate');
+  assert.equal(aborted.length, 1, 'the in-flight bonus flow was told to drop the award');
+
+  // The engine must now be inert for this move: even if a stray finalize for the
+  // rolled-back move arrives, there is no pending base score to re-commit.
+  sessA.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, bonusIdx: 0, extra: 0 } });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(sessA.state.scores[0], 0, 'still no phantom base score');
+
+  await sessA.dispose();
+});
+
+// The mirror case: phase 1 lands but the SECOND commit (score + turn rotation)
+// loses the race. That handler previously had no rollback snapshot at all — it
+// relied solely on forceResync, so when that read failed the bonus points and
+// the rotated turn stayed in local state permanently.
+test('online session: a deferred bonus phase-2 commit that loses the race rolls back score and turn', async () => {
+  bus._reset();
+  DICT.clear();
+  const ALEF = 'א';
+  const BET = 'ב';
+  addWordsFromText(`${BET}${ALEF}\n`);
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live');
+
+  const board = new Array(100).fill(null);
+  board[1] = { letter: ALEF, val: 1, isJoker: false };
+  await db.ref('rooms/online-room').update({
+    board,
+    racks: {
+      0: [BET, 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'],
+      1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+    },
+    currentTurnSlot: 0,
+    firstMove: false,
+    bonusAssignment: [{ type: 'B2', pts: 40, ic: '*' }],
+    bonusSqUsed: {},
+  });
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.firstMove = false;
+
+  // Phase 1 succeeds.
+  sessA.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: -1, c: 1, letter: BET, val: 3 }] },
+  });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(db._data.rooms['online-room'].scores[0], 0, 'baseline: score still withheld');
+  assert.equal(sessA.state.currentTurnSlot, 0, 'baseline: turn not yet rotated');
+
+  const turnChanges = [];
+  bus.on(EV.TURN_CHANGED, p => turnChanges.push(p));
+
+  // Now lose the race on the SECOND commit.
+  db._data.rooms['online-room'].version += 5;
+  sessA.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, bonusIdx: 0, extra: 20 } });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.ok(turnChanges.some(t => t.reason === 'commit-rollback'),
+    'the phase-2 rollback ran synchronously');
+  assert.equal(sessA.state.scores[0], 0, 'neither the base score nor the bonus was kept');
+  assert.equal(sessA.state.currentTurnSlot, 0, 'the optimistic turn rotation was undone');
+
+  await sessA.dispose();
+});
+
+// Regression: prod room fc_1786040881489_8bjchc. `turnDeadlineMs` is stamped by
+// one device and enforced by the other. When the submitting device's clock runs
+// behind, the late-commit gate compares an opponent-stamped deadline against a
+// local `Date.now()` that has not reached it yet — so the gate passes, the
+// engine mutates, and the commit then loses the version race to the watchdog
+// that already claimed the turn. serverNow() removes the skew.
+test('online session: late commit is refused even when the LOCAL clock says there is time left', async () => {
+  bus._reset();
+  DICT.clear();
+  const ALEF = 'א';
+  const BET = 'ב';
+  addWordsFromText(`${BET}${ALEF}\n`);
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live', { timelimit: true, botTime: 40 });
+
+  const board = new Array(100).fill(null);
+  board[1] = { letter: ALEF, val: 1, isJoker: false };
+  await db.ref('rooms/online-room').update({
+    board,
+    racks: {
+      0: [BET, 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'],
+      1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+    },
+    currentTurnSlot: 0,
+    firstMove: false,
+  });
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.firstMove = false;
+
+  // Our clock is 5 s BEHIND the server's. The deadline (stamped in server time
+  // by the opponent) is 2 s in our local future but 3 s in the server's past.
+  _setServerTimeOffsetForTests(5000);
+  sessA.state.turnDeadlineMs = Date.now() + 2000;
+
+  const rejected = [];
+  bus.on(EV.INVALID_MOVE_REJECTED, p => rejected.push(p));
+  const versionBefore = db._data.rooms['online-room'].version;
+
+  sessA.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 0, c: 0, letter: BET, val: 3 }] },
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.ok(rejected.some(r => r.reason === 'turn-expired'),
+    'the gate must fire on server time, not local time');
+  assert.equal(db._data.rooms['online-room'].version, versionBefore,
+    'nothing was committed');
+  assert.equal(sessA.state.scores[0], 0, 'the engine never applied the move');
+
+  _resetServerClockForTests();
+  await sessA.dispose();
+});
+
+// Control for the test above: with the clocks agreeing, the identical move at
+// the identical local time is accepted. Proves the gate tightened on skew only
+// and did not simply start rejecting everything.
+test('online session: the same move commits normally when the clocks agree', async () => {
+  bus._reset();
+  DICT.clear();
+  const ALEF = 'א';
+  const BET = 'ב';
+  addWordsFromText(`${BET}${ALEF}\n`);
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live', { timelimit: true, botTime: 40 });
+
+  const board = new Array(100).fill(null);
+  board[1] = { letter: ALEF, val: 1, isJoker: false };
+  await db.ref('rooms/online-room').update({
+    board,
+    racks: {
+      0: [BET, 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'],
+      1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+    },
+    currentTurnSlot: 0,
+    firstMove: false,
+  });
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.firstMove = false;
+
+  _resetServerClockForTests(); // offset 0 — clocks agree
+  sessA.state.turnDeadlineMs = Date.now() + 2000;
+
+  const rejected = [];
+  bus.on(EV.INVALID_MOVE_REJECTED, p => rejected.push(p));
+
+  sessA.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 0, c: 0, letter: BET, val: 3 }] },
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.equal(rejected.filter(r => r.reason === 'turn-expired').length, 0,
+    'an in-time move is not rejected');
+  assert.equal(db._data.rooms['online-room'].currentTurnSlot, 1, 'the move committed');
+
+  await sessA.dispose();
+});
+
+// The deadline we WRITE must also be server-stamped, or we hand the opponent a
+// deadline shifted by our own skew — the same bug from the other end.
+test('online session: the committed deadline is stamped on the server clock', async () => {
+  bus._reset();
+  DICT.clear();
+  const ALEF = 'א';
+  const BET = 'ב';
+  addWordsFromText(`${BET}${ALEF}\n`);
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live', { timelimit: true, botTime: 40 });
+
+  const board = new Array(100).fill(null);
+  board[1] = { letter: ALEF, val: 1, isJoker: false };
+  await db.ref('rooms/online-room').update({
+    board,
+    racks: {
+      0: [BET, 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'],
+      1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+    },
+    currentTurnSlot: 0,
+    firstMove: false,
+  });
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.firstMove = false;
+
+  _setServerTimeOffsetForTests(60_000); // our clock is a minute behind
+  sessA.state.turnDeadlineMs = Date.now() + 120_000; // plenty of time either way
+
+  const localBefore = Date.now();
+  sessA.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 0, c: 0, letter: BET, val: 3 }] },
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  const written = Number(db._data.rooms['online-room'].turnDeadlineMs);
+  // 40 s limit written on a clock 60 s ahead of ours ⇒ ~100 s past local now.
+  assert.ok(written >= localBefore + 95_000,
+    `deadline must be server-stamped (got ${written - localBefore}ms past local now)`);
+
+  _resetServerClockForTests();
+  await sessA.dispose();
+});
+
 test('online session: remote pass resyncs local turn state', async () => {
   bus._reset();
   const db = makeMockDb();
@@ -494,6 +754,7 @@ test('online session: a lock commit that loses the version race rolls back synch
   const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
 
   assert.equal(sessA.state.currentTurnSlot, 0, 'baseline: slot 0 to move');
+  sessA.state.scores[0] = 10; // must be able to afford the 10-pt lock cost
   const inv0Before = [...sessA.state.lockInventory[0]];
 
   const turnChanges = [];
@@ -519,6 +780,84 @@ test('online session: a lock commit that loses the version race rolls back synch
   assert.deepEqual(sessA.state.lockInventory[0], inv0Before, 'the spent lock is returned');
   assert.equal(sessA.state.currentTurnSlot, 0, 'the turn did not advance');
 
+  await sessA.dispose();
+});
+
+// ── Turn-flow notices across the wire ─────────────────────────────────────
+// The reported bug: the opponent wins an extra turn (or eats yours) and your
+// client says nothing — the turn simply never arrives. Neither effect can be
+// inferred from the snapshot, because both are granted AND consumed inside a
+// single turn-end on the mover's device, so they never appear in the
+// activeBoosts the victim resyncs. They have to be shipped explicitly.
+
+test('online session: extra_turn is published on the room so the opponent can be told', async () => {
+  bus._reset();
+  registerBoosts();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const db = makeMockDb();
+  await setupRoom(db);
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.activeBoosts = [{ slot: 0, boostId: 'extra_turn', payload: {}, turnNumber: 1 }];
+
+  sessA.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  const roomNow = db._data.rooms['online-room'];
+  assert.equal(roomNow.currentTurnSlot, 0, 'extra_turn keeps the turn with slot 0');
+  assert.deepEqual(roomNow.turnEffects, [{ type: 'extra-turn', slot: 0 }],
+    'the effect must reach the room — activeBoosts is already empty by now');
+  assert.deepEqual(roomNow.activeBoosts, [],
+    'proves the opponent could not have derived this from activeBoosts');
+  await sessA.dispose();
+});
+
+test('online session: remote turnEffects re-emit TURN_EFFECTS_APPLIED on the victim client', async () => {
+  bus._reset();
+  const db = makeMockDb();
+  await setupRoom(db);
+  const sessB = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 1 });
+  const notices = [];
+  bus.on(EV.TURN_EFFECTS_APPLIED, p => notices.push(p));
+
+  await db.ref('rooms/online-room').update({
+    version: 2,
+    currentTurnSlot: 0,
+    turnNumber: 2,
+    lastMove: { type: 'pass', slot: 0, turnNumber: 1, ts: 4242 },
+    turnEffects: [{ type: 'skip-turn', slot: 1, bySlot: 0 }],
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.equal(notices.length, 1, 'slot 1 must be told why its turn was taken');
+  assert.deepEqual(notices[0].effects, [{ type: 'skip-turn', slot: 1, bySlot: 0 }]);
+  assert.equal(notices[0].remote, true);
+  await sessB.dispose();
+});
+
+// The mover's engine already fired the notice locally; the commit echo must
+// not fire a duplicate on the same device.
+test('online session: own-move echo does not re-fire the turn-effect notice', async () => {
+  bus._reset();
+  const db = makeMockDb();
+  await setupRoom(db);
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  const notices = [];
+  bus.on(EV.TURN_EFFECTS_APPLIED, p => notices.push(p));
+
+  await db.ref('rooms/online-room').update({
+    version: 2,
+    currentTurnSlot: 0,
+    turnNumber: 2,
+    lastMove: { type: 'pass', slot: 0, turnNumber: 1, ts: 5151 },
+    turnEffects: [{ type: 'extra-turn', slot: 0 }],
+  });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.equal(notices.length, 0, 'the mover already saw this from its own engine');
   await sessA.dispose();
 });
 

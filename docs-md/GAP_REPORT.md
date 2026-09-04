@@ -17,6 +17,69 @@
 
 ## Critical Gaps
 
+### -1. Turn deadlines are compared across unsynchronised device clocks *(Confirmed gap)* — ✅ RESOLVED (August 2026)
+
+**Resolved by** `src/game/online/serverClock.js` — `startServerClock({db})` tracks
+RTDB `.info/serverTimeOffset` and `serverNow()` replaces `Date.now()` at every
+deadline write and comparison (late-commit gate, committed deadline,
+`initialTurnDeadlineMs`, the watchdog helpers' `nowMs` fallbacks, and the `now`
+injections for `createTimeoutWatchdog` / `createTurnTimerController`). Offset is 0
+until synced, so offline modes and pre-sync boot behave exactly as before.
+Regression tests in `serverClock.test.js` and `onlineGameSession.test.js`; the two
+decisive ones were confirmed to fail with the fix reverted. Original analysis
+retained below.
+
+---
+
+**Evidence:** prod room `fc_1786040881489_8bjchc`. `turnDeadlineMs` is an absolute
+epoch stamped with the committing client's `Date.now()`
+(`onlineGameSession.rawCommitCurrentState`) and then enforced against a *different*
+device's `Date.now()` by three independent consumers: the late-commit gate in
+`dispatch()`, the local auto-pass in `turnTimerController`, and
+`shouldClaimExpiredOnlineTurn` (opponent watchdog). `.info/serverTimeOffset` — the
+Firebase primitive for exactly this — is used **nowhere** in the codebase; only
+`.info/connected` (`presenceService.js`, `connectivityService.js`).
+
+**Observed symptoms in that room:** turn rotations firing 1-2 s *before* their
+computed deadlines, and a client accepting a `CONFIRM_MOVE` 5 s after a deadline
+the opponent had already claimed — the late-commit gate never tripped because on
+that device `Date.now()` had not yet passed `deadline + grace`. The resulting
+commit was dropped by the version guard and cost the player the game.
+
+**Fix direction:** one `serverNow()` helper (`Date.now() + serverTimeOffset`) used
+at every deadline write and every comparison. Note `TASK_WORKFLOW.md` already
+requires injectable `now` parameters for time-dependent logic — these sites use
+raw `Date.now()`.
+
+**Partially mitigated (August 2026):** losing this race is now harmless to score
+state — see CHANGELOG "Phantom score from a rolled-back bonus move". The race
+itself is unaddressed.
+
+### -0.5. Score-merge animation freezes the turn clock with no server counterpart *(Confirmed gap)* — OPEN
+
+`turnTimerController.freezeForScoreAnimation` calls `pauseForBonus()` on
+`MOVE_CONFIRMED`, `MOVE_SCORE_COMMITTED`, **and `OPPONENT_MOVED`** — the last
+fires at the *start* of the receiving player's turn — for
+`scoreAnimationDurationMs` ≈ 2.7-2.9 s. While `bonusPauseCount > 0` the sync loop
+returns early: the display shows the **full** per-turn allowance rather than the
+remaining time, and the auto-pass is skipped. The shared deadline keeps running,
+because only `liveBonus.active` gates the opponent watchdog and this path never
+writes it. Every player is therefore systematically ~3 s shorter than their timer
+claims.
+
+This contradicts a stated invariant in `docs-md/CLAUDE.md`: *"Animation timing must
+never gate gameplay. If an animation is still running, gameplay must continue (the
+game does not pause for animation — only bonus overlays pause the watchdog)."*
+
+Aggravating factor: the resume is `setTimeout(resumeFromBonus, ms)`, which browsers
+throttle in backgrounded tabs, so the freeze can outlast its designed duration by
+an unbounded margin.
+
+**Not affected:** the genuine bonus/mini-game flow, which *is* correctly protected —
+`BONUS_PENDING` and `BOOST_ACTIVATED` both write `liveBonus`, and the watchdog
+honours it. Verified in that room: a 49 s honeycomb and a 53 s B8 crossword both ran
+past a 40 s deadline with no watchdog claim.
+
 ### 0. `timer_bonus` (B13 wheel +10s) did not extend the turn clock *(Confirmed gap)* — ✅ RESOLVED
 
 **Status:** Resolved (June 2026), offline + online.

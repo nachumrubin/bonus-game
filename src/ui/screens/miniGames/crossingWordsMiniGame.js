@@ -149,6 +149,14 @@ export function mountCrossingWordsMiniGame({
       earnedPts,
       attempt: attempt ?? '',
       shared: pair.shared,
+      // The full puzzle — the two crossing words and where they intersect — so
+      // the debug recorder can show exactly what was asked (e.g. "תפוח ✕ חגים,
+      // shared ח, player typed ק → lost"). Purely additive; existing consumers
+      // ignore the extra fields.
+      h: pair.h,
+      v: pair.v,
+      hpos: pair.hpos,
+      vpos: pair.vpos,
     };
     bus.emit(CR_INTENT.RESULT, r);
     onResult(r);

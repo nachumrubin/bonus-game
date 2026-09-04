@@ -155,6 +155,61 @@ test('guest (slot 1) does NOT write /gameSnapshots — only the host does', asyn
   assert.ok(db._data.clientSnapshots.room1['1'], 'guest still wrote its own client snapshot');
 });
 
+test('mini-game flow records MINIGAME_STARTED + MINIGAME_RESOLVED with puzzle detail (B10)', async () => {
+  const { db } = setup();
+  bus.emit(EV.GAME_STARTED, {});
+  await tick();
+  // Player landed on the B10 crossing-words square.
+  bus.emit(EV.BONUS_PENDING, {
+    idx: 6, bonusType: 'B10', slot: 0, turnNumber: 22,
+    miniGameKey: 'b10_crossing_words', kind: 'minigame',
+  });
+  // The mini-game plays out and the player guesses wrong → 0 points.
+  bus.emit('crossingWords/result', {
+    success: false, earnedPts: 0, attempt: 'ק', shared: 'ח',
+    h: 'תפוח', v: 'חגים', hpos: 3, vpos: 0,
+  });
+  await tick();
+
+  const events = Object.values(db._data.gameEvents.room1);
+  const started = events.find(e => e.type === 'MINIGAME_STARTED');
+  assert.ok(started, 'MINIGAME_STARTED recorded');
+  assert.equal(started.payload.bonusType, 'B10');
+  assert.equal(started.payload.bonusIdx, 6);
+  assert.equal(started.payload.miniGameKey, 'b10_crossing_words');
+
+  const resolved = events.find(e => e.type === 'MINIGAME_RESOLVED');
+  assert.ok(resolved, 'MINIGAME_RESOLVED recorded');
+  assert.equal(resolved.payload.success, false);
+  assert.equal(resolved.payload.earnedPts, 0);
+  assert.equal(resolved.payload.bonusType, 'B10');
+  assert.equal(resolved.payload.slot, 0);
+  // The two crossing words + the player's answer survive into the timeline.
+  assert.equal(resolved.payload.detail.h, 'תפוח');
+  assert.equal(resolved.payload.detail.v, 'חגים');
+  assert.equal(resolved.payload.detail.shared, 'ח');
+  assert.equal(resolved.payload.detail.attempt, 'ק');
+  assert.match(resolved.summary, /lost B10/);
+});
+
+test('wheel spin (B13) records as resolved with the outcome, not won/lost', async () => {
+  const { db } = setup();
+  bus.emit(EV.GAME_STARTED, {});
+  await tick();
+  bus.emit(EV.BONUS_PENDING, {
+    idx: 7, bonusType: 'B13', slot: 1, turnNumber: 27,
+    miniGameKey: 'b13_wheel_of_fortune', kind: 'wheel',
+  });
+  bus.emit('wheel/result', { outcomeId: 'cancel_boost', label: 'ביטול בוסט' });
+  await tick();
+  const resolved = Object.values(db._data.gameEvents.room1).find(e => e.type === 'MINIGAME_RESOLVED');
+  assert.ok(resolved);
+  assert.equal(resolved.payload.kind, 'wheel');
+  assert.equal(resolved.payload.success, null, 'a spin is neither won nor lost');
+  assert.equal(resolved.payload.detail.outcomeId, 'cancel_boost');
+  assert.match(resolved.summary, /spun B13/);
+});
+
 test('getLastActions returns the in-memory ring buffer for reports', async () => {
   const { rec } = setup();
   bus.emit(EV.GAME_STARTED, {});

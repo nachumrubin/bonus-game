@@ -64,6 +64,7 @@ import { createTurnTimerController } from './ui/controllers/turnTimerController.
 import { createDisconnectController } from './ui/controllers/disconnectController.js';
 import { createConnectivityIndicator } from './ui/controllers/connectivityIndicator.js';
 import { startConnectivityMonitor } from './game/online/connectivityService.js';
+import { startServerClock, serverNow } from './game/online/serverClock.js';
 import { createTutorialController } from './ui/controllers/tutorialController.js';
 import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/controllers/onboardingController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
@@ -4191,6 +4192,9 @@ async function boot() {
           roomId: room.roomId,
           mySlot,
           limitMs: seconds * 1000,
+          // The deadline we are judging was stamped by the OPPONENT's client.
+          // Compare it on the shared server clock, not ours. See serverClock.js.
+          now: serverNow,
         });
       }
     }
@@ -4499,6 +4503,12 @@ async function boot() {
   const turnTimer     = createTurnTimerController({
     bus,
     sessionRef: () => globalThis.__spine?.activeGame?.session ?? null,
+    // Online deadlines come off the room and were stamped on the server clock;
+    // counting them down against a skewed local clock is what made the visible
+    // timer disagree with the one the watchdog enforces. Offline modes both
+    // write and read the deadline here, and the offset is 0 when unsynced, so
+    // this is a no-op for them.
+    now: serverNow,
   });
   const disconnectCtl = createDisconnectController({
     bus,
@@ -5003,6 +5013,13 @@ async function ensureFirebaseGlobals() {
   activeFbDb = impl.db;
   activeFbAuth = impl.auth;
   activeFbServerTimestamp = impl.serverTimestamp;
+  // Anchor every turn-deadline comparison to the server's clock. Must start as
+  // soon as the db exists and before any room is joined: `turnDeadlineMs` is an
+  // absolute stamp written by one device and enforced by the other, so a skewed
+  // local clock silently desynchronises the turn timer, the opponent watchdog,
+  // and the late-commit gate. Safe to call repeatedly; offset stays 0 until
+  // `.info/serverTimeOffset` first reports.
+  startServerClock({ db: activeFbDb, bus });
   if (activeFbAuth?.onAuthStateChanged) {
     activeFbAuth.onAuthStateChanged((user) => {
       activeFbCurrentUser = user ?? null;

@@ -14,6 +14,12 @@ export const EV = Object.freeze({
   TURN_CHANGED:           'evt/TURN_CHANGED',
   SCORE_CHANGED:          'evt/SCORE_CHANGED',
   BOOST_ACTIVATED:        'evt/BOOST_ACTIVATED',
+  // Turn-flow effects that change WHOSE turn is next (extra_turn repeating a
+  // turn, skip_opponent_turn eating one). Emitted separately from
+  // BOOST_ACTIVATED so the "you lost your turn" notice can fire on the
+  // VICTIM's client — including online, where the effect resolves entirely on
+  // the mover's device and the victim only ever sees a resynced snapshot.
+  TURN_EFFECTS_APPLIED:   'evt/TURN_EFFECTS_APPLIED',
   BONUS_PENDING:          'bonus/pending',
   BONUS_VETOED:           'evt/BONUS_VETOED',
   OPPONENT_MOVED:         'evt/OPPONENT_MOVED',

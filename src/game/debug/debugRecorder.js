@@ -14,7 +14,7 @@
 // knows how to map gameplay → debug data.
 
 import { EV } from '../../events/eventTypes.js';
-import { DEBUG_EVENT } from './debugSchema.js';
+import { DEBUG_EVENT, MINIGAME_RESULT_EVENTS } from './debugSchema.js';
 import { compactSnapshot, hashState } from './stateHash.js';
 import { validateTransition } from './gameStateValidator.js';
 import {
@@ -143,6 +143,10 @@ export function mountDebugRecorder({
       mySlot: session?.mySlot ?? ag?.mySlot ?? null,
       online: !!ag?.online,
       getState: () => session?.state ?? null,
+      // Context of the mini-game / wheel the local player is currently playing,
+      // captured from BONUS_PENDING and paired to the *_INTENT.RESULT that
+      // follows (which square, which player, which mini-game). null when idle.
+      pendingMiniGame: null,
     };
     lastActions = []; lastEventId = null; lastClientHash = null;
     prevServerCompact = null; lastServerVersion = null;
@@ -272,6 +276,77 @@ export function mountDebugRecorder({
       },
     });
   });
+
+  // ── Mini-game / wheel capture ────────────────────────────────────
+  // A boost square that needs UI (B1/B3/B8/B10/B11/B12/B13/B14) defers scoring
+  // and plays out on the mover's device. The engine's BOOST_ACTIVATED only says
+  // "a boost fired for +N" — it never shows the puzzle or whether the player
+  // won. Here we capture BONUS_PENDING (the challenge) and the mini-game's own
+  // `*_INTENT.RESULT` (the outcome + puzzle detail, e.g. B10's two crossing
+  // words, the letter the player typed, and win/lose) into the timeline.
+  on(EV.BONUS_PENDING, (p = {}) => {
+    if (!ctx) return;
+    const state = ctx.getState();
+    const slot = p.slot;
+    const name = state?.players?.[slot]?.displayName ?? `שחקן ${(slot ?? 0) + 1}`;
+    const info = {
+      miniGameKey: p.miniGameKey ?? null,
+      bonusType: p.bonusType ?? null,
+      bonusIdx: p.idx ?? null,
+      slot: slot ?? null,
+      kind: p.kind ?? 'minigame',
+      turnNumber: p.turnNumber ?? state?.turnNumber ?? null,
+      playerName: name,
+    };
+    ctx.pendingMiniGame = info;
+    record(DEBUG_EVENT.MINIGAME_STARTED, {
+      summary: `${name} landed on ${p.bonusType ?? '?'} → ${info.kind} (${p.miniGameKey ?? '—'})`,
+      payload: { ...info },
+      userId: state?.players?.[slot]?.uid ?? null,
+      playerName: name,
+      turnNumber: info.turnNumber,
+    });
+  });
+
+  for (const resultEvent of Object.keys(MINIGAME_RESULT_EVENTS)) {
+    on(resultEvent, (result = {}) => recordMiniGameResult(resultEvent, result));
+  }
+
+  function recordMiniGameResult(resultEvent, result) {
+    if (!ctx) return;
+    const pending = ctx.pendingMiniGame ?? {};
+    ctx.pendingMiniGame = null;
+    const state = ctx.getState();
+    const slot = pending.slot ?? state?.currentTurnSlot ?? null;
+    const name = pending.playerName ?? state?.players?.[slot]?.displayName ?? `שחקן ${(slot ?? 0) + 1}`;
+    const kind = pending.kind ?? (resultEvent === 'wheel/result' ? 'wheel' : 'minigame');
+    // Wheel spins have no success/earnedPts — they yield an outcome id. Treat a
+    // spin as "resolved" rather than won/lost.
+    const success = typeof result.success === 'boolean' ? result.success : null;
+    const earnedPts = Number(result.earnedPts) || 0;
+    const verb = kind === 'wheel' ? 'spun' : success === true ? 'won' : success === false ? 'lost' : 'resolved';
+    const label = pending.bonusType ?? MINIGAME_RESULT_EVENTS[resultEvent] ?? '?';
+    record(DEBUG_EVENT.MINIGAME_RESOLVED, {
+      summary: `${name} ${verb} ${label} (+${earnedPts})`,
+      payload: {
+        miniGameKey: pending.miniGameKey ?? MINIGAME_RESULT_EVENTS[resultEvent] ?? null,
+        resultEvent,
+        bonusType: pending.bonusType ?? null,
+        bonusIdx: pending.bonusIdx ?? null,
+        slot,
+        kind,
+        success,
+        earnedPts,
+        // Full mini-game result, verbatim — the puzzle + the player's answer.
+        // For B10: { h, v, hpos, vpos, shared, attempt, success, earnedPts }.
+        detail: result,
+        turnNumber: pending.turnNumber ?? state?.turnNumber ?? null,
+      },
+      userId: state?.players?.[slot]?.uid ?? null,
+      playerName: name,
+      turnNumber: pending.turnNumber ?? state?.turnNumber ?? null,
+    });
+  }
 
   on(EV.OPPONENT_MOVED, () => { if (ctx) writeClientSnapshot(ctx.getState()); });
 

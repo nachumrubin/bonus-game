@@ -218,6 +218,18 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     trigger({ kind: 'playerGlowPulse', payload: { slot: currentTurnSlot } });
   }));
 
+  // Turn-flow notices ("your turn was skipped", "the opponent plays again").
+  // Deliberately NOT routed through the modal award overlay: these fire while
+  // the OTHER player is acting, so they must not demand a tap, and they must
+  // not increment overlayCount (that gate exists to hold score-commit
+  // animations behind a modal — a self-dismissing banner has nothing to hold).
+  subs.push(bus.on(EV.TURN_EFFECTS_APPLIED, ({ effects }) => {
+    for (const effect of effects ?? []) {
+      if (!effect?.type) continue;
+      trigger({ kind: 'turnEffectBanner', payload: { ...effect, mySlot } });
+    }
+  }));
+
   subs.push(bus.on(EV.GAME_COMPLETED, ({ winnerSlot }) => {
     trigger({ kind: 'scorePanelArrive', payload: { winnerSlot } });
     trigger({ kind: 'overlayCardIn',    payload: { kind: 'gameOver', winnerSlot } });

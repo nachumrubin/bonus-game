@@ -321,16 +321,37 @@ body{font-family:'Heebo',sans-serif;direction:rtl;color:#eee;}
   box-shadow:0 1px 3px rgba(0,0,0,.45);
 }
 /* Pending (not-yet-confirmed) lock — preview state shown after the player
-   taps an empty cell with no rack tile selected. Distinguished from a real
-   committed lock by reduced opacity, a dashed accent border, and a subtle
-   pulse. Tapping the cell again or pressing בטל removes it; pressing שבץ
-   commits via CMD.PLACE_LOCK. */
+   picks a lock from the box and then taps an empty cell. Distinguished from a
+   real committed lock by reduced opacity, a dashed accent border, and a subtle
+   pulse. Tapping it selects it (adds .selected-placed, so it can be moved to
+   another cell); tapping again — or pressing בטל — returns it to the box.
+   Pressing שבץ commits it via CMD.PLACE_LOCK. */
 .cell.spine-pending-lock-cell{
   background:linear-gradient(145deg,rgba(53,91,117,.55),rgba(32,56,77,.55))!important;
   box-shadow:inset 0 0 0 2px rgba(232,200,64,.55), inset 0 0 0 4px rgba(232,200,64,.18)!important;
   animation:pendingLockPulse 1.1s ease-in-out infinite;
 }
 .cell.spine-pending-lock-cell .spine-lock-badge{opacity:.78;}
+/* Price tag on an unconfirmed lock: the cost rides with the thing that causes
+   it, so the player sees what this lock will take while still deciding. */
+.cell.spine-pending-lock-cell .spine-lock-cost{
+  position:absolute;
+  right:2px;
+  top:1px;
+  z-index:5;
+  padding:0 3px;
+  border-radius:7px;
+  background:#e2444c;
+  color:#fff;
+  font-size:9px;
+  font-weight:900;
+  line-height:13px;
+  pointer-events:none;
+  box-shadow:0 1px 3px rgba(0,0,0,.5);
+  /* Board is RTL — keep the sign in front of the number. */
+  direction:ltr;
+  unicode-bidi:isolate;
+}
 .cell.spine-pending-lock-cell .spine-lock-icon{filter:drop-shadow(0 0 6px rgba(255,232,112,.35));}
 @keyframes pendingLockPulse{
   0%,100%{box-shadow:inset 0 0 0 2px rgba(232,200,64,.55), inset 0 0 0 4px rgba(232,200,64,.18)!important;}
@@ -1642,6 +1663,28 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 #turn-banner { display: none !important; }
 
 /* Per-player locks row — full card width, single horizontal line */
+/* Pending lock charge on the owner's score card. Hidden until an unconfirmed
+   lock is on the board; the real score is untouched until the move commits, so
+   this reads as "this is what that lock will cost you". */
+.is-pending-cost {
+  display: none;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: #ff6868;
+  text-shadow: 0 0 8px rgba(255,80,80,.75), 0 1px 2px rgba(0,0,0,.8);
+  /* The card is RTL, which would render "−10" as "10−". Isolate it as LTR. */
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.is-pending-cost.is-visible {
+  display: block;
+  animation: pendingCostPulse .9s ease-in-out infinite alternate;
+}
+@keyframes pendingCostPulse {
+  from { opacity: .65; transform: scale(1); }
+  to   { opacity: 1;   transform: scale(1.12); }
+}
 .is-pclocks {
   font-size: 9px;
   color: var(--by);
@@ -1652,6 +1695,21 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   letter-spacing: .5px;
   white-space: nowrap;
   width: 100%;
+  /* The acting player's card holds the interactive lock box (clickable
+     buttons); the opponent's holds a plain text summary. Both need to sit
+     centred, and the buttons must be able to wrap on a narrow card. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  justify-content: center;
+  align-items: center;
+}
+/* Locks are a primary control, so give them a comfortable tap target in the
+   info-strip card rather than inheriting the 9px summary text sizing. */
+.is-pclocks .lock-inv-btn {
+  min-width: 30px;
+  height: 24px;
+  font-size: 11px;
 }
 .lock-inv-btn {
   min-width: 28px;
@@ -1667,10 +1725,28 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   line-height: 1;
   cursor: pointer;
 }
+/* The other player's locks: identical frame, no affordance. Both cards keep
+   their lock chips bordered at all times — a card must not lose its frames
+   just because the turn passed to the other side. `opacity:1` defends against
+   the browser's default disabled-button dimming (the chip is a disabled
+   <button> so it can't be focused or clicked). */
+.lock-inv-btn--static {
+  cursor: default;
+  opacity: 1;
+}
+/* The lock the player picked from the box. It glows (and keeps glowing) until
+   it is placed on a square or de-selected, so it's obvious which lock is
+   "in hand" while the player chooses a cell. */
 .lock-inv-btn.active {
   background: var(--by);
   color: #111;
+  border-color: rgba(255,232,112,.95);
   box-shadow: 0 0 8px rgba(232,200,64,.5);
+  animation: lockSelectedGlow 1s ease-in-out infinite alternate;
+}
+@keyframes lockSelectedGlow {
+  from { box-shadow: 0 0 6px rgba(255,232,112,.55); transform: scale(1); }
+  to   { box-shadow: 0 0 14px rgba(255,232,112,1), 0 0 22px rgba(232,200,64,.6); transform: scale(1.08); }
 }
 
 /* ── INFO STRIP (player score cards above the board) — applies at every
@@ -1851,6 +1927,60 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   animation: none;
   opacity: 1;
   transform: translateX(-50%);
+}
+/* The lock's −10, flying from the placed lock into the owner's score panel on
+   commit. Same motion language as the score sum chip (JS-driven transition, so
+   the float-up keyframes must be off) but reads as a debit. */
+.scoring-float-label.lock-cost-chip {
+  color: #ff6868;
+  font-size: 21px;
+  text-shadow: 0 0 12px rgba(255,80,80,.95), 0 1px 3px rgba(0,0,0,.9);
+  animation: none;
+  opacity: 1;
+  transform: translateX(-50%);
+  /* Overlay is appended to the RTL body — keep "−10" from becoming "10−". */
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* ── Turn-flow notice banner ──
+   "You lost your turn" / "the opponent plays again". Non-blocking and
+   self-dismissing, so it can appear while the opponent is acting without
+   stealing a tap. Pinned below the top edge rather than over the board so it
+   never covers the tiles the player is reading. */
+.turn-effect-banner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translate(-50%, -14px);
+  z-index: 9998;              /* under the modal award card (9999) */
+  pointer-events: none;
+  max-width: min(92vw, 420px);
+  box-sizing: border-box;
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: linear-gradient(180deg, rgba(18,26,54,.97), rgba(11,17,38,.97));
+  box-shadow: 0 8px 26px rgba(0,0,0,.55);
+  color: #eaf0ff;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  opacity: 0;
+  transition: opacity .28s ease, transform .28s cubic-bezier(.22,1,.36,1);
+}
+.turn-effect-banner.is-in { opacity: 1; transform: translate(-50%, 0); }
+.turn-effect-banner.tone-warn {
+  border-color: rgba(255,120,120,.5);
+  box-shadow: 0 8px 26px rgba(0,0,0,.55), 0 0 18px rgba(255,90,90,.28);
+}
+.turn-effect-banner.tone-good {
+  border-color: rgba(96,230,150,.5);
+  box-shadow: 0 8px 26px rgba(0,0,0,.55), 0 0 18px rgba(60,220,130,.26);
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-effect-banner { transition: opacity .28s ease; transform: translate(-50%, 0); }
 }
 
 /* ── Scoring animation: score panel pulse on point arrival ── */

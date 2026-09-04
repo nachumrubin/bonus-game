@@ -117,7 +117,7 @@ export function mountUnscrambleMiniGame({
     function resolve(success) {
       if (resolved) return;
       resolved = true;
-      const r = { success, earnedPts: success ? cfg.earnedPts : 0 };
+      const r = { success, earnedPts: success ? cfg.earnedPts : 0, answer: puzzle.word };
       bus.emit(UNS_INTENT.RESULT, r);
       onResult(r);
     }
@@ -212,7 +212,9 @@ export function mountUnscrambleMiniGame({
     if (resolved) return;
     resolved = true;
     clearInterval(timer);
-    const r = { success, earnedPts: success ? cfg.earnedPts : 0 };
+    // Include the target word and the player's attempt so the debug recorder
+    // can report what was scrambled and what they guessed. Additive only.
+    const r = { success, earnedPts: success ? cfg.earnedPts : 0, answer: puzzle.word, attempt: guess || '' };
     bus.emit(UNS_INTENT.RESULT, r);
     onResult(r);
     // Visual outcome. On success we print the word the player made. On a

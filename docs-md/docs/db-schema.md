@@ -48,6 +48,26 @@ The primary game document. Created by `roomService.createRoom()` / `inviteServic
   },
   moveHistory: MoveRecord[], // full history (replay log)
 
+  turnEffects: TurnEffect[], // turn-FLOW effects resolved by the committing
+                             // client this turn. Written on every state
+                             // commit (empty array when nothing fired).
+                             //   { type: 'extra-turn', slot }
+                             //   { type: 'skip-turn',  slot, bySlot }
+                             // `slot` is the AFFECTED player (the one who
+                             // replays / the one who was skipped).
+                             //
+                             // Why it must be written rather than derived:
+                             // both effects are granted AND consumed inside a
+                             // single turn-end on the mover's device, so they
+                             // never appear in the `activeBoosts` the opponent
+                             // resyncs. Without this field the opponent's turn
+                             // simply never arrives, unexplained.
+                             // Read by onlineGameSession's watcher, which
+                             // re-emits EV.TURN_EFFECTS_APPLIED locally.
+                             // NOT part of lastMove on purpose — lastMove is
+                             // the moveHistory entry object itself, so writing
+                             // to it would rewrite history.
+
   activeBoosts: ActiveBoost[],
 
   lockedCells: LockedCell[],

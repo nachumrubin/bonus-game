@@ -21,7 +21,7 @@ import { isValid as isWordValid } from './hebrewDictionary.js';
 import {
   applyMove, applyPass, applyExchange, applyFreeExchange, applyResign, applyLock, createLock,
   advanceTurn, ensureLockState, isCellLocked, isGameOver, winnerSlot,
-  canClaimStallEnd,
+  canClaimStallEnd, LOCK_POINT_COST,
 } from './turnManager.js';
 import { runHook, TRIGGERS } from './boostEngine.js';
 import { BDEFS, BONUS_TYPES } from '../boosts/data.js';
@@ -169,6 +169,12 @@ export function createEngine({ state, bus }) {
     const collides = [...placed, ...swaps].some(p => Number(p.r) === rr && Number(p.c) === cc);
     if (collides) return { ok: false, reason: 'lock-cell-occupied' };
     if (!(state.lockInventory?.[slot] ?? []).includes(d)) return { ok: false, reason: 'lock-unavailable' };
+    // A lock costs LOCK_POINT_COST points — the player must be able to pay it
+    // out of their score BEFORE this move's word is scored. Below that, locks
+    // are unavailable until the player earns enough (mirrored by the UI, which
+    // disables the lock picker). Checked here so a lock can never be spent on
+    // credit even if a client bypasses the disabled UI.
+    if ((state.scores?.[slot] ?? 0) < LOCK_POINT_COST) return { ok: false, reason: 'lock-insufficient-points' };
     return { ok: true, lock: { r: rr, c: cc, duration: d, slot } };
   }
 
@@ -402,6 +408,11 @@ export function createEngine({ state, bus }) {
 
     if (hasBonusAwardFlow) {
       replaceActiveBoosts(state, ctx.activeBoosts);
+      // No turn-flow effect has resolved yet — the mini-game outcome decides
+      // that, on FINALIZE_BOOST_AWARD. Clear now so the deferred commit (which
+      // writes the room before the mini-game finishes) can't re-ship the
+      // PREVIOUS turn's effects and re-fire the notice on the opponent.
+      state.lastTurnEffects = [];
       const bonusActivations = collectBonusActivations(state, ctx.placed, slot);
       const movePayload = {
         slot,
@@ -451,12 +462,16 @@ export function createEngine({ state, bus }) {
       if (ci >= 0) boosts.splice(ci, 1);
     }
 
+    const repeatTurnSlot = ctx.repeatTurn ? slot : null;
     if (ctx.repeatTurn) {
       state.currentTurnSlot = slot;
       state.turnNumber = Math.max(1, (state.turnNumber ?? 1) - 1);
     }
 
     const turnStartEffects = applyTurnStartEffects(state);
+    // Must precede MOVE_CONFIRMED — onlineGameSession commits the room from
+    // that event and reads state.lastTurnEffects to ship with it.
+    recordTurnEffects(state, turnStartEffects, repeatTurnSlot);
 
     emit(EV.MOVE_CONFIRMED, {
       slot,
@@ -472,7 +487,7 @@ export function createEngine({ state, bus }) {
       emit(EV.BOOST_ACTIVATED, { slot: vetoCancelSlot, boostId: 'cancel_next_opponent_bonus', consumed: true });
       emit(EV.BONUS_VETOED, { slot, cancelSlot: vetoCancelSlot, bonusTypes: vetoedBonusTypes });
     }
-    emitTurnStartEffects(turnStartEffects, emit);
+    emitTurnStartEffects(turnStartEffects, emit, state);
     emit(EV.SCORE_CHANGED, { slot, score: state.scores[slot] });
     emit(EV.LOCKS_CHANGED, { lockedCells: [...state.lockedCells], lockInventory: cloneLockInventory(state) });
 
@@ -494,7 +509,8 @@ export function createEngine({ state, bus }) {
     }
     emit(EV.LOCKS_CHANGED, { lockedCells: [...state.lockedCells], lockInventory: cloneLockInventory(state) });
     const turnStartEffects = applyTurnStartEffects(state);
-    emitTurnStartEffects(turnStartEffects, emit);
+    recordTurnEffects(state, turnStartEffects);
+    emitTurnStartEffects(turnStartEffects, emit, state);
     if (isGameOver(state)) { finishGame(); return; }
     emit(EV.TURN_CHANGED, {
       currentTurnSlot: state.currentTurnSlot,
@@ -535,7 +551,8 @@ export function createEngine({ state, bus }) {
     emit(EV.LOCKS_CHANGED, { lockedCells: [...state.lockedCells], lockInventory: cloneLockInventory(state) });
     if (!freeSwap) {
       const turnStartEffects = applyTurnStartEffects(state);
-      emitTurnStartEffects(turnStartEffects, emit);
+      recordTurnEffects(state, turnStartEffects);
+      emitTurnStartEffects(turnStartEffects, emit, state);
       // applyExchange bumped passCount (May 2026 rule: exchanges are
       // scoreless turns toward game-over). Mirror handlePass / handleConfirmMove
       // and finishGame here if the threshold was hit, otherwise emit TURN_CHANGED.
@@ -570,6 +587,10 @@ export function createEngine({ state, bus }) {
       emit(EV.INVALID_MOVE_REJECTED, { reason: 'lock-unavailable', r: rr, c: cc, duration: d });
       return;
     }
+    if ((state.scores?.[slot] ?? 0) < LOCK_POINT_COST) {
+      emit(EV.INVALID_MOVE_REJECTED, { reason: 'lock-insufficient-points', r: rr, c: cc, duration: d });
+      return;
+    }
 
     try {
       applyLock(state, { r: rr, c: cc, duration: d, slot });
@@ -579,9 +600,10 @@ export function createEngine({ state, bus }) {
     }
     const lock = state.lockedCells.find(l => l.r === rr && l.c === cc);
     const turnStartEffects = applyTurnStartEffects(state);
+    recordTurnEffects(state, turnStartEffects);
     emit(EV.LOCK_PLACED, { slot, lock });
     emit(EV.LOCKS_CHANGED, { lockedCells: [...state.lockedCells], lockInventory: cloneLockInventory(state) });
-    emitTurnStartEffects(turnStartEffects, emit);
+    emitTurnStartEffects(turnStartEffects, emit, state);
     emit(EV.TURN_CHANGED, { currentTurnSlot: state.currentTurnSlot, turnNumber: state.turnNumber, reason: 'lock', prevSlot: slot });
   }
 
@@ -674,12 +696,16 @@ export function createEngine({ state, bus }) {
       ctx = runHook(TRIGGERS.ON_TURN_END, ctx) ?? ctx;
       replaceActiveBoosts(state, ctx.activeBoosts);
 
+      const repeatTurnSlot = ctx.repeatTurn ? s : null;
       if (ctx.repeatTurn) {
         state.currentTurnSlot = s;
         state.turnNumber = Math.max(1, (state.turnNumber ?? 1) - 1);
       }
 
       const turnStartEffects = applyTurnStartEffects(state);
+      // Before MOVE_SCORE_COMMITTED for the same reason as the CONFIRM_MOVE
+      // path: the online session's commit subscriber reads it on that event.
+      recordTurnEffects(state, turnStartEffects, repeatTurnSlot);
       emit(EV.MOVE_SCORE_COMMITTED, {
         ...(pending.movePayload ?? {}),
         score: total,
@@ -687,7 +713,7 @@ export function createEngine({ state, bus }) {
         bonusExtra: n,
         multiplier: pending.multiplier ?? 1,
       });
-      emitTurnStartEffects(turnStartEffects, emit);
+      emitTurnStartEffects(turnStartEffects, emit, state);
       emit(EV.SCORE_CHANGED, { slot: s, score: state.scores[s] });
       emit(EV.LOCKS_CHANGED, { lockedCells: [...state.lockedCells], lockInventory: cloneLockInventory(state) });
       if (isGameOver(state)) finishGame();
@@ -856,7 +882,41 @@ function applyTurnStartEffects(state) {
   return effects;
 }
 
-function emitTurnStartEffects(effects, emit) {
+// Records the turn-FLOW effects of the turn that just resolved onto
+// `state.lastTurnEffects` — the effects that change WHOSE turn is next.
+//
+// Kept separate from (and called before) emitTurnStartEffects because
+// onlineGameSession commits the room from its EV.MOVE_CONFIRMED subscriber,
+// which runs BEFORE the turn-start events are emitted. Recording late meant
+// the commit shipped an empty list and the opponent was never told.
+//
+// This list exists at all because BOOST_ACTIVATED is the wrong carrier for
+// "you just lost your turn":
+//   - the skip emission is `consumed: true`, which every award-overlay
+//     subscriber correctly ignores (it's a spend, not a grant), so nothing
+//     ever told the victim;
+//   - `extra_turn` never even reaches the victim online — it is granted and
+//     consumed inside the same turn-end on the MOVER's client, so it is
+//     absent from the activeBoosts snapshot the victim resyncs.
+//
+// `repeatTurnSlot` is the slot that kept the turn via extra_turn, or null.
+// Always overwrites (with [] when nothing fired) so a previous turn's effects
+// never leak into the next move's Firebase commit.
+function recordTurnEffects(state, turnStartEffects, repeatTurnSlot = null) {
+  const flow = [];
+  if (repeatTurnSlot === 0 || repeatTurnSlot === 1) {
+    flow.push({ type: 'extra-turn', slot: repeatTurnSlot });
+  }
+  for (const effect of turnStartEffects ?? []) {
+    if (effect?.type === 'skip-turn') {
+      flow.push({ type: 'skip-turn', slot: effect.slot, bySlot: effect.slot === 0 ? 1 : 0 });
+    }
+  }
+  state.lastTurnEffects = flow;
+  return flow;
+}
+
+function emitTurnStartEffects(effects, emit, state = null) {
   for (const effect of effects ?? []) {
     if (effect.type === 'skip-turn') {
       emit(EV.BOOST_ACTIVATED, { slot: effect.slot === 0 ? 1 : 0, boostId: 'skip_opponent_turn', consumed: true, skippedSlot: effect.slot });
@@ -864,6 +924,8 @@ function emitTurnStartEffects(effects, emit) {
       emit(EV.BOOST_ACTIVATED, { slot: effect.slot, boostId: 'free_tile_swap', pending: true });
     }
   }
+  const flow = state?.lastTurnEffects ?? [];
+  if (flow.length) emit(EV.TURN_EFFECTS_APPLIED, { effects: flow });
 }
 
 function bonusTypeForIdx(state, idx) {

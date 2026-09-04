@@ -25,6 +25,7 @@
 // real isValid from hebrewDictionary.js.
 
 import { BOARD_SIZE, isOnGrid, isBonusPos, getCommittedTile } from '../core/board.js';
+import { isCellLocked } from '../core/turnManager.js';
 import { HV } from '../core/letterDistribution.js';
 import { getAllWords, scoreMove } from '../core/scoringEngine.js';
 import { BDEFS } from '../boosts/data.js';
@@ -187,6 +188,11 @@ export function tryPlaceWord(state, word, sr, sc, dir, slot) {
     if (existing) {
       if (existing.letter !== word[i]) return null;
     } else {
+      // A locked cell is empty but off-limits: the engine rejects any move
+      // that drops a tile on it (INVALID_MOVE_REJECTED / 'cell-locked'). The
+      // bot must treat it as blocked here, otherwise it keeps proposing a
+      // word that lands on the lock, gets refused, and wastes the turn.
+      if (isCellLocked(state, r, c)) return null;
       const idx = rack.indexOf(word[i]);
       if (idx >= 0) {
         rack.splice(idx, 1);
@@ -221,6 +227,7 @@ export function findAnchors(state, { includeBonusSquares = false } = {}) {
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
       if (getCommittedTile(state, r, c)) continue;
+      if (isCellLocked(state, r, c)) continue; // can't build off a locked cell
       const adj = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
       if (adj.some(([ar, ac]) => !!getCommittedTile(state, ar, ac))) {
         anchors.push({ r, c });
@@ -280,6 +287,14 @@ export function rankScoreFor(profile, state, score, placed) {
   return score + touched * remainingBonusEstimate(state);
 }
 
+// True when an on-grid cell sits orthogonally next to a bonus square. Used to
+// keep the opener from parking its last tile immediately beside a bonus square,
+// which boxes the square in and reads as the bot "hugging" the perimeter.
+export function adjacentToBonusSquare(r, c) {
+  return [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]
+    .some(([ar, ac]) => isBonusPos(ar, ac));
+}
+
 function shuffleInPlace(arr, rng = Math.random) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
@@ -304,7 +319,11 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
 
   if (state.firstMove) {
     const mid = Math.floor(BOARD_SIZE / 2);
-    const firstMoves = [];
+    // `clean` openers keep clear of the bonus squares; `nearBonus` openers are
+    // otherwise legal but drop a tile right beside one — only used as a
+    // fallback when nothing cleaner fits.
+    const clean = [];
+    const nearBonus = [];
     for (const w of candidates.slice(0, 30)) {
       const tries = [
         [mid, mid, 'H'],
@@ -319,14 +338,21 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
         if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
         const score = scoreMove(words, placed.length);
         const move = { placed, word: w, score };
+        const crowdsBonus = placed.some(p => adjacentToBonusSquare(p.r, p.c));
         // Medium/hard keep the legacy "first valid wins" opener; only easy
-        // collects all openers so it can deliberately pick a weak one.
-        if (!profile.weakenFirstMove) return move;
-        firstMoves.push(move);
+        // collects all openers so it can deliberately pick a weak one. Either
+        // way, prefer an opener that doesn't box in a bonus square.
+        if (!profile.weakenFirstMove) {
+          if (!crowdsBonus) return move;
+          nearBonus.push(move);
+          continue;
+        }
+        (crowdsBonus ? nearBonus : clean).push(move);
       }
     }
-    if (firstMoves.length === 0) return null;
-    return pickMove(firstMoves, profile, rng);
+    const pool = clean.length > 0 ? clean : nearBonus;
+    if (pool.length === 0) return null;
+    return pickMove(pool, profile, rng);
   }
 
   const anchors = findAnchors(state, { includeBonusSquares: profile.includeBonusSquares });

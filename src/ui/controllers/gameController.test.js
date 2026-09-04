@@ -115,13 +115,15 @@ test('confirmMove dispatches CONFIRM_MOVE with the placed tiles', () => {
 // dropped whenever the player had also placed a word.
 test('confirmMove sends a pending lock along with the word in one turn', () => {
   const { session, controller } = fresh();
+  session.state.scores[0] = 10; // must afford the lock to attach it
   controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 });
   controller.placeTile({ r: 4, c: 5, letter: 'ב', val: 3 });
   controller.setPendingLock({ r: 7, c: 7, duration: 3 });
 
   assert.equal(controller.confirmMove(), true);
 
-  assert.equal(session.state.scores[0], 4, 'the word scored');
+  // 10 start + 4-pt word − 10-pt lock cost = 4.
+  assert.equal(session.state.scores[0], 4, '10 + word 4 − 10-pt lock cost');
   assert.equal(session.state.lockedCells.length, 1, 'the lock landed in the same turn');
   assert.equal(session.state.lockedCells[0].remainingTurns, 3);
   assert.equal(session.state.currentTurnSlot, 1, 'turn advanced exactly once');
@@ -136,6 +138,7 @@ test('confirmMove sends a pending lock along with the word in one turn', () => {
 // way the lock is never spent — see the engine tests.)
 test('confirmMove: a correctable rejection keeps the pending lock for a retry', () => {
   const { session, controller } = fresh();
+  session.state.scores[0] = 10; // afford the lock so the reject is about the gap
   controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 });
   controller.placeTile({ r: 4, c: 6, letter: 'ב', val: 3 }); // gap at (4,5)
   controller.setPendingLock({ r: 7, c: 7, duration: 3 });
@@ -151,6 +154,7 @@ test('confirmMove: a correctable rejection keeps the pending lock for a retry', 
 
 test('confirmMove with a lock and no tiles still takes the lock-only path', () => {
   const { session, controller } = fresh();
+  session.state.scores[0] = 10; // afford the lock
   controller.setPendingLock({ r: 7, c: 7, duration: 3 });
   assert.equal(controller.confirmMove(), true);
   assert.equal(session.state.lockedCells.length, 1);
@@ -206,6 +210,7 @@ test('setPlacementDirection updates the view-model', () => {
 
 test('placeLock forwards through session and syncs lock state', () => {
   const { session, controller } = fresh();
+  session.state.scores[0] = 10; // afford the lock
   controller.placeLock({ r: 4, c: 4, duration: 3 });
   assert.equal(session.state.currentTurnSlot, 1);
   assert.deepEqual(controller.view.lockInventory[0], [3, 5]);
