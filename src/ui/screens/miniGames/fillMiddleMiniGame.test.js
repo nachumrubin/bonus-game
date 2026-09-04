@@ -164,6 +164,79 @@ test('mount: throws if bus is missing', () => {
   assert.throws(() => mountFillMiddleMiniGame({}), /bus required/);
 });
 
+// ─── Miss reveal: tiles rearrange into the correct order ────────────────────
+// A compact DOM stub carrying the legacy bonus-overlay ids, so the legacy mount
+// path (the one the real app uses) runs. Tiles omit getBoundingClientRect so the
+// reveal takes its no-measurement branch — it still reorders the DOM into the
+// answer, it just skips the FLIP transforms (which need a real layout engine).
+function makeStubEl() {
+  const children = [];
+  const listeners = {};
+  const el = {
+    className: '', textContent: '', dataset: {}, style: {}, _attrs: {},
+    id: '', parentNode: null, children,
+    classList: { add() {}, remove() {}, contains() { return false; } },
+    appendChild(c) { c.parentNode = el; const i = children.indexOf(c); if (i >= 0) children.splice(i, 1); children.push(c); return c; },
+    insertBefore(c, ref) {
+      c.parentNode = el; const ci = children.indexOf(c); if (ci >= 0) children.splice(ci, 1);
+      const ri = children.indexOf(ref); if (ri < 0) children.push(c); else children.splice(ri, 0, c); return c;
+    },
+    removeChild(c) { const i = children.indexOf(c); if (i >= 0) children.splice(i, 1); c.parentNode = null; },
+    remove() { el.parentNode?.removeChild(el); },
+    set innerHTML(_v) { children.length = 0; },
+    get innerHTML() { return ''; },
+    addEventListener(ev, fn) { (listeners[ev] ||= []).push(fn); },
+    removeEventListener(ev, fn) { const a = listeners[ev]; if (a) { const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); } },
+    setAttribute(k, v) { el._attrs[k] = v; },
+    getAttribute(k) { return el._attrs[k] ?? null; },
+    removeAttribute(k) { delete el._attrs[k]; },
+    querySelector() { return null; },
+    get offsetWidth() { return 1; },
+  };
+  return el;
+}
+
+function makeStubDoc() {
+  const registry = new Map();
+  for (const id of ['bovic', 'bovt', 'bovd', 'bchal', 'bok', 'ov-bonus']) {
+    const e = makeStubEl(); e.id = id; registry.set(id, e);
+  }
+  const body = makeStubEl();
+  registry.get('bchal').parentNode = body; // canAnimateReveal needs a parentNode
+  return {
+    body,
+    createElement: () => makeStubEl(),
+    getElementById: (id) => registry.get(id) ?? null,
+    _get: (id) => registry.get(id),
+  };
+}
+
+test('miss reveal: middle tiles rearrange into the answer order (legacy path)', () => {
+  bus._reset();
+  const doc = makeStubDoc();
+  const origRaf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = (fn) => { /* not invoked on the no-measure path */ };
+  try {
+    const answer = 'מסויגת'; // first מ, last ת, middle ס-ו-י-ג
+    const game = mountFillMiddleMiniGame({
+      bus, answer, validator: () => false, rng: rngSeed(3), doc,
+    });
+    // Timeout/abandon → settle(miss) → reveal.
+    game.unmount();
+
+    const bchal = doc._get('bchal');
+    const frame = bchal.children[0];
+    const letters = frame.children.map(t => t.textContent);
+    assert.equal(letters[0], 'מ', 'first bookend stays מ');
+    assert.equal(letters[letters.length - 1], 'ת', 'last bookend stays ת');
+    assert.equal(letters.slice(1, -1).join(''), 'סויג', 'middle tiles are reordered into the correct answer');
+    // Header switched to the "correct word" reveal, not the static answer line.
+    assert.equal(doc._get('bovd').textContent, 'המילה הנכונה:');
+  } finally {
+    globalThis.requestAnimationFrame = origRaf;
+  }
+});
+
 test('mount: pts option overrides the default', () => {
   bus._reset();
   const events = [];

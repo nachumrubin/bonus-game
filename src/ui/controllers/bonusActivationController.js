@@ -37,6 +37,12 @@ export const BONUS_RESOLVED = 'bonus/resolved';
 // no longer pop a second award modal; the game's own result screen is the
 // single acknowledgment, and closing it finalizes the deferred move.
 export const MINIGAME_CLOSED = 'bonus/minigame-closed';
+// Emitted by onlineGameSession when the commit for a bonus-square move loses
+// the version race and is rolled back. The move no longer exists, so any
+// mini-game / staged award still in flight for it must be dropped rather than
+// finalized — otherwise FINALIZE_BOOST_AWARD credits points for a move the
+// server never accepted. Kept in sync with BONUS_ABORTED there.
+export const BONUS_ABORTED = 'bonus/aborted';
 
 function findActivatedIdxs(placed, state) {
   const used = state.bonusSqUsed ?? {};
@@ -204,6 +210,22 @@ export function createBonusActivationController({ bus, session, dispatch } = {})
   }
   const offClosed = bus.on(MINIGAME_CLOSED, finalizePendingAward);
 
+  // The move that triggered this bonus was rolled back (commit lost the version
+  // race). Drop everything staged for it WITHOUT dispatching
+  // FINALIZE_BOOST_AWARD, and release the local one-shot markers so the square
+  // can fire again if the player replays the move on their next turn — the
+  // server still has it as unused, since the commit never landed.
+  function abortPending({ slot } = {}) {
+    const affected = pendingQueue.filter(p => slot == null || p.slot === slot);
+    for (const p of affected) localUsed.delete(p.idx);
+    pendingQueue = pendingQueue.filter(p => !affected.includes(p));
+    if (pendingAward && (slot == null || pendingAward.slot === slot)) {
+      localUsed.delete(pendingAward.idx);
+      pendingAward = null;
+    }
+  }
+  const offAborted = bus.on(BONUS_ABORTED, abortPending);
+
   // Auto-resolve the next pending mini-game/wheel without playing UI. Used
   // when the placing slot isn't the local player (e.g. the bot triggered the
   // bonus square). Adds `earnedPts` directly to the placing slot's score via
@@ -224,6 +246,7 @@ export function createBonusActivationController({ bus, session, dispatch } = {})
     try { offMove(); } catch {}
     try { offEnginePending(); } catch {}
     try { offClosed(); } catch {}
+    try { offAborted(); } catch {}
     pendingQueue = [];
     pendingAward = null;
     localUsed.clear();

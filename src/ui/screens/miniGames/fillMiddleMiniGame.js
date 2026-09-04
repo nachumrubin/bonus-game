@@ -101,6 +101,10 @@ export function mountFillMiddleMiniGame({
   // they were previously declared further down, after the attach call site.
   let slotEls   = [];
   let poolTiles = [];
+  // Frame (fixed-first + slots + fixed-last row) and pool-row refs, captured by
+  // attachLegacy/attachSelf so the miss-reveal can rearrange the tiles in place.
+  let frameEl   = null;
+  let poolRowEl = null;
 
   function assemble() {
     return first + typed.map(c => c ?? '').join('') + last;
@@ -188,19 +192,21 @@ export function mountFillMiddleMiniGame({
 
   // ─── DOM helpers ────────────────────────────────────────
 
+  // A fixed (given) letter tile — the green first/last bookends.
+  function mkFixed(l) {
+    const d = doc.createElement('div');
+    d.className = 'ut sl fi';
+    d.textContent = l;
+    d.style.background = '#c8e8c8';
+    d.style.borderColor = '#4a8a4a';
+    d.style.borderStyle = 'solid';
+    return d;
+  }
+
   function buildFrame() {
     const frame = doc.createElement('div');
     frame.style.cssText = 'display:flex;gap:4px;justify-content:center;align-items:center;margin-bottom:10px;flex-wrap:wrap;';
 
-    const mkFixed = (l) => {
-      const d = doc.createElement('div');
-      d.className = 'ut sl fi';
-      d.textContent = l;
-      d.style.background = '#c8e8c8';
-      d.style.borderColor = '#4a8a4a';
-      d.style.borderStyle = 'solid';
-      return d;
-    };
     frame.appendChild(mkFixed(first));
 
     const slotEls = [];
@@ -251,6 +257,8 @@ export function mountFillMiddleMiniGame({
     const { poolRow, poolTiles: pt } = buildPool();
     slotEls = se;
     poolTiles = pt;
+    frameEl = frame;
+    poolRowEl = poolRow;
     bchal.appendChild(frame);
     bchal.appendChild(poolRow);
 
@@ -276,8 +284,18 @@ export function mountFillMiddleMiniGame({
       finalize(result) {
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
-        bchal.innerHTML = renderResult(result);
-        if (result.success) confettiBurst(ovBonus?.querySelector?.('.ovc'));
+        // On a MISS, rearrange the tiles into the correct word (mirrors the
+        // unscramble mini-game) instead of printing a static answer line. A win
+        // still shows the word the player made; contexts without a real DOM +
+        // rAF fall back to the text result.
+        if (!result.success && canAnimateReveal(bchal)) {
+          bovt.textContent = result.attempt ? 'לא נכון 😌' : 'נגמר הזמן ⏰';
+          bovd.textContent = 'המילה הנכונה:';
+          revealMiddleWord();
+        } else {
+          bchal.innerHTML = renderResult(result);
+          if (result.success) confettiBurst(ovBonus?.querySelector?.('.ovc'));
+        }
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
       },
@@ -309,6 +327,8 @@ export function mountFillMiddleMiniGame({
     const { poolRow, poolTiles: pt } = buildPool();
     slotEls = se;
     poolTiles = pt;
+    frameEl = frame;
+    poolRowEl = poolRow;
     card.appendChild(frame);
     card.appendChild(poolRow);
 
@@ -377,6 +397,77 @@ export function mountFillMiddleMiniGame({
       try { setS(msg, 'err'); return; } catch {}
     }
     // No-op fallback.
+  }
+
+  function canAnimateReveal(hostEl) {
+    return !!hostEl?.parentNode
+      && typeof hostEl.querySelector === 'function'
+      && typeof globalThis.requestAnimationFrame === 'function';
+  }
+
+  // Rearrange the middle tiles (a FLIP animation) from their current order into
+  // the answer's order, so the player watches the correct word assemble between
+  // the fixed first/last letters. Mirrors unscrambleMiniGame.revealCorrectWord;
+  // the difference is the immovable green first/last bookends.
+  function revealMiddleWord() {
+    if (!frameEl) return;
+    // Current middle letters: filled slots (L→R) then any leftover pool tiles.
+    // Together these are always exactly the answer's middle multiset, so every
+    // target letter has a matching tile.
+    const current = typed.filter(Boolean).concat(poolLetters.filter(Boolean));
+    const target  = middle;
+
+    // Rebuild the frame: fixed-first, N reveal tiles (current order), fixed-last.
+    frameEl.innerHTML = '';
+    if (poolRowEl) poolRowEl.innerHTML = '';
+    frameEl.appendChild(mkFixed(first));
+    const lastTile = mkFixed(last);
+    const tiles = current.map((ch) => {
+      const t = mkFixed(ch);           // green "correct" styling
+      t.dataset.ch = ch;
+      t.style.willChange = 'transform';
+      frameEl.appendChild(t);
+      return t;
+    });
+    frameEl.appendChild(lastTile);
+
+    const canMeasure = tiles.length > 0 && tiles.every(t => typeof t.getBoundingClientRect === 'function');
+    const firstRects = canMeasure ? tiles.map(t => t.getBoundingClientRect()) : null;
+
+    // Assign each target letter to an unused tile of that letter, then reorder
+    // the DOM (between first and last) to the target sequence — the FLIP "LAST".
+    const used = new Array(tiles.length).fill(false);
+    const ordered = [];
+    for (const L of target) {
+      let idx = tiles.findIndex((t, k) => !used[k] && t.dataset.ch === L);
+      if (idx < 0) idx = used.indexOf(false);
+      if (idx < 0) break;
+      used[idx] = true;
+      ordered.push(tiles[idx]);
+    }
+    ordered.forEach(t => frameEl.insertBefore(t, lastTile));
+    // Defensive: drop any tile not used in the target sequence (normally none —
+    // tiles are conserved) so the row shows exactly the correct word.
+    tiles.forEach(t => { if (!ordered.includes(t)) { try { t.remove(); } catch { /* swallow */ } } });
+
+    if (!firstRects) return; // stub DOM — tiles are already in target order
+
+    // Invert (FIRST − LAST) then play back to identity, staggered L→R, so each
+    // tile slides from where it was into its correct slot.
+    globalThis.requestAnimationFrame(() => {
+      ordered.forEach((t) => {
+        const f = firstRects[tiles.indexOf(t)];
+        const l = t.getBoundingClientRect();
+        t.style.transition = 'none';
+        t.style.transform  = `translate(${f.left - l.left}px, ${f.top - l.top}px)`;
+      });
+      globalThis.requestAnimationFrame(() => {
+        ordered.forEach((t, i) => {
+          t.style.transition = `transform .45s cubic-bezier(.2,.9,.3,1.35) ${i * 70}ms`;
+          t.style.transform  = 'translate(0, 0)';
+        });
+      });
+    });
   }
 
   function renderResult(result) {

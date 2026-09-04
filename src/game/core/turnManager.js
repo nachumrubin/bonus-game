@@ -9,6 +9,11 @@ import { drawInto, returnTilesAndShuffle, RACK_SIZE } from './tileBag.js';
 import { setCommittedTile } from './board.js';
 
 export const LEGACY_LOCK_INVENTORY = Object.freeze([3, 3, 5]);
+// Points charged to a player each time they spend a lock. Locks are otherwise
+// free (3 per game), so a flat cost makes the player weigh whether the block is
+// worth it. Charged in createLock — the single choke point for every lock path
+// (lock-only turn and word+lock) — and clamped so a score never goes negative.
+export const LOCK_POINT_COST = 10;
 // Number of consecutive scoreless turns (pass, exchange, or illegal-word
 // forfeit) that ends the game. 4 = two full scoreless rounds (one each side).
 // Lowered from 6 pre-launch (May 2026) so a trailing player can't drag a
@@ -190,6 +195,9 @@ export function createLock(state, { r, c, duration, slot = state.currentTurnSlot
     ownerSlot: slot,
     remainingTurns: duration,
   });
+  // Charge the lock's point cost to the placing player (clamped at zero).
+  if (!state.scores) state.scores = { 0: 0, 1: 0 };
+  state.scores[slot] = Math.max(0, (state.scores[slot] ?? 0) - LOCK_POINT_COST);
   state.passCount = 0;
 }
 

@@ -1,5 +1,150 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Phantom score / lost move on a raced bonus commit — August 2026
+
+Traced from prod room `fc_1786040881489_8bjchc` (client `295–222` vs server
+`295–190` at the same version v36).
+
+- [x] `pendingScoreCommit` added to `snapshotForRollback()` /
+  `restoreFromRollback()` in `onlineGameSession.js`.
+- [x] Deferred **phase-2** commit (`MOVE_SCORE_COMMITTED`) now has its own
+  rollback snapshot, taken in `dispatch()` before `CMD.FINALIZE_BOOST_AWARD`.
+- [x] New `bonus/aborted` event; `bonusActivationController` drops the pending
+  queue + staged award and re-arms the square.
+- [x] **Root cause fixed — clock synchronisation.** New
+  `src/game/online/serverClock.js` (`startServerClock` + `serverNow()`) wraps
+  RTDB `.info/serverTimeOffset`. Wired into the late-commit gate, the committed
+  deadline, `initialTurnDeadlineMs`, the `nowMs` fallbacks in
+  `computeExpiredOnlineTurnState` / `shouldClaimExpiredOnlineTurn`, and the `now`
+  injections for `createTimeoutWatchdog` + `createTurnTimerController`.
+- [ ] **Remaining `Date.now()` audit.** Only the deadline path was converted.
+  Other online timestamps (`inviteService` expiry, `roomCodeService` TTL,
+  `asyncReminderService.classify`, `updatedAt` stamps) still use raw
+  `Date.now()`. Most are compared against values written by the *same* client or
+  are coarse enough (hours/days) not to care, but `inviteService`'s 30-min TTL
+  and the async 24h/7d windows are cross-client and worth a pass.
+- [ ] `serverClock` holds module-level state (offset + subscription). It is the
+  only sensible shape for a per-app clock, but it means test files must call
+  `_resetServerClockForTests()` — a leaked offset would silently skew unrelated
+  timing assertions.
+- [ ] **The score-merge animation freezes the turn timer with no server
+  counterpart.** `freezeForScoreAnimation` (`turnTimerController.js`) calls
+  `pauseForBonus()` on `MOVE_CONFIRMED` / `MOVE_SCORE_COMMITTED` / **and
+  `OPPONENT_MOVED`** — the last of which fires at the *start* of your turn — for
+  ~2.7-2.9 s, during which the display shows the **full** allowance and the
+  auto-pass is skipped, while the shared deadline runs. Only `liveBonus.active`
+  suppresses the opponent watchdog, and this path never sets it. This directly
+  contradicts `docs-md/CLAUDE.md`: *"Animation timing must never gate gameplay …
+  only bonus overlays pause the watchdog."*
+- [ ] The pause resume is `setTimeout(resumeFromBonus, ms)`. On a backgrounded
+  mobile tab that is throttled, so the freeze can run far past its designed
+  length. Should resume on a deadline check from the existing sync poll instead.
+- [ ] **`forceResync` failure is swallowed** (`.catch(() => {})`, two sites). A
+  client whose resync read fails stays silently divergent and playable. Should
+  retry with backoff and, failing that, mark the session desynced and render a
+  reconnect state.
+- [ ] **A dead room listener is indistinguishable from an idle player.**
+  Presence kept heartbeating while her `watchRoom` subscription was dead, so
+  `PRESENCE_GRACE_MS` never fired and she forfeited on two turns she was never
+  shown. Track last-inbound-snapshot time; if we hold the turn and the deadline
+  passes with zero inbound snapshots, re-subscribe and show "reconnecting".
+- [ ] **`gameStateValidator` false positives swamp the real signal.** That game
+  logged 27 warnings, all of them the deferred two-phase commit
+  (`TURN_DID_NOT_ADVANCE` + `SCORE_MISMATCH …changed by 0` at version *n*, then
+  `SAME_PLAYER_TWICE` at *n+1*, once per bonus move) — and **zero** for the
+  actual bug, which never reached the server. Plumb `expectTurnAdvance: false` /
+  `expectedDelta: 0` through the deferred phase-1 commit, and add the
+  cross-client check (per-client score vs server snapshot at equal version) that
+  the replay screen's `⚠ לא תואם` badge already computes.
+
+## Turn-flow notices (extra turn / lost turn) — August 2026
+
+- [x] New `EV.TURN_EFFECTS_APPLIED` + `recordTurnEffects()` in `gameEngine.js`;
+  `state.lastTurnEffects` recorded at all five `applyTurnStartEffects` sites.
+- [x] New room field `turnEffects`; `onlineGameSession` writes it on commit and
+  re-emits the event on the receiving client.
+- [x] `.turn-effect-banner` + `turnEffectBanner` directive +
+  `describeTurnEffect(effect, mySlot)` (pure, exported, tested per reader).
+- [ ] **Ordering trap for the next agent:** anything the online commit path
+  needs from a turn must be on `state` *before* `MOVE_CONFIRMED` /
+  `MOVE_SCORE_COMMITTED` is emitted — `onlineGameSession` commits the room from
+  those subscribers. Recording `lastTurnEffects` after the emit silently shipped
+  an empty array. Consider asserting this ordering somewhere central.
+- [ ] Mini-game/wheel `extra_turn` in an **online** game is only announced on the
+  final (scored) commit; the deferred commit deliberately clears
+  `lastTurnEffects`. Correct today, but if the deferred path ever starts
+  resolving turn flow, this must be revisited.
+- [ ] `debugRecorder` does not record turn-flow effects. Adding a
+  `TURN_EFFECTS` timeline event would make "why did my turn skip?" decidable
+  from `scripts/debug-game.mjs` output, like mini-game outcomes now are.
+- [ ] The 🚫 / 🎯 boost badges disappear the instant the boost fires (it leaves
+  `activeBoosts`). The banner covers the moment of firing, but there is still no
+  persistent "your next turn will be skipped" indicator between grant and fire.
+
+## Dictionary absorb — August 2026
+
+- [x] Absorbed `/dictionaryApproved` (141 words, 123 new) into
+  `data/dictionary.txt` (70,774 → 70,897) and deleted the Firebase node.
+- [x] Fixed `scripts/absorb-firebase-dict.mjs`: `--yes` → `--force` for
+  `firebase database:remove` (firebase-tools 15.x).
+- [ ] **Risk: the absorb script is not atomic.** It rewrites `dictionary.txt`
+  *before* deleting the Firebase node, so a delete failure leaves the words in
+  both places and a naive re-run is only safe because the merge is idempotent.
+  Consider deleting first, or writing the file only after the delete succeeds.
+- [ ] The merged words are unreviewed user submissions and include some
+  suspicious entries (`הורצ`, `ואכנ`, `כח`, `חיי`) that look like truncations or
+  non-words. Worth a spot-check pass; removal now means editing
+  `data/dictionary.txt`, not Firebase.
+
+## Mini-game recording + online-game debugging — August 2026
+
+- [x] `debugRecorder` now records `MINIGAME_STARTED` / `MINIGAME_RESOLVED` with
+  the puzzle + player answer + win/lose (`DEBUG_EVENT`, `MINIGAME_RESULT_EVENTS`
+  in `debugSchema.js`). B10 result now carries `h/v/hpos/vpos`; unscramble
+  carries `answer`/`attempt`.
+- [x] `scripts/debug-game.mjs` + `.claude/skills/debug-online-game/` — pull a
+  prod room by id and map moves → bonus squares to pinpoint scoring/boost anomalies.
+- [ ] Follow-up: expose `MINIGAME_RESOLVED` in the in-app admin debug timeline UI
+  (the events are written; verify the admin viewer renders the `detail` object).
+- [ ] Investigated `fc_1783939961090_ukvp3f` move #21 (אנקול on B10): **not a
+  bug** — rel lost the crossing-words mini-game (earned 0). No veto was possible
+  (only B13 square was played later, move #26). This is the motivating case for
+  the recorder change above so future reports are decidable from the timeline.
+
+## Bot lock-awareness, non-crowding opener, and lock point cost — July 2026
+
+- [x] Bot avoids locked cells: `tryPlaceWord` rejects placements crossing a
+  locked cell; `findAnchors` skips locked cells (`botSearch.js`). No more wasted
+  turns re-proposing a move onto a lock.
+- [x] Bot opener no longer boxes in a bonus square: new `adjacentToBonusSquare`
+  helper; first-move search prefers non-crowding openers.
+- [x] Locks cost `LOCK_POINT_COST = 10` points, clamped at 0, charged in
+  `createLock()`. Lock picker + guide screen surface the cost.
+- [x] Affordability gate: a lock is only placeable when the player's current
+  score ≥ 10. Engine rejects `lock-insufficient-points` (handlePlaceLock +
+  validateMoveLock); UI disables the lock picker (`canAffordLock`).
+- [x] **Fixed: locks were unclickable.** The lock box (`#lock-inv-display`) is
+  inside `.right-panel`, which is `display:none !important` — it was rendering
+  correct buttons into an invisible element. Now the acting player's
+  `is-pclocks` info-strip card holds the interactive box. Guarded by
+  `tests/e2e/lock-box.spec.js`.
+- [ ] **Risk (discovered July 2026): stub-DOM tests can't see CSS.**
+  `gameScreen.test.js` renders into a synthetic DOM with no stylesheet, so it
+  passed happily while the control it was "clicking" was `display:none` in the
+  real app. Any *new* interactive control in `gameScreen` should get a real
+  browser assertion (visible + hit-testable) alongside its unit test. Consider a
+  shared e2e helper that asserts "element is the top element at its own centre".
+- [x] Lock cost made visible: `−10` price tag on the pending lock + on the
+  owner's score card while unconfirmed (preview only, nothing charged), then a
+  `−10` chip flies into the score panel on commit with the count-down held to
+  match. Both players' lock chips always keep their borders.
+- [x] Lock placement reworked to mirror tile placement: pick lock in box (glows,
+  index-based) → click cell (lock leaves the box) → select/move/return-to-box on
+  the previewed lock. Auto quick-place on an empty cell removed, along with the
+  `suppressQuickPlaceAt` double-tap workaround it required.
+- [ ] Follow-up (optional): consider showing a small "−10" flyout on the score
+  panel the moment a lock is placed, for stronger feedback than the count-down
+  animation alone.
 ## Boost Motion Spec (Phase 2A) — approved contract, September 2026
 
 The motion contract is `docs-md/BOOST_MOTION_SPEC.md` (supersedes the audit's
@@ -183,6 +328,14 @@ audit's §I; short list of concrete follow-ups it surfaced:
   order on timeout/illegal-word (`revealCorrectWord`), instead of printing the
   answer. On a submitted wrong word it first flashes red + shakes (`failReveal`)
   to reject it; a timeout skips the shake. Verified in a real browser via Playwright.
+- [x] **`fillMiddleMiniGame` (B1 "מלא את החסר") now does the same on a miss**
+  (reported: it still showed the static answer overlay). `revealMiddleWord`
+  rebuilds the frame's middle tiles and FLIP-reorders them into the answer's
+  order between the fixed green first/last bookends; the header switches to
+  "המילה הנכונה:". Success still shows the word the player made; no-rAF/no-DOM
+  contexts fall back to the text `renderResult`. Unit test covers the reorder
+  (stub DOM, no-measure branch); the animation itself verified in a real browser
+  via Playwright (tiles settle to `מסויגת`, transforms back to identity).
 - Note: the FLIP path only runs with a real DOM + `requestAnimationFrame`; it
   falls back to the text result view otherwise, and `unmount` is a hard teardown
   that skips the animation. Success path unchanged (shows the word the player made).

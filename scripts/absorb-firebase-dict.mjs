@@ -89,7 +89,7 @@ async function main() {
   console.log('\nDeleting /dictionaryApproved from Firebase…');
   try {
     execSync(
-      `firebase database:remove /dictionaryApproved --project ${PROD_CONFIG.projectId} --yes`,
+      `firebase database:remove /dictionaryApproved --project ${PROD_CONFIG.projectId} --force`,
       { stdio: 'inherit', cwd: REPO_ROOT },
     );
     console.log('Deleted /dictionaryApproved from Firebase.');
@@ -98,7 +98,7 @@ async function main() {
     console.error('Run: firebase login');
     console.error('Then re-run: node scripts/absorb-firebase-dict.mjs --commit');
     console.error('\nTo delete manually, run:');
-    console.error(`  firebase database:remove /dictionaryApproved --project ${PROD_CONFIG.projectId} --yes`);
+    console.error(`  firebase database:remove /dictionaryApproved --project ${PROD_CONFIG.projectId} --force`);
     console.error('Or open the Firebase console and remove the dictionaryApproved node.');
     process.exit(1);
   }

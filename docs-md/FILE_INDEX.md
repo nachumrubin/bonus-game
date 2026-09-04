@@ -94,6 +94,7 @@
 | `presenceService.js` | `startPresence()` (10s heartbeat), `watchPresence()`. |
 | `roomCodeService.js` | 6-digit room codes, 30min TTL, atomic `claimByCode()`. |
 | `timeoutWatchdog.js` | Opponent-side 350ms poll, claims timed-out turns, 2-miss forfeit. |
+| `serverClock.js` | `startServerClock({db})` + `serverNow()`. Subscribes to RTDB `.info/serverTimeOffset` so `turnDeadlineMs` (an absolute stamp written by one client, enforced by the other) means the same instant on both devices. Offset 0 until synced, so it degrades to `Date.now()`. |
 | `sessionPersistence.js` | localStorage key `spine.activeOnlineSession`. |
 | `spineMatchmaking.js` | Matchmaking flow orchestration. |
 | `mockFirebase.js` | In-memory Firebase mock for unit tests. |

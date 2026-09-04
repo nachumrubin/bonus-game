@@ -33,6 +33,12 @@ import { setCommittedTile } from '../core/board.js';
 import { deserializeBoard } from '../online/schema.js';
 import { modeDescriptor } from './modes.js';
 import { DEFAULT_WATCHDOG_GRACE_MS } from '../online/timeoutWatchdog.js';
+import { serverNow } from '../online/serverClock.js';
+
+// Mirrors BONUS_ABORTED in ui/controllers/bonusActivationController.js. Held as
+// a literal (like 'evt/SYNC_REJECTED' below) so the session layer keeps its
+// one-way dependency: game/ must never import from ui/.
+export const BONUS_ABORTED = 'bonus/aborted';
 
 /**
  * @typedef {import('../core/gameEngine.js').GameState} GameState
@@ -237,6 +243,12 @@ export async function createOnlineGameSession({
             reason: 'commit-rollback',
           });
         }
+        // The bonus/mini-game flow for this move is still in flight in the UI
+        // and would otherwise resolve and dispatch FINALIZE_BOOST_AWARD for a
+        // move that no longer exists — which the engine's no-pending fallback
+        // would still credit (`if (n) scores[s] += n`). Tell the activation
+        // controller to drop it.
+        bus.emit(BONUS_ABORTED, { slot, reason: 'stale-version' });
         bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
         forceResync('stale-version').catch(() => { /* swallow */ });
       }
@@ -266,6 +278,10 @@ export async function createOnlineGameSession({
 
   subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, async ({ slot }) => {
     if (slot !== mySlot) return;
+    // Claim the snapshot dispatch() took before FINALIZE_BOOST_AWARD ran, so it
+    // can't leak into an unrelated later commit.
+    const rollback = pendingCommitRollback;
+    pendingCommitRollback = null;
     // Only commit here when the original MOVE_CONFIRMED deferred its write.
     // Otherwise the write already landed and trying to redo it would race
     // the just-rotated turn slot in the security rule.
@@ -275,8 +291,19 @@ export async function createOnlineGameSession({
     if (result.committed) {
       advanceVersionCursor(result);
     } else {
-      // Stale: re-read and resync. Engine state will be overwritten on the
-      // next watchRoom snapshot.
+      // Synchronous rollback, mirroring the CONFIRM_MOVE / LOCK_PLACED paths.
+      // Previously this branch relied solely on forceResync, so when that read
+      // failed (the losing client is usually the one with the bad connection)
+      // the bonus points and the rotated turn stayed in local state forever.
+      if (rollback) {
+        restoreFromRollback(rollback);
+        bus.emit(EV.TURN_CHANGED, {
+          currentTurnSlot: state.currentTurnSlot,
+          turnNumber: state.turnNumber,
+          reason: 'commit-rollback',
+        });
+        bus.emit(EV.SCORE_CHANGED, { slot, score: state.scores[slot] });
+      }
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
       forceResync('stale-version').catch(() => { /* swallow */ });
     }
@@ -528,6 +555,15 @@ export async function createOnlineGameSession({
       if (last.type !== 'free-exchange') {
         bus.emit(EV.TURN_CHANGED, { currentTurnSlot: state.currentTurnSlot, turnNumber: state.turnNumber });
       }
+      // Re-emit the turn-flow effects the mover's engine resolved, so this
+      // client can tell its player why the turn skipped past them. Emitted
+      // after TURN_CHANGED so the notice lands on an already-updated board.
+      // Own-move echoes returned early above, so this only ever fires for the
+      // player on the receiving end.
+      const remoteEffects = Array.isArray(incoming.turnEffects) ? incoming.turnEffects : [];
+      if (remoteEffects.length) {
+        bus.emit(EV.TURN_EFFECTS_APPLIED, { effects: remoteEffects, remote: true });
+      }
     } else if (
       previousTurnSlot !== state.currentTurnSlot ||
       previousTurnNumber !== state.turnNumber
@@ -584,8 +620,12 @@ export async function createOnlineGameSession({
       // would optimistically mutate state.board and the resulting tiles
       // would flash on screen before the rollback. Treat as a no-op move
       // with feedback — the watchdog flip will arrive within ~1s via watchRoom.
+      // serverNow(), not Date.now(): the deadline was stamped on the OTHER
+      // client's clock. Comparing it against our own let a move through 5 s
+      // late in prod room fc_1786040881489_8bjchc, because that device's clock
+      // ran behind the one that wrote the deadline.
       const dl = Number(state.turnDeadlineMs ?? 0);
-      if (dl > 0 && Date.now() > dl + DEFAULT_WATCHDOG_GRACE_MS) {
+      if (dl > 0 && serverNow() > dl + DEFAULT_WATCHDOG_GRACE_MS) {
         bus.emit(EV.INVALID_MOVE_REJECTED, {
           reason: 'turn-expired',
           placed: cmd.payload?.placed ?? [],
@@ -594,6 +634,14 @@ export async function createOnlineGameSession({
       }
       // Capture a rollback snapshot BEFORE the engine mutates state, so the
       // MOVE_CONFIRMED handler can restore synchronously if the commit fails.
+      pendingCommitRollback = snapshotForRollback();
+    }
+    if (cmd?.type === CMD.FINALIZE_BOOST_AWARD) {
+      // Phase 2 of a deferred bonus move. The MOVE_CONFIRMED handler already
+      // consumed the phase-1 snapshot, so without this the second commit had
+      // no rollback at all: a lost version race left the bonus points and the
+      // rotated turn sitting in local state forever. Snapshot BEFORE the engine
+      // applies the award so restoring undoes both.
       pendingCommitRollback = snapshotForRollback();
     }
     if (cmd?.type === CMD.PLACE_LOCK) {
@@ -635,6 +683,13 @@ export async function createOnlineGameSession({
       passCount: state.passCount,
       firstMove: state.firstMove,
       turnDeadlineMs: state.turnDeadlineMs,
+      // The withheld base score of a bonus-square move. handleFinalizeBoostAward
+      // reads this later to commit `baseScore + extra`, so a rollback that left
+      // it in place would re-apply the points of a move the server rejected —
+      // the phantom-score bug seen in prod room fc_1786040881489_8bjchc, where a
+      // client kept +32 for a move that never reached /rooms. Restoring it to
+      // its pre-move value (normally null) makes the deferred branch inert.
+      pendingScoreCommit: state.pendingScoreCommit ?? null,
     };
   }
 
@@ -655,6 +710,7 @@ export async function createOnlineGameSession({
     state.passCount = snap.passCount;
     state.firstMove = snap.firstMove;
     state.turnDeadlineMs = snap.turnDeadlineMs;
+    state.pendingScoreCommit = snap.pendingScoreCommit ?? null;
   }
 
   async function dispose() {
@@ -725,7 +781,9 @@ export async function createOnlineGameSession({
       let turnDeadlineMs = shouldRunTimer ? (state.turnDeadlineMs ?? currentRoom.turnDeadlineMs ?? null) : null;
 
       if (shouldRunTimer && (turnChanged || isExtraTurn) && lastMove?.type !== 'free-exchange') {
-        turnDeadlineMs = Date.now() + turnLimitMsFromSettings(settings) + queuedTimerBonusMs;
+        // Stamped on the server clock so the opponent — who enforces this
+        // deadline — reads the same instant we meant.
+        turnDeadlineMs = serverNow() + turnLimitMsFromSettings(settings) + queuedTimerBonusMs;
         state.turnDeadlineMs = turnDeadlineMs;
         if (queuedTimerBonusMs > 0) appliedTimerBonus = true;
       } else if (!shouldRunTimer) {
@@ -766,6 +824,15 @@ export async function createOnlineGameSession({
         turnDeadlineMs,
         settings,
         lastMove,
+        // Turn-flow effects the engine resolved on THIS client during this
+        // commit (extra_turn / skip_opponent_turn). They cannot be derived
+        // from the snapshot: both are granted and consumed inside a single
+        // turn-end, so they never appear in the `activeBoosts` the opponent
+        // resyncs — the turn simply fails to arrive, with no explanation.
+        // Shipping them explicitly lets the victim's client tell them why.
+        // Kept off `lastMove` on purpose: lastMove IS the moveHistory entry
+        // object, so writing to it would rewrite history.
+        turnEffects: [...(state.lastTurnEffects ?? [])],
         updatedAt: Date.now(),
       };
       // Clear the tentative-tile preview once the move is real. The deferred

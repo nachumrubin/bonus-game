@@ -29,6 +29,7 @@ import { setAvatarEl } from './avatarScreens.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
+import { LOCK_POINT_COST } from '../../game/core/turnManager.js';
 import { BDEFS } from '../../game/boosts/data.js';
 import { EV } from '../../events/eventTypes.js';
 import {
@@ -49,6 +50,11 @@ export const GAME_SCREEN_INTENT = Object.freeze({
 });
 
 const COMPUTER_NAME_HE = '\u05D4\u05DE\u05D7\u05E9\u05D1';
+
+// How long the lock's \u221210 chip takes to fly from the board into the score
+// panel. The score count-down is held for this long so the number and the
+// chip land together.
+const LOCK_COST_FLIGHT_MS = 520;
 
 // Map from (r,c) to the cell DOM id legacy uses.
 function cellIdFor(r, c) {
@@ -80,7 +86,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   let lastRackSignature = '';
   let animateNextRackRender = false;
   let lastOwnPreviewSignature = '';
-  let selectedLockDuration = null;
+  // Which lock in the box the player has picked, as { index, duration }. The
+  // index is into the DISPLAYED inventory (see displayLockInventory) so that a
+  // box holding duplicate durations — the default is [3, 3, 5] — glows exactly
+  // the one that was clicked rather than every button sharing its number.
+  let selectedLock = null;
   // Rack indices that received a freshly-drawn tile from the bag on the
   // most recent EXCHANGE. Drives the .bt2-just-arrived class so the user
   // can see which tiles are new. Cleared 2s after the exchange — the
@@ -99,13 +109,18 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // select / click-again-to-recall semantics. Cleared on confirm, recall-all,
   // exchange, or any other action that empties view.placed.
   let selectedPlacedCoord = null;
-  // After a pending-lock is cleared via a cell click, suppress the auto-
-  // quick-place at that same cell for a short window. Without this, a
-  // double-click on a pending lock — click 1 clears, click 2 re-places via
-  // the quick-place branch — would leave the lock visually unchanged and
-  // make users think the click did nothing. Reset to null on any other
-  // interaction or on render of a different cell.
-  let suppressQuickPlaceAt = null; // { r, c, untilMs }
+  // True when the pending (not-yet-confirmed) lock on the board is currently
+  // selected. Mirrors `selectedPlacedCoord` for tiles: click the placed lock
+  // once to select it (it glows), click an empty cell to MOVE it there, or
+  // click it a second time to send it back to the lock box. There is only ever
+  // one pending lock, so a flag is enough — its coords live on view.pendingLock.
+  let pendingLockSelected = false;
+  // Lock ids already seen on the board, so a newly committed lock can be told
+  // apart from ones that were already there (seeded at mount below).
+  let knownLockIds = new Set();
+  // Set for one render when a lock's −10 chip is in flight, so renderScores
+  // holds the score count-down until the chip lands.
+  let lockCostFlightPending = false;
 
   // Per-score-element tween state. Keyed by the score <span>; tracks the
   // currently-shown integer plus any in-flight rAF/timeout so we can cancel
@@ -395,8 +410,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   }
 
   function selectRack(i) {
-    selectedLockDuration = null;
+    selectedLock = null;
     selectedPlacedCoord = null;
+    pendingLockSelected = false;
     selectedRackIndex = (selectedRackIndex === i) ? null : i;
     // Toggle .sel on the LIVE rack nodes instead of rebuilding the rack. The
     // node survives, so the .bt2 transform transition animates the lift in/out,
@@ -443,7 +459,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         return;
       }
       selectedRackIndex = null;
-      selectedLockDuration = null;
+      selectedLock = null;
       selectedPlacedCoord = { r, c };
       renderBoard(controller.view);
       renderRack(controller.view);
@@ -456,15 +472,22 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       controller.unswapBoardTile?.(r, c);
       return;
     }
-    // Pending lock at this cell — clicking it removes the lock (returns it
-    // to the bucket). Mirrors the pendingSwap UX above. We also arm a brief
-    // "no auto-place" window at this cell so a second click in a fast
-    // double-tap doesn't immediately re-place via the quick-place branch.
+    // Pending lock at this cell. Same two-step interaction as a placed tile:
+    //   click once  → select it (glows); an empty cell then MOVES it there
+    //   click again → send it back to the lock box (so a double-click on the
+    //                 placed lock returns it, select-then-return)
     const pendingLock = controller.view.pendingLock;
     if (pendingLock && pendingLock.r === r && pendingLock.c === c) {
-      controller.clearPendingLock?.();
-      suppressQuickPlaceAt = { r, c, untilMs: Date.now() + 500 };
-      selectedLockDuration = null;
+      if (pendingLockSelected) {
+        pendingLockSelected = false;
+        controller.clearPendingLock?.();
+      } else {
+        pendingLockSelected = true;
+        selectedRackIndex = null;
+        selectedLock = null;
+        selectedPlacedCoord = null;
+      }
+      renderRack(controller.view);
       renderLockInventory(controller.view);
       renderBoard(controller.view);
       return;
@@ -528,44 +551,36 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       if (moved === false) tentativeEntryCoords.delete(moveKey);
       return;
     }
-    if (selectedLockDuration != null) {
-      // Pending-lock placement: shows a preview on the cell. The actual
-      // PLACE_LOCK dispatch waits for the user to tap שבץ (handled by
-      // controller.confirmMove). Tap-again-to-toggle is built into
-      // setPendingLock so misclicks are reversible without going to בטל.
-      controller.setPendingLock?.({ r, c, duration: selectedLockDuration });
-      selectedLockDuration = null;
-      renderLockInventory(controller.view);
-      renderBoard(controller.view);
-      return;
-    }
-    if (selectedRackIndex == null) {
-      // Empty on-grid cell + nothing selected → quick-place a lock using the
-      // smallest available duration from the player's inventory. This makes
-      // locks accessible without first tapping the lock-inventory picker.
-      // Perimeter bonus squares (off-grid) are skipped — the engine's
-      // PLACE_LOCK only accepts 0..9 × 0..9 coordinates. Same pending-then-
-      // confirm flow as the explicit-duration path above.
-      if (r < 0 || r > 9 || c < 0 || c > 9) return;
-      if (isCellBlockedForPlacement(controller.view, r, c)) return;
-      // Brief suppression window after the user just cleared a pending lock
-      // at this cell — see comment on suppressQuickPlaceAt. Prevents the
-      // second tap of a double-click from immediately re-placing the lock.
-      if (suppressQuickPlaceAt
-          && suppressQuickPlaceAt.r === r
-          && suppressQuickPlaceAt.c === c
-          && Date.now() < suppressQuickPlaceAt.untilMs) {
+    if (pendingLockSelected && controller.view.pendingLock) {
+      // Move the selected pending lock to this cell (same as moving a placed
+      // tile). Refuse destinations the engine wouldn't accept: off-grid
+      // perimeter bonus squares, committed tiles, and already-locked cells.
+      pendingLockSelected = false;
+      const duration = controller.view.pendingLock.duration;
+      if (r < 0 || r > 9 || c < 0 || c > 9 || isCellBlockedForPlacement(controller.view, r, c)) {
+        renderBoard(controller.view);
         return;
       }
-      suppressQuickPlaceAt = null;
-      const inventory = lockInventoryForView(controller.view);
-      if (!inventory.length) return;
-      const duration = Math.min(...inventory);
       controller.setPendingLock?.({ r, c, duration });
       renderLockInventory(controller.view);
       renderBoard(controller.view);
       return;
     }
+    if (selectedLock != null) {
+      // Lock placement from the box: the player picked a lock (it glows in the
+      // box), now they pick the square. Shows a preview on the cell and the
+      // lock disappears from the box; the actual PLACE_LOCK dispatch waits for
+      // שבץ (handled by controller.confirmMove). Perimeter bonus squares are
+      // refused — the engine's PLACE_LOCK only accepts 0..9 × 0..9.
+      if (r < 0 || r > 9 || c < 0 || c > 9) return;
+      if (isCellBlockedForPlacement(controller.view, r, c)) return;
+      controller.setPendingLock?.({ r, c, duration: selectedLock.duration });
+      selectedLock = null;
+      renderLockInventory(controller.view);
+      renderBoard(controller.view);
+      return;
+    }
+    if (selectedRackIndex == null) return; // nothing selected — nothing to place
     const rackTile = controller.displayRackTile?.(selectedRackIndex);
     const letter = rackTile?.letter;
     if (!letter) return;
@@ -691,6 +706,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   }
 
   // ─── Renderer ───────────────────────────────────────────
+  // Seed the known-lock set from the state we're mounting onto: locks already
+  // on the board (a resumed / reconnected game) must not fire a cost flight.
+  knownLockIds = new Set((controller.view.lockedCells ?? []).map(l => l.id));
   cleanups.push(controller.onChange(renderAll));
   renderAll(controller.view);
 
@@ -701,6 +719,16 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       const stillPending = (v.placed ?? []).some(p =>
         p.r === selectedPlacedCoord.r && p.c === selectedPlacedCoord.c);
       if (!stillPending) selectedPlacedCoord = null;
+    }
+    // Same for the pending lock: once it's confirmed, recalled, or cleared by
+    // a turn change, there is nothing left on the board to keep selected.
+    if (pendingLockSelected && !v.pendingLock) pendingLockSelected = false;
+    // Must run BEFORE renderScores so it can hold the count-down until the
+    // −10 chip lands on the score panel.
+    const committedLock = detectCommittedLock(v);
+    if (committedLock) {
+      lockCostFlightPending = true;
+      playLockCostFlight(committedLock);
     }
     emitLivePreview(v);
     renderScores(v);
@@ -746,11 +774,22 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const wordCount  = Array.isArray(v?.lastMove?.wordTiles) ? v.lastMove.wordTiles.length : 0;
     const bonusExtra = Number(v?.lastMove?.bonusExtra) || 0;
     const multiplier = Number(v?.lastMove?.multiplier) || 1;
+    // A lock committed this render flies a −10 chip into the score panel; hold
+    // the count-down until it lands so the number and the chip agree.
+    const delay = lockCostFlightPending
+      ? Math.max(countUpDelayOf(), LOCK_COST_FLIGHT_MS)
+      : countUpDelayOf();
+    lockCostFlightPending = false;
+    function countUpDelayOf() {
+      return scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
+    }
+    const countUpDelay = delay;
     const countUpDelay = countUpStartDelayMs(wordCount, bonusExtra, multiplier);
     animateScore($('#sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#sv2', root), v.scores[1] ?? 0, countUpDelay);
     animateScore($('#is-sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#is-sv2', root), v.scores[1] ?? 0, countUpDelay);
+    renderPendingLockCost(v);
     renderPlayerIdentity(v);
     // Desktop side-panel boxes use `.scbox.act`; the mobile info-strip cards
     // use `.is-pcard.act-cell` (different class name, see styles.css). When
@@ -761,6 +800,63 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const glowSlot = displayedTurnSlot ?? v.currentTurnSlot;
     applyActiveSlotGlow(glowSlot);
     maybeScheduleActiveSlotSwap(v, wordCount);
+  }
+
+  // Preview of the lock charge, shown on the owner's score card for as long as
+  // an unconfirmed lock sits on the board. The real score is NOT touched — the
+  // lock can still be moved, returned to the box, or lost to a rejected word,
+  // and online scores only change through commitTransaction. The number counts
+  // down for real once the move commits.
+  function renderPendingLockCost(v) {
+    const costSlot = v.pendingLock
+      ? (v.mySlot != null ? v.mySlot : v.currentTurnSlot)
+      : null;
+    for (const slot of [0, 1]) {
+      const el = $(`#is-cost-${slot + 1}`, root);
+      if (!el) continue;
+      if (slot === costSlot) {
+        setText(el, `−${LOCK_POINT_COST}`);
+        el.classList?.add?.('is-visible');
+      } else {
+        setText(el, '');
+        el.classList?.remove?.('is-visible');
+      }
+    }
+  }
+
+  // Spot a lock that just became committed (either path: lock-only turn or
+  // word+lock) by diffing lock ids against the previous render, and fly its
+  // cost into the owner's score panel. Seeded on mount so locks already on the
+  // board in a resumed game don't animate.
+  function detectCommittedLock(v) {
+    const cells = Array.isArray(v.lockedCells) ? v.lockedCells : [];
+    const next = new Set(cells.map(l => l.id));
+    const added = cells.find(l => !knownLockIds.has(l.id));
+    knownLockIds = next;
+    return added ?? null;
+  }
+
+  function playLockCostFlight(lock) {
+    const doc = ownerDocumentOf(root);
+    const chip = doc?.createElement?.('div');
+    if (!chip) return;
+    chip.className = 'scoring-float-label lock-cost-chip';
+    chip.textContent = `−${LOCK_POINT_COST}`;
+    const fromEl = $(`#c${lock.r}_${lock.c}`, root) ?? lookup(root, 'game-grid');
+    positionFixedLabel(chip, fromEl, { yOffset: -10 });
+    appendOverlay(root, chip);
+    const to = centerOf(scoreTargetForSlot(root, lock.ownerSlot));
+    const from = centerOf(fromEl);
+    if (to && from) {
+      // Next frame so the browser paints the start position before we move it.
+      rafFn(() => {
+        chip.style.transition =
+          `transform ${LOCK_COST_FLIGHT_MS}ms cubic-bezier(.22,1,.36,1), opacity ${LOCK_COST_FLIGHT_MS}ms ease-in`;
+        chip.style.transform = `translate(calc(-50% + ${to.x - from.x}px), ${to.y - from.y}px) scale(.7)`;
+        chip.style.opacity = '0';
+      });
+    }
+    setTimeout(() => chip.remove?.(), LOCK_COST_FLIGHT_MS + 120);
   }
 
   // Player names + avatars (mobile info-strip and desktop labels). Split out
@@ -1029,8 +1125,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           // Tentative lock — same icon as a committed lock but with a
           // .pending modifier so CSS can dim/animate it to signal "this is
           // not yet confirmed". Tap again to remove, or tap שבץ to commit.
-          cell.innerHTML = lockHTML({ remainingTurns: v.pendingLock.duration });
+          // The pending lock carries its price tag, so the cost is attached to
+          // the thing that causes it at the moment the player is deciding.
+          cell.innerHTML = lockHTML({ remainingTurns: v.pendingLock.duration })
+            + `<span class="spine-lock-cost">−${LOCK_POINT_COST}</span>`;
           cell.classList?.add('spine-lock-cell', 'spine-pending-lock-cell');
+          // Selected → same highlight a selected pending TILE gets, so the
+          // player can see which lock will move on the next cell tap.
+          if (pendingLockSelected) cell.classList?.add('selected-placed');
         } else {
           cell.innerHTML = '';
         }
@@ -1200,27 +1302,92 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   }
 
   function renderLockInventory(v) {
-    const inventory = lockInventoryForView(v);
-    setText($('#is-locks-1', root), lockSummaryText(v.lockInventory?.[0]));
-    setText($('#is-locks-2', root), lockSummaryText(v.lockInventory?.[1]));
-    if (!lockInvDisplay) return;
-    lockInvDisplay.innerHTML = '';
+    // The box shows what's still available to place: the engine inventory
+    // MINUS the lock currently previewed on the board, so a lock visibly
+    // leaves the box the moment it lands on a square and comes back when the
+    // player returns it.
+    const inventory = displayLockInventory(v);
+    // Drop a selection that no longer points at a real button (e.g. the lock
+    // was just placed, shrinking the list).
+    if (selectedLock && selectedLock.index >= inventory.length) selectedLock = null;
+    const affordable = canAffordLock(v);
+    if (!affordable) selectedLock = null;
+
+    // The player's own lock box is the `is-pclocks` strip in their info-strip
+    // score card — that is the ONLY lock UI actually on screen. The original
+    // `#lock-inv-display` picker lives in `.right-panel`, which the retired
+    // side-panel layout hides (`display:none !important`), so it is filled too
+    // but is invisible in practice. Rendering only there is what made locks
+    // unclickable: there was nothing on screen to click.
+    const actingSlot = v.mySlot != null ? v.mySlot : v.currentTurnSlot;
+    for (const slot of [0, 1]) {
+      const box = $(`#is-locks-${slot + 1}`, root);
+      if (!box) continue;
+      if (slot === actingSlot) {
+        fillLockBox(box, inventory, affordable, { interactive: true });
+      } else {
+        // The other player's locks render as the SAME bordered chips, just
+        // inert — a player's lock count shouldn't change appearance (losing
+        // its frame) simply because the turn passed to the other side.
+        fillLockBox(box, normalizeInventory(v.lockInventory?.[slot]), true, { interactive: false });
+      }
+    }
+    if (lockInvDisplay) fillLockBox(lockInvDisplay, inventory, affordable, { interactive: true });
+  }
+
+  // Paint one lock box: a chip per lock the player still holds. `interactive`
+  // boxes (the acting player's) are clickable and grey out when the player
+  // can't pay the cost; non-interactive ones (the other player's) render the
+  // same bordered chips but are inert, so a card never loses its lock frames
+  // just because the turn moved to the other side.
+  // Shared by the info-strip boxes and the legacy side-panel picker.
+  function fillLockBox(box, inventory, affordable, { interactive = true } = {}) {
+    box.innerHTML = '';
     if (!inventory.length) {
-      lockInvDisplay.textContent = 'אין';
-      selectedLockDuration = null;
+      box.classList?.remove?.('is-disabled');
+      box.title = '';
+      setText(box, 'אין');
       return;
     }
+    if (!affordable) {
+      box.classList?.add?.('is-disabled');
+      box.title = `צריך ${LOCK_POINT_COST} נקודות כדי לנעול`;
+    } else {
+      box.classList?.remove?.('is-disabled');
+      box.title = '';
+    }
     inventory.forEach((duration, i) => {
-      const btn = makeLockButton(root, duration, i, selectedLockDuration === duration);
+      const selected = interactive && affordable && selectedLock?.index === i;
+      const btn = makeLockButton(root, duration, i, selected);
+      if (!affordable) {
+        btn.disabled = true;
+        btn.classList?.add?.('is-disabled');
+        btn.setAttribute?.('aria-disabled', 'true');
+      }
+      if (!interactive) {
+        // Keep the frame, drop the affordance: no listener, not focusable, and
+        // `--static` suppresses the pointer cursor / hover without dimming it.
+        btn.disabled = true;
+        btn.classList?.add?.('lock-inv-btn--static');
+        btn.setAttribute?.('tabindex', '-1');
+        box.appendChild?.(btn);
+        return;
+      }
       cleanups.push(on(btn, 'click', (e) => {
         e.preventDefault?.();
+        e.stopPropagation?.();
+        if (!canAffordLock(controller.view)) return; // can't afford — ignore
         selectedRackIndex = null;
-        selectedLockDuration = selectedLockDuration === duration ? null : duration;
+        selectedPlacedCoord = null;
+        pendingLockSelected = false;
+        // Toggle: clicking the glowing lock again de-selects it.
+        selectedLock = selectedLock?.index === i ? null : { index: i, duration };
         renderRack(controller.view);
         renderLockInventory(controller.view);
+        renderBoard(controller.view);
         renderStatus(controller.view);
       }));
-      lockInvDisplay.appendChild?.(btn);
+      box.appendChild?.(btn);
     });
   }
 
@@ -1335,6 +1502,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       // can't miss it. Leaving the renderer keyed but unused would let a
       // stale caller silently revive the legacy "+BONUS" float.
       bonusAwardOverlay:  (payload) => showBonusAwardOverlay(root, bus, controller, payload),
+      turnEffectBanner:   (payload) => showTurnEffectBanner(root, payload),
       bonusActivate:      ({ bonusIdx }) => flashBonusSquare(root, bonusIdx),
       boostPulse:         ({ slot }) => flashBoostBadges(root, slot),
       playerGlowPulse: () => {
@@ -1422,10 +1590,10 @@ function makeLockButton(root, duration, index, selected) {
   btn.type = 'button';
   btn.className = `lock-inv-btn${selected ? ' active' : ''}`;
   btn.textContent = `🔒 ${duration}`;
-  btn.title = `Lock a cell for ${duration} turns`;
+  btn.title = `Lock a cell for ${duration} turns (costs ${LOCK_POINT_COST} points)`;
   btn.setAttribute?.('data-lock-duration', String(duration));
   btn.setAttribute?.('aria-pressed', selected ? 'true' : 'false');
-  btn.setAttribute?.('aria-label', `Lock duration ${duration}`);
+  btn.setAttribute?.('aria-label', `Lock duration ${duration}, costs ${LOCK_POINT_COST} points`);
   if (btn.dataset) {
     btn.dataset.lockDuration = String(duration);
     btn.dataset.index = String(index);
@@ -1574,13 +1742,39 @@ function lockHTML(lock) {
 
 function lockInventoryForView(view) {
   const slot = view.mySlot != null ? view.mySlot : view.currentTurnSlot;
-  return [...(view.lockInventory?.[slot] ?? [])].filter(n => Number.isInteger(Number(n)) && Number(n) > 0).map(Number);
+  return normalizeInventory(view.lockInventory?.[slot]);
 }
 
-function lockSummaryText(inventory) {
-  const locks = [...(inventory ?? [])].filter(n => Number.isInteger(Number(n)) && Number(n) > 0);
-  if (!locks.length) return '';
-  return locks.map(n => `🔒${n}`).join('  ');
+// What the lock box should show: the acting player's inventory minus the lock
+// currently previewed on the board (one instance of its duration). A pending
+// lock has not reached the engine yet, so it's still in `lockInventory` — this
+// is what makes a lock visibly leave the box when placed and reappear when the
+// player sends it back.
+function displayLockInventory(view) {
+  const inventory = lockInventoryForView(view);
+  const pending = view.pendingLock;
+  if (!pending) return inventory;
+  const i = inventory.indexOf(Number(pending.duration));
+  if (i < 0) return inventory;
+  return [...inventory.slice(0, i), ...inventory.slice(i + 1)];
+}
+
+// The acting player on this client can only spend a lock if their score covers
+// the LOCK_POINT_COST charge. Below that the lock picker is disabled
+// (the engine enforces the same rule as `lock-insufficient-points`).
+function canAffordLock(view) {
+  const slot = view.mySlot != null ? view.mySlot : view.currentTurnSlot;
+  return (view.scores?.[slot] ?? 0) >= LOCK_POINT_COST;
+}
+
+// Coerce a raw lockInventory entry into the positive integers we render.
+// (Replaced `lockSummaryText`, which produced the plain-text "🔒3 🔒3 🔒5"
+// summary the non-acting player's card used to show — both cards now render
+// real bordered chips instead.)
+function normalizeInventory(inventory) {
+  return [...(inventory ?? [])]
+    .filter(n => Number.isInteger(Number(n)) && Number(n) > 0)
+    .map(Number);
 }
 
 // The shared reflow-restart primitive (this was a byte-identical local copy).
@@ -1939,6 +2133,62 @@ function floatBonusLabel(root, { wordTiles, placed } = {}, text, extraClass) {
 }
 
 export const BONUS_AWARD_ACK = 'bonus/award-acknowledged';
+
+// How long a turn-flow banner stays on screen before fading out.
+export const TURN_EFFECT_BANNER_MS = 3400;
+
+// Pure: turn one turn-flow effect into the banner copy for THIS client.
+//
+// `mySlot` is the local player's seat, or null for a shared-screen 2P game
+// (where there is no "me", so the copy names the player instead). Returns
+// null when there is nothing worth saying.
+export function describeTurnEffect(effect, mySlot = null) {
+  if (!effect?.type) return null;
+  const shared = mySlot !== 0 && mySlot !== 1;
+  const playerName = slot => `שחקן ${(slot ?? 0) + 1}`;
+
+  if (effect.type === 'extra-turn') {
+    const mine = !shared && effect.slot === mySlot;
+    if (shared) return { tone: 'info', icon: '🎯', text: `${playerName(effect.slot)} משחק תור נוסף` };
+    // The player who won it already saw the award card; the banner exists for
+    // the one who is about to wait through another turn.
+    return mine
+      ? { tone: 'good', icon: '🎯', text: 'זכית בתור נוסף — שחק שוב' }
+      : { tone: 'warn', icon: '🎯', text: 'היריב זכה בתור נוסף ומשחק שוב' };
+  }
+
+  if (effect.type === 'skip-turn') {
+    const victim = effect.slot;
+    if (shared) return { tone: 'info', icon: '⏭️', text: `${playerName(victim)} מדלג על התור` };
+    return victim === mySlot
+      ? { tone: 'warn', icon: '⏭️', text: 'הפסדת את התור — היריב הפעיל דילוג תור' }
+      : { tone: 'good', icon: '⏭️', text: 'היריב מדלג על התור שלו' };
+  }
+
+  return null;
+}
+
+// Non-blocking notice pinned above the board. Self-dismisses; never gates
+// gameplay or score animation (see animationController's TURN_EFFECTS_APPLIED
+// subscription for why this is a banner and not the modal award card).
+function showTurnEffectBanner(root, payload) {
+  const info = describeTurnEffect(payload, payload?.mySlot ?? null);
+  if (!info) return;
+  const doc = ownerDocumentOf(root);
+  const el = doc?.createElement?.('div');
+  if (!el) return;
+  el.className = `turn-effect-banner tone-${info.tone}`;
+  el.setAttribute?.('role', 'status');
+  el.setAttribute?.('data-turn-effect', payload.type);
+  el.textContent = `${info.icon} ${info.text}`;
+  appendOverlay(root, el);
+  // Two-phase so the CSS transition has a frame to run against.
+  setTimeout(() => el.classList?.add('is-in'), 20);
+  setTimeout(() => {
+    el.classList?.remove('is-in');
+    setTimeout(() => el.remove?.(), 320);
+  }, TURN_EFFECT_BANNER_MS);
+}
 
 // One-line Hebrew descriptions of every boost the player can land on. Each
 // row drives the modal overlay so the player always sees what they got.

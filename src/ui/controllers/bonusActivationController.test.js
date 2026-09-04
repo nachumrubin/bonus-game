@@ -7,7 +7,7 @@ import { CMD } from '../../events/commands.js';
 import { BDEFS } from '../../game/boosts/data.js';
 import {
   createBonusActivationController,
-  BONUS_PENDING, BONUS_RESOLVED, MINIGAME_CLOSED,
+  BONUS_PENDING, BONUS_RESOLVED, MINIGAME_CLOSED, BONUS_ABORTED,
 } from './bonusActivationController.js';
 
 function makeSession(state) {
@@ -216,6 +216,64 @@ test('skipPending on wheel pending also finalizes without opening UI', () => {
   assert.equal(session._dispatched.length, 1);
   assert.equal(session._dispatched[0].type, CMD.FINALIZE_BOOST_AWARD);
   assert.equal(session._dispatched[0].payload.extra, 0);
+});
+
+// Regression (prod room fc_1786040881489_8bjchc): when the move that triggered a
+// bonus is rolled back because its commit lost the version race, the mini-game
+// is still on screen. Resolving it must NOT finalize an award for a move the
+// server never accepted — the engine's no-pending fallback would still credit
+// `extra` straight onto the score.
+test('BONUS_ABORTED drops a staged award so closing the mini-game finalizes nothing', () => {
+  bus._reset();
+  const bonusAssignment = new Array(BDEFS.length).fill({ type: 'B1' });
+  const session = makeSession({ bonusAssignment, bonusSqUsed: {}, turnNumber: 5 });
+  const ctl = createBonusActivationController({ bus, session });
+
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [bonusAt(0)] });
+  assert.equal(session._dispatched.length, 0, 'mini-game defers its award');
+
+  // The commit lost the race; the session rolls back and aborts the flow.
+  bus.emit(BONUS_ABORTED, { slot: 0, reason: 'stale-version' });
+
+  // The mini-game finishes anyway and the player dismisses it.
+  ctl.resolveMiniGame({ success: true, earnedPts: 30 });
+  bus.emit(MINIGAME_CLOSED, {});
+
+  assert.deepEqual(session._dispatched, [], 'no FINALIZE_BOOST_AWARD for a rolled-back move');
+});
+
+test('BONUS_ABORTED releases the square so a replayed move can trigger it again', () => {
+  bus._reset();
+  const bonusAssignment = new Array(BDEFS.length).fill({ type: 'B1' });
+  const session = makeSession({ bonusAssignment, bonusSqUsed: {}, turnNumber: 5 });
+  createBonusActivationController({ bus, session });
+  const pending = [];
+  bus.on(BONUS_PENDING, (p) => pending.push(p));
+
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [bonusAt(0)] });
+  bus.emit(BONUS_ABORTED, { slot: 0, reason: 'stale-version' });
+  // The server still has the square unused, so replaying the move must re-arm it.
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [bonusAt(0)] });
+
+  // Without the abort the second MOVE_CONFIRMED is swallowed by `localUsed`
+  // and this would be 1.
+  assert.equal(pending.length, 2, 'the square re-arms: initial firing + replay');
+});
+
+test('BONUS_ABORTED for the other slot leaves our own pending award alone', () => {
+  bus._reset();
+  const bonusAssignment = new Array(BDEFS.length).fill({ type: 'B1' });
+  const session = makeSession({ bonusAssignment, bonusSqUsed: {}, turnNumber: 5 });
+  const ctl = createBonusActivationController({ bus, session });
+
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [bonusAt(0)] });
+  bus.emit(BONUS_ABORTED, { slot: 1, reason: 'stale-version' });
+  ctl.resolveMiniGame({ success: true, earnedPts: 30 });
+  bus.emit(MINIGAME_CLOSED, {});
+
+  assert.equal(session._dispatched.length, 1);
+  assert.equal(session._dispatched[0].type, CMD.FINALIZE_BOOST_AWARD);
+  assert.equal(session._dispatched[0].payload.extra, 30);
 });
 
 test('falls back to BONUS_TYPES[idx % len] when bonusAssignment is empty', () => {

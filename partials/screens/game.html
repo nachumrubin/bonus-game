@@ -49,6 +49,9 @@
           <div class="gm-card-info">
             <div class="is-val" style="color:var(--p1)" id="is-sv1">0</div>
             <div class="is-pclbl">נקודות</div>
+            <!-- Pending lock cost preview: shows −10 while a lock sits on the
+                 board unconfirmed. Filled by gameScreen.renderScores. -->
+            <div class="is-pending-cost" id="is-cost-1"></div>
             <button class="rxn-btn" id="rxn-btn-slot0" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
           </div>
         </div>
@@ -75,6 +78,7 @@
           <div class="gm-card-info">
             <div class="is-val" style="color:var(--p2)" id="is-sv2">0</div>
             <div class="is-pclbl">נקודות</div>
+            <div class="is-pending-cost" id="is-cost-2"></div>
             <button class="rxn-btn" id="rxn-btn-slot1" type="button" style="display:none" aria-label="שלח תגובה">😊</button>
           </div>
           <div class="is-pcav" id="is-av2"><img class="av-img" src="assets/avatars/anonymous player.png" alt=""></div>
@@ -114,7 +118,7 @@
       <div class="right-panel">
         <div class="pb" style="display:none"><div class="pl">כיוון</div><div class="dpair"><button class="dm a" id="bh" onclick="setDir('H')">→ אופקי</button><button class="dm" id="bv" onclick="setDir('V')">↕ אנכי</button></div></div>
         <div class="pb">
-          <div class="pl">נעילות</div>
+          <div class="pl">נעילות (־10 נק')</div>
           <div id="lock-inv-display" style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;font-size:10px;color:var(--by);font-weight:700;min-height:16px;"></div>
         </div>
         <div class="pb" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">

@@ -18,6 +18,7 @@ import { logGameEvent, upsertGameIndex } from '../debug/debugLogger.js';
 import { DEBUG_EVENT } from '../debug/debugSchema.js';
 import { setCommittedTile } from '../core/board.js';
 import { createInitialState } from '../core/gameEngine.js';
+import { serverNow } from './serverClock.js';
 
 function roomRef(db, roomId) {
   return db.ref(`${PATH.rooms}/${roomId}`);
@@ -44,9 +45,12 @@ export function shouldUseSharedTurnTimer(mode, settings = {}) {
   return !isAsyncMode(mode) && !!settings?.timelimit && turnLimitMsFromSettings(settings) > 0;
 }
 
-export function initialTurnDeadlineMs(mode, settings = {}, nowMs = Date.now()) {
+// Deadlines are absolute epoch stamps read by BOTH clients, so they must be
+// written on the shared server clock rather than whichever device happened to
+// commit. See serverClock.js.
+export function initialTurnDeadlineMs(mode, settings = {}, nowMs = serverNow()) {
   if (!shouldUseSharedTurnTimer(mode, settings)) return null;
-  return Number(nowMs || Date.now()) + turnLimitMsFromSettings(settings);
+  return Number(nowMs || serverNow()) + turnLimitMsFromSettings(settings);
 }
 
 // Create a new room from an engine state. Used after invite-accept and after
@@ -350,7 +354,7 @@ export const MISSED_TURNS_FORFEIT_THRESHOLD = 2;
 
 export function computeExpiredOnlineTurnState(state, nowMs, limitMs) {
   if (!state || typeof state !== 'object') return null;
-  const now = Number(nowMs || Date.now());
+  const now = Number(nowMs || serverNow());
   let currentTurn = Number(state.turn !== undefined ? state.turn : state.currentTurnSlot ?? 0);
   if (currentTurn !== 0 && currentTurn !== 1) currentTurn = 0;
   const nextTurn = currentTurn === 0 ? 1 : 0;
@@ -394,7 +398,7 @@ export function shouldClaimExpiredOnlineTurn(state, myIdx, nowMs, graceMs) {
   if (currentTurn === myTurn) return false;
   const deadline = Number(state.turnDeadlineMs || 0);
   if (!deadline) return false;
-  const now = Number(nowMs || Date.now());
+  const now = Number(nowMs || serverNow());
   const grace = Number(graceMs || 0);
   return now >= deadline + grace;
 }

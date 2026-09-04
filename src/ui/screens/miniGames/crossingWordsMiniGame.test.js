@@ -77,6 +77,24 @@ test('mount (no-DOM): correct guess emits success with the configured pts', () =
   assert.equal(events[0].shared, shared);
 });
 
+test('result carries the full puzzle (both crossing words) for debug capture', () => {
+  bus._reset();
+  const events = [];
+  bus.on(CR_INTENT.RESULT, r => events.push(r));
+  const game = mountCrossingWordsMiniGame({
+    bus, words: ['תפוח', 'חגים'], rng: rngSeed(1), doc: null,
+  });
+  const p = game._puzzle;
+  game.submit('ק'); // wrong on purpose — we only care about the puzzle fields
+  const r = events[0];
+  assert.equal(r.h, p.h);
+  assert.equal(r.v, p.v);
+  assert.equal(r.hpos, p.hpos);
+  assert.equal(r.vpos, p.vpos);
+  assert.equal(r.shared, p.shared);
+  assert.equal(r.attempt, 'ק');
+});
+
 test('mount (no-DOM): wrong guess emits failure with 0 points', () => {
   bus._reset();
   const events = [];

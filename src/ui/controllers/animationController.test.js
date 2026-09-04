@@ -335,3 +335,45 @@ test('dispose stops directive logging', () => {
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [], words: [], score: 0 });
   assert.equal(ac._directives.length, 0);
 });
+
+// The victim's client is the whole point of these directives: for an online
+// seat, an opponent's boost never opens the modal award card (mySlot gate), so
+// the banner is the only thing that explains the missing turn.
+test('TURN_EFFECTS_APPLIED fans out one banner directive per effect', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, mySlot: 1 });
+  bus.emit(EV.TURN_EFFECTS_APPLIED, {
+    effects: [
+      { type: 'extra-turn', slot: 0 },
+      { type: 'skip-turn', slot: 1, bySlot: 0 },
+    ],
+  });
+  const banners = ac._directives.filter(d => d.kind === 'turnEffectBanner');
+  assert.equal(banners.length, 2);
+  assert.deepEqual(banners[0].payload, { type: 'extra-turn', slot: 0, mySlot: 1 });
+  assert.deepEqual(banners[1].payload, { type: 'skip-turn', slot: 1, bySlot: 0, mySlot: 1 });
+  ac.dispose();
+});
+
+// A banner self-dismisses, so it must NOT join the overlay count that holds
+// score-commit animations back — otherwise the score would hang behind a
+// notice nobody has to acknowledge.
+test('TURN_EFFECTS_APPLIED does not gate the score-commit animation', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, mySlot: 1 });
+  bus.emit(EV.TURN_EFFECTS_APPLIED, { effects: [{ type: 'skip-turn', slot: 1, bySlot: 0 }] });
+  bus.emit(EV.MOVE_SCORE_COMMITTED, { slot: 0, words: ['אב'], score: 4, baseScore: 4, bonusExtra: 0 });
+  const kinds = ac._directives.map(d => d.kind);
+  assert.ok(kinds.includes('scoreMergeSequence'),
+    'score commit must play immediately, not wait for a banner to be dismissed');
+  ac.dispose();
+});
+
+test('TURN_EFFECTS_APPLIED with no effects triggers nothing', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, mySlot: 0 });
+  bus.emit(EV.TURN_EFFECTS_APPLIED, {});
+  bus.emit(EV.TURN_EFFECTS_APPLIED, { effects: [] });
+  assert.equal(ac._directives.filter(d => d.kind === 'turnEffectBanner').length, 0);
+  ac.dispose();
+});

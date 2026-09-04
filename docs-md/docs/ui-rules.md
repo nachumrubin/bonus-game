@@ -73,7 +73,18 @@ Critical element IDs referenced by game logic (must not be renamed):
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
 #sb1, #sb2             — score box containers (.act = active turn)
 #is-sb1, #is-sb2       — mobile score boxes
-#lock-inv-display      — lock inventory buttons
+#lock-inv-display      — lock inventory buttons (LEGACY: lives in .right-panel,
+                         which is `display:none !important` — invisible in the
+                         current layout. The lock box the player actually uses
+                         is #is-locks-1 / #is-locks-2 below.)
+#is-locks-1, #is-locks-2 — per-player lock boxes in the info-strip score cards.
+                         The acting player's holds clickable .lock-inv-btn
+                         chips; the other player's holds the same chips as inert
+                         .lock-inv-btn--static. Rendered by
+                         gameScreen.renderLockInventory → fillLockBox.
+#is-cost-1, #is-cost-2 — pending lock-cost preview (−10) on each score card.
+                         Shown (.is-visible) only while an unconfirmed lock is
+                         on the board; set by gameScreen.renderPendingLockCost.
 #bh, #bv               — placement direction buttons (horizontal/vertical)
 #wr-code               — waiting room code display
 #wr-mode-label         — waiting room mode label
@@ -401,6 +412,7 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `bonusActivate` | Bonus square activated |
 | `boostPulse` | Active boost pulse |
 | `bonusAwardOverlay` | Bonus award modal |
+| `turnEffectBanner` | Turn-flow notice ("you lost your turn" / "opponent plays again") |
 | `playerGlowPulse` | Active player glow |
 | `scorePanelArrive` | Score panel entrance animation |
 | `overlayCardIn` | Overlay card entrance |
@@ -530,6 +542,25 @@ document.querySelector('.bonus-award-positioner')
 ```
 
 When all are absent: flush the pending score-commit animation. This is the known overlay-polling pattern — do not remove these checks.
+
+### Turn-Flow Notice Banner (`.turn-effect-banner`)
+
+Fired by `EV.TURN_EFFECTS_APPLIED` → the `turnEffectBanner` directive. Tells a
+player that `extra_turn` or `skip_opponent_turn` changed whose turn is next —
+previously the turn just silently failed to arrive.
+
+- **Not a modal, by design.** It fires while the *other* player is acting, so it
+  must not demand a tap. It also must **not** increment `overlayCount`: that gate
+  exists to hold score animations behind a modal, and a self-dismissing banner
+  has nothing to hold. There is a regression test for this in
+  `animationController.test.js`.
+- Copy is built by the pure, exported `describeTurnEffect(effect, mySlot)` in
+  `gameScreen.js` — write copy from the *reader's* side. `mySlot === null`
+  (shared-screen 2P) has no "me", so it names the player instead of saying "you".
+- `z-index: 9998`, one below the modal award card, so a bonus award still wins.
+- Duration: `TURN_EFFECT_BANNER_MS = 3400` (exported from `gameScreen.js`), plus
+  a ~320ms fade-out.
+- Tones: `.tone-warn` (something was taken from you), `.tone-good`, `.tone-info`.
 
 ### Score Count-Up Gating
 - Active-slot glow holds until count-up finishes
