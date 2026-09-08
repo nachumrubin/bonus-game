@@ -59,6 +59,7 @@ import { startMatchmaking } from './game/online/spineMatchmaking.js';
 
 import { createGameController } from './ui/controllers/gameController.js';
 import { createAnimationController } from './ui/controllers/animationController.js';
+import { BOOST_RESULT_READY } from './ui/boostPresentation.js';
 import { getMotionPreference } from './ui/motionPreference.js';
 import { createGameFlowController } from './ui/controllers/gameFlowController.js';
 import { createTurnTimerController } from './ui/controllers/turnTimerController.js';
@@ -3733,6 +3734,11 @@ async function boot() {
         ctl.skipPending({ earnedPts: amount });
         return;
       }
+    }));
+    // The engine pending/auto-resolution path above stays immediate. Only the
+    // intro's presentation follows the square's shared ignition beat.
+    subs.push(bus.on(BOOST_RESULT_READY, (payload) => {
+      if (payload.presentation !== 'intro' || payload.slot === botSlot) return;
       bus.emit(BI_OPEN, payload);
     }));
 

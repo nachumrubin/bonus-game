@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import { EV } from '../../events/eventTypes.js';
+import { RATING_EVT } from '../../game/account/ratingService.js';
 import { mountEndGameScreen, END_INTENT, END_OPEN } from './endGameScreen.js';
 import { mountPauseScreen, PAUSE_INTENT, PAUSE_OPEN } from './pauseScreen.js';
 import { mountBackConfirmScreen, BACK_INTENT, BACK_OPEN } from './backConfirmScreen.js';
@@ -141,6 +142,64 @@ test('endGameScreen: tie shows draw text', () => {
   mountEndGameScreen({ root, bus });
   bus.emit(EV.GAME_COMPLETED, { winnerSlot: null, scores: { 0: 40, 1: 40 } });
   assert.equal(elements.get('wn').textContent, 'המשחק הסתיים בתיקו');
+});
+
+test('endGameScreen: applies distinct local victory, draw, and defeat semantics', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-end' });
+  ['wn', 'wws', 'en1', 'en2', 'es1', 'es2', 'end-card-0', 'end-card-1'].forEach(id => elements.set(id, makeBtn()));
+  const root = { querySelector: (sel) => sel === '#ov-end' ? overlay : null };
+  const oldSpine = globalThis.__spine;
+  globalThis.__spine = { activeGame: { session: { mySlot: 0 } } };
+  const screen = mountEndGameScreen({ root, bus });
+
+  bus.emit(END_OPEN, { winnerSlot: 0, scores: { 0: 80, 1: 50 } });
+  assert.equal(overlay.classList.contains('end-outcome-victory'), true);
+  bus.emit(EV.GAME_STARTED, {});
+  bus.emit(END_OPEN, { winnerSlot: null, scores: { 0: 40, 1: 40 } });
+  assert.equal(overlay.classList.contains('end-outcome-draw'), true);
+  assert.equal(overlay.classList.contains('end-outcome-victory'), false);
+  bus.emit(EV.GAME_STARTED, {});
+  bus.emit(END_OPEN, { winnerSlot: 1, scores: { 0: 30, 1: 60 } });
+  assert.equal(overlay.classList.contains('end-outcome-defeat'), true);
+
+  screen.unmount();
+  globalThis.__spine = oldSpine;
+});
+
+test('endGameScreen: identical rerender does not replay result motion', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-end' });
+  ['wn', 'wws', 'en1', 'en2', 'es1', 'es2', 'end-card-0', 'end-card-1'].forEach(id => elements.set(id, makeBtn()));
+  let motionStarts = 0;
+  Object.defineProperty(overlay, 'offsetWidth', { get() { motionStarts++; return 1; } });
+  const root = { querySelector: (sel) => sel === '#ov-end' ? overlay : null };
+  const screen = mountEndGameScreen({ root, bus });
+  const payload = { winnerSlot: 0, scores: { 0: 70, 1: 20 } };
+  bus.emit(END_OPEN, payload);
+  bus.emit(END_OPEN, payload);
+  assert.equal(motionStarts, 1);
+  screen.unmount();
+});
+
+test('endGameScreen: reduced motion paints final Elo gain/loss values directly', () => {
+  bus._reset();
+  const { overlay, elements } = makeOverlay({ id: 'ov-end' });
+  ['wn', 'wws', 'en1', 'en2', 'es1', 'es2', 'end-card-0', 'end-card-1', 'elo-delta-1', 'elo-delta-2'].forEach(id => elements.set(id, makeBtn()));
+  const root = { querySelector: (sel) => sel === '#ov-end' ? overlay : null };
+  const oldSpine = globalThis.__spine;
+  const oldMatchMedia = globalThis.matchMedia;
+  globalThis.__spine = { activeGame: { session: { mySlot: 0 } } };
+  globalThis.matchMedia = () => ({ matches: true });
+  const screen = mountEndGameScreen({ root, bus });
+  bus.emit(END_OPEN, { winnerSlot: 0, scores: { 0: 60, 1: 40 } });
+  bus.emit(RATING_EVT.CHANGED, { myBefore: 1000, myAfter: 1012, oppBefore: 1000, oppAfter: 988 });
+  assert.match(elements.get('elo-delta-1').textContent, /1012.*\+12/);
+  assert.match(elements.get('elo-delta-2').textContent, /988.*-12/);
+  assert.equal(overlay.classList.contains('end-outcome-victory'), true);
+  screen.unmount();
+  globalThis.__spine = oldSpine;
+  globalThis.matchMedia = oldMatchMedia;
 });
 
 test('endGameScreen: a 0-0 walkout is a draw, not a win for the other side', () => {

@@ -21,6 +21,10 @@ export function createTurnTimerController({
   const cleanups = [];
   let interval = null;
   let scoreFreezeTimer = null;
+  let scoreGraceMs = 0;
+  const scorePresentations = new Set();
+  let observedTurnKey = turnKey(sessionRef()?.state);
+  let pendingTurnPresentation = null;
   let timedOutKey = null;
   // Last second-boundary value emitted on 'timer/tick'. Keyed by turn so a
   // fresh turn re-arms ticks even if the previous turn fired them already.
@@ -55,6 +59,22 @@ export function createTurnTimerController({
   cleanups.push(bus.on(EV.GAME_STARTED, () => {
     menuPauseActive = false;
     menuPauseRemainingMs = 0;
+    if (scoreFreezeTimer != null) clearTimeoutFn?.(scoreFreezeTimer);
+    scoreFreezeTimer = null;
+    scoreGraceMs = 0;
+    scorePresentations.clear();
+    bonusPauseCount = 0;
+    observedTurnKey = turnKey(sessionRef()?.state);
+    pendingTurnPresentation = null;
+  }));
+  cleanups.push(bus.on(EV.TURN_CHANGED, () => {
+    const state = sessionRef()?.state;
+    const key = turnKey(state);
+    if (key === observedTurnKey) return;
+    pendingTurnPresentation = observedTurnKey == null ? null : {
+      currentTurnSlot: state?.currentTurnSlot, turnNumber: state?.turnNumber,
+    };
+    observedTurnKey = key;
   }));
 
   const eventTypes = [
@@ -136,20 +156,39 @@ export function createTurnTimerController({
       wordCount,
       bonusExtra: payload?.bonusExtra,
       multiplier: payload?.multiplier,
+      score: payload?.score,
       reducedMotion: !!prefersReducedMotion(),
     });
     if (ms <= 0) { sync(); return; }
-    pauseForBonus();
-    sync();
+    scoreGraceMs = ms;
     if (scoreFreezeTimer != null) clearTimeoutFn?.(scoreFreezeTimer);
+    scoreFreezeTimer = null;
+    if (bonusPauseCount === 0) startScoreGrace();
+    sync();
+  }
+  function startScoreGrace() {
+    if (!scoreGraceMs || scoreFreezeTimer != null) return;
     scoreFreezeTimer = setTimeoutFn?.(() => {
       scoreFreezeTimer = null;
-      resumeFromBonus();
-    }, ms);
+      scoreGraceMs = 0;
+      resumeClock();
+    }, scoreGraceMs);
   }
   cleanups.push(bus.on(EV.MOVE_CONFIRMED,       freezeForScoreAnimation));
   cleanups.push(bus.on(EV.MOVE_SCORE_COMMITTED, freezeForScoreAnimation));
   cleanups.push(bus.on(EV.OPPONENT_MOVED,       freezeForScoreAnimation));
+  // Nominal grace can expire while the browser is busy and nested chip/rAF
+  // callbacks still have work left. Observe the score renderer's completion
+  // as well; this holds only the clock, never gameplay or input.
+  cleanups.push(bus.on(EV.SCORE_PRESENTATION_STARTED, ({ id }) => {
+    scorePresentations.add(id);
+    sync();
+  }));
+  cleanups.push(bus.on(EV.SCORE_PRESENTATION_FINISHED, ({ id, cancelled }) => {
+    if (!scorePresentations.delete(id)) return;
+    if (cancelled) pendingTurnPresentation = null;
+    if (!scorePresentations.size && !scoreGraceMs) resumeClock();
+  }));
 
   sync();
   interval = setIntervalFn?.(sync, tickMs) ?? null;
@@ -181,11 +220,19 @@ export function createTurnTimerController({
 
   function pauseForBonus() {
     bonusPauseCount += 1;
+    // Deferred score presentation starts only after the award closes. Reuse
+    // its canonical grace from that same point, without stacking pause counts.
+    if (scoreFreezeTimer != null) clearTimeoutFn?.(scoreFreezeTimer);
+    scoreFreezeTimer = null;
     sync();
   }
   function resumeFromBonus() {
     bonusPauseCount = Math.max(0, bonusPauseCount - 1);
-    if (bonusPauseCount === 0) {
+    if (bonusPauseCount === 0) startScoreGrace();
+    resumeClock();
+  }
+  function resumeClock() {
+    if (bonusPauseCount === 0 && scoreGraceMs === 0 && scorePresentations.size === 0) {
       // Force ensureDeadline to rebuild a fresh deadline for the current
       // turn — the player just acknowledged the bonus, so the next player
       // gets the full clock starting from `now`.
@@ -249,7 +296,7 @@ export function createTurnTimerController({
     // skip the auto-pass dispatch. We do NOT call ensureDeadline here so
     // state.turnDeadlineMs isn't repeatedly rebuilt while paused; the next
     // resume() will clear it and the next sync will compute a fresh value.
-    if (bonusPauseCount > 0) {
+    if (bonusPauseCount > 0 || scoreGraceMs > 0 || scorePresentations.size > 0) {
       // Honour the same enabled-check ensureDeadline applies — otherwise a
       // game played without a time-limit would briefly flash the timer
       // (e.g., the per-turn allowance) when this pause activates during a
@@ -280,6 +327,12 @@ export function createTurnTimerController({
       wrap?.classList?.remove('urgent', 'warn', 'crit', 'active');
       const idleArc = wrap?.querySelector?.('.tt-ring-arc');
       if (idleArc) idleArc.style.strokeDashoffset = '0';
+      // Untimed play still gets the cue. A live timed game awaiting its
+      // authoritative deadline must wait for a subsequent clock sync.
+      const desc = modeDescriptor(state?.mode);
+      if (!(state?.settings?.timelimit && desc.hasTurnTimer === true)) {
+        publishTurnPresentation(state);
+      }
       return;
     }
 
@@ -308,6 +361,8 @@ export function createTurnTimerController({
     wrap?.classList?.toggle?.('crit', secs <= 5);
     wrap?.classList?.toggle?.('warn', secs <= 10 && secs > 5);
 
+    publishTurnPresentation(state);
+
     // Emit a 'timer/tick' for the final 3,2,1 seconds — only on transitions
     // (not every 250 ms poll) and only once per turn at each value.
     if (lastTickKey !== turnKey) {
@@ -330,6 +385,21 @@ export function createTurnTimerController({
         });
       }
     }
+  }
+
+  function turnKey(state) {
+    return state && (state.currentTurnSlot === 0 || state.currentTurnSlot === 1)
+      ? `${state.turnNumber}:${state.currentTurnSlot}` : null;
+  }
+
+  function publishTurnPresentation(state) {
+    const pending = pendingTurnPresentation;
+    if (!pending) return;
+    pendingTurnPresentation = null;
+    if (state?.status !== 'playing' || turnKey(state) !== turnKey(pending)) return;
+    // sync has already rebuilt/rendered the clock. No extra timeout, input
+    // gate, or animationend dependency: flash and sound share this bus moment.
+    bus.emit(EV.TURN_PRESENTATION_READY, pending);
   }
 
   function ensureDeadline(state) {

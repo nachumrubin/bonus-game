@@ -12,6 +12,11 @@ export const EV = Object.freeze({
   MOVE_CONFIRMED:         'evt/MOVE_CONFIRMED',
   MOVE_SCORE_COMMITTED:   'evt/MOVE_SCORE_COMMITTED',
   TURN_CHANGED:           'evt/TURN_CHANGED',
+  // Clock controller observation: score grace/pause has ended, after clock sync.
+  // Presentation only; never used to advance or gate gameplay.
+  TURN_PRESENTATION_READY: 'evt/TURN_PRESENTATION_READY',
+  SCORE_PRESENTATION_STARTED: 'evt/SCORE_PRESENTATION_STARTED',
+  SCORE_PRESENTATION_FINISHED: 'evt/SCORE_PRESENTATION_FINISHED',
   SCORE_CHANGED:          'evt/SCORE_CHANGED',
   BOOST_ACTIVATED:        'evt/BOOST_ACTIVATED',
   // Turn-flow effects that change WHOSE turn is next (extra_turn repeating a

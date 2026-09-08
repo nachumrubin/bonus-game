@@ -10,6 +10,7 @@ import { EV } from '../../events/eventTypes.js';
 import { RATING_EVT } from '../../game/account/ratingService.js';
 import { setAvatarEl } from './avatarScreens.js';
 import { CHAMPS_RENDER } from './championsScreen.js';
+import { confettiBurst } from './miniGames/bonusFx.js';
 
 export const END_INTENT = Object.freeze({
   REMATCH: 'end/rematch',
@@ -20,6 +21,9 @@ export const END_INTENT = Object.freeze({
 export const END_OPEN = 'overlay/end/open';
 const COMPUTER_NAME_HE = '\u05D4\u05DE\u05D7\u05E9\u05D1';
 const LEGACY_CROWN_VALUES = new Set(['crown', '\uD83D\uDC51']);
+const RESULT_MOTION_CLASS = 'end-result-motion';
+const RESULT_CLASSES = ['end-outcome-victory', 'end-outcome-draw', 'end-outcome-defeat'];
+const ELO_REVEAL_MS = 420;
 
 export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountEndGameScreen: bus required');
@@ -31,6 +35,9 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
   }
 
   const cleanups = [];
+  let lastResultSignature = null;
+  const lastEloSignature = new Map();
+  const eloFrames = new Map();
 
   const rematch = $('button[onclick="rematch()"]', overlay);
   const goHome  = $('button[onclick="goHome()"]', overlay);
@@ -64,6 +71,11 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     bus.emit(END_OPEN, { winnerSlot, scores, players, abandonedBy, abandonReason });
   }));
 
+  cleanups.push(bus.on(EV.GAME_STARTED, () => {
+    lastResultSignature = null;
+    lastEloSignature.clear();
+  }));
+
   cleanups.push(bus.on(END_OPEN, (payload = {}) => {
     render(payload);
     overlay.classList?.remove('hidden');
@@ -93,7 +105,8 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
 
     const wn = $('#wn', overlay);
     const ws = $('#wws', overlay);
-    const mySlot = globalThis.__spine?.activeGame?.session?.mySlot;
+    const sessionSlot = globalThis.__spine?.activeGame?.session?.mySlot;
+    const mySlot = sessionSlot === 0 || sessionSlot === 1 ? sessionSlot : 0;
     // Outcome rule:
     //   • walkout (abandonedBy set): ONLY 0-0 is a draw; any other score —
     //     including a non-zero tie like 10-10 — is a loss for the leaver, so
@@ -107,6 +120,11 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
       : (winnerSlot != null
           ? winnerSlot
           : (score0 === score1 ? null : (score0 > score1 ? 0 : 1)));
+
+    const outcome = effectiveWinner == null
+      ? 'draw'
+      : (mySlot === effectiveWinner ? 'victory' : 'defeat');
+    applyOutcomePresentation(outcome, { effectiveWinner, score0, score1, abandonedBy });
 
     applyCardStates(effectiveWinner);
 
@@ -140,6 +158,29 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     } else {
       card0?.classList?.add('is-loser');
       card1?.classList?.add('is-winner');
+    }
+  }
+
+  function applyOutcomePresentation(outcome, { effectiveWinner, score0, score1, abandonedBy }) {
+    for (const cls of RESULT_CLASSES) overlay.classList?.remove?.(cls);
+    overlay.classList?.add?.(`end-outcome-${outcome}`);
+    if (overlay.dataset) overlay.dataset.outcome = outcome;
+    if (outcome !== 'victory') {
+      for (const layer of overlay.querySelectorAll?.('.bz-confetti') ?? []) layer.remove?.();
+    }
+
+    const signature = `${outcome}:${effectiveWinner ?? 'draw'}:${score0}:${score1}:${abandonedBy ?? ''}`;
+    if (signature === lastResultSignature) return;
+    lastResultSignature = signature;
+
+    overlay.classList?.remove?.(RESULT_MOTION_CLASS);
+    // Force the one-shot class to begin only for a new completion event. This
+    // is presentation-only; all result text and controls are already painted.
+    void overlay.offsetWidth;
+    overlay.classList?.add?.(RESULT_MOTION_CLASS);
+
+    if (outcome === 'victory' && !prefersReducedMotion()) {
+      confettiBurst($('.end-ovc', overlay), { count: 42 });
     }
   }
 
@@ -192,6 +233,7 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     setText($('#elo-delta-2', overlay), '');
     $('#elo-delta-1', overlay)?.classList?.remove('up', 'down');
     $('#elo-delta-2', overlay)?.classList?.remove('up', 'down');
+    lastEloSignature.clear();
   }
 
   function renderEloDeltas({ myBefore, myAfter, oppBefore, oppAfter } = {}) {
@@ -213,13 +255,48 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     if (delta > 0) el.classList?.add('up');
     else if (delta < 0) el.classList?.add('down');
     const sign = delta > 0 ? '+' : '';
-    setText(el, `דירוג ${newRating} (${sign}${delta})`);
+    const signature = `${newRating}:${delta}`;
+    const label = `דירוג ${newRating} (${sign}${delta})`;
+    el.setAttribute?.('aria-label', label);
+    if (lastEloSignature.get(slotOneBased) === signature) {
+      setText(el, label);
+      return;
+    }
+    lastEloSignature.set(slotOneBased, signature);
+    el.classList?.remove('elo-reveal');
+    void el.offsetWidth;
+    el.classList?.add('elo-reveal');
+    animateEloValue(el, { from: newRating - delta, to: newRating, delta, sign, slotOneBased });
+  }
+
+  function animateEloValue(el, { from, to, delta, sign, slotOneBased }) {
+    const oldFrame = eloFrames.get(slotOneBased);
+    if (oldFrame != null) globalThis.cancelAnimationFrame?.(oldFrame);
+    if (prefersReducedMotion() || typeof globalThis.requestAnimationFrame !== 'function') {
+      setText(el, `דירוג ${to} (${sign}${delta})`);
+      return;
+    }
+    const start = globalThis.performance?.now?.() ?? Date.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / ELO_REVEAL_MS);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setText(el, `דירוג ${Math.round(from + (to - from) * eased)} (${sign}${delta})`);
+      if (t < 1) eloFrames.set(slotOneBased, globalThis.requestAnimationFrame(tick));
+      else eloFrames.delete(slotOneBased);
+    };
+    eloFrames.set(slotOneBased, globalThis.requestAnimationFrame(tick));
   }
 
   function unmount() {
+    for (const frame of eloFrames.values()) globalThis.cancelAnimationFrame?.(frame);
+    eloFrames.clear();
     for (const off of cleanups) try { off(); } catch { /* swallow */ }
     cleanups.length = 0;
   }
 
   return { unmount };
+}
+
+function prefersReducedMotion() {
+  return !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 }

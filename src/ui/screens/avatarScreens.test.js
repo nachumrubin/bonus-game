@@ -220,6 +220,23 @@ test('AvatarUnlocked: AV_UNLOCK_OPEN renders the achievement trophy icon', () =>
   assert.ok(ic.innerHTML.includes(achievementIconSrc(achievement)));
 });
 
+test('AvatarUnlocked: required state remains visible and duplicate render does not replay motion', () => {
+  bus._reset();
+  const overlay = makeOverlay();
+  let motionStarts = 0;
+  Object.defineProperty(overlay, 'offsetWidth', { get() { motionStarts++; return 1; } });
+  const root = { querySelector: (sel) => sel === '#ov-avatar-unlocked' ? overlay : null };
+  const screen = mountAvatarUnlockedScreen({ root, bus });
+  const payload = { achievement: { id: 'veteran', titleHe: 'ותיק', tier: 'gold' }, coins: 250 };
+  bus.emit(AV_UNLOCK_OPEN, payload);
+  bus.emit(AV_UNLOCK_OPEN, payload);
+  assert.equal(overlay.classList.contains('hidden'), false);
+  assert.equal(overlay.classList.contains('achievement-unlock-state'), true);
+  assert.equal(overlay.classList.contains('achievement-unlock-motion'), true);
+  assert.equal(motionStarts, 1);
+  screen.unmount();
+});
+
 test('AvatarUnlocked: UNLOCK_ACK + AV_UNLOCK_CLOSE rehide', () => {
   bus._reset();
   const overlay = makeOverlay();

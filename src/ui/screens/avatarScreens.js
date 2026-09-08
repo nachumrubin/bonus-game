@@ -379,6 +379,7 @@ export function mountAvatarUnlockedScreen({ root = globalThis.document, bus } = 
   const coinsEl = $('#av-unlock-coins', root);
   const condEl  = $('#av-unlock-cond', root);
   const cleanups = [];
+  let lastAnimatedAchievementId = null;
 
   const acks = bus.on(AV_INTENT.UNLOCK_ACK, () => {
     overlay?.classList?.add?.('hidden');
@@ -409,6 +410,16 @@ export function mountAvatarUnlockedScreen({ root = globalThis.document, bus } = 
     if (nameEl)  setText(nameEl, achievement?.titleHe ?? '');
     if (coinsEl) coinsEl.innerHTML = coins ? `+${coins} ${COIN_ICON_HTML}` : '';
     if (condEl)  setText(condEl, achievement?.descHe ?? '');
+
+    // Content is visible before motion starts. A duplicate render updates the
+    // static state but cannot replay the rare-event choreography.
+    overlay.classList?.add?.('achievement-unlock-state');
+    if (achId && achId !== lastAnimatedAchievementId) {
+      lastAnimatedAchievementId = achId;
+      overlay.classList?.remove?.('achievement-unlock-motion');
+      void overlay.offsetWidth;
+      overlay.classList?.add?.('achievement-unlock-motion');
+    }
   }));
   cleanups.push(bus.on(AV_UNLOCK_CLOSE, () => overlay?.classList?.add?.('hidden')));
 

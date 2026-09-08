@@ -2,6 +2,130 @@
 
 ---
 
+## Boost square electric-border ignition ? September 2026
+
+The old square cue was a scale/brightness flash with cyan shadows. Existing
+`.bsq` / `.bsq.used` `!important` shadows suppressed its animated shadow, and
+its class was removed at 460ms despite a 600ms CSS animation. Auto awards
+already waited 420ms, but mini-game/wheel intros opened directly on
+`BONUS_PENDING` without any square cue. Both the small persistent badge and
+the separate mobile multiplier banner could paint on `MOVE_CONFIRMED`, before
+the activation event, competing with the cause.
+
+The square now uses two cell-sized CSS pseudo-elements above the committed
+letter: a 2px white-hot core with inset amber and layered 3/8/15px outer glows,
+and an uneven amber corona with white edge segments, a static polygon clip,
+and subpixel snaps (at most 0.65px). Only opacity and the corona's transform
+animate; no SVG, turbulence, filter, canvas, or new artwork. The square stays
+opaque with a stable position; its letter remains readable. Normal ignition
+lasts 600ms, with a strong first 420ms and a 180ms tail.
+
+`boostPresentation.js` owns the 600ms lifetime, existing 420ms reveal delay,
+and presentation-only `BOOST_RESULT_READY`. The animation controller applies
+that same lead-in to fresh awards and pending mini-game/wheel intros. Both
+badge renderers reveal new state from that signal, including rerenders before
+the Boost event. Resumed/finalized state remains available without waiting for
+a past cue. Boost state, bot auto-resolution, score finalization, existing
+input gates and clock policy remain authoritative and unchanged. Duplicate
+square events, consumption/reminders, aborts, game restart/completion and
+teardown cannot replay a pending result; disabling motion during ignition
+cannot discard required UI.
+
+Reduced motion uses the same strong static border for 600ms, without flicker,
+travel or jitter, and reveals required results/badges synchronously (0ms added
+wait). Explicit preference overrides OS preference as before.
+
+Validation: 1441 unit tests pass. Chromium covers real rack selection,
+perimeter placement and confirmation in a bot game for points, future-effect
+badge, mini-game and wheel; OS Auto normal/reduced and explicit Yes/No against
+conflicting OS settings; plus a hard bot independently searching and placing
+on a Boost square. Timestamped traces check the committed letter, electric
+layers, pre-result visibility, badge AND mobile banner ordering, cleanup,
+required intro start, and award finalization. Existing signature-motion
+regressions are included: final Chromium run, 11 passing. Normal result-ready
+callbacks measured 421.6?434.0ms (configured lead-in 420ms; browser scheduling
+adds some variation); reduced reveals were synchronous. Full recordings, traces and the detailed report:
+`artifacts/boost-electric/`. Normal-speed MP4s trim leading setup only.
+
+Perceptual acceptance remains unproven: continuous subjective 1? video review
+was not available. Runtime traces and extracted frames show the illuminated
+perimeter before the result, but are not a substitute for that review. The
+provided 432?614, 30fps MP4 informed the visual adaptation; a separate electric
+HTML/CSS demo was not available in the task attachments/workspace.
+
+Files changed for this task:
+- `src/ui/boostPresentation.js`
+- `src/ui/controllers/animationController.js`
+- `src/ui/controllers/animationController.test.js`
+- `src/ui/controllers/gameController.js`
+- `src/ui/screens/gameScreen.js`
+- `src/ui/screens/gameScreen.test.js`
+- `src/ui/screens/boostBadges.js`
+- `src/ui/screens/boostBadges.test.js`
+- `src/main.js`
+- `styles.css`
+- `tests/e2e/boost-electric-border.spec.js`
+- `tests/e2e/signature-gameplay-motion.spec.js`
+- `docs-md/CHANGELOG.md`
+
+Assets used/added: None. Missing assets for this effect: None.
+Asset inventory updated: No (CSS-only effect).
+
+---
+
+## Your Turn timing + sound — September 2026
+
+The yellow frame and feedback service previously fired directly on logical
+`TURN_CHANGED`, while the incoming clock was still held by score presentation.
+They now share `TURN_PRESENTATION_READY`, emitted by `turnTimerController.sync`
+after the existing `scoreClockGraceMs` hold ends and the clock is rebuilt/rendered.
+No additional cue timeout or gameplay gate was added. The existing 600ms yellow
+frame and breathing active-player background are unchanged. The My Turn sound is
+one quiet 90ms triangle tone rising from 523 to 659Hz (gain 0.12), using the existing
+WebAudio/Sound FX path; the existing 30ms haptic shares that moment.
+
+Opening state seeds transition deduplication; duplicate turns, later turns, game
+completion and teardown cannot replay a pending cue. Untimed play still gets the
+cue. Score holds use one replaceable timer, preventing overlapping score events
+from leaking a bonus-pause count. Deferred scoring starts its canonical grace
+after the award closes. Reduced motion still runs the numeric count-up, so its
+grace now covers `max(200, countUpDurationMs(score))` rather than ending mid-count.
+Opponent move payloads preserve multiplier/bonus-extra timing metadata.
+
+Validation: focused integrated tests cover clock freeze, full local turn allowance
+(including queued timer bonuses), shared flash/audio timing, opening sync,
+duplicates and Sound FX off, plus deferred scoring, stale cues and cleanup.
+Full unit suite: 1431 passing. Focused Chromium checks: 3 passing.
+Chromium at 430x932 exercised three production bot scoring turns in each of normal
+and reduced motion, with Sound FX disabled for the third turn. Timestamped score,
+clock, frame-class and real WebAudio oscillator traces verify ordering and sound
+suppression. The existing signature-motion browser regression also passes.
+Recordings and traces: `artifacts/your-turn-timing/`. Continuous subjective 1x
+playback/audio review was not available; these are runtime trace assertions.
+
+Scope limitation: the existing live-online server deadline is preserved. Its
+previously documented exclusion of score grace still needs a shared-deadline
+fairness fix; full turn allowance is verified here for local/bot games, not live
+online rooms. No Firebase deadline protocol or watchdog gate was changed.
+
+Files changed for this task:
+- `src/events/eventTypes.js`
+- `src/ui/controllers/turnTimerController.js`
+- `src/ui/controllers/yourTurnTiming.test.js`
+- `src/ui/controllers/animationController.js`
+- `src/ui/controllers/animationController.test.js`
+- `src/ui/feedbackService.js`
+- `src/ui/feedbackService.test.js`
+- `src/ui/scoreAnimationTimings.js`
+- `src/ui/scoreAnimationTimings.test.js`
+- `src/game/sessions/onlineGameSession.js`
+- `src/game/sessions/onlineGameSession.test.js`
+- `tests/e2e/your-turn-timing.spec.js`
+- `tests/e2e/signature-gameplay-motion.spec.js`
+- `docs-md/CHANGELOG.md`
+
+---
+
 ## Turn deadlines now run on the server clock — August 2026
 
 **The race behind the phantom-score bug below.** `turnDeadlineMs` is an absolute
@@ -5107,3 +5231,202 @@ Regenerated the complete `images/guide/` screenshot set with Playwright: top-lev
 Verification: `npx playwright test tests/e2e/capture-app-loading.spec.js tests/e2e/capture-crossing-words-states.spec.js tests/e2e/capture-debug-timeline.spec.js tests/e2e/capture-guide-screenshots.spec.js tests/e2e/capture-minigame-screenshots.spec.js tests/e2e/capture-my-games-screen.spec.js tests/e2e/capture-replay-demo.spec.js tests/e2e/capture-replay-screenshots.spec.js tests/e2e/capture-stats-insights.spec.js --reporter=list --workers=1 --timeout=60000` passes 23/23.
 
 ---
+
+## Signature Gameplay Motion (Phase 3C) - September 2026
+
+Added three distinct, non-blocking gameplay signatures. **Your Turn** fires
+only on a real transition to the local seat (opening sync and duplicate event
+signatures are ignored): a 600ms gold halo/scale emphasis settles into a static
+active-card halo and shares the existing `TURN_CHANGED` sound/haptic moment. A
+brief `תורך` label was omitted because the score-card emphasis is clear without
+adding repeated copy.
+
+**Accepted Word** replaces both `validFlash` and the later per-word scoring glow
+with one directional board-order sweep. Every tile runs the 320ms standard
+curve, staggered across a bounded 0-160ms window (maximum total 480ms), so long
+and multi-word moves remain brisk. The Phase 3B radial burst, score-pop, long
+breathing glow, and fake multiplier remain removed.
+
+**Boost Trigger** is the strongest of the three: the triggering square runs a
+600ms electric blue/gold ignition, the required award result is presented, and
+newly created persistent badges get one 600ms entrance before becoming static.
+The old 2200ms looping badge pulse is gone. Required award UI is now an explicit
+required-presentation directive and bypasses the animation-disabled gate,
+fixing reduced motion suppressing the modal.
+
+Reduced motion keeps a static Your Turn card emphasis, a static accepted-word
+brightness highlight, a strong static Boost-square emphasis, the new badge,
+and the award/result UI; only travel, scaling, and pulsing are removed. Runtime
+Chromium verification sampled the effects over time, repeated the event path,
+checked the 480/600ms bounds, duplicate-turn suppression, badge settling, and
+the reduced-motion branch. Added semantic controller, renderer, badge, and
+Playwright coverage. Unit suite: 1402 passing.
+
+---
+
+## Reward Motion (Phase 4) - September 2026
+
+Established a semantic reward hierarchy on the end-game and achievement paths.
+Victory now paints the final result immediately, then runs a 360ms card settle,
+an 880ms trophy emphasis, a 900ms radial glow, one 480ms winner-card beat, and
+one 42-piece confetti burst before becoming fully static. Draw uses a restrained
+420ms balanced entrance with no confetti; defeat uses a quiet 320ms
+fade/desaturation and no celebratory motion. The previous generic end-game
+directives and infinite 2200ms trophy sparkles were removed.
+
+Late Elo gain/loss updates now count from the previous rating to the final value
+over 420ms using an ease-out cubic curve, with opposite vertical reveal
+directions and immediate accessible final labels. Achievement unlocks now use a
+finite 400ms card entrance, 760ms icon reward emphasis, and 360ms coin reveal;
+the existing false-to-true unlock detection is supplemented with presentation
+deduplication so rerenders cannot replay the effect.
+
+Reduced motion shows all result, Elo, and achievement information directly.
+Victory keeps a strong static gold treatment without confetti/bounce; draw and
+defeat keep their static outcome styling; Elo renders the final color/value;
+achievement unlocks keep a bright outlined icon. Runtime Chromium frame
+sequences covered victory, draw, defeat, Elo gain/loss, achievement unlock,
+duplicate renders, and reduced motion.
+
+---
+
+## Sound & Haptic Feedback (Phase 5) - September 2026
+
+Aligned the central feedback service with the established motion hierarchy. A
+quiet 55ms accepted-word tick now fires once at `MOVE_CONFIRMED`; score landing
+stays silent to avoid stacking routine cues. Invalid-word, Your Turn, timer,
+invite, and Boost feedback retain their existing semantic timing, while Your
+Turn now deduplicates the same slot/turn transition in addition to suppressing
+opening sync and opponent turns.
+
+Game completion now resolves the local outcome (including walkout semantics)
+and gives victory, draw, and defeat distinct cues. Victory uses the strongest
+three-note rise and `[80,45,110,45,160]` haptic; draw uses a neutral repeated
+tone and `[55,45,70]`; defeat uses a restrained downward pair and `[45]`.
+Duplicate completion payloads cannot replay the cue. Achievement unlocks gain a
+dedicated short flourish with `[70,45,110]`; late Elo gain/loss uses one subtle
+directional tone with `[35,30,45]` / `[55]`, also deduplicated.
+
+All paths remain synchronous, non-blocking observers of semantic events and are
+independently gated by the existing Sound FX and vibration preferences. No new
+audio assets or background music were added.
+
+---
+
+## Signature Motion Visibility Fix (Phase 3C.1) - September 2026
+
+Corrected the three Phase 3C signatures after a real-game recording showed
+that technically firing animations were not reliably perceptible during play.
+The Boost award overlay had been rendered in the same event turn as its square
+ignition; it now waits 420ms while the board remains unobscured, then presents
+the result. Semantic Boost state still resolves immediately, and reduced or
+disabled motion presents the required result without that delay.
+
+Accepted words now use a brighter, lifted 300ms travelling front over a bounded
+120-320ms word-length stagger (420-620ms total), with a darker unswept state
+and a distinct settled state. This replaces the former 0-160ms stagger that
+read as a simultaneous block and remains separate from persistent green
+previous-move styling.
+
+Your Turn keeps its 600ms budget but no longer relies on a small scale change
+and more of the existing active-card glow. A gold edge now expands from the
+card to 1.16x and fades, with a restrained brightness beat, before settling to
+the unchanged static active-player treatment. The existing Boost badge entrance
+was retained after the overlay sequencing fix; its persistent state remains
+static.
+
+A 62.76-second actual offline bot-game capture exercised 13 genuine accepted
+moves, 6 transitions back to the local player, and 5 Boost activations. Review
+at normal playback speed found all three signature events clearly readable and
+pleasant under repetition. The capture is stored at
+`artifacts/phase3c1-real-bot-visibility.webm`. Controller, renderer, reduced-
+motion, cleanup, and Chromium gameplay checks pass.
+
+### Phase 3C.1 follow-up — accepted-word visibility
+
+A second real-play recording showed that the accepted-word effect still read as
+an immediate switch to the persistent green previous-move state. The filter-only
+front was too spatially small and adjacent tile peaks overlapped. The sweep now
+uses a visible cyan/gold travelling edge on each tile, holds unswept tiles more
+clearly muted, and expands the word-length stagger from 120–320ms to 180–360ms.
+Each tile runs for 260ms, retaining the original maximum 620ms total bound.
+
+### Accepted Word Gold/Electric Sweep correction
+
+The delayed Phase 3C.1 keyframe used backwards fill with a dimmed/scaled 0%
+state. Consequently every tile changed as soon as the event fired, before its
+individual delay elapsed; combined with an effective 72ms cadence, the word
+read as one simultaneous flash. The renderer now preserves normal committed
+styling before each tile starts and follows the scoring engine's word ordering:
+the first (main) word gets a strong 300ms gold/white travelling rim and narrow
+shine, starting right-to-left for horizontal Hebrew and top-to-bottom for
+vertical words. Starts are 100ms apart for normal words; unusually long words
+compress only enough to cap the full sweep at 750ms. The energized peak is
+narrow enough that no more than two adjacent tiles are strongly lit together.
+Cross-words run concurrently with a lighter 240ms treatment and do not compete
+for their shared main-word tile. Reduced motion retains the existing brief
+static gold/white acceptance emphasis. No input or score timing is gated. A
+fresh 16.52-second deterministic offline-bot capture contains three genuine
+accepted moves, including horizontal and vertical words. Review at 1x showed a
+clear gold/white front advancing one tile at a time, with normal tiles ahead of
+it and settled tiles behind it; repeated moves stayed brief and subordinate to
+Boost/reward motion. The capture is stored at
+`artifacts/accepted-word-gold-electric-sweep.webm`.
+
+User review correctly rejected that capture: the supposed gold sweep was not
+plainly visible at normal playback. The implementation had placed the lift,
+scale, and glow on `.btile`, inside a `.cell { overflow:hidden }` parent, so the
+most important energy cues were clipped at actual board size and only a thin
+rim survived. The corrected version animates the cell layer itself, uses a
+clearly visible gold/white energy plate beneath a narrow travelling white-hot
+front, and lengthens the primary tile beat to 360ms with 105ms starts (still
+750ms maximum). The previous recording must not be treated as approval. It has
+been replaced by a fresh 16.28-second bot-game recording at the same artifact
+path; three accepted moves visibly exercise both horizontal and vertical
+travel at normal gameplay scale.
+
+A subsequent localhost recording disproved a suspected cache mismatch: the
+whole movement choreography was disabled (not only the accepted-word front),
+matching the reduced-motion/legacy animations-off branch. That branch correctly
+must not travel, but its prior `brightness(1.4)` cue was too easy to confuse
+with the persistent green last-move state. Reduced motion now holds a plainly
+gold/white committed-word treatment for 420ms, with no direction, lift, scale,
+or added wait. Full motion remains the directional sweep described above.
+
+The settings screenshot then exposed the actual preference bug: the player had
+explicitly selected `Reduced motion: No`, but the OS-level CSS media query still
+applied `animation:none!important` unconditionally. JavaScript correctly gave
+the explicit app choice precedence, while CSS silently overruled it. The motion
+preference now stamps `data-full-motion` for an explicit `No`, and every CSS
+reduced-motion media rule excludes that override. `Auto` still follows the OS;
+explicit `Yes` still reduces motion. Browser coverage now reproduces the exact
+combination (OS reduce + in-app No) and requires the accepted-word sweep and its
+travelling front to remain animated.
+
+The next genuine human-play recording showed that preference correction alone
+was insufficient. A real `placeTile -> confirmMove` trace found the first tile's
+strong gold phase occupied only about 100-130ms, and—unlike the bot validation
+capture—the human's new tiles were already yellow while tentative. The result
+was yellow-to-gold with too little contrast, followed by green, so no sweep was
+perceptible at 1x. The primary tile beat is now 420ms with 110ms starts (four
+tiles = 750ms; longer words compress), begins its visible response immediately,
+and hits a near-white electric plate with cyan-white front and gold rim/glow.
+The >80% energy peak remains narrow enough that at most two adjacent tiles are
+strong at once.
+
+A final requirement audit found that the board's inherited RTL layout makes
+column 0 physically rightmost. The earlier descending-column planner therefore
+travelled left-to-right despite its comment and test. Horizontal sweeps now use
+ascending columns (verified against live cell geometry), while vertical sweeps
+continue in ascending rows. The white-hot plate uses linear opacity timing so
+its >90% peak cannot accumulate across three normally staggered tiles, and
+secondary cross-words now have dedicated lower-opacity plate/front keyframes
+rather than inheriting the primary peak.
+
+The final 9.32-second normal-speed artifact is an uninterrupted production
+offline bot session with four genuine local confirmations: six-, five-, three-,
+and four-tile primary words, including three multi-word moves and vertical
+cross-words. At 1x the gold/white front is plainly visible moving one or two
+tiles at a time, right-to-left, before each word settles green; repetition is
+brief and materially quieter than the Boost award shown in the same run. The
+artifact was replaced at `artifacts/accepted-word-gold-electric-sweep.webm`.

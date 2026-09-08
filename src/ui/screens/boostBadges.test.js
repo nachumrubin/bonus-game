@@ -3,9 +3,31 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import { EV } from '../../events/eventTypes.js';
+import { BOOST_RESULT_READY } from '../boostPresentation.js';
 import {
   mountBoostBadges, summarizeBoostsForSlot, buildBadgeHtml, BB_INTENT,
 } from './boostBadges.js';
+
+test('new square badge stays hidden across move renders until the ignition reveal', () => {
+  bus._reset();
+  const slot0 = makePanel();
+  const root = { querySelector: sel => sel === '#scn1' ? slot0 : null };
+  const state = { activeBoosts: [], pendingScoreCommit: { slot: 0 } };
+  const screen = mountBoostBadges({ root, bus, sessionRef: () => ({ state }) });
+  const boost = { slot: 0, boostId: 'multiply_next_turns', bonusIdx: 7, payload: { multiplier: 4 } };
+  state.activeBoosts.push(boost);
+  bus.emit(EV.MOVE_CONFIRMED, {});
+  bus.emit(EV.BOOST_ACTIVATED, boost);
+  bus.emit(EV.TURN_CHANGED, {});
+  assert.equal(slot0._appended().innerHTML, '');
+  assert.equal(state.activeBoosts.length, 1, 'presentation never removes authoritative state');
+  bus.emit(BOOST_RESULT_READY, boost);
+  assert.match(slot0._appended().innerHTML, /boost-badge-enter/);
+  bus.emit(EV.TURN_CHANGED, {});
+  assert.match(slot0._appended().innerHTML, /data-badge="multiplier"/);
+  assert.doesNotMatch(slot0._appended().innerHTML, /boost-badge-enter/);
+  screen.unmount();
+});
 
 test('summarizeBoostsForSlot: empty', () => {
   assert.deepEqual(summarizeBoostsForSlot([], 0), []);
@@ -101,6 +123,20 @@ test('mount: re-paints on EV.BOOST_ACTIVATED', () => {
   state.activeBoosts.push({ slot: 0, boostId: 'cancel_next_opponent_bonus' });
   bus.emit(EV.BOOST_ACTIVATED, {});
   assert.match(slot0._appended().innerHTML, /🛡/);
+});
+
+test('mount: a newly activated persistent badge gets one entrance, then stays static', () => {
+  bus._reset();
+  const slot0 = makePanel();
+  const root = { querySelector: (sel) => sel === '#scn1' ? slot0 : null };
+  const session = { state: { activeBoosts: [] } };
+  const mounted = mountBoostBadges({ root, bus, sessionRef: () => session });
+  session.state.activeBoosts = [{ slot: 0, boostId: 'extra_turn', payload: {} }];
+  bus.emit(EV.BOOST_ACTIVATED, { slot: 0, boostId: 'extra_turn' });
+  assert.match(slot0._appended().innerHTML, /boost-badge-enter/);
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 2 });
+  assert.doesNotMatch(slot0._appended().innerHTML, /boost-badge-enter/);
+  mounted.unmount();
 });
 
 test('mount: clicking the tile-swap badge emits BB_INTENT.REDEEM_TILE_SWAP', () => {

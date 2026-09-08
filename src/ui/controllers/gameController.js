@@ -109,6 +109,9 @@ export function createGameController({ bus, session, mySlot = null }) {
       1: [...(s.lockInventory?.[1] ?? [])],
     };
     view.activeBoosts = Array.isArray(s.activeBoosts) ? s.activeBoosts.map(b => ({ ...b, payload: { ...(b.payload ?? {}) } })) : [];
+    // Presentation context for keeping a newly earned state banner behind
+    // its square ignition. This is read-only; input never consumes it.
+    view._pendingBoostAwardSlot = s.pendingScoreCommit?.slot ?? null;
   }
 
   // Initialise immediately from current state

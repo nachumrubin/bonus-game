@@ -1,0 +1,7 @@
+interface:
+  display_name: "Boost Motion Verification"
+  short_description: "Prove Boost motion works in real gameplay"
+  default_prompt: "Use $boost-motion-verification to reproduce and verify this Boost motion issue through the real gameplay path."
+
+policy:
+  allow_implicit_invocation: true

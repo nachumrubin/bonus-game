@@ -72,15 +72,21 @@ export function createMotionPreference(opts = {}) {
     return !isReduced();
   }
 
-  // Mirror the effective state onto the document root so CSS can honour an
-  // EXPLICIT reduced-motion choice even when the OS setting is "no preference"
-  // (the plain @media rule can't see the app-level toggle). The @media rule in
-  // styles.css still covers the OS-driven case on its own.
+  // Mirror both explicit outcomes onto the root. `data-full-motion` is needed
+  // when the player explicitly chooses "Reduced motion: No": without it, the
+  // CSS @media rule still wins via `animation:none!important` whenever the OS
+  // reports reduced motion, contradicting the app-level precedence contract.
   function applyToRoot() {
     const root = getRoot();
     if (!root?.setAttribute) return;
-    if (isReduced()) root.setAttribute('data-reduced-motion', '1');
-    else root.removeAttribute?.('data-reduced-motion');
+    if (isReduced()) {
+      root.setAttribute('data-reduced-motion', '1');
+      root.removeAttribute?.('data-full-motion');
+    } else {
+      root.removeAttribute?.('data-reduced-motion');
+      if (explicit() === 'off') root.setAttribute('data-full-motion', '1');
+      else root.removeAttribute?.('data-full-motion');
+    }
   }
 
   function notify() {

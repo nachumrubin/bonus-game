@@ -13,7 +13,7 @@ import { DICT, addWordsFromText } from '../../game/core/hebrewDictionary.js';
 import { createLocalGameSession } from '../../game/sessions/localGameSession.js';
 import { createGameController } from '../controllers/gameController.js';
 import { createAnimationController } from '../controllers/animationController.js';
-import { mountGameScreen, GAME_SCREEN_INTENT, describeTurnEffect } from './gameScreen.js';
+import { mountGameScreen, GAME_SCREEN_INTENT, describeTurnEffect, acceptedWordSweepPlan } from './gameScreen.js';
 import { setCommittedTile } from '../../game/core/board.js';
 import { BDEFS } from '../../game/boosts/data.js';
 
@@ -899,7 +899,7 @@ test('animation renderer lights word tiles, floats score, and flashes score pane
   animationController.dispose();
 });
 
-test('local MOVE_CONFIRMED flashes is-valid but does NOT re-pop tiles (no double placement)', () => {
+test('local MOVE_CONFIRMED runs the accepted-word sweep but does NOT re-pop tiles', () => {
   const { controller } = fresh();
   const animationController = createAnimationController({ bus, mySlot: null });
   const { root, elements } = makeGameDom();
@@ -913,16 +913,16 @@ test('local MOVE_CONFIRMED flashes is-valid but does NOT re-pop tiles (no double
     score: 1,
   });
 
-  // Confirmation = validity flash; the tentative-placement settle already
+  // Confirmation = directional sweep; the tentative-placement settle already
   // happened when the tile was put down, so no committed re-pop (Phase 3A).
-  assert.ok(elements.get('c3_3').classList.contains('is-valid'),
-    'placed cell should receive is-valid (valid word flash)');
+  assert.ok(elements.get('c3_3').classList.contains('accepted-word-sweep'),
+    'placed cell should receive the accepted-word sweep');
   assert.ok(!elements.get('c3_3').classList.contains('tile-place-in'),
     'local committed tiles must not re-pop on confirm');
   animationController.dispose();
 });
 
-test('reduced motion: accepted move paints a static rm-accept cue (no animated is-valid)', () => {
+test('reduced motion: accepted move paints a static rm-accept cue (no sweep)', () => {
   const { controller } = fresh();
   const animationController = createAnimationController({ bus, mySlot: null, reducedMotion: () => true });
   const { root, elements } = makeGameDom();
@@ -939,8 +939,8 @@ test('reduced motion: accepted move paints a static rm-accept cue (no animated i
 
   assert.ok(elements.get('c3_3').classList.contains('rm-accept'),
     'accepted move shows the static brightness cue under reduced motion');
-  assert.ok(!elements.get('c3_3').classList.contains('is-valid'),
-    'the animated gold flash (killed by the reduced-motion blanket) is not used');
+  assert.ok(!elements.get('c3_3').classList.contains('accepted-word-sweep'),
+    'the directional sweep is not used');
   animationController.dispose();
 });
 
@@ -1097,7 +1097,7 @@ test('TURN_CHANGED eventually swaps .act to the new player\'s box (after the cou
   }, 1600));
 });
 
-test('animation renderer flashes score-panel-arrive on GAME_COMPLETED', () => {
+test('GAME_COMPLETED does not stack ordinary score motion under reward presentation', () => {
   const { controller } = fresh();
   const animationController = createAnimationController({ bus, mySlot: null });
   const { root, elements } = makeGameDom();
@@ -1105,8 +1105,8 @@ test('animation renderer flashes score-panel-arrive on GAME_COMPLETED', () => {
 
   bus.emit(EV.GAME_COMPLETED, { winnerSlot: 0 });
 
-  assert.ok(elements.get('sb1').classList.contains('score-panel-arrive'),
-    'winner score box should receive score-panel-arrive');
+  assert.ok(!elements.get('sb1').classList.contains('score-panel-arrive'),
+    'reward screen owns completion motion; score box should remain static');
   animationController.dispose();
 });
 
@@ -1125,17 +1125,49 @@ test('animation renderer floats a BINGO label when all 8 tiles are placed', () =
   animationController.dispose();
 });
 
-test('animation renderer flashes bonus square and boost panel', () => {
+test('animation renderer ignites the triggered bonus square', () => {
   const { controller } = fresh();
   const animationController = createAnimationController({ bus, mySlot: null });
   const { root, elements } = makeGameDom();
-  mountGameScreen({ controller, animationController, root });
+  const screen = mountGameScreen({ controller, animationController, root });
 
   bus.emit(EV.BOOST_ACTIVATED, { slot: 0, boostId: 'auto_extra_score', bonusIdx: 3 });
 
   assert.ok(elements.get('bsq-3').classList.contains('bonus-activate'));
-  assert.ok(elements.get('scn1').classList.contains('boost-pulse'));
+  screen.unmount();
+  assert.ok(!elements.get('bsq-3').classList.contains('bonus-activate'));
   animationController.dispose();
+});
+
+test('accepted-word sweep plan follows Hebrew RTL and vertical top-to-bottom ordering', () => {
+  const horizontal = acceptedWordSweepPlan([[
+    { r: 4, c: 2 }, { r: 4, c: 4 }, { r: 4, c: 3 }, { r: 4, c: 1 },
+  ]]);
+  assert.deepEqual(horizontal.map(t => [t.c, t.delayMs]), [[1, 0], [2, 110], [3, 220], [4, 330]]);
+  assert.ok(horizontal.every(t => t.axis === 'H' && !t.secondary));
+
+  const vertical = acceptedWordSweepPlan([[
+    { r: 6, c: 5 }, { r: 3, c: 5 }, { r: 5, c: 5 }, { r: 4, c: 5 },
+  ]]);
+  assert.deepEqual(vertical.map(t => [t.r, t.delayMs]), [[3, 0], [4, 110], [5, 220], [6, 330]]);
+  assert.ok(vertical.every(t => t.axis === 'V' && !t.secondary));
+});
+
+test('accepted-word sweep plan keeps the main word strong and overlaps lighter cross-words', () => {
+  const primary = [{ r: 4, c: 5 }, { r: 4, c: 4 }, { r: 4, c: 3 }];
+  const cross = [{ r: 3, c: 4 }, { r: 4, c: 4 }, { r: 5, c: 4 }];
+  const plan = acceptedWordSweepPlan([primary, cross]);
+  assert.deepEqual(plan.filter(t => !t.secondary).map(t => t.c), [3, 4, 5]);
+  assert.deepEqual(plan.filter(t => t.secondary).map(t => t.r), [3, 5]);
+  assert.ok(plan.filter(t => t.secondary).every(t => t.axis === 'V'));
+  assert.equal(plan.filter(t => t.r === 4 && t.c === 4).length, 1, 'shared tile must not receive competing animations');
+});
+
+test('accepted-word sweep caps long words at 750ms total', () => {
+  const word = Array.from({ length: 10 }, (_, c) => ({ r: 4, c }));
+  const plan = acceptedWordSweepPlan([word]);
+  assert.equal(plan.at(-1).delayMs, 330);
+  assert.equal(plan.at(-1).delayMs + 420, 750);
 });
 
 test('animation renderer bounces bag and cascades rack on exchange', () => {

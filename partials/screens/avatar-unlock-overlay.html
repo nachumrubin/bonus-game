@@ -1,12 +1,12 @@
 ﻿<!-- ACHIEVEMENT COMPLETED NOTIFICATION OVERLAY -->
 <div id="ov-avatar-unlocked" class="ov hidden" onclick="if(event.target===this)ovClose('ov-avatar-unlocked')">
-  <div class="ovc" style="text-align:center;max-width:280px;">
+  <div class="ovc achievement-unlock-card">
     <div class="ovh"></div>
-    <div style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:6px;">🎉 הישג הושלם!</div>
-    <div id="av-unlock-ic" style="font-size:64px;line-height:1;margin:8px 0;">🏆</div>
-    <div id="av-unlock-name" style="font-size:18px;font-weight:900;color:#fff;margin-bottom:4px;"></div>
-    <div id="av-unlock-coins" style="font-size:18px;font-weight:900;color:var(--by,#e8c840);margin-bottom:4px;"></div>
-    <div id="av-unlock-cond" style="font-size:11px;color:rgba(255,255,255,.5);margin-bottom:14px;"></div>
+    <div class="achievement-unlock-kicker">🎉 הישג הושלם!</div>
+    <div id="av-unlock-ic" class="achievement-unlock-icon">🏆</div>
+    <div id="av-unlock-name" class="achievement-unlock-name"></div>
+    <div id="av-unlock-coins" class="achievement-unlock-coins"></div>
+    <div id="av-unlock-cond" class="achievement-unlock-condition"></div>
     <div class="ovbtns">
       <button class="ovb p" onclick="ovClose('ov-avatar-unlocked')" data-gm="המשך" data-gf="המשיכי">המשך</button>
     </div>

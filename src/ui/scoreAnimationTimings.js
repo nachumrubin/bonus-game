@@ -107,8 +107,10 @@ export function scoreInteractionGateMs({ wordCount = 0, bonusExtra = 0, multipli
 // incoming player's first tick. Unlike the old local copy in turnTimerController
 // it includes the ×N multiplier phase, matching the visible sequence
 // (BOOST_MOTION_SPEC §1.2).
-export function scoreClockGraceMs({ wordCount = 0, bonusExtra = 0, multiplier = 1, reducedMotion = false } = {}) {
-  if (reducedMotion) return REDUCED_MOTION_GRACE_MS;
+export function scoreClockGraceMs({ wordCount = 0, bonusExtra = 0, multiplier = 1, score = 0, reducedMotion = false } = {}) {
+  // Reduced motion removes chip travel, but the existing numeric count-up
+  // still runs. Cover it without changing that presentation or the input gate.
+  if (reducedMotion) return Math.max(REDUCED_MOTION_GRACE_MS, countUpDurationMs(score));
   if (!wordCount && !bonusExtra) return COUNTUP_PEAK_MS;
   return mergeSequenceTiming({ wordCount, bonusExtra, multiplier }).totalToPanelLanding + COUNTUP_PEAK_MS;
 }

@@ -1,0 +1,714 @@
+[
+  {
+    "scoreEvent": {
+      "slot": 1,
+      "placed": [
+        {
+          "r": 5,
+          "c": 5,
+          "letter": "ש",
+          "val": 3
+        },
+        {
+          "r": 5,
+          "c": 6,
+          "letter": "ל",
+          "val": 2
+        },
+        {
+          "r": 5,
+          "c": 7,
+          "letter": "ו",
+          "val": 1
+        },
+        {
+          "r": 5,
+          "c": 8,
+          "letter": "ם",
+          "val": 0
+        }
+      ],
+      "swappedTiles": [],
+      "words": [
+        "שלום"
+      ],
+      "wordTiles": [
+        [
+          {
+            "r": 5,
+            "c": 5,
+            "letter": "ש",
+            "val": 3,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 6,
+            "letter": "ל",
+            "val": 2,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 7,
+            "letter": "ו",
+            "val": 1,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 8,
+            "letter": "ם",
+            "val": 0,
+            "ex": false
+          }
+        ]
+      ],
+      "score": 6,
+      "multiplier": 1,
+      "at": 2478.1999999955297
+    },
+    "ready": {
+      "at": 2743.39999999851,
+      "remaining": 19999,
+      "flash": true,
+      "shownScore": 6,
+      "score": 6,
+      "timer": "20"
+    },
+    "frames": [
+      {
+        "at": 2346.5999999940395,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2366.0999999940395,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2386.89999999851,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2412.6999999955297,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2433.89999999851,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2484.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2513.2999999970198,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2562.2999999970198,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 1,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2610.2999999970198,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 4,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2653.7999999970198,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 5,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2700.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      }
+    ],
+    "settled": true,
+    "ticking": "19",
+    "beforeName": "none",
+    "afterName": "gm-card-active",
+    "readyCount": 1,
+    "tones": [
+      {
+        "at": 2742.7999999970198,
+        "frequency": 523,
+        "type": "triangle"
+      }
+    ],
+    "grace": 272
+  },
+  {
+    "scoreEvent": {
+      "slot": 1,
+      "placed": [
+        {
+          "r": 4,
+          "c": 2,
+          "letter": "מ",
+          "val": 2
+        },
+        {
+          "r": 4,
+          "c": 3,
+          "letter": "א",
+          "val": 1
+        },
+        {
+          "r": 4,
+          "c": 4,
+          "letter": "ב",
+          "val": 3
+        },
+        {
+          "r": 4,
+          "c": 5,
+          "letter": "ד",
+          "val": 3
+        },
+        {
+          "r": 4,
+          "c": 6,
+          "letter": "ת",
+          "val": 4
+        }
+      ],
+      "swappedTiles": [],
+      "words": [
+        "מאבדת",
+        "דש",
+        "תל"
+      ],
+      "wordTiles": [
+        [
+          {
+            "r": 4,
+            "c": 2,
+            "letter": "מ",
+            "val": 2,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 3,
+            "letter": "א",
+            "val": 1,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 4,
+            "letter": "ב",
+            "val": 3,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 5,
+            "letter": "ד",
+            "val": 3,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 6,
+            "letter": "ת",
+            "val": 4,
+            "ex": false
+          }
+        ],
+        [
+          {
+            "r": 4,
+            "c": 5,
+            "letter": "ד",
+            "val": 3,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 5,
+            "letter": "ש",
+            "val": 3,
+            "ex": true
+          }
+        ],
+        [
+          {
+            "r": 4,
+            "c": 6,
+            "letter": "ת",
+            "val": 4,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 6,
+            "letter": "ל",
+            "val": 2,
+            "ex": true
+          }
+        ]
+      ],
+      "score": 25,
+      "multiplier": 1,
+      "at": 4314
+    },
+    "ready": {
+      "at": 4813.39999999851,
+      "remaining": 19999,
+      "flash": true,
+      "shownScore": 31,
+      "score": 31,
+      "timer": "20"
+    },
+    "frames": [
+      {
+        "at": 4130.5999999940395,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 4137.39999999851,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 4184.69999999553,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 4231.5999999940395,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 4319.29999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4334.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4381.69999999553,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 7,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4427,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 14,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4477.29999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 17,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4527.0999999940395,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 22,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4576.19999999553,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 25,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4622.0999999940395,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 28,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4674.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 29,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4719.29999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 30,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4765.29999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 4810.29999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      }
+    ],
+    "settled": true,
+    "ticking": "19",
+    "beforeName": "gm-card-active",
+    "afterName": "gm-card-active",
+    "readyCount": 1,
+    "tones": [
+      {
+        "at": 4813,
+        "frequency": 523,
+        "type": "triangle"
+      }
+    ],
+    "grace": 500
+  },
+  {
+    "scoreEvent": {
+      "slot": 1,
+      "placed": [
+        {
+          "r": 6,
+          "c": 3,
+          "letter": "ג",
+          "val": 5
+        },
+        {
+          "r": 6,
+          "c": 4,
+          "letter": "ר",
+          "val": 2
+        },
+        {
+          "r": 6,
+          "c": 5,
+          "letter": "נ",
+          "val": 2
+        },
+        {
+          "r": 6,
+          "c": 6,
+          "letter": "ו",
+          "val": 1
+        }
+      ],
+      "swappedTiles": [],
+      "words": [
+        "גרנו",
+        "דשנ",
+        "תלו"
+      ],
+      "wordTiles": [
+        [
+          {
+            "r": 6,
+            "c": 3,
+            "letter": "ג",
+            "val": 5,
+            "ex": false
+          },
+          {
+            "r": 6,
+            "c": 4,
+            "letter": "ר",
+            "val": 2,
+            "ex": false
+          },
+          {
+            "r": 6,
+            "c": 5,
+            "letter": "נ",
+            "val": 2,
+            "ex": false
+          },
+          {
+            "r": 6,
+            "c": 6,
+            "letter": "ו",
+            "val": 1,
+            "ex": false
+          }
+        ],
+        [
+          {
+            "r": 4,
+            "c": 5,
+            "letter": "ד",
+            "val": 3,
+            "ex": true
+          },
+          {
+            "r": 5,
+            "c": 5,
+            "letter": "ש",
+            "val": 3,
+            "ex": true
+          },
+          {
+            "r": 6,
+            "c": 5,
+            "letter": "נ",
+            "val": 2,
+            "ex": false
+          }
+        ],
+        [
+          {
+            "r": 4,
+            "c": 6,
+            "letter": "ת",
+            "val": 4,
+            "ex": true
+          },
+          {
+            "r": 5,
+            "c": 6,
+            "letter": "ל",
+            "val": 2,
+            "ex": true
+          },
+          {
+            "r": 6,
+            "c": 6,
+            "letter": "ו",
+            "val": 1,
+            "ex": false
+          }
+        ]
+      ],
+      "score": 25,
+      "multiplier": 1,
+      "at": 6449.69999999553
+    },
+    "ready": {
+      "at": 6950,
+      "remaining": 20000,
+      "flash": true,
+      "shownScore": 56,
+      "score": 56,
+      "timer": "20"
+    },
+    "frames": [
+      {
+        "at": 6263.89999999851,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6273.19999999553,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6317.19999999553,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6363.5999999940395,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6454.29999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6470.69999999553,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6520,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 32,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6566.0999999940395,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 38,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6611.29999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 44,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6655.69999999553,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 47,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6702.79999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 50,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6749.5999999940395,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 52,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6796,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 54,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6841.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 55,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6888.69999999553,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 6934.29999999702,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      }
+    ],
+    "settled": true,
+    "ticking": "19",
+    "beforeName": "gm-card-active",
+    "afterName": "gm-card-active",
+    "readyCount": 1,
+    "tones": [],
+    "grace": 500
+  }
+]

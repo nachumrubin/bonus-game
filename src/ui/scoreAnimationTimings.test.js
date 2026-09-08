@@ -56,3 +56,8 @@ test('reduced motion collapses gate + grace to their floors (not zero)', () => {
   // The floors are far shorter than the full choreography.
   assert.ok(REDUCED_MOTION_GATE_MS < scoreInteractionGateMs({ wordCount: 3, bonusExtra: 10, multiplier: 2 }));
 });
+
+test('reduced score grace covers the still-visible count-up without changing the input gate', () => {
+  assert.equal(scoreClockGraceMs({ score: 30, reducedMotion: true }), countUpDurationMs(30));
+  assert.equal(scoreClockGraceMs({ score: 100, reducedMotion: true }), COUNTUP_PEAK_MS);
+});

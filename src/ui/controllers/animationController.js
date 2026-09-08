@@ -15,20 +15,20 @@
 import { EV } from '../../events/eventTypes.js';
 import { RACK_SIZE } from '../../game/core/tileBag.js';
 import { bonusOverlayOpen } from '../domHelpers.js';
-import {
-  WORD_MERGE_STAGGER_MS,
-  mergeSequenceTiming,
-} from '../scoreAnimationTimings.js';
+import { mergeSequenceTiming } from '../scoreAnimationTimings.js';
+import { BOOST_RESULT_READY, BOOST_RESULT_REVEAL_DELAY_MS } from '../boostPresentation.js';
 
-// How long each per-word glow stays applied (kept re-applied across re-renders
-// during the merge sequence). Brief and non-looping — see emitScoreSequence.
-const SCORING_WORD_GLOW_MS = 360;
+// Presentation-only delay. The engine has already resolved the Boost; this
+// only leaves the board unobscured long enough for its cause to register.
+export { BOOST_RESULT_REVEAL_DELAY_MS } from '../boostPresentation.js';
 
 export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false, reducedMotion = () => false }) {
   if (!bus) throw new Error('createAnimationController: bus required');
 
   let enabled = true;
   let renderer = null;
+  const presentationTimers = new Map();
+  const presentedBoosts = new Map();
 
   function setEnabled(on) { enabled = !!on; }
   function setRenderer(r) { renderer = r; }
@@ -38,10 +38,11 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   // and a rejected move. The renderer paints these as a STATIC emphasis (no
   // travel). Everything else stays a no-op while disabled. Sound/haptic are
   // unaffected (they aren't motion). BOOST_MOTION_SPEC §15.
-  //   - validFlash  → a brief static brightness lift on the played tiles.
+  //   - acceptedWordSweep → a brief static brightness lift on the word.
   //   - illegalPulse → the static red that identifies the illegal placement
   //     (the shake is skipped; illegalPulse already carries the "rejected" info).
-  const REDUCED_MOTION_INFO = new Set(['validFlash', 'illegalPulse']);
+  const REDUCED_MOTION_INFO = new Set(['acceptedWordSweep', 'illegalPulse', 'yourTurnCue', 'bonusActivate']);
+  const REQUIRED_PRESENTATION = new Set(['bonusAwardOverlay']);
 
   // Translate an engine event payload into an animation directive that the
   // renderer can act on. Keeping the directives data-only means tests can
@@ -62,12 +63,47 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
       // Choreography off. Under reduced motion, still forward the small set of
       // information-critical directives so the player gets a static accept/reject
       // cue; the renderer branches on its own reduced-motion flag.
-      if (reducedMotion() && REDUCED_MOTION_INFO.has(directive.kind)) {
+      if (REQUIRED_PRESENTATION.has(directive.kind)) {
+        callRenderer(directive.kind, { ...directive.payload, reducedMotion: reducedMotion() });
+      } else if (reducedMotion() && REDUCED_MOTION_INFO.has(directive.kind)) {
         callRenderer(directive.kind, { ...directive.payload, reducedMotion: true });
       }
       return;
     }
     callRenderer(directive.kind, directive.payload);
+  }
+
+  function presentBoost(payload, showResult, countsAsOverlay = false) {
+    const bonusIdx = payload.bonusIdx ?? payload.idx;
+    const key = Number.isInteger(bonusIdx) ? `${payload.slot}:${bonusIdx}` : null;
+    if (key && presentedBoosts.has(key)) return false;
+    if (key) presentedBoosts.set(key, payload.slot);
+    if (countsAsOverlay) overlayCount += 1;
+    trigger({ kind: 'bonusActivate', payload: { ...payload, bonusIdx } });
+    const reveal = () => {
+      bus.emit(BOOST_RESULT_READY, { ...payload, bonusIdx });
+      showResult?.();
+    };
+    if (!enabled || reducedMotion() || key == null) { reveal(); return true; }
+    const handle = setTimeout(() => {
+      presentationTimers.delete(handle);
+      // Required UI survives a preference change during the ignition beat.
+      reveal();
+    }, BOOST_RESULT_REVEAL_DELAY_MS);
+    presentationTimers.set(handle, { slot: payload.slot, countsAsOverlay });
+    return true;
+  }
+
+  function cancelBoostPresentation({ slot } = {}) {
+    for (const [handle, entry] of presentationTimers) {
+      if (slot != null && entry.slot !== slot) continue;
+      clearTimeout(handle);
+      presentationTimers.delete(handle);
+      if (entry.countsAsOverlay) overlayCount = Math.max(0, overlayCount - 1);
+    }
+    for (const [key, owner] of presentedBoosts) {
+      if (slot == null || owner === slot) presentedBoosts.delete(key);
+    }
   }
 
   const subs = [];
@@ -77,9 +113,7 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   // word's +N chip flies to a central sum chip; once all words + bonus
   // extra have merged, the sum holds briefly then flies into the score box.
 
-  // Delegates to the shared mergeSequenceTiming (single source of truth) so the
-  // per-word glow durations stay aligned with the chip flights, including the
-  // ×N multiplier phase.
+  // Delegates to the shared mergeSequenceTiming (single source of truth).
   function scoreMergeTiming({ wordCount, bonusExtra, multiplier }) {
     return mergeSequenceTiming({ wordCount, bonusExtra, multiplier });
   }
@@ -105,30 +139,16 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
       payload: { slot, placed, words: wordsForRender, finalScore: total, baseScore: base, bonusExtra: extra, multiplier: mult },
     });
 
-    // Per-word glow timed to the per-word chip launches — each word lights up
-    // with a single brief flash as its +N chip leaves. Phase 3B: this used to
-    // stay lit (a breathing loop) until the count-up finished ~1.5s later; now
-    // it is a short one-shot so the word reads as "this contributed" without the
-    // sequence appearing to still be animating (BOOST_MOTION_SPEC §6.6).
-    if (wordsForRender.length > 0) {
-      wordsForRender.forEach((w, i) => {
-        const start = i * WORD_MERGE_STAGGER_MS;
-        trigger({
-          kind: 'scoringWordGlow',
-          payload: { slot, wordTiles: [w.wordTiles], placed, delayMs: start, durationMs: SCORING_WORD_GLOW_MS },
-        });
-      });
-    }
   }
 
-  function emitMoveAnimations({ slot, placed, words, wordTiles, score, multiplier, opponent = false, scoringDeferred = false }) {
+  function emitMoveAnimations({ slot, placed, words, wordTiles, score, baseScore, bonusExtra, multiplier, opponent = false, scoringDeferred = false }) {
     // Local tiles already played their tentative-placement settle in gameScreen
     // when the player put them down (Phase 3A) — re-popping them on confirm would
-    // double-animate. Confirmation is instead communicated by validFlash + the
+    // double-animate. Confirmation is instead communicated by acceptedWordSweep + the
     // score sequence below. Opponent tiles were NOT previously visible as local
     // tentative tiles, so they still get an arrival pop (BOOST_MOTION_SPEC §6/§13).
     if (opponent) trigger({ kind: 'tilePlaceIn', payload: { slot, placed, opponent } });
-    if (!opponent) trigger({ kind: 'validFlash', payload: { slot, words, wordTiles, placed } });
+    if (!opponent) trigger({ kind: 'acceptedWordSweep', payload: { slot, words, wordTiles, placed } });
     if ((placed?.length ?? 0) >= RACK_SIZE) {
       trigger({ kind: 'bingoLabel', payload: { slot, placed, wordTiles } });
     }
@@ -143,7 +163,7 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
       trigger({ kind: 'tileCascadeIn', payload: { slot, count: placed.length } });
     }
     if (scoringDeferred) return;
-    emitScoreSequence({ slot, placed, wordTiles, score, multiplier });
+    emitScoreSequence({ slot, placed, wordTiles, score, baseScore, bonusExtra, multiplier });
   }
 
   function emitScoreCommitAnimations(payload) {
@@ -179,7 +199,6 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     }, 100);
   }
 
-  subs.push(bus.on('bonus/pending',  () => { overlayCount += 1; }));
   subs.push(bus.on('bonus/resolved', () => { overlayCount = Math.max(0, overlayCount - 1); flushScoreCommit(); }));
   subs.push(bus.on('bonus/award-acknowledged', () => { overlayCount = Math.max(0, overlayCount - 1); flushScoreCommit(); }));
 
@@ -203,9 +222,12 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     trigger({ kind: 'illegalPulse',  payload: { reason, placed, invalidWords, invalidWordTiles } });
   }));
 
+  subs.push(bus.on(EV.BONUS_PENDING, payload => presentBoost({ ...payload, presentation: 'intro' }, null, true)));
+  subs.push(bus.on('bonus/aborted', cancelBoostPresentation));
+  subs.push(bus.on(EV.GAME_COMPLETED, () => cancelBoostPresentation()));
+  subs.push(bus.on(EV.GAME_STARTED, () => cancelBoostPresentation()));
+
   subs.push(bus.on(EV.BOOST_ACTIVATED, ({ slot, boostId, bonusIdx, payload, consumed, pending }) => {
-    trigger({ kind: 'bonusActivate',   payload: { slot, boostId, bonusIdx } });
-    trigger({ kind: 'boostPulse',      payload: { slot, boostId } });
     // Consumption events (e.g. a free_tile_swap being spent) reuse
     // BOOST_ACTIVATED — those should NOT pop the modal overlay again.
     if (consumed) return;
@@ -215,30 +237,46 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     // The player already saw + acknowledged the award overlay when the
     // boost was first granted; re-popping the modal on every turn start
     // until the boost is consumed is exactly the loop the user reported.
-    // Only the boost-badge pulse fires for pending reminders.
+    // Pending reminders do not replay the award UI or badge entrance.
     if (pending) return;
     // Fresh activation opens the modal award overlay (in animationController's
     // renderer) which counts as an open bonus overlay for score-commit gating.
-    overlayCount += 1;
     // For a pinned local seat (online), an opponent's bonus must not pop a
     // modal — finalization is handled server-side. In bot games we DO want to
     // show the overlay so the human can see what the bot earned; that path is
     // opted in via showOpponentBoostOverlay. mySlot=null means a shared local
     // screen (2P offline) where every activation is "ours" to ack.
     const isOpponent = mySlot != null && slot !== mySlot;
-    if (isOpponent && !showOpponentBoostOverlay) return;
     // Every fresh bonus-square activation routes through the same modal
     // award overlay so the player always sees a concrete description of
     // what they earned. The legacy small "+BONUS" float that the player
     // could miss is gone.
-    trigger({
+    const awardDirective = {
       kind: 'bonusAwardOverlay',
       payload: { slot, boostId, bonusIdx, extra: payload?.extra ?? 0, boostPayload: payload ?? null, isOpponent },
-    });
+    };
+    const fresh = presentBoost({ slot, boostId, bonusIdx, kind: 'award' }, () => {
+      if (renderer && (!isOpponent || showOpponentBoostOverlay)) {
+        callRenderer(awardDirective.kind, { ...awardDirective.payload, reducedMotion: reducedMotion() });
+      }
+    }, !isOpponent || showOpponentBoostOverlay);
+    if (!fresh || (isOpponent && !showOpponentBoostOverlay)) return;
+    // Retain immediate semantic diagnostics while DOM presentation waits.
+    directives.push(awardDirective);
   }));
 
+  let lastYourTurnSignature = null;
+  subs.push(bus.on(EV.GAME_STARTED, () => { lastYourTurnSignature = null; }));
   subs.push(bus.on(EV.TURN_CHANGED, ({ currentTurnSlot }) => {
     trigger({ kind: 'playerGlowPulse', payload: { slot: currentTurnSlot } });
+  }));
+  subs.push(bus.on(EV.TURN_PRESENTATION_READY, ({ currentTurnSlot, turnNumber }) => {
+    const isLocalTurn = mySlot == null || currentTurnSlot === mySlot;
+    const signature = `${currentTurnSlot}:${turnNumber ?? ''}`;
+    if (isLocalTurn && signature !== lastYourTurnSignature) {
+      lastYourTurnSignature = signature;
+      trigger({ kind: 'yourTurnCue', payload: { slot: currentTurnSlot, turnNumber } });
+    }
   }));
 
   // Turn-flow notices ("your turn was skipped", "the opponent plays again").
@@ -253,11 +291,6 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     }
   }));
 
-  subs.push(bus.on(EV.GAME_COMPLETED, ({ winnerSlot }) => {
-    trigger({ kind: 'scorePanelArrive', payload: { winnerSlot } });
-    trigger({ kind: 'overlayCardIn',    payload: { kind: 'gameOver', winnerSlot } });
-  }));
-
   subs.push(bus.on(EV.TILES_EXCHANGED, ({ count }) => {
     trigger({ kind: 'bagBounce', payload: { count } });
     trigger({ kind: 'tileCascadeIn', payload: { count } });
@@ -267,6 +300,7 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
     for (const off of subs) try { off(); } catch { /* swallow */ }
     subs.length = 0;
     if (pollHandle) { clearInterval(pollHandle); pollHandle = null; }
+    cancelBoostPresentation();
     pendingCommitPayload = null;
     overlayCount = 0;
     renderer = null;

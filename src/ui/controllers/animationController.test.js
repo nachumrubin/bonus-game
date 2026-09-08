@@ -4,6 +4,76 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import { EV } from '../../events/eventTypes.js';
 import { createAnimationController } from './animationController.js';
+import { BOOST_RESULT_REVEAL_DELAY_MS } from './animationController.js';
+import { BOOST_RESULT_READY } from '../boostPresentation.js';
+
+test('mini-game and wheel pending ignite once before their required intro presentation', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  bus._reset();
+  const calls = [], ready = [];
+  const ac = createAnimationController({ bus });
+  ac.setRenderer({ bonusActivate: p => calls.push(p) });
+  const off = bus.on(BOOST_RESULT_READY, p => ready.push(p));
+  for (const [idx, kind] of [[2, 'minigame'], [3, 'wheel']]) {
+    bus.emit(EV.BONUS_PENDING, { slot: 0, idx, kind });
+    bus.emit(EV.BONUS_PENDING, { slot: 0, idx, kind });
+  }
+  assert.deepEqual(calls.map(p => p.bonusIdx), [2, 3]);
+  t.mock.timers.tick(419);
+  assert.equal(ready.length, 0);
+  t.mock.timers.tick(1);
+  assert.deepEqual(ready.map(p => p.bonusIdx), [2, 3]);
+  ac.dispose(); off();
+});
+
+test('award survives disabling motion during ignition; reminders and duplicates do not replay', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  bus._reset();
+  const calls = [];
+  const ac = createAnimationController({ bus });
+  ac.setRenderer(new Proxy({}, { get: (_target, kind) => () => calls.push(kind) }));
+  const payload = { slot: 0, boostId: 'extra_turn', bonusIdx: 2 };
+  bus.emit(EV.BOOST_ACTIVATED, payload);
+  bus.emit(EV.BOOST_ACTIVATED, payload);
+  bus.emit(EV.BOOST_ACTIVATED, { ...payload, pending: true });
+  bus.emit(EV.BOOST_ACTIVATED, { ...payload, consumed: true });
+  ac.setEnabled(false);
+  t.mock.timers.tick(420);
+  assert.deepEqual(calls, ['bonusActivate', 'bonusAwardOverlay']);
+  ac.dispose();
+});
+
+for (const terminal of ['bonus/aborted', EV.GAME_COMPLETED, EV.GAME_STARTED]) {
+  test(`${terminal} cancels stale Boost presentation and allows a fresh activation`, t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    bus._reset();
+    const calls = [];
+    const ac = createAnimationController({ bus });
+    ac.setRenderer({ bonusAwardOverlay: p => calls.push(p) });
+    const payload = { slot: 0, boostId: 'extra_turn', bonusIdx: 2 };
+    bus.emit(EV.BOOST_ACTIVATED, payload);
+    bus.emit(terminal, { slot: 0 });
+    t.mock.timers.tick(420);
+    assert.equal(calls.length, 0);
+    bus.emit(EV.BOOST_ACTIVATED, payload);
+    t.mock.timers.tick(420);
+    assert.equal(calls.length, 1);
+    ac.dispose();
+  });
+}
+
+test('reduced pending presents required intro immediately with static square information', () => {
+  bus._reset();
+  const calls = [], ready = [];
+  const ac = createAnimationController({ bus, reducedMotion: () => true });
+  ac.setEnabled(false);
+  ac.setRenderer({ bonusActivate: p => calls.push(p) });
+  const off = bus.on(BOOST_RESULT_READY, p => ready.push(p));
+  bus.emit(EV.BONUS_PENDING, { slot: 0, idx: 1, kind: 'wheel' });
+  assert.equal(calls[0].reducedMotion, true);
+  assert.equal(ready.length, 1);
+  ac.dispose(); off();
+});
 
 test('MOVE_CONFIRMED triggers the expected animation directives', () => {
   bus._reset();
@@ -18,10 +88,10 @@ test('MOVE_CONFIRMED triggers the expected animation directives', () => {
   const kinds = ac._directives.map(d => d.kind);
   // A LOCAL move does NOT re-pop the tiles on confirm — they already played
   // their tentative-placement settle in gameScreen (Phase 3A). Confirmation is
-  // communicated by validFlash + the score sequence instead.
+  // communicated by the directional acceptance sweep + score sequence.
   assert.ok(!kinds.includes('tilePlaceIn'), 'local confirm must not re-pop the placed tiles');
-  assert.ok(kinds.includes('validFlash'));
-  assert.ok(kinds.includes('scoringWordGlow'));
+  assert.ok(kinds.includes('acceptedWordSweep'));
+  assert.ok(!kinds.includes('scoringWordGlow'), 'acceptance has one dominant tile cue');
   // The score sequence is now a single merge directive — per-word chips
   // fly into a central sum chip, the sum grows, then the sum flies to the
   // player's score panel. See gameScreen.playScoreMergeSequence.
@@ -139,7 +209,6 @@ test('BOOST_ACTIVATED for the opponent slot does NOT open the overlay when mySlo
     "an opponent's bonus must not pop a modal on our screen");
   // The non-modal feedback (square flash, badge pulse) should still run.
   assert.ok(kinds.includes('bonusActivate'));
-  assert.ok(kinds.includes('boostPulse'));
   ac.dispose();
 });
 
@@ -165,7 +234,7 @@ test('OPPONENT_MOVED triggers tile placement and score animations', () => {
   });
   const kinds = ac._directives.map(d => d.kind);
   assert.ok(kinds.includes('tilePlaceIn'));
-  assert.ok(kinds.includes('scoringWordGlow'));
+  assert.ok(!kinds.includes('scoringWordGlow'));
   assert.ok(kinds.includes('scoreMergeSequence'),
     'opponent moves also use the merge sequence');
   assert.ok(!kinds.includes('scoringPointsFloat'));
@@ -178,10 +247,8 @@ test('MOVE_CONFIRMED carries wordTiles through scoring directives', () => {
   const ac = createAnimationController({ bus, mySlot: 0 });
   const wordTiles = [[{ r: 4, c: 4, letter: 'א', val: 1 }]];
   bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [], words: ['א'], wordTiles, score: 1 });
-  // The per-word glow still carries each word's tiles individually; the
-  // merge sequence carries the per-word breakdown for rendering.
-  const glow = ac._directives.find(d => d.kind === 'scoringWordGlow');
-  assert.deepEqual(glow.payload.wordTiles, [wordTiles[0]]);
+  const sweep = ac._directives.find(d => d.kind === 'acceptedWordSweep');
+  assert.deepEqual(sweep.payload.wordTiles, wordTiles);
   const merge = ac._directives.find(d => d.kind === 'scoreMergeSequence');
   assert.ok(merge, 'scoreMergeSequence directive should be emitted');
   assert.equal(merge.payload.words.length, 1);
@@ -214,23 +281,22 @@ test('merge sequence defaults multiplier to 1 when no boost was active', () => {
   ac.dispose();
 });
 
-test('GAME_COMPLETED triggers panel arrive + overlay card', () => {
+test('GAME_COMPLETED reward motion is owned by the semantic end screen', () => {
   bus._reset();
   const ac = createAnimationController({ bus });
   bus.emit(EV.GAME_COMPLETED, { winnerSlot: 0 });
   const kinds = ac._directives.map(d => d.kind);
-  assert.ok(kinds.includes('scorePanelArrive'));
-  assert.ok(kinds.includes('overlayCardIn'));
+  assert.ok(!kinds.includes('scorePanelArrive'));
+  assert.ok(!kinds.includes('overlayCardIn'));
   ac.dispose();
 });
 
-test('BOOST_ACTIVATED triggers bonusActivate + boostPulse', () => {
+test('BOOST_ACTIVATED triggers square ignition', () => {
   bus._reset();
   const ac = createAnimationController({ bus });
   bus.emit(EV.BOOST_ACTIVATED, { slot: 0, boostId: 'double_score', bonusIdx: 2 });
   const kinds = ac._directives.map(d => d.kind);
   assert.ok(kinds.includes('bonusActivate'));
-  assert.ok(kinds.includes('boostPulse'));
   assert.equal(ac._directives.find(d => d.kind === 'bonusActivate').payload.bonusIdx, 2);
   ac.dispose();
 });
@@ -241,7 +307,7 @@ test('setEnabled(false) makes all triggers no-ops at the renderer level', () => 
   const ac = createAnimationController({ bus });
   ac.setRenderer({
     tilePlaceIn:        () => { rendererCalls++; },
-    validFlash:         () => { rendererCalls++; },
+    acceptedWordSweep:  () => { rendererCalls++; },
     scoringWordGlow:    () => { rendererCalls++; },
     scoringPointsFloat: () => { rendererCalls++; },
     scorePop:           () => { rendererCalls++; },
@@ -263,7 +329,7 @@ test('reduced motion: choreography off, but accept/reject INFO still reaches the
   const calls = [];
   const ac = createAnimationController({ bus, reducedMotion: () => true });
   ac.setRenderer({
-    validFlash:         (p) => calls.push(['validFlash', p]),
+    acceptedWordSweep:  (p) => calls.push(['acceptedWordSweep', p]),
     shakeWord:          (p) => calls.push(['shakeWord', p]),
     illegalPulse:       (p) => calls.push(['illegalPulse', p]),
     scoreMergeSequence: (p) => calls.push(['scoreMergeSequence', p]),
@@ -281,9 +347,9 @@ test('reduced motion: choreography off, but accept/reject INFO still reaches the
 
   const invoked = calls.map(c => c[0]);
   // The two information-critical cues get through, flagged reducedMotion.
-  assert.ok(invoked.includes('validFlash'), 'accepted-move cue still renders');
+  assert.ok(invoked.includes('acceptedWordSweep'), 'accepted-move cue still renders');
   assert.ok(invoked.includes('illegalPulse'), 'rejected-move cue still renders');
-  assert.equal(calls.find(c => c[0] === 'validFlash')[1].reducedMotion, true);
+  assert.equal(calls.find(c => c[0] === 'acceptedWordSweep')[1].reducedMotion, true);
   assert.equal(calls.find(c => c[0] === 'illegalPulse')[1].reducedMotion, true);
   // The moving choreography stays off — no chip flight, and no separate shake
   // (illegalPulse's static red already carries "rejected").
@@ -293,11 +359,70 @@ test('reduced motion: choreography off, but accept/reject INFO still reaches the
   ac.dispose();
 });
 
+test('Boost result presentation waits for the readable ignition beat', async () => {
+  bus._reset();
+  const calls = [];
+  const ac = createAnimationController({ bus, reducedMotion: () => false });
+  ac.setRenderer(new Proxy({}, { get: (_target, kind) => () => calls.push(kind) }));
+  bus.emit(EV.BOOST_ACTIVATED, { slot: 0, boostId: 'extra_turn', bonusIdx: 2, payload: {} });
+  assert.ok(calls.includes('bonusActivate'), 'ignition renders immediately');
+  assert.ok(!calls.includes('bonusAwardOverlay'), 'dim layer must not cover the initial ignition');
+  await new Promise(resolve => setTimeout(resolve, BOOST_RESULT_REVEAL_DELAY_MS + 20));
+  assert.ok(calls.includes('bonusAwardOverlay'), 'result appears after the board-focused beat');
+  ac.dispose();
+});
+
+test('disposing during Boost ignition cancels the delayed result presentation', async () => {
+  bus._reset();
+  const calls = [];
+  const ac = createAnimationController({ bus, reducedMotion: () => false });
+  ac.setRenderer(new Proxy({}, { get: (_target, kind) => () => calls.push(kind) }));
+  bus.emit(EV.BOOST_ACTIVATED, { slot: 0, boostId: 'extra_turn', bonusIdx: 2, payload: {} });
+  ac.dispose();
+  await new Promise(resolve => setTimeout(resolve, BOOST_RESULT_REVEAL_DELAY_MS + 20));
+  assert.ok(!calls.includes('bonusAwardOverlay'));
+});
+
+test('Your Turn waits for clock readiness, filters local seat, and dedupes readiness', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, mySlot: 0 });
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 1 }); // opening sync: no cue
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 2 });
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 3 });
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 3 }); // rerender/replay
+  assert.equal(ac._directives.filter(d => d.kind === 'yourTurnCue').length, 0);
+  bus.emit(EV.TURN_PRESENTATION_READY, { currentTurnSlot: 1, turnNumber: 2 });
+  bus.emit(EV.TURN_PRESENTATION_READY, { currentTurnSlot: 0, turnNumber: 3 });
+  bus.emit(EV.TURN_PRESENTATION_READY, { currentTurnSlot: 0, turnNumber: 3 });
+  const cues = ac._directives.filter(d => d.kind === 'yourTurnCue');
+  assert.equal(cues.length, 1);
+  assert.deepEqual(cues[0].payload, { slot: 0, turnNumber: 3 });
+  ac.dispose();
+});
+
+test('reduced motion preserves Your Turn, Boost square, and required award UI', () => {
+  bus._reset();
+  const calls = [];
+  const ac = createAnimationController({ bus, mySlot: 0, reducedMotion: () => true });
+  ac.setRenderer(new Proxy({}, { get: (_target, kind) => (payload) => calls.push([kind, payload]) }));
+  ac.setEnabled(false);
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1, turnNumber: 1 });
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0, turnNumber: 2 });
+  bus.emit(EV.TURN_PRESENTATION_READY, { currentTurnSlot: 0, turnNumber: 2 });
+  bus.emit(EV.BOOST_ACTIVATED, { slot: 0, boostId: 'extra_turn', bonusIdx: 2, payload: {} });
+  const kinds = calls.map(([kind]) => kind);
+  assert.ok(kinds.includes('yourTurnCue'));
+  assert.ok(kinds.includes('bonusActivate'));
+  assert.ok(kinds.includes('bonusAwardOverlay'), 'required result UI is never gated by motion');
+  assert.equal(calls.find(([kind]) => kind === 'bonusAwardOverlay')[1].reducedMotion, true);
+  ac.dispose();
+});
+
 test('disabled WITHOUT reduced motion stays a full no-op (animations simply off)', () => {
   bus._reset();
   let rendererCalls = 0;
   const ac = createAnimationController({ bus, reducedMotion: () => false });
-  ac.setRenderer({ validFlash: () => { rendererCalls++; }, illegalPulse: () => { rendererCalls++; } });
+  ac.setRenderer({ acceptedWordSweep: () => { rendererCalls++; }, illegalPulse: () => { rendererCalls++; } });
   ac.setEnabled(false);
   bus.emit(EV.MOVE_CONFIRMED, {
     slot: 0, placed: [{ r: 4, c: 4, letter: 'א', val: 1 }], words: ['א'],
@@ -313,7 +438,7 @@ test('renderer errors do not break the controller', () => {
   const ac = createAnimationController({ bus });
   ac.setRenderer({
     tilePlaceIn: () => { throw new Error('boom'); },
-    validFlash: () => {},
+    acceptedWordSweep: () => {},
   });
   const _origWarn = console.warn;
   console.warn = () => {};
@@ -321,7 +446,7 @@ test('renderer errors do not break the controller', () => {
     bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [], words: [], score: 0 });
     // Should still have triggered subsequent directives despite tilePlaceIn throw
     const kinds = ac._directives.map(d => d.kind);
-    assert.ok(kinds.includes('validFlash'));
+    assert.ok(kinds.includes('acceptedWordSweep'));
   } finally {
     console.warn = _origWarn;
   }
