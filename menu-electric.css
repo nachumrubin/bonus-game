@@ -746,7 +746,7 @@
 
 .hm-card {
   display: flex;
-  direction: ltr; /* icon LEFT, chevron RIGHT regardless of page dir="rtl" */
+  direction: rtl; /* icon at inline-start (right); chevron trails on the left */
   flex-direction: row;
   align-items: center;
   /* Minimal gap — icon art and title read as one unit */
@@ -906,9 +906,8 @@
 /* Circular chevron — hint only, all values ~20% more subtle than previous */
 .hm-card-chev {
   flex-shrink: 0;
-  /* Sits flush-right because .hm-card-body is flex:1; the margin adds breathing
-     room between the title/subtitle and the chevron circle. */
-  margin-left: clamp(12px, 3.5vw, 24px);
+  /* Gap between the Hebrew body and the trailing chevron, in either direction. */
+  margin-inline-start: clamp(12px, 3.5vw, 24px);
   width: clamp(30px, min(8.5vw, 5.2svh), 52px);
   height: clamp(30px, min(8.5vw, 5.2svh), 52px);
   border-radius: 50%;
@@ -1600,9 +1599,13 @@
   transition: background .1s;
 }
 .fd-overflow-item:last-child { border-bottom: none; }
-.fd-overflow-item:not(.fd-overflow-dim):hover { background: rgba(255,255,255,.06); }
+.fd-overflow-item:not(.fd-overflow-soon):hover { background: rgba(255,255,255,.06); }
 .fd-overflow-danger { color: rgba(255,120,100,.9); }
-.fd-overflow-dim { color: rgba(255,255,255,.28); cursor: default; }
+.fd-overflow-soon {
+  color: rgba(255,255,255,.72);
+  cursor: not-allowed;
+}
+.fd-overflow-soon:disabled { opacity: 1; }
 
 /* Hero section */
 .fd-hero {

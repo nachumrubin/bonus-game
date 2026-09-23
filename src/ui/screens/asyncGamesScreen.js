@@ -14,6 +14,7 @@
 
 import { $, on } from '../domHelpers.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
+import { MENU_INTENT } from './menuScreen.js';
 
 export const MG_INTENT = Object.freeze({
   RESUME:  'myGames/resume',
@@ -156,6 +157,15 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
   }
 
   // Click delegation for resume + dismiss + poke.
+  const emptyCta = $('#mg-empty-online', root);
+  if (emptyCta) {
+    emptyCta.removeAttribute?.('onclick');
+    cleanups.push(on(emptyCta, 'click', (e) => {
+      e.preventDefault?.();
+      bus.emit(MENU_INTENT.OPEN_ONLINE_LOBBY, {});
+    }));
+  }
+
   cleanups.push(on(list, 'click', (e) => {
     const t = e.target;
     const btn = t?.tagName === 'BUTTON' ? t : (t?.closest?.('button') ?? null);

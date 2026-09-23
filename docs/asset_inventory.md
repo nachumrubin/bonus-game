@@ -128,7 +128,7 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 * assets/rewards/gold medal.png
 * assets/rewards/silver medal.png
 * assets/rewards/trophy.png
-* assets/ui/+.png
+* assets/ui/+.png — add-friend and online-lobby create-room (P0-03; no separate create-room.png)
 * assets/ui/hourglass.png
 * assets/ui/key.png
 * assets/ui/lock.png

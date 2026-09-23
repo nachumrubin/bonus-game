@@ -18,6 +18,16 @@ function escapeHtml(s) {
     .replaceAll('\'', '&#39;');
 }
 
+export const CHAMPS_EMPTY_TITLE = 'אין דירוגים להצגה עדיין';
+export const CHAMPS_EMPTY_SUB = 'שחקו עוד משחקים מדורגים כדי למלא את הטבלה';
+
+export function buildChampionsEmptyHtml() {
+  return '<div class="champs-empty champs-empty--copy">'
+    + `<div class="champs-empty-title">${CHAMPS_EMPTY_TITLE}</div>`
+    + `<div class="champs-empty-sub">${CHAMPS_EMPTY_SUB}</div>`
+    + '</div>';
+}
+
 const MEDALS = [
   '<img src="assets/rewards/gold medal.png" alt="מקום ראשון" class="champ-medal-icon">',
   '<img src="assets/rewards/silver medal.png" alt="מקום שני" class="champ-medal-icon">',
@@ -25,7 +35,7 @@ const MEDALS = [
 ];
 
 export function buildChampionsHtml(entries = [], { myUid = null, myPosition = null, myEntry = null } = {}) {
-  if (!entries.length && !myEntry) return '<div class="champs-empty">עדיין אין שחקנים מדורגים</div>';
+  if (!entries.length && !myEntry) return buildChampionsEmptyHtml();
 
   const rows = entries.map((entry, i) => {
     const pos = i + 1;
@@ -87,7 +97,7 @@ export function mountChampionsScreen({ root = globalThis.document, bus } = {}) {
   }));
 
   cleanups.push(bus.on(CHAMPS_ERROR, ({ target = 'all' } = {}) => {
-    const html = '<div class="champs-empty">לא ניתן לטעון דירוגים כרגע</div>';
+    const html = buildChampionsEmptyHtml();
     if (target === 'home' || target === 'all') paint(homeWrap, html);
     if (target === 'end' || target === 'all') paint(endWrap, html);
   }));

@@ -784,7 +784,6 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
     }
     const countUpDelay = delay;
-    const countUpDelay = countUpStartDelayMs(wordCount, bonusExtra, multiplier);
     animateScore($('#sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#sv2', root), v.scores[1] ?? 0, countUpDelay);
     animateScore($('#is-sv1', root), v.scores[0] ?? 0, countUpDelay);

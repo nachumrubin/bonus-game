@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   buildChampionsHtml,
+  buildChampionsEmptyHtml,
+  CHAMPS_EMPTY_TITLE,
+  CHAMPS_EMPTY_SUB,
   CHAMPS_INTENT,
   CHAMPS_OPEN,
   CHAMPS_RENDER,
@@ -47,7 +50,11 @@ function makeRoot({ overlay, home, end, close }) {
 }
 
 test('buildChampionsHtml renders empty and escaped rows', () => {
-  assert.match(buildChampionsHtml([]), /champs-empty/);
+  const empty = buildChampionsHtml([]);
+  assert.match(empty, /champs-empty--copy/);
+  assert.ok(empty.includes(CHAMPS_EMPTY_TITLE));
+  assert.ok(empty.includes(CHAMPS_EMPTY_SUB));
+  assert.equal(buildChampionsEmptyHtml(), empty);
   const html = buildChampionsHtml([{ uid: 'u<1', name: '<Alice>', rating: 1050 }]);
   assert.match(html, /&lt;Alice&gt;/);
   assert.match(html, /1050/);
@@ -89,5 +96,7 @@ test('CHAMPS_ERROR paints an error placeholder', () => {
     bus,
   });
   bus.emit(CHAMPS_ERROR, {});
-  assert.match(home.innerHTML, /לא ניתן/);
+  assert.match(home.innerHTML, /champs-empty--copy/);
+  assert.ok(home.innerHTML.includes(CHAMPS_EMPTY_TITLE));
+  assert.ok(home.innerHTML.includes(CHAMPS_EMPTY_SUB));
 });

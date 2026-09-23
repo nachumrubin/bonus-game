@@ -2,6 +2,38 @@
 
 ---
 
+## Phase 0 batch 1 — setup, auth, and avatar copy — September 2026
+
+Copy-only UI fixes. No gameplay, scoring, or dictionary changes. Soft UI stays held.
+
+- **P0-02:** Setup screen default title (`#stitle-text`) is `לפני המשחק` instead of `הגדרות`, so it no longer collides with the Settings overlay. After open, the existing mode titles still apply (`נגד המחשב` / `שני שחקנים`). Setup onboarding titles drop the `הגדרות —` prefix. Settings overlay title is unchanged.
+- **P0-05:** Login and signup titles drop the emoji (`כניסה`, `יצירת חשבון`) and show the home wordmark (`logo_no_mascot.png`) above the title. Guest and validation buttons are unchanged. The auth card itself is not restyled.
+- **P0-08:** Profile avatar hint is `לחץ לחנות האווטארים`. The tap still opens the avatar store (`showAvatarStore()`).
+
+## Phase 0 batch 2 — empty states and taxonomy — September 2026
+
+- **P0-07:** An empty or failed champions list (including the end-game `#champions-wrap`) shows `אין דירוגים להצגה עדיין` plus `שחקו עוד משחקים מדורגים כדי למלא את הטבלה`. A populated top-10 table is unchanged. The end-game header stays `טבלת דירוגים — 10 השחקנים המובילים`.
+- **P0-10:** Friend-detail Block and Report have no handlers. They are no longer dimmed as if they were enabled-but-broken. Each row is disabled and labeled `(בקרוב)`. Remove-friend stays the live danger action.
+- **P0-12:** Audit only. Avatar store title is already `חנות אווטארים`. Achievements (`#sav-gallery`) stays `הישגים` with `N מתוך 17 הושגו`. Bottom-nav הישגים still calls `showAvatarGallery()`. The `acheivments.png` filename typo was left in place (optional, and it is referenced by the live nav).
+
+## Phase 0 batch 3 — icons and layout — September 2026
+
+- **P0-04:** Home mode cards use `direction: rtl`. The chevron is `❮` on the trailing edge (physical left), so it reads as forward. Titles and subtitles stay Hebrew RTL. Card hit targets are unchanged.
+- **P0-03:** Online lobby “create room” uses the existing Electric plus `assets/ui/+.png` instead of `assets/navigation/home.png`. Join (`key.png`) and random (`dice.png`) are unchanged. No new artwork.
+- **P0-09:** Logout sits in `.pf-danger-zone` under a divider, still the red `pf-btn-red` button, still one tap (`logoutUser()`).
+- **P0-11:** My-games empty state subcopy is the canonical line, plus a `משחק ברשת` button (`#mg-empty-online`) that emits `MENU_INTENT.OPEN_ONLINE_LOBBY`. No invite-a-friend secondary — that screen has no one-tap invite. Non-empty lists are unchanged.
+
+## Phase 0 batch 4 — dead route and boot copy — September 2026
+
+- **P0-01:** Removed the dead `schamps` screen id from `SCREEN_IDS`. The fallback hide-all loop in `showLegacyScreen` now uses `SCREEN_IDS`, so the stale id cannot come back in only one list. Champions still open through `#ov-champs` / `CHAMPS_OPEN`.
+- **P0-06:** Tip-catalogue failure (`loadTipsStatus` `ok: false`) or `navigator.onLine === false` sets `#app-loading-text` to `לא הצלחנו להתחבר. בודקים שוב...` and, when no tip carousel is up, shows `אפשר להמשיך כשהרשת חוזרת`. Coming back online restores the rotating progress strings and retries tips. The loader still dismisses on auth resolution or the existing 10s safety timeout — a missing catalogue does not block boot. A successful fetch with a normal carousel is unchanged.
+
+## gameScreen parse — duplicate `countUpDelay` — September 2026
+
+`renderScores` declared `const countUpDelay` twice after the lock-cost delay landed on top of the older reduced-motion line. The module failed to parse, so `gameScreen.test.js` and `tutorialController.test.js` could not load. The stale second declaration is removed. The delay stays the lock-cost value from that later edit (`delay` / `countUpDelayOf`). No scoring formula change.
+
+---
+
 ## Turn deadlines now run on the server clock — August 2026
 
 **The race behind the phantom-score bug below.** `turnDeadlineMs` is an absolute
