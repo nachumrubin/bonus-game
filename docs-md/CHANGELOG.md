@@ -2,6 +2,16 @@
 
 ---
 
+## Phase 0 batch 1 — setup, auth, and avatar copy — September 2026
+
+Copy-only UI fixes. No gameplay, scoring, or dictionary changes. Soft UI stays held.
+
+- **P0-02:** Setup screen default title (`#stitle-text`) is `לפני המשחק` instead of `הגדרות`, so it no longer collides with the Settings overlay. After open, the existing mode titles still apply (`נגד המחשב` / `שני שחקנים`). Setup onboarding titles drop the `הגדרות —` prefix. Settings overlay title is unchanged.
+- **P0-05:** Login and signup titles drop the emoji (`כניסה`, `יצירת חשבון`) and show the home wordmark (`logo_no_mascot.png`) above the title. Guest and validation buttons are unchanged. The auth card itself is not restyled.
+- **P0-08:** Profile avatar hint is `לחץ לחנות האווטארים`. The tap still opens the avatar store (`showAvatarStore()`).
+
+---
+
 ## Turn deadlines now run on the server clock — August 2026
 
 **The race behind the phantom-score bug below.** `turnDeadlineMs` is an absolute

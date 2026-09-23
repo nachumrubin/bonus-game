@@ -1,5 +1,22 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Phase 0 UI quick wins — September 2026
+
+Specs: Phase 0 engineering sheet (P0-01 … P0-12). Soft UI held. הישגים bottom nav stays on achievements.
+
+- [x] **P0-02** Setup title is `לפני המשחק` (mode titles `נגד המחשב` / `שני שחקנים`). Settings overlay still `הגדרות`.
+- [x] **P0-05** Auth titles have no emoji; home wordmark sits above `כניסה` / `יצירת חשבון`.
+- [x] **P0-08** Avatar hint matches the store destination (`לחץ לחנות האווטארים`).
+- [ ] **P0-07** End-game empty leaderboard copy.
+- [ ] **P0-10** Friends Block/Report not dim-only.
+- [ ] **P0-12** Store vs achievements taxonomy audit.
+- [ ] **P0-04** Home cards RTL chevron.
+- [ ] **P0-03** Create-room icon.
+- [ ] **P0-09** Logout danger zone.
+- [ ] **P0-11** My-games empty CTA.
+- [ ] **P0-01** Remove dead `schamps`.
+- [ ] **P0-06** Boot fail / offline copy.
+
 ## Phantom score / lost move on a raced bonus commit — August 2026
 
 Traced from prod room `fc_1786040881489_8bjchc` (client `295–222` vs server
