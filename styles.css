@@ -1073,6 +1073,9 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .champs-table th,.champs-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:center;}
 .champs-table th{color:var(--by);}
 .champs-empty{opacity:.6;text-align:center;padding:10px 0;}
+.champs-empty--copy{opacity:1;padding:12px 8px;}
+.champs-empty-title{font-size:13px;font-weight:800;color:rgba(255,255,255,.9);line-height:1.35;}
+.champs-empty-sub{margin-top:4px;font-size:11px;font-weight:500;color:rgba(255,255,255,.58);line-height:1.45;}
 
 
 /* ═══════════════════════════════════════════════

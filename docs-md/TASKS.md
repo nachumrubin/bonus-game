@@ -7,9 +7,9 @@ Specs: Phase 0 engineering sheet (P0-01 … P0-12). Soft UI held. הישגים b
 - [x] **P0-02** Setup title is `לפני המשחק` (mode titles `נגד המחשב` / `שני שחקנים`). Settings overlay still `הגדרות`.
 - [x] **P0-05** Auth titles have no emoji; home wordmark sits above `כניסה` / `יצירת חשבון`.
 - [x] **P0-08** Avatar hint matches the store destination (`לחץ לחנות האווטארים`).
-- [ ] **P0-07** End-game empty leaderboard copy.
-- [ ] **P0-10** Friends Block/Report not dim-only.
-- [ ] **P0-12** Store vs achievements taxonomy audit.
+- [x] **P0-07** End-game empty/error leaderboard shows the canonical empty copy. Populated table unchanged.
+- [x] **P0-10** Block/Report are disabled stubs labeled `(בקרוב)` — not dim-only.
+- [x] **P0-12** Store vs achievements labels already distinct. הישגים nav unchanged. `acheivments.png` rename skipped.
 - [ ] **P0-04** Home cards RTL chevron.
 - [ ] **P0-03** Create-room icon.
 - [ ] **P0-09** Logout danger zone.

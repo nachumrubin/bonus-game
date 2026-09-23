@@ -1600,9 +1600,13 @@
   transition: background .1s;
 }
 .fd-overflow-item:last-child { border-bottom: none; }
-.fd-overflow-item:not(.fd-overflow-dim):hover { background: rgba(255,255,255,.06); }
+.fd-overflow-item:not(.fd-overflow-soon):hover { background: rgba(255,255,255,.06); }
 .fd-overflow-danger { color: rgba(255,120,100,.9); }
-.fd-overflow-dim { color: rgba(255,255,255,.28); cursor: default; }
+.fd-overflow-soon {
+  color: rgba(255,255,255,.72);
+  cursor: not-allowed;
+}
+.fd-overflow-soon:disabled { opacity: 1; }
 
 /* Hero section */
 .fd-hero {

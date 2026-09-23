@@ -10,6 +10,12 @@ Copy-only UI fixes. No gameplay, scoring, or dictionary changes. Soft UI stays h
 - **P0-05:** Login and signup titles drop the emoji (`כניסה`, `יצירת חשבון`) and show the home wordmark (`logo_no_mascot.png`) above the title. Guest and validation buttons are unchanged. The auth card itself is not restyled.
 - **P0-08:** Profile avatar hint is `לחץ לחנות האווטארים`. The tap still opens the avatar store (`showAvatarStore()`).
 
+## Phase 0 batch 2 — empty states and taxonomy — September 2026
+
+- **P0-07:** An empty or failed champions list (including the end-game `#champions-wrap`) shows `אין דירוגים להצגה עדיין` plus `שחקו עוד משחקים מדורגים כדי למלא את הטבלה`. A populated top-10 table is unchanged. The end-game header stays `טבלת דירוגים — 10 השחקנים המובילים`.
+- **P0-10:** Friend-detail Block and Report have no handlers. They are no longer dimmed as if they were enabled-but-broken. Each row is disabled and labeled `(בקרוב)`. Remove-friend stays the live danger action.
+- **P0-12:** Audit only. Avatar store title is already `חנות אווטארים`. Achievements (`#sav-gallery`) stays `הישגים` with `N מתוך 17 הושגו`. Bottom-nav הישגים still calls `showAvatarGallery()`. The `acheivments.png` filename typo was left in place (optional, and it is referenced by the live nav).
+
 ---
 
 ## Turn deadlines now run on the server clock — August 2026
