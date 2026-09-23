@@ -6,6 +6,7 @@ import {
   mountProfileScreen, deriveStats, avatarEmoji,
   PROFILE_INTENT, PROFILE_RENDER,
 } from './profileScreen.js';
+import { CHAMPS_OPEN } from './championsScreen.js';
 
 function makeBtn({ onclick } = {}) {
   const listeners = [];
@@ -51,6 +52,7 @@ function makeDom() {
     cancelBtn:  makeBtn({ onclick: 'cancelNameEdit()' }),
     avatarBtn:  makeBtn({ onclick: 'showAvatarStore()' }),
     friendsBtn: makeBtn({ onclick: 'showFriendsScreen()' }),
+    champsBtn:  makeBtn({ onclick: 'openChampions()' }),
     statsBtn:   makeBtn({ onclick: 'showStatsScreen()' }),
     logoutBtn:  makeBtn({ onclick: 'logoutUser()' }),
     backBtn:    makeBtn({ onclick: 'goHome()' }),
@@ -76,6 +78,7 @@ function makeDom() {
         case 'button[onclick="cancelNameEdit()"]':   return els.cancelBtn;
         case 'button[onclick="showAvatarStore()"]':  return els.avatarBtn;
         case 'button[onclick="showFriendsScreen()"]':return els.friendsBtn;
+        case '#btn-profile-champs':                  return els.champsBtn;
         case 'button[onclick="showStatsScreen()"]':  return els.statsBtn;
         case 'button[onclick="logoutUser()"]':       els.logoutBtn; return els.logoutBtn;
         case 'button[onclick="goHome()"]':           return els.backBtn;
@@ -195,6 +198,16 @@ test('save / cancel / store / friends / stats / logout / back all emit intents',
   els.backBtn.fireClick();
   els.upgrade.fireClick();
   assert.deepEqual(got, ['save','cancel','store','friends','stats','logout','back','upgrade']);
+});
+
+test('profile champions row emits CHAMPS_OPEN', () => {
+  bus._reset();
+  const { root, els } = makeDom();
+  let opens = 0;
+  bus.on(CHAMPS_OPEN, () => { opens++; });
+  mountProfileScreen({ root, bus });
+  els.champsBtn.fireClick();
+  assert.equal(opens, 1);
 });
 
 test('showError paints the error label', () => {

@@ -7,6 +7,7 @@
 //
 import { $, on } from '../domHelpers.js';
 import { avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
+import { CHAMPS_OPEN } from './championsScreen.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const MENU_INTENT = Object.freeze({
@@ -103,6 +104,34 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     cleanups.push(on(btn, 'click', (e) => {
       e.preventDefault();
       bus.emit(def.intent, { source: 'menu', legacyArg: def.legacyArg });
+    }));
+  }
+
+  // Rank discovery. Home row is outside the three mode cards. The topbar ELO
+  // chip sits inside #btn-profile-home, so its click must not bubble into
+  // OPEN_PROFILE.
+  bindOpenChampions($('#btn-home-champs', menuRoot));
+  const eloChip = $('#home-elo-label', topbarRoot);
+  if (eloChip) {
+    eloChip.setAttribute?.('role', 'button');
+    eloChip.setAttribute?.('tabindex', '0');
+    eloChip.setAttribute?.('aria-label', 'טבלת דירוגים');
+    bindOpenChampions(eloChip, { isolate: true });
+  }
+
+  function bindOpenChampions(btn, { isolate = false } = {}) {
+    if (!btn) return;
+    btn.removeAttribute?.('onclick');
+    const open = (e) => {
+      e?.preventDefault?.();
+      if (isolate) e?.stopPropagation?.();
+      bus.emit(CHAMPS_OPEN, {});
+    };
+    cleanups.push(on(btn, 'click', open));
+    if (!isolate) return;
+    cleanups.push(on(btn, 'keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      open(e);
     }));
   }
 

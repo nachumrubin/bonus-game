@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './menuScreen.js';
+import { CHAMPS_OPEN } from './championsScreen.js';
 
 function makeButton({ onclick, id }) {
   const listeners = [];
@@ -54,6 +55,8 @@ function makeMenuDom() {
     online:     makeButton({ onclick: 'showOnlineLobby()' }),
     tutorial:   makeButton({ onclick: 'showTutorialIntro()', id: 'topbar-help-btn' }),
     settings:   makeButton({ onclick: 'openSettings()' }),
+    champs:     makeButton({ id: 'btn-home-champs', onclick: 'openChampions()' }),
+    elo:        makeButton({ id: 'home-elo-label' }),
     nameLabel:  makeButton({ id: 'home-user-label' }),
     onlineBadge: makeButton({ id: 'online-badge' }),
     mgBadge:    makeButton({ id: 'mg-nav-badge' }),
@@ -254,6 +257,47 @@ test('mount: missing #sh root logs a warning and returns a no-op', () => {
   } finally {
     console.warn = _origWarn;
   }
+});
+
+test('home rank row opens champions', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  let opens = 0;
+  bus.on(CHAMPS_OPEN, () => { opens++; });
+  mountMenuScreen({ root, bus });
+  assert.equal(buttons.champs.getAttribute('onclick'), null);
+  buttons.champs.click();
+  assert.equal(opens, 1);
+});
+
+test('ELO chip opens champions and does not bubble into profile', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  let opens = 0;
+  let profiles = 0;
+  bus.on(CHAMPS_OPEN, () => { opens++; });
+  bus.on(MENU_INTENT.OPEN_PROFILE, () => { profiles++; });
+  mountMenuScreen({ root, bus });
+  assert.equal(buttons.elo.getAttribute('role'), 'button');
+  assert.equal(buttons.elo.getAttribute('aria-label'), 'טבלת דירוגים');
+  const ev = {
+    stopped: false,
+    preventDefault() {},
+    stopPropagation() { ev.stopped = true; },
+  };
+  for (const l of buttons.elo._listeners) if (l.ev === 'click') l.fn(ev);
+  assert.equal(ev.stopped, true);
+  assert.equal(opens, 1);
+  assert.equal(profiles, 0);
+  const key = {
+    key: 'Enter',
+    stopped: false,
+    preventDefault() {},
+    stopPropagation() { key.stopped = true; },
+  };
+  for (const l of buttons.elo._listeners) if (l.ev === 'keydown') l.fn(key);
+  assert.equal(key.stopped, true);
+  assert.equal(opens, 2);
 });
 
 test('mount throws when bus is not provided', () => {
