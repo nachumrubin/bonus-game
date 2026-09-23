@@ -679,6 +679,7 @@ Load-bearing IDs (do not rename without updating `asyncGamesScreen.js` + main.js
 #smygames    — screen container
 #mg-list     — cards are rendered into this element (HTML built by buildListHtml)
 #mg-empty    — empty-state block (shown when zero sessions, hidden otherwise)
+#mg-empty-online — empty-state primary CTA; emits MENU_INTENT.OPEN_ONLINE_LOBBY
 #mg-count    — header count badge; populated by JS render with the session count
 ```
 

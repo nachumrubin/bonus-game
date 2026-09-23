@@ -6,6 +6,7 @@ import {
   mountAsyncGamesScreen, buildListHtml, buildRowHtml, timeAgoLabel,
   canPoke, MG_INTENT, MG_RENDER,
 } from './asyncGamesScreen.js';
+import { MENU_INTENT } from './menuScreen.js';
 
 const HOUR = 3_600_000;
 
@@ -32,9 +33,25 @@ function makeButton(attrs = {}) {
   };
 }
 
+function makeCta() {
+  const listeners = [];
+  return {
+    removeAttribute() {},
+    addEventListener(ev, fn) { listeners.push({ ev, fn }); },
+    removeEventListener(ev, fn) {
+      const i = listeners.findIndex(l => l.ev === ev && l.fn === fn);
+      if (i >= 0) listeners.splice(i, 1);
+    },
+    fireClick() {
+      for (const l of listeners) if (l.ev === 'click') l.fn({ preventDefault() {} });
+    },
+  };
+}
+
 function makeRoot() {
   const list   = makeList();
   const empty  = { style: { display: 'none' } };
+  const emptyCta = makeCta();
   // `screen` doubles as the toast host. We give it a fake ownerDocument
   // that records the last-created toast div so tests can inspect it.
   const created = [];
@@ -56,11 +73,12 @@ function makeRoot() {
     },
   };
   return {
-    list, empty, screen, created,
+    list, empty, emptyCta, screen, created,
     root: {
       querySelector: (sel) => {
         if (sel === '#mg-list') return list;
         if (sel === '#mg-empty') return empty;
+        if (sel === '#mg-empty-online') return emptyCta;
         if (sel === '#smygames') return screen;
         return null;
       },
@@ -313,6 +331,17 @@ test('mount: clicking the disabled שחק button does NOT emit RESUME and shows 
   assert.ok(toast, 'a toast must appear');
   assert.ok(toast.className.includes('mg-toast--info'));
   assert.match(toast.textContent, /תור היריב|חכה/);
+  ui.unmount();
+});
+
+test('mount: empty-state CTA emits the online-lobby intent', () => {
+  bus._reset();
+  const fired = [];
+  bus.on(MENU_INTENT.OPEN_ONLINE_LOBBY, (p) => fired.push(p));
+  const { emptyCta, root } = makeRoot();
+  const ui = mountAsyncGamesScreen({ root, bus, now: () => 0 });
+  emptyCta.fireClick();
+  assert.equal(fired.length, 1);
   ui.unmount();
 });
 

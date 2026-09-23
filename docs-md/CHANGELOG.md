@@ -16,6 +16,13 @@ Copy-only UI fixes. No gameplay, scoring, or dictionary changes. Soft UI stays h
 - **P0-10:** Friend-detail Block and Report have no handlers. They are no longer dimmed as if they were enabled-but-broken. Each row is disabled and labeled `(בקרוב)`. Remove-friend stays the live danger action.
 - **P0-12:** Audit only. Avatar store title is already `חנות אווטארים`. Achievements (`#sav-gallery`) stays `הישגים` with `N מתוך 17 הושגו`. Bottom-nav הישגים still calls `showAvatarGallery()`. The `acheivments.png` filename typo was left in place (optional, and it is referenced by the live nav).
 
+## Phase 0 batch 3 — icons and layout — September 2026
+
+- **P0-04:** Home mode cards use `direction: rtl`. The chevron is `❮` on the trailing edge (physical left), so it reads as forward. Titles and subtitles stay Hebrew RTL. Card hit targets are unchanged.
+- **P0-03:** Online lobby “create room” uses the existing Electric plus `assets/ui/+.png` instead of `assets/navigation/home.png`. Join (`key.png`) and random (`dice.png`) are unchanged. No new artwork.
+- **P0-09:** Logout sits in `.pf-danger-zone` under a divider, still the red `pf-btn-red` button, still one tap (`logoutUser()`).
+- **P0-11:** My-games empty state subcopy is the canonical line, plus a `משחק ברשת` button (`#mg-empty-online`) that emits `MENU_INTENT.OPEN_ONLINE_LOBBY`. No invite-a-friend secondary — that screen has no one-tap invite. Non-empty lists are unchanged.
+
 ---
 
 ## Turn deadlines now run on the server clock — August 2026

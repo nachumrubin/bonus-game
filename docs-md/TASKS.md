@@ -10,10 +10,10 @@ Specs: Phase 0 engineering sheet (P0-01 … P0-12). Soft UI held. הישגים b
 - [x] **P0-07** End-game empty/error leaderboard shows the canonical empty copy. Populated table unchanged.
 - [x] **P0-10** Block/Report are disabled stubs labeled `(בקרוב)` — not dim-only.
 - [x] **P0-12** Store vs achievements labels already distinct. הישגים nav unchanged. `acheivments.png` rename skipped.
-- [ ] **P0-04** Home cards RTL chevron.
-- [ ] **P0-03** Create-room icon.
-- [ ] **P0-09** Logout danger zone.
-- [ ] **P0-11** My-games empty CTA.
+- [x] **P0-04** Home cards are RTL; chevron `❮` trails on the left.
+- [x] **P0-03** Create-room row uses `assets/ui/+.png`. Join and random icons unchanged.
+- [x] **P0-09** Logout is in a separated danger zone; confirm/logout path unchanged.
+- [x] **P0-11** My-games empty CTA opens the online lobby. Invite secondary skipped (no one-tap path).
 - [ ] **P0-01** Remove dead `schamps`.
 - [ ] **P0-06** Boot fail / offline copy.
 
