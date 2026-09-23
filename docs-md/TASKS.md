@@ -14,8 +14,8 @@ Specs: Phase 0 engineering sheet (P0-01 … P0-12). Soft UI held. הישגים b
 - [x] **P0-03** Create-room row uses `assets/ui/+.png`. Join and random icons unchanged.
 - [x] **P0-09** Logout is in a separated danger zone; confirm/logout path unchanged.
 - [x] **P0-11** My-games empty CTA opens the online lobby. Invite secondary skipped (no one-tap path).
-- [ ] **P0-01** Remove dead `schamps`.
-- [ ] **P0-06** Boot fail / offline copy.
+- [x] **P0-01** Dead `schamps` screen id removed. Champions stay on `#ov-champs`.
+- [x] **P0-06** Boot fail / offline copy, with progress restored when the connection returns.
 
 ## Phantom score / lost move on a raced bonus commit — August 2026
 

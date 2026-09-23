@@ -23,6 +23,11 @@ Copy-only UI fixes. No gameplay, scoring, or dictionary changes. Soft UI stays h
 - **P0-09:** Logout sits in `.pf-danger-zone` under a divider, still the red `pf-btn-red` button, still one tap (`logoutUser()`).
 - **P0-11:** My-games empty state subcopy is the canonical line, plus a `משחק ברשת` button (`#mg-empty-online`) that emits `MENU_INTENT.OPEN_ONLINE_LOBBY`. No invite-a-friend secondary — that screen has no one-tap invite. Non-empty lists are unchanged.
 
+## Phase 0 batch 4 — dead route and boot copy — September 2026
+
+- **P0-01:** Removed the dead `schamps` screen id from `SCREEN_IDS`. The fallback hide-all loop in `showLegacyScreen` now uses `SCREEN_IDS`, so the stale id cannot come back in only one list. Champions still open through `#ov-champs` / `CHAMPS_OPEN`.
+- **P0-06:** Tip-catalogue failure (`loadTipsStatus` `ok: false`) or `navigator.onLine === false` sets `#app-loading-text` to `לא הצלחנו להתחבר. בודקים שוב...` and, when no tip carousel is up, shows `אפשר להמשיך כשהרשת חוזרת`. Coming back online restores the rotating progress strings and retries tips. The loader still dismisses on auth resolution or the existing 10s safety timeout — a missing catalogue does not block boot. A successful fetch with a normal carousel is unchanged.
+
 ---
 
 ## Turn deadlines now run on the server clock — August 2026

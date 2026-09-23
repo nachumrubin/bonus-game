@@ -155,6 +155,7 @@ See `/partials/screens/` for corresponding HTML templates.
 |------|------|
 | `audioService.js` | Background music control. |
 | `feedbackService.js` | Haptic/visual feedback. |
+| `bootLoadingState.js` | Boot-loader progress vs offline/fail copy. Used by `wireAppLoading()` in `main.js`. |
 | `domHelpers.js` | DOM utility functions. Includes `flashAnimation()` (shared reflow-restart primitive) and `bonusOverlayOpen()` (shared bonus-overlay predicate). |
 | `motionTokens.js` | Canonical motion vocabulary — duration/easing/press-scale constants, mirrored as `:root` CSS custom properties. |
 | `motionPreference.js` | Single source of truth for the effective reduced-motion preference (explicit tri-state → legacy flag → OS → normal); stamps `data-reduced-motion` on the root. |

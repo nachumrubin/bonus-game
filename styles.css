@@ -4100,6 +4100,15 @@ button[aria-disabled="true"] {
 
 /* ── LOADING TIPS CARD ── */
 /* Sits at the bottom of #app-loading, below the tile animation. */
+.app-loading-tips.is-offline-hint .app-loading-tip-nav,
+.app-loading-tips.is-offline-hint .app-loading-tip-dots,
+.app-loading-tips.is-offline-hint .app-loading-tip-icon-wrap {
+  display: none;
+}
+.app-loading-tips.is-offline-hint .app-loading-tip-text {
+  text-align: center;
+}
+
 .app-loading-tips {
   position: absolute;
   bottom: 0;

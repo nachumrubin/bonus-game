@@ -116,7 +116,7 @@ Help dropdown / Guide / FAQ (top-bar `?` button):
 
 App boot loader tip carousel (inside #app-loading, wired by wireAppLoading() in main.js):
 #app-loading           — full-screen boot overlay; removed from DOM 600 ms after .is-hidden is added
-#app-loading-text      — rotating Hebrew status line (מתחבר… → כמעט מוכן…)
+#app-loading-text      — rotating Hebrew status line (מתחבר… → כמעט מוכן…). On tip-load failure or offline: לא הצלחנו להתחבר. בודקים שוב... Tips region then shows אפשר להמשיך כשהרשת חוזרת (.is-offline-hint) until the connection returns.
 #app-loading-tips      — tip carousel wrapper; display:none until loadingTipsService resolves
 #app-loading-tip-prev  — previous-tip nav button (❯, right-pointing, left side in LTR row)
 #app-loading-tip-next  — next-tip nav button (❮, left-pointing, right side in LTR row)

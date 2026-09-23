@@ -70,7 +70,7 @@ import { createTutorialController } from './ui/controllers/tutorialController.js
 import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/controllers/onboardingController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
-import { showScreen as spineShowScreen } from './ui/screens/screenTransitions.js';
+import { showScreen as spineShowScreen, SCREEN_IDS } from './ui/screens/screenTransitions.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './ui/screens/menuScreen.js';
 import { mountHelpDropdown } from './ui/screens/helpDropdown.js';
 import { mountGuideScreen } from './ui/screens/guideScreen.js';
@@ -133,10 +133,11 @@ import * as notificationService from './notifications/notificationService.js';
 import * as inAppNotificationService from './notifications/inAppNotificationService.js';
 import { mountReactionController } from './reactions/reactionController.js';
 import * as loadingTipsService from './ui/loadingTipsService.js';
+import { createBootStatus } from './ui/bootLoadingState.js';
 
 // Start fetching tips at module-parse time, parallel to auth, so the card
 // is ready to show as soon as the DOM is available rather than after boot().
-const tipsPreload = loadingTipsService.loadTips();
+const tipsPreload = loadingTipsService.loadTipsStatus();
 
 // App-loading overlay: hide once Firebase auth has resolved. The auth handler
 // emits MENU_REFRESH with isAuthed: true|false on resolution (either after a
@@ -162,23 +163,47 @@ function wireAppLoading() {
   const el = doc?.getElementById?.('app-loading');
   if (!el) return;
   const textEl = doc.getElementById?.('app-loading-text');
-  const messages = ['מתחבר...', 'טוען נתונים...', 'מכין מילים...', 'כמעט מוכן...'];
-  let textIdx = 0;
+  const status = createBootStatus();
+  let sessionTips = [];
+  let carouselReady = false;
+
+  function paintStatus() {
+    if (!textEl) return;
+    const snap = status.snapshot();
+    textEl.textContent = snap.text;
+    textEl.style.opacity = '1';
+    const tipsWrap = doc.getElementById?.('app-loading-tips');
+    const tipText = doc.getElementById?.('app-loading-tip-text');
+    const titleEl = doc.getElementById?.('app-loading-tip-title');
+    if (!tipsWrap || !tipText) return;
+    if (snap.mode === 'fail' && !carouselReady) {
+      if (titleEl) titleEl.textContent = '';
+      tipText.textContent = snap.hint;
+      tipsWrap.classList.add('is-offline-hint');
+      tipsWrap.style.display = '';
+      return;
+    }
+    if (snap.mode === 'progress' && tipsWrap.classList.contains('is-offline-hint') && !carouselReady) {
+      tipsWrap.classList.remove('is-offline-hint');
+      tipsWrap.style.display = 'none';
+      tipText.textContent = '';
+    }
+  }
+
   const textTimer = setInterval(() => {
     if (!textEl || el.classList.contains('is-hidden')) return;
-    textIdx = (textIdx + 1) % messages.length;
+    if (status.snapshot().mode === 'fail') return;
     textEl.style.opacity = '0';
     setTimeout(() => {
-      if (!textEl) return;
-      textEl.textContent = messages[textIdx];
+      if (!textEl || status.snapshot().mode === 'fail') return;
+      textEl.textContent = status.advance().text;
       textEl.style.opacity = '1';
     }, 220);
   }, 1400);
 
   // Tips carousel — uses the pre-fetched promise started at module-parse time.
-  let sessionTips = [];
-  tipsPreload.then(allTips => {
-    if (!allTips?.length || el.classList.contains('is-hidden')) return;
+  function mountCarousel(allTips) {
+    if (carouselReady || !allTips?.length || el.classList.contains('is-hidden')) return;
     sessionTips = loadingTipsService.selectSessionTips(allTips);
     if (!sessionTips.length) return;
 
@@ -209,7 +234,9 @@ function wireAppLoading() {
     }
 
     showTip(0);
+    tipsWrap.classList.remove('is-offline-hint');
     tipsWrap.style.display = '';
+    carouselReady = true;
 
     if (prevBtn) {
       prevBtn.addEventListener('click', () => {
@@ -223,7 +250,50 @@ function wireAppLoading() {
         showTip(currentIdx);
       });
     }
-  }).catch(() => {});
+  }
+
+  function onTipsResult(result) {
+    if (el.classList.contains('is-hidden')) return;
+    const offline = globalThis.navigator?.onLine === false;
+    if (!result?.ok || offline) {
+      status.fail();
+      paintStatus();
+      return;
+    }
+    const wasFailing = status.snapshot().mode === 'fail';
+    if (wasFailing) status.recover();
+    mountCarousel(result.tips);
+    // Leave the rotating progress line alone on the happy path.
+    if (wasFailing) paintStatus();
+  }
+
+  tipsPreload.then(onTipsResult).catch(() => {
+    status.fail();
+    paintStatus();
+  });
+
+  const win = globalThis.window;
+  function onOffline() {
+    if (el.classList.contains('is-hidden')) return;
+    status.fail();
+    paintStatus();
+  }
+  function onOnline() {
+    if (el.classList.contains('is-hidden')) return;
+    status.recover();
+    paintStatus();
+    if (carouselReady) return;
+    loadingTipsService.loadTipsStatus().then(onTipsResult).catch(() => {
+      status.fail();
+      paintStatus();
+    });
+  }
+  win?.addEventListener?.('offline', onOffline);
+  win?.addEventListener?.('online', onOnline);
+  if (globalThis.navigator?.onLine === false) {
+    status.fail();
+    paintStatus();
+  }
 
   let hidden = false;
   let off = null;
@@ -232,6 +302,8 @@ function wireAppLoading() {
     hidden = true;
     el.classList.add('is-hidden');
     clearInterval(textTimer);
+    win?.removeEventListener?.('offline', onOffline);
+    win?.removeEventListener?.('online', onOnline);
     if (sessionTips.length) {
       loadingTipsService.recordShownTips(sessionTips.map(t => t.id));
     }
@@ -3635,7 +3707,7 @@ async function boot() {
     if (typeof showSc === 'function') {
       try { showSc(id); return; } catch { /* swallow */ }
     }
-    const screens = ['sh', 'ss', 'sg', 'so', 'scoin', 'sprofile', 'sfriends', 'snotif', 'schamps', 'sauth-signup', 'sauth-login', 'sav-gallery', 'savatar-store', 'sstats', 'smygames'];
+    const screens = SCREEN_IDS;
     for (const s of screens) {
       const el = globalThis.document?.getElementById?.(s);
       if (!el) continue;
