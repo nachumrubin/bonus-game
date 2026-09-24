@@ -5,6 +5,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import * as bus from '../../events/bus.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './menuScreen.js';
@@ -259,15 +262,29 @@ test('mount: missing #sh root logs a warning and returns a no-op', () => {
   }
 });
 
-test('home rank row opens champions', () => {
+test('home champions card is not an entry point', () => {
   bus._reset();
   const { root, buttons } = makeMenuDom();
   let opens = 0;
   bus.on(CHAMPS_OPEN, () => { opens++; });
   mountMenuScreen({ root, bus });
-  assert.equal(buttons.champs.getAttribute('onclick'), null);
+  // A leftover #btn-home-champs is not wired. The ELO chip is the home entry.
+  assert.equal(buttons.champs.getAttribute('onclick'), 'openChampions()');
+  assert.equal(buttons.champs._listeners.length, 0);
   buttons.champs.click();
-  assert.equal(opens, 1);
+  assert.equal(opens, 0);
+});
+
+test('home partial has no champions navigation card', () => {
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const home = fs.readFileSync(path.join(root, 'partials/screens/home.html'), 'utf8');
+  const profile = fs.readFileSync(path.join(root, 'partials/screens/profile-screen.html'), 'utf8');
+  assert.doesNotMatch(home, /btn-home-champs/);
+  assert.doesNotMatch(home, /hm-rank/);
+  assert.match(home, /showAvatarGallery\(\)/);
+  assert.match(home, /הישגים/);
+  assert.match(profile, /id="btn-profile-champs"/);
+  assert.match(profile, /טבלת דירוגים/);
 });
 
 test('ELO chip opens champions and does not bubble into profile', () => {

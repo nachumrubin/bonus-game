@@ -112,15 +112,22 @@ export async function resolveLeaderboard(db, { limit = RATINGS_LIMIT, myUid = nu
   return { entries, myPosition, myEntry };
 }
 
-// Returns the #1 player's UID and total registered player count.
-// Used to gate the beatNumberOne achievement.
-export async function getLeaderboardMeta(db) {
-  if (!db) return { topUid: null, totalPlayers: 0 };
+// Returns the #1 player's UID, total registered player count, and — when
+// `myUid` is set — that player's 1-based rank on the same read.
+// `topUid` / `totalPlayers` gate beatNumberOne. `myPosition` is the pre-game
+// rank snapshotted at session start so the end table can show a real delta.
+export async function getLeaderboardMeta(db, { myUid = null } = {}) {
+  if (!db) return { topUid: null, totalPlayers: 0, myPosition: null };
   const snap = await db.ref(RATINGS_PATH).get().catch(() => null);
   const raw = snap?.val ? snap.val() : null;
-  if (!raw) return { topUid: null, totalPlayers: 0 };
-  const ranked = rankRatings(raw, { limit: 1 });
-  return { topUid: ranked[0]?.uid ?? null, totalPlayers: Object.keys(raw).length };
+  if (!raw || typeof raw !== 'object') return { topUid: null, totalPlayers: 0, myPosition: null };
+  const ranked = rankRatings(raw, { limit: Number.POSITIVE_INFINITY });
+  const myIdx = myUid ? ranked.findIndex((entry) => entry.uid === myUid) : -1;
+  return {
+    topUid: ranked[0]?.uid ?? null,
+    totalPlayers: Object.keys(raw).length,
+    myPosition: myIdx >= 0 ? myIdx + 1 : null,
+  };
 }
 
 export async function upsertRatingLeaderboardEntry(db, {

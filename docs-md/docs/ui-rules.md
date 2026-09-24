@@ -333,7 +333,7 @@ button[onclick="startSetup('vs')"]
 button[onclick="startSetup('bot')"]
 button[onclick="showOnlineLobby()"]
 button[onclick="showTutorialIntro()"]
-button[onclick="openChampions()"]  // #btn-home-champs + #btn-profile-champs → CHAMPS_OPEN (#ov-champs)
+button[onclick="openChampions()"]  // #btn-profile-champs → CHAMPS_OPEN (#ov-champs). No home-screen card.
 button[onclick="openSettings()"]
 button[onclick="shareGame()"]
 button[onclick="openStats()"]         // → MENU_INTENT.OPEN_STATS
@@ -637,11 +637,13 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#btn-share-game`: hidden if `!isAuthed`; on first reveal: plays `menuBtnIn` animation
 - `#home-user-label`: shows `displayName`
 - `#home-avatar-ic`: shows `avatar` emoji when provided
-- `#home-elo-label`: hidden if `!isAuthed`. When visible it is its own hit target (`role="button"`, `aria-label="טבלת דירוגים"`): click/Enter/Space emits `CHAMPS_OPEN` and stops propagation so `#btn-profile-home` does not also open. Avatar and `#home-user-label` still open profile/auth.
+- `#home-elo-label`: hidden if `!isAuthed`. When visible it is its own hit target (`role="button"`, `aria-label="טבלת דירוגים"`): click/Enter/Space emits `CHAMPS_OPEN` and stops propagation so `#btn-profile-home` does not also open. Avatar and `#home-user-label` still open profile/auth. This is the only home-screen entry to `#ov-champs`.
 - `#home-elo-value`: shows `rating` formatted as locale number
 - `#home-elo-bolt`: tier emoji (🪙/🥈/🥇/💎); set by `ratingTierEmoji()` in `menuScreen.js`
-- `#btn-home-champs`: secondary home row under `.hm-cards` (not a fourth mode card). Label `טבלת דירוגים`, sub `מי במקום הראשון?`. Visible for guest and authed. Click emits `CHAMPS_OPEN` → `#ov-champs`. Bottom-nav הישגים is unchanged (`showAvatarGallery()`).
+- Home has no `#btn-home-champs` row. Bottom-nav הישגים is unchanged (`showAvatarGallery()`).
 - `#btn-profile-champs`: profile row in `.pf-btns`, above `סטטיסטיקות מלאות` and outside `.pf-danger-zone`. Label `טבלת דירוגים`, sub `ELO ודירוג עולמי`. Click emits `CHAMPS_OPEN`. Overlay stacks on the profile (`z-index` of `.ov`).
+- Medal icons (`.champ-medal-icon`) in both `#champions-wrap` (post-game) and `#champions-wrap-home` (`#ov-champs`) are 22×22. Do not size the overlay medals separately.
+- Post-game rank change: `#champions-wrap` only. The current user's row gets `.champ-rank-delta--up` (`▲` + places, green) when the rank number went down, or `.champ-rank-delta--down` (`▼` + places, red) when it went up. Zero change and a missing pre-game rank render nothing. The anytime overlay does not show this delta.
 - `#online-badge`: shows count of pending game invites + friend requests; located inside `#btn-notifications-home`. Controlled by `MENU_REFRESH` `unreadCount` field.
 - `#btn-notifications-home`: notification bell in top bar (Electric Menu redesign). Clicking emits `MENU_INTENT.OPEN_NOTIFICATIONS` → opens `#snotif`.
 

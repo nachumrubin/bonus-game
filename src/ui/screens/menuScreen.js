@@ -107,10 +107,10 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
-  // Rank discovery. Home row is outside the three mode cards. The topbar ELO
-  // chip sits inside #btn-profile-home, so its click must not bubble into
-  // OPEN_PROFILE.
-  bindOpenChampions($('#btn-home-champs', menuRoot));
+  // Rank discovery from the authed topbar ELO chip. The chip sits inside
+  // #btn-profile-home, so its click must not bubble into OPEN_PROFILE.
+  // The home-screen navigation card (#btn-home-champs) was removed; profile
+  // still opens champs from #btn-profile-champs.
   const eloChip = $('#home-elo-label', topbarRoot);
   if (eloChip) {
     eloChip.setAttribute?.('role', 'button');

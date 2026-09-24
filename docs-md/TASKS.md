@@ -5,9 +5,16 @@
 Specs: Phase 1 engineering sheet (P1-01 … P1-04). Soft UI cancelled. הישגים stays achievements.
 
 - [x] **P1-01** Profile row `טבלת דירוגים` opens `#ov-champs` via `CHAMPS_OPEN`.
-- [x] **P1-02** Home secondary row under the mode cards opens the same overlay. Not a fourth mode card. Guest and authed.
+- [x] **P1-02** Home secondary row shipped, then removed in the champions follow-up. Do not add another home champions card. Entry points are the ELO chip and the profile row.
 - [x] **P1-03** Topbar ELO chip opens champs; avatar/name still open profile.
-- [ ] **P1-04** Authed home ELO/streak strip. Deferred: streak is not on `MENU_REFRESH`, and the strip must replace the P1-02 row rather than stack a second CTA.
+- [ ] **P1-04** Authed home ELO/streak strip. Still deferred: streak is not on `MENU_REFRESH`. The home champions row is gone, so a future strip must not reintroduce a second champions CTA.
+
+## Champions follow-ups — September 2026
+
+- [x] Overlay medals use the post-game 22×22 `.champ-medal-icon` rule (`#champions-wrap` and `#champions-wrap-home`).
+- [x] Home `#btn-home-champs` row removed. Profile row and ELO chip remain.
+- [x] Post-game rank delta on the current user's row, from `preGameMyPosition` captured at online session start.
+- [ ] **Deferred motion:** row slide when the player enters or leaves the visible top-N (outside-separator row). In-table count-up + slide ships when both ranks are inside the top-N.
 
 ## Phase 0 UI quick wins — September 2026
 
