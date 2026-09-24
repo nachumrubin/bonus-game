@@ -4797,6 +4797,9 @@ function installCutoverGlobals() {
   globalThis.showStatsScreen = globalThis.showStatsScreen ?? function showStatsScreen() {
     bus.emit(PROFILE_INTENT.OPEN_STATS, {});
   };
+  globalThis.openChampions = globalThis.openChampions ?? function openChampions() {
+    bus.emit(CHAMPS_OPEN, {});
+  };
   globalThis.openMyGames = globalThis.openMyGames ?? function openMyGames() {
     bus.emit(MENU_INTENT.OPEN_MY_GAMES, {});
   };

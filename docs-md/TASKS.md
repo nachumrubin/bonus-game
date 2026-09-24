@@ -1,5 +1,14 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Phase 1 — champions discovery — September 2026
+
+Specs: Phase 1 engineering sheet (P1-01 … P1-04). Soft UI cancelled. הישגים stays achievements.
+
+- [x] **P1-01** Profile row `טבלת דירוגים` opens `#ov-champs` via `CHAMPS_OPEN`.
+- [x] **P1-02** Home secondary row under the mode cards opens the same overlay. Not a fourth mode card. Guest and authed.
+- [x] **P1-03** Topbar ELO chip opens champs; avatar/name still open profile.
+- [ ] **P1-04** Authed home ELO/streak strip. Deferred: streak is not on `MENU_REFRESH`, and the strip must replace the P1-02 row rather than stack a second CTA.
+
 ## Phase 0 UI quick wins — September 2026
 
 Specs: Phase 0 engineering sheet (P0-01 … P0-12). Soft UI held. הישגים bottom nav stays on achievements.

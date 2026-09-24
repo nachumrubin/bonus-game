@@ -2,6 +2,17 @@
 
 ---
 
+## Phase 1 — discoverable champions — September 2026
+
+A player can open `#ov-champs` (`טבלת דירוגים`) without finishing a match. Soft UI stays cancelled. Bottom-nav הישגים still opens the achievements gallery.
+
+- **P1-01:** Profile row `#btn-profile-champs` in `.pf-btns` (above full stats, outside the logout danger zone). Copy: `טבלת דירוגים` / `ELO ודירוג עולמי`. Click emits `CHAMPS_OPEN`.
+- **P1-02:** Home secondary row `#btn-home-champs` under the three mode cards, not a fourth mode card. Copy: `טבלת דירוגים` / `מי במקום הראשון?`. RTL trailing chevron `❮`. Shown for guests and signed-in players.
+- **P1-03:** Authed topbar ELO chip (`#home-elo-label`) opens the same overlay and stops the click from also opening profile. Avatar and name still call `openProfileOrAuth()`.
+- **P1-04:** Not in this change. A home ELO/streak strip would duplicate the P1-02 row unless it replaces it, and current streak is not on `MENU_REFRESH`.
+
+Icon is the existing transparent `assets/rewards/gold medal.png`. `assets/rewards/trophy.png` was skipped because its plate is opaque black.
+
 ## Phase 0 batch 1 — setup, auth, and avatar copy — September 2026
 
 Copy-only UI fixes. No gameplay, scoring, or dictionary changes. Soft UI stays held.
