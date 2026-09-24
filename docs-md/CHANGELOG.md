@@ -2,6 +2,10 @@
 
 ---
 
+## End-table ELO count-up ignores a missing pre-game rating — September 2026
+
+Codex P1 on #364. `playChampEndMotion` did `Number(eloFrom)` before the finite check. `Number(null)` is `0`, so an omitted or `null` `eloFrom` (offline `refreshChampions('end')`, a failed ELO update, no captured pre-game rating) counted any nonzero shown rating up from 0. A nullish `eloFrom` is now left out of that conversion. A real numeric pre-game rating, including `0`, still counts when it differs from the shown rating.
+
 ## Champions follow-ups — medals, home entry, post-game rank delta — September 2026
 
 Owner follow-ups on Phase 1. Electric styling kept. Soft UI stays cancelled. הישגים still opens achievements.

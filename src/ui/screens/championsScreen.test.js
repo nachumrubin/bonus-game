@@ -207,9 +207,12 @@ test('end-table motion starts at the pre-game slot and pre-game ELO', () => {
   const prevRaf = globalThis.requestAnimationFrame;
   globalThis.requestAnimationFrame = () => 1;
   try {
+    const cell = { textContent: '' };
     const wrap = {
       innerHTML: '',
-      querySelector() { return { textContent: '' }; },
+      querySelector(sel) {
+        return sel === 'tr.champ-me [data-champ-elo]' ? cell : null;
+      },
       querySelectorAll() { return []; },
     };
     playChampEndMotion(wrap, {
@@ -229,6 +232,96 @@ test('end-table motion starts at the pre-game slot and pre-game ELO', () => {
     assert.match(wrap.innerHTML, /1100/);
     assert.match(wrap.innerHTML, /champ-rank-delta--up/);
     assert.doesNotMatch(wrap.innerHTML, /1300/);
+    assert.equal(cell.textContent, '1100');
+  } finally {
+    if (prevRaf) globalThis.requestAnimationFrame = prevRaf;
+    else delete globalThis.requestAnimationFrame;
+  }
+});
+
+test('omitted or null eloFrom does not count the end rating up from zero', () => {
+  const prevRaf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = () => 1;
+  try {
+    const entries = [
+      { uid: 'me', name: 'Me', rating: 1480 },
+      { uid: 'a', name: 'Ann', rating: 1200 },
+    ];
+    for (const eloArgs of [{}, { eloFrom: null }]) {
+      const cell = { textContent: 'kept' };
+      let eloQueries = 0;
+      const wrap = {
+        innerHTML: '',
+        querySelector(sel) {
+          if (sel === 'tr.champ-me [data-champ-elo]') {
+            eloQueries += 1;
+            return cell;
+          }
+          return null;
+        },
+        querySelectorAll() { return []; },
+      };
+      playChampEndMotion(wrap, {
+        entries,
+        myUid: 'me',
+        myPosition: 1,
+        preRank: 2,
+        reducedMotion: false,
+        ...eloArgs,
+      });
+      assert.equal(eloQueries, 0);
+      assert.equal(cell.textContent, 'kept');
+      assert.match(wrap.innerHTML, /data-champ-elo>1480</);
+      assert.doesNotMatch(wrap.innerHTML, /data-champ-elo>0</);
+      const me = wrap.innerHTML.indexOf('>Me<');
+      const ann = wrap.innerHTML.indexOf('Ann');
+      assert.ok(me !== -1 && me < ann, 'final order is painted when there is nothing to count');
+    }
+
+    const cell = { textContent: 'kept' };
+    const wrap = {
+      innerHTML: '',
+      querySelector(sel) {
+        return sel === 'tr.champ-me [data-champ-elo]' ? cell : null;
+      },
+      querySelectorAll() { return []; },
+    };
+    playChampEndMotion(wrap, {
+      entries,
+      myUid: 'me',
+      myPosition: 1,
+      preRank: 1,
+      reducedMotion: false,
+    });
+    assert.equal(cell.textContent, 'kept');
+    assert.match(wrap.innerHTML, /data-champ-elo>1480</);
+  } finally {
+    if (prevRaf) globalThis.requestAnimationFrame = prevRaf;
+    else delete globalThis.requestAnimationFrame;
+  }
+});
+
+test('a pre-game rating of 0 still counts up to the shown rating', () => {
+  const prevRaf = globalThis.requestAnimationFrame;
+  globalThis.requestAnimationFrame = () => 1;
+  try {
+    const cell = { textContent: '' };
+    const wrap = {
+      innerHTML: '',
+      querySelector(sel) {
+        return sel === 'tr.champ-me [data-champ-elo]' ? cell : null;
+      },
+      querySelectorAll() { return []; },
+    };
+    playChampEndMotion(wrap, {
+      entries: [{ uid: 'me', name: 'Me', rating: 24 }],
+      myUid: 'me',
+      myPosition: 1,
+      eloFrom: 0,
+      reducedMotion: false,
+    });
+    assert.equal(cell.textContent, '0');
+    assert.match(wrap.innerHTML, /data-champ-elo>24</);
   } finally {
     if (prevRaf) globalThis.requestAnimationFrame = prevRaf;
     else delete globalThis.requestAnimationFrame;

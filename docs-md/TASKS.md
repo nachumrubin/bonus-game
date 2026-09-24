@@ -14,7 +14,9 @@ Specs: Phase 1 engineering sheet (P1-01 … P1-04). Soft UI cancelled. הישג�
 - [x] Overlay medals use the post-game 22×22 `.champ-medal-icon` rule (`#champions-wrap` and `#champions-wrap-home`).
 - [x] Home `#btn-home-champs` row removed. Profile row and ELO chip remain.
 - [x] Post-game rank delta on the current user's row, from `preGameMyPosition` captured at online session start.
+- [x] End-table ELO count-up skips omitted/`null` `eloFrom` (Codex P1 on #364). A numeric pre-game rating still counts, including `0`.
 - [ ] **Deferred motion:** row slide when the player enters or leaves the visible top-N (outside-separator row). In-table count-up + slide ships when both ranks are inside the top-N.
+- [ ] **Codex P2 on #364 (not this fix):** post-game rank is read after only the local ELO write. The opponent's rating lands in a separate client write, so a loss that should drop the local rank can still show no change.
 
 ## Phase 0 UI quick wins — September 2026
 

@@ -644,6 +644,7 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#btn-profile-champs`: profile row in `.pf-btns`, above `סטטיסטיקות מלאות` and outside `.pf-danger-zone`. Label `טבלת דירוגים`, sub `ELO ודירוג עולמי`. Click emits `CHAMPS_OPEN`. Overlay stacks on the profile (`z-index` of `.ov`).
 - Medal icons (`.champ-medal-icon`) in both `#champions-wrap` (post-game) and `#champions-wrap-home` (`#ov-champs`) are 22×22. Do not size the overlay medals separately.
 - Post-game rank change: `#champions-wrap` only. The current user's row gets `.champ-rank-delta--up` (`▲` + places, green) when the rank number went down, or `.champ-rank-delta--down` (`▼` + places, red) when it went up. Zero change and a missing pre-game rank render nothing. The anytime overlay does not show this delta.
+- Post-game ELO count-up (`playChampEndMotion`): runs only when `eloFrom` is a finite pre-game number, including `0`, that differs from the shown rating. Omitted or `null` `eloFrom` leaves the shown rating in place and does not count from 0.
 - `#online-badge`: shows count of pending game invites + friend requests; located inside `#btn-notifications-home`. Controlled by `MENU_REFRESH` `unreadCount` field.
 - `#btn-notifications-home`: notification bell in top bar (Electric Menu redesign). Clicking emits `MENU_INTENT.OPEN_NOTIFICATIONS` → opens `#snotif`.
 

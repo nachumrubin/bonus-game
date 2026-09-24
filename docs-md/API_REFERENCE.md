@@ -562,7 +562,9 @@ getLeaderboardMeta(db, { myUid }?): Promise<{
 `myPosition` is the pre-game rank stored on the online session. The post-game
 champions table (`buildChampionsHtml` / `playChampEndMotion` in
 `championsScreen.js`) turns `postRank - preRank` into a green `▲` or red `▼`
-on the current user's row. The anytime overlay does not.
+on the current user's row. The anytime overlay does not. `playChampEndMotion`
+counts ELO only from a numeric `eloFrom`; a missing or `null` value is not
+coerced to `0`.
 
 ---
 
