@@ -11,7 +11,7 @@
 
 **Why:** Other players can move during the match, so "places gained" is the difference between two real reads, not a number derived only from this match's ELO delta. Inventing a rank for a player who was not on the board would be a guess.
 
-**Motion:** Count-up plus a row slide runs only when both ranks are inside the visible top-N. Crossing into or out of that list (the outside-separator row) stays a static delta — a FLIP across a row that appears or disappears is easier to get wrong than to skip.
+**Motion:** Count-up plus a row slide runs only when both ranks are inside the visible top-N. Crossing into or out of that list (the outside-separator row) stays a static delta — a FLIP across a row that appears or disappears is easier to get wrong than to skip. The count itself runs only when `eloFrom` is a real number (including `0`) that differs from the shown rating. Omitted or `null` means there is no pre-game rating to count from — `Number(null)` is `0`, and treating that as a start value flashes the live rating down to zero.
 
 **Implementation:** `ratingService.getLeaderboardMeta`, `main.js` session start, `championsScreen.playChampEndMotion`.
 

@@ -203,7 +203,9 @@ export function playChampEndMotion(wrap, {
     ? stageLeaderboardEntries(entries, { myUid, preRank, postRank: myPosition })
     : null;
   const shown = displayedRating(entries, myUid, myEntry);
-  const from = Number(eloFrom);
+  // Number(null) is 0. Offline end tables, a failed ELO write, and a missing
+  // pre-game snapshot omit eloFrom — that must not count the real rating up from 0.
+  const from = eloFrom == null ? NaN : Number(eloFrom);
   const canCount = !reducedMotion && canQuery
     && Number.isFinite(from) && shown != null && from !== shown;
 
