@@ -552,7 +552,17 @@ applyDelta(rating: number, delta: number): number
 scoreFromResult(result: 'win' | 'loss' | 'draw'): number
 rankRatings(ratings: RatingDoc[]): RatingDoc[]
 applyEloForFinishedGame(db, opts: { roomId, players, winnerSlot }): Promise<void>
+getLeaderboardMeta(db, { myUid }?): Promise<{
+  topUid: string | null,
+  totalPlayers: number,
+  myPosition: number | null   // 1-based, only when myUid is on the board
+}>
 ```
+
+`myPosition` is the pre-game rank stored on the online session. The post-game
+champions table (`buildChampionsHtml` / `playChampEndMotion` in
+`championsScreen.js`) turns `postRank - preRank` into a green `▲` or red `▼`
+on the current user's row. The anytime overlay does not.
 
 ---
 

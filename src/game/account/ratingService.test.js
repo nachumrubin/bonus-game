@@ -157,4 +157,21 @@ test('getLeaderboardMeta: returns null topUid and 0 when leaderboard is empty', 
   const meta = await getLeaderboardMeta(db);
   assert.equal(meta.topUid, null);
   assert.equal(meta.totalPlayers, 0);
+  assert.equal(meta.myPosition, null);
+});
+
+test('getLeaderboardMeta: myPosition is the 1-based rank on the same read', async () => {
+  const db = makeMockDb();
+  await db.ref('globalRatings').set({
+    p1: { uid: 'p1', name: 'Alice', rating: 1500, updatedAt: 1 },
+    p2: { uid: 'p2', name: 'Bob',   rating: 1300, updatedAt: 1 },
+    p3: { uid: 'p3', name: 'Carol', rating: 1200, updatedAt: 1 },
+  });
+  const meta = await getLeaderboardMeta(db, { myUid: 'p2' });
+  assert.equal(meta.topUid, 'p1');
+  assert.equal(meta.totalPlayers, 3);
+  assert.equal(meta.myPosition, 2);
+  const missing = await getLeaderboardMeta(db, { myUid: 'nobody' });
+  assert.equal(missing.myPosition, null);
+  assert.equal(missing.topUid, 'p1');
 });

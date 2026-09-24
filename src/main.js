@@ -3556,7 +3556,7 @@ async function boot() {
     });
 
     // ── Rating + stats on game-end (online games only) ──
-    async function refreshChampions(target = 'all') {
+    async function refreshChampions(target = 'all', motion = null) {
       const fbDb = activeFbDb;
       if (!fbDb) {
         bus.emit(CHAMPS_ERROR, { target });
@@ -3565,7 +3565,20 @@ async function boot() {
       try {
         const myUid = activeFbCurrentUser?.uid ?? null;
         const { entries, myPosition, myEntry } = await ratingService.resolveLeaderboard(fbDb, { myUid });
-        bus.emit(CHAMPS_RENDER, { entries, myUid, myPosition, myEntry, target });
+        // Pre-game rank is captured when the online session starts. Only the
+        // post-game table (target 'end') should see it.
+        const preRank = (target === 'end' || target === 'all')
+          ? (globalThis.__spine?.activeGame?.preGameMyPosition ?? null)
+          : null;
+        bus.emit(CHAMPS_RENDER, {
+          entries,
+          myUid,
+          myPosition,
+          myEntry,
+          target,
+          preRank,
+          eloFrom: (target === 'end' || target === 'all') ? (motion?.eloFrom ?? null) : null,
+        });
       } catch (e) {
         console.warn('[spine] champions list', e);
         bus.emit(CHAMPS_ERROR, { target });
@@ -3645,12 +3658,15 @@ async function boot() {
       // the rating pool entirely.
       const movesPlayed = Number(session?.state?.moveHistory?.length ?? 0);
       if (oppUid && oppUid !== fbUser.uid && movesPlayed > 0 && !fbUser.isAnonymous) {
-        await ratingService.applyEloForFinishedGame(fbDb, {
+        const elo = await ratingService.applyEloForFinishedGame(fbDb, {
           myUid: fbUser.uid, oppUid, result,
           preGameMyRating:  ag.preGameMyRating  ?? null,
           preGameOppRating: ag.preGameOppRating ?? null,
-        }).catch((e) => console.warn('[spine] elo', e));
-        refreshChampions('end');
+        }).catch((e) => {
+          console.warn('[spine] elo', e);
+          return null;
+        });
+        refreshChampions('end', elo?.ok ? { eloFrom: elo.myBefore } : null);
       } else if (oppUid && oppUid !== fbUser.uid && fbUser.isAnonymous) {
         console.info('[spine] skipping ELO — anonymous (unrated) player', { roomId: ag?.session?.state?.roomId });
       } else if (oppUid && oppUid !== fbUser.uid) {
@@ -4294,6 +4310,7 @@ async function boot() {
       preGameOppRating: null,
       preGameTopUid: null,
       preGameTotalPlayers: 0,
+      preGameMyPosition: null,
       end() {
         screen.unmount();
         animationController.dispose();
@@ -4320,13 +4337,16 @@ async function boot() {
       Promise.all([
         ratingService.readRating(db, _myUidForRating).catch(() => null),
         ratingService.readRating(db, _oppUidForRating).catch(() => null),
-        ratingService.getLeaderboardMeta(db).catch(() => ({ topUid: null, totalPlayers: 0 })),
+        ratingService.getLeaderboardMeta(db, { myUid: _myUidForRating }).catch(() => ({ topUid: null, totalPlayers: 0, myPosition: null })),
       ]).then(([myR, oppR, leaderboardMeta]) => {
         if (globalThis.__spine.activeGame !== activeGame) return;
         activeGame.preGameMyRating = myR;
         activeGame.preGameOppRating = oppR;
         activeGame.preGameTopUid = leaderboardMeta?.topUid ?? null;
         activeGame.preGameTotalPlayers = leaderboardMeta?.totalPlayers ?? 0;
+        activeGame.preGameMyPosition = Number.isInteger(leaderboardMeta?.myPosition)
+          ? leaderboardMeta.myPosition
+          : null;
       }).catch((e) => console.warn('[spine] pre-game ratings', e));
     }
     console.info('[spine] online game started', { roomId: room.roomId, mySlot, isAsync });

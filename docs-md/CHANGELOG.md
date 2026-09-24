@@ -2,6 +2,15 @@
 
 ---
 
+## Champions follow-ups — medals, home entry, post-game rank delta — September 2026
+
+Owner follow-ups on Phase 1. Electric styling kept. Soft UI stays cancelled. הישגים still opens achievements.
+
+- **Medals:** `#ov-champs` (`#champions-wrap-home`) was painting `.champ-medal-icon` at the PNG's intrinsic size. The post-game table already constrained that class to 22×22 under `#champions-wrap`. The same rule now covers both wraps.
+- **Home entry removed:** `#btn-home-champs` (the secondary `טבלת דירוגים` row under the three mode cards) is gone, including its `.hm-rank` styles. Remaining entry points: authed topbar ELO chip (`#home-elo-label`) and profile `#btn-profile-champs`.
+- **Post-game rank delta:** When an online match starts, `getLeaderboardMeta(db, { myUid })` stores `activeGame.preGameMyPosition` from the same `globalRatings` read as `preGameTopUid`. After ELO is applied, the end table (`#champions-wrap` only) shows `▲N` in green when that rank number went down, or `▼N` in red when it went up, on the current user's row. A zero change is hidden. If the pre-game rank was never captured, nothing is invented.
+- **Motion:** When both the pre-game and post-game ranks sit inside the visible top-N, the end table places the user at the old slot, counts the rating from `myBefore` up to the post-game leaderboard value, then slides the row into the new order. Reduced motion paints the final table immediately. Sliding a player into or out of the top-N (the outside-separator row) is not animated.
+
 ## Phase 1 — discoverable champions — September 2026
 
 A player can open `#ov-champs` (`טבלת דירוגים`) without finishing a match. Soft UI stays cancelled. Bottom-nav הישגים still opens the achievements gallery.

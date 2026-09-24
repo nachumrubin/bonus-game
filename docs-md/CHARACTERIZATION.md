@@ -298,6 +298,7 @@ Source: `src/game/account/ratingService.js`
 - `RATINGS_LIMIT = 10` — leaderboard shows top 10 entries
 - Written to `/globalRatings/{uid}` with fields: `uid`, `name`, `rating`, `updatedAt`
 - Only applies to online games (Unknown / needs verification — condition not confirmed in code)
+- At online session start the client snapshots `preGameMyPosition` (1-based) from that leaderboard read. The post-game table shows the current user's rank change against that snapshot: green `▲` when the rank number went down, red `▼` when it went up. No change, or a snapshot that never arrived, shows no mark. The anytime `#ov-champs` overlay does not show this delta.
 
 ---
 

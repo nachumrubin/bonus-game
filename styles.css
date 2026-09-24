@@ -896,7 +896,10 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 
 /* Champions table — premium leaderboard */
 #champions-wrap .champs-table{width:100%;border-collapse:collapse;font-size:12px;}
-#champions-wrap .champ-medal-icon{width:22px;height:22px;object-fit:contain;vertical-align:middle;display:inline-block;}
+/* Same compact medal as the post-game table. The anytime overlay paints into
+   #champions-wrap-home and must not fall back to the PNG's intrinsic size. */
+#champions-wrap .champ-medal-icon,
+#champions-wrap-home .champ-medal-icon{width:22px;height:22px;object-fit:contain;vertical-align:middle;display:inline-block;}
 #champions-wrap .champs-table thead tr{border-bottom:1px solid rgba(0,200,255,.2);}
 #champions-wrap .champs-table th{color:rgba(0,220,255,.65);font-size:10px;font-weight:700;letter-spacing:.05em;padding:4px 8px;}
 #champions-wrap .champs-table td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.05);text-align:center;}
@@ -1072,6 +1075,12 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .champs-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px;}
 .champs-table th,.champs-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.12);text-align:center;}
 .champs-table th{color:var(--by);}
+/* Post-game rank change on the current user's row. Green ▲ = climbed
+   (rank number went down). Red ▼ = dropped. Hidden when the change is 0. */
+.champ-rank-delta{display:inline-block;margin-inline-start:4px;font-size:10px;font-weight:800;line-height:1;vertical-align:middle;letter-spacing:.01em;animation:champDeltaIn .35s ease both;}
+.champ-rank-delta--up{color:#7ee787;}
+.champ-rank-delta--down{color:#ff8585;}
+@keyframes champDeltaIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 .champs-empty{opacity:.6;text-align:center;padding:10px 0;}
 .champs-empty--copy{opacity:1;padding:12px 8px;}
 .champs-empty-title{font-size:13px;font-weight:800;color:rgba(255,255,255,.9);line-height:1.35;}

@@ -5,6 +5,18 @@
 
 ---
 
+## D-postgame-rank-delta: rank change is the pre-game snapshot, not a reconstructed rank — September 2026
+
+**Decision:** The post-game champions row shows how the current player's **place** changed versus the leaderboard position captured when the online session started (`activeGame.preGameMyPosition` from `getLeaderboardMeta`). It is not recomputed by replaying ELO against a later board, and it is not shown when that snapshot is missing. A zero change is hidden. The anytime overlay does not show it.
+
+**Why:** Other players can move during the match, so "places gained" is the difference between two real reads, not a number derived only from this match's ELO delta. Inventing a rank for a player who was not on the board would be a guess.
+
+**Motion:** Count-up plus a row slide runs only when both ranks are inside the visible top-N. Crossing into or out of that list (the outside-separator row) stays a static delta — a FLIP across a row that appears or disappears is easier to get wrong than to skip.
+
+**Implementation:** `ratingService.getLeaderboardMeta`, `main.js` session start, `championsScreen.playChampEndMotion`.
+
+---
+
 ## D-matchmaking-exact-search: "חיפוש מדויק" makes settings hard; flexible = closest-from-pool — June 2026
 
 **Decision:** "חיפוש מדויק" (exact search) is a per-player switch that turns **all**
