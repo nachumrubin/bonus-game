@@ -5,6 +5,22 @@
 
 ---
 
+## D-web-images: PNG masters stay, the service worker serves web-sized WebP — September 2026
+
+**Decision:** art PNGs under `assets/` stay as 1024px masters. `scripts/build-web-images.py`
+writes a sibling `<name>.webp` (≤512px); `sw.js` serves it for any `assets/**.png`
+request (not `assets/anim/`), falling back to the PNG. Images live in `boost-assets-v1`,
+a cache that is not deleted on deploy and is refreshed stale-while-revalidate.
+
+**Why:** avatar paths are stored in Firebase as ids, the atlas manifest is keyed by PNG
+path, and the Blender pipeline reads the masters, so renaming references or shrinking
+the masters was not an option. Mapping in the SW needs zero reference changes.
+
+**Rules:** never set `visibility: visible` inside a hidden screen/overlay (it would
+paint again). Rebuild WebPs after art changes.
+
+---
+
 ## D-glass-skin-override: app-wide redesign = late-loaded sheet + g-* primitives — September 2026
 
 **Decision:** the app-wide "glass + wood" skin lives in `screens-glass.css`, loaded after

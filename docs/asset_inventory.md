@@ -23,6 +23,12 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 
 ## Existing
 
+### Web-sized WebP derivatives (September 2026)
+
+* Every `assets/**/*.png` (except `assets/anim/`) has a generated sibling `*.webp`
+  (≤512px) from `scripts/build-web-images.py`; the service worker serves it in place of
+  the PNG. The PNGs remain the masters. Regenerate after adding or replacing art.
+
 ### UI line icons (code, not art — September 2026 glass skin)
 
 * `#gi-*` SVG symbol sprite inlined at the top of `index.html` — the 24px line-icon set

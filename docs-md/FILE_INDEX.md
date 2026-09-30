@@ -254,6 +254,7 @@ See `/partials/screens/` for corresponding HTML templates.
 ## `/scripts/` — Build Tools
 | File | Role |
 |------|------|
+| `build-web-images.py` | Writes a ≤512px WebP next to every PNG under `assets/` (not `assets/anim/`); `sw.js` serves it in place of the PNG. Run after art changes. |
 | `stamp-build.js` | Update build timestamp in `sw.js` + `index.html` (cache name, version meta, SW registration query param). |
 | `export-dictionary-file.js` | Extract embedded dictionary from legacy `index.html` to `data/dictionary.base.txt`. |
 | `add-dictionary-words.js` | Bulk import words to dictionary. |

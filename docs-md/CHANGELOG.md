@@ -2,6 +2,37 @@
 
 ---
 
+## Phone rendering & load performance fix — September 2026
+
+On Android (Chrome / TWA) the new design showed blurry screens, half-painted cards,
+missing images and dialogs that never appeared; localhost on desktop looked fine.
+
+- **Root cause — GPU tile budget.** Hidden screens (`.screen.hidden`) and overlays
+  (`.ov.hidden`) were only `opacity:0`, so all ~50 stayed laid out, composited and
+  rasterised — most carry `backdrop-filter`. Measured on an emulated Pixel 7: 117
+  painted layers ≈ 68 viewports ≈ **700 MB** of raster at DPR 2.6, for one visible
+  screen. Phones run out of tile memory → low-res (blurry) tiles, checkerboarded cards,
+  unpainted images. **Fix** (`styles.css`): hidden screens/overlays also get
+  `visibility:hidden`, applied after the existing .2 s fade (`transition: visibility 0s
+  linear .2s`); they stay laid out, so JS measurement is unaffected. Now 10 layers ≈
+  **39 MB** on home.
+- **Images.** First load pulled 11.4 MB of images — 1024px PNG masters (up to 2.4 MB)
+  drawn at 60–120 px. New `scripts/build-web-images.py` writes a ≤512px WebP next to
+  every PNG under `assets/` (58.4 MB → 7.1 MB); the service worker serves the WebP
+  whenever the PNG is requested (falls back to the PNG). Masters, avatar ids stored in
+  Firebase, and the Blender/atlas inputs are unchanged. A reload now fetches 0.95 MB of
+  images.
+- **Service worker.** Images moved to a persistent `boost-assets-v1` cache that survives
+  deploys (stale-while-revalidate, once per SW lifetime). Before, every deploy's new
+  `CACHE_NAME` wiped them and the phone re-downloaded ~35 MB of precached PNGs in the
+  background on the next launch.
+- Tests: SW URL helpers (`webImageUrl`, `isImageAsset`) in
+  `serviceWorkerRouting.test.js`. Unit 1483 green. E2E 43 pass / 15 fail vs 34 / 24 on
+  the pre-fix tree — every remaining failure also fails without this change (boot
+  loader / onboarding overlay intercepting clicks, see TASKS).
+
+---
+
 ## App-wide redesign in the game-screen style (+ 5 extras) — September 2026
 
 Rolled `tools/screens-mockup/index.html` out to the app. First pass (re-skin only) left

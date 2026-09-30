@@ -1,5 +1,22 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Phone performance — September 2026
+
+- [x] Hidden screens/overlays no longer composited (`visibility:hidden` after fade).
+- [x] Web-sized WebP for every asset PNG + SW serving + persistent image cache.
+- [ ] Run `python scripts/build-web-images.py` whenever art under `assets/` is added or
+  replaced (a missing WebP just falls back to the PNG). Consider wiring it into the
+  deploy step next to `stamp-build.js`.
+- [ ] First visit (before the SW controls the page) still downloads the PNG masters.
+- [ ] 159 ES modules load network-first on every launch (DOM ready ≈ 4.6 s on prod with
+  4× CPU / 60 ms RTT). Candidates: `<link rel="modulepreload">` for the boot graph.
+- [ ] Boot loader waits for the profile or a 10 s fallback — a fresh signed-out browser
+  always waits the full 10 s.
+- [ ] Pre-existing e2e failures (15, also failing before this fix): `#app-loading` and
+  `#ov-onboarding` intercept clicks in `spine-boot`, `menu-routing`,
+  `non-menu-buttons`; `boost-electric-border`, `capture-crossing-words-states`,
+  `capture-debug-timeline`, `your-turn-timing`.
+
 ## 2.5D avatar & achievement motion — September 2026
 
 - [x] Blender relief models + auto bust rig + pose atlases for all 73 assets

@@ -75,6 +75,14 @@ partials/screens/online-lobby.html  → onlineLobbyScreen.js
 ...etc
 ```
 
+### Hidden screens and overlays (performance)
+
+`.screen.hidden` / `.ov.hidden` are `opacity:0` **and** `visibility:hidden` (the latter
+applied after the .2 s fade). They stay laid out so JS can measure them, but are not
+painted or composited. Do not set `visibility: visible` on anything inside them, and do
+not switch them to opacity-only. Opacity-only hiding kept ~50 full-screen layers alive
+and exhausted phone GPU memory (blurry / half-painted UI).
+
 ### Screen Controller Pattern
 
 Each screen JS module exports a `mount*Screen()` function:
