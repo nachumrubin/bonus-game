@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../">
+<title>Game Screen Mockup</title>
+<!-- Dev-only design mockup for the whole game-board screen (not wired into the app).
+     Same layout twice: A = current tile design, B = the BOOST-logo tile (wood + cyan rim). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#040a22;--p1:#28d4ff;--p2:#ffc93d;--ink:#eaf4ff;--dim:rgba(234,244,255,.55);--glass:rgba(12,26,74,.72);--line:rgba(120,190,255,.22)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#02061a;color:var(--ink);font:14px/1.3 Heebo,system-ui,Arial,sans-serif;padding:20px 16px 48px}
+  .wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:100%}
+  .cap{font-size:13px;font-weight:800;color:var(--dim);letter-spacing:.04em;text-align:center}
+  .cap b{color:var(--ink)}
+  .shot{width:375px;max-width:100%;border-radius:28px;border:1px solid #1b2a5c;display:block}
+
+  /* ───────── phone / screen ───────── */
+  .phone{position:relative;width:375px;height:812px;max-width:100%;border-radius:28px;overflow:hidden;border:1px solid #1b2a5c;
+    background:
+      radial-gradient(ellipse 90% 45% at 50% 0,rgba(40,110,255,.30),transparent 70%),
+      radial-gradient(ellipse 80% 40% at 50% 100%,rgba(40,212,255,.10),transparent 70%),
+      linear-gradient(180deg,#07123d,#040a22 55%,#030817);
+    display:flex;flex-direction:column;padding:10px 6px 0}
+
+  /* top bar: 3 chips instead of 6 text buttons */
+  .top{padding:0 4px;display:flex;align-items:center;justify-content:space-between;height:40px;margin-bottom:8px}
+  .chips{display:flex;gap:6px}
+  .chip{height:36px;min-width:36px;padding:0 10px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);font-weight:800;font-size:12px}
+  .chip svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .bag{color:var(--dim)} .bag b{color:var(--ink);font-size:15px;font-variant-numeric:tabular-nums}
+
+  /* scoreboard (from tools/scoreboard-mockup) */
+  .sb{position:relative;display:grid;grid-template-columns:1fr 76px 1fr;min-height:108px;border-radius:18px;
+      background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),var(--glass);
+      border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12)}
+  .side{position:relative;display:grid;grid-template-columns:44px 1fr;grid-template-rows:auto 1fr;column-gap:8px;row-gap:4px;padding:10px 8px 12px;border-radius:18px;overflow:hidden;min-width:0}
+  .side.p1{--c:var(--p1)} .side.p2{--c:var(--p2);direction:ltr}
+  .side.p2 .nm,.side.p2 .sub{direction:rtl;text-align:left;unicode-bidi:plaintext}
+  .side.active::before{content:"";position:absolute;inset:0;background:linear-gradient(to left,color-mix(in srgb,var(--c) 24%,transparent),transparent 75%)}
+  .side.p2.active::before{background:linear-gradient(to right,color-mix(in srgb,var(--c) 24%,transparent),transparent 75%)}
+  .av{position:relative;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;align-self:center;
+      background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.18),rgba(0,0,0,.35));border:2px solid rgba(255,255,255,.16);z-index:1}
+  .av img{width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))}
+  .side.active .av{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent),0 0 16px color-mix(in srgb,var(--c) 60%,transparent)}
+  .rar{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;padding:1px 4px;border-radius:5px;background:#ffc93d;color:#2a1a00;white-space:nowrap}
+  .meta{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px;z-index:1}
+  .nm{font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sub{font-size:10px;color:var(--dim);font-weight:700;white-space:nowrap}
+  .row2{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;gap:6px;z-index:1}
+  .score{font-size:28px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums;color:var(--c);text-shadow:0 0 16px color-mix(in srgb,var(--c) 45%,transparent)}
+  .locks{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;
+         background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);direction:ltr}
+  .lk.used{opacity:.3;text-decoration:line-through} .locks .dot{opacity:.35} .locks .ic{font-size:9px}
+  .timer{position:relative;align-self:center;justify-self:center;width:70px;height:70px;border-radius:50%;display:grid;place-items:center;
+         background:radial-gradient(circle,#0b1d5c 58%,#081440 60%);box-shadow:0 0 0 1px var(--line),0 8px 20px rgba(0,0,0,.5)}
+  .timer svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .timer .tm{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;margin-top:-6px}
+  .timer .who{position:absolute;bottom:11px;font-size:8.5px;font-weight:900;color:var(--dim)}
+  .rail{position:absolute;left:16px;right:16px;bottom:-9px;height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;display:flex}
+  .rail i{display:block;height:100%} .rail .r1{background:var(--p1)} .rail .r2{background:var(--p2)}
+
+  /* status pill: replaces the full-width hint strip */
+  .status{align-self:center;margin:18px 0 8px;margin-top:auto;height:26px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;
+    background:rgba(40,212,255,.10);border:1px solid rgba(40,212,255,.35);font-size:12px;font-weight:800}
+  .status .w{letter-spacing:.02em} .status .pts{color:var(--p1);font-variant-numeric:tabular-nums}
+  .status .ok{width:16px;height:16px;border-radius:50%;background:#2ee59d;display:grid;place-items:center;color:#032;font-size:10px;font-weight:900}
+
+  /* board tray */
+  .tray{position:relative;align-self:center;margin-bottom:auto;padding:5px;border-radius:20px;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0) 30%),rgba(6,14,48,.85);
+    border:1px solid var(--line);box-shadow:0 14px 34px rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.4),inset 0 0 40px rgba(40,120,255,.10)}
+  .grid{display:grid;grid-template-columns:24px repeat(10,28px) 24px;grid-template-rows:24px repeat(10,28px) 24px;gap:2px;direction:rtl}
+  .cell{border-radius:5px;background:linear-gradient(180deg,#22438c,#1b3778);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 -1px 0 rgba(0,0,0,.3)}
+  .cell.ring{background:none;box-shadow:none}
+  .cell.anchor{position:relative}
+  .cell.anchor::after{content:"";position:absolute;inset:9px;border-radius:50%;border:1.5px solid rgba(40,212,255,.35)}
+  /* boost socket: a charged port, not a yellow letter tile */
+  .sock{border-radius:7px;display:grid;place-items:center;position:relative;
+    background:radial-gradient(circle at 50% 45%,rgba(40,212,255,.28),rgba(8,22,70,.95) 70%);
+    border:1.5px solid rgba(40,212,255,.75);box-shadow:0 0 10px rgba(40,212,255,.45),inset 0 0 6px rgba(40,212,255,.35)}
+  .sock svg{width:15px;height:15px;fill:#e9fbff;filter:drop-shadow(0 0 3px #28d4ff) drop-shadow(0 0 6px #28d4ff)}
+  .sock.hot{border-color:#fff;box-shadow:0 0 14px #28d4ff,0 0 26px rgba(40,212,255,.6),inset 0 0 8px rgba(255,255,255,.5)}
+
+  /* tiles — shared geometry */
+  .t{position:relative;width:100%;height:100%;display:grid;place-items:center;font-weight:900;line-height:1}
+  .t .l{font-size:17px;margin-top:-2px}
+  .t .v{position:absolute;bottom:1px;left:3px;font-size:7.5px;font-weight:800;font-variant-numeric:tabular-nums}
+
+  /* A — current tile design (colours from styles.css --tile / .btile.nw) */
+  .classic .t{background:#e8e0c8;border:1px solid #9a9080;color:#111;border-radius:3px}
+  .classic .t.new{background:#ffe870;border-color:#c0a800}
+  .classic .t.last{box-shadow:0 0 0 2px var(--p2),0 0 10px color-mix(in srgb,var(--p2) 70%,transparent)}
+  .classic .t.new{box-shadow:0 0 0 2px var(--p1),0 0 10px color-mix(in srgb,var(--p1) 60%,transparent)}
+
+  /* B — BOOST logo tile: maple face, engraved letter, cyan bezel */
+  .wood .t{border-radius:6px;color:#8a5324;
+    background:
+      repeating-linear-gradient(92deg,rgba(150,95,40,.10) 0 1px,transparent 1px 3px,rgba(150,95,40,.06) 3px 4px,transparent 4px 7px),
+      radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.35),transparent 60%),
+      linear-gradient(165deg,#f6ddb0,#e7c08a 60%,#d9ad73);
+    border:1.5px solid #46dcf5;
+    box-shadow:0 0 0 1px rgba(0,60,90,.55),0 0 6px rgba(40,212,255,.55),inset 0 0 0 1px rgba(255,255,255,.35),0 2px 0 1px #7a5530}
+  .wood .t .l{text-shadow:0 1px 0 rgba(255,245,220,.8),0 -1px 0 rgba(70,35,10,.55)}
+  .wood .t .v{color:#8a5324;opacity:.85}
+  .wood .t.last{border-color:var(--p2);box-shadow:0 0 0 1px rgba(80,50,0,.6),0 0 10px rgba(255,201,61,.8),inset 0 0 0 1px rgba(255,255,255,.35),0 2px 0 1px #7a5530}
+  .wood .t.new{transform:translateY(-2px);border-color:#fff;
+    box-shadow:0 0 0 1px #28d4ff,0 0 12px #28d4ff,0 0 22px rgba(40,212,255,.5),inset 0 0 0 1px rgba(255,255,255,.5),0 4px 0 1px #7a5530}
+
+  /* rack dock */
+  .dock{margin-top:auto;margin-inline:-6px;padding:12px 10px 22px;border-radius:24px 24px 0 0;
+    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 35%),rgba(8,18,58,.92);
+    border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(0,0,0,.45)}
+  .rack{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;direction:rtl;padding:8px;border-radius:14px;
+    background:rgba(0,0,0,.28);box-shadow:inset 0 2px 6px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.05)}
+  .slot{aspect-ratio:1;border-radius:8px}
+  .slot.empty{border:1.5px dashed rgba(120,190,255,.4);background:rgba(255,255,255,.03)}
+  .rack .t .l{font-size:24px} .rack .t .v{font-size:10px;bottom:2px;left:4px}
+  .classic .rack .t{border-radius:5px;box-shadow:0 3px 0 #9a9080}
+  .wood .rack .t{border-radius:8px}
+  .acts{display:grid;grid-template-columns:52px 52px 1fr;gap:8px;margin-top:10px}
+  .btn{height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:900;font-size:15px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink)}
+  .btn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .btn .lbl{display:block;font-size:9px;font-weight:800;color:var(--dim)}
+  .btn.sm{flex-direction:column;gap:1px}
+  .btn.go{background:linear-gradient(180deg,#43e0ff,#1597d6);border-color:rgba(255,255,255,.35);color:#022038;
+    box-shadow:0 6px 18px rgba(40,212,255,.35),inset 0 1px 0 rgba(255,255,255,.6)}
+  .btn.go .pts{background:rgba(2,32,56,.18);border-radius:999px;padding:2px 8px;font-size:13px;font-variant-numeric:tabular-nums}
+
+  .notes{max-width:980px;margin:28px auto 0;font-size:13px;color:var(--dim);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:6px 28px}
+  .notes b{color:var(--ink)}
+  @media (max-width:420px){.phone{transform-origin:top right}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col"><div class="cap"><b>היום</b></div><img class="shot" src="tools/game-screen-mockup/current.jpg" alt=""></div>
+  <div class="col"><div class="cap"><b>הצעה A</b> · אריחים נוכחיים</div><div class="phone classic" data-screen></div></div>
+  <div class="col"><div class="cap"><b>הצעה B</b> · אריחי הלוגו (עץ + מסגרת תכלת)</div><div class="phone wood" data-screen></div></div>
+</div>
+
+<div class="notes">
+  <div><b>1. שפה אחת לכל המסך.</b> כל האזורים הם "זכוכית" כהה עם אותו קו מתאר תכלת עדין ואותן פינות מעוגלות — לוח התוצאות, מגש הלוח ומגש האותיות. אין יותר מסגרות כחולות חזקות ורקעים בגוונים שונים.</div>
+  <div><b>2. סרגל עליון נקי.</b> שישה כפתורי טקסט הופכים לשלושה: תפריט (הגדרות, סיים/שמור, מוזיקה), מילון, ומונה הקופה. "החלפת אות" עוברת למטה ליד שאר פעולות התור.</div>
+  <div><b>3. הלוח כהה, האריחים בולטים.</b> המשבצות הריקות כחול-לילה במקום תכלת בהיר, כך שכל אריח על הלוח קופץ לעין.</div>
+  <div><b>4. משבצות בוסט = שקעי אנרגיה.</b> במקום ריבועים צהובים שנראים כמו אריחי אות — שקע כהה עם ברק תכלת זוהר, באותה שפה של אפקט החשמל החדש. כשמילה עוברת דרכו הוא "נדלק".</div>
+  <div><b>5. צבעי השחקנים גם על הלוח.</b> המהלך האחרון של היריב מסומן בזהב, האריחים שאתה מניח עכשיו בתכלת — אותם צבעים של לוח התוצאות.</div>
+  <div><b>6. שורת סטטוס קטנה במקום פס הוראות.</b> בהתחלה: "תורך · גרור אותיות ללוח". בזמן הנחה: המילה ✓ ו-+נקודות (תצוגה מקדימה — אופציונלי, זו החלטת משחק).</div>
+  <div><b>7. מגש אותיות כ"מעגן".</b> אריחים גדולים יותר (קל ללחוץ), משבצות ריקות מקווקוות במקום אותיות שיצאו ללוח, וכפתור "שבץ" גדול וראשי עם הניקוד. בטל והחלפה משניים ומשמאל.</div>
+  <div><b>9. בוצע (B):</b> בלי קו תחתון לשחקן בתור — טבעת הטיימר צובעת את עצמה בצבע השחקן (תכלת/זהב), והמשבצות בהירות יותר. <b>8. B מול A.</b> אריח הלוגו (עץ, אות חרוטה, מסגרת תכלת) קושר את הלוח למיתוג ולקליפ; המסגרת מתחלפת לזהב במהלך האחרון ומוארת לבן-תכלת באריחים שבהנחה. ב-A נשארים האריחים הנוכחיים — הכול אחר זהה.</div>
+</div>
+
+<template id="screen">
+  <div class="top">
+    <div class="chips">
+      <span class="chip" title="תפריט"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+      <span class="chip"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></svg>מילון</span>
+    </div>
+    <span class="chip bag"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><b>83</b> בקופה</span>
+  </div>
+
+  <div class="sb">
+    <div class="side p1 active"><div class="av"><img src="assets/avatars_v2/legendary/moses.png" alt=""><span class="rar">אגדי</span></div><div class="meta"><div class="nm">נחום</div><div class="sub">ELO 1087</div></div><div class="row2"><div class="score">42</div><div class="locks"><span class="ic">🔒</span><span class="lk">3</span><span class="dot">·</span><span class="lk">3</span><span class="dot">·</span><span class="lk">5</span></div></div></div>
+    <div class="timer"><svg viewBox="0 0 70 70"><circle cx="35" cy="35" r="31" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle cx="35" cy="35" r="31" fill="none" stroke="#28d4ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="195" stroke-dashoffset="44" style="filter:drop-shadow(0 0 4px #28d4ff)"/></svg><div class="tm">31</div><div class="who">תורך</div></div>
+    <div class="side p2"><div class="av"><img src="assets/avatars/yellow%20bot.png" alt=""></div><div class="meta"><div class="nm">המחשב</div><div class="sub">רמה בינונית</div></div><div class="row2"><div class="score">51</div><div class="locks"><span class="ic">🔒</span><span class="lk">3</span><span class="dot">·</span><span class="lk used">3</span><span class="dot">·</span><span class="lk">5</span></div></div></div>
+    <div class="rail"><i class="r1" style="width:45%"></i><i class="r2" style="width:55%"></i></div>
+  </div>
+
+  <div class="status"><span class="ok">✓</span><span class="w">האור</span><span class="pts" dir="ltr">+8</span></div>
+
+  <div class="tray"><div class="grid"></div></div>
+
+  <div class="dock">
+    <div class="rack"></div>
+    <div class="acts">
+      <div class="btn sm"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span class="lbl">בטל</span></div>
+      <div class="btn sm"><svg viewBox="0 0 24 24"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg><span class="lbl">החלפה</span></div>
+      <div class="btn go">שבץ<span class="pts" dir="ltr">+8</span></div>
+    </div>
+  </div>
+</template>
+
+<script>
+  const HV = {'א':1,'ב':3,'ג':5,'ד':3,'ה':4,'ו':1,'ז':8,'ח':4,'ט':8,'י':1,'כ':5,'ל':2,'מ':2,'נ':2,'ס':5,'ע':4,'פ':5,'צ':9,'ק':5,'ר':2,'ש':3,'ת':4,'ם':2};
+  const BOLT = '<svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>';
+  // Board: (row, colFromRight) in the 10×10 play area; ring = -1 / 10.
+  const SOCKETS = [[-1,1],[-1,5],[-1,9],[1,-1],[4,-1],[8,-1],[2,10],[5,10],[9,10],[10,2],[10,5],[10,7]];
+  const WORDS = [
+    // שלום (row 4, right→left), מים (col 6, down), לילה (col 4, down) = opponent's last move
+    {r:4,c:3,dir:'h',w:'שלום'}, {r:2,c:6,dir:'v',w:'מים'}, {r:4,c:4,dir:'v',w:'לילה',cls:'last'},
+    // האור — tiles being placed now (ה is on the board already)
+    {r:7,c:5,dir:'h',w:'אור',cls:'new'},
+  ];
+  const RACK = ['ת','ל',null,'נ','ה',null,'נ',null];
+  const tile = (ch, cls = '') => `<div class="t ${cls}"><span class="l">${ch}</span><span class="v">${HV[ch] ?? ''}</span></div>`;
+
+  for (const phone of document.querySelectorAll('[data-screen]')) {
+    phone.append(document.getElementById('screen').content.cloneNode(true));
+    const grid = phone.querySelector('.grid');
+    const at = {};
+    for (const { r, c, dir, w, cls = '' } of WORDS) {
+      [...w].forEach((ch, i) => {
+        const k = dir === 'h' ? `${r},${c + i}` : `${r + i},${c}`;
+        if (!at[k] || cls === 'new') at[k] = tile(ch, cls);
+        else if (cls === 'last') at[k] = tile(ch, 'last');
+      });
+    }
+    at['4,4'] = tile('ל', 'last'); // shared letter belongs to the last move
+    for (let gr = -1; gr <= 10; gr++) {
+      for (let gc = -1; gc <= 10; gc++) {
+        const ring = gr < 0 || gr > 9 || gc < 0 || gc > 9;
+        const d = document.createElement('div');
+        const sock = SOCKETS.some(([r, c]) => r === gr && c === gc);
+        if (sock) { d.className = 'sock'; d.innerHTML = BOLT; }
+        else {
+          d.className = 'cell' + (ring ? ' ring' : '');
+          if (at[`${gr},${gc}`]) d.innerHTML = at[`${gr},${gc}`];
+        }
+        grid.append(d);
+      }
+    }
+    phone.querySelector('.rack').innerHTML = RACK.map(ch => ch ? `<div class="slot">${tile(ch)}</div>` : '<div class="slot empty"></div>').join('');
+  }
+</script>
+</body>
+</html>

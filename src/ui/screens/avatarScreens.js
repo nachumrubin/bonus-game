@@ -10,6 +10,9 @@
 
 import { $, on, setText } from '../domHelpers.js';
 import { isStoreAvatarId, storeAvatarSrc, findStoreAvatar, COIN_ICON_HTML } from './avatarStore.js';
+import { playOnImg, canPlayNow, preloadFor } from '../avatarMotion/spritePlayer.js';
+import { confettiBurst } from './miniGames/bonusFx.js';
+import { specialFor, playUnlockSpecial } from '../avatarMotion/unlockFx.js';
 
 export const AV_INTENT = Object.freeze({
   SELECT:     'avatar/select',
@@ -21,6 +24,8 @@ export const AV_INTENT = Object.freeze({
 export const AV_RENDER = 'avatar/render';
 export const AV_UNLOCK_OPEN  = 'avatar/unlockOpen';
 export const AV_UNLOCK_CLOSE = 'avatar/unlockClose';
+// { bumps: [{ achievement, from, to, target }] } — progress moved on unfinished achievements.
+export const AV_PROGRESS_BUMP = 'avatar/progressBump';
 
 // Pared-down avatar table — id, emoji, Hebrew name, rarity, unlock rule.
 // Mirrors the legacy AVATAR_DEFS contract. Used by diffNewlyUnlocked() and
@@ -110,9 +115,25 @@ export function achievementIconSrc(achievement) {
 // then falls back to the emoji.
 export const BOT_AVATAR_SRC = 'assets/avatars/bot.png';
 
+// Per-difficulty bot avatars (the same art as the setup screen's level cards).
+// 'bot' (generic) stays valid for older saved games.
+export const BOT_AVATAR_BY_LEVEL = Object.freeze(['bot_easy', 'bot_medium', 'bot_hard']);
+const BOT_LEVEL_SRC = Object.freeze({
+  bot: BOT_AVATAR_SRC,
+  bot_easy: 'assets/avatars/green bot.png',
+  bot_medium: 'assets/avatars/yellow bot.png',
+  bot_hard: 'assets/avatars/red bot.png',
+});
+export function botAvatarForLevel(difficulty) {
+  return BOT_AVATAR_BY_LEVEL[Number(difficulty)] ?? 'bot';
+}
+export function isBotAvatar(value) {
+  return typeof value === 'string' && Object.hasOwn(BOT_LEVEL_SRC, value);
+}
+
 export function avatarIconSrc(value) {
   if (value == null) return null;
-  if (value === 'bot') return BOT_AVATAR_SRC;
+  if (isBotAvatar(value)) return encodeURI(BOT_LEVEL_SRC[value]);
   // Store avatars (common_/rare_/epic_/legendary_) are image-only — resolve
   // their PNG here so an equipped store avatar shows everywhere avatars render
   // (profile, game screen, opponent cards) via setAvatarEl/avatarMarkup.
@@ -159,11 +180,18 @@ export function avatarMarkup(value, { fallback = '👤', className = 'av-img' } 
 // via textContent).
 export function setAvatarEl(el, value, { fallback = '👤', className = 'av-img' } = {}) {
   if (!el) return;
-  const src = avatarIconSrc(value);
-  if (src) { el.innerHTML = `<img class="${className}" src="${src}" alt="">`; return; }
-  const text = avatarText(value, fallback);
-  if (text === '👤') el.innerHTML = `<img class="${className}" src="${ANON_AVATAR_SRC}" alt="">`;
-  else el.textContent = text;
+  const src = avatarIconSrc(value)
+    ?? (avatarText(value, fallback) === '👤' ? ANON_AVATAR_SRC : null);
+  if (src) {
+    // Callers re-render every frame of state (e.g. gameScreen.renderPlayerIdentity).
+    // Leave an identical <img> alone so a running pose animation (avatarMotion,
+    // which lays a canvas next to it) and the decoded image both survive.
+    const cur = el.firstElementChild;
+    if (cur?.tagName === 'IMG' && cur.getAttribute?.('src') === src && cur.classList?.contains?.(className)) return;
+    el.innerHTML = `<img class="${className}" src="${src}" alt="">`;
+    return;
+  }
+  el.textContent = avatarText(value, fallback);
 }
 
 // Returns 0–1 representing how close the player is to completing an achievement.
@@ -237,6 +265,38 @@ export function diffNewlyCompletedAchievements(prev = {}, next = {}) {
   return out;
 }
 
+// Pure: unfinished achievements whose progress moved between two snapshots,
+// closest-to-done first (at most `limit`). Completed ones are excluded — they
+// get the full unlock overlay instead. Drives the end-game progress strip.
+export function progressBumps(prev = {}, next = {}, { limit = 2 } = {}) {
+  const out = [];
+  for (const ach of ACHIEVEMENTS) {
+    const before = achievementMetric(ach, prev);
+    const after = achievementMetric(ach, next);
+    if (after.current <= before.current || after.current >= after.target || after.target <= 0) continue;
+    out.push({ achievement: ach, from: before.current, to: after.current, target: after.target });
+  }
+  out.sort((a, b) => (b.to / b.target) - (a.to / a.target));
+  return out.slice(0, limit);
+}
+
+// Pure: the unfinished achievement closest to completion (ties → catalogue
+// order), as a bump-shaped row { achievement, from, to, target } with
+// from === to. Drives the end screen's "next achievement" row when no
+// progress moved this game. null when everything is done / no data.
+export function nextAchievement(snapshot = {}) {
+  if (!snapshot || (!snapshot.stats && !snapshot.ownedAvatars)) return null;
+  let best = null;
+  let bestPct = -1;
+  for (const ach of ACHIEVEMENTS) {
+    const { current, target } = achievementMetric(ach, snapshot);
+    if (target <= 0 || current >= target) continue;
+    const pct = current / target;
+    if (pct > bestPct) { bestPct = pct; best = { achievement: ach, from: current, to: current, target }; }
+  }
+  return best;
+}
+
 // ── Avatar picker screen ───────────────────────────────────
 
 export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}) {
@@ -297,6 +357,8 @@ export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}
     if (!grid) return;
     const completed = ACHIEVEMENTS.filter(a => isAchievementComplete(a, lastData));
     if (countEl) setText(countEl, `${completed.length} מתוך ${ACHIEVEMENTS.length} הושגו`);
+    const barEl = $('#av-gallery-bar', root);
+    if (barEl?.style) barEl.style.width = `${Math.round((completed.length / Math.max(1, ACHIEVEMENTS.length)) * 100)}%`;
 
     const cells = ACHIEVEMENTS.map(ach => cellHtml(ach, lastData));
     // Pad the final shelf to a full row of 3 so columns stay aligned.
@@ -416,11 +478,45 @@ export function mountAvatarUnlockedScreen({ root = globalThis.document, bus } = 
     overlay.classList?.add?.('achievement-unlock-state');
     if (achId && achId !== lastAnimatedAchievementId) {
       lastAnimatedAchievementId = achId;
-      overlay.classList?.remove?.('achievement-unlock-motion');
+      overlay.classList?.remove?.('achievement-unlock-motion', 'is-3d', 'is-pending');
       void overlay.offsetWidth;
       overlay.classList?.add?.('achievement-unlock-motion');
+      playUnlockIcon(achievement);
     }
   }));
+
+  // The trophy is awarded as a physical object when its pose atlas is ready:
+  // it spins in small, comes toward the camera, a metallic light sweeps across
+  // it, then the title and a particle burst land (poseClips 'unlockReveal').
+  // Otherwise the existing CSS icon pop runs. The icon is held back (while the
+  // card slides in) for at most UNLOCK_ATLAS_WAIT_MS to make that call.
+  const UNLOCK_ATLAS_WAIT_MS = 450;
+  async function playUnlockIcon(achievement) {
+    const achId = achievement?.id;
+    const img = icEl?.querySelector?.('.ach-ic-img');
+    const src = img?.getAttribute?.('src');
+    if (!img || !src || !overlay.classList?.add) return;
+    const special = specialFor(achievement);
+    const grand = special === 'grand';
+    overlay.classList.toggle('is-grand', grand);
+    overlay.classList.add('is-pending');
+    await Promise.race([
+      preloadFor(src).catch(() => false),
+      new Promise(r => setTimeout(r, UNLOCK_ATLAS_WAIT_MS)),
+    ]);
+    if (overlay.dataset?.achId !== achId) return; // a newer unlock replaced this one
+    const threeD = canPlayNow(img, 'unlockReveal');
+    overlay.classList.toggle('is-3d', threeD);
+    overlay.classList.remove('is-pending');
+    // The flourish is CSS-only, so it also accompanies the 2D fallback pop.
+    playUnlockSpecial(special, icEl);
+    if (!threeD) return;
+    playOnImg(img, grand ? 'unlockRevealGrand' : 'unlockReveal');
+    const card = overlay.querySelector?.('.achievement-unlock-card');
+    setTimeout(() => {
+      if (overlay.dataset?.achId === achId) confettiBurst(card, { count: grand ? 44 : 22 });
+    }, grand ? 950 : 700);
+  }
   cleanups.push(bus.on(AV_UNLOCK_CLOSE, () => overlay?.classList?.add?.('hidden')));
 
   return {

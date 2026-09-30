@@ -14,6 +14,7 @@
 
 import { $, on } from '../domHelpers.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
+import { avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
 
 export const MG_INTENT = Object.freeze({
   RESUME:  'myGames/resume',
@@ -23,6 +24,16 @@ export const MG_INTENT = Object.freeze({
 });
 
 export const MG_RENDER = 'myGames/render';
+
+// "Your turn / their turn" tabs. A live game is "mine" when it's the player's
+// turn (incl. the local saved game); everything else — waiting on the
+// opponent and expired rows — lives under "theirs".
+export function splitByTurn(sessions = []) {
+  const mine = [];
+  const theirs = [];
+  for (const s of sessions) (s.isMyTurn && !s.isExpired ? mine : theirs).push(s);
+  return { mine, theirs };
+}
 
 // Manual-poke cooldown. The button hides for 24 hours after the user
 // clicks it. We gate on `lastPokedAt` (manual only) — NOT `lastReminderAt`
@@ -91,8 +102,13 @@ export function buildRowHtml(s, { now = Date.now() } = {}) {
   // Score uses literal " : " around the colon so screen-reader output and
   // tests both see the canonical "N : N" form. Each number is wrapped in
   // its own span for typographic emphasis (mine is larger + gold).
+  // Lead bar: my share of the combined score (cyan = me, gold = opponent).
+  const total = myScore + opScore;
+  const myPct = total > 0 ? Math.round((myScore / total) * 100) : 50;
+  const avSrc = avatarIconSrc(s.opponentAvatar) || ANON_AVATAR_SRC;
   return ''
     + `<div data-mg-row="${escapeHtml(s.roomId)}" class="${cardCls}">`
+    +   `<span class="mg-av"><img src="${escapeHtml(avSrc)}" alt=""></span>`
     +   '<div class="mg-card-identity">'
     +     `<div class="mg-name">${escapeHtml(s.opponentName ?? '?')}</div>`
     +     (ago ? `<div class="mg-time">${escapeHtml(ago)}</div>` : '')
@@ -103,6 +119,7 @@ export function buildRowHtml(s, { now = Date.now() } = {}) {
     +     `<span class="mg-score-theirs">${opScore}</span>`
     +   '</div>'
     +   action
+    +   `<div class="mg-lead" aria-hidden="true"><i class="mg-lead-me" style="width:${myPct}%"></i><i class="mg-lead-op" style="width:${100 - myPct}%"></i></div>`
     + '</div>';
 }
 
@@ -116,20 +133,59 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
   const list   = $('#mg-list',  root);
   const empty  = $('#mg-empty', root);
   const screen = $('#smygames', root);
+  const tabs   = $('#mg-tabs',  root);
   if (!list || !screen) {
     return { unmount() {}, refresh() {} };
   }
 
   let cleanups = [];
+  let lastSessions = [];
+  // null until the user picks a tab — then we auto-pick the first render:
+  // "your turn" if anything waits on the player, else "their turn".
+  let activeTab = null;
 
-  function render(sessions = []) {
+  function paintTabs(mine, theirs) {
+    if (!tabs) return;
+    tabs.style.display = '';
+    for (const btn of tabs.querySelectorAll?.('[data-mg-tab]') ?? []) {
+      const which = btn.getAttribute('data-mg-tab');
+      btn.classList?.toggle('on', which === activeTab);
+      const n = btn.querySelector?.('.n');
+      if (n) n.textContent = String((which === 'mine' ? mine : theirs).length);
+    }
+  }
+
+  function render(sessions = lastSessions) {
+    lastSessions = sessions;
     if (!sessions.length) {
       list.innerHTML = '';
+      if (tabs) tabs.style.display = 'none';
       if (empty) empty.style.display = '';
       return;
     }
     if (empty) empty.style.display = 'none';
-    list.innerHTML = buildListHtml(sessions, { now: now() });
+    if (!tabs) {
+      list.innerHTML = buildListHtml(sessions, { now: now() });
+      return;
+    }
+    const { mine, theirs } = splitByTurn(sessions);
+    if (activeTab === null) activeTab = mine.length ? 'mine' : 'theirs';
+    paintTabs(mine, theirs);
+    const shown = activeTab === 'mine' ? mine : theirs;
+    list.innerHTML = shown.length
+      ? buildListHtml(shown, { now: now() })
+      : `<div class="mg-tab-empty">${activeTab === 'mine' ? 'אין משחקים שממתינים לך' : 'אין משחקים שממתינים ליריב'}</div>`;
+  }
+
+  if (tabs) {
+    cleanups.push(on(tabs, 'click', (e) => {
+      const btn = e.target?.closest?.('[data-mg-tab]');
+      if (!btn) return;
+      const which = btn.getAttribute('data-mg-tab');
+      if (which !== 'mine' && which !== 'theirs') return;
+      activeTab = which;
+      render();
+    }));
   }
 
   // Toast container — one floater pinned to the screen, reused across
@@ -179,7 +235,7 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
     }
   }));
 
-  cleanups.push(bus.on(MG_RENDER, ({ sessions } = {}) => render(sessions)));
+  cleanups.push(bus.on(MG_RENDER, ({ sessions } = {}) => render(sessions ?? [])));
 
   // Empty until someone publishes MG_RENDER.
   render([]);

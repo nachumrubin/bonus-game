@@ -1,92 +1,93 @@
-<!-- SETUP -->
-<div id="ss" class="screen hidden">
-  <div class="sbox">
-    <div class="mf-setup-header" id="stitle">
-      <!-- Mode icons — toggled by setupScreen.js on SETUP_OPEN -->
-      <span id="stitle-icon-vs" style="display:none;line-height:0;">
-        <img src="assets/icons/1v1.png" alt="" style="height:40px;width:auto;display:block;">
-      </span>
-      <span id="stitle-icon-bot" style="display:none;line-height:0;">
-        <img src="assets/avatars/bot.png" alt="" style="height:40px;width:auto;display:block;">
-      </span>
-      <span id="stitle-text" class="mf-setup-title">הגדרות</span>
+<!-- SETUP (glass skin — tools/screens-mockup "#ss" / "#ss (vs)") -->
+<div id="ss" class="screen hidden g-screen">
+  <div class="g-page">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <div class="g-ttl" id="stitle"><span id="stitle-text" class="mf-setup-title">הגדרות</span></div>
+      <span></span>
     </div>
 
-    <div class="sf" style="margin-bottom:14px">
-      <label>שם שחקן 1</label>
-      <input id="ip1" type="text" value="שחקן 1" maxlength="10">
-    </div>
-    <div class="sf" id="p2f" style="margin-bottom:14px">
-      <label>שם שחקן 2</label>
-      <input id="ip2" type="text" value="שחקן 2" maxlength="10">
-    </div>
+    <div class="g-scroll">
+      <!-- Mode medallion — icons toggled by setupScreen.js on SETUP_OPEN -->
+      <div class="g-c ss-hero">
+        <div class="g-medal gold" style="--s:100px">
+          <span id="stitle-icon-bot" style="display:none;line-height:0;"><img src="assets/avatars/bot.png" alt=""></span>
+          <span id="stitle-icon-vs" style="display:none;line-height:0;"><img src="assets/icons/1v1.png" alt=""></span>
+        </div>
+      </div>
 
-    <div id="dff" style="display:none;margin-bottom:14px">
-      <div class="mf-section-lbl">רמת קושי</div>
-      <div class="mf-opt-row" style="margin-bottom:0">
-        <button class="mf-opt-card a" onclick="setDiff(0,this)">
-          <span class="mf-opt-icon"><img src="assets/avatars/green bot.png" alt="קל" class="ui-icon"></span>
-          <span class="mf-opt-label">קל</span>
-          <span class="mf-opt-sub">למתחילים</span>
-        </button>
-        <button class="mf-opt-card" onclick="setDiff(1,this)">
-          <span class="mf-opt-icon"><img src="assets/avatars/yellow bot.png" alt="בינוני" class="ui-icon"></span>
-          <span class="mf-opt-label">בינוני</span>
-          <span class="mf-opt-sub">לאתגר מאוזן</span>
-        </button>
-        <button class="mf-opt-card" onclick="setDiff(2,this)">
-          <span class="mf-opt-icon"><img src="assets/avatars/red bot.png" alt="קשה" class="ui-icon"></span>
-          <span class="mf-opt-label">קשה</span>
-          <span class="mf-opt-sub">לאתגר אמיתי</span>
-        </button>
+      <div class="ss-names">
+        <div class="sf">
+          <label class="g-flbl" for="ip1">שם שחקן 1</label>
+          <div class="g-fld"><svg class="gi"><use href="#gi-user"/></svg><input id="ip1" type="text" value="שחקן 1" maxlength="10"></div>
+        </div>
+        <div class="sf" id="p2f">
+          <label class="g-flbl" for="ip2">שם שחקן 2</label>
+          <div class="g-fld"><svg class="gi"><use href="#gi-user"/></svg><input id="ip2" type="text" value="שחקן 2" maxlength="10"></div>
+        </div>
+      </div>
+
+      <div id="dff" style="display:none">
+        <div class="g-lbl mf-section-lbl">רמת קושי</div>
+        <div class="g-opts">
+          <button class="mf-opt-card a" onclick="setDiff(0,this)">
+            <span class="mf-opt-icon"><img src="assets/avatars/green bot.png" alt="קל" class="ui-icon"></span>
+            <span class="mf-opt-label">קל</span>
+            <span class="mf-opt-sub">למתחילים</span>
+          </button>
+          <button class="mf-opt-card" onclick="setDiff(1,this)">
+            <span class="mf-opt-icon"><img src="assets/avatars/yellow bot.png" alt="בינוני" class="ui-icon"></span>
+            <span class="mf-opt-label">בינוני</span>
+            <span class="mf-opt-sub">לאתגר מאוזן</span>
+          </button>
+          <button class="mf-opt-card" onclick="setDiff(2,this)">
+            <span class="mf-opt-icon"><img src="assets/avatars/red bot.png" alt="קשה" class="ui-icon"></span>
+            <span class="mf-opt-label">קשה</span>
+            <span class="mf-opt-sub">לאתגר אמיתי</span>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <div class="g-lbl mf-section-lbl">קצב משחק</div>
+        <div class="g-opts">
+          <button id="ss-spd-20" class="mf-opt-card">
+            <span class="mf-opt-icon"><span class="g-ring" style="--p:33">20</span></span>
+            <span class="mf-opt-label">בזק</span>
+            <span class="mf-opt-sub">20 שנ'</span>
+          </button>
+          <button id="ss-spd-40" class="mf-opt-card a">
+            <span class="mf-opt-icon"><span class="g-ring" style="--p:67">40</span></span>
+            <span class="mf-opt-label">רגיל</span>
+            <span class="mf-opt-sub">40 שנ'</span>
+          </button>
+          <button id="ss-spd-60" class="mf-opt-card">
+            <span class="mf-opt-icon"><span class="g-ring" style="--p:100">60</span></span>
+            <span class="mf-opt-label">איטי</span>
+            <span class="mf-opt-sub">60 שנ'</span>
+          </button>
+          <button id="ss-spd-0" class="mf-opt-card">
+            <span class="mf-opt-icon"><span class="g-ring g-ring--inf">∞</span></span>
+            <span class="mf-opt-label">ללא</span>
+            <span class="mf-opt-sub">ללא הגבלה</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="ss-racks-row" class="g-list">
+        <div class="g-li" style="cursor:default">
+          <div class="g-sock"><svg class="gi"><use href="#gi-eye"/></svg></div>
+          <div class="tx"><b>הצג את מגש שני השחקנים</b><span>כבוי: כל אחד רואה רק את שלו</span></div>
+          <div class="g-seg ss-racks-seg">
+            <button id="ss-racks-mine" class="a">כבוי</button>
+            <button id="ss-racks-both">פעיל</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div style="margin-bottom:14px">
-      <div class="mf-section-lbl">קצב משחק</div>
-      <div class="mf-opt-row" style="margin-bottom:0">
-        <button id="ss-spd-20" class="mf-opt-card">
-          <span class="mf-opt-icon">⚡</span>
-          <span class="mf-opt-label">בזק</span>
-          <span class="mf-opt-sub">20 שנ'</span>
-        </button>
-        <button id="ss-spd-40" class="mf-opt-card a">
-          <span class="mf-opt-icon">🎯</span>
-          <span class="mf-opt-label">רגיל</span>
-          <span class="mf-opt-sub">40 שנ'</span>
-        </button>
-        <button id="ss-spd-60" class="mf-opt-card">
-          <span class="mf-opt-icon">🐢</span>
-          <span class="mf-opt-label">איטי</span>
-          <span class="mf-opt-sub">60 שנ'</span>
-        </button>
-        <button id="ss-spd-0" class="mf-opt-card">
-          <span class="mf-opt-icon">∞</span>
-          <span class="mf-opt-label">ללא</span>
-          <span class="mf-opt-sub">ללא הגבלה</span>
-        </button>
-      </div>
-    </div>
-
-    <div id="ss-racks-row" style="margin-bottom:14px">
-      <div class="mf-section-lbl">הצג מגש שני השחקנים</div>
-      <div class="mf-opt-row" style="margin-bottom:0">
-        <button id="ss-racks-both" class="mf-opt-card">
-          <span class="mf-opt-icon">👁</span>
-          <span class="mf-opt-label">פעיל</span>
-          <span class="mf-opt-sub">גם מגש יריב</span>
-        </button>
-        <button id="ss-racks-mine" class="mf-opt-card a">
-          <span class="mf-opt-icon">🔒</span>
-          <span class="mf-opt-label">כבוי</span>
-          <span class="mf-opt-sub">מגש שלי בלבד</span>
-        </button>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;margin-top:6px">
-      <button class="mf-cancel" style="flex:1" onclick="goHome()">← חזרה</button>
-      <button class="mf-cta green" style="flex:2;margin-bottom:0" onclick="startGame()" data-gm="▶ שחק!" data-gf="▶ שחקי!">▶ שחק!</button>
+    <div class="g-dock">
+      <button class="g-btn go mf-cta" onclick="startGame()" data-gm="שחק ▶" data-gf="שחקי ▶">שחק ▶</button>
     </div>
   </div>
 </div>

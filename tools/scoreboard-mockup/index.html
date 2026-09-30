@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../">
+<title>Scoreboard Mockup</title>
+<!-- Dev-only design mockup for the in-game player score boxes (not wired into the app). -->
+<style>
+  :root{--bg:#050b26;--p1:#28d4ff;--p2:#ffc93d;--ink:#eaf4ff;--dim:rgba(234,244,255,.55);--glass:rgba(12,26,74,.72);}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(ellipse at 50% 0,#0d2470,#050b26 60%);color:var(--ink);font:14px/1.3 system-ui,"Segoe UI",Arial,sans-serif;padding:18px 16px 40px}
+  h2{font-size:13px;letter-spacing:.08em;color:var(--dim);font-weight:700;margin:26px 0 10px;text-align:center}
+  .phone{max-width:430px;margin:0 auto}
+  /* ── Proposal: one broadcast-style scoreboard ── */
+  .sb{position:relative;display:grid;grid-template-columns:1fr 76px 1fr;align-items:stretch;min-height:112px;border-radius:18px;
+      background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),var(--glass);
+      border:1px solid rgba(120,190,255,.22);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12)}
+  .side{position:relative;display:grid;grid-template-columns:44px 1fr;grid-template-rows:auto 1fr;column-gap:8px;row-gap:4px;padding:10px 8px 12px;border-radius:18px;overflow:hidden;min-width:0}
+  .side.p1{--c:var(--p1)}
+  .side.p2{--c:var(--p2);direction:ltr}
+  .side.p2 .nm,.side.p2 .sub{direction:rtl;text-align:left;unicode-bidi:plaintext}
+  /* active turn: accent wash from the outer edge + glowing underline + lit ring; inactive stays fully legible */
+  .side.active::before{content:"";position:absolute;inset:0;background:linear-gradient(to left,color-mix(in srgb,var(--c) 24%,transparent),transparent 75%);pointer-events:none}
+  .side.p2.active::before{background:linear-gradient(to right,color-mix(in srgb,var(--c) 24%,transparent),transparent 75%)}
+  .side.active::after{content:"";position:absolute;bottom:0;right:14px;left:14px;height:3px;border-radius:3px;background:var(--c);box-shadow:0 0 12px var(--c)}
+  .av{position:relative;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;align-self:center;
+      background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.18),rgba(0,0,0,.35));border:2px solid rgba(255,255,255,.16);z-index:1}
+  .av img{width:40px;height:40px;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))}
+  .side.active .av{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent),0 0 16px color-mix(in srgb,var(--c) 60%,transparent)}
+  .rar{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);font-size:8px;font-weight:900;padding:1px 4px;border-radius:5px;background:#ffc93d;color:#2a1a00;white-space:nowrap}
+  .meta{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px;z-index:1}
+  .nm{font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sub{font-size:10px;color:var(--dim);font-weight:700;white-space:nowrap}
+  .row2{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;gap:6px;z-index:1}
+  .score{font-size:28px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums;color:var(--c);text-shadow:0 0 16px color-mix(in srgb,var(--c) 45%,transparent);position:relative}
+  .delta{direction:ltr;unicode-bidi:isolate;position:absolute;top:-10px;inset-inline-end:-22px;font-size:11px;font-weight:900;color:#7dffb0}
+  .locks{display:inline-flex;align-items:center;gap:3px;flex-shrink:0;white-space:nowrap;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;
+         background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--ink);direction:ltr}
+  .locks .ic{font-size:9px;opacity:.85}
+  .lk{font-variant-numeric:tabular-nums}
+  .lk.used{opacity:.3;text-decoration:line-through}
+  .locks .dot{opacity:.35}
+  /* center timer medallion */
+  .timer{position:relative;align-self:center;justify-self:center;width:70px;height:70px;border-radius:50%;display:grid;place-items:center;
+         background:radial-gradient(circle,#0b1d5c 58%,#081440 60%);box-shadow:0 0 0 1px rgba(120,190,255,.25),0 8px 20px rgba(0,0,0,.5)}
+  .timer svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .timer .t{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;color:#fff;margin-top:-6px}
+  .timer .who{position:absolute;bottom:11px;font-size:8.5px;font-weight:900;letter-spacing:.06em;color:var(--dim)}
+  .timer.low .t{color:#ff6b6b}
+  /* lead rail: who is ahead, at a glance (inside the bar, bottom edge) */
+  .rail{position:absolute;left:16px;right:16px;bottom:-10px;height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;display:flex}
+  .rail i{display:block;height:100%}
+  .rail .r1{background:var(--p1)} .rail .r2{background:var(--p2)}
+  .notes{max-width:430px;margin:12px auto 0;font-size:12.5px;color:var(--dim);line-height:1.6}
+  .notes b{color:var(--ink)}
+  /* current (for comparison) */
+  .cur{display:grid;grid-template-columns:1fr 84px 1fr;gap:6px;align-items:center;padding:8px;border-radius:14px;border:1px solid rgba(0,160,255,.4);background:rgba(8,20,60,.7)}
+  .cur .c{height:100px;border-radius:10px;border:1px solid rgba(0,180,255,.5);display:grid;place-items:center;color:var(--dim);font-size:11px}
+  .cur .c.dim{background:rgba(120,100,40,.35);border-color:rgba(200,170,80,.4)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <h2>היום (לצורך השוואה)</h2>
+  <div class="cur"><div class="c dim">כרטיס שחקן · שכבה עכורה כשלא בתור</div><div class="c" style="border-radius:50%;height:74px">35</div><div class="c">כרטיס שחקן</div></div>
+
+  <h2>הצעה — לוח תוצאות אחד בסגנון שידור · תורך</h2>
+  <div class="sb"><div class="side p1 active"><div class="av"><img src="assets/avatars_v2/legendary/moses.png" alt=""><span class="rar">אגדי</span></div><div class="meta"><div class="nm">דניאל</div><div class="sub">ELO 1087</div></div><div class="row2"><div class="score">142<span class="delta">+24</span></div><div class="locks"><span class="ic">🔒</span><span class="lk">3</span><span class="dot">·</span><span class="lk">3</span><span class="dot">·</span><span class="lk">5</span></div></div></div><div class="timer"><svg viewBox="0 0 70 70"><circle cx="35" cy="35" r="31" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle cx="35" cy="35" r="31" fill="none" stroke="#28d4ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="195" stroke-dashoffset="39" style="filter:drop-shadow(0 0 4px #28d4ff)"/></svg><div class="t">35</div><div class="who">תורך</div></div><div class="side p2"><div class="av"><img src="assets/avatars_v2/common/doctor.png" alt=""></div><div class="meta"><div class="nm">הודיה</div><div class="sub">ELO 1012</div></div><div class="row2"><div class="score">118</div><div class="locks"><span class="ic">🔒</span><span class="lk">3</span><span class="dot">·</span><span class="lk used">3</span><span class="dot">·</span><span class="lk">5</span></div></div></div>
+    <div class="rail"><i class="r1" style="width:55%"></i><i class="r2" style="width:45%"></i></div>
+  </div>
+
+  <h2>אותו לוח · תור היריב, פחות מ-10 שניות</h2>
+  <div class="sb"><div class="side p1"><div class="av"><img src="assets/avatars_v2/legendary/moses.png" alt=""><span class="rar">אגדי</span></div><div class="meta"><div class="nm">דניאל</div><div class="sub">ELO 1087</div></div><div class="row2"><div class="score">142</div><div class="locks"><span class="ic">🔒</span><span class="lk">3</span><span class="dot">·</span><span class="lk">3</span><span class="dot">·</span><span class="lk">5</span></div></div></div><div class="timer low"><svg viewBox="0 0 70 70"><circle cx="35" cy="35" r="31" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle cx="35" cy="35" r="31" fill="none" stroke="#ff6b6b" stroke-width="4" stroke-linecap="round" stroke-dasharray="195" stroke-dashoffset="160" style="filter:drop-shadow(0 0 4px #ff6b6b)"/></svg><div class="t">8</div><div class="who">יריב</div></div><div class="side p2 active"><div class="av"><img src="assets/avatars/red%20bot.png" alt=""></div><div class="meta"><div class="nm">המחשב</div><div class="sub">רמה קשה</div></div><div class="row2"><div class="score">118</div><div class="locks"><span class="ic">🔒</span><span class="lk">3</span><span class="dot">·</span><span class="lk used">3</span><span class="dot">·</span><span class="lk">5</span></div></div></div>
+    <div class="rail"><i class="r1" style="width:55%"></i><i class="r2" style="width:45%"></i></div>
+  </div>
+
+  <div class="notes">
+    <b>1. לוח אחד במקום שני כרטיסים.</b> פס זכוכית רציף עם מדליון הטיימר באמצע, כמו בשידורי ספורט — פחות מסגרות, יותר סדר.<br>
+    <b>2. צבע קבוע לכל שחקן</b> (תכלת/זהב) — בניקוד, בפס התור, בטבעת האווטאר ובפס ההובלה.<br>
+    <b>3. התור מסומן בהארה, לא בהחשכה.</b> השחקן בתור מקבל שטיפת צבע, קו תחתון זוהר וטבעת מוארת; השני נשאר קריא לגמרי (בלי השכבה העכורה).<br>
+    <b>4. אווטאר בתג עגול</b> עם תווית נדירות, והוא זה שמבצע את אנימציות התור/בוסט.<br>
+    <b>5. טיפוגרפיה:</b> ספרות ברוחב קבוע (tabular), ניקוד גדול בצבע השחקן, בלי המילה "נקודות" ובלי "vs" מעל הטיימר.<br>
+    <b>6. טיימר עם טבעת מתרוקנת</b> שמתחלפת לאדום מתחת ל-10 שניות, ומציינת של מי התור.<br>
+    <b>7. מנעולים כצ'יפים קטנים</b> מתחת לשם; מנעול שנוצל מעומעם.<br>
+    <b>8. פס הובלה</b> דק מתחת ללוח שמראה מי מוביל ובכמה, ו-<b>+24</b> קופץ ליד הניקוד אחרי מהלך.
+  </div>
+</div>
+</body>
+</html>

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import { EV } from '../../events/eventTypes.js';
 import { createAnimationController } from './animationController.js';
-import { BOOST_RESULT_REVEAL_DELAY_MS } from './animationController.js';
+import { BOOST_RESULT_REVEAL_DELAY_MS, GOOD_MOVE_SCORE } from './animationController.js';
 import { BOOST_RESULT_READY } from '../boostPresentation.js';
 
 test('mini-game and wheel pending ignite once before their required intro presentation', t => {
@@ -39,7 +39,8 @@ test('award survives disabling motion during ignition; reminders and duplicates 
   bus.emit(EV.BOOST_ACTIVATED, { ...payload, consumed: true });
   ac.setEnabled(false);
   t.mock.timers.tick(420);
-  assert.deepEqual(calls, ['bonusActivate', 'bonusAwardOverlay']);
+  // avatarBoostReact is the booster avatar's secondary reaction — once, like the award.
+  assert.deepEqual(calls, ['bonusActivate', 'avatarBoostReact', 'bonusAwardOverlay']);
   ac.dispose();
 });
 
@@ -500,5 +501,29 @@ test('TURN_EFFECTS_APPLIED with no effects triggers nothing', () => {
   bus.emit(EV.TURN_EFFECTS_APPLIED, {});
   bus.emit(EV.TURN_EFFECTS_APPLIED, { effects: [] });
   assert.equal(ac._directives.filter(d => d.kind === 'turnEffectBanner').length, 0);
+  ac.dispose();
+});
+
+test('a big move adds an avatarGoodMove nod timed to the panel landing; small moves do not', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, mySlot: 0 });
+  const tiles = [[{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }]];
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: [{ r: 4, c: 4 }], words: ['אב'], wordTiles: tiles, score: 4 });
+  assert.ok(!ac._directives.some(d => d.kind === 'avatarGoodMove'), 'no nod for a small move');
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, placed: [{ r: 4, c: 4 }], words: ['אב'], wordTiles: tiles, score: GOOD_MOVE_SCORE });
+  const nod = ac._directives.find(d => d.kind === 'avatarGoodMove');
+  assert.ok(nod, 'big move nods');
+  assert.equal(nod.payload.slot, 1);
+  assert.ok(nod.payload.delayMs > 0, 'waits for the score to land');
+  ac.dispose();
+});
+
+test('a fresh boost activation adds a secondary avatarBoostReact; reminders do not', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, mySlot: 0 });
+  bus.emit(EV.BOOST_ACTIVATED, { slot: 0, boostId: 'extra_turn', bonusIdx: 3, payload: {}, pending: true });
+  assert.ok(!ac._directives.some(d => d.kind === 'avatarBoostReact'));
+  bus.emit(EV.BOOST_ACTIVATED, { slot: 0, boostId: 'extra_turn', bonusIdx: 3, payload: {} });
+  assert.deepEqual(ac._directives.filter(d => d.kind === 'avatarBoostReact').map(d => d.payload), [{ slot: 0 }]);
   ac.dispose();
 });

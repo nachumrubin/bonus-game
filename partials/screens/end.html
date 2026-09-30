@@ -1,46 +1,40 @@
-<!-- END -->
+<!-- END (glass skin — tools/screens-mockup "#ov-end": full screen, cyan = me / gold = opponent, dock at the bottom) -->
 <div id="ov-end" class="ov hidden">
   <div class="ovc end-ovc">
-    <div class="end-trophy-hero">
-      <div class="end-trophy-glow"></div>
-      <img class="end-trophy-img" src="assets/rewards/trophy.png" alt="">
-      <div class="end-sparkles">
-        <span class="end-sp end-sp--a"></span>
-        <span class="end-sp end-sp--b"></span>
-        <span class="end-sp end-sp--c"></span>
-        <span class="end-sp end-sp--d"></span>
+    <div class="end-g-scroll">
+      <div class="end-trophy-hero">
+        <div class="end-g-rays" aria-hidden="true"></div>
+        <div class="g-medal gold end-g-medal"><img class="end-trophy-img" src="assets/rewards/trophy.png" alt=""></div>
+      </div>
+      <div class="end-victory-title" id="wn"></div>
+      <div class="end-victory-sub" id="wws"></div>
+
+      <div class="end-cards">
+        <div class="end-card" id="end-card-0">
+          <div class="end-card-av" id="end-av0"></div>
+          <div class="end-card-name" id="en1">שחקן 1</div>
+          <div class="end-card-score" id="es1">0</div>
+          <div class="elo-delta" id="elo-delta-1"></div>
+        </div>
+        <div class="end-card" id="end-card-1">
+          <div class="end-card-av" id="end-av1"></div>
+          <div class="end-card-name" id="en2">שחקן 2</div>
+          <div class="end-card-score" id="es2">0</div>
+          <div class="elo-delta" id="elo-delta-2"></div>
+        </div>
+        <div class="g-bar end-g-lead" aria-hidden="true"><i id="end-lead-0" style="width:50%"></i><i id="end-lead-1" class="end-g-lead-op" style="width:50%"></i></div>
+      </div>
+
+      <div class="end-lb">
+        <div class="g-lbl end-lb-hdr"><span class="end-lb-hdr-txt">טבלת דירוגים — 10 השחקנים המובילים</span></div>
+        <div id="champions-wrap"></div>
       </div>
     </div>
-    <div class="end-victory-title" id="wn"></div>
-    <div class="end-victory-sub" id="wws"></div>
-    <div class="end-cards">
-      <div class="end-card" id="end-card-0">
-        <div class="end-card-av" id="end-av0"></div>
-        <div class="end-card-name" id="en1">שחקן 1</div>
-        <div class="end-card-score" id="es1">0</div>
-        <div class="elo-delta" id="elo-delta-1"></div>
-      </div>
-      <div class="end-card" id="end-card-1">
-        <div class="end-card-av" id="end-av1"></div>
-        <div class="end-card-name" id="en2">שחקן 2</div>
-        <div class="end-card-score" id="es2">0</div>
-        <div class="elo-delta" id="elo-delta-2"></div>
-      </div>
-    </div>
-    <div class="end-lb">
-      <div class="end-lb-hdr">
-        <div class="end-lb-hdr-line"></div>
-        <span class="end-lb-hdr-txt">טבלת דירוגים — 10 השחקנים המובילים</span>
-        <div class="end-lb-hdr-line"></div>
-      </div>
-      <div id="champions-wrap"></div>
-    </div>
-    <div class="ovbtns">
-      <button class="ovb s end-btn-review" onclick="reviewBoard()"><img class="ui-icon" src="assets/navigation/search.png" alt=""> צפה בלוח</button>
-    </div>
-    <div class="ovbtns">
-      <button class="ovb s" onclick="goHome()"><img class="ui-icon" src="assets/navigation/home.png" alt=""> בית</button>
-      <button class="ovb p end-btn-rematch" onclick="rematch()"><img class="ui-icon" src="assets/ui/rematch.png" alt=""> משחק חוזר</button>
+
+    <div class="end-g-dock">
+      <button class="g-btn end-g-ib end-btn-review" onclick="reviewBoard()"><svg class="gi"><use href="#gi-eye"/></svg><span>הלוח</span></button>
+      <button class="g-btn end-g-ib" onclick="goHome()"><svg class="gi"><use href="#gi-home"/></svg><span>בית</span></button>
+      <button class="g-btn go end-btn-rematch" onclick="rematch()"><svg class="gi"><use href="#gi-undo"/></svg> משחק חוזר</button>
     </div>
   </div>
 </div>

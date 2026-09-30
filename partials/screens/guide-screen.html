@@ -1,7 +1,11 @@
 <!-- GUIDE - full app guide, opened from the `?` dropdown. -->
 <div id="ov-guide" class="ov hidden" onclick="if(event.target===this)ovClose('ov-guide')">
-  <div class="ovc guide-ovc" dir="rtl">
-    <div class="ovt" style="margin-bottom:12px">📖 מדריך בוסט</div>
+  <div class="ovc guide-ovc g-full" dir="rtl">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="ovClose('ov-guide')" aria-label="סגור"><svg class="gi"><use href="#gi-x"/></svg></button>
+      <div class="g-ttl"><svg class="gi"><use href="#gi-book"/></svg><span class="ovt" style="margin:0">מדריך בוסט</span></div>
+      <span></span>
+    </div>
 
     <div class="guide-body">
 

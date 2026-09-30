@@ -19,7 +19,8 @@ test('מילון toolbar button no longer uses keyboard icon', () => {
   const html = fs.readFileSync(path.join(root, 'partials', 'screens', 'game.html'), 'utf8');
 
   assert.match(html, /openShailta\(\)/);
-  assert.match(html, /<span class="tb-ic">📖<\/span><span class="tb-tx">מילון<\/span>/);
+  // Book icon (inline SVG chip since the game-screen redesign), label kept.
+  assert.match(html, /id="btn-shailta"[^>]*><svg class="gm-chip-ic"[^>]*>.*?<\/svg><span class="tb-tx">מילון<\/span>/);
   assert.doesNotMatch(html, /<span class="tb-ic">⌨️<\/span><span class="tb-tx">מילון<\/span>/);
 });
 

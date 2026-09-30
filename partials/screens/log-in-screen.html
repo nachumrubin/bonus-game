@@ -1,24 +1,37 @@
-﻿<!-- LOG IN SCREEN -->
-<div id="sauth-login" class="screen hidden">
-  <div class="sbox" style="max-width:320px;gap:10px;">
-    <div class="stitle">🔐 כניסה</div>
-    <div class="sf">
-      <label>דוא"ל</label>
-      <input id="li-email" class="ri" type="email" placeholder="your@email.com" autocomplete="email" dir="ltr">
+<!-- LOG IN SCREEN (glass skin — tools/screens-mockup "#sauth-login") -->
+<div id="sauth-login" class="screen hidden g-screen">
+  <div class="g-page">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <span></span><span></span>
     </div>
-    <div class="sf">
-      <label>סיסמה</label>
-      <div class="pw-wrap">
-        <input id="li-pass" class="ri pw-input" type="password" placeholder="••••••••" autocomplete="current-password" dir="ltr">
-        <button type="button" class="pw-toggle" data-pw-target="li-pass" aria-label="הצג סיסמה">👁</button>
+    <div class="g-scroll auth-g" style="gap:12px">
+      <div class="hlogo auth-logo" role="img" aria-label="בוסט">
+        <div class="hl-tile"><span class="hl-l">ב</span></div>
+        <div class="hl-tile"><span class="hl-l">ו</span></div>
+        <div class="hl-tile"><span class="hl-l">ס</span></div>
+        <div class="hl-tile"><span class="hl-l">ט</span></div>
       </div>
-    </div>
-    <div id="li-error" style="min-height:16px;font-size:12px;color:#ff8e8e;text-align:center;"></div>
-    <button class="bd g" id="li-submit-btn" onclick="loginUser()">כניסה</button>
-    <button class="bd" id="li-forgot-btn" style="font-size:12px;background:transparent;border:none;color:#9bd0ff;text-decoration:underline;padding:2px;">שכחתי סיסמה</button>
-    <div style="display:flex;gap:6px;">
-      <button class="bd" style="flex:1;font-size:12px" onclick="showSc('sauth-signup')">חשבון חדש</button>
-      <button class="bd" style="flex:1;font-size:12px" onclick="continueAsGuest()">כאורח</button>
+      <div class="g-c" style="margin-bottom:6px">
+        <div class="stitle" style="font-size:22px">ברוך שובך</div>
+        <div class="g-dim">היכנס כדי לשמור דירוג, מטבעות והישגים</div>
+      </div>
+      <div class="sf">
+        <label class="g-flbl" for="li-email">דוא"ל</label>
+        <div class="g-fld" dir="ltr"><svg class="gi"><use href="#gi-mail"/></svg><input id="li-email" type="email" placeholder="your@email.com" autocomplete="email" dir="ltr"></div>
+      </div>
+      <div class="sf">
+        <label class="g-flbl" for="li-pass">סיסמה</label>
+        <div class="g-fld pw-wrap" dir="ltr"><svg class="gi"><use href="#gi-lock"/></svg><input id="li-pass" class="pw-input" type="password" placeholder="••••••••" autocomplete="current-password" dir="ltr"><button type="button" class="pw-toggle" data-pw-target="li-pass" aria-label="הצג סיסמה"><svg class="gi"><use href="#gi-eye"/></svg></button></div>
+      </div>
+      <div id="li-error" class="auth-err"></div>
+      <button class="g-btn link" id="li-forgot-btn" style="align-self:flex-start">שכחתי סיסמה</button>
+      <button class="g-btn go" id="li-submit-btn" onclick="loginUser()">כניסה</button>
+      <div class="g-lbl plain" style="justify-content:center;margin:4px 0">— או —</div>
+      <div class="g-btns">
+        <button class="g-btn" onclick="showSc('sauth-signup')">חשבון חדש</button>
+        <button class="g-btn" onclick="continueAsGuest()">המשך כאורח</button>
+      </div>
     </div>
   </div>
 </div>

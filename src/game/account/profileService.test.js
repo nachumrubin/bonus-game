@@ -11,7 +11,7 @@ import {
   bumpStats, EMPTY_STATS, RATING_START, DEFAULT_AVATAR,
   STARTER_GRANT, DAILY_BASE, DAILY_STREAK_INCREMENT, DAILY_STREAK_CAP,
   normalizeProfileEconomy, bumpCoins, purchaseAvatar,
-  computeDailyReward, claimDailyReward, isYesterday, ymd,
+  computeDailyReward, dailyCoinsForDay, dailyWeek, claimDailyReward, isYesterday, ymd,
   MAX_COIN_BALANCE, clampCoins, clampCoinsBalance,
 } from './profileService.js';
 
@@ -483,4 +483,27 @@ test('claimDailyReward: grants once per day, idempotent on a repeat boot', async
   const day2 = await claimDailyReward(db, 'u1', '2026-06-23');
   assert.equal(day2.newStreak, 2);
   assert.equal(day2.coinsAwarded, DAILY_BASE + DAILY_STREAK_INCREMENT);
+});
+
+test('dailyCoinsForDay: same curve as computeDailyReward, capped', () => {
+  assert.equal(dailyCoinsForDay(1), DAILY_BASE);
+  assert.equal(dailyCoinsForDay(4), DAILY_BASE + DAILY_STREAK_INCREMENT * 3);
+  assert.equal(dailyCoinsForDay(99), DAILY_BASE + DAILY_STREAK_INCREMENT * (DAILY_STREAK_CAP - 1));
+  assert.equal(dailyCoinsForDay(0), DAILY_BASE);
+});
+
+test('dailyWeek: 7 entries with got / today / next relative to the streak', () => {
+  const w = dailyWeek(4);
+  assert.equal(w.length, 7);
+  assert.deepEqual(w.map((d) => d.state), ['got', 'got', 'got', 'today', 'next', 'next', 'next']);
+  assert.deepEqual(w.map((d) => d.n), [1, 2, 3, 4, 5, 6, 7]);
+  assert.equal(w[3].coins, DAILY_BASE + DAILY_STREAK_INCREMENT * 3);
+});
+
+test('dailyWeek: the window rolls after day 7', () => {
+  const w = dailyWeek(9);
+  assert.equal(w[0].n, 8);
+  assert.equal(w[1].state, 'today');
+  assert.equal(dailyWeek(7)[6].state, 'today');
+  assert.equal(dailyWeek(1)[0].state, 'today');
 });

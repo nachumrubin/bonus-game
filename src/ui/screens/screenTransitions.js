@@ -43,12 +43,12 @@ export function showScreen(id, { doc = globalThis.document, setTimeoutFn = setTi
   }
   if (!active) return null;
 
-  // Show the global topbar on every screen except the game board.
-  // On the home screen the home button becomes the active/disabled indicator;
-  // on all other screens it is a regular clickable navigation target.
+  // Glass skin (tools/screens-mockup): the chip topbar belongs to the home
+  // screen only — every other screen carries its own header with a back chip.
+  // On the home screen the home button becomes the active/disabled indicator.
   const topbar = doc.getElementById?.('global-topbar');
   if (topbar) {
-    if (id === 'sg') {
+    if (id !== 'sh') {
       topbar.style.display = 'none';
     } else {
       topbar.style.display = '';

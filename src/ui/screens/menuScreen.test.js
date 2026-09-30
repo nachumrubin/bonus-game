@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
-import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './menuScreen.js';
+import { mountMenuScreen, MENU_INTENT, MENU_REFRESH, turnStripText } from './menuScreen.js';
 
 function makeButton({ onclick, id }) {
   const listeners = [];
@@ -57,6 +57,11 @@ function makeMenuDom() {
     nameLabel:  makeButton({ id: 'home-user-label' }),
     onlineBadge: makeButton({ id: 'online-badge' }),
     mgBadge:    makeButton({ id: 'mg-nav-badge' }),
+    turnStrip:  makeButton({ id: 'home-turn-strip' }),
+    turnText:   makeButton({ id: 'home-turn-strip-text' }),
+    turnAvs:    makeButton({ id: 'home-turn-strip-avs' }),
+    lbRow:      makeButton({ id: 'home-lb-row' }),
+    lbRank:     makeButton({ id: 'home-lb-rank' }),
   };
 
   const sh = {
@@ -258,4 +263,55 @@ test('mount: missing #sh root logs a warning and returns a no-op', () => {
 
 test('mount throws when bus is not provided', () => {
   assert.throws(() => mountMenuScreen({ root: makeMenuDom().root }), /bus required/);
+});
+
+test('turnStripText: singular / plural Hebrew phrasing', () => {
+  assert.equal(turnStripText(1), 'תורך במשחק אחד');
+  assert.equal(turnStripText(2), 'תורך ב-2 משחקים');
+  assert.equal(turnStripText(12), 'תורך ב-12 משחקים');
+});
+
+test('MENU_REFRESH shows the "your turn" strip with count + up to 2 avatars', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  mountMenuScreen({ root, bus });
+  const mk = (n) => ({ roomId: 'r' + n, opponentName: 'p' + n, opponentAvatar: null });
+  bus.emit(MENU_REFRESH, { isAuthed: true, myTurnSessions: [mk(1), mk(2), mk(3)] });
+  assert.equal(buttons.turnStrip.style.display, '');
+  assert.equal(buttons.turnText.textContent, 'תורך ב-3 משחקים');
+  assert.equal((buttons.turnAvs.innerHTML.match(/hm-strip-av"/g) || []).length, 2);
+  // Nothing waiting → hidden.
+  bus.emit(MENU_REFRESH, { myTurnSessions: [] });
+  assert.equal(buttons.turnStrip.style.display, 'none');
+  // Payload without the key leaves it alone.
+  bus.emit(MENU_REFRESH, { myTurnSessions: [mk(1)] });
+  bus.emit(MENU_REFRESH, { myGamesCount: 1 });
+  assert.equal(buttons.turnStrip.style.display, '');
+  // Signing out hides it.
+  bus.emit(MENU_REFRESH, { isAuthed: false });
+  assert.equal(buttons.turnStrip.style.display, 'none');
+});
+
+test('clicking the "your turn" strip opens My Games; the leaderboard row opens the leaderboard', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  const seen = [];
+  bus.on(MENU_INTENT.OPEN_MY_GAMES, () => seen.push('mygames'));
+  bus.on(MENU_INTENT.OPEN_LEADERBOARD, () => seen.push('lb'));
+  mountMenuScreen({ root, bus });
+  buttons.turnStrip.click();
+  buttons.lbRow.click();
+  assert.deepEqual(seen, ['mygames', 'lb']);
+});
+
+test('MENU_REFRESH paints the leaderboard row from `myRank`', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  mountMenuScreen({ root, bus });
+  bus.emit(MENU_REFRESH, { myRank: 27 });
+  assert.equal(buttons.lbRow.style.display, '');
+  assert.match(buttons.lbRank.textContent, /27/);
+  // Unranked → hidden.
+  bus.emit(MENU_REFRESH, { myRank: null });
+  assert.equal(buttons.lbRow.style.display, 'none');
 });

@@ -39,3 +39,14 @@ android/app/release/
 # IDE / editor
 .idea/
 android/.idea/
+
+# Keep the app atlas generators; Blender scenes and renders stay local.
+/Blender designs/*
+!/Blender designs/icons3d/
+/Blender designs/icons3d/*
+!/Blender designs/icons3d/*.py
+!/Blender designs/icons3d/*.json
+!/Blender designs/icons3d/*.md
+
+# Generated test reports.
+/test-results/

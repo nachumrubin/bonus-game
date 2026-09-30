@@ -323,6 +323,25 @@ export function computeDailyReward(lastLoginDate, loginStreak, today) {
   return { coinsAwarded, newStreak, alreadyClaimedToday: false };
 }
 
+// Pure: coins owed for the Nth consecutive login day (same curve as
+// computeDailyReward — capped at DAILY_STREAK_CAP days).
+export function dailyCoinsForDay(day) {
+  const d = Math.min(Math.max(1, Math.floor(Number(day) || 1)), DAILY_STREAK_CAP);
+  return DAILY_BASE + DAILY_STREAK_INCREMENT * (d - 1);
+}
+
+// Pure: the 7-day strip shown in the daily-reward popup. The week window
+// rolls with the streak (days 1-7, then 8-14, …); each entry is
+// { n, coins, state: 'got' | 'today' | 'next' } relative to `streak`.
+export function dailyWeek(streak) {
+  const s = Math.max(1, Math.floor(Number(streak) || 1));
+  const start = s - ((s - 1) % 7);
+  return Array.from({ length: 7 }, (_, i) => {
+    const n = start + i;
+    return { n, coins: dailyCoinsForDay(n), state: n < s ? 'got' : n === s ? 'today' : 'next' };
+  });
+}
+
 // Claim today's daily login reward. Idempotent within a day via the
 // same-day guard INSIDE the transaction (two boots can't double-grant).
 // Returns { coinsAwarded, newStreak, alreadyClaimedToday }.

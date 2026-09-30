@@ -8,7 +8,8 @@
 import { $, on, setText } from '../domHelpers.js';
 import { EV } from '../../events/eventTypes.js';
 import { RATING_EVT } from '../../game/account/ratingService.js';
-import { setAvatarEl } from './avatarScreens.js';
+import { setAvatarEl, AV_PROGRESS_BUMP, achievementIconSrc, isBotAvatar, nextAchievement } from './avatarScreens.js';
+import { playOnHost, playOnImg } from '../avatarMotion/spritePlayer.js';
 import { CHAMPS_RENDER } from './championsScreen.js';
 import { confettiBurst } from './miniGames/bonusFx.js';
 
@@ -93,12 +94,50 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     setTimeout(highlightMyChampRow, 0);
   }));
 
+  // Achievement progress that moved this game (profile watch → AV_PROGRESS_BUMP):
+  // the trophy bumps forward (3D 'bump' clip), its bar grows from the old to the
+  // new value and a spark lands at the new position. Completed achievements get
+  // the full unlock overlay instead, so they never appear here.
+  cleanups.push(bus.on(AV_PROGRESS_BUMP, ({ bumps } = {}) => renderProgressBumps(bumps)));
+
+  function renderProgressBumps(bumps, { next = false } = {}) {
+    if (!Array.isArray(bumps) || !bumps.length || (!next && overlay.classList?.contains?.('hidden'))) return;
+    const cards = $('.end-cards', overlay);
+    const doc = overlay.ownerDocument;
+    if (!cards?.insertAdjacentElement || !doc?.createElement) return;
+    overlay.querySelector?.('.end-ach-progress')?.remove?.();
+    const wrap = doc.createElement('div');
+    wrap.className = next ? 'end-ach-progress end-ach-progress--next' : 'end-ach-progress';
+    const pct = (n, t) => `${Math.max(0, Math.min(100, (n / t) * 100)).toFixed(1)}%`;
+    wrap.innerHTML = bumps.map(({ achievement: a, from, to, target }) =>
+      `<div class="end-ach-row" style="--from:${pct(from, target)};--to:${pct(to, target)}">`
+      + `<img class="end-ach-ic" src="${achievementIconSrc(a)}" alt="">`
+      + `<div class="end-ach-meta"><div class="end-ach-title"></div>`
+      + `<div class="end-ach-bar"><i class="end-ach-fill"></i><i class="end-ach-spark"></i></div></div>`
+      + `<div class="end-ach-count">${to}/${target}</div></div>`).join('');
+    // Titles via textContent (data is ours, but keep the habit).
+    wrap.querySelectorAll('.end-ach-title').forEach((el, i) => { el.textContent = bumps[i].achievement?.titleHe ?? ''; });
+    cards.insertAdjacentElement('afterend', wrap);
+    void wrap.offsetWidth;
+    wrap.classList.add('is-go');
+    if (!next) for (const img of wrap.querySelectorAll('img.end-ach-ic')) playOnImg(img, 'bump');
+  }
+
   function render({ winnerSlot, scores = { 0: 0, 1: 0 }, players, abandonedBy, abandonReason } = {}) {
     clearEloDeltas();
+    overlay.querySelector?.('.end-ach-progress')?.remove?.();
     setText($('#es1', overlay), String(scores[0] ?? 0));
     setText($('#es2', overlay), String(scores[1] ?? 0));
     setText($('#en1', overlay), players?.[0]?.displayName ?? 'שחקן 1');
     setText($('#en2', overlay), players?.[1]?.displayName ?? 'שחקן 2');
+    // Lead bar under the two cards (cyan = slot 0 share, gold = slot 1).
+    const s0 = Math.max(0, Number(scores?.[0]) || 0);
+    const s1 = Math.max(0, Number(scores?.[1]) || 0);
+    const share0 = s0 + s1 > 0 ? Math.round((s0 / (s0 + s1)) * 100) : 50;
+    const lead0 = $('#end-lead-0', overlay);
+    const lead1 = $('#end-lead-1', overlay);
+    if (lead0?.style) lead0.style.width = `${share0}%`;
+    if (lead1?.style) lead1.style.width = `${100 - share0}%`;
 
     setAvatarEl($('#end-av0', overlay), endAvatarValue(players?.[0]), { fallback: '\uD83D\uDC64', className: 'av-img' });
     setAvatarEl($('#end-av1', overlay), endAvatarValue(players?.[1]), { fallback: '\uD83D\uDC64', className: 'av-img' });
@@ -124,6 +163,12 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     const outcome = effectiveWinner == null
       ? 'draw'
       : (mySlot === effectiveWinner ? 'victory' : 'defeat');
+    // "Next achievement" row: static until a real progress bump replaces it.
+    try {
+      const prof = globalThis.__spine?.currentProfile;
+      const nxt = prof ? nextAchievement({ stats: prof.stats, ownedAvatars: prof.ownedAvatars }) : null;
+      if (nxt) renderProgressBumps([nxt], { next: true });
+    } catch { /* decorative */ }
     applyOutcomePresentation(outcome, { effectiveWinner, score0, score1, abandonedBy });
 
     applyCardStates(effectiveWinner);
@@ -182,12 +227,19 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     if (outcome === 'victory' && !prefersReducedMotion()) {
       confettiBurst($('.end-ovc', overlay), { count: 42 });
     }
+    // The characters react too: the winner turns toward the camera, the loser
+    // steps back and dims (restrained — spec: no celebration on defeat). A draw
+    // stays still. No-ops under reduced motion or without a pose atlas.
+    if (effectiveWinner === 0 || effectiveWinner === 1) {
+      playOnHost($(`#end-av${effectiveWinner}`, overlay), 'win');
+      playOnHost($(`#end-av${1 - effectiveWinner}`, overlay), 'loss');
+    }
   }
 
   function endAvatarValue(player) {
     const value = player?.avatar ?? null;
     if (LEGACY_CROWN_VALUES.has(value)) return null;
-    if (value === 'bot' && player?.displayName !== COMPUTER_NAME_HE) return null;
+    if (isBotAvatar(value) && player?.displayName !== COMPUTER_NAME_HE) return null;
     return value;
   }
 

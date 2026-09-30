@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountAsyncGamesScreen, buildListHtml, buildRowHtml, timeAgoLabel,
-  canPoke, MG_INTENT, MG_RENDER,
+  canPoke, splitByTurn, MG_INTENT, MG_RENDER,
 } from './asyncGamesScreen.js';
 
 const HOUR = 3_600_000;
@@ -327,3 +327,99 @@ test('mount: clicking the dismiss (🗑) button emits MG_INTENT.DISMISS', () => 
   ui.unmount();
 });
 
+
+test('splitByTurn: my-turn live games vs everything else (waiting + expired)', () => {
+  const { mine, theirs } = splitByTurn([
+    { roomId: 'a', isMyTurn: true,  isExpired: false },
+    { roomId: 'b', isMyTurn: false, isExpired: false },
+    { roomId: 'c', isMyTurn: true,  isExpired: true },
+    { roomId: 'd', isMyTurn: true,  isLocal: true, isExpired: false },
+  ]);
+  assert.deepEqual(mine.map(s => s.roomId), ['a', 'd']);
+  assert.deepEqual(theirs.map(s => s.roomId), ['b', 'c']);
+});
+
+test('buildRowHtml: carries the opponent avatar and a my-share lead bar', () => {
+  const html = buildRowHtml({ roomId: 'r', opponentName: 'דנה', isMyTurn: true, isExpired: false, myScore: 30, opponentScore: 10, lastUpdated: 0 }, { now: 0 });
+  assert.match(html, /class="mg-av"><img src="[^"]+"/);
+  assert.match(html, /mg-lead-me" style="width:75%"/);
+  assert.match(html, /mg-lead-op" style="width:25%"/);
+});
+
+function makeTabsRoot() {
+  const base = makeRoot();
+  const mkBtn = (which) => {
+    const cls = new Set();
+    const n = { textContent: '' };
+    return {
+      _which: which, _n: n, _cls: cls,
+      classList: { toggle: (c, f) => { if (f) cls.add(c); else cls.delete(c); } },
+      getAttribute: (k) => (k === 'data-mg-tab' ? which : null),
+      querySelector: (sel) => (sel === '.n' ? n : null),
+    };
+  };
+  const btns = [mkBtn('mine'), mkBtn('theirs')];
+  const listeners = [];
+  const tabs = {
+    style: { display: 'none' },
+    querySelectorAll: () => btns,
+    addEventListener: (ev, fn) => listeners.push({ ev, fn }),
+    removeEventListener() {},
+    click(which) {
+      const btn = btns.find(b => b._which === which);
+      for (const l of listeners) if (l.ev === 'click') l.fn({ target: { closest: () => btn } });
+    },
+  };
+  const origQS = base.root.querySelector;
+  base.root.querySelector = (sel) => (sel === '#mg-tabs' ? tabs : origQS(sel));
+  return { ...base, tabs, btns };
+}
+
+const SESSIONS = [
+  { roomId: 'm1', opponentName: 'A', isMyTurn: true,  isExpired: false, myScore: 1, opponentScore: 1, lastUpdated: 0 },
+  { roomId: 't1', opponentName: 'B', isMyTurn: false, isExpired: false, myScore: 1, opponentScore: 1, lastUpdated: 0 },
+  { roomId: 't2', opponentName: 'C', isMyTurn: false, isExpired: false, myScore: 1, opponentScore: 1, lastUpdated: 0 },
+];
+
+test('tabs: defaults to "your turn", shows counts, and switches on click', () => {
+  bus._reset();
+  const { list, tabs, btns, root } = makeTabsRoot();
+  const ui = mountAsyncGamesScreen({ root, bus, now: () => 0 });
+  bus.emit(MG_RENDER, { sessions: SESSIONS });
+  assert.equal(tabs.style.display, '');
+  assert.ok(list.innerHTML.includes('data-mg-row="m1"'));
+  assert.ok(!list.innerHTML.includes('data-mg-row="t1"'));
+  assert.equal(btns[0]._n.textContent, '1');
+  assert.equal(btns[1]._n.textContent, '2');
+  assert.ok(btns[0]._cls.has('on'));
+  tabs.click('theirs');
+  assert.ok(list.innerHTML.includes('data-mg-row="t1"'));
+  assert.ok(list.innerHTML.includes('data-mg-row="t2"'));
+  assert.ok(!list.innerHTML.includes('data-mg-row="m1"'));
+  assert.ok(btns[1]._cls.has('on') && !btns[0]._cls.has('on'));
+  ui.unmount();
+});
+
+test('tabs: opens on "their turn" when nothing waits on the player, and the choice sticks across renders', () => {
+  bus._reset();
+  const { list, tabs, root } = makeTabsRoot();
+  const ui = mountAsyncGamesScreen({ root, bus, now: () => 0 });
+  bus.emit(MG_RENDER, { sessions: SESSIONS.slice(1) });
+  assert.ok(list.innerHTML.includes('data-mg-row="t1"'));
+  tabs.click('mine');
+  assert.match(list.innerHTML, /mg-tab-empty/);
+  bus.emit(MG_RENDER, { sessions: SESSIONS });
+  assert.ok(list.innerHTML.includes('data-mg-row="m1"'), 'explicit tab choice is kept');
+  ui.unmount();
+});
+
+test('tabs: hidden together with the list when there are no games', () => {
+  bus._reset();
+  const { tabs, empty, root } = makeTabsRoot();
+  const ui = mountAsyncGamesScreen({ root, bus, now: () => 0 });
+  bus.emit(MG_RENDER, { sessions: SESSIONS });
+  bus.emit(MG_RENDER, { sessions: [] });
+  assert.equal(tabs.style.display, 'none');
+  assert.equal(empty.style.display, '');
+  ui.unmount();
+});

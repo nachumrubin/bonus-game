@@ -1,9 +1,13 @@
-﻿<!-- מילון -->
+<!-- מילון (glass bottom sheet — tools/screens-mockup "#ov-shailta") -->
 <div id="ov-shailta" class="ov hidden">
-  <div class="ovc"><div class="ovh"></div>
-    <div class="ovt">מילון</div>
-    <div class="ovd">האם המילה קיימת? <span style="color:#ff8e8e">הטיימר ממשיך לרוץ!</span></div>
-    <div class="shin-wrap"><input class="shin" id="shin" type="text" placeholder="הקלד מילה..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+  <div class="ovc g-sheet"><div class="ovh"></div>
+    <div class="g-sh">
+      <span class="g-sock"><svg class="gi"><use href="#gi-book"/></svg></span>
+      <div class="ovt">מילון</div>
+      <span class="g-pill bad"><svg class="gi"><use href="#gi-clock"/></svg>הטיימר רץ</span>
+    </div>
+    <div class="g-dim">האם המילה קיימת? הקלד ובדוק.</div>
+    <div class="shin-wrap g-fld"><svg class="gi"><use href="#gi-search"/></svg><input class="shin" id="shin" type="text" placeholder="הקלד מילה..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
     <div class="shres" id="shres"></div>
     <div class="ovbtns">
       <button class="ovb p" onclick="checkShailta()">בדוק ✓</button>

@@ -26,6 +26,7 @@ export const MENU_INTENT = Object.freeze({
   OPEN_FRIENDS:       'menu/openFriends',
   OPEN_MY_GAMES:      'menu/openMyGames',
   OPEN_NOTIFICATIONS: 'menu/openNotifications',
+  OPEN_LEADERBOARD:   'menu/openLeaderboard',
   TOPBAR_MUSIC:       'menu/topbarMusic',
   OPEN_ADMIN:         'menu/openAdmin',
 });
@@ -56,6 +57,12 @@ const SCREEN_BUTTONS = [
   { sel: 'button[onclick="openFriends()"]',        intent: MENU_INTENT.OPEN_FRIENDS },
   { sel: 'button[onclick="openMyGames()"]',        intent: MENU_INTENT.OPEN_MY_GAMES },
 ];
+
+// Hebrew count phrase for the home "your turn" strip.
+export function turnStripText(n) {
+  if (n === 1) return 'תורך במשחק אחד';
+  return `תורך ב-${n} משחקים`;
+}
 
 function ratingTierEmoji(rating) {
   if (rating >= 1200) return '💎';
@@ -96,6 +103,20 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
+  // Home strips (id-bound — the my-games strip must not steal the bottom-nav's
+  // `onclick="openMyGames()"` selector above).
+  for (const [id, intent] of [
+    ['#home-turn-strip', MENU_INTENT.OPEN_MY_GAMES],
+    ['#home-lb-row',     MENU_INTENT.OPEN_LEADERBOARD],
+  ]) {
+    const el = $(id, menuRoot);
+    if (!el) continue;
+    cleanups.push(on(el, 'click', (e) => {
+      e.preventDefault?.();
+      bus.emit(intent, { source: 'menu-strip' });
+    }));
+  }
+
   for (const def of SCREEN_BUTTONS) {
     const btn = $(def.sel, menuRoot);
     if (!btn) continue;
@@ -113,7 +134,7 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
 
   // Initial render — read current state from the spine/debug surface and
   // saved-session globals.
-  function render({ isAuthed, displayName, unreadCount, rating, avatar, myGamesCount, myTurnInGame } = {}) {
+  function render({ isAuthed, displayName, unreadCount, rating, avatar, myGamesCount, myTurnInGame, myTurnSessions, myRank } = {}) {
     // The legacy "Resume game" button was removed in favour of the
     // "המשחקים שלי" list, which surfaces both async-online sessions and
     // the local saved game in one place.
@@ -175,6 +196,18 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
       onlineBadge.textContent   = count > 0 ? String(count) : '';
     }
 
+    // "Your turn in N games" strip — only when signed in and at least one
+    // async game is waiting on the player. null/undefined = no update.
+    if (myTurnSessions !== undefined || isAuthed === false) {
+      const list = isAuthed === false ? [] : (Array.isArray(myTurnSessions) ? myTurnSessions : []);
+      paintTurnStrip(list);
+    }
+
+    // Leaderboard row — appears once a rank is known (or hides on sign-out).
+    if (myRank !== undefined || isAuthed === false) {
+      paintLeaderboardRow(isAuthed === false ? null : myRank);
+    }
+
     // Bottom-nav "My Games" bubble — the count of open games (active async
     // rooms + the local saved offline game, expired rooms excluded). null
     // means "no update this render"; we leave the badge alone in that case.
@@ -191,6 +224,33 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
         mgBadge.classList?.toggle('em-nav-badge--myturn', !!myTurnInGame);
       }
     }
+  }
+
+  function paintTurnStrip(list) {
+    const strip = $('#home-turn-strip', menuRoot);
+    if (!strip) return;
+    const n = list.length;
+    strip.style.display = n > 0 ? '' : 'none';
+    if (n === 0) return;
+    const text = $('#home-turn-strip-text', menuRoot);
+    if (text) text.textContent = turnStripText(n);
+    const avs = $('#home-turn-strip-avs', menuRoot);
+    if (avs) {
+      avs.innerHTML = list.slice(0, 2).map((s) => {
+        const src = avatarIconSrc(s.opponentAvatar) || ANON_AVATAR_SRC;
+        return `<span class="hm-strip-av"><img src="${src}" alt=""></span>`;
+      }).join('');
+    }
+  }
+
+  function paintLeaderboardRow(rank) {
+    const row = $('#home-lb-row', menuRoot);
+    if (!row) return;
+    const n = Number(rank);
+    const known = Number.isFinite(n) && n > 0;
+    row.style.display = known ? '' : 'none';
+    const pill = $('#home-lb-rank', menuRoot);
+    if (pill) pill.textContent = known ? `אתה במקום ${n.toLocaleString('he')}` : '';
   }
 
   // Pull initial values opportunistically; legacy code mutates these

@@ -3584,3 +3584,463 @@
 }
 #ov-exch .ovx:hover { background: rgba(0,150,255,.18); }
 #ov-exch .ovx:active { transform: scale(.92); }
+
+/* ═══════════════════════════════════════════════════════════════
+   GAME SCREEN — "glass + wood" redesign (option B, Sept 2026)
+   Mockup: tools/game-screen-mockup/index.html. One glass language for the
+   top bar, scoreboard, board tray and rack dock; tiles use the BOOST-logo
+   tile (maple face, engraved letter, cyan bezel). Fixed player colours:
+   slot 0 cyan, slot 1 gold — score, avatar ring, timer ring, lead rail and
+   last-move tiles. Scoped to #sg; every DOM id is unchanged.
+═══════════════════════════════════════════════════════════════ */
+#sg {
+  --p1: #28d4ff;
+  --p2: #ffc93d;
+  --gs-line: rgba(120,190,255,.22);
+  --gs-glass: rgba(12,26,74,.72);
+  --gs-ink: #eaf4ff;
+  --gs-dim: rgba(234,244,255,.55);
+  background:
+    radial-gradient(ellipse 90% 45% at 50% 0, rgba(40,110,255,.30), transparent 70%),
+    radial-gradient(ellipse 80% 40% at 50% 100%, rgba(40,212,255,.10), transparent 70%),
+    linear-gradient(180deg, #07123d, #040a22 55%, #030817) !important;
+}
+
+/* ── Top bar: ☰ menu · dictionary · bag ── */
+#sg .gm-topbar {
+  background: none !important;
+  border-bottom: none !important;
+  padding: 8px 10px 4px !important;
+  gap: 6px !important;
+  min-height: 48px;
+}
+#sg .gm-chip,
+#sg .gm-topbar #btn-shailta,
+#sg .gm-topbar #btn-claim-stall-end {
+  height: 36px !important;
+  min-width: 36px;
+  padding: 0 10px !important;
+  border-radius: 12px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid var(--gs-line) !important;
+  box-shadow: none !important;
+  color: var(--gs-ink) !important;
+  font: 800 12px/1 'Heebo', sans-serif !important;
+  text-shadow: none !important;
+  cursor: pointer;
+}
+#sg .gm-topbar #btn-claim-stall-end[style*="display:none"],
+#sg .gm-topbar #btn-claim-stall-end[style*="display: none"] { display: none !important; }
+#sg .gm-chip svg,
+#sg .gm-chip-ic {
+  width: 18px; height: 18px; flex-shrink: 0;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+#sg .gm-topbar .tb-tx { display: inline !important; font-size: 12px !important; line-height: 1; }
+#sg .gm-topbar #btn-claim-stall-end { color: var(--p2) !important; border-color: rgba(255,201,61,.45) !important; }
+#sg .gm-topbar #btn-claim-stall-end .tb-tx br { display: none; }
+#sg #btn-game-menu[aria-expanded="true"] { background: rgba(40,212,255,.16) !important; border-color: rgba(40,212,255,.5) !important; }
+
+#sg .gm-menu-wrap { position: relative; flex-shrink: 0; }
+#sg .gm-menu-drop {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 200;
+  min-width: 164px; padding: 6px;
+  display: none; flex-direction: column; gap: 2px;
+  background: rgba(6,16,52,.97);
+  border: 1px solid var(--gs-line); border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.08);
+}
+#sg .gm-menu-drop.open { display: flex; }
+#sg .gm-menu-drop .gm-qbtn {
+  height: 40px !important; width: 100%;
+  justify-content: flex-start !important;
+  padding: 0 12px !important;
+  background: transparent !important; border: none !important; border-radius: 10px !important;
+  font: 700 14px/1 'Heebo', sans-serif !important;
+  color: var(--gs-ink) !important; text-shadow: none !important;
+}
+#sg .gm-menu-drop .gm-qbtn:hover { background: rgba(255,255,255,.07) !important; }
+#sg .gm-menu-drop .tb-ic { display: none !important; }
+#sg .gm-menu-drop .tb-tx { font-size: 14px !important; }
+#sg .gm-menu-drop #music-toggle:not(.muted) { background: rgba(40,212,255,.12) !important; color: var(--p1) !important; box-shadow: none !important; }
+
+#sg .gm-topbar #bag-char { width: auto !important; height: auto; }
+#sg .gm-topbar #bag-display.gm-bag {
+  width: auto !important; height: 36px !important;
+  cursor: default; color: var(--gs-dim) !important;
+}
+#sg .gm-bag-n { font: 900 16px/1 'Heebo', sans-serif; color: var(--gs-ink); font-variant-numeric: tabular-nums; }
+#sg .gm-bag-l { font-size: 12px; font-weight: 700; }
+
+/* ── Scoreboard: one glass bar, timer medallion in the middle ── */
+#sg .info-strip {
+  position: relative;
+  grid-template-columns: 1fr 76px 1fr !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  margin: 4px 10px 0 !important;
+  min-height: 104px;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%), var(--gs-glass) !important;
+  border: 1px solid var(--gs-line) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12) !important;
+}
+#sg .info-strip .is-pcard {
+  --c: var(--p1);
+  position: relative;
+  display: grid !important;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "av name" "score locks" "mult mult";
+  align-items: center !important;
+  align-content: center;
+  column-gap: 8px !important; row-gap: 6px !important;
+  padding: 10px 8px 12px !important;
+  border-radius: 18px !important;
+  background: none !important;
+  animation: none !important;
+  filter: none !important;
+  overflow: hidden;
+  min-width: 0;
+}
+#sg .info-strip #is-sb2 { --c: var(--p2); direction: ltr; }
+#sg .info-strip #is-sb2 .is-pcname { direction: rtl; text-align: left !important; }
+#sg .info-strip .gm-card-mid,
+#sg .info-strip .gm-card-info { display: contents !important; }
+/* Turn = highlight, not dimming: a colour wash from the outer edge + lit ring. */
+#sg .info-strip .is-pcard.act-cell { background: linear-gradient(to left, color-mix(in srgb, var(--c) 22%, transparent), transparent 78%) !important; }
+#sg .info-strip #is-sb2.act-cell { background: linear-gradient(to right, color-mix(in srgb, var(--c) 22%, transparent), transparent 78%) !important; }
+#sg .info-strip .is-pcard::before,
+#sg .info-strip .is-pcard.act-cell::before { display: none !important; }
+
+#sg .info-strip .is-pcav {
+  grid-area: av;
+  position: relative;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  display: grid !important; place-items: center;
+  font-size: 30px !important;
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.18), rgba(0,0,0,.35));
+  border: 2px solid rgba(255,255,255,.16);
+  transition: border-color .3s, box-shadow .3s;
+  overflow: visible;
+}
+#sg .info-strip .is-pcav .av-img { width: 42px !important; height: 42px !important; filter: drop-shadow(0 3px 5px rgba(0,0,0,.5)); }
+#sg .info-strip .is-pcard.act-cell .is-pcav {
+  border-color: var(--c);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent), 0 0 16px color-mix(in srgb, var(--c) 60%, transparent);
+}
+#sg .info-strip .is-pcav[data-rar]::after {
+  content: attr(data-rar);
+  position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+  padding: 1px 5px; border-radius: 5px;
+  font: 900 8px/1.3 'Heebo', sans-serif; white-space: nowrap;
+  background: #ffc93d; color: #2a1a00; z-index: 3;
+}
+#sg .info-strip .is-pcname {
+  grid-area: name;
+  min-width: 0;
+  font: 800 13px/1.2 'Heebo', sans-serif !important;
+  color: var(--gs-ink) !important;
+  text-align: right !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#sg .info-strip .is-pcname[data-sub]::after {
+  content: attr(data-sub);
+  display: block;
+  font-size: 10px; font-weight: 700; color: var(--gs-dim);
+}
+#sg .info-strip .is-val {
+  grid-area: score;
+  font: 900 28px/1 'Heebo', sans-serif !important;
+  letter-spacing: 0 !important;
+  font-variant-numeric: tabular-nums;
+  color: var(--c) !important;
+  text-shadow: 0 0 16px color-mix(in srgb, var(--c) 45%, transparent);
+}
+#sg .info-strip .is-pclbl { display: none !important; }
+#sg .info-strip .is-pending-cost { position: absolute; top: 6px; inset-inline-end: 8px; }
+#sg .info-strip .rxn-btn { position: absolute; top: 6px; inset-inline-end: 6px; margin: 0; z-index: 2; }
+#sg .info-strip .spine-multiplier-banner { grid-area: mult; margin: 0 !important; }
+
+/* Locks: one compact pill */
+#sg .info-strip .is-pclocks {
+  grid-area: locks;
+  justify-self: end;
+  display: inline-flex !important; align-items: center; gap: 1px;
+  padding: 2px 4px !important;
+  border-radius: 999px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  color: var(--gs-dim);
+  font-size: 10px !important;
+  direction: ltr;
+}
+#sg .info-strip .is-pclocks .lock-inv-btn {
+  min-width: 0 !important; height: auto !important;
+  padding: 1px 4px !important; margin: 0 !important;
+  background: none !important; border: none !important; box-shadow: none !important;
+  border-radius: 999px !important;
+  font: 800 10px/1.2 'Heebo', sans-serif !important;
+  color: var(--gs-ink) !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+#sg .info-strip .is-pclocks .lock-inv-btn.active {
+  background: color-mix(in srgb, var(--c) 30%, transparent) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--c) 70%, transparent) !important;
+}
+
+/* Timer medallion — the ring takes the colour of the player on turn */
+#sg .gm-vs-badge { display: none !important; }
+#sg .gm-vs-center { justify-content: center; }
+#sg #info-strip #turn-timer {
+  width: 70px !important; height: 70px !important;
+  border: none !important;
+  background: radial-gradient(circle, #0b1d5c 58%, #081440 60%) !important;
+  box-shadow: 0 0 0 1px var(--gs-line), 0 8px 20px rgba(0,0,0,.5) !important;
+}
+#sg #info-strip #turn-timer .tt-value {
+  font: 900 26px/1 'Heebo', sans-serif !important;
+  font-variant-numeric: tabular-nums;
+  color: #fff !important;
+  text-shadow: none !important;
+}
+#sg #info-strip .tt-ring-track { stroke: rgba(255,255,255,.08); stroke-width: 6; }
+#sg #info-strip .tt-ring-arc {
+  stroke: var(--p1);
+  stroke-width: 6;
+  filter: drop-shadow(0 0 3px var(--p1));
+  transition: stroke .35s, filter .35s;
+}
+#sg #info-strip:has(#is-sb2.act-cell) #turn-timer:not(.urgent):not(.crit) .tt-ring-arc {
+  stroke: var(--p2);
+  filter: drop-shadow(0 0 3px var(--p2));
+}
+#sg #info-strip #turn-timer.urgent .tt-ring-arc,
+#sg #info-strip #turn-timer.crit .tt-ring-arc { filter: drop-shadow(0 0 3px #ff6b6b); }
+
+/* Lead rail */
+#sg .is-rail {
+  position: absolute; left: 16px; right: 16px; bottom: -10px;
+  height: 4px; border-radius: 4px; overflow: hidden;
+  display: flex; background: rgba(255,255,255,.08);
+  pointer-events: none;
+}
+#sg .is-rail i { display: block; height: 100%; width: 50%; transition: width .6s cubic-bezier(.22,1,.36,1); }
+#sg .is-rail .is-rail-1 { background: var(--p1); }
+#sg .is-rail .is-rail-2 { background: var(--p2); }
+
+/* ── Status pill (replaces the full-width hint strip) ── */
+#sg .sbar {
+  align-self: center;
+  width: fit-content !important; max-width: calc(100% - 32px);
+  margin: 18px auto 6px !important;
+  min-height: 26px !important;
+  padding: 4px 14px !important;
+  border-radius: 999px !important;
+  background: rgba(40,212,255,.10) !important;
+  border: 1px solid rgba(40,212,255,.35) !important;
+  box-shadow: none !important;
+  font: 800 12px/1.3 'Heebo', sans-serif !important;
+  text-align: center;
+}
+#sg .sbar.err { background: rgba(255,90,90,.12) !important; border-color: rgba(255,110,110,.45) !important; }
+#sg .sbar.ok  { background: rgba(46,229,157,.12) !important; border-color: rgba(46,229,157,.45) !important; }
+
+/* ── Board tray ── */
+#sg .board-center::before { display: none; }
+#sg .board-center-inner {
+  outline: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+#sg .board-center-inner::before {
+  content: '';
+  position: absolute; inset: -6px; z-index: 0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0) 30%), rgba(6,14,48,.85);
+  border: 1px solid var(--gs-line);
+  box-shadow: 0 14px 34px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.4), inset 0 0 40px rgba(40,120,255,.10);
+  pointer-events: none;
+}
+#sg #game-grid { position: relative; z-index: 1; background: transparent !important; }
+#sg #board-bg { background: transparent !important; }
+#sg #board-border { display: none; }
+#sg .perim-empty { background: transparent !important; }
+#sg .cell {
+  border-radius: 5px !important;
+  background: linear-gradient(180deg, #22438c, #1b3778) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.28) !important;
+}
+#sg .cell:active:not(.lk):not(.ht):not(.locked-cell) { background: linear-gradient(180deg, #2f56aa, #264a96) !important; }
+
+/* Boost squares: charged sockets */
+#sg .bsq {
+  border-radius: 7px !important;
+  background: radial-gradient(circle at 50% 45%, rgba(40,212,255,.28), rgba(8,22,70,.95) 70%) !important;
+  border: 1.5px solid rgba(40,212,255,.75) !important;
+  box-shadow: 0 0 10px rgba(40,212,255,.45), inset 0 0 6px rgba(40,212,255,.35) !important;
+}
+#sg .bsq-ic {
+  font-size: calc(var(--csz) * .5) !important;
+  color: transparent !important;
+  text-shadow: 0 0 0 #e9fbff !important;
+  filter: drop-shadow(0 0 3px #28d4ff) drop-shadow(0 0 6px #28d4ff) !important;
+}
+#sg .bsq.used {
+  background: rgba(8,22,70,.7) !important;
+  border-color: rgba(120,190,255,.25) !important;
+  box-shadow: none !important;
+  opacity: .7;
+}
+#sg .bsq.used .bsq-ic { filter: none !important; text-shadow: 0 0 0 rgba(234,244,255,.35) !important; }
+body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocketPulse 1s ease-in-out infinite; }
+@keyframes gsSocketPulse {
+  0%, 100% { filter: none; }
+  50% { filter: brightness(1.25) drop-shadow(0 0 8px rgba(40,212,255,.9)); }
+}
+#sg .bsq.bsq-tile-host { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+#sg .bsq.last-move { outline: none; }
+
+/* ── Tiles: BOOST-logo wood (board .btile + rack .bt2) ── */
+#sg .btile,
+#sg .bt2 {
+  border-radius: 6px !important;
+  background:
+    repeating-linear-gradient(92deg, rgba(150,95,40,.10) 0 1px, transparent 1px 3px, rgba(150,95,40,.06) 3px 4px, transparent 4px 7px),
+    radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.35), transparent 60%),
+    linear-gradient(165deg, #f6ddb0, #e7c08a 60%, #d9ad73) !important;
+  border: 1.5px solid #3aaecb !important;
+  box-shadow: 0 0 0 1px rgba(0,50,80,.5), 0 0 4px rgba(40,212,255,.3), inset 0 0 0 1px rgba(255,255,255,.35), 0 2px 0 1px #7a5530 !important;
+}
+#sg .bt-l,
+#sg .bt2-l {
+  color: #8a5324 !important;
+  text-shadow: 0 1px 0 rgba(255,245,220,.8), 0 -1px 0 rgba(70,35,10,.55);
+}
+#sg .bt-v,
+#sg .bt2-v { color: #8a5324 !important; opacity: .85; }
+/* Tiles being placed this turn: white-hot bezel, cyan glow */
+#sg .btile.nw {
+  border-color: #fff !important;
+  background:
+    repeating-linear-gradient(92deg, rgba(150,95,40,.08) 0 1px, transparent 1px 3px, rgba(150,95,40,.05) 3px 4px, transparent 4px 7px),
+    radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.5), transparent 60%),
+    linear-gradient(165deg, #fbe6c0, #efcc98 60%, #e2b981) !important;
+  box-shadow: 0 0 0 1px #28d4ff, 0 0 12px #28d4ff, 0 0 22px rgba(40,212,255,.5), inset 0 0 0 1px rgba(255,255,255,.5), 0 3px 0 1px #7a5530 !important;
+}
+#sg .btile.jk,
+#sg .bt2.jok { border-color: #d98cff !important; }
+/* Last move: bezel in the mover's colour (slot 0 cyan, slot 1 gold) */
+#sg .cell.last-move .btile,
+#sg .bsq.last-move .btile {
+  background:
+    repeating-linear-gradient(92deg, rgba(150,95,40,.10) 0 1px, transparent 1px 3px, rgba(150,95,40,.06) 3px 4px, transparent 4px 7px),
+    radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.35), transparent 60%),
+    linear-gradient(165deg, #f6ddb0, #e7c08a 60%, #d9ad73) !important;
+  border-color: var(--p1) !important;
+  box-shadow: 0 0 0 1px rgba(0,50,80,.6), 0 0 10px color-mix(in srgb, var(--p1) 80%, transparent), inset 0 0 0 1px rgba(255,255,255,.35), 0 2px 0 1px #7a5530 !important;
+}
+#sg #game-grid.lm-s1 .cell.last-move .btile,
+#sg #game-grid.lm-s1 .bsq.last-move .btile {
+  border-color: var(--p2) !important;
+  box-shadow: 0 0 0 1px rgba(80,50,0,.6), 0 0 10px color-mix(in srgb, var(--p2) 80%, transparent), inset 0 0 0 1px rgba(255,255,255,.35), 0 2px 0 1px #7a5530 !important;
+}
+#sg .cell.last-move .btile .bt-l,
+#sg .cell.last-move .btile .bt-v { color: #8a5324 !important; }
+#sg .cell.swap-pending .btile,
+#sg .bsq.swap-pending .btile { border-color: #ffb03d !important; box-shadow: 0 0 10px rgba(255,176,61,.7), 0 2px 0 1px #7a5530 !important; }
+
+/* ── Rack dock ── */
+#sg .bot {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  margin: 8px 0 0;
+  padding: 12px 10px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: 24px 24px 0 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 35%), rgba(8,18,58,.92) !important;
+  border-top: 1px solid var(--gs-line) !important;
+  box-shadow: 0 -10px 30px rgba(0,0,0,.45) !important;
+}
+#sg #brack {
+  display: flex !important;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 14px;
+  background: rgba(0,0,0,.28);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+#sg #brack .bt2 { border-radius: 8px !important; }
+#sg #brack .bt2.sel {
+  border-color: #fff !important;
+  box-shadow: 0 0 0 1px #28d4ff, 0 0 14px #28d4ff, 0 10px 14px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.5) !important;
+}
+#sg #brack .bt2.emp {
+  background: rgba(255,255,255,.03) !important;
+  border: 1.5px dashed rgba(120,190,255,.4) !important;
+  box-shadow: none !important;
+}
+#sg .bot-acts { display: grid; grid-template-columns: 56px 56px 1fr; gap: 8px; }
+#sg .bot-acts .bplay {
+  max-width: none !important;
+  height: 50px;
+  border-radius: 14px !important;
+  font: 900 16px/1 'Heebo', sans-serif !important;
+  text-shadow: none !important;
+}
+#sg .bot-acts .bact {
+  flex-direction: column; gap: 2px;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid var(--gs-line) !important;
+  box-shadow: none !important;
+  color: var(--gs-ink) !important;
+}
+#sg .bot-acts .bact svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+#sg .bot-acts .bact-l { font-size: 10px; font-weight: 800; color: var(--gs-dim); }
+#sg .bot-acts #btn-play {
+  background: linear-gradient(180deg, #43e0ff, #1597d6) !important;
+  border: 1px solid rgba(255,255,255,.35) !important;
+  color: #022038 !important;
+  box-shadow: 0 6px 18px rgba(40,212,255,.35), inset 0 1px 0 rgba(255,255,255,.6) !important;
+}
+/* Lock pill: one 🔒, then the durations (from data-lock-duration) — the
+   buttons keep their "🔒 N" text for a11y/tests, it is just not painted. */
+#sg .info-strip .is-pclocks { flex-wrap: nowrap !important; flex-direction: row !important; gap: 0 !important; }
+#sg .info-strip .is-pclocks:has(.lock-inv-btn)::before { content: '🔒'; font-size: 9px; margin-inline-end: 3px; }
+#sg .info-strip .is-pclocks .lock-inv-btn { font-size: 0 !important; display: inline-flex !important; align-items: center; }
+#sg .info-strip .is-pclocks .lock-inv-btn::after { content: attr(data-lock-duration); font-size: 11px; line-height: 1.3; }
+#sg .info-strip .is-pclocks .lock-inv-btn + .lock-inv-btn::before { content: '·'; font-size: 11px; opacity: .35; margin-inline-end: 4px; }
+#sg .gm-topbar #btn-shailta { flex-direction: row !important; }
+#sg .gm-menu-drop .gm-qbtn { display: flex !important; flex-direction: row !important; align-items: center !important; white-space: nowrap !important; line-height: 1 !important; }
+#sg .gm-menu-drop .gm-qbtn br { display: none; }
+#sg .gm-menu-drop .gm-qbtn[style*="display:none"],
+#sg .gm-menu-drop .gm-qbtn[style*="display: none"] { display: none !important; }
+/* Last move reads at a glance: thicker bezel + stronger glow in the mover's colour */
+#sg .cell.last-move .btile,
+#sg .bsq.last-move .btile {
+  border-width: 2px !important;
+  box-shadow: 0 0 0 1px rgba(0,50,80,.6), 0 0 8px var(--p1), 0 0 16px color-mix(in srgb, var(--p1) 55%, transparent), inset 0 0 0 1px rgba(255,255,255,.35), 0 2px 0 1px #7a5530 !important;
+}
+#sg #game-grid.lm-s1 .cell.last-move .btile,
+#sg #game-grid.lm-s1 .bsq.last-move .btile {
+  box-shadow: 0 0 0 1px rgba(80,50,0,.6), 0 0 8px var(--p2), 0 0 16px color-mix(in srgb, var(--p2) 55%, transparent), inset 0 0 0 1px rgba(255,255,255,.35), 0 2px 0 1px #7a5530 !important;
+}
+/* Narrow phones: let the scoreboard sides shrink instead of overflowing */
+#sg .info-strip .is-pcard { grid-template-columns: auto minmax(0, 1fr); }
+#sg .info-strip .is-pclocks { min-width: 0; max-width: 100%; overflow: hidden; }
+@media (max-width: 390px) {
+  #sg .info-strip { grid-template-columns: 1fr 66px 1fr !important; margin-inline: 8px !important; }
+  #sg #info-strip #turn-timer { width: 62px !important; height: 62px !important; }
+  #sg #info-strip #turn-timer .tt-value { font-size: 23px !important; }
+  #sg .info-strip .is-pcard { padding: 9px 6px 11px !important; column-gap: 6px !important; }
+  #sg .info-strip .is-pcav { width: 40px; height: 40px; }
+  #sg .info-strip .is-pcav .av-img { width: 36px !important; height: 36px !important; }
+  #sg .info-strip .is-val { font-size: 24px !important; }
+  #sg .info-strip .is-pclocks .lock-inv-btn { padding: 1px 2px !important; }
+}

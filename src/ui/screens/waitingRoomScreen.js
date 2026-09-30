@@ -116,6 +116,11 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
 
   const offOpen = bus.on(WR_OPEN, ({ code, mode, friendName, isAuthed } = {}) => {
     if (codeEl && code) setText(codeEl, code);
+    // Glass skin: the room code is also drawn as wood tiles (brand element).
+    const tilesEl = $('#wr-code-tiles', root);
+    if (tilesEl && code) {
+      tilesEl.innerHTML = [...String(code)].map(ch => `<span class="g-t" style="--s:42px">${String(ch).replace(/[<>&"']/g, '')}</span>`).join('');
+    }
     if (modeEl && mode) setText(modeEl, MODE_LABEL[mode] ?? '');
     resetInviteFields();
     clearCountdown();

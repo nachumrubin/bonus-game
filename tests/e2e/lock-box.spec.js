@@ -89,10 +89,11 @@ test('picking a lock then a square previews it, and it leaves the box', async ({
   await expect(page.locator('#c4_4')).toHaveClass(/spine-pending-lock-cell/);
 });
 
-// Both score cards must show real bordered lock chips at all times. The
+// Both score cards must show a real bordered lock box at all times. The
 // non-acting player's used to degrade to a plain "🔒3 🔒3 🔒5" text summary,
 // so in hot-seat/bot play a card visibly lost its lock frames the moment the
-// turn passed to the other side.
+// turn passed to the other side. Since the Sept 2026 game-screen redesign the
+// frame is the lock pill (#is-locks-N) holding one button per lock.
 test('both players keep bordered lock chips, including across a turn flip', async ({ page }) => {
   await bootGame(page);
   await setScore(page, 50);
@@ -107,8 +108,8 @@ test('both players keep bordered lock chips, including across a turn flip', asyn
   // Slot 0 is to move: both cards should hold chips, both bordered.
   await expect(page.locator('#is-locks-1 button')).toHaveCount(3);
   await expect(page.locator('#is-locks-2 button')).toHaveCount(3);
-  expect(await borderOf('#is-locks-1 button')).toMatchObject({ style: 'solid' });
-  expect(await borderOf('#is-locks-2 button')).toMatchObject({ style: 'solid' });
+  expect(await borderOf('#is-locks-1')).toMatchObject({ style: 'solid' });
+  expect(await borderOf('#is-locks-2')).toMatchObject({ style: 'solid' });
 
   // The opponent's chips are inert, not clickable.
   await expect(page.locator('#is-locks-2 button').first()).toBeDisabled();
@@ -121,8 +122,8 @@ test('both players keep bordered lock chips, including across a turn flip', asyn
   });
   await expect(page.locator('#is-locks-1 button')).toHaveCount(3);
   await expect(page.locator('#is-locks-2 button')).toHaveCount(3);
-  expect(await borderOf('#is-locks-1 button')).toMatchObject({ style: 'solid' });
-  expect(await borderOf('#is-locks-2 button')).toMatchObject({ style: 'solid' });
+  expect(await borderOf('#is-locks-1')).toMatchObject({ style: 'solid' });
+  expect(await borderOf('#is-locks-2')).toMatchObject({ style: 'solid' });
 });
 
 // The 10-point lock charge must be visible BEFORE the player commits (so it

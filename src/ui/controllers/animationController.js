@@ -18,6 +18,9 @@ import { bonusOverlayOpen } from '../domHelpers.js';
 import { mergeSequenceTiming } from '../scoreAnimationTimings.js';
 import { BOOST_RESULT_READY, BOOST_RESULT_REVEAL_DELAY_MS } from '../boostPresentation.js';
 
+// Move score (points) from which the mover's avatar nods (avatarGoodMove).
+export const GOOD_MOVE_SCORE = 40;
+
 // Presentation-only delay. The engine has already resolved the Boost; this
 // only leaves the board unobscured long enough for its cause to register.
 export { BOOST_RESULT_REVEAL_DELAY_MS } from '../boostPresentation.js';
@@ -139,6 +142,13 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
       payload: { slot, placed, words: wordsForRender, finalScore: total, baseScore: base, bonusExtra: extra, multiplier: mult },
     });
 
+    // A big word earns the mover's avatar a small confident nod — fired as the
+    // sum lands on the panel so it follows the score presentation, never
+    // competes with it (BOOST_MOTION_SPEC rule 6).
+    if (total >= GOOD_MOVE_SCORE) {
+      const { totalToPanelLanding } = scoreMergeTiming({ wordCount: wordsForRender.length, bonusExtra: extra, multiplier: mult });
+      trigger({ kind: 'avatarGoodMove', payload: { slot, score: total, delayMs: totalToPanelLanding } });
+    }
   }
 
   function emitMoveAnimations({ slot, placed, words, wordTiles, score, baseScore, bonusExtra, multiplier, opponent = false, scoringDeferred = false }) {
@@ -260,6 +270,9 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
         callRenderer(awardDirective.kind, { ...awardDirective.payload, reducedMotion: reducedMotion() });
       }
     }, !isOpponent || showOpponentBoostOverlay);
+    // Secondary avatar reaction (small push + edge crackle) for the booster —
+    // once per activation, like the award; the board ignition stays dominant.
+    if (fresh) trigger({ kind: 'avatarBoostReact', payload: { slot } });
     if (!fresh || (isOpponent && !showOpponentBoostOverlay)) return;
     // Retain immediate semantic diagnostics while DOM presentation waits.
     directives.push(awardDirective);

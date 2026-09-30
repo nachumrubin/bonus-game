@@ -88,22 +88,32 @@ test('reward motion establishes distinct hierarchy and does not replay', async (
   expect(outcomes.eloGainAnimation).toBe('eloGainReveal');
   expect(outcomes.eloLossAnimation).toBe('eloLossReveal');
 
-  const achievement = await page.evaluate(() => {
+  // The unlock icon first holds (≤450 ms, `.is-pending`) while its 3D pose
+  // atlas loads, then plays either the 3D reveal (`.is-3d`) or the CSS pop.
+  const achievement = await page.evaluate(async () => {
     const { bus } = window.__spine;
     const payload = { achievement: { id: 'runtime-win', titleHe: 'אלוף', descHe: 'ניצחת משחק', emoji: '🏆' }, coins: 250 };
-    bus.emit('avatar/unlockOpen', payload);
     const overlay = document.getElementById('ov-avatar-unlocked');
-    const first = getComputedStyle(document.getElementById('av-unlock-ic')).animationName;
+    const cue = () => overlay.classList.contains('is-3d')
+      ? '3d'
+      : getComputedStyle(document.getElementById('av-unlock-ic')).animationName;
+    const settle = () => new Promise(r => setTimeout(r, 520));
     bus.emit('avatar/unlockOpen', payload);
+    await settle();
+    const first = cue();
+    bus.emit('avatar/unlockOpen', payload);
+    await settle();
     return {
       visible: !overlay.classList.contains('hidden'),
       state: overlay.classList.contains('achievement-unlock-state'),
       first,
-      afterDuplicate: getComputedStyle(document.getElementById('av-unlock-ic')).animationName,
+      afterDuplicate: cue(),
       name: document.getElementById('av-unlock-name').textContent,
     };
   });
-  expect(achievement).toMatchObject({ visible: true, state: true, first: 'achievementIconUnlock', afterDuplicate: 'achievementIconUnlock', name: 'אלוף' });
+  expect(achievement).toMatchObject({ visible: true, state: true, name: 'אלוף' });
+  expect(['3d', 'achievementIconUnlock']).toContain(achievement.first);
+  expect(achievement.afterDuplicate).toBe(achievement.first);
   await page.waitForTimeout(380);
   await page.screenshot({ path: testInfo.outputPath('achievement-380ms.png'), fullPage: true });
 });

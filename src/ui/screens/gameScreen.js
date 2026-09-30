@@ -25,7 +25,11 @@
 // the existing CSS keyframes and layout rules apply unchanged.
 
 import { $, on, setText, setClass, bonusOverlayOpen, flashAnimation } from '../domHelpers.js';
-import { setAvatarEl } from './avatarScreens.js';
+import { setAvatarEl, isBotAvatar, BOT_AVATAR_BY_LEVEL } from './avatarScreens.js';
+import { playOnHost, canPlayNowOnHost, preloadFor } from '../avatarMotion/spritePlayer.js';
+import { tierFromPath } from '../avatarMotion/poseClips.js';
+import { wireGameMenu } from './gameMenu.js';
+import { playBoostElectric } from '../boostElectricFx.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
@@ -51,6 +55,8 @@ export const GAME_SCREEN_INTENT = Object.freeze({
 });
 
 const COMPUTER_NAME_HE = '\u05D4\u05DE\u05D7\u05E9\u05D1';
+const RARITY_TAG = Object.freeze({ rare: 'נדיר', epic: 'אפי', legendary: 'אגדי' });
+const BOT_LEVEL_TAG = Object.freeze(['רמה קלה', 'רמה בינונית', 'רמה קשה']);
 
 // How long the lock's \u221210 chip takes to fly from the board into the score
 // panel. The score count-down is held for this long so the number and the
@@ -336,6 +342,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   btnDirV?.removeAttribute('onclick');
   // Ensure btn-play / btn-recall (data-gm-html) show the right gender on mount.
   applyGenderToRoot(root, getGender());
+  cleanups.push(wireGameMenu(root));
   cleanups.push(on(btnPlay, 'click', (e) => { e.preventDefault?.(); controller.confirmMove(); }));
   cleanups.push(on(btnRecall, 'click', (e) => {
     e.preventDefault?.();
@@ -815,6 +822,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     animateScore($('#is-sv2', root), v.scores[1] ?? 0, countUpDelay);
     renderPendingLockCost(v);
     renderPlayerIdentity(v);
+    renderLeadRail(v);
     // Desktop side-panel boxes use `.scbox.act`; the mobile info-strip cards
     // use `.is-pcard.act-cell` (different class name, see styles.css). When
     // a scoring sequence is in flight we keep the previous player's glow lit
@@ -824,6 +832,17 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const glowSlot = displayedTurnSlot ?? v.currentTurnSlot;
     applyActiveSlotGlow(glowSlot);
     maybeScheduleActiveSlotSwap(v, wordCount);
+  }
+
+  // Lead rail under the scoreboard: each player's share of the combined score
+  // (50/50 until someone scores). Width transitions are CSS-driven.
+  function renderLeadRail(v) {
+    const [a, b] = [Math.max(0, v.scores?.[0] ?? 0), Math.max(0, v.scores?.[1] ?? 0)];
+    const share = a + b > 0 ? Math.round((a / (a + b)) * 1000) / 10 : 50;
+    const r1 = $('#is-rail .is-rail-1', root);
+    const r2 = $('#is-rail .is-rail-2', root);
+    if (r1?.style) r1.style.width = `${share}%`;
+    if (r2?.style) r2.style.width = `${Math.round((100 - share) * 10) / 10}%`;
   }
 
   // Preview of the lock charge, shown on the owner's score card for as long as
@@ -901,9 +920,32 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // 'bot' is a sentinel avatar, not a real one — only honour it for the
     // actual computer opponent.
     const rawP1Avatar = avatarFor(p1);
-    const p1Avatar = rawP1Avatar === 'bot' && p1?.displayName !== COMPUTER_NAME_HE ? null : rawP1Avatar;
+    const p1Avatar = isBotAvatar(rawP1Avatar) && p1?.displayName !== COMPUTER_NAME_HE ? null : rawP1Avatar;
     setAvatarEl($('#is-av1', root), avatarFor(p0) ?? null, { fallback: '👑' });
     setAvatarEl($('#is-av2', root), p1Avatar ?? null, { fallback: '👤' });
+    // Warm the pose atlases so event cues (your turn, boost) can animate the
+    // avatar in the same frame they fire. No-op once cached.
+    for (const id of ['#is-av1', '#is-av2']) {
+      const src = $(id, root)?.querySelector?.('img')?.getAttribute?.('src');
+      if (src) preloadFor(src).catch(() => {});
+    }
+    renderIdentityTags([p0, p1], [avatarFor(p0), p1Avatar]);
+  }
+
+  // Scoreboard tags, drawn by CSS from data attributes so they survive the
+  // avatar/name hosts being rewritten: a rarity tag on rare+ avatars and the
+  // bot's level under the computer's name.
+  function renderIdentityTags(players, avatars) {
+    for (const slot of [0, 1]) {
+      const av = $(`#is-av${slot + 1}`, root);
+      const src = av?.querySelector?.('img')?.getAttribute?.('src') ?? '';
+      const rar = RARITY_TAG[tierFromPath(src)] ?? '';
+      if (rar) av?.setAttribute?.('data-rar', rar); else av?.removeAttribute?.('data-rar');
+      const name = $(`#is-sn${slot + 1}`, root);
+      const level = BOT_AVATAR_BY_LEVEL.indexOf(avatars[slot]);
+      const sub = level >= 0 && players[slot]?.displayName === COMPUTER_NAME_HE ? BOT_LEVEL_TAG[level] : '';
+      if (sub) name?.setAttribute?.('data-sub', sub); else name?.removeAttribute?.('data-sub');
+    }
   }
 
   // Prefer the player's CURRENT avatar over the one stored on the room.
@@ -1111,6 +1153,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // Render committed tiles + tentative placements. Empty cells get cleared.
     // Tile HTML mirrors legacy renderBoard() so existing CSS applies.
     noteLastMoveForHighlight(v);
+    // Last-move tiles take the mover's scoreboard colour (cyan / gold).
+    setClass($('#game-grid', root), 'lm-s1', v?.lastMove?.slot === 1);
     const lastMoveCoords = lastMoveHighlightActive() ? lastMoveCoordSet(v) : new Set();
     for (let r = 0; r < 10; r++) {
       for (let c = 0; c < 10; c++) {
@@ -1509,11 +1553,23 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       // stale caller silently revive the legacy "+BONUS" float.
       bonusAwardOverlay:  (payload) => showBonusAwardOverlay(root, bus, controller, payload),
       turnEffectBanner:   (payload) => showTurnEffectBanner(root, payload),
-      bonusActivate:      ({ bonusIdx, slot }) => {
+      bonusActivate:      ({ bonusIdx, slot, reducedMotion = false }) => {
         boostSquareCues.get(bonusIdx)?.clear();
-        boostSquareCues.set(bonusIdx, { slot, clear: flashBonusSquare(root, bonusIdx) });
+        boostSquareCues.set(bonusIdx, { slot, clear: flashBonusSquare(root, bonusIdx, { electric: !reducedMotion }) });
       },
       yourTurnCue:        ({ slot }) => emphasizeYourTurn(root, slot),
+      // Event-driven avatar reactions (pose atlas); silently skipped when the
+      // avatar can't animate — they are secondary to the board/score cues.
+      avatarBoostReact:   ({ slot }) => {
+        const host = lookup(root, `is-av${slot + 1}`);
+        if (canPlayNowOnHost(host, 'boostReact')) playOnHost(host, 'boostReact');
+      },
+      avatarGoodMove:     ({ slot, delayMs = 0 }) => {
+        setTimeout(() => {
+          const host = lookup(root, `is-av${slot + 1}`);
+          if (canPlayNowOnHost(host, 'goodMove')) playOnHost(host, 'goodMove');
+        }, delayMs);
+      },
       playerGlowPulse: () => {
         // The active-slot glow is driven by `renderScores` against
         // `displayedTurnSlot` (which holds the previous slot until the
@@ -2420,14 +2476,18 @@ function requestAnimationFrameSafe(fn) {
   }
 }
 
-function flashBonusSquare(root, bonusIdx) {
+function flashBonusSquare(root, bonusIdx, { electric = true } = {}) {
   let idx = Number.isInteger(bonusIdx) ? bonusIdx : null;
   if (idx == null) return () => {};
   const el = lookup(root, `bsq-${idx}`);
   if (!el) return () => {};
   el.style?.setProperty?.('--boost-ignition-duration', `${BOOST_IGNITION_DURATION_MS}ms`);
   flashClass(el, 'bonus-activate', 0);
+  // Live electricity over the power rim (skipped under reduced motion, where
+  // the static rim alone carries the cue).
+  const stopBolts = electric ? playBoostElectric(el, { durationMs: BOOST_IGNITION_DURATION_MS }) : () => {};
   const clear = () => {
+    stopBolts();
     el.classList?.remove('bonus-activate');
     el.style?.removeProperty?.('--boost-ignition-duration');
   };
@@ -2435,9 +2495,19 @@ function flashBonusSquare(root, bonusIdx) {
   return () => { clearTimeout(handle); clear(); };
 }
 
+// One dominant "your turn" moment (BOOST_MOTION_SPEC rule 6): when the avatar
+// can play its 3D lean, that IS the cue and the card only gets a steady outline;
+// otherwise (reduced motion, no atlas yet) the card's pulse + halo run as before.
 function emphasizeYourTurn(root, slot) {
+  const avHost = lookup(root, `is-av${slot + 1}`);
+  const avatarLeads = canPlayNowOnHost(avHost, 'yourTurn');
+  if (avatarLeads) playOnHost(avHost, 'yourTurn');
   for (const id of [`sb${slot + 1}`, `is-sb${slot + 1}`]) {
-    flashClass(lookup(root, id), 'your-turn-cue', 600);
+    const card = lookup(root, id);
+    // `.your-turn-cue` stays the card's contract (e2e timing specs read it);
+    // the modifier strips its pulse + halo when the avatar is carrying the cue.
+    card?.classList?.toggle?.('your-turn-cue--avatar', avatarLeads);
+    flashClass(card, 'your-turn-cue', 600, () => card?.classList?.remove?.('your-turn-cue--avatar'));
   }
 }
 

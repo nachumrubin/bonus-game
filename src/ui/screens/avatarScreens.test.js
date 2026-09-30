@@ -351,3 +351,12 @@ test('word_contributor: does not fire below threshold', () => {
   const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
   assert.ok(!ids.includes('word_contributor'));
 });
+
+test('nextAchievement: closest unfinished achievement, static (from === to); null without data', async () => {
+  const { nextAchievement, ACHIEVEMENTS } = await import('./avatarScreens.js');
+  assert.equal(nextAchievement(null), null);
+  assert.equal(nextAchievement({}), null);
+  const n = nextAchievement({ stats: {}, ownedAvatars: [] });
+  assert.ok(n && n.from === n.to && n.target > 0 && n.to < n.target);
+  assert.ok(ACHIEVEMENTS.includes(n.achievement));
+});

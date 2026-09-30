@@ -339,6 +339,12 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
 
   cleanups.push(bus.on(FRIENDS_RENDER, ({ myUserId, requests, friends, copyStatus, addStatus: addS, invitesSent, inviteStatus } = {}) => {
     if (myIdEl && myUserId) setText(myIdEl, myUserId);
+    // Glass skin: the code is shown as wood tiles (brand element); #fr-my-id
+    // keeps the plain text for copy / screen readers.
+    const tilesEl = $('#fr-my-id-tiles', root);
+    if (tilesEl && myUserId) {
+      tilesEl.innerHTML = [...String(myUserId)].map(ch => `<span class="g-t" style="--s:38px">${escapeHtml(ch)}</span>`).join('');
+    }
     if (Array.isArray(requests)) paintRequests(requests);
     if (Array.isArray(friends))  paintFriends(friends);
     if (invitesSent !== undefined) paintReferral(invitesSent);

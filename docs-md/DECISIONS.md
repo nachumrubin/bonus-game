@@ -5,6 +5,46 @@
 
 ---
 
+## D-glass-skin-override: app-wide redesign = late-loaded sheet + g-* primitives — September 2026
+
+**Decision:** the app-wide "glass + wood" skin lives in `screens-glass.css`, loaded after
+`styles.css` and `menu-electric.css`. Screens are rebuilt on a small set of `g-*`
+primitives that mirror `tools/screens-mockup` one-to-one, with a line-icon SVG sprite
+(`#gi-*`) in `index.html`. Legacy classes and all JS-bound ids / onclick attributes stay
+in the markup, so screen modules and tests keep working; old rules are neutralised by
+selector specificity, not deleted. The chip top bar is shown on home only; every other
+screen owns a header with a back chip.
+
+**Why:** the old sheets are large and `!important`-heavy. Rewriting them would put every
+screen at risk at once, while an override layer can be reviewed screen by screen against
+the mockup. Primitives keep new screens consistent without copying CSS.
+
+**Rules:** cyan = me / primary action, gold = opponent / reward, red = destructive.
+Choices go in bottom sheets; notices go in centred dialogs led by a medallion. No new
+artwork: icons are the mockup's line set, and all art is existing assets.
+
+---
+
+## D-avatar-pose-atlas: 2.5D motion ships as pre-rendered pose atlases — September 2026
+
+**Decision:** avatar/achievement animation is rendered in Blender and shipped as
+one WebP sprite sheet of *poses* per asset (not per animation), played on a
+`<canvas>` over the existing `<img>`. States are choreography (`poseClips.js`)
+= atlas frames + CSS transforms; glow, sparkles, rays, strikes are shared DOM/CSS.
+
+**Why:** no 3D runtime in a TWA on low-end Android; transparent VP9 WebM does not
+play on iOS Safari; per-state renders would be ~100 MB (45 avatars × 8 states),
+a pose atlas is ~130–400 KB per asset. Frame `rest` equals the source PNG, so
+every screen keeps the static PNG as its fallback (reduced motion, atlas not
+loaded) and swaps seamlessly.
+
+**Rules:** gameplay animation is event-driven only (no loops on the board);
+each event has one dominant moment — when the avatar carries a cue, the older
+CSS cue is toned down, never stacked; nothing awaits an animation on a gameplay
+path.
+
+---
+
 ## D-matchmaking-exact-search: "חיפוש מדויק" makes settings hard; flexible = closest-from-pool — June 2026
 
 **Decision:** "חיפוש מדויק" (exact search) is a per-player switch that turns **all**

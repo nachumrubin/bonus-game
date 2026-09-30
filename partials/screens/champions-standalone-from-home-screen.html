@@ -1,10 +1,11 @@
-﻿<!-- CHAMPIONS (standalone, from home screen) -->
+<!-- CHAMPIONS (glass bottom sheet — tools/screens-mockup "#ov-champs") -->
 <div id="ov-champs" class="ov hidden" onclick="if(event.target===this)ovClose('ov-champs')">
-  <div class="ovc" style="max-width:380px;max-height:85vh;overflow-y:auto;">
-    <div class="ovt" style="margin-bottom:12px">🏆 טבלת דירוגים</div>
-    <div id="champions-wrap-home"></div>
-    <div class="ovbtns" style="margin-top:14px">
-      <button class="ovb p" onclick="ovClose('ov-champs')">סגור</button>
+  <div class="ovc g-sheet">
+    <div class="g-sh">
+      <span class="g-sock gold"><svg class="gi"><use href="#gi-trophy"/></svg></span>
+      <h3>טבלת דירוגים</h3>
+      <button class="g-chip ic" onclick="ovClose('ov-champs')" aria-label="סגור"><svg class="gi"><use href="#gi-x"/></svg></button>
     </div>
+    <div id="champions-wrap-home"></div>
   </div>
 </div>

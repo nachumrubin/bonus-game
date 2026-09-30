@@ -2,6 +2,175 @@
 
 ---
 
+## App-wide redesign in the game-screen style (+ 5 extras) — September 2026
+
+Rolled `tools/screens-mockup/index.html` out to the app. First pass (re-skin only) left
+most screens boxed in the old style; second pass rebuilt the markup screen by screen
+against the 52 mockups. No DOM id, `EV.*` / `CMD.*` or onclick hook the JS binds to was
+renamed.
+
+- **New `screens-glass.css`** (loaded last, after `menu-electric.css`): tokens
+  (`--sg-p1` cyan = me, `--sg-p2` gold = opponent/reward, glass, line) and `g-*`
+  primitives ported 1:1 from the mockup — `.g-hdr` header with back chip, `.g-chip`,
+  `.g-card`, `.g-lbl`, `.g-list`/`.g-li` rows, `.g-sock` glowing icon sockets,
+  `.g-btn` (cyan `go` / `gold` / `wa` / `bad`), `.g-opts`, `.g-seg`, `.g-fld`, `.g-tog`
+  (+ `input.g-tog-input` checkbox switch), `.g-pill`, `.g-bar`, `.g-avr`, `.g-medal`,
+  `.g-ring` timer ring, `.g-t` wood tile, `.g-dock`, `.g-sheet`/`.g-sh` bottom sheets.
+  Screens rebuilt on them carry `.g-screen` on the `.screen` root.
+- **Line-icon sprite** (`<svg><symbol id="gi-*">` at the top of `index.html`, the
+  mockup's icon set) replaces emoji / 3D PNG icons in chips, sockets, nav and dialogs.
+- **Top bar only on home** (`screenTransitions.js`): every other screen has its own
+  header with a back chip, as in the mockup. Top-bar icons are line icons; the music
+  icon dims when off (`main.js` `syncMusicTopbarIcon` handles the SVG).
+- **Screens rebuilt:** loading (wood tiles, glass tip card), home (wood-tile logo,
+  dock nav with line icons), setup (medallion, option cards, speed timer rings, rack
+  toggle row, dock CTA), online lobby, profile (+ ELO / coin pills), friends (code as
+  wood tiles, glass rows), notifications, My Games, stats (glass sections), achievements
+  (glass trophy cards + progress bar), avatar store (rarity-tinted tiles), login,
+  sign-up, coin toss (rays, gold coin, two player chips; starter lit after the flip),
+  end of game (full screen, cyan/gold cards + lead bar, dock הלוח / בית / משחק חוזר),
+  settings (full screen, grouped rows, yes/no pairs drawn as toggles, new "אודות"
+  section), guide / FAQ (full-screen accordions).
+- **Bottom sheets:** create room, join by code (wood-tile code input), matchmaking,
+  pause, end-game confirm, dictionary, exchange (wood tiles in a rack well), joker,
+  contact, leaderboard, friend card.
+- **Dialogs:** `.ovic` is now the mockup medallion (cyan / gold / red); invite
+  rejected, incoming invite (gold avatar ring), guest upgrade, boost veto, tutorial
+  prompt / intro, claim-stall-end (gold), resign (red), disconnect (red countdown
+  medallion), daily coins + achievement unlocked (gold, rays), store purchase confirm.
+  Buttons: glass secondary on the right, cyan primary ×2 on the left.
+- **Music credit moved:** the home footer (`.credit`) is hidden; the privacy link and
+  the CC BY 4.0 music attribution now live in Settings → אודות.
+- **Extras (from the mockup notes):** home "תורך ב-N משחקים" strip (`#home-turn-strip`,
+  `MENU_REFRESH.myTurnSessions`), home leaderboard row (`#home-lb-row`,
+  `MENU_REFRESH.myRank`, `MENU_INTENT.OPEN_LEADERBOARD`), 7-day row in the daily coins
+  popup (`#daily-reward-days`, `profileService.dailyWeek` / `dailyCoinsForDay`),
+  next-achievement row on the end screen (`avatarScreens.nextAchievement`), "תורך /
+  תור היריב" tabs in My Games (`#mg-tabs`, `asyncGamesScreen.splitByTurn`) with opponent
+  avatar + lead bar per game.
+- **Small JS for the new visuals:** friend code and waiting-room code render as wood
+  tiles (`#fr-my-id-tiles`, `#wr-code-tiles`); achievements progress bar
+  (`#av-gallery-bar`); end-screen lead bar (`#end-lead-0/1`); coin-toss player chips
+  (`#coin-p1-name`, `#coin-p2-name`, `#coin-side-0/1`, `#coin-tag-0/1`).
+- Tests: unit suite green (1481).
+
+---
+
+## All-screens mockup in the game-screen style — September 2026
+
+- New dev-only page `tools/screens-mockup/index.html` (not wired into the app): 52 phone
+  mockups of every screen and overlay, restyled to match the shipped game screen — glass
+  panels, top chips, bottom "dock", cyan primary / gold reward buttons, wood-tile logo and
+  codes, cyan/gold = me/opponent everywhere, line icons in glowing sockets, bottom sheets
+  for choices and centred medallion dialogs for notices. Admin and replay are excluded.
+
+---
+
+## Game screen redesign — glass + BOOST-logo wood tiles — September 2026
+
+Built option B of `tools/game-screen-mockup/index.html` (with two changes from
+review: no glowing underline under the player on turn — the **timer ring takes
+that player's colour** instead; board squares brighter than the mockup).
+
+- **One glass language** (styles appended to `menu-electric.css`, all scoped to `#sg`):
+  top bar, scoreboard, board tray and rack dock share the dark glass panels,
+  thin cyan outline and rounded corners.
+- **Fixed player colours** inside the game screen: slot 0 cyan `#28d4ff`, slot 1
+  gold `#ffc93d` (`#sg { --p1; --p2 }`) — score, avatar ring, timer ring, lead
+  rail and last-move tiles.
+- **Top bar:** ☰ menu (`#btn-game-menu` → `#gm-menu`, new `gameMenu.js`) now holds
+  settings / finish-save / music (+ pause, async home); dictionary chip; bag chip
+  ("N בקופה"). The swap button moved to the rack dock.
+- **Scoreboard:** one bar, timer medallion in the middle; turn = colour wash + lit
+  avatar ring (no dimming, no underline); ring colour = player on turn (red when
+  urgent); rarity tag on rare+ avatars; bot level under the computer's name; lock
+  pill "🔒 3·3·5" (the buttons keep their "🔒 N" text); lead rail (`#is-rail`).
+- **Status pill** replaces the full-width hint strip (same `#sbar` text).
+- **Board:** glass tray, brighter navy squares, Boost squares as charged sockets
+  (cyan bolt), tiles in the BOOST-logo style (maple face, engraved letter, cyan
+  bezel); tiles being placed get a white-hot bezel; the last move's bezel glows in
+  the mover's colour (`#game-grid.lm-s1`).
+- **Rack dock:** 8 wood tiles in a recessed tray, dashed empty slots, action row
+  בטל / החלפה / big cyan שבץ.
+- Tests: `gameMenu.test.js` (new); `shailta-keyboard-removal` (book icon is now an
+  SVG chip); `lock-box.spec` (the frame is the pill, not each chip);
+  `reward-motion.spec` (waits out the unlock icon's ≤450 ms 3D-atlas hold from the
+  previous round and accepts the 3D or CSS reveal).
+
+---
+
+## VS intro everywhere, level bots, live electricity on Boost squares — September 2026
+
+- **VS intro 2.5 s** (`VS_INTRO_MS` 1400 → 2500): after the entrance both avatars
+  breathe (`idle`), "VS" hums, a second softer strike lands, and the stage zooms
+  toward the board (`.vs-out`, last 320 ms). Shared `playVsIntro()` in `main.js`.
+- **VS intro now also plays** for friend games (create-room host, join by code,
+  invite accept from the popup and from the inbox) and for **bot games** (before
+  the coin toss; the bot shows its level — "רמה קלה / בינונית / קשה" — instead of
+  Elo). Resuming / re-entering an existing game has no intro. The shared online
+  turn clock only starts after both players pass the coin toss, so the intro never
+  costs turn time.
+- **Level bot avatars:** the bot player is created with `bot_easy` / `bot_medium` /
+  `bot_hard` (green / yellow / red bot art, same as the setup cards) instead of the
+  generic `bot`; shown in the game player box, VS intro and end screen. Old saves
+  with `bot` still resolve to `assets/avatars/bot.png`. New helpers in
+  `avatarScreens.js`: `botAvatarForLevel`, `isBotAvatar`, `BOT_AVATAR_BY_LEVEL`.
+- **Boost square electricity:** `bonusActivate` now adds live procedural lightning
+  (`src/ui/boostElectricFx.js`, canvas `.bsq-electric` over the tile): currents
+  crawl the tile edge, forked arcs jump outward, a power surge flashes through
+  the tile. The rim was recoloured from amber to white-hot cyan to match. Class,
+  600 ms lifetime and result-reveal timing are unchanged; reduced motion keeps
+  the static rim only.
+- **Scoreboard proposal** (not wired): `tools/scoreboard-mockup/index.html`.
+- **Game-screen proposal** (not wired): `tools/game-screen-mockup/index.html` — whole board
+  screen in the scoreboard's glass language; variant A keeps the current tiles, variant B
+  uses the BOOST-logo tile (maple face, engraved letter, cyan bezel).
+
+---
+
+## 2.5D avatar & achievement motion (pose atlases) — September 2026
+
+All 73 avatars/achievements were turned into Blender relief models
+(`Blender designs/icons3d/`). The app does not run 3D: each asset ships one
+**pose atlas** — a WebP sprite sheet of rendered poses (`assets/anim/…`, 17 MB
+total, lazy-loaded per screen, runtime-cached by the SW, not precached) plus
+`assets/anim/manifest.json` keyed by the source PNG path. Avatars (auto 2-bone
+bust rig) have turn / lean / nod / tilt / breath poses; achievements have turn
++ a metallic light sweep. Frame `rest` matches the source PNG pixel-for-pixel,
+so the static PNG stays the fallback everywhere.
+
+New `src/ui/avatarMotion/`: `poseClips.js` (pure clip data + sampling, rarity
+styles), `atlasManifest.js`, `spritePlayer.js` (canvas laid over the `<img>`,
+honours `motionPreference`; `canPlayNow()` lets a screen choose 3D vs its
+existing CSS cue in the same frame), `idleMotion.js`, `unlockFx.js`.
+
+Wired moments (one dominant moment each — BOOST_MOTION_SPEC rule 6):
+- **VS intro** (`#ov-vs-intro`, `vsIntroScreen.js`) plays inside the existing
+  1400 ms matched → board pause (no added latency); opponent Elo is read from
+  public `globalRatings` via `ratingService.readRating`.
+- **Your turn**: when the avatar can animate, its lean + cyan glow is the cue and
+  the score card keeps only a steady outline (`.your-turn-cue--avatar`); the
+  `.your-turn-cue` class contract is unchanged.
+- **Boost**: secondary `avatarBoostReact` (board ignition stays dominant).
+  **Big word** (≥ `GOOD_MOVE_SCORE` = 40): `avatarGoodMove` nod when the sum lands.
+- **Achievement unlock**: 3D spin-in + light sweep (held ≤450 ms for the atlas,
+  else the old CSS pop), per-achievement flourishes (letters / streaks / shield /
+  halo / collector cards / grand בעל אגדה / gold rays for Legend tier).
+- **End game**: winner `win`, loser `loss`; new progress strip for 1–2
+  unfinished achievements that moved (`progressBumps`, `AV_PROGRESS_BUMP`).
+- **Calm screens**: profile ring and "searching for opponent" breathe with an
+  occasional glance; store equip / purchase preview plays `select`.
+- **Rarity language** from the asset path: common subtle, rare cyan, epic violet +
+  sparkles, legendary gold + sparkles + own idle/entrance.
+
+`setAvatarEl` / profile paint no longer rewrite an identical `<img>` on every
+render (would have killed running animations). The `bonusAwardOverlay` directive
+sequence gained `avatarBoostReact` (test updated). Reduced motion → static PNGs.
+Dev tools: `tools/avatar-motion/preview.html` (every clip on every asset) and a
+no-cache static server.
+
+---
+
 ## Boost square electric-border ignition ? September 2026
 
 The old square cue was a scale/brightness flash with cyan shadows. Existing

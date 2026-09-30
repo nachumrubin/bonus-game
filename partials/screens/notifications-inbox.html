@@ -1,37 +1,37 @@
-<!-- NOTIFICATIONS INBOX -->
-<div id="snotif" class="screen hidden">
-  <div class="nf-shell">
-
-    <!-- Screen header -->
-    <header class="nf-header">
-      <img class="nf-header-icon" src="assets/navigation/bell.png" alt="">
-      <h1 class="nf-title">הזמנות</h1>
-      <div class="nf-divider" aria-hidden="true"></div>
-    </header>
-
-    <!-- Empty state -->
-    <div id="notif-empty" class="nf-empty-card">
-      <div class="nf-empty-title">אין הזמנות חדשות</div>
-      <div class="nf-empty-check">אתם מעודכנים ✔</div>
+<!-- NOTIFICATIONS INBOX (glass skin — tools/screens-mockup "#snotif") -->
+<div id="snotif" class="screen hidden g-screen">
+  <div class="g-page nf-shell">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <h1 class="g-ttl nf-title" style="margin:0"><svg class="gi"><use href="#gi-bell"/></svg>הזמנות</h1>
+      <span></span>
     </div>
 
-    <!-- Game invites -->
-    <div id="notif-invites-wrap" class="nf-section" style="display:none;">
-      <div class="nf-section-hdr">🎮 הזמנות למשחק</div>
-      <div id="notif-invites-list" class="nf-list"></div>
-    </div>
+    <div class="g-scroll" style="gap:12px">
+      <!-- Empty state -->
+      <div id="notif-empty" class="g-card g-c nf-g-empty">
+        <div class="g-medal ok" style="--s:72px;margin-bottom:12px"><svg class="gi"><use href="#gi-check"/></svg></div>
+        <div style="font-weight:900;font-size:16px">אין הזמנות חדשות</div>
+        <div class="g-dim" style="margin-top:4px">אתם מעודכנים</div>
+      </div>
 
-    <!-- Friend requests -->
-    <div id="notif-friends-wrap" class="nf-section" style="display:none;">
-      <div class="nf-section-hdr">👥 בקשות חברות</div>
-      <div id="notif-friends-list" class="nf-list"></div>
-    </div>
+      <!-- Game invites -->
+      <div id="notif-invites-wrap" class="nf-section" style="display:none;">
+        <div class="g-lbl">הזמנות למשחק</div>
+        <div id="notif-invites-list" class="g-list nf-g-list"></div>
+      </div>
 
-    <!-- Support replies -->
-    <div id="notif-support-wrap" class="nf-section" style="display:none;">
-      <div class="nf-section-hdr">עדכוני פניות</div>
-      <div id="notif-support-list" class="nf-list"></div>
-    </div>
+      <!-- Friend requests -->
+      <div id="notif-friends-wrap" class="nf-section" style="display:none;">
+        <div class="g-lbl">בקשות חברות</div>
+        <div id="notif-friends-list" class="g-list nf-g-list"></div>
+      </div>
 
+      <!-- Support replies -->
+      <div id="notif-support-wrap" class="nf-section" style="display:none;">
+        <div class="g-lbl">עדכוני פניות</div>
+        <div id="notif-support-list" class="g-list nf-g-list"></div>
+      </div>
+    </div>
   </div>
 </div>
