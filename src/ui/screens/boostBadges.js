@@ -13,6 +13,7 @@
 
 import { $, on } from '../domHelpers.js';
 import { EV } from '../../events/eventTypes.js';
+import { BOOST_RESULT_READY } from '../boostPresentation.js';
 
 export const BB_INTENT = Object.freeze({
   REDEEM_TILE_SWAP: 'boostBadges/redeemTileSwap',
@@ -54,10 +55,10 @@ export function summarizeBoostsForSlot(activeBoosts, slot) {
 }
 
 // Build the badge HTML string for one slot. Pure.
-export function buildBadgeHtml(badges) {
+export function buildBadgeHtml(badges, enteringIds = new Set()) {
   if (!badges?.length) return '';
   const cells = badges.map(b =>
-    `<span data-badge="${b.id}" ${b.clickable ? `data-clickable="1" role="button" tabindex="0"` : ''} `
+    `<span data-badge="${b.id}" class="${enteringIds.has(b.id) ? 'boost-badge-enter' : ''}" ${b.clickable ? `data-clickable="1" role="button" tabindex="0"` : ''} `
     + `style="display:inline-block;background:${b.color};color:#000;border-radius:6px;`
     + `padding:1px 5px;font-size:10px;font-weight:900;margin:0 2px;${b.clickable ? 'cursor:pointer;' : ''}">${b.label}</span>`,
   ).join('');
@@ -86,18 +87,39 @@ export function mountBoostBadges({ root = globalThis.document, bus, sessionRef }
     return wrap;
   }
 
-  function paint() {
+  const knownIdsBySlot = [new Set(), new Set()];
+  const squareKey = b => `${b.slot}:${b.bonusIdx}`;
+  const revealedSquares = new Set((sessionRef()?.state?.activeBoosts ?? []).map(squareKey));
+  function paint({ emphasizeNew = false } = {}) {
     const session = sessionRef();
-    const activeBoosts = session?.state?.activeBoosts ?? [];
+    // Engine state is already committed by MOVE_CONFIRMED, before the Boost
+    // event. Keep new square awards out of every rerender until their cue.
+    const activeBoosts = (session?.state?.activeBoosts ?? []).filter(b =>
+      !Number.isInteger(b.bonusIdx) || revealedSquares.has(squareKey(b))
+      || session?.state?.pendingScoreCommit?.slot !== b.slot);
     const wrap0 = ensureBadgeWrap(slot0Panel);
     const wrap1 = ensureBadgeWrap(slot1Panel);
-    if (wrap0) wrap0.innerHTML = buildBadgeHtml(summarizeBoostsForSlot(activeBoosts, 0));
-    if (wrap1) wrap1.innerHTML = buildBadgeHtml(summarizeBoostsForSlot(activeBoosts, 1));
+    for (const slot of [0, 1]) {
+      const badges = summarizeBoostsForSlot(activeBoosts, slot);
+      const ids = new Set(badges.map(b => b.id));
+      const entering = emphasizeNew ? new Set([...ids].filter(id => !knownIdsBySlot[slot].has(id))) : new Set();
+      const wrap = slot === 0 ? wrap0 : wrap1;
+      if (wrap) wrap.innerHTML = buildBadgeHtml(badges, entering);
+      knownIdsBySlot[slot] = ids;
+    }
   }
 
   // Re-paint on every event that could mutate activeBoosts.
   const cleanups = [];
-  cleanups.push(bus.on(EV.BOOST_ACTIVATED, paint));
+  cleanups.push(bus.on(EV.BOOST_ACTIVATED, (payload) => paint({ emphasizeNew: !payload?.consumed && !payload?.pending })));
+  cleanups.push(bus.on(BOOST_RESULT_READY, (payload) => {
+    revealedSquares.add(squareKey(payload));
+    paint({ emphasizeNew: true });
+  }));
+  cleanups.push(bus.on('bonus/aborted', ({ slot } = {}) => {
+    for (const key of revealedSquares) if (slot == null || key.startsWith(`${slot}:`)) revealedSquares.delete(key);
+    paint();
+  }));
   cleanups.push(bus.on(EV.MOVE_CONFIRMED,  paint));
   cleanups.push(bus.on(EV.TURN_CHANGED,    paint));
   cleanups.push(bus.on(EV.GAME_STARTED,    paint));

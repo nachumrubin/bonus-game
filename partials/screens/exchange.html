@@ -1,10 +1,13 @@
-﻿<!-- EXCHANGE -->
+<!-- EXCHANGE (glass bottom sheet — tools/screens-mockup "#ov-exch") -->
 <div id="ov-exch" class="ov hidden">
-  <div class="ovc"><div class="ovh"></div>
-    <button class="ovx" type="button" id="exch-close" onclick="ovClose('ov-exch')" aria-label="סגור">✕</button>
-    <div class="ovic">🔄</div><div class="ovt">החלפת אות אחת</div>
-    <div class="ovd" data-gm="בחר אות מהמגש להחלפה מהשקית (פעם אחת בתור)" data-gf="בחרי אות מהמגש להחלפה מהשקית (פעם אחת בתור)">בחר אות מהמגש להחלפה מהשקית (פעם אחת בתור)</div>
+  <div class="ovc g-sheet"><div class="ovh"></div>
+    <div class="g-sh">
+      <span class="g-sock"><svg class="gi"><use href="#gi-swap"/></svg></span>
+      <h3 class="ovt">החלפת אות אחת</h3>
+      <button class="g-chip ic ovx" type="button" id="exch-close" onclick="ovClose('ov-exch')" aria-label="סגור"><svg class="gi"><use href="#gi-x"/></svg></button>
+    </div>
+    <div class="g-dim" data-gm="בחר אות מהמגש להחלפה מהשקית · פעם אחת בתור" data-gf="בחרי אות מהמגש להחלפה מהשקית · פעם אחת בתור">בחר אות מהמגש להחלפה מהשקית · פעם אחת בתור</div>
     <div class="brack" id="exch-rack"></div>
-    <div class="ovbtns"><button class="ovb s" type="button" id="exch-cancel" onclick="ovClose('ov-exch')">🗑 ביטול</button></div>
+    <div class="ovbtns"><button class="ovb s" type="button" id="exch-cancel" onclick="ovClose('ov-exch')">ביטול</button></div>
   </div>
 </div>

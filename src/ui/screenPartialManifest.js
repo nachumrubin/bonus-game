@@ -9,6 +9,7 @@ export const SCREEN_PARTIALS = [
   './partials/screens/online-join-code.html',
   './partials/screens/online-matchmaking.html',
   './partials/screens/partner-search-overlay.html',
+  './partials/screens/vs-intro-overlay.html',
   './partials/screens/online-disconnect.html',
   './partials/screens/setup.html',
   './partials/screens/coin-toss.html',

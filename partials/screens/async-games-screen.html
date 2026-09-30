@@ -1,26 +1,26 @@
-<!-- MY ASYNC GAMES SCREEN -->
-<div id="smygames" class="screen hidden">
-  <div class="mg-shell">
-
-    <header class="mg-header">
-      <button class="mg-back" onclick="goHome()" aria-label="חזרה">←</button>
-      <div class="mg-title">
-        <img class="mg-title-icon" src="assets/navigation/my_games.png" alt="">
-        <span class="mg-title-text">המשחקים שלי</span>
-      </div>
-      <div class="mg-header-spacer" aria-hidden="true"></div>
-    </header>
-
-    <div class="mg-title-divider" aria-hidden="true"></div>
-
-    <div id="mg-empty" class="mg-empty" style="display:none;">
-      <img class="mg-empty-icon" src="assets/navigation/my_games.png" alt="">
-      <div class="mg-empty-title">אין משחקים פעילים</div>
-      <div class="mg-empty-sub">אין משחקים פעילים כרגע. התחילו משחק ברשת או הצטרפו עם קוד.</div>
-      <button type="button" class="mg-empty-cta" id="mg-empty-online">משחק ברשת</button>
+<!-- MY ASYNC GAMES SCREEN (glass skin — tools/screens-mockup "#smygames") -->
+<div id="smygames" class="screen hidden g-screen">
+  <div class="g-page mg-shell">
+    <div class="g-hdr mg-header">
+      <button class="g-chip ic mg-back" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <div class="g-ttl"><svg class="gi"><use href="#gi-games"/></svg><span class="mg-title-text">המשחקים שלי</span></div>
+      <span></span>
     </div>
 
-    <div id="mg-list" class="mg-cards"></div>
+    <!-- "Your turn / their turn" tabs — shown by asyncGamesScreen when there are games -->
+    <div id="mg-tabs" class="g-seg mg-tabs" style="display:none" role="tablist">
+      <button class="mg-tab on" data-mg-tab="mine" role="tab">תורך <span class="n">0</span></button>
+      <button class="mg-tab" data-mg-tab="theirs" role="tab">תור היריב <span class="n">0</span></button>
+    </div>
 
+    <div class="g-scroll">
+      <div id="mg-empty" class="g-card g-c mg-g-empty" style="display:none;">
+        <div class="g-medal" style="--s:72px;margin-bottom:12px"><svg class="gi"><use href="#gi-games"/></svg></div>
+        <div style="font-weight:900;font-size:16px">אין משחקים פעילים</div>
+        <div class="g-dim" style="margin-top:4px">פתח משחק אסינכרוני כדי לראות אותו כאן.</div>
+      </div>
+
+      <div id="mg-list" class="mg-cards"></div>
+    </div>
   </div>
 </div>

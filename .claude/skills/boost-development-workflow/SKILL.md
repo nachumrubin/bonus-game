@@ -74,6 +74,12 @@ Use these directories for new or reorganized assets:
 
 Do not place new assets outside these folders. If the existing app still references legacy asset folders, integrate carefully and prefer migration only when it is within the task scope.
 
+**Generated motion assets — `assets/anim/`.** Pose-atlas WebP sprite sheets + `manifest.json` for the 2.5D
+avatar/achievement animations (`src/ui/avatarMotion/`). They are *generated* from the PNGs above by
+`Blender designs/icons3d/` (`build_relief.py --atlas`, then `pack_atlas.py`) — never hand-edit or hand-place
+files there. When avatar or achievement art is added or replaced, regenerate the atlases (or the new asset
+simply stays static — the PNG is always the fallback) and update `docs/asset_inventory.md`.
+
 ## Screen Workflow
 
 For every screen task:

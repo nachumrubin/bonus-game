@@ -23,6 +23,28 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 
 ## Existing
 
+### UI line icons (code, not art — September 2026 glass skin)
+
+* `#gi-*` SVG symbol sprite inlined at the top of `index.html` — the 24px line-icon set
+  from `tools/screens-mockup/index.html` (stroke paths, `currentColor`). Replaces emoji and
+  3D PNG icons in chips, sockets, the home nav, dialogs and sheets. No image files.
+* Now unreferenced by any partial / JS / CSS (kept on disk, safe to prune later):
+  `assets/ui/play.png`, `assets/ui/key.png`, `assets/ui/+.png`, `assets/ui/hourglass.png`.
+  The other nav/top-bar PNGs (`assets/navigation/*.png`, `assets/icons/{friends,acheivments,statistics}.png`,
+  `assets/ui/{pause,logout,store}.png`) are still referenced elsewhere (game menu, admin,
+  onboarding icons, sw precache) and stay.
+
+### Generated motion assets (not bespoke art — rebuilt from the PNGs below)
+
+* assets/anim/manifest.json — pose-atlas index keyed by source PNG path
+* assets/anim/achievements/*.webp — 23 achievement atlases (turn + light sweep)
+* assets/anim/avatars/*.webp — 5 bot/anonymous atlases (bust poses)
+* assets/anim/avatars_v2/<common|rare|epic|legendary>/*.webp — 45 avatar atlases (bust poses)
+* Rebuild: `Blender designs/icons3d/` → `build_relief.py --atlas` then `pack_atlas.py` (see its README)
+
+### Source art
+
+
 * assets/achievements/crown and dimond shield.png
 * assets/achievements/אגדה.png
 * assets/achievements/אלוף.png

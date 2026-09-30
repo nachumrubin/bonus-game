@@ -1,7 +1,11 @@
 <!-- FAQ - app-wide Q&A, opened from the `?` dropdown. -->
 <div id="ov-faq" class="ov hidden" onclick="if(event.target===this)ovClose('ov-faq')">
-  <div class="ovc guide-ovc" dir="rtl">
-    <div class="ovt" style="margin-bottom:12px">? שאלות נפוצות</div>
+  <div class="ovc guide-ovc g-full" dir="rtl">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="ovClose('ov-faq')" aria-label="סגור"><svg class="gi"><use href="#gi-x"/></svg></button>
+      <div class="g-ttl"><svg class="gi"><use href="#gi-help"/></svg><span class="ovt" style="margin:0">שאלות נפוצות</span></div>
+      <span></span>
+    </div>
 
     <div class="guide-body">
 

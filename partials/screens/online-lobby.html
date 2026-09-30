@@ -1,25 +1,31 @@
-<!-- ONLINE LOBBY -->
-<div id="so" class="screen hidden">
-  <div class="online-wrap">
-    <div class="ol-hero">
-      <img id="ol-globe" class="ol-globe" src="assets/icons/globe.png" alt="" aria-hidden="true">
-      <div class="ol-title">משחק אונליין</div>
-      <div class="ol-subtitle" data-gm="בחר כיצד תרצה לשחק" data-gf="בחרי כיצד תרצי לשחק">בחר כיצד תרצה לשחק</div>
+<!-- ONLINE LOBBY (glass skin — tools/screens-mockup "#so") -->
+<div id="so" class="screen hidden g-screen">
+  <div class="g-page">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <div class="g-ttl"><svg class="gi"><use href="#gi-globe"/></svg>משחק ברשת</div>
+      <span></span>
     </div>
-    <div style="width:100%">
-      <button class="omode-btn" onclick="onlineCreateRoom()">
-        <span class="omode-ic"><img class="ui-icon" src="assets/ui/+.png" alt=""></span>
-        <span><span class="omode-label" data-gm="פתח משחק חדש" data-gf="פתחי משחק חדש">פתח משחק חדש</span><span class="omode-desc" data-gm="בחר הגדרות ושלח קוד לחבר" data-gf="בחרי הגדרות ושלחי קוד לחבר">בחר הגדרות ושלח קוד לחבר</span></span>
+    <div class="g-scroll" style="gap:12px">
+      <div style="padding:6px 0 4px">
+        <div class="g-medal" style="--s:120px"><img id="ol-globe" class="ol-globe" src="assets/icons/globe.png" alt="" aria-hidden="true"></div>
+      </div>
+      <div class="g-c g-dim" style="font-size:14px;margin-bottom:6px" data-gm="בחר כיצד תרצה לשחק" data-gf="בחרי כיצד תרצי לשחק">בחר כיצד תרצה לשחק</div>
+      <button class="g-card g-mode hl" onclick="onlineMatchmaking()">
+        <span class="g-sock lg"><svg class="gi"><use href="#gi-dice"/></svg></span>
+        <span class="g-mode-tx"><b data-gm="חפש יריב אקראי" data-gf="חפשי יריב אקראי">חפש יריב אקראי</b><span data-gm="התחבר לשחקן זמין · מדורג" data-gf="התחברי לשחקן זמין · מדורג">התחבר לשחקן זמין · מדורג</span></span>
+        <span class="g-mode-go"><svg class="gi"><use href="#gi-fwd"/></svg></span>
       </button>
-      <button class="omode-btn" onclick="onlineJoinByCode()">
-        <span class="omode-ic"><img class="ui-icon" src="assets/ui/key.png" alt=""></span>
-        <span><span class="omode-label" data-gm="הצטרף לפי קוד" data-gf="הצטרפי לפי קוד">הצטרף לפי קוד</span><span class="omode-desc" data-gm="הזן קוד שקיבלת מחבר" data-gf="הזיני קוד שקיבלת מחבר">הזן קוד שקיבלת מחבר</span></span>
+      <button class="g-card g-mode" onclick="onlineCreateRoom()">
+        <span class="g-sock lg"><svg class="gi"><use href="#gi-plus"/></svg></span>
+        <span class="g-mode-tx"><b data-gm="פתח משחק חדש" data-gf="פתחי משחק חדש">פתח משחק חדש</b><span data-gm="בחר הגדרות ושלח קוד לחבר" data-gf="בחרי הגדרות ושלחי קוד לחבר">בחר הגדרות ושלח קוד לחבר</span></span>
+        <span class="g-mode-go"><svg class="gi"><use href="#gi-fwd"/></svg></span>
       </button>
-      <button class="omode-btn" onclick="onlineMatchmaking()">
-        <span class="omode-ic"><img class="ui-icon" src="assets/icons/dice.png" alt=""></span>
-        <span><span class="omode-label" data-gm="חפש יריב אקראי" data-gf="חפשי יריב אקראי">חפש יריב אקראי</span><span class="omode-desc" data-gm="התחבר לשחקן זמין" data-gf="התחברי לשחקן זמין">התחבר לשחקן זמין</span></span>
+      <button class="g-card g-mode" onclick="onlineJoinByCode()">
+        <span class="g-sock lg"><svg class="gi"><use href="#gi-key"/></svg></span>
+        <span class="g-mode-tx"><b data-gm="הצטרף לפי קוד" data-gf="הצטרפי לפי קוד">הצטרף לפי קוד</b><span data-gm="הזן קוד שקיבלת מחבר" data-gf="הזיני קוד שקיבלת מחבר">הזן קוד שקיבלת מחבר</span></span>
+        <span class="g-mode-go"><svg class="gi"><use href="#gi-fwd"/></svg></span>
       </button>
     </div>
-    <button class="mf-cancel" style="margin-top:4px" onclick="goHome()">← חזרה</button>
   </div>
 </div>

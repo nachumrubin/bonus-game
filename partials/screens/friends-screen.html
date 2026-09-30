@@ -1,121 +1,109 @@
-<!-- Friend detail overlay (position:fixed, lives outside screen div) -->
+<!-- Friend detail (glass bottom sheet — tools/screens-mockup "#ov-friend-detail"; position:fixed, lives outside the screen div) -->
 <div id="ov-friend-detail" class="ov hidden">
-  <div class="ovc fd-ovc">
+  <div class="ovc fd-ovc g-sheet">
 
     <!-- Top bar: close button + overflow menu -->
-    <div class="fd-topbar">
-      <button id="fd-close" class="fd-topbtn" aria-label="סגור">✕</button>
-      <div class="fd-topbar-spacer"></div>
+    <div class="g-sh fd-topbar">
+      <button id="fd-close" class="g-chip ic fd-topbtn" aria-label="סגור"><svg class="gi"><use href="#gi-x"/></svg></button>
+      <div class="g-grow"></div>
       <div class="fd-overflow-wrap">
-        <button id="fd-overflow-btn" class="fd-topbtn" aria-label="אפשרויות">⋮</button>
+        <button id="fd-overflow-btn" class="g-chip ic fd-topbtn" aria-label="אפשרויות">⋮</button>
         <div id="fd-overflow-menu" class="fd-overflow-menu hidden">
-          <button data-fd-remove="1" class="fd-overflow-item fd-overflow-danger">🗑 הסר חבר</button>
-          <button type="button" class="fd-overflow-item fd-overflow-soon" disabled>🚫 חסום שחקן (בקרוב)</button>
-          <button type="button" class="fd-overflow-item fd-overflow-soon" disabled>⚑ דווח (בקרוב)</button>
+          <button data-fd-remove="1" class="fd-overflow-item fd-overflow-danger"><svg class="gi"><use href="#gi-trash"/></svg> הסר חבר</button>
+          <button class="fd-overflow-item fd-overflow-dim"><svg class="gi"><use href="#gi-shield"/></svg> חסום שחקן</button>
+          <button class="fd-overflow-item fd-overflow-dim"><svg class="gi"><use href="#gi-flag"/></svg> דווח</button>
         </div>
       </div>
     </div>
 
-    <!-- Hero: avatar, name, rating, between-stats badge -->
-    <div class="fd-hero">
-      <div class="fd-av-section">
-        <div class="fd-av-ring">
-          <div id="fd-avatar"><img class="av-img" src="assets/avatars/anonymous player.png" alt=""></div>
-        </div>
-      </div>
+    <!-- Hero: avatar, name, rating -->
+    <div class="g-c fd-hero">
+      <div class="g-avr gdc lit fd-g-av" style="--s:80px"><div id="fd-avatar"><img class="av-img" src="assets/avatars/anonymous player.png" alt=""></div></div>
       <div id="fd-name" class="fd-name-text"></div>
-      <div id="fd-rating" class="fd-rating-chip"></div>
-      <div class="fd-between-badge">📊 סטטיסטיקה ביניכם</div>
+      <div id="fd-rating" class="g-pill gd g-num fd-rating-chip"></div>
     </div>
 
-    <!-- Stats widget — filled by JS -->
-    <div id="fd-stats" class="fd-stats-row"></div>
+    <!-- Head-to-head — filled by JS -->
+    <div>
+      <div class="g-lbl">מאזן ביניכם</div>
+      <div id="fd-stats" class="g-card tight fd-stats-row"></div>
+    </div>
 
-    <!-- Recent games card -->
-    <div class="fd-card">
-      <div class="fd-card-title">⏱ 5 המשחקים האחרונים</div>
+    <!-- Recent games -->
+    <div>
+      <div class="g-lbl">5 המשחקים האחרונים</div>
       <div id="fd-recent" class="fd-recent-list"></div>
     </div>
 
-    <!-- Active games card -->
-    <div class="fd-card">
-      <div class="fd-card-title">🎮 משחקים פעילים</div>
-      <div id="fd-active-games"></div>
+    <!-- Active games -->
+    <div>
+      <div class="g-lbl">משחקים פעילים</div>
+      <div id="fd-active-games" class="g-card tight"></div>
     </div>
 
     <!-- Primary CTA — always visible -->
-    <button data-fd-invite="1" class="fd-invite-btn">✉ הזמן למשחק</button>
+    <button data-fd-invite="1" class="g-btn go fd-invite-btn"><svg class="gi"><use href="#gi-mail"/></svg> הזמן למשחק</button>
 
   </div>
 </div>
 
-<!-- FRIENDS SCREEN -->
-<div id="sfriends" class="screen hidden" dir="rtl">
-  <div class="fr-wrap">
-
-    <!-- Header -->
-    <div class="fr-screen-header">
-      <img class="screen-hd-icon" src="assets/icons/friends.png" alt="">
-      <div class="stitle">חברים</div>
+<!-- FRIENDS SCREEN (glass skin — tools/screens-mockup "#sfriends") -->
+<div id="sfriends" class="screen hidden g-screen" dir="rtl">
+  <div class="g-page fr-wrap">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="openProfileOrAuth()" aria-label="חזרה לפרופיל"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <div class="g-ttl stitle"><svg class="gi"><use href="#gi-users"/></svg>חברים</div>
+      <span></span>
     </div>
 
-    <!-- My Code Hero Card -->
-    <div class="fr-code-card">
-      <div class="fr-code-label">הקוד שלי</div>
-      <div id="fr-my-id" class="fr-code-number">------</div>
-      <div id="fr-copy-status" class="fr-copy-status"></div>
-      <button id="fr-copy-btn" class="fr-copy-btn">📤 שתף קוד</button>
-    </div>
-
-    <!-- Pending requests -->
-    <div id="fr-requests-wrap" style="display:none;">
-      <div class="section-title-bar">⏳ בקשות ממתינות</div>
-      <div id="fr-requests-list"></div>
-    </div>
-
-    <!-- Add Friend -->
-    <div class="fr-add-section glass-panel">
-      <div class="fr-add-label">הוסף חבר</div>
-      <div class="fr-add-row">
-        <input class="ri fr-add-input" id="add-friend-input" type="text"
-               placeholder="הזן קוד חבר (6 תווים)" maxlength="6"
-               autocomplete="off" oninput="this.value=this.value.toUpperCase()">
-        <button class="fr-add-btn" onclick="sendFriendRequest()" aria-label="הוסף חבר">
-          <img class="fr-action-icon" src="assets/ui/+.png" alt="">
-        </button>
-      </div>
-      <div id="add-friend-status" class="fr-add-status"></div>
-    </div>
-
-    <!-- Friends list -->
-    <div>
-      <div class="section-title-bar">👥 החברים שלי <span id="fr-friends-count">(0)</span></div>
-      <div id="fr-friends-list">
-        <div class="fr-empty">אין חברים עדיין</div>
-      </div>
-    </div>
-
-    <!-- Invite + achievement progress card -->
-    <button class="fr-invite-card" type="button" data-fr-invite-contacts="1">
-      <span class="fr-invite-icon">🎁</span>
-      <div class="fr-invite-body">
-        <div class="fr-invite-title">הזמן חברים</div>
-        <div class="fr-invite-achieve">
-          <div class="fr-ia-shield">🏅</div>
-          <div class="fr-ia-info">
-            <div class="fr-ia-title">חבר מביא חבר</div>
-            <div class="fr-ia-desc">הזמן 5 חברים לבוסט</div>
-            <div class="fr-ia-bar-wrap"><div id="fr-referral-bar" class="fr-ia-bar-fill" style="width:0%"></div></div>
-          </div>
-          <div id="fr-referral-count" class="fr-ia-count">0/5</div>
+    <div class="g-scroll" style="gap:12px">
+      <!-- My code -->
+      <div class="g-card hl g-c fr-code-card" style="padding:12px">
+        <div class="g-lbl plain" style="justify-content:center;margin:0 0 8px">הקוד שלי</div>
+        <div id="fr-my-id-tiles" class="g-code" aria-hidden="true"></div>
+        <div id="fr-my-id" class="fr-code-number">------</div>
+        <div id="fr-copy-status" class="fr-copy-status"></div>
+        <div class="g-row" style="justify-content:center;gap:8px;margin-top:10px">
+          <button id="fr-copy-btn" class="g-chip cy"><svg class="gi"><use href="#gi-share"/></svg>שתף קוד</button>
         </div>
       </div>
-      <span class="fr-invite-chev">‹</span>
-    </button>
-    <div id="fr-invite-status" class="fr-invite-status" aria-live="polite"></div>
 
-    <!-- Back -->
-    <button class="fr-back-btn" onclick="openProfileOrAuth()">← חזרה לפרופיל</button>
+      <!-- Add friend -->
+      <div>
+        <div class="g-row">
+          <div class="g-fld g-grow"><svg class="gi"><use href="#gi-user"/></svg><input class="fr-add-input" id="add-friend-input" type="text"
+               placeholder="קוד חבר (6 תווים)" maxlength="6"
+               autocomplete="off" oninput="this.value=this.value.toUpperCase()"></div>
+          <button class="g-btn go" style="width:50px;padding:0" onclick="sendFriendRequest()" aria-label="הוסף חבר"><svg class="gi"><use href="#gi-plus"/></svg></button>
+        </div>
+        <div id="add-friend-status" class="fr-add-status"></div>
+      </div>
 
+      <!-- Pending requests -->
+      <div id="fr-requests-wrap" style="display:none;">
+        <div class="g-lbl">בקשות ממתינות</div>
+        <div id="fr-requests-list" class="g-list"></div>
+      </div>
+
+      <!-- Friends list -->
+      <div>
+        <div class="g-lbl">החברים שלי <span id="fr-friends-count">(0)</span></div>
+        <div id="fr-friends-list" class="g-list">
+          <div class="fr-empty">אין חברים עדיין</div>
+        </div>
+      </div>
+
+      <!-- Invite + achievement progress card -->
+      <button class="g-card tight gold g-row fr-g-invite" type="button" data-fr-invite-contacts="1">
+        <img src="assets/achievements/%D7%97%D7%91%D7%A8%20%D7%9E%D7%91%D7%99%D7%90%20%D7%97%D7%91%D7%A8.png" alt="" style="width:40px;height:40px;object-fit:contain">
+        <span class="g-grow" style="text-align:right">
+          <b style="font-size:13px;display:block">חבר מביא חבר</b>
+          <span class="g-dim" style="display:block">הזמן 5 חברים לבוסט</span>
+          <span class="g-bar gold" style="margin-top:5px"><i id="fr-referral-bar" style="width:0%"></i></span>
+        </span>
+        <b id="fr-referral-count" class="g-gd g-num">0/5</b>
+      </button>
+      <div id="fr-invite-status" class="fr-invite-status" aria-live="polite"></div>
+    </div>
   </div>
 </div>

@@ -1,0 +1,3194 @@
+{
+  "events": [
+    {
+      "type": "evt/TURN_PRESENTATION_READY",
+      "p": {
+        "currentTurnSlot": 1,
+        "turnNumber": 2
+      },
+      "at": 2097.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "type": "evt/TURN_CHANGED",
+      "p": {
+        "currentTurnSlot": 1,
+        "turnNumber": 2,
+        "reason": "pass",
+        "prevSlot": 0
+      },
+      "at": 2099.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "type": "evt/MOVE_CONFIRMED",
+      "p": {
+        "slot": 1,
+        "placed": [
+          {
+            "r": 5,
+            "c": 5,
+            "letter": "י",
+            "val": 1
+          },
+          {
+            "r": 6,
+            "c": 5,
+            "letter": "י",
+            "val": 1
+          },
+          {
+            "r": 7,
+            "c": 5,
+            "letter": "נ",
+            "val": 2
+          }
+        ],
+        "swappedTiles": [],
+        "words": [
+          "יינ"
+        ],
+        "wordTiles": [
+          [
+            {
+              "r": 5,
+              "c": 5,
+              "letter": "י",
+              "val": 1,
+              "ex": false
+            },
+            {
+              "r": 6,
+              "c": 5,
+              "letter": "י",
+              "val": 1,
+              "ex": false
+            },
+            {
+              "r": 7,
+              "c": 5,
+              "letter": "נ",
+              "val": 2,
+              "ex": false
+            }
+          ]
+        ],
+        "score": 4,
+        "multiplier": 1
+      },
+      "at": 5176.39999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [
+        {
+          "text": "+0",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "type": "evt/TURN_CHANGED",
+      "p": {
+        "currentTurnSlot": 0,
+        "turnNumber": 3
+      },
+      "at": 5178.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [
+        {
+          "text": "+0",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "type": "evt/TURN_PRESENTATION_READY",
+      "p": {
+        "currentTurnSlot": 0,
+        "turnNumber": 3
+      },
+      "at": 7076.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        }
+      ],
+      "timer": "40"
+    }
+  ],
+  "overlaps": [
+    {
+      "at": 7079.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7099.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7124.79999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "2",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 199.43104553222656,
+            "y": 279.3681945800781,
+            "width": 23.127059936523438,
+            "height": 28.876617431640625,
+            "top": 279.3681945800781,
+            "right": 222.55810546875,
+            "bottom": 308.24481201171875,
+            "left": 199.43104553222656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7140.39999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "2",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 199.43104553222656,
+            "y": 279.3681945800781,
+            "width": 23.127059936523438,
+            "height": 28.876617431640625,
+            "top": 279.3681945800781,
+            "right": 222.55810546875,
+            "bottom": 308.24481201171875,
+            "left": 199.43104553222656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7159.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "2",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 199.43104553222656,
+            "y": 279.3681945800781,
+            "width": 23.127059936523438,
+            "height": 28.876617431640625,
+            "top": 279.3681945800781,
+            "right": 222.55810546875,
+            "bottom": 308.24481201171875,
+            "left": 199.43104553222656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7179.70000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "3",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 175.0414581298828,
+            "y": 154.0181884765625,
+            "width": 19.010116577148438,
+            "height": 23.73614501953125,
+            "top": 154.0181884765625,
+            "right": 194.05157470703125,
+            "bottom": 177.75433349609375,
+            "left": 175.0414581298828
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7201.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "3",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 175.0414581298828,
+            "y": 154.0181884765625,
+            "width": 19.010116577148438,
+            "height": 23.73614501953125,
+            "top": 154.0181884765625,
+            "right": 194.05157470703125,
+            "bottom": 177.75433349609375,
+            "left": 175.0414581298828
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7219.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "3",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 175.0414581298828,
+            "y": 154.0181884765625,
+            "width": 19.010116577148438,
+            "height": 23.73614501953125,
+            "top": 154.0181884765625,
+            "right": 194.05157470703125,
+            "bottom": 177.75433349609375,
+            "left": 175.0414581298828
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7239.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 166.02035522460938,
+            "y": 107.6542739868164,
+            "width": 17.487350463867188,
+            "height": 21.83483123779297,
+            "top": 107.6542739868164,
+            "right": 183.50770568847656,
+            "bottom": 129.48910522460938,
+            "left": 166.02035522460938
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7260.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 166.02035522460938,
+            "y": 107.6542739868164,
+            "width": 17.487350463867188,
+            "height": 21.83483123779297,
+            "top": 107.6542739868164,
+            "right": 183.50770568847656,
+            "bottom": 129.48910522460938,
+            "left": 166.02035522460938
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7279.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 166.02035522460938,
+            "y": 107.6542739868164,
+            "width": 17.487350463867188,
+            "height": 21.83483123779297,
+            "top": 107.6542739868164,
+            "right": 183.50770568847656,
+            "bottom": 129.48910522460938,
+            "left": 166.02035522460938
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7299.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.73966",
+          "rect": {
+            "x": 163.03797912597656,
+            "y": 92.32637786865234,
+            "width": 16.983932495117188,
+            "height": 21.206253051757812,
+            "top": 92.32637786865234,
+            "right": 180.02191162109375,
+            "bottom": 113.53263092041016,
+            "left": 163.03797912597656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7319.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.73966",
+          "rect": {
+            "x": 163.03797912597656,
+            "y": 92.32637786865234,
+            "width": 16.983932495117188,
+            "height": 21.206253051757812,
+            "top": 92.32637786865234,
+            "right": 180.02191162109375,
+            "bottom": 113.53263092041016,
+            "left": 163.03797912597656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7339.39999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.73966",
+          "rect": {
+            "x": 163.03797912597656,
+            "y": 92.32637786865234,
+            "width": 16.983932495117188,
+            "height": 21.206253051757812,
+            "top": 92.32637786865234,
+            "right": 180.02191162109375,
+            "bottom": 113.53263092041016,
+            "left": 163.03797912597656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7359.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.377276",
+          "rect": {
+            "x": 162.0743865966797,
+            "y": 87.37406158447266,
+            "width": 16.8212890625,
+            "height": 21.003158569335938,
+            "top": 87.37406158447266,
+            "right": 178.8956756591797,
+            "bottom": 108.3772201538086,
+            "left": 162.0743865966797
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7379.70000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.3156",
+          "rect": {
+            "x": 162.06114196777344,
+            "y": 87.30593872070312,
+            "width": 16.819046020507812,
+            "height": 21.0003662109375,
+            "top": 87.30593872070312,
+            "right": 178.88018798828125,
+            "bottom": 108.30630493164062,
+            "left": 162.06114196777344
+          }
+        }
+      ],
+      "timer": "40"
+    }
+  ],
+  "frames": [
+    {
+      "at": 2100.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2203.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2227.2999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2239.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2259.7000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2278.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2299.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2319.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2340.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2359.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2379,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2399.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2419.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2439.2999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2459,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2480.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2499.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2519.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2539.7000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2560.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2579.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2599.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2619,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2639.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2659.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2680.7000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2700.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2719.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2742.2999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2759.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2779.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 2799.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2818.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2839,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2859.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2880.2999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2899.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2919.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2940.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2959.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2982,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 2999.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3019.2999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3038.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3060.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3079.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3099.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3120.7000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3139.7000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3159.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3178.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3199.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3221.7000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3239.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3259.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3278.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 3299,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3319.2999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3339,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3358.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3378.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3398.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3419,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3439.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3459.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3479.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3499.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3519.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3539.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3559,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3578.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3599.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3620.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3640.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3659.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3679.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3700.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3719.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3739.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3759.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3782.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3800.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3818.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3839,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3860.7000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3879.7999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3900,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3919.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3939.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3960,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3979.2000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 3999.2999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4019.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4040.7000000029802,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4059.2999999970198,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4079.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4099.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4118.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4138.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4159.79999999702,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4180,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4200.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4220.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4239.79999999702,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4259.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4279.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "38"
+    },
+    {
+      "at": 4300.10000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4319.29999999702,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4339.20000000298,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4359.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4379.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4399.29999999702,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4419.29999999702,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4439.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4459.20000000298,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4480,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4499.20000000298,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4519.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4539.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4559.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4579.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4598.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4620.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4639.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4661,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4678.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4699.70000000298,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4721.20000000298,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4739,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4759.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4779.70000000298,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4799.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4820.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4841.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4859.60000000149,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4879,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4901,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4919.70000000298,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4939.5,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4959.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4979.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 4999,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 5021.29999999702,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 5039.39999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 5059.79999999702,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 5079,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 5099.89999999851,
+      "slot": 1,
+      "score": 0,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [],
+      "timer": "37"
+    },
+    {
+      "at": 5184.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [
+        {
+          "text": "+0",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        },
+        {
+          "text": "+4",
+          "opacity": "0",
+          "rect": {
+            "x": 235.4921875,
+            "y": 452.48748779296875,
+            "width": 14.015625,
+            "height": 17.399993896484375,
+            "top": 452.48748779296875,
+            "right": 249.5078125,
+            "bottom": 469.8874816894531,
+            "left": 235.4921875
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 5199.79999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [
+        {
+          "text": "+0",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        },
+        {
+          "text": "+4",
+          "opacity": "0",
+          "rect": {
+            "x": 235.4921875,
+            "y": 452.48748779296875,
+            "width": 14.015625,
+            "height": 17.399993896484375,
+            "top": 452.48748779296875,
+            "right": 249.5078125,
+            "bottom": 469.8874816894531,
+            "left": 235.4921875
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 5219.20000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [
+        {
+          "text": "+0",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        },
+        {
+          "text": "+4",
+          "opacity": "0",
+          "rect": {
+            "x": 235.4921875,
+            "y": 452.48748779296875,
+            "width": 14.015625,
+            "height": 17.399993896484375,
+            "top": 452.48748779296875,
+            "right": 249.5078125,
+            "bottom": 469.8874816894531,
+            "left": 235.4921875
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 5239.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [
+        {
+          "text": "+0",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        },
+        {
+          "text": "+4",
+          "opacity": "0",
+          "rect": {
+            "x": 235.4921875,
+            "y": 452.48748779296875,
+            "width": 14.015625,
+            "height": 17.399993896484375,
+            "top": 452.48748779296875,
+            "right": 249.5078125,
+            "bottom": 469.8874816894531,
+            "left": 235.4921875
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 5260,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [
+        {
+          "text": "+0",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        },
+        {
+          "text": "+4",
+          "opacity": "0",
+          "rect": {
+            "x": 235.4921875,
+            "y": 452.48748779296875,
+            "width": 14.015625,
+            "height": 17.399993896484375,
+            "top": 452.48748779296875,
+            "right": 249.5078125,
+            "bottom": 469.8874816894531,
+            "left": 235.4921875
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7066,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": false,
+      "active": false,
+      "chips": [
+        {
+          "text": "+0",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        },
+        {
+          "text": "+4",
+          "opacity": "0",
+          "rect": {
+            "x": 233.15625,
+            "y": 411.5874938964844,
+            "width": 18.6875,
+            "height": 23.20001220703125,
+            "top": 411.5874938964844,
+            "right": 251.84375,
+            "bottom": 434.7875061035156,
+            "left": 233.15625
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7079.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7099.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "0",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 228.484375,
+            "y": 428.6875,
+            "width": 28.03125,
+            "height": 35,
+            "top": 428.6875,
+            "right": 256.515625,
+            "bottom": 463.6875,
+            "left": 228.484375
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7124.79999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "2",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 199.43104553222656,
+            "y": 279.3681945800781,
+            "width": 23.127059936523438,
+            "height": 28.876617431640625,
+            "top": 279.3681945800781,
+            "right": 222.55810546875,
+            "bottom": 308.24481201171875,
+            "left": 199.43104553222656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7140.39999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "2",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 199.43104553222656,
+            "y": 279.3681945800781,
+            "width": 23.127059936523438,
+            "height": 28.876617431640625,
+            "top": 279.3681945800781,
+            "right": 222.55810546875,
+            "bottom": 308.24481201171875,
+            "left": 199.43104553222656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7159.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "2",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 199.43104553222656,
+            "y": 279.3681945800781,
+            "width": 23.127059936523438,
+            "height": 28.876617431640625,
+            "top": 279.3681945800781,
+            "right": 222.55810546875,
+            "bottom": 308.24481201171875,
+            "left": 199.43104553222656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7179.70000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "3",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 175.0414581298828,
+            "y": 154.0181884765625,
+            "width": 19.010116577148438,
+            "height": 23.73614501953125,
+            "top": 154.0181884765625,
+            "right": 194.05157470703125,
+            "bottom": 177.75433349609375,
+            "left": 175.0414581298828
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7201.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "3",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 175.0414581298828,
+            "y": 154.0181884765625,
+            "width": 19.010116577148438,
+            "height": 23.73614501953125,
+            "top": 154.0181884765625,
+            "right": 194.05157470703125,
+            "bottom": 177.75433349609375,
+            "left": 175.0414581298828
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7219.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "3",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 175.0414581298828,
+            "y": 154.0181884765625,
+            "width": 19.010116577148438,
+            "height": 23.73614501953125,
+            "top": 154.0181884765625,
+            "right": 194.05157470703125,
+            "bottom": 177.75433349609375,
+            "left": 175.0414581298828
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7239.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 166.02035522460938,
+            "y": 107.6542739868164,
+            "width": 17.487350463867188,
+            "height": 21.83483123779297,
+            "top": 107.6542739868164,
+            "right": 183.50770568847656,
+            "bottom": 129.48910522460938,
+            "left": 166.02035522460938
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7260.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 166.02035522460938,
+            "y": 107.6542739868164,
+            "width": 17.487350463867188,
+            "height": 21.83483123779297,
+            "top": 107.6542739868164,
+            "right": 183.50770568847656,
+            "bottom": 129.48910522460938,
+            "left": 166.02035522460938
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7279.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "1",
+          "rect": {
+            "x": 166.02035522460938,
+            "y": 107.6542739868164,
+            "width": 17.487350463867188,
+            "height": 21.83483123779297,
+            "top": 107.6542739868164,
+            "right": 183.50770568847656,
+            "bottom": 129.48910522460938,
+            "left": 166.02035522460938
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7299.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.73966",
+          "rect": {
+            "x": 163.03797912597656,
+            "y": 92.32637786865234,
+            "width": 16.983932495117188,
+            "height": 21.206253051757812,
+            "top": 92.32637786865234,
+            "right": 180.02191162109375,
+            "bottom": 113.53263092041016,
+            "left": 163.03797912597656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7319.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.73966",
+          "rect": {
+            "x": 163.03797912597656,
+            "y": 92.32637786865234,
+            "width": 16.983932495117188,
+            "height": 21.206253051757812,
+            "top": 92.32637786865234,
+            "right": 180.02191162109375,
+            "bottom": 113.53263092041016,
+            "left": 163.03797912597656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7339.39999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.73966",
+          "rect": {
+            "x": 163.03797912597656,
+            "y": 92.32637786865234,
+            "width": 16.983932495117188,
+            "height": 21.206253051757812,
+            "top": 92.32637786865234,
+            "right": 180.02191162109375,
+            "bottom": 113.53263092041016,
+            "left": 163.03797912597656
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7359.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.377276",
+          "rect": {
+            "x": 162.0743865966797,
+            "y": 87.37406158447266,
+            "width": 16.8212890625,
+            "height": 21.003158569335938,
+            "top": 87.37406158447266,
+            "right": 178.8956756591797,
+            "bottom": 108.3772201538086,
+            "left": 162.0743865966797
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7379.70000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [
+        {
+          "text": "+4",
+          "opacity": "0.3156",
+          "rect": {
+            "x": 162.06114196777344,
+            "y": 87.30593872070312,
+            "width": 16.819046020507812,
+            "height": 21.0003662109375,
+            "top": 87.30593872070312,
+            "right": 178.88018798828125,
+            "bottom": 108.30630493164062,
+            "left": 162.06114196777344
+          }
+        }
+      ],
+      "timer": "40"
+    },
+    {
+      "at": 7399.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7418.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7438.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7459,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7478.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7499.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7520.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7539.79999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7559.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7579.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7599.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7619.20000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7639.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7659.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7679.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": true,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7699.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7719.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7739.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7759.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7779.60000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7799.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7819.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7839.60000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7862.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7879.79999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7899.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7919.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7939.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7959.60000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7979.79999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 7999.20000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8020.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8039.60000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8060.79999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8079.70000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8099.70000000298,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8119.39999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8140,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8159.39999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8180.39999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8198.89999999851,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8219,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8239.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8260.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8280,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "40"
+    },
+    {
+      "at": 8299.60000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 8322.10000000149,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 8339.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 8359,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 8379.5,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "39"
+    },
+    {
+      "at": 8400.29999999702,
+      "slot": 0,
+      "score": 4,
+      "shown": "4",
+      "flash": false,
+      "active": true,
+      "chips": [],
+      "timer": "39"
+    }
+  ]
+}

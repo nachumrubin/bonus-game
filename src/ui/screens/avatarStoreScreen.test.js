@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER,
-  DAILY_REWARD_SHOW,
+  DAILY_REWARD_SHOW, dailyDaysHtml,
 } from './avatarStoreScreen.js';
 import { STORE_PRICES } from './avatarStore.js';
 
@@ -49,6 +49,7 @@ function makeStoreRoot() {
     dailyOv: makeOverlay(),
     dailyCoins: makeEl(),
     dailyStreak: makeEl(),
+    dailyDays: makeEl(),
     dailyOk: makeBtn(),
   };
   const map = {
@@ -64,6 +65,7 @@ function makeStoreRoot() {
     '#ov-daily-reward': els.dailyOv,
     '#daily-reward-coins': els.dailyCoins,
     '#daily-reward-streak': els.dailyStreak,
+    '#daily-reward-days': els.dailyDays,
     '#daily-reward-ok': els.dailyOk,
   };
   return { els, root: { querySelector: (sel) => map[sel] ?? null } };
@@ -149,6 +151,24 @@ test('DAILY_REWARD_SHOW reveals the daily overlay with coins + streak text', () 
   assert.match(els.dailyCoins.innerHTML, /\+40/);
   assert.match(els.dailyCoins.innerHTML, /gold coin\.png/); // coin image
   assert.match(els.dailyStreak.textContent, /3/);
+});
+
+test('DAILY_REWARD_SHOW paints the 7-day strip (got / today / next)', () => {
+  bus._reset();
+  const { els, root } = makeStoreRoot();
+  mountAvatarStoreScreen({ root, bus });
+  const days = [1, 2, 3].map((n, i) => ({ n, coins: 20 + 10 * i, state: ['got', 'today', 'next'][i] }));
+  bus.emit(DAILY_REWARD_SHOW, { coins: 30, streak: 2, days });
+  const html = els.dailyDays.innerHTML;
+  assert.equal((html.match(/class="daily-day[ "]/g) || []).length, 3);
+  assert.match(html, /daily-day got" data-day="1"/);
+  assert.match(html, /daily-day today" data-day="2"/);
+  assert.match(html, /daily-day-c">40</);
+});
+
+test('dailyDaysHtml: empty / missing days render nothing', () => {
+  assert.equal(dailyDaysHtml(undefined), '');
+  assert.equal(dailyDaysHtml([]), '');
 });
 
 test('back button emits STORE_INTENT.CLOSE', () => {

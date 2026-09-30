@@ -1,0 +1,1220 @@
+[
+  {
+    "scoreEvent": {
+      "slot": 1,
+      "placed": [
+        {
+          "r": 5,
+          "c": 5,
+          "letter": "ש",
+          "val": 3
+        },
+        {
+          "r": 5,
+          "c": 6,
+          "letter": "ל",
+          "val": 2
+        },
+        {
+          "r": 5,
+          "c": 7,
+          "letter": "ו",
+          "val": 1
+        },
+        {
+          "r": 5,
+          "c": 8,
+          "letter": "ם",
+          "val": 0
+        }
+      ],
+      "swappedTiles": [],
+      "words": [
+        "שלום"
+      ],
+      "wordTiles": [
+        [
+          {
+            "r": 5,
+            "c": 5,
+            "letter": "ש",
+            "val": 3,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 6,
+            "letter": "ל",
+            "val": 2,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 7,
+            "letter": "ו",
+            "val": 1,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 8,
+            "letter": "ם",
+            "val": 0,
+            "ex": false
+          }
+        ]
+      ],
+      "score": 6,
+      "multiplier": 1,
+      "at": 2544.5
+    },
+    "ready": {
+      "at": 4085.39999999851,
+      "remaining": 19998,
+      "flash": true,
+      "shownScore": 6,
+      "score": 6,
+      "timer": "20"
+    },
+    "frames": [
+      {
+        "at": 2410.2000000029802,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2430.3000000044703,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2481.7000000029802,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2510.2000000029802,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 0,
+        "score": 0,
+        "timer": "19"
+      },
+      {
+        "at": 2553.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2586.7000000029802,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2647.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2699.7000000029802,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2751.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2804,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2859.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2913.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 2971.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3027.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3080.2000000029802,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3133.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3184.7000000029802,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3236.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3290.8000000044703,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3345.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 0,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3396.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 3,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3448,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 5,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3510.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3576.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3625.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3677.8000000044703,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3726.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3775.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3825.2000000029802,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3880,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 3949.2000000029802,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 4013.2000000029802,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 4079.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      }
+    ],
+    "settled": true,
+    "ticking": "19",
+    "beforeName": "none",
+    "afterName": "gm-card-active",
+    "readyCount": 1,
+    "tones": [
+      {
+        "at": 4084.3000000044703,
+        "frequency": 523,
+        "type": "triangle"
+      }
+    ],
+    "grace": 1540
+  },
+  {
+    "scoreEvent": {
+      "slot": 1,
+      "placed": [
+        {
+          "r": 4,
+          "c": 2,
+          "letter": "מ",
+          "val": 2
+        },
+        {
+          "r": 4,
+          "c": 3,
+          "letter": "א",
+          "val": 1
+        },
+        {
+          "r": 4,
+          "c": 4,
+          "letter": "ב",
+          "val": 3
+        },
+        {
+          "r": 4,
+          "c": 5,
+          "letter": "ד",
+          "val": 3
+        },
+        {
+          "r": 4,
+          "c": 6,
+          "letter": "ת",
+          "val": 4
+        }
+      ],
+      "swappedTiles": [],
+      "words": [
+        "מאבדת",
+        "דש",
+        "תל"
+      ],
+      "wordTiles": [
+        [
+          {
+            "r": 4,
+            "c": 2,
+            "letter": "מ",
+            "val": 2,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 3,
+            "letter": "א",
+            "val": 1,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 4,
+            "letter": "ב",
+            "val": 3,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 5,
+            "letter": "ד",
+            "val": 3,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 6,
+            "letter": "ת",
+            "val": 4,
+            "ex": false
+          }
+        ],
+        [
+          {
+            "r": 4,
+            "c": 5,
+            "letter": "ד",
+            "val": 3,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 5,
+            "letter": "ש",
+            "val": 3,
+            "ex": true
+          }
+        ],
+        [
+          {
+            "r": 4,
+            "c": 6,
+            "letter": "ת",
+            "val": 4,
+            "ex": false
+          },
+          {
+            "r": 5,
+            "c": 6,
+            "letter": "ל",
+            "val": 2,
+            "ex": true
+          }
+        ]
+      ],
+      "score": 25,
+      "multiplier": 1,
+      "at": 5729.70000000298
+    },
+    "ready": {
+      "at": 7573.60000000149,
+      "remaining": 19999,
+      "flash": true,
+      "shownScore": 31,
+      "score": 31,
+      "timer": "20"
+    },
+    "frames": [
+      {
+        "at": 5545.70000000298,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 5589.80000000447,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 6,
+        "score": 6,
+        "timer": "20"
+      },
+      {
+        "at": 5735.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 5778.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 5781.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 5832,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 5887,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 5944.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6003.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6062.70000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6119.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6178.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6235,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6295.30000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6349.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6405,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6458.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6510.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6565.70000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6616.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6672.70000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6724.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6777.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 6,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6781.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": -1,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6844.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 7,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 6900.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 16,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7007.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 20,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7064.70000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 27,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7067.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 28,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7118.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 29,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7171.30000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 30,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7222.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7284.20000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7335.20000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7385.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7435.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7485.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 7535.30000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      }
+    ],
+    "settled": true,
+    "ticking": "19",
+    "beforeName": "gm-card-active",
+    "afterName": "gm-card-active",
+    "readyCount": 1,
+    "tones": [
+      {
+        "at": 7573.10000000149,
+        "frequency": 523,
+        "type": "triangle"
+      }
+    ],
+    "grace": 1840
+  },
+  {
+    "scoreEvent": {
+      "slot": 1,
+      "placed": [
+        {
+          "r": 3,
+          "c": 0,
+          "letter": "א",
+          "val": 1
+        },
+        {
+          "r": 3,
+          "c": 1,
+          "letter": "ג",
+          "val": 5
+        },
+        {
+          "r": 3,
+          "c": 2,
+          "letter": "ת",
+          "val": 4
+        },
+        {
+          "r": 3,
+          "c": 3,
+          "letter": "ה",
+          "val": 4
+        }
+      ],
+      "swappedTiles": [],
+      "words": [
+        "אגתה",
+        "תמ",
+        "הא"
+      ],
+      "wordTiles": [
+        [
+          {
+            "r": 3,
+            "c": 0,
+            "letter": "א",
+            "val": 1,
+            "ex": false
+          },
+          {
+            "r": 3,
+            "c": 1,
+            "letter": "ג",
+            "val": 5,
+            "ex": false
+          },
+          {
+            "r": 3,
+            "c": 2,
+            "letter": "ת",
+            "val": 4,
+            "ex": false
+          },
+          {
+            "r": 3,
+            "c": 3,
+            "letter": "ה",
+            "val": 4,
+            "ex": false
+          }
+        ],
+        [
+          {
+            "r": 3,
+            "c": 2,
+            "letter": "ת",
+            "val": 4,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 2,
+            "letter": "מ",
+            "val": 2,
+            "ex": true
+          }
+        ],
+        [
+          {
+            "r": 3,
+            "c": 3,
+            "letter": "ה",
+            "val": 4,
+            "ex": false
+          },
+          {
+            "r": 4,
+            "c": 3,
+            "letter": "א",
+            "val": 1,
+            "ex": true
+          }
+        ]
+      ],
+      "score": 25,
+      "multiplier": 1,
+      "at": 9150.80000000447
+    },
+    "ready": {
+      "at": 10998.70000000298,
+      "remaining": 19999,
+      "flash": true,
+      "shownScore": 56,
+      "score": 56,
+      "timer": "20"
+    },
+    "frames": [
+      {
+        "at": 8965.30000000447,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 9006,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 9055.20000000298,
+        "scoreStarted": false,
+        "flash": false,
+        "shownScore": 31,
+        "score": 31,
+        "timer": "20"
+      },
+      {
+        "at": 9156.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9172.20000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9221.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9325.70000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9381,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9438.20000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9497.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9553.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9613.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9671.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9726.30000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9779.30000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9842.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9900,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9902.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 9953.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10005.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10055.5,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10109.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10165,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10219.70000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 31,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10272.30000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 34,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10326.10000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 40,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10387.30000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 46,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10492.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 50,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10548.30000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 54,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10603.70000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 55,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10655.60000000149,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10709.39999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10763.20000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10814.70000000298,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10864.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10919.89999999851,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      },
+      {
+        "at": 10971.80000000447,
+        "scoreStarted": true,
+        "flash": false,
+        "shownScore": 56,
+        "score": 56,
+        "timer": "20"
+      }
+    ],
+    "settled": true,
+    "ticking": "19",
+    "beforeName": "gm-card-active",
+    "afterName": "gm-card-active",
+    "readyCount": 1,
+    "tones": [],
+    "grace": 1840
+  }
+]

@@ -1,38 +1,40 @@
-<!-- COIN TOSS / FIRST TURN -->
-<div id="scoin" class="screen hidden">
-  <div class="coin-wrap">
-
-    <!-- Ambient background rays -->
-    <div class="coin-bg" aria-hidden="true">
-      <div class="coin-ray coin-ray--1"></div>
-      <div class="coin-ray coin-ray--2"></div>
-      <div class="coin-ray coin-ray--3"></div>
-      <span class="coin-star"></span>
-      <span class="coin-star"></span>
-      <span class="coin-star"></span>
-      <span class="coin-star"></span>
-      <span class="coin-star"></span>
-    </div>
-
-    <!-- Title block -->
-    <div class="coin-title">הגרלת שחקן פותח</div>
-    <div class="coin-sub" id="coin-sub">מטילים מטבע...</div>
-
-    <!-- Hero: glow ring + floating coin -->
-    <div class="coin-hero-wrap">
-      <div class="coin-glow-ring" aria-hidden="true"></div>
-      <div class="coin-float">
-        <div class="coin-disc" id="coin-disc">🪙</div>
+<!-- COIN TOSS / FIRST TURN (glass skin — tools/screens-mockup "#scoin") -->
+<div id="scoin" class="screen hidden g-screen">
+  <div class="g-page coin-wrap">
+    <div class="g-scroll coin-g-body">
+      <div class="g-c">
+        <div class="coin-kick">מי מתחיל?</div>
+        <div class="coin-title">הגרלת שחקן פותח</div>
+        <div class="coin-sub" id="coin-sub">מטילים מטבע...</div>
       </div>
+
+      <!-- Hero: rays + floating coin -->
+      <div class="coin-hero-wrap">
+        <div class="coin-g-rays" aria-hidden="true"></div>
+        <div class="coin-float">
+          <div class="coin-disc" id="coin-disc">🪙</div>
+        </div>
+      </div>
+
+      <!-- The two players; the starter lights up after the flip (coinTossScreen.js) -->
+      <div class="coin-sides">
+        <div class="coin-side" id="coin-side-0">
+          <span class="g-avr cyc" style="--s:60px"><svg class="gi"><use href="#gi-user"/></svg></span>
+          <b id="coin-p1-name">שחקן 1</b>
+          <span class="g-pill coin-tag" id="coin-tag-0"></span>
+        </div>
+        <div class="coin-side" id="coin-side-1">
+          <span class="g-avr gdc" style="--s:60px"><svg class="gi"><use href="#gi-user"/></svg></span>
+          <b id="coin-p2-name">שחקן 2</b>
+          <span class="g-pill coin-tag" id="coin-tag-1"></span>
+        </div>
+      </div>
+
+      <div class="coin-msg" id="coin-msg">בהצלחה!</div>
     </div>
 
-    <!-- Result -->
-    <div class="coin-msg" id="coin-msg">בהצלחה!</div>
-
-    <!-- CTA -->
-    <button id="coin-enter" class="coin-enter" type="button" onclick="enterGameAfterCoinToss()" disabled>
-      כניסה למשחק ←
-    </button>
-
+    <div class="g-dock">
+      <button id="coin-enter" class="g-btn go coin-enter" type="button" onclick="enterGameAfterCoinToss()" disabled>כניסה למשחק ←</button>
+    </div>
   </div>
 </div>

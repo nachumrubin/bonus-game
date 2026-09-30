@@ -1,40 +1,42 @@
-﻿<!-- SIGN UP SCREEN -->
-<div id="sauth-signup" class="screen hidden">
-  <div class="sbox" style="max-width:320px;gap:10px;">
-    <div class="auth-logo" aria-hidden="true"><img src="logo_no_mascot.png" alt=""></div>
-    <div class="stitle">יצירת חשבון</div>
-    <div class="sf">
-      <label>שם תצוגה (עד 15 תווים)</label>
-      <input id="su-name" class="ri" type="text" maxlength="15" placeholder="השם שיופיע במשחק" autocomplete="username">
-      <div id="su-name-error" style="min-height:14px;font-size:11px;color:#ff8e8e;text-align:right;margin-top:3px;"></div>
+<!-- SIGN UP SCREEN (glass skin — tools/screens-mockup "#sauth-signup") -->
+<div id="sauth-signup" class="screen hidden g-screen">
+  <div class="g-page">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <div class="g-ttl stitle"><svg class="gi"><use href="#gi-sparkle"/></svg>יצירת חשבון</div>
+      <span></span>
     </div>
-    <div class="sf">
-      <label>דוא"ל</label>
-      <input id="su-email" class="ri" type="email" placeholder="your@email.com" autocomplete="email" dir="ltr">
-    </div>
-    <div class="sf">
-      <label>סיסמה (8+ תווים, אות וספרה)</label>
-      <div class="pw-wrap">
-        <input id="su-pass" class="ri pw-input" type="password" placeholder="••••••••" autocomplete="new-password" dir="ltr">
-        <button type="button" class="pw-toggle" data-pw-target="su-pass" aria-label="הצג סיסמה">👁</button>
+    <div class="g-scroll auth-g">
+      <div class="sf">
+        <label class="g-flbl" for="su-name">שם תצוגה (עד 15 תווים)</label>
+        <div class="g-fld"><svg class="gi"><use href="#gi-user"/></svg><input id="su-name" type="text" maxlength="15" placeholder="השם שיופיע במשחק" autocomplete="username"></div>
+        <div id="su-name-error" class="auth-err" style="text-align:right;margin-top:3px"></div>
       </div>
-    </div>
-    <div class="sf">
-      <label>אימות סיסמה</label>
-      <div class="pw-wrap">
-        <input id="su-pass-confirm" class="ri pw-input" type="password" placeholder="••••••••" autocomplete="new-password" dir="ltr">
-        <button type="button" class="pw-toggle" data-pw-target="su-pass-confirm" aria-label="הצג סיסמה">👁</button>
+      <div class="sf">
+        <label class="g-flbl" for="su-email">דוא"ל</label>
+        <div class="g-fld" dir="ltr"><svg class="gi"><use href="#gi-mail"/></svg><input id="su-email" type="email" placeholder="your@email.com" autocomplete="email" dir="ltr"></div>
       </div>
-    </div>
-    <label class="su-checkbox-row">
-      <input id="su-notify" type="checkbox" checked>
-      <span>אני רוצה לקבל התראות (משחקים, הזמנות, תזכורות)</span>
-    </label>
-    <div id="su-error" style="min-height:16px;font-size:12px;color:#ff8e8e;text-align:center;"></div>
-    <button class="bd g" id="su-submit-btn" onclick="signUpUser()">צור חשבון</button>
-    <div style="display:flex;gap:6px;">
-      <button class="bd" style="flex:1;font-size:12px" onclick="showSc('sauth-login')">יש לי חשבון</button>
-      <button class="bd" style="flex:1;font-size:12px" onclick="continueAsGuest()">המשך כאורח</button>
+      <div class="sf">
+        <label class="g-flbl" for="su-pass">סיסמה (8+ תווים, אות וספרה)</label>
+        <div class="g-fld pw-wrap" dir="ltr"><svg class="gi"><use href="#gi-lock"/></svg><input id="su-pass" class="pw-input" type="password" placeholder="••••••••" autocomplete="new-password" dir="ltr"><button type="button" class="pw-toggle" data-pw-target="su-pass" aria-label="הצג סיסמה"><svg class="gi"><use href="#gi-eye"/></svg></button></div>
+      </div>
+      <div class="sf">
+        <label class="g-flbl" for="su-pass-confirm">אימות סיסמה</label>
+        <div class="g-fld pw-wrap" dir="ltr"><svg class="gi"><use href="#gi-lock"/></svg><input id="su-pass-confirm" class="pw-input" type="password" placeholder="••••••••" autocomplete="new-password" dir="ltr"><button type="button" class="pw-toggle" data-pw-target="su-pass-confirm" aria-label="הצג סיסמה"><svg class="gi"><use href="#gi-eye"/></svg></button></div>
+      </div>
+      <label class="g-list su-checkbox-row">
+        <span class="g-li" style="cursor:pointer">
+          <span class="g-sock"><svg class="gi"><use href="#gi-bell"/></svg></span>
+          <span class="tx"><b>התראות</b><span>משחקים, הזמנות ותזכורות</span></span>
+          <input id="su-notify" class="g-tog-input" type="checkbox" checked>
+        </span>
+      </label>
+      <div id="su-error" class="auth-err"></div>
+      <button class="g-btn go" id="su-submit-btn" onclick="signUpUser()">צור חשבון</button>
+      <div class="g-btns">
+        <button class="g-btn sm" onclick="showSc('sauth-login')">יש לי חשבון</button>
+        <button class="g-btn sm" onclick="continueAsGuest()">המשך כאורח</button>
+      </div>
     </div>
   </div>
 </div>

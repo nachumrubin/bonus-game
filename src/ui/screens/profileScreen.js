@@ -16,7 +16,7 @@
 import { $, on, setText } from '../domHelpers.js';
 import { SPINE_AVATARS, avatarIconSrc } from './avatarScreens.js';
 import { isStoreAvatarId } from './avatarStore.js';
-import { CHAMPS_OPEN } from './championsScreen.js';
+import { startIdle } from '../avatarMotion/idleMotion.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 
 export const PROFILE_INTENT = Object.freeze({
@@ -138,20 +138,40 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
     cleanups.push(on(upgradeBtn, 'click', () => bus.emit(PROFILE_INTENT.UPGRADE_ACCOUNT, {})));
   }
 
+  let idle = null;
   function render({ profile, isAnonymous, email } = {}) {
     if (!profile) return;
     if (avatarEl) {
       const iconSrc = avatarIconSrc(profile.equippedAvatar);
       if (iconSrc) {
-        avatarEl.innerHTML = `<img class="pf-avatar-img" src="${iconSrc}" alt="">`;
-        const img = avatarEl.firstElementChild;
-        if (img) img.onerror = () => setText(avatarEl, isStoreAvatarId(profile.equippedAvatar) ? '👑' : (avatarEmoji(profile.equippedAvatar) || '👑'));
+        const cur = avatarEl.firstElementChild;
+        if (!(cur?.tagName === 'IMG' && cur.getAttribute?.('src') === iconSrc)) {
+          avatarEl.innerHTML = `<img class="pf-avatar-img" src="${iconSrc}" alt="">`;
+          const img = avatarEl.firstElementChild;
+          if (img) img.onerror = () => setText(avatarEl, isStoreAvatarId(profile.equippedAvatar) ? '👑' : (avatarEmoji(profile.equippedAvatar) || '👑'));
+        }
+        // Calm screen → the avatar breathes (and glances now and then). Started
+        // after the screen transition so the visibility check sees it shown.
+        if (!idle?.running) setTimeout(() => { if (!idle?.running) idle = startIdle(avatarEl, { secondary: true }); }, 350);
       } else {
         setText(avatarEl, avatarEmoji(profile.equippedAvatar));
       }
     }
     if (nameEl)    setText(nameEl,   profile.displayName ?? '');
     if (emailEl) setText(emailEl, email ?? '');
+    // Glass-skin pills under the name: ELO + coin balance (hidden when unknown).
+    const rating = Number(profile.rating);
+    const coins = Number(profile.coins);
+    const eloPill = $('#profile-elo-pill', root);
+    const coinsPill = $('#profile-coins-pill', root);
+    if (eloPill) {
+      eloPill.style.display = Number.isFinite(rating) && rating > 0 ? '' : 'none';
+      setText($('#profile-elo-val', root), String(Math.round(rating) || 0));
+    }
+    if (coinsPill) {
+      coinsPill.style.display = Number.isFinite(coins) ? '' : 'none';
+      setText($('#profile-coins-val', root), String(Math.max(0, Math.floor(coins) || 0)));
+    }
     if (upgradeBtn) upgradeBtn.style.display = isAnonymous ? '' : 'none';
     const s = deriveStats(profile);
     if (stPlayed)     setText(stPlayed,     String(s.gamesPlayed));
@@ -169,6 +189,7 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
     unmount() {
       for (const off of cleanups) try { off(); } catch {}
       cleanups.length = 0;
+      idle?.stop();
     },
     showError,
     _isMounted: () => !!screenEl,

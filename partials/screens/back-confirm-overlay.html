@@ -1,68 +1,42 @@
-<!-- BACK BUTTON CONFIRM OVERLAY — same design as pause dialog -->
+<!-- BACK BUTTON CONFIRM (glass bottom sheet — same design as pause) -->
 <div id="ov-back-confirm" class="ov hidden">
-  <div class="ovc pause-ovc">
-
-    <!-- (Close X removed — the "חזור למשחק" action already returns to the game.) -->
-
-    <!-- Hourglass hero -->
-    <div class="pause-hero" aria-hidden="true">
-      <div class="pause-hg-ring"></div>
-      <img class="pause-hg" src="assets/ui/hourglass.png" alt="">
+  <div class="ovc pause-ovc g-sheet">
+    <div class="g-sh">
+      <span class="g-sock"><svg class="gi"><use href="#gi-pause"/></svg></span>
+      <h3 class="pause-title">סיום המשחק</h3>
+      <button class="g-chip ic" onclick="backConfirmStay()" aria-label="חזור למשחק"><svg class="gi"><use href="#gi-x"/></svg></button>
     </div>
+    <div class="g-dim pause-sub" data-gm="מה תרצה לעשות?" data-gf="מה תרצי לעשות?">מה תרצה לעשות?</div>
 
-    <!-- Title -->
-    <div class="pause-title">סיום המשחק</div>
-    <div class="pause-sub">מה תרצה לעשות?</div>
-
-    <!-- Action buttons -->
-    <div class="pause-actions">
-
-      <!-- 1. Stay (primary) -->
-      <button class="pause-action pause-action--primary" onclick="backConfirmStay()">
-        <div class="pause-action-icon">
-          <img src="assets/ui/play.png" alt="" class="ui-icon">
-        </div>
-        <div class="pause-action-body">
-          <span class="pause-action-label" data-gm="חזור למשחק" data-gf="חזרי למשחק">חזור למשחק</span>
-          <span class="pause-action-sub" data-gm="המשך לשחק עכשיו" data-gf="המשיכי לשחק עכשיו">המשך לשחק עכשיו</span>
-        </div>
+    <div class="g-list pause-actions">
+      <button class="g-li pause-action pause-action--primary" onclick="backConfirmStay()">
+        <span class="g-sock"><svg class="gi"><use href="#gi-play"/></svg></span>
+        <span class="tx pause-action-body"><b class="pause-action-label" data-gm="חזור למשחק" data-gf="חזרי למשחק">חזור למשחק</b><span class="pause-action-sub" data-gm="המשך לשחק עכשיו" data-gf="המשיכי לשחק עכשיו">המשך לשחק עכשיו</span></span>
+        <svg class="gi g-chev"><use href="#gi-fwd"/></svg>
       </button>
-
-      <!-- 2. Pause & save (recommended) -->
-      <button class="pause-action pause-action--save" onclick="pauseGame();backConfirmStay()">
-        <div class="pause-action-icon pause-action-icon--save">
-          <img src="assets/ui/pause.png" alt="" class="ui-icon">
-        </div>
-        <div class="pause-action-body">
-          <span class="pause-action-label">השהה ושמור</span>
-          <span class="pause-action-sub">חזור למשחק מאוחר יותר</span>
-        </div>
-        <div class="pause-action-badge">★ מומלץ</div>
+      <button class="g-li pause-action pause-action--save" onclick="pauseGame();backConfirmStay()">
+        <span class="g-sock gold"><svg class="gi"><use href="#gi-pause"/></svg></span>
+        <span class="tx pause-action-body"><b class="pause-action-label">השהה ושמור</b><span class="pause-action-sub">חזור למשחק מאוחר יותר</span></span>
+        <span class="g-pill gd pause-action-badge">★ מומלץ</span>
       </button>
-
-      <!-- 3. Leave without saving (destructive) -->
-      <button class="pause-action pause-action--quit" onclick="backConfirmLeave()">
-        <div class="pause-action-icon pause-action-icon--quit">
-          <img src="assets/ui/logout.png" alt="" class="ui-icon">
-        </div>
-        <div class="pause-action-body">
-          <span class="pause-action-label">צא ללא שמירה</span>
-          <span class="pause-action-sub">ההתקדמות תאבד</span>
-        </div>
+      <button class="g-li pause-action pause-action--quit" onclick="backConfirmLeave()">
+        <span class="g-sock red"><svg class="gi"><use href="#gi-logout"/></svg></span>
+        <span class="tx pause-action-body"><b class="pause-action-label" style="color:#ff8f9c">צא ללא שמירה</b><span class="pause-action-sub">ההתקדמות תאבד</span></span>
+        <svg class="gi g-chev"><use href="#gi-fwd"/></svg>
       </button>
-
     </div>
   </div>
 </div>
 
-<div id="ov-resign-confirm" class="ov hidden" style="background:rgba(0,0,0,.82);">
-  <div class="ovc" style="text-align:center;">
-    <div style="font-size:32px;margin-bottom:6px;">!</div>
+<!-- RESIGN CONFIRM (glass dialog, red) -->
+<div id="ov-resign-confirm" class="ov hidden">
+  <div class="ovc dlg-red">
+    <div class="ovic ovic--red"><svg class="gi"><use href="#gi-flag"/></svg></div>
     <div class="ovt">לפרוש מהמשחק?</div>
     <div class="ovd" id="resign-confirm-msg">היריב יקבל ניצחון מיידי.</div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
-      <button class="ovb s" id="resign-confirm-yes" style="padding:11px;font-size:13px;color:#ff8e8e;">פרוש</button>
-      <button class="ovb p" id="resign-confirm-no" style="padding:11px;font-size:13px;" data-gm="המשך לשחק" data-gf="המשיכי לשחק">המשך לשחק</button>
+    <div class="ovbtns">
+      <button class="ovb s danger" id="resign-confirm-yes">פרוש</button>
+      <button class="ovb p" id="resign-confirm-no" data-gm="המשך לשחק" data-gf="המשיכי לשחק">המשך לשחק</button>
     </div>
   </div>
 </div>

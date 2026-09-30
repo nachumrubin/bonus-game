@@ -59,6 +59,7 @@ import { startMatchmaking } from './game/online/spineMatchmaking.js';
 
 import { createGameController } from './ui/controllers/gameController.js';
 import { createAnimationController } from './ui/controllers/animationController.js';
+import { BOOST_RESULT_READY } from './ui/boostPresentation.js';
 import { getMotionPreference } from './ui/motionPreference.js';
 import { createGameFlowController } from './ui/controllers/gameFlowController.js';
 import { createTurnTimerController } from './ui/controllers/turnTimerController.js';
@@ -78,6 +79,7 @@ import { mountFaqScreen } from './ui/screens/faqScreen.js';
 import { mountSetupScreen, SETUP_INTENT, SETUP_OPEN } from './ui/screens/setupScreen.js';
 import { mountOnlineLobbyScreen, LOBBY_INTENT } from './ui/screens/onlineLobbyScreen.js';
 import { mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, MM_INTENT, PS_INTENT } from './ui/screens/matchmakingOverlayScreen.js';
+import { mountVsIntroOverlay, VS_INTRO_INTENT, VS_INTRO_MS } from './ui/screens/vsIntroScreen.js';
 import { mountCreateRoomScreen, CR_INTENT } from './ui/screens/createRoomScreen.js';
 import { mountWaitingRoomScreen, WR_INTENT, WR_OPEN, WR_CLOSE, WR_LIVE_INVITE_SENT, buildWhatsAppShareUrl } from './ui/screens/waitingRoomScreen.js';
 import { mountJoinCodeScreen, JC_INTENT } from './ui/screens/joinCodeScreen.js';
@@ -105,7 +107,7 @@ import { mountStatsScreen, STATS_INTENT } from './ui/screens/statsScreen.js';
 import {
   mountAvatarPickerScreen, mountAvatarUnlockedScreen,
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
-  diffNewlyCompletedAchievements, findAvatar,
+  diffNewlyCompletedAchievements, progressBumps, AV_PROGRESS_BUMP, findAvatar, botAvatarForLevel,
 } from './ui/screens/avatarScreens.js';
 import {
   mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER,
@@ -478,7 +480,10 @@ async function boot() {
     const ic = globalThis.document?.getElementById?.('topbar-music-ic');
     if (!ic) return;
     const on = audioService.isEnabled();
-    if (ic.tagName === 'IMG') {
+    if (String(ic.tagName).toLowerCase() === 'svg') {
+      // Glass-skin line icon: off = dimmed + struck through (screens-glass.css).
+      ic.classList?.toggle('is-off', !on);
+    } else if (ic.tagName === 'IMG') {
       ic.src = on ? 'assets/navigation/sound_on.png' : 'assets/navigation/sound_off.png';
       ic.onerror = () => {
         const span = globalThis.document.createElement('span');
@@ -1167,7 +1172,8 @@ async function boot() {
       }
     }
 
-    bus.on(SETUP_INTENT.PLAY_CLICKED, ({ mode, p1Name, p2Name, difficulty, botTime = 40, showBothRacks = false }) => {
+    const BOT_LEVEL_LABEL = ['רמה קלה', 'רמה בינונית', 'רמה קשה'];
+    bus.on(SETUP_INTENT.PLAY_CLICKED, async ({ mode, p1Name, p2Name, difficulty, botTime = 40, showBothRacks = false }) => {
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: p1Name });
       const isBot = mode === 'bot';
       const startingSlot = Math.random() < 0.5 ? 0 : 1;
@@ -1183,6 +1189,12 @@ async function boot() {
           settings: { timelimit: botTime > 0, botTime, showBothRacks },
         });
       });
+      if (isBot) {
+        await playVsIntro({
+          me: { name: p1Name },
+          opp: { name: display2, avatar: botAvatarForLevel(difficulty), label: BOT_LEVEL_LABEL[difficulty] ?? '' },
+        });
+      }
       showLegacyScreen('scoin');
       bus.emit(COIN_OPEN, { startingSlot, p1Name, p2Name: display2 });
     });
@@ -1253,13 +1265,21 @@ async function boot() {
         if (!fullRoom) return;
         const opponentSlot = 1 - mySlot;
         const opponent = fullRoom.players?.[opponentSlot];
+        const oppAvatar = avatarEmoji(opponent?.avatar) || '👑';
         bus.emit(PS_INTENT.MATCHED, {
           name:   opponent?.displayName ?? 'שחקן',
-          avatar: avatarEmoji(opponent?.avatar) || '👑',
+          avatar: oppAvatar,
         });
-        // Brief pause so the player sees the matched opponent before game starts.
-        await new Promise(r => setTimeout(r, 1400));
+        // The pause before the board now plays the VS intro (same length, so
+        // matches don't get slower). The opponent's Elo is public
+        // (globalRatings); it fills in if it arrives while the intro is up.
         bus.emit(PS_INTENT.HIDE, {});
+        await playVsIntro({
+          me:  { name: displayName, avatar: avatarEmoji(profile.equippedAvatar) || '👑', rating },
+          opp: { name: opponent?.displayName ?? 'שחקן', avatar: oppAvatar },
+          oppUid: opponent?.uid ?? null,
+          db: fbDb,
+        });
         startOnlineGameViaSpine({ db: fbDb, room: fullRoom, mySlot });
       });
       globalThis.__spine.activeMatchmaking = activeMatchmaking;
@@ -1429,6 +1449,7 @@ async function boot() {
         bus.emit(WR_CLOSE, {});
         hideOnlineStartOverlays();
         await teardownPending();
+        await playVsIntro({ ...vsSidesFromRoom(room, mySlot), db: fbDb });
         startOnlineGameViaSpine({ db: fbDb, room, mySlot });
       };
       fbDb.ref(`users/${fbUser.uid}/activeRoom`).on('value', activeRoomHandler);
@@ -1538,6 +1559,7 @@ async function boot() {
       const mySlot = room.players?.[1]?.uid === fbUser.uid ? 1 : 0;
       // Hide the overlay if legacy didn't already
       hideOnlineStartOverlays();
+      await playVsIntro({ ...vsSidesFromRoom(room, mySlot), db: fbDb });
       startOnlineGameViaSpine({ db: fbDb, room, mySlot });
     });
 
@@ -1724,7 +1746,10 @@ async function boot() {
             });
           } catch (e) { console.warn('[spine] invite accepted push', e); }
           const room = await roomService.readRoom(fbDb, result.roomId);
-          if (room) startOnlineGameViaSpine({ db: fbDb, room, mySlot: 1 });
+          if (room) {
+            await playVsIntro({ ...vsSidesFromRoom(room, 1), db: fbDb });
+            startOnlineGameViaSpine({ db: fbDb, room, mySlot: 1 });
+          }
         }
       } catch (e) { console.error('[spine] acceptInvite', e); }
       bus.emit(II_CLOSE, {});
@@ -1784,6 +1809,12 @@ async function boot() {
     // Drives the green colour of the bottom-nav "My Games" badge (red when
     // it's not your turn). Local saved games are excluded — "turn" only
     // applies to online async sessions.
+    // Slim rows for the home "your turn in N games" strip (avatars + count).
+    function computeMyTurnSessions() {
+      return (Array.isArray(lastSessions) ? lastSessions : [])
+        .filter(s => s.isMyTurn && !s.isExpired && !s.isLocal)
+        .map(s => ({ roomId: s.roomId, opponentName: s.opponentName, opponentAvatar: s.opponentAvatar }));
+    }
     function computeMyTurnInGame() {
       return (Array.isArray(lastSessions) ? lastSessions : [])
         .some(s => s.isMyTurn && !s.isExpired);
@@ -1803,6 +1834,7 @@ async function boot() {
       } catch (e) { console.warn('[spine] async badge refresh', e); return; }
       bus.emit(MENU_REFRESH, {
         myTurnInGame: computeMyTurnInGame(),
+        myTurnSessions: computeMyTurnSessions(),
         myGamesCount: computeMyGamesCount(),
       });
       // Keep the open My-Games screen fresh too (its own watchers also do
@@ -1846,12 +1878,15 @@ async function boot() {
         bus.emit(MENU_REFRESH, {
           myGamesCount: computeMyGamesCount(),
           myTurnInGame: computeMyTurnInGame(),
+          myTurnSessions: computeMyTurnSessions(),
         });
       }
     });
 
     function bootAsyncSessionsFor(uid) {
       if (!uid || !activeFbDb) return;
+      // Seed the home leaderboard row's rank (target 'none' paints no table).
+      refreshChampions('none');
       try { activeSessionsWatch?.(); } catch {}
       stopRoomBadgeWatchers();
       activeSessionsWatch = asyncSessionService.watchAsyncSessions(activeFbDb, uid, (sessions) => {
@@ -1865,6 +1900,7 @@ async function boot() {
           // (This used to feed the bell badge via `hasOnlineUnread`, which lit
           // the bell over an empty notification inbox — see menuScreen.)
           myTurnInGame: sessions.some(s => s.isMyTurn),
+          myTurnSessions: computeMyTurnSessions(),
           hasSavedGame: sessions.length > 0,
           myGamesCount: computeMyGamesCount(),
         });
@@ -2033,6 +2069,8 @@ async function boot() {
       bus.emit(MENU_REFRESH, {
         myGamesCount: openCount,
         myTurnInGame: sessions.some(s => s.isMyTurn && !s.isExpired),
+        myTurnSessions: sessions.filter(s => s.isMyTurn && !s.isExpired && !s.isLocal)
+          .map(s => ({ roomId: s.roomId, opponentName: s.opponentName, opponentAvatar: s.opponentAvatar })),
       });
       // Keep the live room watchers in sync with the rows currently shown.
       watchMyGamesRooms(onlineRoomIds);
@@ -2947,6 +2985,13 @@ async function boot() {
             if (reward) profileService.bumpCoins(fbDb, uid, reward).catch(() => {});
             bus.emit(AV_UNLOCK_OPEN, { achievement: ach, coins: reward });
           }
+          // Unfinished achievements that moved (e.g. streak 3/5 -> 4/5): the
+          // end-game screen bumps them so progress feels earned.
+          const bumps = progressBumps(
+            { stats: prev.stats, ownedAvatars: prev.ownedAvatars },
+            { stats: profile.stats, ownedAvatars: profile.ownedAvatars },
+          );
+          if (bumps.length) bus.emit(AV_PROGRESS_BUMP, { bumps });
         }
         // Keep our name/avatar snapshot fresh in friends' lists when either
         // changes (equip, rename — including from another device/tab).
@@ -2955,7 +3000,7 @@ async function boot() {
         if (profile && !dailyRewardChecked && !activeFbCurrentUser?.isAnonymous) {
           dailyRewardChecked = true;
           profileService.claimDailyReward(fbDb, uid)
-            .then((r) => { if (r?.coinsAwarded > 0) bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak }); })
+            .then((r) => { if (r?.coinsAwarded > 0) bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak, days: profileService.dailyWeek(r.newStreak) }); })
             .catch((e) => console.warn('[spine] daily reward', e));
         }
         // Self-heal a corrupted (out-of-band-inflated) coin balance down to the
@@ -3400,7 +3445,10 @@ async function boot() {
             });
           } catch (e) { console.warn('[spine] notif inbox invite accepted push', e); }
           const room = await roomService.readRoom(fbDb, result.roomId);
-          if (room) startOnlineGameViaSpine({ db: fbDb, room, mySlot: 1 });
+          if (room) {
+            await playVsIntro({ ...vsSidesFromRoom(room, 1), db: fbDb });
+            startOnlineGameViaSpine({ db: fbDb, room, mySlot: 1 });
+          }
         }
       } catch (e) { console.error('[spine] notif inbox acceptInvite', e); }
     });
@@ -3565,20 +3613,9 @@ async function boot() {
       try {
         const myUid = activeFbCurrentUser?.uid ?? null;
         const { entries, myPosition, myEntry } = await ratingService.resolveLeaderboard(fbDb, { myUid });
-        // Pre-game rank is captured when the online session starts. Only the
-        // post-game table (target 'end') should see it.
-        const preRank = (target === 'end' || target === 'all')
-          ? (globalThis.__spine?.activeGame?.preGameMyPosition ?? null)
-          : null;
-        bus.emit(CHAMPS_RENDER, {
-          entries,
-          myUid,
-          myPosition,
-          myEntry,
-          target,
-          preRank,
-          eloFrom: (target === 'end' || target === 'all') ? (motion?.eloFrom ?? null) : null,
-        });
+        bus.emit(CHAMPS_RENDER, { entries, myUid, myPosition, myEntry, target });
+        // Home leaderboard row ("אתה במקום N") rides on the same fetch.
+        bus.emit(MENU_REFRESH, { myRank: myPosition });
       } catch (e) {
         console.warn('[spine] champions list', e);
         bus.emit(CHAMPS_ERROR, { target });
@@ -3588,6 +3625,8 @@ async function boot() {
     bus.on(CHAMPS_INTENT.OPEN, () => {
       refreshChampions('home');
     });
+    // Home leaderboard row → the standalone champions overlay.
+    bus.on(MENU_INTENT.OPEN_LEADERBOARD, () => bus.emit(CHAMPS_OPEN, {}));
 
     bus.on(EV.GAME_COMPLETED, async ({ winnerSlot, finalScores, abandonedBy } = {}) => {
       const ag = globalThis.__spine?.activeGame;
@@ -3821,6 +3860,11 @@ async function boot() {
         ctl.skipPending({ earnedPts: amount });
         return;
       }
+    }));
+    // The engine pending/auto-resolution path above stays immediate. Only the
+    // intro's presentation follows the square's shared ignition beat.
+    subs.push(bus.on(BOOST_RESULT_READY, (payload) => {
+      if (payload.presentation !== 'intro' || payload.slot === botSlot) return;
       bus.emit(BI_OPEN, payload);
     }));
 
@@ -4174,6 +4218,41 @@ async function boot() {
     };
   }
 
+  // VS intro before a match — random matchmaking, friend games and bot games.
+  // Resolves after VS_INTRO_MS (the board / coin toss follows). The opponent's
+  // Elo is public (globalRatings) and fills in if it arrives in time; bots show
+  // their level instead. The shared turn clock only starts after both players
+  // pass the coin toss, so the intro never eats into a turn.
+  async function playVsIntro({ me = {}, opp = {}, oppUid = null, db = null } = {}) {
+    const profile = globalThis.__spine?.currentProfile ?? {};
+    bus.emit(VS_INTRO_INTENT.SHOW, {
+      me: {
+        name: me.name ?? profile.displayName ?? 'שחקן',
+        // Same default as the game's player box (anonymous player for guests).
+        avatar: me.avatar ?? (avatarEmoji(profile.equippedAvatar ?? profileService.DEFAULT_AVATAR) || null),
+        rating: me.rating ?? profile.rating ?? null,
+      },
+      opp,
+    });
+    if (db && oppUid && opp.rating == null && !opp.label) {
+      ratingService.readRating(db, oppUid)
+        .then(r => { if (r != null) bus.emit(VS_INTRO_INTENT.RATING, { side: 'opp', rating: r }); })
+        .catch(() => {});
+    }
+    await new Promise(r => setTimeout(r, VS_INTRO_MS));
+    bus.emit(VS_INTRO_INTENT.HIDE, {});
+  }
+
+  function vsSidesFromRoom(room, mySlot) {
+    const mine = room?.players?.[mySlot] ?? {};
+    const theirs = room?.players?.[1 - mySlot] ?? {};
+    return {
+      me: { name: mine.displayName ?? undefined },
+      opp: { name: theirs.displayName ?? 'שחקן', avatar: avatarEmoji(theirs.avatar) || '👑' },
+      oppUid: theirs.uid ?? null,
+    };
+  }
+
   async function startOnlineGameViaSpine({ db, room, mySlot, skipCoin = false } = {}) {
     ensureDictionaryLoaded().catch((e) => console.warn('[spine] dictionary preload before online game failed:', e));
     for (const id of ['ov-create-room', 'ov-waiting-room', 'ov-join-code', 'ov-matchmaking', 'ov-partner-search']) {
@@ -4397,7 +4476,7 @@ async function boot() {
           tileBagSeed,
           players: {
             0: { uid: 'p0', displayName: p1Name, avatar: avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar ?? profileService.DEFAULT_AVATAR) || null },
-            1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? 'bot' : profileService.DEFAULT_AVATAR },
+            1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? botAvatarForLevel(difficulty) : profileService.DEFAULT_AVATAR },
           },
           startingSlot,
           settings,
@@ -4540,6 +4619,7 @@ async function boot() {
   bus.emit(MENU_REFRESH, {
     myGamesCount: computeMyGamesCount(),
     myTurnInGame: computeMyTurnInGame(),
+    myTurnSessions: computeMyTurnSessions(),
   });
   const setup = mountSetupScreen({
     bus,
@@ -4553,6 +4633,7 @@ async function boot() {
   const onlineLobby = mountOnlineLobbyScreen({ bus });
   const matchmakingOverlay = mountMatchmakingOverlayScreen({ bus });
   mountPartnerSearchOverlay({ bus });
+  mountVsIntroOverlay({ bus });
   const createRoomScreen   = mountCreateRoomScreen({ bus });
   const waitingRoomScreen  = mountWaitingRoomScreen({ bus });
   const joinCodeScreen     = mountJoinCodeScreen({ bus });

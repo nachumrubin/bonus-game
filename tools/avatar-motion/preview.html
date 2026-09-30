@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<base href="../../">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Avatar Motion Preview</title>
+<!-- Dev-only: review every pose-atlas clip on every avatar / achievement.
+     Serve the repo root (python -m http.server 8000) and open /tools/avatar-motion/preview.html -->
+<style>
+  :root { --bg:#0b1230; --card:#131d45; --line:rgba(0,210,255,.35); --txt:#e8f3ff; --dim:rgba(232,243,255,.55); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.4 system-ui,sans-serif; }
+  header { position:sticky; top:0; z-index:2; background:rgba(11,18,48,.94); backdrop-filter:blur(6px);
+           padding:12px 16px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  header h1 { font-size:16px; margin:0 0 0 12px; }
+  button { background:#1b2a63; color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:6px 10px; cursor:pointer; font:inherit; }
+  button:hover { background:#24368a; }
+  button.kind-object { border-color:rgba(255,200,64,.5); }
+  select { background:#1b2a63; color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:6px; font:inherit; }
+  .note { color:var(--dim); font-size:12px; width:100%; }
+  main { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; padding:16px; }
+  .cell { background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; text-align:center; cursor:pointer; }
+  .cell.is-sel { border-color:#00d2ff; box-shadow:0 0 0 2px rgba(0,210,255,.35); }
+  .stage { position:relative; width:120px; height:120px; margin:0 auto; }
+  .stage img { width:100%; height:100%; object-fit:contain; }
+  .cap { font-size:11px; color:var(--dim); margin-top:6px; word-break:break-all; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Avatar Motion Preview</h1>
+  <select id="filter"><option value="all">הכל</option><option value="bust">אווטארים</option><option value="object">הישגים</option></select>
+  <span id="clips"></span>
+  <button id="stop">⏹ עצור</button>
+  <div class="note">בחר תאים (לחיצה) ואז קליפ — בלי בחירה הקליפ ירוץ על כל התאים המתאימים. אם מערכת ההפעלה מבקשת תנועה מופחתת, שום דבר לא יזוז.</div>
+</header>
+<main id="grid"></main>
+<script type="module">
+  import { getAtlasManifest } from './src/ui/avatarMotion/atlasManifest.js';
+  import { playOnImg, stopOnImg } from './src/ui/avatarMotion/spritePlayer.js';
+  import { CLIPS, clipSuitsAtlas } from './src/ui/avatarMotion/poseClips.js';
+
+  const m = getAtlasManifest();
+  const atlases = await m.load();
+  const grid = document.getElementById('grid');
+  const cells = [];
+  for (const [src, atlas] of Object.entries(atlases)) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.kind = atlas.kind;
+    cell.innerHTML = `<div class="stage"><img class="av-img" src="${encodeURI(src)}" alt=""></div><div class="cap"></div>`;
+    cell.querySelector('.cap').textContent = src.replace('assets/', '');
+    cell.addEventListener('click', () => cell.classList.toggle('is-sel'));
+    grid.appendChild(cell);
+    cells.push({ cell, atlas, img: cell.querySelector('img') });
+  }
+  const visible = () => cells.filter(c => c.cell.style.display !== 'none');
+  const targets = () => { const sel = visible().filter(c => c.cell.classList.contains('is-sel')); return sel.length ? sel : visible(); };
+
+  const bar = document.getElementById('clips');
+  for (const [name, clip] of Object.entries(CLIPS)) {
+    const b = document.createElement('button');
+    const kind = clip.pose.some(k => k[1] === 'sweep') ? 'object' : 'bust';
+    b.className = `kind-${kind}`;
+    b.textContent = name + (clip.loop ? ' ⟳' : clip.hold ? ' ⏸' : '');
+    b.onclick = () => targets().forEach(c => { if (clipSuitsAtlas(clip, c.atlas)) playOnImg(c.img, name); });
+    bar.appendChild(b);
+  }
+  document.getElementById('stop').onclick = () => cells.forEach(c => stopOnImg(c.img));
+  document.getElementById('filter').onchange = (e) => {
+    cells.forEach(c => { c.cell.style.display = (e.target.value === 'all' || c.atlas.kind === e.target.value) ? '' : 'none'; });
+  };
+</script>
+</body>
+</html>

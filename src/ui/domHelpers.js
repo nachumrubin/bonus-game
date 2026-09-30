@@ -25,14 +25,17 @@ export function setClass(el, className, on = true) {
   el.classList?.[on ? 'add' : 'remove'](className);
 }
 
-export function flashAnimation(el, className, removeAfterMs = 600) {
-  if (!el) return;
+export function flashAnimation(el, className, removeAfterMs = 600, onComplete = null) {
+  if (!el) { onComplete?.(); return; }
   el.classList?.remove(className);
   // Force reflow so the animation re-runs
   void el.offsetWidth;
   el.classList?.add(className);
   if (removeAfterMs > 0) {
-    setTimeout(() => el.classList?.remove(className), removeAfterMs);
+    setTimeout(() => {
+      el.classList?.remove(className);
+      onComplete?.();
+    }, removeAfterMs);
   }
 }
 

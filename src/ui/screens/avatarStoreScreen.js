@@ -14,6 +14,7 @@ import {
   STORE_CATEGORY_ORDER, CATEGORY_LABELS, STORE_PRICES,
   storeAvatarsByCategory, isOwned, priceFor, storeAvatarSrc, COIN_ICON_HTML,
 } from './avatarStore.js';
+import { playOnImg, preloadFor } from '../avatarMotion/spritePlayer.js';
 
 export const STORE_INTENT = Object.freeze({
   OPEN:             'store/open',
@@ -41,6 +42,18 @@ function escapeHtml(value) {
   }[ch]));
 }
 
+// 7-day strip under the daily coins ("got" days dimmed, today lit). Day labels
+// show the streak number so the row reads "יום 4" even after the first week.
+export function dailyDaysHtml(days) {
+  if (!Array.isArray(days) || !days.length) return '';
+  return days.map((d) => {
+    const cls = d.state === 'got' ? 'got' : d.state === 'today' ? 'today' : '';
+    return `<div class="daily-day${cls ? ' ' + cls : ''}" data-day="${Number(d.n) || 0}">`
+      + `<span class="daily-day-n">יום ${Number(d.n) || 0}</span>${COIN_ICON_HTML}`
+      + `<span class="daily-day-c">${Number(d.coins) || 0}</span></div>`;
+  }).join('');
+}
+
 export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountAvatarStoreScreen: bus required');
 
@@ -60,6 +73,7 @@ export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {})
   const dailyOv     = $('#ov-daily-reward', root);
   const dailyCoins  = $('#daily-reward-coins', root);
   const dailyStreak = $('#daily-reward-streak', root);
+  const dailyDays   = $('#daily-reward-days', root);
   const dailyOk     = $('#daily-reward-ok', root);
 
   const cleanups = [];
@@ -122,7 +136,17 @@ export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {})
     for (const img of grid.querySelectorAll?.('.store-tile-img') ?? []) {
       img.onerror = () => { img.src = FALLBACK_AVATAR_SRC; img.onerror = null; };
     }
+
+    // A newly equipped avatar rises out of its card with a slight turn and a
+    // cyan edge glow (pose clip 'select'); the first paint stays still.
+    const justEquipped = prevEquipped !== undefined && state.equippedAvatar && state.equippedAvatar !== prevEquipped;
+    prevEquipped = state.equippedAvatar;
+    if (justEquipped) {
+      const img = grid.querySelector?.(`button.store-tile[data-store-id="${state.equippedAvatar}"] .store-tile-img`);
+      if (img) playOnImg(img, 'select');
+    }
   }
+  let prevEquipped;
 
   // msg may contain the inline coin <img>, so write HTML (messages are static
   // template strings, no user input).
@@ -135,7 +159,12 @@ export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {})
 
   function openConfirm(id) {
     pendingId = id;
-    if (confirmImg) confirmImg.innerHTML = `<img src="${storeAvatarSrc(id)}" alt="" class="store-confirm-img">`;
+    if (confirmImg) {
+      confirmImg.innerHTML = `<img src="${storeAvatarSrc(id)}" alt="" class="store-confirm-img">`;
+      const img = confirmImg.querySelector?.('img');
+      // Show off the avatar being bought (loads its atlas on demand).
+      if (img) preloadFor(storeAvatarSrc(id)).then(ok => { if (ok && pendingId === id) playOnImg(img, 'select'); }).catch(() => {});
+    }
     if (confirmPrice) confirmPrice.innerHTML = `${priceFor(id)} ${COIN_ICON_HTML}`;
     confirmOv?.classList?.remove('hidden');
   }
@@ -173,9 +202,10 @@ export function mountAvatarStoreScreen({ root = globalThis.document, bus } = {})
   }));
 
   // Daily-reward overlay.
-  cleanups.push(bus.on(DAILY_REWARD_SHOW, ({ coins, streak } = {}) => {
+  cleanups.push(bus.on(DAILY_REWARD_SHOW, ({ coins, streak, days } = {}) => {
     if (dailyCoins)  dailyCoins.innerHTML = `+${coins ?? 0} ${COIN_ICON_HTML}`;
     if (dailyStreak) setText(dailyStreak, streak > 1 ? `רצף של ${streak} ימים!` : 'ברוך הבא!');
+    if (dailyDays) dailyDays.innerHTML = dailyDaysHtml(days);
     dailyOv?.classList?.remove('hidden');
   }));
   if (dailyOk) cleanups.push(on(dailyOk, 'click', () => {

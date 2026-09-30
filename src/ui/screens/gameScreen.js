@@ -25,13 +25,18 @@
 // the existing CSS keyframes and layout rules apply unchanged.
 
 import { $, on, setText, setClass, bonusOverlayOpen, flashAnimation } from '../domHelpers.js';
-import { setAvatarEl } from './avatarScreens.js';
+import { setAvatarEl, isBotAvatar, BOT_AVATAR_BY_LEVEL } from './avatarScreens.js';
+import { playOnHost, canPlayNowOnHost, preloadFor } from '../avatarMotion/spritePlayer.js';
+import { tierFromPath } from '../avatarMotion/poseClips.js';
+import { wireGameMenu } from './gameMenu.js';
+import { playBoostElectric } from '../boostElectricFx.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
 import { LOCK_POINT_COST } from '../../game/core/turnManager.js';
 import { BDEFS } from '../../game/boosts/data.js';
 import { EV } from '../../events/eventTypes.js';
+import { BOOST_IGNITION_DURATION_MS, BOOST_RESULT_READY } from '../boostPresentation.js';
 import {
   WORD_MERGE_STAGGER_MS as SCORE_MERGE_WORD_STAGGER_MS,
   WORD_MERGE_FLIGHT_MS  as SCORE_MERGE_WORD_FLIGHT_MS,
@@ -50,11 +55,14 @@ export const GAME_SCREEN_INTENT = Object.freeze({
 });
 
 const COMPUTER_NAME_HE = '\u05D4\u05DE\u05D7\u05E9\u05D1';
+const RARITY_TAG = Object.freeze({ rare: 'נדיר', epic: 'אפי', legendary: 'אגדי' });
+const BOT_LEVEL_TAG = Object.freeze(['רמה קלה', 'רמה בינונית', 'רמה קשה']);
 
 // How long the lock's \u221210 chip takes to fly from the board into the score
 // panel. The score count-down is held for this long so the number and the
 // chip land together.
 const LOCK_COST_FLIGHT_MS = 520;
+let nextScorePresentationId = 0;
 
 // Map from (r,c) to the cell DOM id legacy uses.
 function cellIdFor(r, c) {
@@ -74,6 +82,28 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
+  const boostSquareCues = new Map();
+  const boostSquareKey = b => `${b.slot}:${b.bonusIdx}`;
+  const revealedBoostSquares = new Set((controller.view.activeBoosts ?? []).map(boostSquareKey));
+  function clearBoostSquareCues({ slot } = {}) {
+    for (const [idx, cue] of boostSquareCues) {
+      if (slot != null && cue.slot !== slot) continue;
+      cue.clear();
+      boostSquareCues.delete(idx);
+    }
+  }
+  if (bus) {
+    cleanups.push(bus.on(BOOST_RESULT_READY, payload => {
+      revealedBoostSquares.add(boostSquareKey(payload));
+      renderMultiplierBanner(controller.view);
+    }));
+    cleanups.push(bus.on('bonus/aborted', clearBoostSquareCues));
+    cleanups.push(bus.on('bonus/aborted', ({ slot } = {}) => {
+      for (const key of revealedBoostSquares) if (slot == null || key.startsWith(`${slot}:`)) revealedBoostSquares.delete(key);
+    }));
+    cleanups.push(bus.on(EV.GAME_COMPLETED, () => clearBoostSquareCues()));
+    cleanups.push(bus.on(EV.GAME_STARTED, () => clearBoostSquareCues()));
+  }
   // uid → current avatar (null = looked up, none found). Populated lazily by
   // requestLiveAvatar; a cached null stops us re-fetching a missing profile.
   const liveAvatarByUid = new Map();
@@ -126,6 +156,17 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // currently-shown integer plus any in-flight rAF/timeout so we can cancel
   // overlapping animations when MOVE_CONFIRMED fires in quick succession.
   const scoreTweens = new Map();
+  const scorePresentationCleanups = new Set();
+  function beginScorePresentation() {
+    const id = ++nextScorePresentationId;
+    const finish = () => {
+      if (!scorePresentationCleanups.delete(finish)) return;
+      bus?.emit(EV.SCORE_PRESENTATION_FINISHED, { id, cancelled: disposed });
+    };
+    scorePresentationCleanups.add(finish);
+    bus?.emit(EV.SCORE_PRESENTATION_STARTED, { id });
+    return finish;
+  }
   const win = root?.defaultView ?? globalThis;
   const rafFn   = win?.requestAnimationFrame?.bind(win) ?? ((cb) => setTimeout(() => cb(Date.now()), 16));
   const cafFn   = win?.cancelAnimationFrame?.bind(win)  ?? clearTimeout;
@@ -144,7 +185,6 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   // the cascade of follow-up events (SCORE_CHANGED, LOCKS_CHANGED,
   // TURN_CHANGED) that fire right after MOVE_CONFIRMED. Key is `r,c`,
   // value is the wall-clock timestamp at which the glow should end.
-  const glowingTiles = new Map();
 
   // The `.last-move` green tile-fill highlights the tiles the previous
   // player just placed. The highlight persists until the next move is
@@ -175,19 +215,6 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   }
   function lastMoveHighlightActive() {
     return lastMoveActive;
-  }
-  function registerWordGlow(payload, durationMs) {
-    const coords = uniqueTileCoords(payload?.wordTiles, payload?.placed);
-    const expireAt = Date.now() + durationMs;
-    for (const { r, c } of coords) {
-      glowingTiles.set(`${r},${c}`, expireAt);
-    }
-    setTimeout(() => {
-      for (const { r, c } of coords) {
-        const key = `${r},${c}`;
-        if (glowingTiles.get(key) === expireAt) glowingTiles.delete(key);
-      }
-    }, durationMs + 10);
   }
 
   // Detect any bonus overlay (mini-game intro, mini-game UI, the bonus
@@ -241,6 +268,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       return;
     }
     if (state.target === targetNum) return;
+    // A tween can wait behind an award, or span delayed browser frames. Keep
+    // its presentation alive until the final value is painted, not merely
+    // until its nominal duration has elapsed. Retargeting reuses this handle.
+    state.finishPresentation ??= beginScorePresentation();
     // Hold the count-up while any bonus overlay is open — they'll be
     // flushed by the poller (or the score-fly arrival on a non-bonus move).
     if (bonusOverlayPresent()) {
@@ -274,6 +305,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           state.current = state.target;
           el.textContent = String(state.current);
           state.raf = 0;
+          const finish = state.finishPresentation;
+          state.finishPresentation = null;
+          finish?.();
         }
       };
       state.raf = rafFn(tick);
@@ -308,6 +342,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   btnDirV?.removeAttribute('onclick');
   // Ensure btn-play / btn-recall (data-gm-html) show the right gender on mount.
   applyGenderToRoot(root, getGender());
+  cleanups.push(wireGameMenu(root));
   cleanups.push(on(btnPlay, 'click', (e) => { e.preventDefault?.(); controller.confirmMove(); }));
   cleanups.push(on(btnRecall, 'click', (e) => {
     e.preventDefault?.();
@@ -776,20 +811,18 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const multiplier = Number(v?.lastMove?.multiplier) || 1;
     // A lock committed this render flies a −10 chip into the score panel; hold
     // the count-down until it lands so the number and the chip agree.
-    const delay = lockCostFlightPending
-      ? Math.max(countUpDelayOf(), LOCK_COST_FLIGHT_MS)
-      : countUpDelayOf();
+    const scoreDelay = countUpStartDelayMs(wordCount, bonusExtra, multiplier);
+    const countUpDelay = lockCostFlightPending
+      ? Math.max(scoreDelay, LOCK_COST_FLIGHT_MS)
+      : scoreDelay;
     lockCostFlightPending = false;
-    function countUpDelayOf() {
-      return scoreAnimationLandingMs(wordCount, bonusExtra, multiplier);
-    }
-    const countUpDelay = delay;
     animateScore($('#sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#sv2', root), v.scores[1] ?? 0, countUpDelay);
     animateScore($('#is-sv1', root), v.scores[0] ?? 0, countUpDelay);
     animateScore($('#is-sv2', root), v.scores[1] ?? 0, countUpDelay);
     renderPendingLockCost(v);
     renderPlayerIdentity(v);
+    renderLeadRail(v);
     // Desktop side-panel boxes use `.scbox.act`; the mobile info-strip cards
     // use `.is-pcard.act-cell` (different class name, see styles.css). When
     // a scoring sequence is in flight we keep the previous player's glow lit
@@ -799,6 +832,17 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const glowSlot = displayedTurnSlot ?? v.currentTurnSlot;
     applyActiveSlotGlow(glowSlot);
     maybeScheduleActiveSlotSwap(v, wordCount);
+  }
+
+  // Lead rail under the scoreboard: each player's share of the combined score
+  // (50/50 until someone scores). Width transitions are CSS-driven.
+  function renderLeadRail(v) {
+    const [a, b] = [Math.max(0, v.scores?.[0] ?? 0), Math.max(0, v.scores?.[1] ?? 0)];
+    const share = a + b > 0 ? Math.round((a / (a + b)) * 1000) / 10 : 50;
+    const r1 = $('#is-rail .is-rail-1', root);
+    const r2 = $('#is-rail .is-rail-2', root);
+    if (r1?.style) r1.style.width = `${share}%`;
+    if (r2?.style) r2.style.width = `${Math.round((100 - share) * 10) / 10}%`;
   }
 
   // Preview of the lock charge, shown on the owner's score card for as long as
@@ -876,9 +920,32 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // 'bot' is a sentinel avatar, not a real one — only honour it for the
     // actual computer opponent.
     const rawP1Avatar = avatarFor(p1);
-    const p1Avatar = rawP1Avatar === 'bot' && p1?.displayName !== COMPUTER_NAME_HE ? null : rawP1Avatar;
+    const p1Avatar = isBotAvatar(rawP1Avatar) && p1?.displayName !== COMPUTER_NAME_HE ? null : rawP1Avatar;
     setAvatarEl($('#is-av1', root), avatarFor(p0) ?? null, { fallback: '👑' });
     setAvatarEl($('#is-av2', root), p1Avatar ?? null, { fallback: '👤' });
+    // Warm the pose atlases so event cues (your turn, boost) can animate the
+    // avatar in the same frame they fire. No-op once cached.
+    for (const id of ['#is-av1', '#is-av2']) {
+      const src = $(id, root)?.querySelector?.('img')?.getAttribute?.('src');
+      if (src) preloadFor(src).catch(() => {});
+    }
+    renderIdentityTags([p0, p1], [avatarFor(p0), p1Avatar]);
+  }
+
+  // Scoreboard tags, drawn by CSS from data attributes so they survive the
+  // avatar/name hosts being rewritten: a rarity tag on rare+ avatars and the
+  // bot's level under the computer's name.
+  function renderIdentityTags(players, avatars) {
+    for (const slot of [0, 1]) {
+      const av = $(`#is-av${slot + 1}`, root);
+      const src = av?.querySelector?.('img')?.getAttribute?.('src') ?? '';
+      const rar = RARITY_TAG[tierFromPath(src)] ?? '';
+      if (rar) av?.setAttribute?.('data-rar', rar); else av?.removeAttribute?.('data-rar');
+      const name = $(`#is-sn${slot + 1}`, root);
+      const level = BOT_AVATAR_BY_LEVEL.indexOf(avatars[slot]);
+      const sub = level >= 0 && players[slot]?.displayName === COMPUTER_NAME_HE ? BOT_LEVEL_TAG[level] : '';
+      if (sub) name?.setAttribute?.('data-sub', sub); else name?.removeAttribute?.('data-sub');
+    }
   }
 
   // Prefer the player's CURRENT avatar over the one stored on the room.
@@ -1031,6 +1098,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const slotMultipliers = new Map();
     for (const b of v.activeBoosts ?? []) {
       if (b?.boostId !== 'multiply_next_turns') continue;
+      if (Number.isInteger(b.bonusIdx) && v._pendingBoostAwardSlot === b.slot
+        && !revealedBoostSquares.has(boostSquareKey(b))) continue;
       if (b.slot !== 0 && b.slot !== 1) continue;
       const mult = Number(b.payload?.multiplier ?? 2);
       const existing = slotMultipliers.get(b.slot);
@@ -1084,6 +1153,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // Render committed tiles + tentative placements. Empty cells get cleared.
     // Tile HTML mirrors legacy renderBoard() so existing CSS applies.
     noteLastMoveForHighlight(v);
+    // Last-move tiles take the mover's scoreboard colour (cyan / gold).
+    setClass($('#game-grid', root), 'lm-s1', v?.lastMove?.slot === 1);
     const lastMoveCoords = lastMoveHighlightActive() ? lastMoveCoordSet(v) : new Set();
     for (let r = 0; r < 10; r++) {
       for (let c = 0; c < 10; c++) {
@@ -1137,11 +1208,6 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         }
         // Re-apply an in-flight scoring-word-glow that would otherwise be
         // wiped by the innerHTML rewrite above.
-        const glowExpire = glowingTiles.get(`${r},${c}`);
-        if (glowExpire && glowExpire > Date.now()) {
-          const btile = cell.querySelector?.('.btile');
-          if (btile) btile.classList?.add('scoring-word-glow');
-        }
       }
     }
     // Perimeter bonus squares accept tile placements too — render those
@@ -1411,13 +1477,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           if (tile) flashClass(tile, 'tile-place-in', 260);
         }
       },
-      validFlash:         (payload) => {
-        // Under reduced motion the animated gold flash (a keyframe) is killed by
-        // the reduced-motion CSS blanket, so paint a brief STATIC brightness lift
-        // instead — the "accepted" information survives without movement (§15).
-        const cls = (payload?.reducedMotion || prefersReducedMotion()) ? 'rm-accept' : 'is-valid';
-        flashWordTiles(root, payload, cls, 420);
-      },
+      acceptedWordSweep:  (payload) => playAcceptedWordSweep(root, payload, prefersReducedMotion()),
       shakeWord:          ({ placed, invalidWordTiles } = {}) => {
         // Tile-level shake: flash `is-invalid` on the .btile inside each
         // affected cell. Prefer the full illegal-word tiles when the engine
@@ -1470,19 +1530,6 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           }
         }, 500);
       },
-      scoringWordGlow:    (payload) => {
-        const { delayMs = 0, durationMs = 420 } = payload ?? {};
-        const fire = () => {
-          // Register in `glowingTiles` so the next renderBoard re-applies
-          // .scoring-word-glow to the regenerated .btile (cell innerHTML is
-          // rewritten on every _onChange, which would otherwise wipe the
-          // glow on word 0 the moment SCORE_CHANGED / LOCKS_CHANGED /
-          // TURN_CHANGED fire right after MOVE_CONFIRMED).
-          registerWordGlow(payload, durationMs);
-          flashWordTiles(root, payload, 'scoring-word-glow', durationMs);
-        };
-        if (delayMs > 0) setTimeout(fire, delayMs); else fire();
-      },
       scoringPointsFloat: (payload) => floatScore(root, payload),
       scoreFlyToPanel:    (payload) => flyScoreToPanel(root, payload),
       scorePop:           ({ slot, delayMs = 0 }) => {
@@ -1492,7 +1539,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         };
         if (delayMs > 0) setTimeout(fire, delayMs); else fire();
       },
-      scoreMergeSequence: (payload) => playScoreMergeSequence(root, payload),
+      scoreMergeSequence: (payload) => {
+        const onComplete = beginScorePresentation();
+        try { playScoreMergeSequence(root, { ...payload, onComplete }); }
+        catch (error) { onComplete(); throw error; }
+      },
       bingoLabel:         (payload) => floatBonusLabel(root, payload, 'BINGO +50', 'bingo-label'),
       // multiplierLabel renderer removed — the directive no longer fires (it
       // rendered a misleading bare "×"; see animationController + spec §1.5).
@@ -1502,8 +1553,23 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       // stale caller silently revive the legacy "+BONUS" float.
       bonusAwardOverlay:  (payload) => showBonusAwardOverlay(root, bus, controller, payload),
       turnEffectBanner:   (payload) => showTurnEffectBanner(root, payload),
-      bonusActivate:      ({ bonusIdx }) => flashBonusSquare(root, bonusIdx),
-      boostPulse:         ({ slot }) => flashBoostBadges(root, slot),
+      bonusActivate:      ({ bonusIdx, slot, reducedMotion = false }) => {
+        boostSquareCues.get(bonusIdx)?.clear();
+        boostSquareCues.set(bonusIdx, { slot, clear: flashBonusSquare(root, bonusIdx, { electric: !reducedMotion }) });
+      },
+      yourTurnCue:        ({ slot }) => emphasizeYourTurn(root, slot),
+      // Event-driven avatar reactions (pose atlas); silently skipped when the
+      // avatar can't animate — they are secondary to the board/score cues.
+      avatarBoostReact:   ({ slot }) => {
+        const host = lookup(root, `is-av${slot + 1}`);
+        if (canPlayNowOnHost(host, 'boostReact')) playOnHost(host, 'boostReact');
+      },
+      avatarGoodMove:     ({ slot, delayMs = 0 }) => {
+        setTimeout(() => {
+          const host = lookup(root, `is-av${slot + 1}`);
+          if (canPlayNowOnHost(host, 'goodMove')) playOnHost(host, 'goodMove');
+        }, delayMs);
+      },
       playerGlowPulse: () => {
         // The active-slot glow is driven by `renderScores` against
         // `displayedTurnSlot` (which holds the previous slot until the
@@ -1530,12 +1596,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   function unmount() {
     // Stops an in-flight avatar lookup from painting a torn-down screen.
     disposed = true;
+    clearBoostSquareCues();
     clearJokerSubs();
     for (const state of scoreTweens.values()) {
       if (state.raf)   try { cafFn(state.raf); } catch { /* swallow */ }
       if (state.timer) try { clearTimeout(state.timer); } catch { /* swallow */ }
     }
     scoreTweens.clear();
+    for (const finish of [...scorePresentationCleanups]) finish();
     // Cancel the screen-lifetime timers so they can't fire a stale render (or
     // re-render the rack) against a torn-down screen after unmount.
     if (countUpPollHandle) { try { clearInterval(countUpPollHandle); } catch { /* swallow */ } countUpPollHandle = null; }
@@ -1789,6 +1857,68 @@ function flashWordTiles(root, { wordTiles, placed } = {}, className, durationMs)
   }
 }
 
+function playAcceptedWordSweep(root, payload = {}, reducedMotion = false) {
+  const coords = uniqueTileCoords(payload.wordTiles, payload.placed);
+  if (!coords.length) return;
+  if (reducedMotion || payload.reducedMotion) {
+    flashWordTiles(root, payload, 'rm-accept', 420);
+    return;
+  }
+  const plan = acceptedWordSweepPlan(payload.wordTiles, payload.placed);
+  plan.forEach(({ r, c, delayMs, axis, secondary }) => {
+    const cell = lookup(root, `c${r}_${c}`);
+    if (!cell) return;
+    // Animate the cell, not its .btile child. .cell has overflow:hidden, which
+    // clipped the child's lift, scale, and outer glow almost completely at
+    // real board size. Moving the effect one level up keeps the gold plate and
+    // travelling front above the tile while allowing the cell itself to lift.
+    cell.classList?.remove('accepted-word-sweep--horizontal', 'accepted-word-sweep--vertical', 'accepted-word-sweep--secondary');
+    cell.classList?.add(`accepted-word-sweep--${axis === 'V' ? 'vertical' : 'horizontal'}`);
+    if (secondary) cell.classList?.add('accepted-word-sweep--secondary');
+    cell.style?.setProperty?.('--accept-delay', `${delayMs}ms`);
+    flashClass(cell, 'accepted-word-sweep', delayMs + 460);
+  });
+}
+
+// The scoring engine puts the main word first (getAllWords adds getMainWord
+// before cross-words). Keep that representation authoritative: the primary
+// word gets the strong front, while cross-words overlap with a lighter front.
+// #game-grid inherits RTL direction, so column 0 is physically at the right
+// edge and increasing columns move left. Horizontal Hebrew therefore travels
+// in ascending column order; vertical words travel in ascending row order.
+export function acceptedWordSweepPlan(wordTiles, placed = []) {
+  const words = Array.isArray(wordTiles)
+    ? wordTiles.filter(word => Array.isArray(word) && word.length)
+    : [];
+  if (!words.length && placed?.length) words.push(placed);
+  if (!words.length) return [];
+
+  const primaryKeys = new Set();
+  const plan = [];
+  words.forEach((word, wordIndex) => {
+    const unique = uniqueTileCoords([word], []);
+    if (!unique.length) return;
+    const horizontal = unique.length < 2 || unique.every(t => t.r === unique[0].r);
+    unique.sort(horizontal ? ((a, b) => a.c - b.c) : ((a, b) => a.r - b.r));
+
+    // 110ms is the normal cadence. Only words longer than four tiles compress,
+    // keeping the complete 420ms-per-tile sweep within a 750ms budget.
+    const stepMs = unique.length > 1 ? Math.min(110, 330 / (unique.length - 1)) : 0;
+    unique.forEach(({ r, c }, index) => {
+      const key = `${r},${c}`;
+      if (wordIndex === 0) primaryKeys.add(key);
+      else if (primaryKeys.has(key)) return;
+      plan.push({
+        r, c,
+        delayMs: Math.round(index * stepMs),
+        axis: horizontal ? 'H' : 'V',
+        secondary: wordIndex > 0,
+      });
+    });
+  });
+  return plan;
+}
+
 function uniqueTileCoords(wordTiles, placed) {
   const out = [];
   const seen = new Set();
@@ -1890,14 +2020,14 @@ function multiplierBannerRect(root, slot) {
 // final beat as the old sequence, but now visibly the *total* of all the
 // per-word + bonus contributions instead of a separate value that
 // appears out of nowhere.
-function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseScore, bonusExtra, multiplier } = {}) {
+function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseScore, bonusExtra, multiplier, onComplete = () => {} } = {}) {
   const total = Number(finalScore) || 0;
   const extra = Number(bonusExtra) || 0;
   const base  = baseScore != null ? Number(baseScore) : total - extra;
   const mult  = Number(multiplier) || 1;
-  if (total <= 0 && extra <= 0) return;
+  if (total <= 0 && extra <= 0) { onComplete(); return; }
   const doc = ownerDocumentOf(root);
-  if (!doc?.createElement) return;
+  if (!doc?.createElement) { onComplete(); return; }
 
   // 1. Sum chip — planted at the first word's anchor (slightly above the
   // tile centre so the per-word chips can fly *up* to merge).
@@ -2064,7 +2194,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
   // 4. Hold + fly sum chip into the player's score panel.
   setTimeout(() => {
     const targetEl = scoreTargetForSlot(root, slot);
-    if (!targetEl) { sumChip.remove?.(); return; }
+    if (!targetEl) { sumChip.remove?.(); onComplete(); return; }
     const a = centerOf(sumChip);
     const b = centerOf(targetEl);
     sumChip.style.transition = `transform ${SCORE_MERGE_SUM_FLIGHT_MS}ms cubic-bezier(.22,1,.36,1), opacity ${SCORE_MERGE_SUM_FLIGHT_MS}ms ease-out`;
@@ -2078,7 +2208,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
       // One clear landing response — the panel pulse — plus the count-up on the
       // number. Phase 3B removed the radial hit-burst and the separate score-pop
       // that used to fire on this same frame (three emphases for one moment).
-      flashClass(targetEl, 'score-panel-arrive', 360);
+      flashClass(targetEl, 'score-panel-arrive', 360, onComplete);
       sumChip.remove?.();
     }, SCORE_MERGE_SUM_FLIGHT_MS);
   }, mergeEnd + SCORE_MERGE_HOLD_AFTER_MS);
@@ -2346,21 +2476,39 @@ function requestAnimationFrameSafe(fn) {
   }
 }
 
-function flashBonusSquare(root, bonusIdx) {
+function flashBonusSquare(root, bonusIdx, { electric = true } = {}) {
   let idx = Number.isInteger(bonusIdx) ? bonusIdx : null;
-  if (idx == null) return;
+  if (idx == null) return () => {};
   const el = lookup(root, `bsq-${idx}`);
-  flashClass(el, 'bonus-activate', 460);
+  if (!el) return () => {};
+  el.style?.setProperty?.('--boost-ignition-duration', `${BOOST_IGNITION_DURATION_MS}ms`);
+  flashClass(el, 'bonus-activate', 0);
+  // Live electricity over the power rim (skipped under reduced motion, where
+  // the static rim alone carries the cue).
+  const stopBolts = electric ? playBoostElectric(el, { durationMs: BOOST_IGNITION_DURATION_MS }) : () => {};
+  const clear = () => {
+    stopBolts();
+    el.classList?.remove('bonus-activate');
+    el.style?.removeProperty?.('--boost-ignition-duration');
+  };
+  const handle = setTimeout(clear, BOOST_IGNITION_DURATION_MS);
+  return () => { clearTimeout(handle); clear(); };
 }
 
-function flashBoostBadges(root, slot) {
-  const panel = lookup(root, `scn${slot + 1}`) ?? lookup(root, `sb${slot + 1}`);
-  const badges = panel?.querySelectorAll?.('.spine-boost-badges [data-badge]');
-  if (badges?.length) {
-    badges.forEach((el) => flashClass(el, 'boost-pulse', 2200));
-    return;
+// One dominant "your turn" moment (BOOST_MOTION_SPEC rule 6): when the avatar
+// can play its 3D lean, that IS the cue and the card only gets a steady outline;
+// otherwise (reduced motion, no atlas yet) the card's pulse + halo run as before.
+function emphasizeYourTurn(root, slot) {
+  const avHost = lookup(root, `is-av${slot + 1}`);
+  const avatarLeads = canPlayNowOnHost(avHost, 'yourTurn');
+  if (avatarLeads) playOnHost(avHost, 'yourTurn');
+  for (const id of [`sb${slot + 1}`, `is-sb${slot + 1}`]) {
+    const card = lookup(root, id);
+    // `.your-turn-cue` stays the card's contract (e2e timing specs read it);
+    // the modifier strips its pulse + halo when the avatar is carrying the cue.
+    card?.classList?.toggle?.('your-turn-cue--avatar', avatarLeads);
+    flashClass(card, 'your-turn-cue', 600, () => card?.classList?.remove?.('your-turn-cue--avatar'));
   }
-  flashClass(panel, 'boost-pulse', 2200);
 }
 
 function lookup(root, id) {

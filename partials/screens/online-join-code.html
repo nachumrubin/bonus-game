@@ -1,22 +1,22 @@
-<!-- ONLINE: JOIN BY CODE -->
+<!-- ONLINE: JOIN BY CODE (glass bottom sheet — tools/screens-mockup "#ov-join-code") -->
 <div id="ov-join-code" class="ov hidden">
-  <div class="ovc mf-ovc">
-    <div class="mf-icon-hero">🔑</div>
-    <div class="mf-body">
-      <div class="mf-title">הצטרף למשחק</div>
-      <div class="mf-desc">הזן את הקוד שקיבלת</div>
-
-      <div id="jc-name-row" class="mf-name-row">
-        <label class="mf-input-lbl">השם שלך</label>
-        <input class="ri" id="jc-name" type="text" value="שחקן 2" maxlength="10">
-      </div>
-
-      <input class="mf-code-input" id="jc-code" type="tel" placeholder="000000" maxlength="6"
-        oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
-      <div id="jc-error" class="mf-code-error"></div>
-
-      <button class="mf-cta" onclick="jcConfirm()">→ הצטרף</button>
-      <button class="mf-cancel" onclick="ovClose('ov-join-code')">ביטול</button>
+  <div class="ovc mf-ovc g-sheet">
+    <div class="g-sh">
+      <span class="g-sock"><svg class="gi"><use href="#gi-key"/></svg></span>
+      <h3>הצטרף למשחק</h3>
+      <button class="g-chip ic" onclick="ovClose('ov-join-code')" aria-label="ביטול"><svg class="gi"><use href="#gi-x"/></svg></button>
     </div>
+    <div class="g-dim">הזן את הקוד בן 6 הספרות שקיבלת</div>
+
+    <div id="jc-name-row" class="mf-name-row">
+      <label class="g-flbl" for="jc-name">השם שלך</label>
+      <div class="g-fld"><svg class="gi"><use href="#gi-user"/></svg><input id="jc-name" type="text" value="שחקן 2" maxlength="10"></div>
+    </div>
+
+    <input class="g-code-input" id="jc-code" type="tel" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="off"
+      oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
+    <div id="jc-error" class="mf-code-error"></div>
+
+    <button class="g-btn go" onclick="jcConfirm()">הצטרף ←</button>
   </div>
 </div>

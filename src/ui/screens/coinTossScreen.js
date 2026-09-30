@@ -58,6 +58,14 @@ export function mountCoinTossScreen({ root = globalThis.document, bus } = {}) {
     if (enterBtn) enterBtn.disabled = true;
 
     const startingName = startingSlot === 0 ? p1Name : p2Name;
+    // Glass skin: the two player chips under the coin (names now, starter
+    // highlighted after the reveal).
+    setText($('#coin-p1-name', screen), p1Name);
+    setText($('#coin-p2-name', screen), p2Name);
+    for (const slot of [0, 1]) {
+      $(`#coin-side-${slot}`, screen)?.classList?.remove('is-starter', 'is-second');
+      setText($(`#coin-tag-${slot}`, screen), '');
+    }
     if (coinDisc) {
       // Reset to the neutral face during the flip; the name lands after the
       // animation completes so the player sees the reveal.
@@ -70,6 +78,11 @@ export function mountCoinTossScreen({ root = globalThis.document, bus } = {}) {
     setTimeout(() => {
       setText(coinSub, `${startingName} פותח/ת!`);
       if (coinDisc) setText(coinDisc, startingName);
+      for (const slot of [0, 1]) {
+        const starter = slot === startingSlot;
+        $(`#coin-side-${slot}`, screen)?.classList?.add(starter ? 'is-starter' : 'is-second');
+        setText($(`#coin-tag-${slot}`, screen), starter ? 'פותח!' : 'שני');
+      }
       if (enterBtn) enterBtn.disabled = false;
     }, 1700); // matches coinFlip keyframe length (1.6s)
   }

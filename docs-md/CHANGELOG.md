@@ -2,59 +2,296 @@
 
 ---
 
-## End-table ELO count-up ignores a missing pre-game rating — September 2026
+## App-wide redesign in the game-screen style (+ 5 extras) — September 2026
 
-Codex P1 on #364. `playChampEndMotion` did `Number(eloFrom)` before the finite check. `Number(null)` is `0`, so an omitted or `null` `eloFrom` (offline `refreshChampions('end')`, a failed ELO update, no captured pre-game rating) counted any nonzero shown rating up from 0. A nullish `eloFrom` is now left out of that conversion. A real numeric pre-game rating, including `0`, still counts when it differs from the shown rating.
+Rolled `tools/screens-mockup/index.html` out to the app. First pass (re-skin only) left
+most screens boxed in the old style; second pass rebuilt the markup screen by screen
+against the 52 mockups. No DOM id, `EV.*` / `CMD.*` or onclick hook the JS binds to was
+renamed.
 
-## Champions follow-ups — medals, home entry, post-game rank delta — September 2026
+- **New `screens-glass.css`** (loaded last, after `menu-electric.css`): tokens
+  (`--sg-p1` cyan = me, `--sg-p2` gold = opponent/reward, glass, line) and `g-*`
+  primitives ported 1:1 from the mockup — `.g-hdr` header with back chip, `.g-chip`,
+  `.g-card`, `.g-lbl`, `.g-list`/`.g-li` rows, `.g-sock` glowing icon sockets,
+  `.g-btn` (cyan `go` / `gold` / `wa` / `bad`), `.g-opts`, `.g-seg`, `.g-fld`, `.g-tog`
+  (+ `input.g-tog-input` checkbox switch), `.g-pill`, `.g-bar`, `.g-avr`, `.g-medal`,
+  `.g-ring` timer ring, `.g-t` wood tile, `.g-dock`, `.g-sheet`/`.g-sh` bottom sheets.
+  Screens rebuilt on them carry `.g-screen` on the `.screen` root.
+- **Line-icon sprite** (`<svg><symbol id="gi-*">` at the top of `index.html`, the
+  mockup's icon set) replaces emoji / 3D PNG icons in chips, sockets, nav and dialogs.
+- **Top bar only on home** (`screenTransitions.js`): every other screen has its own
+  header with a back chip, as in the mockup. Top-bar icons are line icons; the music
+  icon dims when off (`main.js` `syncMusicTopbarIcon` handles the SVG).
+- **Screens rebuilt:** loading (wood tiles, glass tip card), home (wood-tile logo,
+  dock nav with line icons), setup (medallion, option cards, speed timer rings, rack
+  toggle row, dock CTA), online lobby, profile (+ ELO / coin pills), friends (code as
+  wood tiles, glass rows), notifications, My Games, stats (glass sections), achievements
+  (glass trophy cards + progress bar), avatar store (rarity-tinted tiles), login,
+  sign-up, coin toss (rays, gold coin, two player chips; starter lit after the flip),
+  end of game (full screen, cyan/gold cards + lead bar, dock הלוח / בית / משחק חוזר),
+  settings (full screen, grouped rows, yes/no pairs drawn as toggles, new "אודות"
+  section), guide / FAQ (full-screen accordions).
+- **Bottom sheets:** create room, join by code (wood-tile code input), matchmaking,
+  pause, end-game confirm, dictionary, exchange (wood tiles in a rack well), joker,
+  contact, leaderboard, friend card.
+- **Dialogs:** `.ovic` is now the mockup medallion (cyan / gold / red); invite
+  rejected, incoming invite (gold avatar ring), guest upgrade, boost veto, tutorial
+  prompt / intro, claim-stall-end (gold), resign (red), disconnect (red countdown
+  medallion), daily coins + achievement unlocked (gold, rays), store purchase confirm.
+  Buttons: glass secondary on the right, cyan primary ×2 on the left.
+- **Music credit moved:** the home footer (`.credit`) is hidden; the privacy link and
+  the CC BY 4.0 music attribution now live in Settings → אודות.
+- **Extras (from the mockup notes):** home "תורך ב-N משחקים" strip (`#home-turn-strip`,
+  `MENU_REFRESH.myTurnSessions`), home leaderboard row (`#home-lb-row`,
+  `MENU_REFRESH.myRank`, `MENU_INTENT.OPEN_LEADERBOARD`), 7-day row in the daily coins
+  popup (`#daily-reward-days`, `profileService.dailyWeek` / `dailyCoinsForDay`),
+  next-achievement row on the end screen (`avatarScreens.nextAchievement`), "תורך /
+  תור היריב" tabs in My Games (`#mg-tabs`, `asyncGamesScreen.splitByTurn`) with opponent
+  avatar + lead bar per game.
+- **Small JS for the new visuals:** friend code and waiting-room code render as wood
+  tiles (`#fr-my-id-tiles`, `#wr-code-tiles`); achievements progress bar
+  (`#av-gallery-bar`); end-screen lead bar (`#end-lead-0/1`); coin-toss player chips
+  (`#coin-p1-name`, `#coin-p2-name`, `#coin-side-0/1`, `#coin-tag-0/1`).
+- Tests: unit suite green (1481).
 
-Owner follow-ups on Phase 1. Electric styling kept. Soft UI stays cancelled. הישגים still opens achievements.
+---
 
-- **Medals:** `#ov-champs` (`#champions-wrap-home`) was painting `.champ-medal-icon` at the PNG's intrinsic size. The post-game table already constrained that class to 22×22 under `#champions-wrap`. The same rule now covers both wraps.
-- **Home entry removed:** `#btn-home-champs` (the secondary `טבלת דירוגים` row under the three mode cards) is gone, including its `.hm-rank` styles. Remaining entry points: authed topbar ELO chip (`#home-elo-label`) and profile `#btn-profile-champs`.
-- **Post-game rank delta:** When an online match starts, `getLeaderboardMeta(db, { myUid })` stores `activeGame.preGameMyPosition` from the same `globalRatings` read as `preGameTopUid`. After ELO is applied, the end table (`#champions-wrap` only) shows `▲N` in green when that rank number went down, or `▼N` in red when it went up, on the current user's row. A zero change is hidden. If the pre-game rank was never captured, nothing is invented.
-- **Motion:** When both the pre-game and post-game ranks sit inside the visible top-N, the end table places the user at the old slot, counts the rating from `myBefore` up to the post-game leaderboard value, then slides the row into the new order. Reduced motion paints the final table immediately. Sliding a player into or out of the top-N (the outside-separator row) is not animated.
+## All-screens mockup in the game-screen style — September 2026
 
-## Phase 1 — discoverable champions — September 2026
+- New dev-only page `tools/screens-mockup/index.html` (not wired into the app): 52 phone
+  mockups of every screen and overlay, restyled to match the shipped game screen — glass
+  panels, top chips, bottom "dock", cyan primary / gold reward buttons, wood-tile logo and
+  codes, cyan/gold = me/opponent everywhere, line icons in glowing sockets, bottom sheets
+  for choices and centred medallion dialogs for notices. Admin and replay are excluded.
 
-A player can open `#ov-champs` (`טבלת דירוגים`) without finishing a match. Soft UI stays cancelled. Bottom-nav הישגים still opens the achievements gallery.
+---
 
-- **P1-01:** Profile row `#btn-profile-champs` in `.pf-btns` (above full stats, outside the logout danger zone). Copy: `טבלת דירוגים` / `ELO ודירוג עולמי`. Click emits `CHAMPS_OPEN`.
-- **P1-02:** Home secondary row `#btn-home-champs` under the three mode cards, not a fourth mode card. Copy: `טבלת דירוגים` / `מי במקום הראשון?`. RTL trailing chevron `❮`. Shown for guests and signed-in players.
-- **P1-03:** Authed topbar ELO chip (`#home-elo-label`) opens the same overlay and stops the click from also opening profile. Avatar and name still call `openProfileOrAuth()`.
-- **P1-04:** Not in this change. A home ELO/streak strip would duplicate the P1-02 row unless it replaces it, and current streak is not on `MENU_REFRESH`.
+## Game screen redesign — glass + BOOST-logo wood tiles — September 2026
 
-Icon is the existing transparent `assets/rewards/gold medal.png`. `assets/rewards/trophy.png` was skipped because its plate is opaque black.
+Built option B of `tools/game-screen-mockup/index.html` (with two changes from
+review: no glowing underline under the player on turn — the **timer ring takes
+that player's colour** instead; board squares brighter than the mockup).
 
-## Phase 0 batch 1 — setup, auth, and avatar copy — September 2026
+- **One glass language** (styles appended to `menu-electric.css`, all scoped to `#sg`):
+  top bar, scoreboard, board tray and rack dock share the dark glass panels,
+  thin cyan outline and rounded corners.
+- **Fixed player colours** inside the game screen: slot 0 cyan `#28d4ff`, slot 1
+  gold `#ffc93d` (`#sg { --p1; --p2 }`) — score, avatar ring, timer ring, lead
+  rail and last-move tiles.
+- **Top bar:** ☰ menu (`#btn-game-menu` → `#gm-menu`, new `gameMenu.js`) now holds
+  settings / finish-save / music (+ pause, async home); dictionary chip; bag chip
+  ("N בקופה"). The swap button moved to the rack dock.
+- **Scoreboard:** one bar, timer medallion in the middle; turn = colour wash + lit
+  avatar ring (no dimming, no underline); ring colour = player on turn (red when
+  urgent); rarity tag on rare+ avatars; bot level under the computer's name; lock
+  pill "🔒 3·3·5" (the buttons keep their "🔒 N" text); lead rail (`#is-rail`).
+- **Status pill** replaces the full-width hint strip (same `#sbar` text).
+- **Board:** glass tray, brighter navy squares, Boost squares as charged sockets
+  (cyan bolt), tiles in the BOOST-logo style (maple face, engraved letter, cyan
+  bezel); tiles being placed get a white-hot bezel; the last move's bezel glows in
+  the mover's colour (`#game-grid.lm-s1`).
+- **Rack dock:** 8 wood tiles in a recessed tray, dashed empty slots, action row
+  בטל / החלפה / big cyan שבץ.
+- Tests: `gameMenu.test.js` (new); `shailta-keyboard-removal` (book icon is now an
+  SVG chip); `lock-box.spec` (the frame is the pill, not each chip);
+  `reward-motion.spec` (waits out the unlock icon's ≤450 ms 3D-atlas hold from the
+  previous round and accepts the 3D or CSS reveal).
 
-Copy-only UI fixes. No gameplay, scoring, or dictionary changes. Soft UI stays held.
+---
 
-- **P0-02:** Setup screen default title (`#stitle-text`) is `לפני המשחק` instead of `הגדרות`, so it no longer collides with the Settings overlay. After open, the existing mode titles still apply (`נגד המחשב` / `שני שחקנים`). Setup onboarding titles drop the `הגדרות —` prefix. Settings overlay title is unchanged.
-- **P0-05:** Login and signup titles drop the emoji (`כניסה`, `יצירת חשבון`) and show the home wordmark (`logo_no_mascot.png`) above the title. Guest and validation buttons are unchanged. The auth card itself is not restyled.
-- **P0-08:** Profile avatar hint is `לחץ לחנות האווטארים`. The tap still opens the avatar store (`showAvatarStore()`).
+## VS intro everywhere, level bots, live electricity on Boost squares — September 2026
 
-## Phase 0 batch 2 — empty states and taxonomy — September 2026
+- **VS intro 2.5 s** (`VS_INTRO_MS` 1400 → 2500): after the entrance both avatars
+  breathe (`idle`), "VS" hums, a second softer strike lands, and the stage zooms
+  toward the board (`.vs-out`, last 320 ms). Shared `playVsIntro()` in `main.js`.
+- **VS intro now also plays** for friend games (create-room host, join by code,
+  invite accept from the popup and from the inbox) and for **bot games** (before
+  the coin toss; the bot shows its level — "רמה קלה / בינונית / קשה" — instead of
+  Elo). Resuming / re-entering an existing game has no intro. The shared online
+  turn clock only starts after both players pass the coin toss, so the intro never
+  costs turn time.
+- **Level bot avatars:** the bot player is created with `bot_easy` / `bot_medium` /
+  `bot_hard` (green / yellow / red bot art, same as the setup cards) instead of the
+  generic `bot`; shown in the game player box, VS intro and end screen. Old saves
+  with `bot` still resolve to `assets/avatars/bot.png`. New helpers in
+  `avatarScreens.js`: `botAvatarForLevel`, `isBotAvatar`, `BOT_AVATAR_BY_LEVEL`.
+- **Boost square electricity:** `bonusActivate` now adds live procedural lightning
+  (`src/ui/boostElectricFx.js`, canvas `.bsq-electric` over the tile): currents
+  crawl the tile edge, forked arcs jump outward, a power surge flashes through
+  the tile. The rim was recoloured from amber to white-hot cyan to match. Class,
+  600 ms lifetime and result-reveal timing are unchanged; reduced motion keeps
+  the static rim only.
+- **Scoreboard proposal** (not wired): `tools/scoreboard-mockup/index.html`.
+- **Game-screen proposal** (not wired): `tools/game-screen-mockup/index.html` — whole board
+  screen in the scoreboard's glass language; variant A keeps the current tiles, variant B
+  uses the BOOST-logo tile (maple face, engraved letter, cyan bezel).
 
-- **P0-07:** An empty or failed champions list (including the end-game `#champions-wrap`) shows `אין דירוגים להצגה עדיין` plus `שחקו עוד משחקים מדורגים כדי למלא את הטבלה`. A populated top-10 table is unchanged. The end-game header stays `טבלת דירוגים — 10 השחקנים המובילים`.
-- **P0-10:** Friend-detail Block and Report have no handlers. They are no longer dimmed as if they were enabled-but-broken. Each row is disabled and labeled `(בקרוב)`. Remove-friend stays the live danger action.
-- **P0-12:** Audit only. Avatar store title is already `חנות אווטארים`. Achievements (`#sav-gallery`) stays `הישגים` with `N מתוך 17 הושגו`. Bottom-nav הישגים still calls `showAvatarGallery()`. The `acheivments.png` filename typo was left in place (optional, and it is referenced by the live nav).
+---
 
-## Phase 0 batch 3 — icons and layout — September 2026
+## 2.5D avatar & achievement motion (pose atlases) — September 2026
 
-- **P0-04:** Home mode cards use `direction: rtl`. The chevron is `❮` on the trailing edge (physical left), so it reads as forward. Titles and subtitles stay Hebrew RTL. Card hit targets are unchanged.
-- **P0-03:** Online lobby “create room” uses the existing Electric plus `assets/ui/+.png` instead of `assets/navigation/home.png`. Join (`key.png`) and random (`dice.png`) are unchanged. No new artwork.
-- **P0-09:** Logout sits in `.pf-danger-zone` under a divider, still the red `pf-btn-red` button, still one tap (`logoutUser()`).
-- **P0-11:** My-games empty state subcopy is the canonical line, plus a `משחק ברשת` button (`#mg-empty-online`) that emits `MENU_INTENT.OPEN_ONLINE_LOBBY`. No invite-a-friend secondary — that screen has no one-tap invite. Non-empty lists are unchanged.
+All 73 avatars/achievements were turned into Blender relief models
+(`Blender designs/icons3d/`). The app does not run 3D: each asset ships one
+**pose atlas** — a WebP sprite sheet of rendered poses (`assets/anim/…`, 17 MB
+total, lazy-loaded per screen, runtime-cached by the SW, not precached) plus
+`assets/anim/manifest.json` keyed by the source PNG path. Avatars (auto 2-bone
+bust rig) have turn / lean / nod / tilt / breath poses; achievements have turn
++ a metallic light sweep. Frame `rest` matches the source PNG pixel-for-pixel,
+so the static PNG stays the fallback everywhere.
 
-## Phase 0 batch 4 — dead route and boot copy — September 2026
+New `src/ui/avatarMotion/`: `poseClips.js` (pure clip data + sampling, rarity
+styles), `atlasManifest.js`, `spritePlayer.js` (canvas laid over the `<img>`,
+honours `motionPreference`; `canPlayNow()` lets a screen choose 3D vs its
+existing CSS cue in the same frame), `idleMotion.js`, `unlockFx.js`.
 
-- **P0-01:** Removed the dead `schamps` screen id from `SCREEN_IDS`. The fallback hide-all loop in `showLegacyScreen` now uses `SCREEN_IDS`, so the stale id cannot come back in only one list. Champions still open through `#ov-champs` / `CHAMPS_OPEN`.
-- **P0-06:** Tip-catalogue failure (`loadTipsStatus` `ok: false`) or `navigator.onLine === false` sets `#app-loading-text` to `לא הצלחנו להתחבר. בודקים שוב...` and, when no tip carousel is up, shows `אפשר להמשיך כשהרשת חוזרת`. Coming back online restores the rotating progress strings and retries tips. The loader still dismisses on auth resolution or the existing 10s safety timeout — a missing catalogue does not block boot. A successful fetch with a normal carousel is unchanged.
+Wired moments (one dominant moment each — BOOST_MOTION_SPEC rule 6):
+- **VS intro** (`#ov-vs-intro`, `vsIntroScreen.js`) plays inside the existing
+  1400 ms matched → board pause (no added latency); opponent Elo is read from
+  public `globalRatings` via `ratingService.readRating`.
+- **Your turn**: when the avatar can animate, its lean + cyan glow is the cue and
+  the score card keeps only a steady outline (`.your-turn-cue--avatar`); the
+  `.your-turn-cue` class contract is unchanged.
+- **Boost**: secondary `avatarBoostReact` (board ignition stays dominant).
+  **Big word** (≥ `GOOD_MOVE_SCORE` = 40): `avatarGoodMove` nod when the sum lands.
+- **Achievement unlock**: 3D spin-in + light sweep (held ≤450 ms for the atlas,
+  else the old CSS pop), per-achievement flourishes (letters / streaks / shield /
+  halo / collector cards / grand בעל אגדה / gold rays for Legend tier).
+- **End game**: winner `win`, loser `loss`; new progress strip for 1–2
+  unfinished achievements that moved (`progressBumps`, `AV_PROGRESS_BUMP`).
+- **Calm screens**: profile ring and "searching for opponent" breathe with an
+  occasional glance; store equip / purchase preview plays `select`.
+- **Rarity language** from the asset path: common subtle, rare cyan, epic violet +
+  sparkles, legendary gold + sparkles + own idle/entrance.
 
-## gameScreen parse — duplicate `countUpDelay` — September 2026
+`setAvatarEl` / profile paint no longer rewrite an identical `<img>` on every
+render (would have killed running animations). The `bonusAwardOverlay` directive
+sequence gained `avatarBoostReact` (test updated). Reduced motion → static PNGs.
+Dev tools: `tools/avatar-motion/preview.html` (every clip on every asset) and a
+no-cache static server.
 
-`renderScores` declared `const countUpDelay` twice after the lock-cost delay landed on top of the older reduced-motion line. The module failed to parse, so `gameScreen.test.js` and `tutorialController.test.js` could not load. The stale second declaration is removed. The delay stays the lock-cost value from that later edit (`delay` / `countUpDelayOf`). No scoring formula change.
+---
+
+## Boost square electric-border ignition ? September 2026
+
+The old square cue was a scale/brightness flash with cyan shadows. Existing
+`.bsq` / `.bsq.used` `!important` shadows suppressed its animated shadow, and
+its class was removed at 460ms despite a 600ms CSS animation. Auto awards
+already waited 420ms, but mini-game/wheel intros opened directly on
+`BONUS_PENDING` without any square cue. Both the small persistent badge and
+the separate mobile multiplier banner could paint on `MOVE_CONFIRMED`, before
+the activation event, competing with the cause.
+
+The square now uses two cell-sized CSS pseudo-elements above the committed
+letter: a 2px white-hot core with inset amber and layered 3/8/15px outer glows,
+and an uneven amber corona with white edge segments, a static polygon clip,
+and subpixel snaps (at most 0.65px). Only opacity and the corona's transform
+animate; no SVG, turbulence, filter, canvas, or new artwork. The square stays
+opaque with a stable position; its letter remains readable. Normal ignition
+lasts 600ms, with a strong first 420ms and a 180ms tail.
+
+`boostPresentation.js` owns the 600ms lifetime, existing 420ms reveal delay,
+and presentation-only `BOOST_RESULT_READY`. The animation controller applies
+that same lead-in to fresh awards and pending mini-game/wheel intros. Both
+badge renderers reveal new state from that signal, including rerenders before
+the Boost event. Resumed/finalized state remains available without waiting for
+a past cue. Boost state, bot auto-resolution, score finalization, existing
+input gates and clock policy remain authoritative and unchanged. Duplicate
+square events, consumption/reminders, aborts, game restart/completion and
+teardown cannot replay a pending result; disabling motion during ignition
+cannot discard required UI.
+
+Reduced motion uses the same strong static border for 600ms, without flicker,
+travel or jitter, and reveals required results/badges synchronously (0ms added
+wait). Explicit preference overrides OS preference as before.
+
+Validation: 1441 unit tests pass. Chromium covers real rack selection,
+perimeter placement and confirmation in a bot game for points, future-effect
+badge, mini-game and wheel; OS Auto normal/reduced and explicit Yes/No against
+conflicting OS settings; plus a hard bot independently searching and placing
+on a Boost square. Timestamped traces check the committed letter, electric
+layers, pre-result visibility, badge AND mobile banner ordering, cleanup,
+required intro start, and award finalization. Existing signature-motion
+regressions are included: final Chromium run, 11 passing. Normal result-ready
+callbacks measured 421.6?434.0ms (configured lead-in 420ms; browser scheduling
+adds some variation); reduced reveals were synchronous. Full recordings, traces and the detailed report:
+`artifacts/boost-electric/`. Normal-speed MP4s trim leading setup only.
+
+Perceptual acceptance remains unproven: continuous subjective 1? video review
+was not available. Runtime traces and extracted frames show the illuminated
+perimeter before the result, but are not a substitute for that review. The
+provided 432?614, 30fps MP4 informed the visual adaptation; a separate electric
+HTML/CSS demo was not available in the task attachments/workspace.
+
+Files changed for this task:
+- `src/ui/boostPresentation.js`
+- `src/ui/controllers/animationController.js`
+- `src/ui/controllers/animationController.test.js`
+- `src/ui/controllers/gameController.js`
+- `src/ui/screens/gameScreen.js`
+- `src/ui/screens/gameScreen.test.js`
+- `src/ui/screens/boostBadges.js`
+- `src/ui/screens/boostBadges.test.js`
+- `src/main.js`
+- `styles.css`
+- `tests/e2e/boost-electric-border.spec.js`
+- `tests/e2e/signature-gameplay-motion.spec.js`
+- `docs-md/CHANGELOG.md`
+
+Assets used/added: None. Missing assets for this effect: None.
+Asset inventory updated: No (CSS-only effect).
+
+---
+
+## Your Turn timing + sound — September 2026
+
+The yellow frame and feedback service previously fired directly on logical
+`TURN_CHANGED`, while the incoming clock was still held by score presentation.
+They now share `TURN_PRESENTATION_READY`, emitted by `turnTimerController.sync`
+after the existing `scoreClockGraceMs` hold ends and the clock is rebuilt/rendered.
+No additional cue timeout or gameplay gate was added. The existing 600ms yellow
+frame and breathing active-player background are unchanged. The My Turn sound is
+one quiet 90ms triangle tone rising from 523 to 659Hz (gain 0.12), using the existing
+WebAudio/Sound FX path; the existing 30ms haptic shares that moment.
+
+Opening state seeds transition deduplication; duplicate turns, later turns, game
+completion and teardown cannot replay a pending cue. Untimed play still gets the
+cue. Score holds use one replaceable timer, preventing overlapping score events
+from leaking a bonus-pause count. Deferred scoring starts its canonical grace
+after the award closes. Reduced motion still runs the numeric count-up, so its
+grace now covers `max(200, countUpDurationMs(score))` rather than ending mid-count.
+Opponent move payloads preserve multiplier/bonus-extra timing metadata.
+
+Validation: focused integrated tests cover clock freeze, full local turn allowance
+(including queued timer bonuses), shared flash/audio timing, opening sync,
+duplicates and Sound FX off, plus deferred scoring, stale cues and cleanup.
+Full unit suite: 1431 passing. Focused Chromium checks: 3 passing.
+Chromium at 430x932 exercised three production bot scoring turns in each of normal
+and reduced motion, with Sound FX disabled for the third turn. Timestamped score,
+clock, frame-class and real WebAudio oscillator traces verify ordering and sound
+suppression. The existing signature-motion browser regression also passes.
+Recordings and traces: `artifacts/your-turn-timing/`. Continuous subjective 1x
+playback/audio review was not available; these are runtime trace assertions.
+
+Scope limitation: the existing live-online server deadline is preserved. Its
+previously documented exclusion of score grace still needs a shared-deadline
+fairness fix; full turn allowance is verified here for local/bot games, not live
+online rooms. No Firebase deadline protocol or watchdog gate was changed.
+
+Files changed for this task:
+- `src/events/eventTypes.js`
+- `src/ui/controllers/turnTimerController.js`
+- `src/ui/controllers/yourTurnTiming.test.js`
+- `src/ui/controllers/animationController.js`
+- `src/ui/controllers/animationController.test.js`
+- `src/ui/feedbackService.js`
+- `src/ui/feedbackService.test.js`
+- `src/ui/scoreAnimationTimings.js`
+- `src/ui/scoreAnimationTimings.test.js`
+- `src/game/sessions/onlineGameSession.js`
+- `src/game/sessions/onlineGameSession.test.js`
+- `tests/e2e/your-turn-timing.spec.js`
+- `tests/e2e/signature-gameplay-motion.spec.js`
+- `docs-md/CHANGELOG.md`
 
 ---
 
@@ -5163,3 +5400,202 @@ Regenerated the complete `images/guide/` screenshot set with Playwright: top-lev
 Verification: `npx playwright test tests/e2e/capture-app-loading.spec.js tests/e2e/capture-crossing-words-states.spec.js tests/e2e/capture-debug-timeline.spec.js tests/e2e/capture-guide-screenshots.spec.js tests/e2e/capture-minigame-screenshots.spec.js tests/e2e/capture-my-games-screen.spec.js tests/e2e/capture-replay-demo.spec.js tests/e2e/capture-replay-screenshots.spec.js tests/e2e/capture-stats-insights.spec.js --reporter=list --workers=1 --timeout=60000` passes 23/23.
 
 ---
+
+## Signature Gameplay Motion (Phase 3C) - September 2026
+
+Added three distinct, non-blocking gameplay signatures. **Your Turn** fires
+only on a real transition to the local seat (opening sync and duplicate event
+signatures are ignored): a 600ms gold halo/scale emphasis settles into a static
+active-card halo and shares the existing `TURN_CHANGED` sound/haptic moment. A
+brief `תורך` label was omitted because the score-card emphasis is clear without
+adding repeated copy.
+
+**Accepted Word** replaces both `validFlash` and the later per-word scoring glow
+with one directional board-order sweep. Every tile runs the 320ms standard
+curve, staggered across a bounded 0-160ms window (maximum total 480ms), so long
+and multi-word moves remain brisk. The Phase 3B radial burst, score-pop, long
+breathing glow, and fake multiplier remain removed.
+
+**Boost Trigger** is the strongest of the three: the triggering square runs a
+600ms electric blue/gold ignition, the required award result is presented, and
+newly created persistent badges get one 600ms entrance before becoming static.
+The old 2200ms looping badge pulse is gone. Required award UI is now an explicit
+required-presentation directive and bypasses the animation-disabled gate,
+fixing reduced motion suppressing the modal.
+
+Reduced motion keeps a static Your Turn card emphasis, a static accepted-word
+brightness highlight, a strong static Boost-square emphasis, the new badge,
+and the award/result UI; only travel, scaling, and pulsing are removed. Runtime
+Chromium verification sampled the effects over time, repeated the event path,
+checked the 480/600ms bounds, duplicate-turn suppression, badge settling, and
+the reduced-motion branch. Added semantic controller, renderer, badge, and
+Playwright coverage. Unit suite: 1402 passing.
+
+---
+
+## Reward Motion (Phase 4) - September 2026
+
+Established a semantic reward hierarchy on the end-game and achievement paths.
+Victory now paints the final result immediately, then runs a 360ms card settle,
+an 880ms trophy emphasis, a 900ms radial glow, one 480ms winner-card beat, and
+one 42-piece confetti burst before becoming fully static. Draw uses a restrained
+420ms balanced entrance with no confetti; defeat uses a quiet 320ms
+fade/desaturation and no celebratory motion. The previous generic end-game
+directives and infinite 2200ms trophy sparkles were removed.
+
+Late Elo gain/loss updates now count from the previous rating to the final value
+over 420ms using an ease-out cubic curve, with opposite vertical reveal
+directions and immediate accessible final labels. Achievement unlocks now use a
+finite 400ms card entrance, 760ms icon reward emphasis, and 360ms coin reveal;
+the existing false-to-true unlock detection is supplemented with presentation
+deduplication so rerenders cannot replay the effect.
+
+Reduced motion shows all result, Elo, and achievement information directly.
+Victory keeps a strong static gold treatment without confetti/bounce; draw and
+defeat keep their static outcome styling; Elo renders the final color/value;
+achievement unlocks keep a bright outlined icon. Runtime Chromium frame
+sequences covered victory, draw, defeat, Elo gain/loss, achievement unlock,
+duplicate renders, and reduced motion.
+
+---
+
+## Sound & Haptic Feedback (Phase 5) - September 2026
+
+Aligned the central feedback service with the established motion hierarchy. A
+quiet 55ms accepted-word tick now fires once at `MOVE_CONFIRMED`; score landing
+stays silent to avoid stacking routine cues. Invalid-word, Your Turn, timer,
+invite, and Boost feedback retain their existing semantic timing, while Your
+Turn now deduplicates the same slot/turn transition in addition to suppressing
+opening sync and opponent turns.
+
+Game completion now resolves the local outcome (including walkout semantics)
+and gives victory, draw, and defeat distinct cues. Victory uses the strongest
+three-note rise and `[80,45,110,45,160]` haptic; draw uses a neutral repeated
+tone and `[55,45,70]`; defeat uses a restrained downward pair and `[45]`.
+Duplicate completion payloads cannot replay the cue. Achievement unlocks gain a
+dedicated short flourish with `[70,45,110]`; late Elo gain/loss uses one subtle
+directional tone with `[35,30,45]` / `[55]`, also deduplicated.
+
+All paths remain synchronous, non-blocking observers of semantic events and are
+independently gated by the existing Sound FX and vibration preferences. No new
+audio assets or background music were added.
+
+---
+
+## Signature Motion Visibility Fix (Phase 3C.1) - September 2026
+
+Corrected the three Phase 3C signatures after a real-game recording showed
+that technically firing animations were not reliably perceptible during play.
+The Boost award overlay had been rendered in the same event turn as its square
+ignition; it now waits 420ms while the board remains unobscured, then presents
+the result. Semantic Boost state still resolves immediately, and reduced or
+disabled motion presents the required result without that delay.
+
+Accepted words now use a brighter, lifted 300ms travelling front over a bounded
+120-320ms word-length stagger (420-620ms total), with a darker unswept state
+and a distinct settled state. This replaces the former 0-160ms stagger that
+read as a simultaneous block and remains separate from persistent green
+previous-move styling.
+
+Your Turn keeps its 600ms budget but no longer relies on a small scale change
+and more of the existing active-card glow. A gold edge now expands from the
+card to 1.16x and fades, with a restrained brightness beat, before settling to
+the unchanged static active-player treatment. The existing Boost badge entrance
+was retained after the overlay sequencing fix; its persistent state remains
+static.
+
+A 62.76-second actual offline bot-game capture exercised 13 genuine accepted
+moves, 6 transitions back to the local player, and 5 Boost activations. Review
+at normal playback speed found all three signature events clearly readable and
+pleasant under repetition. The capture is stored at
+`artifacts/phase3c1-real-bot-visibility.webm`. Controller, renderer, reduced-
+motion, cleanup, and Chromium gameplay checks pass.
+
+### Phase 3C.1 follow-up — accepted-word visibility
+
+A second real-play recording showed that the accepted-word effect still read as
+an immediate switch to the persistent green previous-move state. The filter-only
+front was too spatially small and adjacent tile peaks overlapped. The sweep now
+uses a visible cyan/gold travelling edge on each tile, holds unswept tiles more
+clearly muted, and expands the word-length stagger from 120–320ms to 180–360ms.
+Each tile runs for 260ms, retaining the original maximum 620ms total bound.
+
+### Accepted Word Gold/Electric Sweep correction
+
+The delayed Phase 3C.1 keyframe used backwards fill with a dimmed/scaled 0%
+state. Consequently every tile changed as soon as the event fired, before its
+individual delay elapsed; combined with an effective 72ms cadence, the word
+read as one simultaneous flash. The renderer now preserves normal committed
+styling before each tile starts and follows the scoring engine's word ordering:
+the first (main) word gets a strong 300ms gold/white travelling rim and narrow
+shine, starting right-to-left for horizontal Hebrew and top-to-bottom for
+vertical words. Starts are 100ms apart for normal words; unusually long words
+compress only enough to cap the full sweep at 750ms. The energized peak is
+narrow enough that no more than two adjacent tiles are strongly lit together.
+Cross-words run concurrently with a lighter 240ms treatment and do not compete
+for their shared main-word tile. Reduced motion retains the existing brief
+static gold/white acceptance emphasis. No input or score timing is gated. A
+fresh 16.52-second deterministic offline-bot capture contains three genuine
+accepted moves, including horizontal and vertical words. Review at 1x showed a
+clear gold/white front advancing one tile at a time, with normal tiles ahead of
+it and settled tiles behind it; repeated moves stayed brief and subordinate to
+Boost/reward motion. The capture is stored at
+`artifacts/accepted-word-gold-electric-sweep.webm`.
+
+User review correctly rejected that capture: the supposed gold sweep was not
+plainly visible at normal playback. The implementation had placed the lift,
+scale, and glow on `.btile`, inside a `.cell { overflow:hidden }` parent, so the
+most important energy cues were clipped at actual board size and only a thin
+rim survived. The corrected version animates the cell layer itself, uses a
+clearly visible gold/white energy plate beneath a narrow travelling white-hot
+front, and lengthens the primary tile beat to 360ms with 105ms starts (still
+750ms maximum). The previous recording must not be treated as approval. It has
+been replaced by a fresh 16.28-second bot-game recording at the same artifact
+path; three accepted moves visibly exercise both horizontal and vertical
+travel at normal gameplay scale.
+
+A subsequent localhost recording disproved a suspected cache mismatch: the
+whole movement choreography was disabled (not only the accepted-word front),
+matching the reduced-motion/legacy animations-off branch. That branch correctly
+must not travel, but its prior `brightness(1.4)` cue was too easy to confuse
+with the persistent green last-move state. Reduced motion now holds a plainly
+gold/white committed-word treatment for 420ms, with no direction, lift, scale,
+or added wait. Full motion remains the directional sweep described above.
+
+The settings screenshot then exposed the actual preference bug: the player had
+explicitly selected `Reduced motion: No`, but the OS-level CSS media query still
+applied `animation:none!important` unconditionally. JavaScript correctly gave
+the explicit app choice precedence, while CSS silently overruled it. The motion
+preference now stamps `data-full-motion` for an explicit `No`, and every CSS
+reduced-motion media rule excludes that override. `Auto` still follows the OS;
+explicit `Yes` still reduces motion. Browser coverage now reproduces the exact
+combination (OS reduce + in-app No) and requires the accepted-word sweep and its
+travelling front to remain animated.
+
+The next genuine human-play recording showed that preference correction alone
+was insufficient. A real `placeTile -> confirmMove` trace found the first tile's
+strong gold phase occupied only about 100-130ms, and—unlike the bot validation
+capture—the human's new tiles were already yellow while tentative. The result
+was yellow-to-gold with too little contrast, followed by green, so no sweep was
+perceptible at 1x. The primary tile beat is now 420ms with 110ms starts (four
+tiles = 750ms; longer words compress), begins its visible response immediately,
+and hits a near-white electric plate with cyan-white front and gold rim/glow.
+The >80% energy peak remains narrow enough that at most two adjacent tiles are
+strong at once.
+
+A final requirement audit found that the board's inherited RTL layout makes
+column 0 physically rightmost. The earlier descending-column planner therefore
+travelled left-to-right despite its comment and test. Horizontal sweeps now use
+ascending columns (verified against live cell geometry), while vertical sweeps
+continue in ascending rows. The white-hot plate uses linear opacity timing so
+its >90% peak cannot accumulate across three normally staggered tiles, and
+secondary cross-words now have dedicated lower-opacity plate/front keyframes
+rather than inheriting the primary peak.
+
+The final 9.32-second normal-speed artifact is an uninterrupted production
+offline bot session with four genuine local confirmations: six-, five-, three-,
+and four-tile primary words, including three multi-word moves and vertical
+cross-words. At 1x the gold/white front is plainly visible moving one or two
+tiles at a time, right-to-left, before each word settles green; repetition is
+brief and materially quieter than the Boost award shown in the same run. The
+artifact was replaced at `artifacts/accepted-word-gold-electric-sweep.webm`.

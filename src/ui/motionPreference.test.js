@@ -49,13 +49,16 @@ test('OS reduced + no explicit choice → reduced (follows OS)', () => {
 });
 
 test('explicit off overrides OS reduced', () => {
+  const root = fakeRoot();
   const mp = createMotionPreference({
     storage: storage({ reducedMotion: 'off' }),
     matchMediaFn: matchMediaFn(true),
-    root: fakeRoot(),
+    root,
   });
   assert.equal(mp.isReduced(), false, 'explicit off wins over OS reduce');
   assert.equal(mp.osPrefersReduced(), true);
+  assert.equal(root._attrs.get('data-full-motion'), '1', 'CSS media-query override is stamped');
+  assert.equal(root._attrs.has('data-reduced-motion'), false);
 });
 
 test('explicit on overrides OS normal', () => {
@@ -67,6 +70,7 @@ test('explicit on overrides OS normal', () => {
   });
   assert.equal(mp.isReduced(), true, 'explicit on wins over OS normal');
   assert.equal(root._attrs.get('data-reduced-motion'), '1');
+  assert.equal(root._attrs.has('data-full-motion'), false);
 });
 
 test('OS preference is NOT persisted as an explicit choice', () => {

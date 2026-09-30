@@ -598,6 +598,25 @@ test('online session: the committed deadline is stamped on the server clock', as
   await sessA.dispose();
 });
 
+test('online session: opponent score includes the multiplier and extra used by clock grace', async () => {
+  bus._reset();
+  const db = makeMockDb();
+  await setupRoom(db);
+  const sessB = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 1 });
+  const moves = [];
+  bus.on(EV.OPPONENT_MOVED, p => moves.push(p));
+  await db.ref('rooms/online-room').update({
+    version: 2, currentTurnSlot: 1, turnNumber: 2,
+    lastMove: { slot: 0, tiles: [], words: [], wordTiles: [], score: 30,
+      baseScore: 20, bonusExtra: 10, multiplier: 2, turnNumber: 1, ts: 123 },
+  });
+  assert.equal(moves.length, 1);
+  assert.equal(moves[0].bonusExtra, 10);
+  assert.equal(moves[0].multiplier, 2);
+  assert.equal(moves[0].baseScore, 20);
+  await sessB.dispose();
+});
+
 test('online session: remote pass resyncs local turn state', async () => {
   bus._reset();
   const db = makeMockDb();

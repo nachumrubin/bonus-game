@@ -1,12 +1,12 @@
-﻿<!-- INCOMING GAME INVITE -->
+<!-- INCOMING GAME INVITE -->
 <div id="ov-incoming-invite" class="ov hidden">
-  <div class="ovc" style="text-align:center;">
-    <div style="font-size:44px;margin-bottom:4px;" id="ii-avatar">🎮</div>
-    <div class="ovt">הוזמנת למשחק!</div>
-    <div id="ii-body" style="font-size:14px;color:rgba(255,255,255,.75);margin:8px 0 20px;"></div>
-    <div style="display:flex;gap:8px;">
-      <button class="ovb p" style="flex:1;" onclick="_acceptIncomingInvite()">הצטרף 🚀</button>
-      <button class="ovb s" style="flex:1;" onclick="_dismissIncomingInvite()">לא עכשיו</button>
+  <div class="ovc dlg-gold">
+    <div class="ii-av" id="ii-avatar">🎮</div>
+    <div class="ovt ii-kick">הוזמנת למשחק!</div>
+    <div id="ii-body" class="ovd ii-body"></div>
+    <div class="ovbtns">
+      <button class="ovb p" onclick="_acceptIncomingInvite()">הצטרף</button>
+      <button class="ovb s" onclick="_dismissIncomingInvite()">לא עכשיו</button>
     </div>
   </div>
 </div>

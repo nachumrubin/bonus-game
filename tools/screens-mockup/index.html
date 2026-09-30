@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<base href="../../">
+<title>Boost Screens Mockup</title>
+<!-- Dev-only design mockup: every app screen restyled in the game-board's "glass + wood" language
+     (option B, tools/game-screen-mockup). Not wired into the app. Screens are built by the script below. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#040a22;--p1:#28d4ff;--p2:#ffc93d;--ink:#eaf4ff;--dim:rgba(234,244,255,.58);--faint:rgba(234,244,255,.36);
+    --glass:rgba(12,26,74,.72);--line:rgba(120,190,255,.22);--ok:#2ee59d;--bad:#ff5a6e;
+    --r-common:#9fb4d6;--r-rare:#4da3ff;--r-epic:#b77bff;--r-leg:#ffc93d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#02061a;color:var(--ink);font:14px/1.35 Heebo,system-ui,Arial,sans-serif;padding:0 16px 60px}
+  a{color:inherit}
+
+  /* ───────── page chrome ───────── */
+  .pghead{position:sticky;top:0;z-index:50;margin:0 -16px 8px;padding:12px 16px 10px;background:rgba(2,6,26,.9);backdrop-filter:blur(8px);border-bottom:1px solid #111c44}
+  .pghead h1{margin:0 0 8px;font-size:18px;font-weight:900}
+  .pghead h1 span{color:var(--dim);font-weight:700;font-size:13px;margin-inline-start:8px}
+  .toc{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+  .toc a{flex:none;text-decoration:none;font-size:12px;font-weight:800;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--line);white-space:nowrap}
+  .toc a:hover{border-color:var(--p1);color:var(--p1)}
+  .toc label{flex:none;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--dim);margin-inline-start:auto;padding-inline-start:10px;white-space:nowrap}
+  section.grp{max-width:1640px;margin:26px auto 0}
+  .grp>h2{font-size:17px;font-weight:900;margin:0 0 2px}
+  .grp>p{margin:0 0 14px;color:var(--dim);font-size:13px;max-width:900px}
+  .wrap{display:flex;flex-wrap:wrap;gap:26px 22px;align-items:flex-start}
+  body.small .phone{zoom:.72}
+  .col{display:flex;flex-direction:column;gap:8px;max-width:100%}
+  .cap{font-size:13px;font-weight:800;text-align:center}
+  .cap small{display:block;color:var(--faint);font-weight:700;font-size:11px;direction:ltr}
+  .notes{max-width:1100px;margin:34px auto 0;font-size:13px;color:var(--dim);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:8px 28px}
+  .notes b{color:var(--ink)}
+
+  /* ───────── phone / screen ───────── */
+  .phone{position:relative;width:375px;height:812px;max-width:100%;border-radius:28px;overflow:hidden;border:1px solid #1b2a5c;
+    background:
+      radial-gradient(ellipse 90% 45% at 50% 0,rgba(40,110,255,.30),transparent 70%),
+      radial-gradient(ellipse 80% 40% at 50% 100%,rgba(40,212,255,.10),transparent 70%),
+      linear-gradient(180deg,#07123d,#040a22 55%,#030817);
+    display:flex;flex-direction:column;padding:10px 14px 0}
+  .phone.g{padding:10px 6px 0}
+  .scroll{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:10px;padding-bottom:16px}
+  .fade-b{-webkit-mask-image:linear-gradient(180deg,#000 88%,transparent);mask-image:linear-gradient(180deg,#000 88%,transparent)}
+
+  /* icons */
+  svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  svg.i.f{fill:currentColor;stroke:none}
+
+  /* top bar + chips (same as game) */
+  .top{display:flex;align-items:center;justify-content:space-between;height:40px;margin-bottom:10px;flex:none}
+  .chips{display:flex;gap:6px}
+  .chip{position:relative;height:36px;min-width:36px;padding:0 10px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);font-weight:800;font-size:12px;white-space:nowrap}
+  .chip.ic{padding:0}
+  .chip .dot{position:absolute;top:-4px;left:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--bad);color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;border:2px solid #07123d}
+  .chip.coinchip{color:var(--p2)} .chip.coinchip img{width:18px;height:18px}
+  .pchip{display:flex;align-items:center;gap:8px;height:40px;padding:0 4px 0 10px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+  .pchip .nm{font-weight:800;font-size:12px;line-height:1.1} .pchip .sub{font-size:10px;font-weight:800;color:var(--p1)}
+
+  /* screen header */
+  .hdr{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;height:40px;margin-bottom:12px;flex:none}
+  .hdr .ttl{justify-self:center;display:flex;align-items:center;gap:8px;font-size:18px;font-weight:900}
+  .hdr .ttl svg{color:var(--p1);width:20px;height:20px}
+  .hdr>:first-child{justify-self:start} .hdr .end{justify-self:end}
+
+  /* glass */
+  .card{position:relative;border-radius:18px;padding:14px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),var(--glass);
+    border:1px solid var(--line);box-shadow:0 10px 26px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.10)}
+  .card.tight{padding:10px 12px}
+  .card.hl{border-color:rgba(40,212,255,.7);box-shadow:0 0 0 1px rgba(40,212,255,.25),0 0 22px rgba(40,212,255,.22),inset 0 1px 0 rgba(255,255,255,.14)}
+  .card.gold{border-color:rgba(255,201,61,.6);box-shadow:0 0 20px rgba(255,201,61,.15),inset 0 1px 0 rgba(255,255,255,.12)}
+  .lbl{font-size:11px;font-weight:800;color:var(--dim);letter-spacing:.03em;margin:4px 4px 6px;display:flex;align-items:center;gap:8px}
+  .lbl::after{content:"";flex:1;height:1px;background:var(--line)}
+  .lbl.plain::after{display:none}
+  h3.t2{margin:0;font-size:15px;font-weight:900}
+  .dimtx{color:var(--dim);font-size:12px;font-weight:600}
+  .c{text-align:center}
+  .row{display:flex;align-items:center;gap:10px}
+  .grow{flex:1;min-width:0}
+  .sp{flex:1}
+  .cy{color:var(--p1)} .gd{color:var(--p2)} .okc{color:var(--ok)} .badc{color:var(--bad)}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* list rows */
+  .list{display:flex;flex-direction:column;border-radius:18px;overflow:hidden;background:var(--glass);border:1px solid var(--line)}
+  .li{display:flex;align-items:center;gap:12px;padding:11px 12px;min-height:56px}
+  .li+.li{border-top:1px solid rgba(120,190,255,.12)}
+  .li .tx{flex:1;min-width:0} .li .tx b{display:block;font-size:14px;font-weight:800} .li .tx span{display:block;font-size:11px;color:var(--dim);font-weight:600}
+  .chev{color:var(--faint);width:16px;height:16px}
+  .sock{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;color:#e9fbff;
+    background:radial-gradient(circle at 50% 40%,rgba(40,212,255,.26),rgba(8,22,70,.95) 72%);border:1.5px solid rgba(40,212,255,.55);box-shadow:0 0 10px rgba(40,212,255,.25),inset 0 0 6px rgba(40,212,255,.25)}
+  .sock svg{filter:drop-shadow(0 0 3px rgba(40,212,255,.9))}
+  .sock.gold{background:radial-gradient(circle at 50% 40%,rgba(255,201,61,.28),rgba(40,26,4,.9) 72%);border-color:rgba(255,201,61,.6);box-shadow:0 0 10px rgba(255,201,61,.2);color:#fff3cf}
+  .sock.gold svg{filter:drop-shadow(0 0 3px rgba(255,201,61,.9))}
+  .sock.red{background:radial-gradient(circle at 50% 40%,rgba(255,90,110,.25),rgba(50,8,16,.9) 72%);border-color:rgba(255,90,110,.55);box-shadow:none;color:#ffd6dc}
+  .sock.red svg{filter:none}
+  .sock.mute{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14);box-shadow:none;color:var(--dim)}
+  .sock.mute svg{filter:none}
+  .sock.round{border-radius:50%}
+
+  /* buttons (same as game dock) */
+  .btn{height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:900;font-size:15px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);flex:none}
+  .btn.sm{height:36px;font-size:13px;border-radius:11px;padding:0 12px}
+  .btn.go{background:linear-gradient(180deg,#43e0ff,#1597d6);border-color:rgba(255,255,255,.35);color:#022038;box-shadow:0 6px 18px rgba(40,212,255,.35),inset 0 1px 0 rgba(255,255,255,.6)}
+  .btn.gold{background:linear-gradient(180deg,#ffe07a,#f0a81c);border-color:rgba(255,255,255,.35);color:#3a2300;box-shadow:0 6px 18px rgba(255,201,61,.3),inset 0 1px 0 rgba(255,255,255,.6)}
+  .btn.wa{background:linear-gradient(180deg,#3ee07f,#1ea85a);border-color:rgba(255,255,255,.3);color:#032;box-shadow:0 6px 16px rgba(46,229,125,.25),inset 0 1px 0 rgba(255,255,255,.5)}
+  .btn.bad{color:#ff8f9c;border-color:rgba(255,90,110,.45);background:rgba(255,90,110,.08)}
+  .btn.link{background:none;border:none;color:var(--dim);font-size:13px;font-weight:800;height:34px}
+  .btn.off{opacity:.45;filter:saturate(.4)}
+  .btns{display:flex;gap:8px} .btns>*{flex:1}
+  .btns .x2{flex:2}
+  .ib{display:flex;flex-direction:column;gap:1px;width:56px} .ib .l{font-size:9px;font-weight:800;color:var(--dim)}
+
+  /* bottom dock (same as rack dock) */
+  .dock{margin-top:auto;margin-inline:-14px;padding:12px 14px 22px;border-radius:24px 24px 0 0;flex:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 35%),rgba(8,18,58,.92);border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(0,0,0,.45)}
+  .nav{display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:18px;padding-top:8px}
+  .nav .it{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:800;color:var(--dim)}
+  .nav .it .ic{width:44px;height:32px;border-radius:12px;display:grid;place-items:center}
+  .nav .it svg{width:22px;height:22px}
+  .nav .it.on{color:var(--p1)} .nav .it.on .ic{background:rgba(40,212,255,.14);box-shadow:inset 0 0 0 1px rgba(40,212,255,.4)}
+  .nav .it .dot{position:absolute;top:-3px;left:calc(50% - 22px);min-width:17px;height:17px;border-radius:9px;background:var(--bad);color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;border:2px solid #0a1640}
+
+  /* options / segmented / fields / toggles */
+  .opts{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+  .opt{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 9px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .opt b{font-size:13px;font-weight:900} .opt span{font-size:10px;color:var(--dim);font-weight:700}
+  .opt img{width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))}
+  .opt.on{border:1.5px solid #fff;background:rgba(40,212,255,.13);box-shadow:0 0 0 1px #28d4ff,0 0 14px rgba(40,212,255,.45)}
+  .opt.on span{color:#bff3ff}
+  .seg{display:flex;padding:4px;gap:4px;border-radius:14px;background:rgba(0,0,0,.28);box-shadow:inset 0 2px 5px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.05)}
+  .seg>*{flex:1;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:800;color:var(--dim)}
+  .seg .on{background:linear-gradient(180deg,#43e0ff,#1597d6);color:#022038;box-shadow:0 3px 10px rgba(40,212,255,.35)}
+  .seg .n{font-size:10px;background:rgba(255,255,255,.12);border-radius:8px;padding:0 5px}
+  .seg .on .n{background:rgba(2,32,56,.18)}
+  .fld{height:48px;border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 14px;background:rgba(0,0,0,.28);border:1px solid var(--line);box-shadow:inset 0 2px 5px rgba(0,0,0,.4);font-weight:700;font-size:14px}
+  .fld svg{color:var(--faint)} .fld .ph{color:var(--faint);font-weight:600}
+  .fld.focus{border-color:var(--p1);box-shadow:0 0 0 3px rgba(40,212,255,.18),inset 0 2px 5px rgba(0,0,0,.4)}
+  .fld .caret{width:2px;height:20px;background:var(--p1);margin-inline-start:-8px}
+  .flbl{font-size:12px;font-weight:800;color:var(--dim);margin:0 4px 6px}
+  .tog{width:46px;height:28px;border-radius:14px;background:rgba(255,255,255,.12);position:relative;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+  .tog::after{content:"";position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:#c9d6ee;box-shadow:0 2px 4px rgba(0,0,0,.4);transition:none}
+  .tog.on{background:linear-gradient(180deg,#43e0ff,#1597d6);box-shadow:0 0 10px rgba(40,212,255,.4)}
+  .tog.on::after{right:auto;left:3px;background:#fff}
+  .chk{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line);background:rgba(0,0,0,.3);display:grid;place-items:center;flex:none}
+  .chk.on{background:var(--p1);border-color:var(--p1);color:#022038}
+  .chk.on svg{width:14px;height:14px;stroke-width:3}
+
+  /* pills */
+  .pill{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14)}
+  .pill svg{width:12px;height:12px}
+  .pill.cy{color:var(--p1);background:rgba(40,212,255,.1);border-color:rgba(40,212,255,.4)}
+  .pill.gd{color:var(--p2);background:rgba(255,201,61,.1);border-color:rgba(255,201,61,.4)}
+  .pill.ok{color:var(--ok);background:rgba(46,229,157,.1);border-color:rgba(46,229,157,.4)}
+  .pill.bad{color:#ff8f9c;background:rgba(255,90,110,.1);border-color:rgba(255,90,110,.4)}
+  .pill.solid{background:var(--p1);color:#022038;border-color:transparent}
+  .pill img{width:14px;height:14px}
+
+  /* bars */
+  .bar{height:6px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;display:flex}
+  .bar i{display:block;height:100%;background:var(--p1);box-shadow:0 0 8px var(--p1)}
+  .bar.gold i{background:var(--p2);box-shadow:0 0 8px var(--p2)}
+  .bar .p2{background:var(--p2);box-shadow:none}
+
+  /* avatars */
+  .avr{--c:rgba(255,255,255,.18);--s:44px;position:relative;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;flex:none;
+    background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.18),rgba(0,0,0,.35));border:2px solid var(--c)}
+  .avr img{width:92%;height:92%;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5))}
+  .avr.lit{box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent),0 0 18px color-mix(in srgb,var(--c) 60%,transparent)}
+  .avr .on{position:absolute;bottom:0;left:0;width:12px;height:12px;border-radius:50%;background:var(--ok);border:2px solid #0a1640}
+  .avr .tag{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:900;padding:1px 5px;border-radius:5px;background:var(--r-leg);color:#2a1a00;white-space:nowrap}
+  .cyc{--c:var(--p1)} .gdc{--c:var(--p2)}
+  .c>.avr,.c>div>.avr:only-child{margin-inline:auto}
+
+  /* medallion (timer-style) */
+  .medal{--s:92px;--c:var(--p1);position:relative;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;margin:0 auto;flex:none;
+    background:radial-gradient(circle,#0b1d5c 58%,#081440 60%);box-shadow:0 0 0 1px var(--line),0 0 0 6px color-mix(in srgb,var(--c) 14%,transparent),0 0 30px color-mix(in srgb,var(--c) 35%,transparent),0 10px 24px rgba(0,0,0,.5)}
+  .medal>svg.i{width:40%;height:40%;color:#fff;filter:drop-shadow(0 0 6px var(--c))}
+  .medal>img{width:74%;height:74%;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+  .medal .ring{position:absolute;inset:0;transform:rotate(-90deg)}
+  .medal.gold{--c:var(--p2)} .medal.red{--c:var(--bad)} .medal.ok{--c:var(--ok)} .medal.pur{--c:#b77bff}
+  .medal .big{font-size:calc(var(--s)*.36);font-weight:900;font-variant-numeric:tabular-nums}
+
+  /* overlays */
+  .dim{position:absolute;inset:0;background:rgba(2,6,26,.66);backdrop-filter:blur(2.5px);z-index:5}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:6;border-radius:26px 26px 0 0;padding:10px 16px 26px;
+    background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 30%),rgba(10,22,66,.97);border-top:1px solid rgba(120,190,255,.35);box-shadow:0 -14px 40px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:12px}
+  .sheet .grab{width:40px;height:4px;border-radius:4px;background:rgba(255,255,255,.2);margin:0 auto 2px}
+  .sheet .sh{display:flex;align-items:center;gap:10px}
+  .sheet .sh h3{margin:0;font-size:18px;font-weight:900;flex:1}
+  .dlg{position:absolute;left:20px;right:20px;top:50%;transform:translateY(-50%);z-index:6;border-radius:24px;padding:22px 18px 18px;text-align:center;
+    background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,0) 35%),rgba(10,22,66,.97);border:1px solid rgba(120,190,255,.35);box-shadow:0 20px 50px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:12px}
+  .dlg h3{margin:0;font-size:20px;font-weight:900}
+  .dlg p{margin:0;color:var(--dim);font-size:13.5px;font-weight:600;line-height:1.55}
+  .dlg.red{border-color:rgba(255,90,110,.5)}
+  .dlg.gold{border-color:rgba(255,201,61,.5)}
+  .xbtn{position:absolute;top:12px;left:12px}
+
+  /* wood tiles (BOOST logo) */
+  .t{--s:34px;position:relative;width:var(--s);height:var(--s);display:grid;place-items:center;font-weight:900;line-height:1;flex:none;border-radius:calc(var(--s)*.2);color:#8a5324;
+    background:
+      repeating-linear-gradient(92deg,rgba(150,95,40,.10) 0 1px,transparent 1px 3px,rgba(150,95,40,.06) 3px 4px,transparent 4px 7px),
+      radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.35),transparent 60%),
+      linear-gradient(165deg,#f6ddb0,#e7c08a 60%,#d9ad73);
+    border:calc(1px + var(--s)*.03) solid #46dcf5;
+    box-shadow:0 0 0 1px rgba(0,60,90,.55),0 0 6px rgba(40,212,255,.55),inset 0 0 0 1px rgba(255,255,255,.35),0 calc(var(--s)*.06) 0 1px #7a5530}
+  .t .l{font-size:calc(var(--s)*.6);margin-top:calc(var(--s)*-.06);text-shadow:0 1px 0 rgba(255,245,220,.8),0 -1px 0 rgba(70,35,10,.55)}
+  .t .v{position:absolute;bottom:calc(var(--s)*.04);left:calc(var(--s)*.1);font-size:calc(var(--s)*.26);font-weight:800;opacity:.85;font-variant-numeric:tabular-nums}
+  .t.new{transform:translateY(-3px);border-color:#fff;box-shadow:0 0 0 1px #28d4ff,0 0 12px #28d4ff,0 0 22px rgba(40,212,255,.5),inset 0 0 0 1px rgba(255,255,255,.5),0 4px 0 1px #7a5530}
+  .t.last{border-color:var(--p2);box-shadow:0 0 0 1px rgba(80,50,0,.6),0 0 10px rgba(255,201,61,.8),inset 0 0 0 1px rgba(255,255,255,.35),0 2px 0 1px #7a5530}
+  .t.jk{border-color:#d98cff;box-shadow:0 0 0 1px rgba(60,0,90,.6),0 0 10px rgba(217,140,255,.7),inset 0 0 0 1px rgba(255,255,255,.35),0 2px 0 1px #7a5530}
+  .t.ok{border-color:var(--ok);box-shadow:0 0 0 1px rgba(0,60,30,.6),0 0 10px rgba(46,229,157,.7),inset 0 0 0 1px rgba(255,255,255,.35),0 2px 0 1px #7a5530}
+  .t.ghost{background:rgba(255,255,255,.03);border:1.5px dashed rgba(120,190,255,.45);box-shadow:none}
+  .t.ghost.cur{border:1.5px solid var(--p1);box-shadow:0 0 12px rgba(40,212,255,.4)}
+  .t.dimt{filter:saturate(.3) brightness(.6)}
+  .tiles{display:flex;gap:6px;justify-content:center;direction:rtl}
+  .tiles.ltr{direction:ltr}
+
+  /* logo */
+  .logo{display:flex;justify-content:center;gap:8px;direction:rtl;padding:10px 0 4px}
+  .logo .t{--s:64px}
+  .logo .t:nth-child(1){transform:rotate(6deg) translateY(-4px)}
+  .logo .t:nth-child(2){transform:rotate(-3deg) translateY(8px)}
+  .logo .t:nth-child(3){transform:rotate(2deg) translateY(2px)}
+  .logo .t:nth-child(4){transform:rotate(-5deg) translateY(-2px)}
+  .logo .t .bolt{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px)}
+  .logo.sm .t{--s:44px}
+
+  /* game board (from tools/game-screen-mockup, option B as shipped) */
+  .top.g{padding:0 4px;margin-bottom:8px}
+  .sb{position:relative;display:grid;grid-template-columns:1fr 76px 1fr;min-height:108px;border-radius:18px;flex:none;
+      background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),var(--glass);
+      border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12)}
+  .side{position:relative;display:grid;grid-template-columns:46px minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:8px;row-gap:4px;padding:10px 8px 12px;border-radius:18px;overflow:hidden;min-width:0}
+  .side.p1{--c:var(--p1)} .side.p2{--c:var(--p2);direction:ltr}
+  .side.p2 .nm,.side.p2 .sub{direction:rtl;text-align:left;unicode-bidi:plaintext}
+  .side.active::before{content:"";position:absolute;inset:0;background:linear-gradient(to left,color-mix(in srgb,var(--c) 22%,transparent),transparent 75%)}
+  .side .avr{--s:46px;--c:rgba(255,255,255,.16);z-index:1;align-self:center}
+  .side.active .avr{--c:var(--p1);box-shadow:0 0 0 3px rgba(40,212,255,.25),0 0 16px rgba(40,212,255,.6)}
+  .side .meta{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1px;z-index:1}
+  .side .nm{font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .side .sub{font-size:10px;color:var(--dim);font-weight:700;white-space:nowrap}
+  .side .row2{grid-column:1/3;display:flex;align-items:center;justify-content:space-between;gap:6px;z-index:1}
+  .side .score{font-size:28px;line-height:1;font-weight:900;font-variant-numeric:tabular-nums;color:var(--c);text-shadow:0 0 16px color-mix(in srgb,var(--c) 45%,transparent)}
+  .locks{display:inline-flex;align-items:center;gap:3px;white-space:nowrap;font-size:10px;font-weight:800;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);direction:ltr}
+  .locks .u{opacity:.3;text-decoration:line-through} .locks .d{opacity:.35}
+  .timer{position:relative;align-self:center;justify-self:center;width:70px;height:70px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle,#0b1d5c 58%,#081440 60%);box-shadow:0 0 0 1px var(--line),0 8px 20px rgba(0,0,0,.5)}
+  .timer svg{position:absolute;inset:0;transform:rotate(-90deg)}
+  .timer .tm{font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;margin-top:-6px}
+  .timer .who{position:absolute;bottom:11px;font-size:8.5px;font-weight:900;color:var(--dim)}
+  .rail{position:absolute;left:16px;right:16px;bottom:-9px;height:4px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;display:flex}
+  .rail i{display:block;height:100%} .rail .r1{background:var(--p1)} .rail .r2{background:var(--p2)}
+  .status{align-self:center;margin:18px 0 8px;height:26px;padding:0 12px;border-radius:999px;display:inline-flex;align-items:center;gap:8px;flex:none;
+    background:rgba(40,212,255,.10);border:1px solid rgba(40,212,255,.35);font-size:12px;font-weight:800}
+  .tray{position:relative;align-self:center;padding:5px;border-radius:20px;flex:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0) 30%),rgba(6,14,48,.85);
+    border:1px solid var(--line);box-shadow:0 14px 34px rgba(0,0,0,.55),inset 0 0 40px rgba(40,120,255,.10)}
+  .bgrid{display:grid;grid-template-columns:24px repeat(10,28px) 24px;grid-template-rows:24px repeat(10,28px) 24px;gap:2px;direction:rtl}
+  .bgrid .cell{border-radius:5px;background:linear-gradient(180deg,#22438c,#1b3778);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 -1px 0 rgba(0,0,0,.3)}
+  .bgrid .cell.ring{background:none;box-shadow:none}
+  .bgrid .t{--s:100%;width:100%;height:100%;border-radius:6px;border-width:1.5px}
+  .bgrid .t .l{font-size:17px;margin-top:-2px} .bgrid .t .v{font-size:7.5px;bottom:1px;left:3px}
+  .bsock{border-radius:7px;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,rgba(40,212,255,.28),rgba(8,22,70,.95) 70%);
+    border:1.5px solid rgba(40,212,255,.75);box-shadow:0 0 10px rgba(40,212,255,.45),inset 0 0 6px rgba(40,212,255,.35)}
+  .bsock svg{width:15px;height:15px;fill:#e9fbff;filter:drop-shadow(0 0 3px #28d4ff) drop-shadow(0 0 6px #28d4ff)}
+  .gdock{margin-top:auto;margin-inline:-6px;padding:12px 10px 22px;border-radius:24px 24px 0 0;flex:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 35%),rgba(8,18,58,.92);border-top:1px solid var(--line);box-shadow:0 -10px 30px rgba(0,0,0,.45)}
+  .rack{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;direction:rtl;padding:8px;border-radius:14px;background:rgba(0,0,0,.28);box-shadow:inset 0 2px 6px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,255,255,.05)}
+  .rack .slot{aspect-ratio:1}
+  .rack .slot.empty{border-radius:8px;border:1.5px dashed rgba(120,190,255,.4);background:rgba(255,255,255,.03)}
+  .rack .t{--s:100%;width:100%;height:100%;border-radius:8px}
+  .rack .t .l{font-size:24px} .rack .t .v{font-size:10px;bottom:2px;left:4px}
+  .acts{display:grid;grid-template-columns:56px 56px 1fr;gap:8px;margin-top:10px}
+  .acts .btn{height:48px}
+  .gmenu{position:absolute;top:52px;right:10px;z-index:7;width:220px;padding:6px;border-radius:16px;background:rgba(10,22,66,.98);border:1px solid rgba(120,190,255,.35);box-shadow:0 18px 40px rgba(0,0,0,.6)}
+  .gmenu .mi{display:flex;align-items:center;gap:10px;height:44px;padding:0 10px;border-radius:10px;font-weight:800;font-size:14px}
+  .gmenu .mi+.mi{margin-top:2px} .gmenu .mi svg{color:var(--p1)} .gmenu .mi.hov{background:rgba(40,212,255,.1)}
+  .gmenu .mi .tog{margin-inline-start:auto;transform:scale(.8)}
+  .gmenu .mi.bad svg,.gmenu .mi.bad{color:#ff8f9c}
+
+  /* misc screen bits */
+  .mode{display:grid;grid-template-columns:78px 1fr 30px;align-items:center;gap:12px;padding:12px 14px;min-height:106px}
+  .mode .art{width:78px;height:78px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,rgba(40,212,255,.22),rgba(6,16,54,.9) 70%);box-shadow:inset 0 0 0 1px rgba(120,190,255,.25),0 6px 16px rgba(0,0,0,.4)}
+  .mode .art img{width:66px;height:66px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+  .mode b{display:block;font-size:19px;font-weight:900} .mode span{display:block;font-size:12px;color:var(--dim);font-weight:600;margin-top:2px}
+  .mode .go{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--dim)}
+  .mode.hl .go{background:linear-gradient(180deg,#43e0ff,#1597d6);color:#022038;border-color:transparent}
+  .mode .pill{margin-top:6px;display:inline-flex} .mode .pill span{display:inline}
+  .stat3{display:grid;grid-template-columns:repeat(3,1fr);text-align:center}
+  .stat3>div+div{border-inline-start:1px solid rgba(120,190,255,.14)}
+  .stat3 b{display:block;font-size:24px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums} .stat3 span{font-size:11px;color:var(--dim);font-weight:700}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .ach{border-radius:16px;padding:10px 6px 9px;text-align:center;background:var(--glass);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:4px}
+  .ach img{width:62px;height:62px;object-fit:contain;filter:drop-shadow(0 5px 8px rgba(0,0,0,.5))}
+  .ach b{font-size:11.5px;font-weight:900;line-height:1.15}
+  .ach.got{border-color:rgba(255,201,61,.55);background:radial-gradient(ellipse at 50% 20%,rgba(255,201,61,.18),transparent 65%),var(--glass)}
+  .ach.lock img{filter:grayscale(1) brightness(.45)} .ach.lock b{color:var(--dim)}
+  .ach .bar{width:80%;height:4px} .ach small{font-size:10px;color:var(--dim);font-weight:800}
+  .shop{--rc:var(--r-common);border-radius:16px;padding:8px 6px 8px;text-align:center;background:var(--glass);border:1px solid color-mix(in srgb,var(--rc) 45%,transparent);display:flex;flex-direction:column;align-items:center;gap:5px}
+  .shop .art{width:100%;aspect-ratio:1.05;border-radius:12px;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,color-mix(in srgb,var(--rc) 40%,transparent),rgba(0,0,0,.25) 70%)}
+  .shop .art img{width:84%;height:84%;object-fit:contain;filter:drop-shadow(0 5px 8px rgba(0,0,0,.5))}
+  .shop b{font-size:11.5px;font-weight:900}
+  .shop.eq{border:1.5px solid #fff;box-shadow:0 0 0 1px #28d4ff,0 0 14px rgba(40,212,255,.45)}
+  .rare{--rc:var(--r-rare)} .epic{--rc:var(--r-epic)} .leg{--rc:var(--r-leg)}
+  .code{display:flex;gap:6px;justify-content:center;direction:ltr}
+  .code .t{--s:40px}
+  .wl{display:flex;gap:4px;direction:ltr}
+  .wl i{flex:1;height:22px;border-radius:5px;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:900}
+  .wl .w{background:rgba(40,212,255,.2);color:var(--p1);box-shadow:inset 0 0 0 1px rgba(40,212,255,.5)}
+  .wl .l{background:rgba(255,90,110,.12);color:#ff8f9c;box-shadow:inset 0 0 0 1px rgba(255,90,110,.35)}
+  .wl .d{background:rgba(255,255,255,.07);color:var(--dim)}
+  .rank{width:24px;text-align:center;font-weight:900;font-size:14px;color:var(--dim);flex:none}
+  .rank.m1{color:#ffd76a} .rank.m2{color:#d7e3f5} .rank.m3{color:#e5a36b}
+  .li.me{background:rgba(40,212,255,.1);box-shadow:inset 0 0 0 1px rgba(40,212,255,.45)}
+  .acc .li .chev{transform:rotate(90deg)} .acc .li.open .chev{transform:rotate(-90deg);color:var(--p1)}
+  .accbody{padding:0 14px 14px 14px;color:var(--dim);font-size:12.5px;font-weight:600;line-height:1.6}
+  .spark{width:100%;height:40px}
+  .rays{position:absolute;inset:-60px;background:repeating-conic-gradient(from 0deg,rgba(255,201,61,.14) 0 8deg,transparent 8deg 22deg);-webkit-mask-image:radial-gradient(circle,#000 20%,transparent 65%);mask-image:radial-gradient(circle,#000 20%,transparent 65%);z-index:0}
+  .rays ~ *{position:relative;z-index:1}
+  .kick{font-size:12px;font-weight:900;letter-spacing:.06em;color:var(--p2)}
+  .days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .days>div{border-radius:10px;padding:6px 0 5px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:10px;font-weight:800;color:var(--dim);display:flex;flex-direction:column;align-items:center;gap:2px}
+  .days img{width:18px;height:18px}
+  .days .got{color:var(--p2);opacity:.6} .days .today{border:1.5px solid var(--p2);background:rgba(255,201,61,.14);color:var(--p2);box-shadow:0 0 14px rgba(255,201,61,.35)}
+  .radar{position:absolute;border-radius:50%;border:1px solid rgba(40,212,255,.25)}
+  .reel{width:84px;height:84px;border-radius:50%;overflow:hidden;position:relative;border:2px dashed rgba(255,201,61,.6);display:grid;place-items:center;background:radial-gradient(circle,rgba(255,201,61,.12),rgba(0,0,0,.3))}
+  .reel img{position:absolute;width:70px;height:70px;object-fit:contain;filter:blur(1.5px) brightness(.8)}
+  .reel img:nth-child(1){transform:translateY(-58px)} .reel img:nth-child(3){transform:translateY(58px)}
+  .reel img:nth-child(2){filter:blur(2.5px) brightness(.9)}
+  .kbd{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;direction:rtl}
+  .kbd .t{--s:100%;aspect-ratio:1;width:100%;height:auto}
+  .kbd .t .l{font-size:20px}
+  .toast{position:absolute;top:58px;left:12px;right:12px;z-index:8;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:18px;background:rgba(10,22,66,.97);border:1px solid rgba(40,212,255,.45);box-shadow:0 14px 34px rgba(0,0,0,.6),0 0 20px rgba(40,212,255,.2)}
+  .vs{position:absolute;inset:0;display:grid;grid-template-rows:1fr 1fr}
+  .vs .half{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .vs .h1{background:radial-gradient(ellipse at 50% 60%,rgba(40,212,255,.35),transparent 65%);clip-path:polygon(0 0,100% 0,100% 88%,0 100%)}
+  .vs .h2{background:radial-gradient(ellipse at 50% 40%,rgba(255,201,61,.3),transparent 65%);clip-path:polygon(0 12%,100% 0,100% 100%,0 100%)}
+  .vs .nm{font-size:24px;font-weight:900} .vs .elo{font-size:13px;font-weight:800}
+  .vs .mid{position:absolute;left:0;right:0;top:50%;height:0;display:grid;place-items:center}
+  .vs .mid .medal{--s:96px;position:absolute;top:-48px}
+  .vs .mid .medal b{font-size:34px;font-weight:900;font-style:italic;letter-spacing:-.04em;background:linear-gradient(90deg,var(--p2),#fff 50%,var(--p1));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .vs .strike{position:absolute;left:-10px;right:-10px;top:-2px;height:4px;transform:rotate(-6deg);background:linear-gradient(90deg,var(--p2),#fff,var(--p1));box-shadow:0 0 16px #fff,0 0 30px var(--p1)}
+  .coin{width:150px;height:150px;border-radius:50%;margin:0 auto;display:grid;place-items:center;position:relative;
+    background:radial-gradient(circle at 35% 30%,#fff3b5,#ffd24a 35%,#e39a12 75%,#b86e05);box-shadow:0 0 0 6px rgba(255,201,61,.25),0 0 50px rgba(255,201,61,.45),inset 0 -8px 16px rgba(120,60,0,.45),inset 0 6px 10px rgba(255,255,255,.5)}
+  .coin::before{content:"";position:absolute;inset:14px;border-radius:50%;border:3px solid rgba(150,85,5,.45)}
+  .coin svg{width:64px;height:64px;fill:#a45f06;filter:drop-shadow(0 1px 0 rgba(255,240,190,.9))}
+  .qr{display:grid;place-items:center}
+</style>
+</head>
+<body>
+<header class="pghead">
+  <h1>בוסט — כל המסכים בשפת מסך המשחק <span>הצעה · 375×812</span></h1>
+  <nav class="toc" id="toc"><label><input type="checkbox" id="sm"> מצב דחוס</label></nav>
+</header>
+
+<main id="main"></main>
+
+<div class="notes">
+  <div><b>1. שפה אחת לכל האפליקציה.</b> אותו רקע, אותה "זכוכית" כהה עם קו תכלת עדין ופינות 18px, אותם צ'יפים עליונים, ואותו "מעגן" תחתון כמו מגש האותיות. כל פעולה ראשית היא הכפתור התכלת של "שבץ"; פעולות משניות — זכוכית; מסוכנות — אדום.</div>
+  <div><b>2. אריח העץ = אלמנט המותג.</b> הלוגו בבית, בטעינה ובכניסה בנוי מאריחי העץ של הקליפ. גם קודים (קוד חדר, קוד חבר), מילים במילון, האות המועדפת בסטטיסטיקות והמילה במשחקון הבוסט מוצגים כאריחים — כך שהמשחק נוכח בכל מסך.</div>
+  <div><b>3. תכלת/זהב = אני/היריב, בכל מקום.</b> כמו בלוח התוצאות: בסוף משחק, במשחקים שלי, בכרטיס חבר (מאזן ביניכם כ"פס הובלה"), במסך ה-VS ובהטלת המטבע. זהב משמש גם למטבעות, הישגים ותגמולים.</div>
+  <div><b>4. שקעי האנרגיה במקום אימוג'י.</b> האימוג'י והאייקונים המעורבים הוחלפו באייקוני קו אחידים בתוך "שקע" זוהר — אותו שקע של משבצות הבוסט בלוח. איורי התלת-ממד (גלובוס, בוט, אווטארים, הישגים) נשארים כאיורים.</div>
+  <div><b>5. חלונות: שני סוגים בלבד.</b> בחירות והגדרות (פתיחת משחק, מילון, החלפה, ג'וקר, השהיה, צור קשר) — גיליון תחתון שנפתח מעל המעגן, קרוב לאגודל. הודעות ואישורים — דיאלוג מרכזי עם מדליון בראש, באותו סגנון של מדליון הטיימר.</div>
+  <div><b>6. בחירה = מסגרת לבנה-תכלת.</b> אפשרות נבחרת (קושי, קצב, אות לג'וקר, אווטאר מצויד) מקבלת את אותה מסגרת זוהרת של אריח שמונח עכשיו על הלוח. מתגים (כן/לא) הפכו למתגי הפעלה.</div>
+  <div><b>7. חדש/לשיקולך:</b> שורת "תורך ב-2 משחקים" בבית (מבוססת על התג הקיים), שורת 7 ימים בתגמול היומי, התקדמות להישג הקרוב במסך הסיום (מהתוכנית), ופילוח "תורך / תור היריב" במשחקים שלי. אלה תוספות תצוגה — אפשר לוותר עליהן.</div>
+  <div><b>8. לא נכללו:</b> מסך הניהול (#sadmin) ושחזור המשחק (#ov-replay) — כלים פנימיים שנשארים כמו שהם — וגם בועות ההדרכה על הלוח (tutorial-overlay-elements), שיקבלו את סגנון הדיאלוג. כל שאר המסכים והחלונות מופיעים כאן: 52 הדמיות, כולל וריאציות (הפסד, שני שחקנים, תפריט פתוח).</div>
+</div>
+
+<script>
+/* ───────────── data ───────────── */
+const HV = {'א':1,'ב':3,'ג':5,'ד':3,'ה':4,'ו':1,'ז':8,'ח':4,'ט':8,'י':1,'כ':5,'ל':2,'מ':2,'נ':2,'ס':5,'ע':4,'פ':5,'צ':9,'ק':5,'ר':2,'ש':3,'ת':4,'ם':2,'ן':2,'ך':5,'ף':5,'ץ':9};
+const A = p => encodeURI(p);
+const AV = {
+  me: A('assets/avatars_v2/legendary/moses.png'), dana: A('assets/avatars_v2/epic/rachel.png'), yael: A('assets/avatars_v2/rare/golda.png'),
+  itay: A('assets/avatars_v2/common/gamer.png'), uri: A('assets/avatars_v2/legendary/david.png'), ron: A('assets/avatars_v2/rare/hertzel.png'),
+  michal: A('assets/avatars_v2/common/doctor.png'), noa: A('assets/avatars_v2/rare/ofra_haza.png'), anon: A('assets/avatars/anonymous player.png'),
+  bot: A('assets/avatars/bot.png'), g: A('assets/avatars/green bot.png'), y: A('assets/avatars/yellow bot.png'), r: A('assets/avatars/red bot.png'),
+};
+const COIN = A('assets/rewards/gold coin.png');
+const ACH = n => A(`assets/achievements/${n}.png`);
+
+/* ───────────── icons (24px line set) ───────────── */
+const P = {
+  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  back:'<path d="m9 6 6 6-6 6"/>', fwd:'<path d="m15 6-6 6 6 6"/>',
+  book:'<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/>',
+  bag:'<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+  bell:'<path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17h.01"/>',
+  music:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+  home:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  games:'<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14a6 6 0 0 1 3.5 6"/>',
+  trophy:'<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4a3 3 0 0 0 4 4M16 6h4a3 3 0 0 1-4 4"/><path d="M12 13v4M8 20h8M10 17h4v3h-4z"/>',
+  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>', key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M15 8l2 2"/>',
+  dice:'<rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/><circle cx="15" cy="15" r="1.2" fill="currentColor"/><circle cx="15" cy="9" r="1.2" fill="currentColor"/><circle cx="9" cy="15" r="1.2" fill="currentColor"/>',
+  bolt:'<path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>', check:'<path d="m5 12 5 5 9-10"/>',
+  swap:'<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/>',
+  undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', hour:'<path d="M6 3h12M6 21h12M7 3c0 5 10 6 10 9s-10 4-10 9M17 3c0 5-10 6-10 9"/>',
+  share:'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>', mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  store:'<path d="M4 9h16l-1-5H5z"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/>',
+  logout:'<path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
+  play:'<path d="M7 4v16l13-8z"/>', pause:'<path d="M8 5v14M16 5v14"/>',
+  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  fire:'<path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/>',
+  shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>', flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  cap:'<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/><path d="M22 9v6"/>',
+  star:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.5 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  crown:'<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>', wifi:'<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><path d="M12 19.5h.01"/><path d="M3 3l18 18"/>',
+  joker:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="m12 8 1.2 2.6 2.8.3-2.1 1.9.6 2.8L12 14.2l-2.5 1.4.6-2.8L8 10.9l2.8-.3z"/>',
+  pen:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/>', trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  vib:'<rect x="8" y="3" width="8" height="18" rx="2"/><path d="M4 8v8M20 8v8"/>', motion:'<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+  wand:'<path d="m4 20 11-11M15 4v3M13.5 5.5h3M19 9v2M18 10h2"/>', target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  hand:'<path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 11V4a1.5 1.5 0 0 1 3 0v7M14 11V6a1.5 1.5 0 0 1 3 0v8a7 7 0 0 1-7 7 6 6 0 0 1-5-3l-2.5-4a1.5 1.5 0 0 1 2.5-1.6L8 15"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>', gift:'<rect x="3" y="8" width="18" height="4"/><path d="M5 12v9h14v-9M12 8v13M12 8S10 3 7.5 4 8 8 12 8zm0 0s2-5 4.5-4S16 8 12 8z"/>',
+  sparkle:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', google:'<path d="M20 12.2c0-.6 0-1.1-.1-1.7H12v3.3h4.5a4 4 0 0 1-1.7 2.6v2.1h2.8c1.6-1.5 2.4-3.7 2.4-6.3z"/><path d="M12 20.5c2.3 0 4.2-.8 5.6-2l-2.8-2.1c-.8.5-1.7.8-2.8.8-2.2 0-4-1.5-4.7-3.4H4.4v2.2A8.5 8.5 0 0 0 12 20.5z"/>',
+  wa:'<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/><path d="M9 9c0 3 3 6 6 6l1.2-1.4-2-1-1 .9c-1-.4-2.3-1.7-2.7-2.7l.9-1-1-2z"/>',
+};
+const I = (n, cls = '') => `<svg class="i ${cls}" viewBox="0 0 24 24">${P[n]}</svg>`;
+const BOLTF = '<svg viewBox="0 0 24 24"><path d="M13.5 2 4 13.5h6.5L9 22l11-12.5h-6.8z"/></svg>';
+
+/* ───────────── building blocks ───────────── */
+const tile = (ch, cls = '', s = '', noVal = false) => `<div class="t ${cls}" ${s ? `style="--s:${s}px"` : ''}><span class="l">${ch}</span>${noVal ? '' : `<span class="v">${HV[ch] ?? ''}</span>`}</div>`;
+const word = (w, cls = '', s = 34, extra = '') => `<div class="tiles ${extra}">${[...w].map(ch => ch === ' ' ? `<div style="width:${s / 3}px"></div>` : tile(ch, cls, s)).join('')}</div>`;
+const code = (digits, s = 40) => `<div class="code">${[...digits].map(d => d === '_' ? `<div class="t ghost" style="--s:${s}px"></div>` : d === '|' ? `<div class="t ghost cur" style="--s:${s}px"></div>` : `<div class="t" style="--s:${s}px"><span class="l" style="font-size:${s * .55}px">${d}</span></div>`).join('')}</div>`;
+const avr = (src, s = 44, cls = '', extra = '', st = '') => `<div class="avr ${cls}" style="--s:${s}px;${st}"><img src="${src}" alt="">${extra}</div>`;
+const medal = (inner, cls = '', s = 92, ring = '') => `<div class="medal ${cls}" style="--s:${s}px">${ring}${inner}</div>`;
+const ringSvg = (s, pct, color, w = 5) => { const r = s / 2 - w; const c = 2 * Math.PI * r; return `<svg class="ring" viewBox="0 0 ${s} ${s}"><circle cx="${s/2}" cy="${s/2}" r="${r}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="${w}"/><circle cx="${s/2}" cy="${s/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct)}" style="filter:drop-shadow(0 0 4px ${color})"/></svg>`; };
+const coinImg = (s = 16) => `<img src="${COIN}" alt="" style="width:${s}px;height:${s}px;vertical-align:-3px">`;
+const li = (icon, title, sub = '', end = I('fwd', 'chev'), sockCls = '') => `<div class="li"><div class="sock ${sockCls}">${I(icon)}</div><div class="tx"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</div>${end}</div>`;
+
+const LOGO_BOLT = `<svg class="bolt" viewBox="0 0 72 72"><path d="M41 -2 29 34h12L27 76" fill="none" stroke="#071238" stroke-width="4.5" stroke-linejoin="round"/><path d="M41 -2 29 34h12L27 76" fill="none" stroke="#46dcf5" stroke-width="2" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px #28d4ff)"/></svg>`;
+const logo = (cls = '') => `<div class="logo ${cls}">${['ב','ו','ס','ט'].map(ch => `<div class="t"><span class="l">${ch}</span>${ch === 'ס' ? LOGO_BOLT : ''}</div>`).join('')}</div>`;
+
+const topbar = ({ home = false, badge = 2 } = {}) => `
+  <div class="top">
+    <div class="chips">
+      <span class="chip ic">${I('bell')}${badge ? `<span class="dot">${badge}</span>` : ''}</span>
+      <span class="chip ic">${I('gear')}</span>
+      <span class="chip ic">${I('help')}</span>
+      ${home ? `<span class="chip ic">${I('home')}</span>` : ''}
+    </div>
+    <div class="pchip">
+      <span class="pill gd" style="border:none;background:none;padding:0 2px">${coinImg(16)} 240</span>
+      <div><div class="nm">נחום</div><div class="sub num">⚡ 1087</div></div>
+      ${avr(AV.me, 32, 'cyc')}
+    </div>
+  </div>`;
+const hdr = (title, icon = '', end = '<span></span>', start = `<span class="chip ic">${I('back')}</span>`) =>
+  `<div class="hdr">${start}<div class="ttl">${icon ? I(icon) : ''}${title}</div><div class="end">${end}</div></div>`;
+const bottomNav = (on = -1) => `
+  <div class="dock nav">${[['games','המשחקים שלי',2],['users','חברים'],['trophy','הישגים'],['chart','סטטיסטיקות']].map(([ic, t, d], i) =>
+    `<div class="it ${i === on ? 'on' : ''}"><div class="ic">${I(ic)}</div>${t}${d ? `<span class="dot">${d}</span>` : ''}</div>`).join('')}</div>`;
+const sheet = (inner) => `<div class="dim"></div><div class="sheet"><div class="grab"></div>${inner}</div>`;
+const dlg = (inner, cls = '') => `<div class="dim"></div><div class="dlg ${cls}">${inner}</div>`;
+
+/* ───────────── game board (option B as shipped) ───────────── */
+function board({ timer = 31, who = 'תורך', ring = '#28d4ff', active = 1, status = true, menu = false } = {}) {
+  const SOCKETS = [[-1,1],[-1,5],[-1,9],[1,-1],[4,-1],[8,-1],[2,10],[5,10],[9,10],[10,2],[10,5],[10,7]];
+  const WORDS = [{r:4,c:3,dir:'h',w:'שלום'},{r:2,c:6,dir:'v',w:'מים'},{r:4,c:4,dir:'v',w:'לילה',cls:'last'},{r:7,c:5,dir:'h',w:'אור',cls:'new'}];
+  const at = {};
+  for (const { r, c, dir, w, cls = '' } of WORDS) [...w].forEach((ch, i) => {
+    const k = dir === 'h' ? `${r},${c + i}` : `${r + i},${c}`;
+    if (!at[k] || cls) at[k] = tile(ch, cls);
+  });
+  let g = '';
+  for (let gr = -1; gr <= 10; gr++) for (let gc = -1; gc <= 10; gc++) {
+    const ringc = gr < 0 || gr > 9 || gc < 0 || gc > 9;
+    if (SOCKETS.some(([r, c]) => r === gr && c === gc)) g += `<div class="bsock">${BOLTF}</div>`;
+    else g += `<div class="cell ${ringc ? 'ring' : ''}">${at[`${gr},${gc}`] ?? ''}</div>`;
+  }
+  const RACK = ['ת','ל',null,'נ','ה',null,'נ',null];
+  const c = 2 * Math.PI * 31;
+  return `
+  <div class="top g">
+    <div class="chips"><span class="chip ic" ${menu ? 'style="border-color:var(--p1);color:var(--p1)"' : ''}>${I('menu')}</span><span class="chip">${I('book')}מילון</span></div>
+    <span class="chip" style="color:var(--dim)">${I('bag')}<b style="color:var(--ink);font-size:15px">83</b> בקופה</span>
+  </div>
+  <div class="sb">
+    <div class="side p1 ${active === 1 ? 'active' : ''}">${avr(AV.me, 46, '', '<span class="tag">אגדי</span>')}<div class="meta"><div class="nm">נחום</div><div class="sub">ELO 1087</div></div><div class="row2"><div class="score">42</div><div class="locks">🔒 3<span class="d">·</span>3<span class="d">·</span>5</div></div></div>
+    <div class="timer"><svg viewBox="0 0 70 70"><circle cx="35" cy="35" r="31" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/><circle cx="35" cy="35" r="31" fill="none" stroke="${ring}" stroke-width="6" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - timer / 40)}" style="filter:drop-shadow(0 0 4px ${ring})"/></svg><div class="tm">${timer}</div><div class="who">${who}</div></div>
+    <div class="side p2 ${active === 2 ? 'active' : ''}">${avr(AV.dana, 46)}<div class="meta"><div class="nm">דנה</div><div class="sub">ELO 1112</div></div><div class="row2"><div class="score">51</div><div class="locks">🔒 3<span class="d">·</span><span class="u">3</span><span class="d">·</span>5</div></div></div>
+    <div class="rail"><i class="r1" style="width:45%"></i><i class="r2" style="width:55%"></i></div>
+  </div>
+  <div class="status" ${status ? '' : 'style="visibility:hidden"'}><span style="width:16px;height:16px;border-radius:50%;background:var(--ok);display:grid;place-items:center;color:#032;font-size:10px;font-weight:900">✓</span>האור<span class="cy" dir="ltr">+8</span></div>
+  <div class="tray"><div class="bgrid">${g}</div></div>
+  <div class="gdock">
+    <div class="rack">${RACK.map(ch => ch ? `<div class="slot">${tile(ch)}</div>` : '<div class="slot empty"></div>').join('')}</div>
+    <div class="acts">
+      <div class="btn ib">${I('undo')}<span class="l">בטל</span></div>
+      <div class="btn ib">${I('swap')}<span class="l">החלפה</span></div>
+      <div class="btn go">שבץ ✓</div>
+    </div>
+  </div>`;
+}
+const homeBase = () => SCREENS_HOME();
+
+/* ───────────── screens ───────────── */
+function SCREENS_HOME() { return `
+  ${topbar()}
+  ${logo()}
+  <div class="scroll" style="padding-top:14px;gap:12px">
+    <div class="card tight row" style="border-radius:14px;padding:8px 10px">
+      <div class="sock round" style="width:30px;height:30px">${I('bolt')}</div>
+      <div class="grow" style="font-weight:800;font-size:13px">תורך ב-2 משחקים</div>
+      <div style="display:flex;direction:ltr">${avr(AV.dana, 28, 'gdc')}${avr(AV.itay, 28, 'gdc', '', 'margin-left:-8px')}</div>
+      ${I('fwd', 'chev')}
+    </div>
+    <div class="card mode hl"><div class="art"><img src="assets/icons/globe.png" alt=""></div><div><b>משחק ברשת</b><span>שחק מול שחקנים אמיתיים</span><span class="pill cy">${I('bolt')} מדורג · ELO</span></div><div class="go">${I('fwd')}</div></div>
+    <div class="card mode"><div class="art"><img src="${AV.bot}" alt=""></div><div><b>נגד המחשב</b><span>התאמן מול הבוט ושפר את יכולתך</span></div><div class="go">${I('fwd')}</div></div>
+    <div class="card mode"><div class="art"><img src="assets/icons/1v1.png" alt=""></div><div><b>שני שחקנים</b><span>שחק עם חבר על אותו מכשיר</span></div><div class="go">${I('fwd')}</div></div>
+    <div class="card tight row" style="border-radius:14px;padding:8px 10px;margin-top:auto">
+      <div class="sock gold round" style="width:30px;height:30px">${I('trophy')}</div>
+      <div class="grow" style="font-weight:800;font-size:13px">טבלת דירוגים</div><span class="pill cy num">אתה במקום 27</span>${I('fwd', 'chev')}
+    </div>
+  </div>
+  ${bottomNav()}`; }
+
+const S = [];
+const add = (sec, name, id, html, cls = '') => S.push({ sec, name, id, html, cls });
+
+/* 1. Start & home */
+add('home', 'טעינה', '#loading', `
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px">
+    <div class="tiles" style="gap:10px">${['ב','ו','ס','ט'].map((ch, i) => tile(ch, i === 1 ? 'new' : '', 58)).join('')}</div>
+    <div class="row dimtx" style="font-weight:800;letter-spacing:.08em">מתחבר<span class="cy">•••</span></div>
+  </div>
+  <div class="card c" style="margin-bottom:26px;padding:26px 16px 16px">
+    <div class="sock round" style="position:absolute;top:-19px;left:calc(50% - 19px)">${I('info')}</div>
+    <div class="gd" style="font-weight:900;margin-bottom:4px">הידעת?</div>
+    <div class="dimtx" style="font-size:13px">דף הסטטיסטיקות מציג את הניקוד הגבוה שלכם, אחוז הניצחונות ועוד נתונים מרתקים.</div>
+    <div class="row" style="justify-content:center;gap:5px;margin-top:12px">${[0,0,0,0,1].map(o => `<i style="width:${o ? 16 : 6}px;height:6px;border-radius:3px;background:${o ? 'var(--p1)' : 'rgba(255,255,255,.2)'}"></i>`).join('')}</div>
+  </div>`);
+add('home', 'בית', '#sh', SCREENS_HOME());
+add('home', 'תפריט עזרה', '#em-help-dropdown', `${SCREENS_HOME()}<div class="dim" style="background:rgba(2,6,26,.4);backdrop-filter:none"></div>
+  <div class="gmenu" style="right:94px;top:52px;width:200px">
+    <div class="mi">${I('cap')}הדרכה</div><div class="mi">${I('book')}מדריך</div><div class="mi">${I('help')}שאלות נפוצות</div><div class="mi">${I('mail')}צור קשר</div>
+  </div>`);
+add('home', 'הסבר ראשון למסך', '#ov-onboarding', `${SCREENS_HOME()}${dlg(`
+  ${medal(`<img src="${AV.bot}">`, '', 76)}
+  <h3>ברוך הבא לבוסט!</h3>
+  <p>משחק מילים בעברית, עם טוויסט: לאורך המשחק תפגשו משבצות בוסט שמפעילות משחקונים.</p>
+  <div class="list" style="text-align:right">
+    ${li('games', 'מילים בעברית', 'סדרו אותיות למילים וצברו נקודות', '')}
+    ${li('bolt', 'בוסטים', 'משחקונים שמביאים בונוס', '')}
+    ${li('globe', 'משחק ברשת', 'מול חבר או יריב אקראי', '')}
+  </div>
+  <div class="row"><span class="chk"></span><span class="dimtx grow" style="text-align:right">אל תציג שוב</span><div class="btn go sm" style="height:44px;padding:0 22px">הבנתי ✓</div></div>`)}`);
+add('home', 'התראה: הזמנה נכנסת', '#notif-banner', `${SCREENS_HOME()}
+  <div class="toast">${avr(AV.dana, 40, 'gdc lit')}<div class="grow"><b style="font-size:14px">דנה מזמינה אותך</b><div class="dimtx">⚡ לייב · 40 שנ' · ELO 1112</div></div><div class="btn go sm">הצטרף</div></div>`);
+
+/* 2. Starting a game */
+add('start', 'הגדרות נגד המחשב', '#ss', `
+  ${hdr('נגד המחשב', 'bolt')}
+  <div class="scroll">
+    <div class="c" style="padding:4px 0 2px">${medal(`<img src="${AV.y}">`, 'gold', 108)}<div style="font-weight:900;font-size:17px;margin-top:10px">המחשב · רמה בינונית</div><div class="dimtx">משחק מאוזן — טוב לאימון יומי</div></div>
+    <div><div class="flbl">השם שלך</div><div class="fld">${I('user')}נחום</div></div>
+    <div><div class="lbl">רמת קושי</div><div class="opts">
+      <div class="opt"><img src="${AV.g}"><b>קל</b><span>למתחילים</span></div>
+      <div class="opt on"><img src="${AV.y}"><b>בינוני</b><span>לאתגר מאוזן</span></div>
+      <div class="opt"><img src="${AV.r}"><b>קשה</b><span>לאתגר אמיתי</span></div></div></div>
+    <div><div class="lbl">קצב משחק</div><div class="opts">
+      ${[[20,'בזק'],[40,'רגיל'],[60,'איטי'],[0,'ללא']].map(([s, t]) => `<div class="opt ${s === 40 ? 'on' : ''}">${medal(s ? `<span style="font-size:13px;font-weight:900">${s}</span>` : '<span style="font-size:18px;font-weight:900">∞</span>', '', 38, s ? ringSvg(38, s / 60, s === 40 ? '#28d4ff' : 'rgba(234,244,255,.5)', 3) : '')}<b>${t}</b><span>${s ? s + ' שנ\'' : 'ללא הגבלה'}</span></div>`).join('')}</div></div>
+    <div class="list">${li('eye', 'הצג גם את מגש היריב', 'אימון: רואים את האותיות של הבוט', '<span class="tog"></span>')}</div>
+  </div>
+  <div class="dock"><div class="btn go">שחק ▶</div></div>`);
+add('start', 'שני שחקנים', '#ss (vs)', `
+  ${hdr('שני שחקנים', 'users')}
+  <div class="scroll">
+    <div class="card" style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center">
+      <div>${avr(AV.me, 64, 'cyc lit')}<div class="fld focus" style="height:40px;margin-top:10px;justify-content:center">נחום<span class="caret" style="margin:0"></span></div><div class="cy" style="font-size:11px;font-weight:800;margin-top:4px">שחקן 1</div></div>
+      <b class="dimtx" style="font-size:16px">VS</b>
+      <div>${avr(AV.anon, 64, 'gdc')}<div class="fld" style="height:40px;margin-top:10px;justify-content:center">שחקן 2</div><div class="gd" style="font-size:11px;font-weight:800;margin-top:4px">שחקן 2</div></div>
+    </div>
+    <div><div class="lbl">קצב משחק</div><div class="opts">
+      ${[[20,'בזק'],[40,'רגיל'],[60,'איטי'],[0,'ללא']].map(([s, t]) => `<div class="opt ${s === 40 ? 'on' : ''}">${medal(s ? `<span style="font-size:13px;font-weight:900">${s}</span>` : '<span style="font-size:18px;font-weight:900">∞</span>', '', 38, s ? ringSvg(38, s / 60, s === 40 ? '#28d4ff' : 'rgba(234,244,255,.5)', 3) : '')}<b>${t}</b><span>${s ? s + ' שנ\'' : 'ללא הגבלה'}</span></div>`).join('')}</div></div>
+    <div class="list">${li('eye', 'הצג את מגש שני השחקנים', 'כבוי: כל אחד רואה רק את שלו', '<span class="tog"></span>')}</div>
+  </div>
+  <div class="dock"><div class="btn go">שחק ▶</div></div>`);
+add('start', 'משחק ברשת', '#so', `
+  ${hdr('משחק ברשת', 'globe')}
+  <div class="scroll" style="gap:12px">
+    <div style="padding:6px 0 4px">${medal(`<img src="assets/icons/globe.png">`, '', 120)}</div>
+    <div class="c dimtx" style="font-size:14px;margin-bottom:6px">בחר כיצד תרצה לשחק</div>
+    <div class="card mode hl" style="min-height:88px;grid-template-columns:44px 1fr 30px"><div class="sock" style="width:44px;height:44px">${I('dice')}</div><div><b style="font-size:17px">חפש יריב אקראי</b><span>התחבר לשחקן זמין · מדורג</span></div><div class="go">${I('fwd')}</div></div>
+    <div class="card mode" style="min-height:88px;grid-template-columns:44px 1fr 30px"><div class="sock" style="width:44px;height:44px">${I('plus')}</div><div><b style="font-size:17px">פתח משחק חדש</b><span>בחר הגדרות ושלח קוד לחבר</span></div><div class="go">${I('fwd')}</div></div>
+    <div class="card mode" style="min-height:88px;grid-template-columns:44px 1fr 30px"><div class="sock" style="width:44px;height:44px">${I('key')}</div><div><b style="font-size:17px">הצטרף לפי קוד</b><span>הזן קוד שקיבלת מחבר</span></div><div class="go">${I('fwd')}</div></div>
+  </div>
+  ${bottomNav()}`);
+const lobbyBase = () => S.find(s => s.id === '#so').html;
+const liveAsync = (on = 'live') => `<div class="seg"><div class="${on === 'live' ? 'on' : ''}">${I('bolt')}לייב</div><div class="${on === 'async' ? 'on' : ''}">${I('mail')}אסינכרוני</div></div>`;
+const speedSeg = `<div class="seg"><div>בזק · 20</div><div class="on">רגיל · 40</div><div>איטי · 60</div></div>`;
+add('start', 'פתיחת משחק חדש', '#ov-create-room', `${lobbyBase()}${sheet(`
+  <div class="sh"><div class="sock">${I('plus')}</div><h3>פתיחת משחק חדש</h3><span class="chip ic">${I('x')}</span></div>
+  <div class="dimtx">בחר הגדרות ושלח את הקוד לחבר</div>
+  <div><div class="lbl">סוג משחק</div>${liveAsync()}</div>
+  <div><div class="lbl">קצב משחק</div>${speedSeg}</div>
+  <div class="btn go">פתח משחק ▶</div>`)}`);
+add('start', 'הצטרפות לפי קוד', '#ov-join-code', `${lobbyBase()}${sheet(`
+  <div class="sh"><div class="sock">${I('key')}</div><h3>הצטרף למשחק</h3><span class="chip ic">${I('x')}</span></div>
+  <div class="dimtx">הזן את הקוד בן 6 הספרות שקיבלת</div>
+  <div style="padding:6px 0">${code('482|__', 44)}</div>
+  <div class="btn go off">הצטרף ←</div>`)}`);
+add('start', 'חיפוש יריב — העדפות', '#ov-matchmaking', `${lobbyBase()}${sheet(`
+  <div class="sh"><div class="sock">${I('dice')}</div><h3>חיפוש יריב אקראי</h3><span class="chip ic">${I('x')}</span></div>
+  <div><div class="lbl">סוג משחק</div>${liveAsync()}</div>
+  <div><div class="lbl">קצב משחק</div>${speedSeg}</div>
+  <div><div class="lbl">טווח דירוג</div><div class="seg"><div class="on">כולם</div><div>±100</div><div>±200</div><div>±500</div></div></div>
+  <div class="row" style="padding:0 4px"><span class="grow" style="font-weight:800">חיפוש מדויק בלבד</span><span class="tog on"></span></div>
+  <div class="btn go">${I('dice')} חפש יריב</div>`)}`);
+add('start', 'מחפש יריב', '#ov-partner-search', `
+  ${hdr('מחפש יריב', '', '', '<span></span>')}
+  <div style="position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">
+    ${[380, 290, 200].map(s => `<div class="radar" style="width:${s}px;height:${s}px;top:calc(50% - ${s / 2 + 60}px);left:calc(50% - ${s / 2}px)"></div>`).join('')}
+    <div class="row" style="gap:18px;align-items:center;position:relative">
+      <div class="c">${avr(AV.me, 84, 'cyc lit')}<div style="font-weight:900;margin-top:8px">נחום</div><div class="cy num" style="font-size:12px;font-weight:800">ELO 1087</div></div>
+      <b style="font-size:20px;font-style:italic;color:var(--dim)">VS</b>
+      <div class="c"><div class="reel"><img src="${AV.yael}"><img src="${AV.uri}"><img src="${AV.itay}"></div><div style="font-weight:900;margin-top:8px" class="gd">?</div><div class="dimtx" style="font-size:12px">מחפש…</div></div>
+    </div>
+    <div class="c"><div style="font-size:20px;font-weight:900">מחפש יריב<span class="cy">…</span></div><div class="dimtx num">0:07 · ⚡ לייב · רגיל 40</div></div>
+  </div>
+  <div class="dock"><div class="btn">ביטול</div></div>`);
+add('start', 'חדר המתנה', '#ov-waiting-room', `
+  ${hdr('ממתין לשחקן שני', '', '', '<span class="chip ic">' + I('x') + '</span>')}
+  <div class="scroll" style="gap:12px">
+    <div style="padding-top:4px">${medal(I('hour'), '', 84, ringSvg(84, .72, '#28d4ff', 4))}</div>
+    <div class="c"><div class="dimtx">שתף את הקוד עם חבר</div></div>
+    ${code('482915', 42)}
+    <div class="row" style="justify-content:center;gap:8px"><span class="pill cy">${I('bolt')} משחק לייב · 40 שנ'</span><span class="chip" style="height:26px;font-size:11px">${I('copy')}העתק</span></div>
+    <div class="btn wa">${I('wa')} שתף ב-WhatsApp</div>
+    <div class="lbl" style="margin-top:4px">או הזמן חבר</div>
+    <div class="fld">${I('search')}<span class="ph">חפש חבר…</span></div>
+    <div class="list">
+      <div class="li">${avr(AV.yael, 38, '', '<span class="on"></span>')}<div class="tx"><b>יעל</b><span>ELO 1043 · מחוברת</span></div><div class="btn go sm">הזמן</div></div>
+      <div class="li">${avr(AV.ron, 38)}<div class="tx"><b>רון</b><span>ELO 998</span></div><div class="pill ok">${I('check')} נשלח</div></div>
+    </div>
+    <div class="dimtx c" style="font-size:11px">${I('shield')} רק חברים ברשימה שלך יכולים להצטרף</div>
+  </div>`);
+add('start', 'הוזמנת למשחק', '#ov-incoming-invite', `${SCREENS_HOME()}${dlg(`
+  <div style="margin:0 auto">${avr(AV.dana, 88, 'gdc lit')}</div>
+  <div><div class="kick">הוזמנת למשחק!</div><h3 style="margin-top:4px">דנה מזמינה אותך</h3></div>
+  <div class="row" style="justify-content:center;gap:6px"><span class="pill cy">${I('bolt')} לייב · 40 שנ'</span><span class="pill gd">ELO 1112</span></div>
+  <div class="btns"><div class="btn">לא עכשיו</div><div class="btn go x2">הצטרף</div></div>`, 'gold')}`);
+add('start', 'ההזמנה נדחתה', '#ov-invite-rejected', `${lobbyBase()}${dlg(`
+  ${medal(I('hand'), 'gold', 76)}
+  <h3>ההזמנה נדחתה</h3><p>יעל לא זמינה כרגע. אפשר לנסות שוב מאוחר יותר או לחפש יריב אקראי.</p>
+  <div class="btn go">חזרה למשחק ברשת</div>`)}`);
+add('start', 'פתיח VS', '#ov-vs-intro', `
+  <div class="vs">
+    <div class="half h1">${avr(AV.me, 150, 'cyc lit')}<div class="nm">נחום</div><div class="elo cy">ELO 1087</div></div>
+    <div class="half h2">${avr(AV.dana, 150, 'gdc lit')}<div class="nm">דנה</div><div class="elo gd">ELO 1112</div></div>
+    <div class="mid"><div class="strike"></div>${medal('<b>VS</b>', '', 96)}</div>
+  </div>`);
+add('start', 'הגרלת שחקן פותח', '#scoin', `
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;position:relative">
+    <div class="c"><div class="kick" style="color:var(--dim)">מי מתחיל?</div><div style="font-size:26px;font-weight:900">הגרלת שחקן פותח</div></div>
+    <div style="position:relative"><div class="rays" style="background:repeating-conic-gradient(from 0deg,rgba(40,212,255,.14) 0 8deg,transparent 8deg 22deg)"></div><div class="coin">${BOLTF}</div></div>
+    <div class="row" style="justify-content:center;gap:40px">
+      <div class="c">${avr(AV.me, 60, 'cyc lit')}<div style="font-weight:900;margin-top:6px">נחום</div><span class="pill solid" style="margin-top:4px">פותח!</span></div>
+      <div class="c" style="opacity:.55">${avr(AV.dana, 60, 'gdc')}<div style="font-weight:900;margin-top:6px">דנה</div><span class="pill" style="margin-top:4px">שני</span></div>
+    </div>
+  </div>
+  <div class="dock"><div class="btn go">כניסה למשחק ←</div></div>`);
+
+/* 3. In game */
+add('game', 'לוח המשחק (מאושר)', '#sg', board(), 'g');
+add('game', 'תפריט ☰', '#gm-menu', `${board({ menu: true })}<div class="dim" style="background:rgba(2,6,26,.35);backdrop-filter:none"></div>
+  <div class="gmenu"><div class="mi hov">${I('pause')}השהה משחק</div><div class="mi">${I('gear')}הגדרות</div><div class="mi">${I('music')}מוזיקה<span class="tog on"></span></div><div class="mi bad">${I('flag')}סיים / שמור</div></div>`, 'g');
+add('game', 'מילון', '#ov-shailta', `${board()}${sheet(`
+  <div class="sh"><div class="sock">${I('book')}</div><h3>מילון</h3><span class="pill bad">${I('clock')} הטיימר רץ · 24</span></div>
+  <div class="fld focus">${I('search')}שלום<span class="caret"></span></div>
+  <div class="card c" style="padding:14px 10px;border-color:rgba(46,229,157,.5)">
+    ${word('שלום', 'ok', 40)}
+    <div class="okc" style="font-weight:900;margin-top:10px">✓ מילה תקינה</div>
+  </div>
+  <div class="btns"><div class="btn">סגור</div><div class="btn go x2">בדוק ✓</div></div>`)}`, 'g');
+add('game', 'החלפת אות', '#ov-exch', `${board()}${sheet(`
+  <div class="sh"><div class="sock">${I('swap')}</div><h3>החלפת אות אחת</h3><span class="chip ic">${I('x')}</span></div>
+  <div class="dimtx">בחר אות מהמגש להחלפה מהשקית · פעם אחת בתור</div>
+  <div class="rack" style="padding:10px">${['ת','ל','צ','נ','ה','ק','נ','ז'].map(ch => `<div class="slot">${tile(ch, ch === 'צ' ? 'new' : '')}</div>`).join('')}</div>
+  <div class="btns"><div class="btn">ביטול</div><div class="btn go x2">${I('swap')} החלף את צ</div></div>`)}`, 'g');
+add('game', 'בחירת אות לג\'וקר', '#ov-joker', `${board()}${sheet(`
+  <div class="sh">${tile('★', 'jk', 38, true)}<h3>בחר אות לג'וקר</h3><span class="chip ic">${I('x')}</span></div>
+  <div class="dimtx">הג'וקר יהפוך לאות שתבחר (ללא ניקוד)</div>
+  <div class="kbd">${[...'אבגדהוזחטיכלמנסעפצקרשת'].map(ch => tile(ch, ch === 'ר' ? 'new' : '', 0, true)).join('')}</div>
+  <div class="btn">ביטול</div>`)}`, 'g');
+add('game', 'משחקון בוסט — פתיח', '#ov-bonus-intro', `${board({ status: false })}${dlg(`
+  ${medal(`<svg class="i f" viewBox="0 0 24 24" style="color:#e9fbff">${P.bolt}</svg>`, '', 96, ringSvg(96, 1, '#28d4ff', 3))}
+  <div><div class="kick" style="color:var(--p1)">משחקון בוסט!</div><h3 style="margin-top:2px">אנגרמה</h3></div>
+  <p>סדר מחדש את האותיות למילה אחת לפני שהזמן נגמר.</p>
+  <div class="row" style="justify-content:center;gap:6px"><span class="pill">${I('clock')} 45 שנ'</span><span class="pill gd">+100 נק'</span></div>
+  <div class="btn go">בוא נשחק ▶</div>`)}`, 'g');
+add('game', 'משחקון בוסט — משחק', '#ov-bonus', `${board({ status: false })}${sheet(`
+  <div class="sh"><div class="sock">${I('bolt')}</div><h3>אנגרמה</h3><span class="pill gd" dir="ltr">+100</span></div>
+  <div class="row"><div class="bar grow" style="height:8px"><i style="width:62%"></i></div><b class="num cy">28</b></div>
+  <div class="dimtx c">הקש על האותיות לפי הסדר</div>
+  <div class="tiles" style="gap:8px;padding:4px 0">${tile('ש', 'new', 46)}<div class="t ghost cur" style="--s:46px"></div>${'<div class="t ghost" style="--s:46px"></div>'.repeat(4)}</div>
+  <div class="tiles" style="gap:8px">${['מ','ו','ר','ת','ש','נ'].map(ch => tile(ch, ch === 'ש' ? 'dimt' : '', 46)).join('')}</div>
+  <div class="btns"><div class="btn">${I('undo')} נקה</div><div class="btn go x2">בדוק ✓</div></div>`)}`, 'g');
+add('game', 'היריב בבוסט', '#ov-bonus-spectator', `${board({ timer: 18, who: 'דנה', ring: '#ffc93d', active: 2, status: false })}${dlg(`
+  ${medal(`<svg class="i f" viewBox="0 0 24 24" style="color:#fff6d8">${P.bolt}</svg>`, 'gold', 84)}
+  <h3>דנה מקבלת בוסט!</h3>
+  <p>משחקון: גלגל המזל</p>
+  <div class="card c" style="padding:12px"><div class="dimtx" style="margin-bottom:8px">המילה ששובצה</div>${word('לילה', 'last', 34)}<div class="gd" style="font-weight:900;margin-top:8px" dir="ltr">+14</div></div>
+  <div class="dimtx">ממתין לתוצאה<span class="gd">•••</span></div>`, 'gold')}`, 'g');
+add('game', 'הבוסט בוטל', '#ov-boost-veto', `${board()}${dlg(`
+  ${medal(I('shield'), '', 80)}
+  <h3>הבוסט בוטל</h3><p>דנה השתמשה ב"ביטול בוסט" מגלגל המזל — המשחקון לא יופעל בתור הזה.</p>
+  <div class="btn go">הבנתי ✓</div>`)}`, 'g');
+add('game', 'השהיה / סיום', '#ov-pause · #ov-back-confirm', `${board()}${sheet(`
+  <div class="sh"><div class="sock">${I('pause')}</div><h3>סיום המשחק</h3><span class="chip ic">${I('x')}</span></div>
+  <div class="dimtx">מה תרצה לעשות?</div>
+  <div class="list">
+    ${li('play', 'חזור למשחק', 'המשך לשחק עכשיו')}
+    ${li('pause', 'השהה ושמור', 'חזור למשחק מאוחר יותר', '<span class="pill gd">★ מומלץ</span>', 'gold')}
+    ${li('logout', '<span class="badc">צא ללא שמירה</span>', 'ההתקדמות תאבד', I('fwd', 'chev'), 'red')}
+  </div>`)}`, 'g');
+add('game', 'פרישה', '#ov-resign-confirm', `${board()}${dlg(`
+  ${medal(I('flag'), 'red', 76)}
+  <h3>לפרוש מהמשחק?</h3><p>דנה תקבל ניצחון מיידי, והדירוג שלך יעודכן.</p>
+  <div class="btns"><div class="btn bad">פרוש</div><div class="btn go x2">המשך לשחק</div></div>`, 'red')}`, 'g');
+add('game', 'סיים וזכה', '#ov-claim-stall-end', `${board()}${dlg(`
+  ${medal(`<img src="assets/rewards/trophy.png">`, 'gold', 84)}
+  <h3>לסיים את המשחק ולזכות?</h3><p>המשחק תקוע — אתה מוביל בניקוד וזכותך לסיים אותו עכשיו לפי כלל ההיתקעות.</p>
+  <div class="btns"><div class="btn">המשך לשחק</div><div class="btn gold x2">${I('trophy')} סיים וזכה</div></div>`, 'gold')}`, 'g');
+add('game', 'היריב התנתק', '#ov-disconnect', `${board({ timer: 18, who: 'דנה', ring: '#ffc93d', active: 2 })}${dlg(`
+  ${medal('<span class="big badc">24</span>', 'red', 96, ringSvg(96, .8, '#ff5a6e', 5))}
+  <h3>דנה התנתקה</h3><p>ממתינים לחזרה… אם לא תחזור — תזכה בניצחון טכני.</p>
+  <div class="row" style="justify-content:center">${I('wifi', 'badc')}<span class="dimtx">החיבור של היריב אבד</span></div>`, 'red')}`, 'g');
+add('game', 'הצעת הדרכה', '#ov-tut-prompt · #tut-intro', `${SCREENS_HOME()}${dlg(`
+  ${medal(I('cap'), '', 80)}
+  <h3>ברוך הבא!</h3><p>זו הפעם הראשונה שלך. מהלך קצר נגד הבוט ילמד אותך הכול: הנחת אותיות, אישור, ביטול, החלפה ובוסטים. <b style="color:var(--ink)">כ-3 דקות.</b></p>
+  <div class="btns"><div class="btn">לא עכשיו</div><div class="btn go x2">▶ התחל הדרכה</div></div>
+  <div class="row" style="justify-content:center"><span class="chk"></span><span class="dimtx">אל תציג שוב</span></div>`)}`);
+
+/* 4. End of game & rewards */
+add('end', 'סיום משחק — ניצחון', '#ov-end', `
+  <div class="scroll" style="gap:12px;padding-top:6px">
+    <div style="position:relative;padding-top:10px"><div class="rays"></div>${medal(`<img src="assets/rewards/trophy.png">`, 'gold', 116)}</div>
+    <div class="c"><div style="font-size:34px;font-weight:900;line-height:1;background:linear-gradient(180deg,#fff2b8,#ffc93d);-webkit-background-clip:text;background-clip:text;color:transparent">ניצחון!</div><div class="dimtx" style="margin-top:4px">ניצחת את דנה ב-17 נקודות</div></div>
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr;padding:12px 8px;gap:4px">
+      <div class="c">${avr(AV.me, 56, 'cyc lit', `<span class="tag" style="background:var(--p1);color:#022038;top:-10px;bottom:auto">${I('crown')}</span>`)}<div style="font-weight:800;margin-top:6px">נחום</div><div class="cy num" style="font-size:30px;font-weight:900;line-height:1.1">212</div><span class="pill ok num" dir="ltr">▲ +14 ELO</span></div>
+      <div class="c" style="opacity:.8">${avr(AV.dana, 56, 'gdc')}<div style="font-weight:800;margin-top:6px">דנה</div><div class="gd num" style="font-size:30px;font-weight:900;line-height:1.1">195</div><span class="pill bad num" dir="ltr">▼ −14 ELO</span></div>
+      <div class="bar" style="grid-column:1/3;margin-top:8px;height:5px"><i style="width:52%"></i><i class="p2" style="width:48%"></i></div>
+    </div>
+    <div class="card tight row gold"><img src="${COIN}" style="width:30px;height:30px"><div class="grow"><b>+25 מטבעות</b><div class="dimtx">ניצחון ברשת</div></div><img src="${ACH('רצף מנצחים')}" style="width:34px;height:34px"><div style="width:90px"><div style="font-size:11px;font-weight:800">רצף מנצחים</div><div class="bar gold" style="margin-top:4px"><i style="width:66%"></i></div><div class="dimtx num" style="font-size:10px">2/3</div></div></div>
+    <div class="list">
+      <div class="li" style="min-height:44px"><span class="rank m1">1</span>${avr(AV.uri, 30)}<div class="tx"><b style="font-size:13px">אורי</b></div><b class="num">1540</b></div>
+      <div class="li" style="min-height:44px"><span class="rank m2">2</span>${avr(AV.yael, 30)}<div class="tx"><b style="font-size:13px">יעל</b></div><b class="num">1488</b></div>
+      <div class="li me" style="min-height:44px"><span class="rank cy">27</span>${avr(AV.me, 30, 'cyc')}<div class="tx"><b style="font-size:13px">נחום (אתה)</b></div><b class="num cy">1101</b></div>
+    </div>
+  </div>
+  <div class="dock"><div class="acts" style="margin:0;grid-template-columns:56px 56px 1fr"><div class="btn ib">${I('eye')}<span class="l">הלוח</span></div><div class="btn ib">${I('home')}<span class="l">בית</span></div><div class="btn go">${I('undo')} משחק חוזר</div></div></div>`);
+add('end', 'סיום משחק — הפסד', '#ov-end (loss)', `
+  <div class="scroll" style="gap:14px;padding-top:26px">
+    ${medal(`<img src="assets/rewards/silver medal.png">`, '', 104)}
+    <div class="c"><div style="font-size:30px;font-weight:900;line-height:1">כמעט!</div><div class="dimtx" style="margin-top:4px">המחשב (בינוני) ניצח ב-9 נקודות</div></div>
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr;padding:12px 8px;gap:4px">
+      <div class="c" style="opacity:.8">${avr(AV.me, 56, 'cyc')}<div style="font-weight:800;margin-top:6px">נחום</div><div class="cy num" style="font-size:30px;font-weight:900;line-height:1.1">164</div></div>
+      <div class="c">${avr(AV.y, 56, 'gdc lit', `<span class="tag" style="top:-10px;bottom:auto">${I('crown')}</span>`)}<div style="font-weight:800;margin-top:6px">המחשב</div><div class="gd num" style="font-size:30px;font-weight:900;line-height:1.1">173</div></div>
+      <div class="bar" style="grid-column:1/3;margin-top:8px;height:5px"><i style="width:49%"></i><i class="p2" style="width:51%"></i></div>
+    </div>
+    <div class="card tight"><div class="lbl plain" style="margin:0 0 8px">המהלך הטוב שלך</div><div class="row">${word('התרגשות', '', 28)}<b class="cy num" style="margin-inline-start:auto" dir="ltr">+46</b></div></div>
+  </div>
+  <div class="dock"><div class="acts" style="margin:0"><div class="btn ib">${I('eye')}<span class="l">הלוח</span></div><div class="btn ib">${I('home')}<span class="l">בית</span></div><div class="btn go">${I('undo')} נסה שוב</div></div></div>`);
+add('end', 'הישג הושלם', '#ov-avatar-unlocked', `${SCREENS_HOME()}${dlg(`
+  <div style="position:relative;padding-top:6px"><div class="rays"></div><img src="${ACH('רצף מנצחים')}" style="width:140px;height:140px;object-fit:contain;filter:drop-shadow(0 10px 20px rgba(0,0,0,.6)) drop-shadow(0 0 20px rgba(255,201,61,.4))"></div>
+  <div class="kick">🎉 הישג הושלם!</div>
+  <h3 style="font-size:24px">רצף מנצחים</h3>
+  <p>ניצחת 3 משחקים ברציפות</p>
+  <div style="margin:0 auto"><span class="pill gd" style="height:30px;font-size:15px;padding:0 14px">+50 ${coinImg(18)}</span></div>
+  <div class="btn gold">המשך</div>`, 'gold')}`);
+add('end', 'מטבעות יומיים', '#ov-daily-reward', `${SCREENS_HOME()}${dlg(`
+  <div style="position:relative"><div class="rays"></div><img src="${COIN}" style="width:110px;height:110px;filter:drop-shadow(0 0 24px rgba(255,201,61,.6))"></div>
+  <h3>מטבעות יומיים!</h3>
+  <div class="gd num" style="font-size:36px;font-weight:900;line-height:1" dir="ltr">+30</div>
+  <div class="days">${[10,15,20,30,40,50,100].map((c, i) => `<div class="${i < 3 ? 'got' : i === 3 ? 'today' : ''}">יום ${i + 1}<img src="${COIN}">${c}</div>`).join('')}</div>
+  <p>רצף של 4 ימים — חזור מחר ל-40</p>
+  <div class="btn gold">איסוף</div>`, 'gold')}`);
+add('end', 'טבלת דירוגים', '#ov-champs', `${SCREENS_HOME()}${sheet(`
+  <div class="sh"><div class="sock gold">${I('trophy')}</div><h3>טבלת דירוגים</h3><span class="chip ic">${I('x')}</span></div>
+  <div class="seg"><div class="on">כולם</div><div>חברים</div></div>
+  <div class="list">
+    ${[['1','m1',AV.uri,'אורי',1540],['2','m2',AV.yael,'יעל',1488],['3','m3',AV.noa,'נועה',1432],['4','',AV.ron,'רון',1390],['5','',AV.itay,'איתי',1355],['6','',AV.michal,'מיכל',1321]].map(([r, m, a, n, e]) => `<div class="li" style="min-height:48px"><span class="rank ${m}">${r}</span>${avr(a, 34, m === 'm1' ? 'gdc' : '')}<div class="tx"><b>${n}</b></div><b class="num">${e}</b></div>`).join('')}
+    <div class="li me" style="min-height:48px"><span class="rank cy">27</span>${avr(AV.me, 34, 'cyc')}<div class="tx"><b>נחום (אתה)</b></div><b class="num cy">1101</b></div>
+  </div>`)}`);
+
+/* 5. Profile & social */
+add('social', 'הפרופיל שלי', '#sprofile', `
+  ${hdr('הפרופיל שלי', '', `<span class="chip ic">${I('gear')}</span>`)}
+  <div class="scroll" style="gap:12px">
+    <div class="c" style="padding-top:6px">
+      <div style="position:relative;width:112px;margin:0 auto">${avr(AV.me, 112, 'cyc lit', '<span class="tag" style="font-size:11px;padding:2px 8px">אגדי</span>')}<span class="chip ic" style="position:absolute;bottom:4px;left:-4px;width:32px;height:32px;min-width:32px;background:#0b1d5c">${I('pen')}</span></div>
+      <div style="font-size:24px;font-weight:900;margin-top:14px">נחום</div>
+      <div class="row" style="justify-content:center;gap:6px;margin-top:6px"><span class="pill cy num">${I('bolt')} ELO 1087</span><span class="pill gd num">${coinImg(14)} 240</span></div>
+    </div>
+    <div class="card stat3"><div><b class="okc">58%</b><span>אחוז ניצחון</span></div><div><b>72</b><span>ניצחונות</span></div><div><b class="gd">124</b><span>משחקים</span></div></div>
+    <div class="card stat3" style="padding:10px"><div><b style="font-size:18px">🔥 3</b><span>רצף נוכחי</span></div><div><b style="font-size:18px">7</b><span>שיא רצף</span></div><div><b style="font-size:18px" class="gd">312</b><span>שיא אישי</span></div></div>
+    <div class="list">
+      ${li('store', 'חנות אווטארים', 'אווטארים חדשים במבצע', I('fwd', 'chev'), 'gold')}
+      ${li('users', 'חברים', '', '<span class="pill solid">1 בקשה</span>')}
+      ${li('chart', 'סטטיסטיקות מלאות')}
+      ${li('logout', '<span class="badc">התנתקות</span>', '<bdi dir="ltr">nachum@…</bdi>', I('fwd', 'chev'), 'red')}
+    </div>
+  </div>`);
+add('social', 'חברים', '#sfriends', `
+  ${hdr('חברים', 'users')}
+  <div class="scroll" style="gap:12px">
+    <div class="card c hl" style="padding:12px"><div class="lbl plain" style="justify-content:center;margin:0 0 8px">הקוד שלי</div>${code('K7Q2M9', 38)}<div class="row" style="justify-content:center;gap:8px;margin-top:10px"><span class="chip">${I('copy')}העתק</span><span class="chip" style="color:var(--p1);border-color:rgba(40,212,255,.5)">${I('share')}שתף קוד</span></div></div>
+    <div class="row"><div class="fld grow">${I('user')}<span class="ph">קוד חבר (6 תווים)</span></div><div class="btn go" style="width:50px">${I('plus')}</div></div>
+    <div class="lbl">בקשות ממתינות · 1</div>
+    <div class="list"><div class="li">${avr(AV.noa, 38)}<div class="tx"><b>נועה</b><span>ELO 1432</span></div><span class="chip ic" style="color:var(--bad)">${I('x')}</span><div class="btn go sm" style="width:40px;padding:0">${I('check')}</div></div></div>
+    <div class="lbl">החברים שלי · 3</div>
+    <div class="list">
+      <div class="li">${avr(AV.dana, 38, '', '<span class="on"></span>')}<div class="tx"><b>דנה</b><span>ELO 1112 · מחוברת</span></div><div class="btn go sm">הזמן</div></div>
+      <div class="li">${avr(AV.yael, 38, '', '<span class="on"></span>')}<div class="tx"><b>יעל</b><span>ELO 1488 · מחוברת</span></div><div class="btn go sm">הזמן</div></div>
+      <div class="li">${avr(AV.ron, 38)}<div class="tx"><b>רון</b><span>ELO 1390 · לפני שעה</span></div><div class="btn sm">הזמן</div></div>
+    </div>
+    <div class="card tight row gold"><img src="${ACH('חבר מביא חבר')}" style="width:40px;height:40px"><div class="grow"><b style="font-size:13px">חבר מביא חבר</b><div class="dimtx">הזמן 5 חברים לבוסט</div><div class="bar gold" style="margin-top:5px"><i style="width:40%"></i></div></div><b class="gd num">2/5</b></div>
+  </div>`);
+add('social', 'כרטיס חבר', '#ov-friend-detail', `${S.at(-1).html}${sheet(`
+  <div class="sh"><span class="chip ic">${I('x')}</span><span class="sp"></span><span class="chip ic">⋮</span></div>
+  <div class="c" style="margin-top:-8px">${avr(AV.dana, 80, 'gdc lit', '<span class="tag" style="background:var(--r-epic);color:#fff">אפי</span>')}<div style="font-size:20px;font-weight:900;margin-top:10px">דנה</div><span class="pill gd num">ELO 1112</span></div>
+  <div class="card tight"><div class="row" style="justify-content:space-between;font-weight:900"><span class="cy">אתה · 7</span><span class="dimtx">מאזן ביניכם</span><span class="gd">4 · דנה</span></div><div class="bar" style="margin-top:8px;height:6px"><i style="width:64%"></i><i class="p2" style="width:36%"></i></div></div>
+  <div><div class="lbl">5 המשחקים האחרונים</div><div class="wl"><i class="w">נ</i><i class="w">נ</i><i class="l">ה</i><i class="w">נ</i><i class="l">ה</i></div></div>
+  <div class="card tight row">${I('games', 'cy')}<div class="grow"><b style="font-size:13px">משחק פעיל</b><div class="dimtx">42 : 51 · תורך</div></div><span class="pill solid">המשך</span></div>
+  <div class="btn go">${I('mail')} הזמן למשחק</div>`)}`);
+add('social', 'הזמנות והתראות', '#snotif', `
+  ${hdr('הזמנות', 'bell')}
+  <div class="scroll" style="gap:12px">
+    <div class="lbl">הזמנות למשחק</div>
+    <div class="card tight"><div class="row">${avr(AV.dana, 44, 'gdc lit')}<div class="grow"><b>דנה מזמינה אותך</b><div class="dimtx">לפני 2 דק' · ELO 1112</div></div><span class="pill cy">${I('bolt')} לייב</span></div><div class="btns" style="margin-top:10px"><div class="btn sm">דחה</div><div class="btn go sm x2">הצטרף</div></div></div>
+    <div class="card tight"><div class="row">${avr(AV.itay, 44)}<div class="grow"><b>איתי מזמין אותך</b><div class="dimtx">אתמול · נותרו 23 שע'</div></div><span class="pill">${I('mail')} אסינכרוני</span></div><div class="btns" style="margin-top:10px"><div class="btn sm">דחה</div><div class="btn go sm x2">הצטרף</div></div></div>
+    <div class="lbl">בקשות חברות</div>
+    <div class="list"><div class="li">${avr(AV.noa, 38)}<div class="tx"><b>נועה</b><span>רוצה להיות חברה שלך</span></div><span class="chip ic" style="color:var(--bad)">${I('x')}</span><div class="btn go sm" style="width:40px;padding:0">${I('check')}</div></div></div>
+    <div class="lbl">עדכוני פניות</div>
+    <div class="list">${li('mail', 'המילה "סלפי" נוספה למילון', 'תודה על ההצעה! · לפני 3 ימים', '<span class="pill ok">חדש</span>')}</div>
+  </div>`);
+add('social', 'המשחקים שלי', '#smygames', `
+  ${hdr('המשחקים שלי', 'games')}
+  <div class="seg" style="margin-bottom:12px"><div class="on">תורך <span class="n">2</span></div><div>תור היריב <span class="n">3</span></div></div>
+  <div class="scroll" style="gap:10px">
+    ${[[AV.dana,'דנה',42,51,'נותרו 20 שע\'',true],[AV.itay,'איתי',88,61,'נותרו 6 שע\'',true]].map(([a, n, m, o, t, hot]) => `
+    <div class="card tight ${hot ? 'hl' : ''}">
+      <div class="row">${avr(a, 46, 'gdc')}<div class="grow"><b style="font-size:15px">${n}</b><div class="dimtx">${I('clock')} ${t}</div></div>
+        <div class="c"><div class="num" style="font-size:20px;font-weight:900"><span class="cy">${m}</span> <span class="dimtx">:</span> <span class="gd">${o}</span></div><span class="pill solid">תורך</span></div></div>
+      <div class="bar" style="margin-top:10px;height:4px"><i style="width:${m / (m + o) * 100}%"></i><i class="p2" style="width:${o / (m + o) * 100}%"></i></div>
+    </div>`).join('')}
+    <div class="lbl" style="margin-top:6px">ממתינים ליריב</div>
+    <div class="list">
+      <div class="li">${avr(AV.yael, 38)}<div class="tx"><b>יעל</b><span>120 : 97 · לפני 3 שע'</span></div><span class="pill">ממתין</span></div>
+      <div class="li">${avr(AV.ron, 38)}<div class="tx"><b>רון</b><span>12 : 30 · אתמול</span></div><span class="pill">ממתין</span></div>
+      <div class="li">${avr(AV.michal, 38)}<div class="tx"><b>מיכל</b><span>64 : 64 · לפני יומיים</span></div><span class="pill bad">פג בקרוב</span></div>
+    </div>
+  </div>
+  ${bottomNav(0)}`);
+add('social', 'סטטיסטיקות', '#sstats', `
+  ${hdr('הסטטיסטיקות שלי', 'chart', `<span class="chip ic">${I('share')}</span>`)}
+  <div class="scroll fade-b" style="gap:10px">
+    <div class="card"><div class="row">${avr(AV.me, 52, 'cyc lit')}<div class="grow"><b style="font-size:16px">נחום</b><div><span class="pill gd">${I('bolt')} זהב</span></div></div><div class="c"><div class="cy num" style="font-size:28px;font-weight:900;line-height:1">1087</div><div class="dimtx" style="font-size:10px">ELO</div></div></div>
+      <svg class="spark" viewBox="0 0 300 40" preserveAspectRatio="none"><polyline points="0,32 30,28 60,30 90,22 120,25 150,18 180,20 210,12 240,15 270,8 300,6" fill="none" stroke="#28d4ff" stroke-width="2.5" style="filter:drop-shadow(0 0 4px #28d4ff)"/><polyline points="0,32 30,28 60,30 90,22 120,25 150,18 180,20 210,12 240,15 270,8 300,6 300,40 0,40" fill="rgba(40,212,255,.12)" stroke="none"/></svg></div>
+    <div class="card stat3" style="padding:10px"><div><b class="okc">58%</b><span>אחוז ניצחון</span></div><div><b>🔥 3</b><span>רצף נוכחי</span></div><div><b class="gd">124</b><span>משחקים</span></div></div>
+    <div class="card tight"><div class="lbl plain" style="margin:0 0 8px">10 משחקים אחרונים</div><div class="wl"><i class="l">ה</i><i class="w">נ</i><i class="w">נ</i><i class="d">ת</i><i class="l">ה</i><i class="w">נ</i><i class="w">נ</i><i class="l">ה</i><i class="w">נ</i><i class="w">נ</i></div></div>
+    <div class="card tight"><div class="lbl plain" style="margin:0 0 8px">הסגנון שלך</div><div class="row">${tile('ש', 'new', 50)}<div class="grow"><b>"חוקר"</b><div class="dimtx">האות המועדפת: ש · 38 מילים</div></div></div></div>
+    <div class="lbl">השיאים שלי</div>
+    <div class="list">
+      ${li('trophy', 'שיא ניקוד למשחק', '', '<b class="num gd">312</b>', 'gold')}
+      ${li('bolt', 'הכי הרבה נקודות במהלך', '', '<b class="num cy">86</b>')}
+      <div class="li"><div class="sock">${I('book')}</div><div class="tx"><b>המילה הארוכה</b></div>${word('התרגשות', '', 20)}</div>
+      ${li('fire', 'רצף ניצחונות שיא', '', '<b class="num">7</b>')}
+    </div>
+  </div>`);
+add('social', 'הישגים', '#sav-gallery', `
+  ${hdr('הישגים', 'trophy')}
+  <div class="card tight" style="margin-bottom:12px"><div class="row"><b class="grow">5 מתוך 17 הושגו</b><span class="pill gd">${coinImg(14)} 230 נאספו</span></div><div class="bar gold" style="margin-top:8px"><i style="width:29%"></i></div></div>
+  <div class="scroll fade-b"><div class="grid3">
+    ${[['צעדים ראשונים',1],['מנצח',1],['רצף מנצחים',1],['קנייה ראשונה',1],['חבר של כולם',1],['שחקן מנוסה',0,'64/100'],['אמן המילים',0,'3/10'],['גאון מילים',0,'1/5'],['חבר מביא חבר',0,'2/5'],['ותיק',0,'124/250'],['ברק חי',0,'0/1'],['אגדה',0,'1087/1500']].map(([n, got, p]) => {
+      const [a, b] = (p || '0/1').split('/').map(Number);
+      return `<div class="ach ${got ? 'got' : 'lock'}"><img src="${ACH(n)}"><b>${n}</b>${got ? '<small class="gd">✓ הושג</small>' : `<div class="bar"><i style="width:${a / b * 100}%"></i></div><small class="num">${p}</small>`}</div>`;
+    }).join('')}
+  </div></div>`);
+add('social', 'חנות אווטארים', '#savatar-store', `
+  ${hdr('חנות אווטארים', 'store', `<span class="chip coinchip num">${coinImg(18)}240</span>`)}
+  <div class="seg" style="margin-bottom:12px"><div>רגיל</div><div>נדיר</div><div class="on">אפי</div><div>אגדי</div></div>
+  <div class="scroll fade-b"><div class="grid3">
+    ${[['rachel','רחל','eq'],['esther','אסתר','own'],['adam','אדם',300],['yehuda_hamaccabi','יהודה המכבי',300],['hanna','חנה',300],['jacob','יעקב',300],['joshua','יהושע',300],['rambam','רמב"ם',300],['shmoel','שמואל',300]].map(([f, n, st]) => `
+      <div class="shop epic ${st === 'eq' ? 'eq' : ''}"><div class="art"><img src="${A(`assets/avatars_v2/epic/${f}.${['esther'].includes(f) ? 'PNG' : 'png'}`)}"></div><b>${n}</b>
+      ${st === 'eq' ? '<span class="pill solid">מצויד</span>' : st === 'own' ? '<span class="pill ok">✓ בבעלותך</span>' : `<span class="pill gd num">${coinImg(12)} ${st}</span>`}</div>`).join('')}
+  </div></div>`);
+add('social', 'אישור רכישה', '#ov-store-confirm', `${S.at(-1).html}${dlg(`
+  <div class="shop epic" style="width:150px;margin:0 auto;border:none;background:none"><div class="art" style="border-radius:50%"><img src="${A('assets/avatars_v2/epic/rambam.png')}"></div></div>
+  <div><span class="pill" style="color:var(--r-epic);border-color:rgba(183,123,255,.5)">אפי</span><h3 style="margin-top:6px">לרכוש את רמב"ם?</h3></div>
+  <div class="card tight" style="text-align:right"><div class="row"><span class="grow dimtx">מחיר</span><b class="gd num">${coinImg(14)} 300</b></div><div class="row" style="margin-top:6px"><span class="grow dimtx">יתרה אחרי הרכישה</span><b class="num">${coinImg(14)} 40</b></div></div>
+  <div class="btns"><div class="btn">ביטול</div><div class="btn gold x2">קנה</div></div>`)}`);
+
+/* 6. Account, settings & help */
+add('acct', 'כניסה', '#sauth-login', `
+  ${hdr('', '', '', `<span class="chip ic">${I('back')}</span>`)}
+  <div class="scroll" style="gap:12px">
+    ${logo('sm')}
+    <div class="c" style="margin-bottom:6px"><div style="font-size:22px;font-weight:900">ברוך שובך</div><div class="dimtx">היכנס כדי לשמור דירוג, מטבעות והישגים</div></div>
+    <div><div class="flbl">דוא"ל</div><div class="fld focus" dir="ltr">${I('mail')}nachum@example.com<span class="caret"></span></div></div>
+    <div><div class="flbl">סיסמה</div><div class="fld" dir="ltr">${I('lock')}••••••••<span class="sp"></span>${I('eye')}</div></div>
+    <div class="btn link" style="align-self:flex-start">שכחתי סיסמה</div>
+    <div class="btn go">כניסה</div>
+    <div class="lbl plain" style="justify-content:center;margin:4px 0">— או —</div>
+    <div class="btns"><div class="btn">חשבון חדש</div><div class="btn">המשך כאורח</div></div>
+  </div>`);
+add('acct', 'יצירת חשבון', '#sauth-signup', `
+  ${hdr('יצירת חשבון', 'sparkle')}
+  <div class="scroll" style="gap:10px">
+    <div><div class="flbl">שם תצוגה (עד 15 תווים)</div><div class="fld">${I('user')}נחום</div></div>
+    <div><div class="flbl">דוא"ל</div><div class="fld" dir="ltr">${I('mail')}<span class="ph">your@email.com</span></div></div>
+    <div><div class="flbl">סיסמה (8+ תווים, אות וספרה)</div><div class="fld focus" dir="ltr">${I('lock')}••••••<span class="caret"></span><span class="sp"></span>${I('eye')}</div><div class="bar" style="margin-top:6px;height:4px"><i style="width:60%;background:var(--p2);box-shadow:none"></i></div><div class="gd" style="font-size:11px;font-weight:800;margin-top:3px">חסרה ספרה</div></div>
+    <div><div class="flbl">אימות סיסמה</div><div class="fld" dir="ltr">${I('lock')}<span class="ph">••••••••</span></div></div>
+    <div class="list">${li('bell', 'התראות', 'משחקים, הזמנות ותזכורות', '<span class="tog on"></span>')}</div>
+    <div class="btn go">צור חשבון</div>
+    <div class="btns"><div class="btn sm">יש לי חשבון</div><div class="btn sm">המשך כאורח</div></div>
+  </div>`);
+add('acct', 'שמור את ההתקדמות', '#ov-guest-upgrade', `${SCREENS_HOME()}${dlg(`
+  ${medal(I('sparkle'), 'gold', 80)}
+  <h3>שמור את ההתקדמות שלך</h3><p>צור חשבון חינמי כדי לשמור סטטיסטיקות, מטבעות והישגים, ולהופיע בטבלת הדירוגים.</p>
+  <div class="btns"><div class="btn">לא עכשיו</div><div class="btn go x2">צור חשבון</div></div>`)}`);
+add('acct', 'הגדרות', '#ov-settings', `
+  ${hdr('הגדרות', 'gear', '', `<span class="chip ic">${I('x')}</span>`)}
+  <div class="scroll fade-b" style="gap:8px">
+    <div class="lbl">שמע</div>
+    <div class="list">${li('music', 'מוזיקה', 'מוזיקת רקע במהלך המשחק', '<span class="tog on"></span>')}${li('bolt', 'אפקטי קול', '', '<span class="tog on"></span>')}</div>
+    <div class="lbl">משחק</div>
+    <div class="list">${li('vib', 'רטט', '', '<span class="tog on"></span>')}${li('motion', 'תנועה מופחתת', 'פחות אנימציות', '<span class="tog"></span>')}
+      <div class="li"><div class="sock">${I('user')}</div><div class="tx"><b>לשון פנייה</b><span>לדוגמה: "שחק" / "שחקי"</span></div><div class="seg" style="width:120px;padding:3px"><div class="on" style="height:28px">זכר</div><div style="height:28px">נקבה</div></div></div></div>
+    <div class="lbl">התראות</div>
+    <div class="list">${li('bell', 'התראות משחקים', 'תורך, הזמנות ותזכורות', '<span class="tog on"></span>')}</div>
+    <div class="lbl">מילון</div>
+    <div class="list">${li('plus', 'הצע מילה חדשה')}${li('trash', 'הצע הסרת מילה')}</div>
+    <div class="lbl">אודות</div>
+    <div class="list">${li('shield', 'מדיניות פרטיות')}${li('info', 'גרסה 2.1', 'Music: "Inspire Action" · Yuri Megis · CC BY 4.0', '')}</div>
+  </div>`);
+add('acct', 'מדריך', '#sguide', `
+  ${hdr('מדריך בוסט', 'book', '', `<span class="chip ic">${I('x')}</span>`)}
+  <div class="fld" style="margin-bottom:12px">${I('search')}<span class="ph">חפש במדריך…</span></div>
+  <div class="scroll fade-b"><div class="list acc">
+    <div class="li open"><div class="sock">${I('games')}</div><div class="tx"><b>לוח המשחק, תור וניקוד</b></div>${I('fwd', 'chev')}</div>
+    <div class="accbody">מניחים אותיות מהמגש בשורה או בטור ולוחצים <b class="cy">שבץ</b>. כל אות שווה את הערך שבפינה:
+      <div class="row" style="margin:10px 0;justify-content:center">${word('שבץ', '', 30)}<b class="cy num">= 3+3+9</b></div>
+      מילה שעוברת דרך <span class="cy">שקע בוסט</span> ${`<span class="bsock" style="display:inline-grid;width:22px;height:22px;vertical-align:-6px">${BOLTF}</span>`} מפעילה משחקון.</div>
+    ${[['home','מסך הבית והניווט'],['globe','משחקים ברשת וחברים'],['swap','כלים במשחק: מילון, החלפה, נעילה, ג\'וקר'],['bolt','בוסטים ומיני-משחקים'],['chart','סטטיסטיקות, דירוג ותובנות'],['store','פרופיל, מטבעות והישגים'],['gear','הגדרות, התראות ופרטיות']].map(([i, t]) => li(i, t, '', I('fwd', 'chev'))).join('')}
+  </div></div>`);
+add('acct', 'שאלות נפוצות', '#sfaq', `
+  ${hdr('שאלות נפוצות', 'help', '', `<span class="chip ic">${I('x')}</span>`)}
+  <div class="scroll fade-b"><div class="list acc">
+    ${li('help', 'איך מתחילים משחק?', '', I('fwd', 'chev'))}
+    <div class="li open"><div class="sock">${I('help')}</div><div class="tx"><b>משחק חי או אסינכרוני?</b></div>${I('fwd', 'chev')}</div>
+    <div class="accbody"><b class="cy">חי</b> — בזמן אמת עם שעון תור. <b class="gd">אסינכרוני</b> — כל אחד משחק מתי שנוח לו, עם עד 24 שעות לתור. המשחקים מחכים לך ב"המשחקים שלי".</div>
+    ${['למה המילה שלי נדחתה?','איך מציעים מילה למילון?','איך עובד הדירוג?','איפה רואים סטטיסטיקות ותובנות?','מה קורה אם היריב מתנתק?','איך משיגים מטבעות?'].map(q => li('help', q, '', I('fwd', 'chev'))).join('')}
+  </div>
+  <div class="card tight row" style="margin-top:12px"><div class="sock">${I('mail')}</div><div class="grow"><b>לא מצאת תשובה?</b><div class="dimtx">כתבו לנו ונחזור אליכם</div></div><div class="btn go sm">צור קשר</div></div></div>`);
+add('acct', 'צור קשר', '#ov-report', `${SCREENS_HOME()}${sheet(`
+  <div class="sh"><div class="sock">${I('mail')}</div><h3>צור קשר</h3><span class="chip ic">${I('x')}</span></div>
+  <div><div class="lbl">סיבת הפנייה</div><div style="display:flex;flex-wrap:wrap;gap:6px">${['בעיה במשחק','מילון / הצעת מילה','חשבון והתראות','הצעת שיפור','אחר'].map((t, i) => `<span class="pill ${i === 0 ? 'solid' : ''}" style="height:30px;font-size:12px;padding:0 12px">${t}</span>`).join('')}</div></div>
+  <div class="fld" style="height:110px;align-items:flex-start;padding-top:12px"><span class="ph" style="line-height:1.5">לדוגמה: המילה נדחתה למרות שנראית תקינה…</span></div>
+  <div class="row dimtx" style="font-size:12px">${I('info')} נצרף תמונת מצב טכנית של המשחק האחרון</div>
+  <div class="btns"><div class="btn">ביטול</div><div class="btn go x2">שלח</div></div>`)}`);
+
+/* ───────────── render ───────────── */
+const SECTIONS = [
+  ['home', 'פתיחה ובית', 'טעינה, מסך הבית, תפריט העזרה, הסבר ראשון והתראת הזמנה. הלוגו בנוי מאריחי העץ של הקליפ; הסרגל העליון הוא אותם צ\'יפים של מסך המשחק, והניווט התחתון הוא "מעגן" כמו מגש האותיות.'],
+  ['start', 'לפני המשחק', 'הגדרות משחק מקומי, משחק ברשת (פתיחה, קוד, חיפוש), חדר המתנה, הזמנות, מסך ה-VS והטלת המטבע. הבחירות בגיליון תחתון; קוד החדר מוצג כאריחי עץ.'],
+  ['game', 'בתוך המשחק', 'הלוח כפי שאושר, ומעליו כל החלונות: תפריט ☰, מילון, החלפה, ג\'וקר, בוסטים, השהיה, פרישה, סיים-וזכה, ניתוק והדרכה. החלונות משאירים את הלוח מעומעם מאחור, כך שלא מאבדים הקשר.'],
+  ['end', 'סיום ותגמולים', 'ניצחון/הפסד בצבעי השחקנים, מטבעות והתקדמות להישג, הישג שהושלם, מטבעות יומיים וטבלת הדירוגים. זהב = תגמול.'],
+  ['social', 'פרופיל וחברתי', 'פרופיל, חברים וכרטיס חבר, הזמנות, המשחקים שלי, סטטיסטיקות, הישגים וחנות האווטארים.'],
+  ['acct', 'חשבון, הגדרות ועזרה', 'כניסה, הרשמה, שדרוג אורח, הגדרות, מדריך, שאלות נפוצות וצור קשר.'],
+];
+const main = document.getElementById('main'), toc = document.getElementById('toc');
+for (const [key, title, desc] of SECTIONS) {
+  const list = S.filter(s => s.sec === key);
+  toc.insertAdjacentHTML('beforeend', `<a href="#sec-${key}">${title} · ${list.length}</a>`);
+  main.insertAdjacentHTML('beforeend', `<section class="grp" id="sec-${key}"><h2>${title}</h2><p>${desc}</p><div class="wrap">${
+    list.map(s => `<div class="col"><div class="cap">${s.name}<small>${s.id}</small></div><div class="phone ${s.cls}">${s.html}</div></div>`).join('')}</div></section>`);
+}
+toc.append(toc.querySelector('label'));
+document.getElementById('sm').addEventListener('change', e => document.body.classList.toggle('small', e.target.checked));
+</script>
+</body>
+</html>

@@ -1,12 +1,12 @@
 <!-- STATS SCREEN -->
-<div id="sstats" class="screen hidden" dir="rtl">
-  <div class="stats-wrap">
-
-    <!-- Screen title (compact single row) -->
-    <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 0 5px;">
-      <img class="screen-hd-icon" src="assets/icons/statistics.png" alt="" style="margin:0;width:26px;height:26px;">
-      <div class="stitle">הסטטיסטיקות שלי</div>
+<div id="sstats" class="screen hidden g-screen" dir="rtl">
+  <div class="g-page">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <div class="g-ttl stitle"><svg class="gi"><use href="#gi-chart"/></svg>הסטטיסטיקות שלי</div>
+      <span></span>
     </div>
+  <div class="g-scroll stats-wrap">
 
     <!-- ACT 1: IDENTITY — hero band + archetype card, always visible -->
     <div class="stats-hero glass-panel" style="margin-top:0;flex-direction:column;align-items:stretch;gap:7px;">
@@ -207,4 +207,5 @@
     <svg style="display:none"><circle id="stats-donut-arc"/><text id="stats-wr-pct"/></svg>
 
   </div><!-- /stats-wrap -->
+  </div>
 </div>

@@ -5,15 +5,43 @@
 
 ---
 
-## D-postgame-rank-delta: rank change is the pre-game snapshot, not a reconstructed rank — September 2026
+## D-glass-skin-override: app-wide redesign = late-loaded sheet + g-* primitives — September 2026
 
-**Decision:** The post-game champions row shows how the current player's **place** changed versus the leaderboard position captured when the online session started (`activeGame.preGameMyPosition` from `getLeaderboardMeta`). It is not recomputed by replaying ELO against a later board, and it is not shown when that snapshot is missing. A zero change is hidden. The anytime overlay does not show it.
+**Decision:** the app-wide "glass + wood" skin lives in `screens-glass.css`, loaded after
+`styles.css` and `menu-electric.css`. Screens are rebuilt on a small set of `g-*`
+primitives that mirror `tools/screens-mockup` one-to-one, with a line-icon SVG sprite
+(`#gi-*`) in `index.html`. Legacy classes and all JS-bound ids / onclick attributes stay
+in the markup, so screen modules and tests keep working; old rules are neutralised by
+selector specificity, not deleted. The chip top bar is shown on home only; every other
+screen owns a header with a back chip.
 
-**Why:** Other players can move during the match, so "places gained" is the difference between two real reads, not a number derived only from this match's ELO delta. Inventing a rank for a player who was not on the board would be a guess.
+**Why:** the old sheets are large and `!important`-heavy. Rewriting them would put every
+screen at risk at once, while an override layer can be reviewed screen by screen against
+the mockup. Primitives keep new screens consistent without copying CSS.
 
-**Motion:** Count-up plus a row slide runs only when both ranks are inside the visible top-N. Crossing into or out of that list (the outside-separator row) stays a static delta — a FLIP across a row that appears or disappears is easier to get wrong than to skip. The count itself runs only when `eloFrom` is a real number (including `0`) that differs from the shown rating. Omitted or `null` means there is no pre-game rating to count from — `Number(null)` is `0`, and treating that as a start value flashes the live rating down to zero.
+**Rules:** cyan = me / primary action, gold = opponent / reward, red = destructive.
+Choices go in bottom sheets; notices go in centred dialogs led by a medallion. No new
+artwork: icons are the mockup's line set, and all art is existing assets.
 
-**Implementation:** `ratingService.getLeaderboardMeta`, `main.js` session start, `championsScreen.playChampEndMotion`.
+---
+
+## D-avatar-pose-atlas: 2.5D motion ships as pre-rendered pose atlases — September 2026
+
+**Decision:** avatar/achievement animation is rendered in Blender and shipped as
+one WebP sprite sheet of *poses* per asset (not per animation), played on a
+`<canvas>` over the existing `<img>`. States are choreography (`poseClips.js`)
+= atlas frames + CSS transforms; glow, sparkles, rays, strikes are shared DOM/CSS.
+
+**Why:** no 3D runtime in a TWA on low-end Android; transparent VP9 WebM does not
+play on iOS Safari; per-state renders would be ~100 MB (45 avatars × 8 states),
+a pose atlas is ~130–400 KB per asset. Frame `rest` equals the source PNG, so
+every screen keeps the static PNG as its fallback (reduced motion, atlas not
+loaded) and swaps seamlessly.
+
+**Rules:** gameplay animation is event-driven only (no loops on the board);
+each event has one dominant moment — when the avatar carries a cue, the older
+CSS cue is toned down, never stacked; nothing awaits an animation on a gameplay
+path.
 
 ---
 

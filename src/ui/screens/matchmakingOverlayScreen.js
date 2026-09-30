@@ -15,6 +15,8 @@
 
 import { $, on } from '../domHelpers.js';
 import { avatarMarkup, setAvatarEl } from './avatarScreens.js';
+import { preloadFor } from '../avatarMotion/spritePlayer.js';
+import { startIdle } from '../avatarMotion/idleMotion.js';
 import { loadUiPreferences } from '../../game/settings/settingsCompat.js';
 
 export const MM_INTENT = Object.freeze({
@@ -105,6 +107,7 @@ export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = 
   const cancelBtn = root.getElementById?.('ps-cancel-btn');
 
   const cleanups = [];
+  let myIdle = null;
 
   if (cancelBtn) {
     cleanups.push(on(cancelBtn, 'click', () => bus.emit(MM_INTENT.CANCEL, {})));
@@ -127,13 +130,22 @@ export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = 
   }
 
   function showOverlay({ name, avatar } = {}) {
-    if (myAvEl) setAvatarEl(myAvEl, avatar, { fallback: '👑' });
+    if (myAvEl) {
+      setAvatarEl(myAvEl, avatar, { fallback: '👑' });
+      // Warm my pose atlas during the search so the VS intro can animate it.
+      const src = myAvEl.querySelector?.('img')?.getAttribute?.('src');
+      if (src) preloadFor(src).catch(() => {});
+    }
+    // Waiting for an opponent: slow breathing + an occasional glance.
+    myIdle?.stop();
+    setTimeout(() => { myIdle = startIdle(myAvEl, { secondary: true }); }, 300);
     if (myNmEl) myNmEl.textContent = name   || 'שחקן';
     startSpin();
     ov?.classList.remove('hidden');
   }
 
   function hideOverlay() {
+    myIdle?.stop(); myIdle = null;
     ov?.classList.add('hidden');
     if (reelEl) {
       reelEl.classList.remove('ps-spinning', 'ps-landing');
@@ -143,6 +155,7 @@ export function mountPartnerSearchOverlay({ root = globalThis.document, bus } = 
   }
 
   function showMatched({ name, avatar } = {}) {
+    myIdle?.stop(); myIdle = null;
     if (!reelEl) return;
     reelEl.classList.remove('ps-spinning');
     reelEl.style.animation = 'none';

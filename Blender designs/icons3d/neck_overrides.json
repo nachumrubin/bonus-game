@@ -1,0 +1,7 @@
+{
+  "_comment": "Neck height (fraction of image height, from the bottom) where auto-detection is wrong. Robots have no shoulders: bend at the head/base joint.",
+  "bot": 0.27,
+  "green bot": 0.2,
+  "red bot": 0.2,
+  "yellow bot": 0.2
+}

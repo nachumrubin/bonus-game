@@ -1,14 +1,19 @@
-<!-- ACHIEVEMENTS SCREEN — collectible trophy room -->
-<div id="sav-gallery" class="screen hidden">
-  <div class="ach-room">
-    <div class="ach-rt-head">
-      <i class="ach-rt-deco"></i>
-      <span class="ach-rt-title">🏆 הישגים</span>
-      <i class="ach-rt-deco"></i>
+<!-- ACHIEVEMENTS SCREEN (glass skin — tools/screens-mockup "#sav-gallery") -->
+<div id="sav-gallery" class="screen hidden g-screen">
+  <div class="g-page ach-room">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
+      <div class="g-ttl ach-rt-title"><svg class="gi"><use href="#gi-trophy"/></svg>הישגים</div>
+      <span></span>
     </div>
-    <div class="ach-rt-sub" id="av-gallery-count">0 מתוך 17 הושגו</div>
+    <div class="g-card tight ach-g-summary">
+      <div class="g-row"><b class="g-grow ach-rt-sub" id="av-gallery-count">0 מתוך 17 הושגו</b></div>
+      <div class="g-bar gold" style="margin-top:8px"><i id="av-gallery-bar" style="width:0%"></i></div>
+    </div>
     <div id="av-locked-hint" class="ach-hint"></div>
-    <!-- Trophy shelves (rows of 3) are rendered here by avatarScreens.js -->
-    <div id="av-gallery-grid" class="ach-grid"></div>
+    <div class="g-scroll">
+      <!-- Trophy grid is rendered here by avatarScreens.js -->
+      <div id="av-gallery-grid" class="ach-grid"></div>
+    </div>
   </div>
 </div>

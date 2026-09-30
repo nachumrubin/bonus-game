@@ -2,9 +2,9 @@
 <div id="ov-waiting-room" class="ov hidden">
   <div class="ovc wr-ovc">
 
-    <!-- Hero hourglass -->
+    <!-- Hero hourglass medallion -->
     <div class="wr-hero">
-      <div class="wr-icon-ring">⏳</div>
+      <div class="g-medal wr-medal" style="--s:84px"><svg class="gi"><use href="#gi-hour"/></svg></div>
     </div>
 
     <!-- Title + subtitle -->
@@ -13,6 +13,7 @@
 
     <!-- Code -->
     <div id="wr-code-section" class="wr-code-section">
+      <div id="wr-code-tiles" class="g-code" aria-hidden="true"></div>
       <div class="wr-code-display" id="wr-code">------</div>
     </div>
 
@@ -25,10 +26,10 @@
     <!-- Primary actions -->
     <div id="wr-action-btns" class="wr-action-row">
       <button id="wr-cancel-btn" class="wr-btn-cancel" onclick="crCancelRoom()">
-        <span class="wr-btn-icon">🛡</span> ביטול
+        <svg class="gi"><use href="#gi-x"/></svg> ביטול
       </button>
       <button id="wr-share-btn" class="wr-btn-share" onclick="crShareWhatsApp()">
-        <span class="wr-wa-icon"></span>
+        <svg class="gi"><use href="#gi-wa"/></svg>
         שתף ב-WhatsApp
       </button>
     </div>
@@ -52,7 +53,7 @@
 
     <!-- Footer restriction notice -->
     <div class="wr-footer-notice">
-      🛡 רק שחקנים ברשימת החברים שלך יכולים להצטרף
+      <svg class="gi"><use href="#gi-shield"/></svg> רק חברים ברשימה שלך יכולים להצטרף
     </div>
 
   </div>

@@ -17,6 +17,48 @@ Source: `memory/project_design_system.md`, `styles.css`
 
 ---
 
+### Glass skin (September 2026) — `screens-glass.css`
+
+App-wide "glass + wood" language from `tools/screens-mockup/index.html` (see DECISIONS
+`D-glass-skin-override`). `screens-glass.css` loads last.
+
+- **Colours:** `--sg-p1` cyan = me / primary action, `--sg-p2` gold = opponent / reward,
+  `--sg-bad` red = destructive. Primary button = cyan `.g-btn.go` / `.ovb.p`.
+- **Primitives (`g-*`):** `.g-screen` (on the `.screen` root) › `.g-page` › `.g-hdr`
+  (back `.g-chip.ic` · `.g-ttl` · `.g-end`) › `.g-scroll` › optional `.g-dock`. Building
+  blocks: `.g-card(.tight/.hl/.gold)`, `.g-lbl`, `.g-list` + `.g-li` (`.g-sock` icon socket,
+  `.tx`, `.g-chev`), `.g-opts` (wraps legacy `.mf-opt-card`, selected = `.a`), `.g-seg`
+  (selected = `.on/.a/.active`), `.g-fld` (wraps an `<input>`), `.g-tog` / `input.g-tog-input`,
+  `.g-pill`, `.g-bar`, `.g-avr`, `.g-medal`, `.g-ring`, `.g-t` (wood tile), `.g-code`.
+- **Icons:** `<svg class="gi"><use href="#gi-NAME"/></svg>`; the sprite is inlined at the
+  top of `index.html` (names: back, fwd, x, check, plus, menu, book, bell, gear, help,
+  music, home, games, users, trophy, chart, globe, key, dice, bolt, swap, undo, lock,
+  clock, hour, share, copy, search, mail, store, logout, play, pause, eye, fire, shield,
+  flag, cap, star, crown, wifi, pen, trash, vib, motion, hand, info, sparkle, user,
+  sound, wa). No emoji in chrome.
+- **Overlays:** choices go in bottom sheets (`.ovc.g-sheet` with a `.g-sh` header row:
+  `#ov-create-room`, `#ov-join-code`, `#ov-matchmaking`, `#ov-pause`, `#ov-back-confirm`,
+  `#ov-shailta`, `#ov-exch`, `#ov-joker`, `#ov-report`, `#ov-champs`, `#ov-friend-detail`).
+  Notices go in centred dialogs led by `.ovic`, which is drawn as a medallion
+  (`.ovic--gold`, `.ovic--red`; `.ovc.dlg-gold/.dlg-red` tint the border). In `.ovbtns`
+  the primary `.ovb.p` sits on the left at ×2 width. `#ov-end`, `#ov-settings`,
+  `#ov-guide` and `#ov-faq` are full screen.
+- **Top bar:** `#global-topbar` shows on `#sh` only (`screenTransitions.js`). Other screens
+  own a header with a back chip. `#topbar-home-btn` is hidden.
+- **New glass-skin IDs:** `#fr-my-id-tiles`, `#wr-code-tiles` (codes as wood tiles),
+  `#av-gallery-bar`, `#end-lead-0` / `#end-lead-1` (end-screen lead bar),
+  `#coin-p1-name`, `#coin-p2-name`, `#coin-side-0/1`, `#coin-tag-0/1`,
+  `#profile-elo-pill` / `#profile-elo-val` / `#profile-coins-pill` / `#profile-coins-val`,
+  `#home-turn-strip` / `#home-turn-strip-text` / `#home-turn-strip-avs`,
+  `#home-lb-row` / `#home-lb-rank`, `#daily-reward-days`, `#mg-tabs` (buttons
+  `[data-mg-tab="mine|theirs"]`).
+- **Menu payload:** `MENU_REFRESH` also takes `myTurnSessions` (`[{roomId, opponentName,
+  opponentAvatar}]`) and `myRank`. `MENU_INTENT.OPEN_LEADERBOARD` (`#home-lb-row`) opens
+  `#ov-champs`. `#home-turn-strip` opens My Games.
+- The home music credit / privacy link moved to Settings → אודות (`.credit` is hidden).
+
+---
+
 ## Screen Architecture
 
 ### Partial Loading System
@@ -60,7 +102,13 @@ Critical element IDs referenced by game logic (must not be renamed):
 #brack                 — rack container (children are .bt2 elements)
 #btn-play              — confirm/play button
 #btn-recall            — recall tiles button
-#btn-exchange          — exchange overlay trigger
+#btn-exchange          — exchange overlay trigger (since the Sept 2026 redesign it sits in the
+                         rack dock's .bot-acts row, between #btn-recall and #btn-play)
+#btn-game-menu, #gm-menu — in-game ☰ menu (gameMenu.js). #gm-menu (.gm-menu-drop, .open)
+                         holds #btn-pause, #btn-async-home, the openSettings()/openEndMenu()
+                         buttons and #music-toggle — ids + onclick attrs unchanged.
+#is-rail               — lead rail under the scoreboard (.is-rail-1/.is-rail-2 widths =
+                         each slot's share of the total; gameScreen.renderLeadRail)
 #ov-exch               — exchange overlay container
 #exch-rack             — exchange rack inside overlay
 #sv1, #sv2             — player score values (desktop)
@@ -72,7 +120,10 @@ Critical element IDs referenced by game logic (must not be renamed):
 #turn-name             — whose turn label
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
 #sb1, #sb2             — score box containers (.act = active turn)
-#is-sb1, #is-sb2       — mobile score boxes
+#is-sb1, #is-sb2       — mobile score boxes (.act-cell = on turn: colour wash + lit avatar ring;
+                         the timer ring follows it — slot 0 cyan, slot 1 gold, red when urgent).
+                         #is-av{n}[data-rar] draws the rarity tag; #is-sn{n}[data-sub] the bot level.
+                         #game-grid.lm-s1 = last move by slot 1 (gold last-move bezel, else cyan).
 #lock-inv-display      — lock inventory buttons (LEGACY: lives in .right-panel,
                          which is `display:none !important` — invisible in the
                          current layout. The lock box the player actually uses
@@ -141,6 +192,16 @@ Onboarding overlay (per-screen first-visit tooltips):
 Storage key: 'spine.onboarding.dismissed' (JSON array of permanently-dismissed screen IDs)
 Event: ONBOARDING_SCREEN_ENTER ('onboarding/screenEnter') — emitted by showLegacyScreen()
 ```
+
+### VS Intro (`#ov-vs-intro`, September 2026)
+
+Source: `partials/screens/vs-intro-overlay.html`, `src/ui/screens/vsIntroScreen.js`. Shown by `main.js`
+between `PS_INTENT.MATCHED` and `startOnlineGameViaSpine` for exactly `VS_INTRO_MS` (1400 — the pre-existing
+pause). IDs: `#vs-my-av`, `#vs-my-name`, `#vs-my-elo`, `#vs-opp-av`, `#vs-opp-name`, `#vs-opp-elo`.
+Since the 2.5 s change it is played by `playVsIntro()` for random matchmaking, friend games (host, join code,
+invite accept) and bot games (before the coin toss; `opp.label` shows the bot level instead of Elo). Classes:
+`.vs-go` (choreography), `.vs-out` (exit zoom, last `VS_EXIT_MS`), `.vs-3d-me/.vs-3d-opp`.
+Intents: `VS_INTRO_INTENT.SHOW` `{ me, opp }`, `.RATING` `{ side, rating }` (late Elo), `.HIDE`.
 
 ### Achievements Screen — trophy room (`#sav-gallery`, June 2026 redesign)
 
@@ -409,7 +470,7 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `scorePop` | Score panel pop effect |
 | `shakeWord` | Illegal word shake |
 | `illegalPulse` | Rejection pulse |
-| `bonusActivate` | Bonus square activated |
+| `bonusActivate` | Bonus square activated — `.bonus-activate` rim + live lightning canvas `.bsq-electric` (`boostElectricFx.js`; skipped when `reducedMotion`) |
 | `boostPulse` | Active boost pulse |
 | `bonusAwardOverlay` | Bonus award modal |
 | `turnEffectBanner` | Turn-flow notice ("you lost your turn" / "opponent plays again") |
@@ -417,6 +478,27 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `scorePanelArrive` | Score panel entrance animation |
 | `overlayCardIn` | Overlay card entrance |
 | `bagBounce` | Tile bag bounce |
+| `avatarBoostReact` | Booster's avatar: small push + edge glow (secondary to the board ignition) |
+| `avatarGoodMove` | Mover's avatar nods when a ≥ `GOOD_MOVE_SCORE` (40) sum lands (`delayMs` = panel landing) |
+
+### Avatar / achievement 2.5D motion (September 2026)
+
+`src/ui/avatarMotion/` plays pose-atlas clips on a `<canvas.av-motion-canvas>` inserted after the avatar
+`<img>` (the img is hidden with `visibility`, layout never moves). Frame `rest` = the source PNG, so the
+PNG is always the fallback. Nothing runs under reduced motion. Screens call `canPlayNow(img, clip)` to pick
+the 3D clip **or** their existing CSS cue in the same frame (never both), after `preloadFor(src)`.
+
+| Where | Clip | Notes |
+|---|---|---|
+| `#is-av1/2` on `yourTurnCue` | `yourTurn` | card gets `.your-turn-cue` + `.your-turn-cue--avatar` (no pulse/halo) |
+| `#is-av1/2` | `boostReact`, `goodMove` | via the directives above |
+| `#ov-vs-intro` | `vsEnterStart` / `vsEnterEnd` | CSS slide fallback (`.vs-3d-me/.vs-3d-opp` mark 3D sides) |
+| `#av-unlock-ic` | `unlockReveal` (`unlockRevealGrand` for legend_owner) | `.is-pending` ≤450 ms, then `.is-3d` or CSS pop; `.is-grand`; flourish layer `.ach-fx--*` |
+| `#end-av0/1` | `win` / `loss` | + `.end-ach-progress` strip on `AV_PROGRESS_BUMP` (`.end-ach-row`, bump clip on icons) |
+| `#profile-avatar-display`, `#ps-my-avatar` | `idle` (+ `glance`/`headTilt` every 6–10 s) | legendary uses `idleLegendary` |
+| store tile / `.store-confirm-img` | `select` | legendary uses `legendEntrance` |
+
+Rarity (from `assets/avatars_v2/<tier>/`): glow strength/colour per tier; epic + legendary add a sparkle burst.
 
 ### Timing Constants
 All score-sequence timing lives in the shared module

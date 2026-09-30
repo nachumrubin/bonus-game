@@ -220,6 +220,23 @@ test('AvatarUnlocked: AV_UNLOCK_OPEN renders the achievement trophy icon', () =>
   assert.ok(ic.innerHTML.includes(achievementIconSrc(achievement)));
 });
 
+test('AvatarUnlocked: required state remains visible and duplicate render does not replay motion', () => {
+  bus._reset();
+  const overlay = makeOverlay();
+  let motionStarts = 0;
+  Object.defineProperty(overlay, 'offsetWidth', { get() { motionStarts++; return 1; } });
+  const root = { querySelector: (sel) => sel === '#ov-avatar-unlocked' ? overlay : null };
+  const screen = mountAvatarUnlockedScreen({ root, bus });
+  const payload = { achievement: { id: 'veteran', titleHe: 'ותיק', tier: 'gold' }, coins: 250 };
+  bus.emit(AV_UNLOCK_OPEN, payload);
+  bus.emit(AV_UNLOCK_OPEN, payload);
+  assert.equal(overlay.classList.contains('hidden'), false);
+  assert.equal(overlay.classList.contains('achievement-unlock-state'), true);
+  assert.equal(overlay.classList.contains('achievement-unlock-motion'), true);
+  assert.equal(motionStarts, 1);
+  screen.unmount();
+});
+
 test('AvatarUnlocked: UNLOCK_ACK + AV_UNLOCK_CLOSE rehide', () => {
   bus._reset();
   const overlay = makeOverlay();
@@ -333,4 +350,13 @@ test('word_contributor: does not fire below threshold', () => {
   const next = { stats: { wordsAccepted: 19 }, ownedAvatars: [] };
   const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
   assert.ok(!ids.includes('word_contributor'));
+});
+
+test('nextAchievement: closest unfinished achievement, static (from === to); null without data', async () => {
+  const { nextAchievement, ACHIEVEMENTS } = await import('./avatarScreens.js');
+  assert.equal(nextAchievement(null), null);
+  assert.equal(nextAchievement({}), null);
+  const n = nextAchievement({ stats: {}, ownedAvatars: [] });
+  assert.ok(n && n.from === n.to && n.target > 0 && n.to < n.target);
+  assert.ok(ACHIEVEMENTS.includes(n.achievement));
 });

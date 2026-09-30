@@ -547,6 +547,7 @@ export async function createOnlineGameSession({
       } else {
         bus.emit(EV.OPPONENT_MOVED, {
           slot: last.slot, placed: last.tiles, words: last.words, wordTiles: last.wordTiles, score: last.score,
+          baseScore: last.baseScore, bonusExtra: last.bonusExtra, multiplier: last.multiplier,
         });
         bus.emit(EV.SCORE_CHANGED, { slot: last.slot, score: state.scores[last.slot] });
       }

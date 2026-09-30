@@ -12,6 +12,7 @@
 | `index.html` | **Browser entry point.** Single-page PWA shell. Contains embedded `HebrewValidator` class (lines 2802–3145 legacy), script loaders for Firebase SDK and spine modules, build version meta tags. |
 | `sw.js` | **Service Worker.** Handles OneSignal push routing, offline cache with auto-invalidating cache name (`boost-{timestamp}`), and notification-click postMessage routing to app. |
 | `styles.css` | **All UI styles** (~90 KB). Dark navy gradient design system with CSS custom properties. Mobile-first, portrait orientation. RTL Hebrew layout. |
+| `screens-glass.css` | **App-wide glass + wood skin** (Sept 2026), loaded last after `menu-electric.css`. Tokens (`--sg-*`), the `g-*` primitives ported from `tools/screens-mockup`, and per-screen overrides for every non-game screen and overlay. Icons come from the `#gi-*` SVG sprite at the top of `index.html`. |
 | `manifest.json` | PWA metadata: app name, icons, `orientation: portrait`, `dir: rtl`. |
 | `android/` | Android Studio project for the TWA wrapper (own Gradle wrapper, `build.gradle`, keystore, versionCode/Name). The app is built here — Bubblewrap is no longer used. |
 | `firebase.json` | Firebase hosting config + emulator config (database port 9000, single-project mode). |
@@ -162,6 +163,13 @@ See `/partials/screens/` for corresponding HTML templates.
 | `scoreAnimationTimings.js` | Shared score-sequence timing: `mergeSequenceTiming()` choreography + `scoreInteractionGateMs`/`scoreClockGraceMs` (visual-gate vs clock-fairness, with reduced-motion floors). |
 | `screenPartialManifest.js` | Screen partial registry. |
 | `screenPartials.js` | Partial HTML loading system. |
+| `screens/gameMenu.js` | In-game ☰ menu toggle (`wireGameMenu`): open/close, outside tap, Escape. |
+| `boostElectricFx.js` | Procedural canvas lightning on a Boost square during ignition (`playBoostElectric`). |
+| `avatarMotion/poseClips.js` | Pure pose-clip data + sampling (`sampleClip`, `resolveFrames`), rarity styles (`TIER_STYLE`, `tierFromPath`). |
+| `avatarMotion/atlasManifest.js` | Loads `assets/anim/manifest.json`; maps any `<img src>` shape to its pose atlas. |
+| `avatarMotion/spritePlayer.js` | Plays clips on a canvas over an avatar/achievement `<img>` (`playOnImg`, `canPlayNow`, `preloadFor`). |
+| `avatarMotion/idleMotion.js` | Breathing idle + occasional glance for calm screens (`startIdle`). |
+| `avatarMotion/unlockFx.js` | Per-achievement unlock flourishes (`specialFor`, `playUnlockSpecial`). |
 
 ### `src/util/`
 | File | Role |
@@ -233,6 +241,7 @@ See `/partials/screens/` for corresponding HTML templates.
 - `bonus-intro-shown-before-every-interactive-boost-mini-game.html` — Boost intro overlay
 - `boost-veto-notice.html` — Veto confirm
 - `pause-overlay.html`, `back-confirm-overlay.html` — In-game overlays
+- `vs-intro-overlay.html` — `#ov-vs-intro`, avatar-vs-avatar intro before an online match (`src/ui/screens/vsIntroScreen.js`)
 
 ---
 
@@ -309,6 +318,9 @@ Android Gradle project wrapping the PWA as a Trusted Web Activity.
 | Path | Role |
 |------|------|
 | `assets/music/` | Background music files (URL referenced via `config.js`) |
+| `assets/anim/` | Generated pose atlases (WebP sprite sheets) + `manifest.json` for avatar/achievement motion — built by `Blender designs/icons3d/` (`build_relief.py --atlas`, `pack_atlas.py`); do not hand-edit |
+| `tools/scoreboard-mockup/` | Dev-only design mockup of the proposed in-game scoreboard |
+| `tools/avatar-motion/` | Dev-only: `preview.html` (every clip on every asset) and `nocache_server.py` |
 
 ---
 
