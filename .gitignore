@@ -4,6 +4,7 @@ functions/.env.local
 .simulator-data/
 .emulator-data/
 keystore.properties
+*keystore.properties
 *.keystore
 *.jks
 
