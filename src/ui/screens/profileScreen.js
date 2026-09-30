@@ -6,6 +6,7 @@
 //   - PROFILE_INTENT.OPEN_AVATARS
 //   - PROFILE_INTENT.OPEN_FRIENDS
 //   - PROFILE_INTENT.OPEN_STATS
+//   - CHAMPS_OPEN                 (טבלת דירוגים row → #ov-champs)
 //   - PROFILE_INTENT.UPGRADE_ACCOUNT (anonymous → signup)
 //   - PROFILE_INTENT.LOGOUT
 //   - PROFILE_INTENT.BACK
@@ -128,6 +129,7 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
   // The avatar ring (div) and the labeled store button both open the store.
   bindClick('[onclick="showAvatarStore()"]', PROFILE_INTENT.OPEN_STORE);
   bindClick('button[onclick="showFriendsScreen()"]', PROFILE_INTENT.OPEN_FRIENDS);
+  bindClick('#btn-profile-champs',                   CHAMPS_OPEN);
   bindClick('button[onclick="showStatsScreen()"]',   PROFILE_INTENT.OPEN_STATS);
   bindClick('button[onclick="logoutUser()"]',        PROFILE_INTENT.LOGOUT);
   bindClick('button[onclick="goHome()"]',            PROFILE_INTENT.BACK);

@@ -5,6 +5,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import * as bus from '../../events/bus.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH, turnStripText } from './menuScreen.js';
@@ -54,6 +57,8 @@ function makeMenuDom() {
     online:     makeButton({ onclick: 'showOnlineLobby()' }),
     tutorial:   makeButton({ onclick: 'showTutorialIntro()', id: 'topbar-help-btn' }),
     settings:   makeButton({ onclick: 'openSettings()' }),
+    champs:     makeButton({ id: 'btn-home-champs', onclick: 'openChampions()' }),
+    elo:        makeButton({ id: 'home-elo-label' }),
     nameLabel:  makeButton({ id: 'home-user-label' }),
     onlineBadge: makeButton({ id: 'online-badge' }),
     mgBadge:    makeButton({ id: 'mg-nav-badge' }),
@@ -259,6 +264,61 @@ test('mount: missing #sh root logs a warning and returns a no-op', () => {
   } finally {
     console.warn = _origWarn;
   }
+});
+
+test('home champions card is not an entry point', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  let opens = 0;
+  bus.on(CHAMPS_OPEN, () => { opens++; });
+  mountMenuScreen({ root, bus });
+  // A leftover #btn-home-champs is not wired. The ELO chip is the home entry.
+  assert.equal(buttons.champs.getAttribute('onclick'), 'openChampions()');
+  assert.equal(buttons.champs._listeners.length, 0);
+  buttons.champs.click();
+  assert.equal(opens, 0);
+});
+
+test('home partial has no champions navigation card', () => {
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+  const home = fs.readFileSync(path.join(root, 'partials/screens/home.html'), 'utf8');
+  const profile = fs.readFileSync(path.join(root, 'partials/screens/profile-screen.html'), 'utf8');
+  assert.doesNotMatch(home, /btn-home-champs/);
+  assert.doesNotMatch(home, /hm-rank/);
+  assert.match(home, /showAvatarGallery\(\)/);
+  assert.match(home, /הישגים/);
+  assert.match(profile, /id="btn-profile-champs"/);
+  assert.match(profile, /טבלת דירוגים/);
+});
+
+test('ELO chip opens champions and does not bubble into profile', () => {
+  bus._reset();
+  const { root, buttons } = makeMenuDom();
+  let opens = 0;
+  let profiles = 0;
+  bus.on(CHAMPS_OPEN, () => { opens++; });
+  bus.on(MENU_INTENT.OPEN_PROFILE, () => { profiles++; });
+  mountMenuScreen({ root, bus });
+  assert.equal(buttons.elo.getAttribute('role'), 'button');
+  assert.equal(buttons.elo.getAttribute('aria-label'), 'טבלת דירוגים');
+  const ev = {
+    stopped: false,
+    preventDefault() {},
+    stopPropagation() { ev.stopped = true; },
+  };
+  for (const l of buttons.elo._listeners) if (l.ev === 'click') l.fn(ev);
+  assert.equal(ev.stopped, true);
+  assert.equal(opens, 1);
+  assert.equal(profiles, 0);
+  const key = {
+    key: 'Enter',
+    stopped: false,
+    preventDefault() {},
+    stopPropagation() { key.stopped = true; },
+  };
+  for (const l of buttons.elo._listeners) if (l.ev === 'keydown') l.fn(key);
+  assert.equal(key.stopped, true);
+  assert.equal(opens, 2);
 });
 
 test('mount throws when bus is not provided', () => {

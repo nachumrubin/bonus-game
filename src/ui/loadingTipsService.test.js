@@ -6,6 +6,8 @@ import {
   recordShownTips,
   getGamesPlayed,
   cacheGamesPlayed,
+  loadTips,
+  loadTipsStatus,
   TIPS_HISTORY_KEY,
   TIPS_GAMES_KEY,
 } from './loadingTipsService.js';
@@ -196,4 +198,19 @@ test('selectSessionTips returns empty array when no tips provided', () => {
 test('selectSessionTips handles null/undefined storage gracefully', () => {
   const tips = makeTips();
   assert.doesNotThrow(() => selectSessionTips(tips, { storage: null, count: 3 }));
+});
+
+test('loadTipsStatus reports network failure instead of an empty success', async () => {
+  const failed = await loadTipsStatus('data/tips.json', async () => { throw new Error('offline'); });
+  assert.deepEqual(failed, { ok: false, tips: [], reason: 'network' });
+  assert.deepEqual(await loadTips('data/tips.json', async () => { throw new Error('offline'); }), []);
+});
+
+test('loadTipsStatus returns parsed tips on HTTP success', async () => {
+  const payload = [{ id: 't1', title: 'כותרת', text: 'טקסט' }];
+  const result = await loadTipsStatus('data/tips.json', async () => ({
+    ok: true,
+    json: async () => payload,
+  }));
+  assert.deepEqual(result, { ok: true, tips: payload });
 });

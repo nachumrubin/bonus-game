@@ -114,13 +114,19 @@ export function selectSessionTips(allTips, { storage = globalThis.localStorage, 
  * Fetch and parse the tips catalogue.
  * Injectable `fetchFn` makes this testable (tests pass a stub).
  */
-export async function loadTips(url = 'data/tips.json', fetchFn = globalThis.fetch) {
-  if (typeof fetchFn !== 'function') return [];
+export async function loadTipsStatus(url = 'data/tips.json', fetchFn = globalThis.fetch) {
+  if (typeof fetchFn !== 'function') return { ok: false, tips: [], reason: 'no-fetch' };
   try {
     const res = await fetchFn(url);
-    if (!res.ok) return [];
-    return await res.json();
+    if (!res?.ok) return { ok: false, tips: [], reason: 'http' };
+    const tips = await res.json();
+    return { ok: true, tips: Array.isArray(tips) ? tips : [] };
   } catch {
-    return [];
+    return { ok: false, tips: [], reason: 'network' };
   }
+}
+
+export async function loadTips(url = 'data/tips.json', fetchFn = globalThis.fetch) {
+  const { tips } = await loadTipsStatus(url, fetchFn);
+  return tips;
 }
