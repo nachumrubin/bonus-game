@@ -2,13 +2,14 @@
 <div id="sh" class="screen hidden">
   <div class="hc em-home">
 
+    <!-- Logo + strips + mode cards, centred as one block between the topbar and the dock -->
+    <div class="hm-main">
+
     <!-- ─ Logo ──────────────────────────────────── -->
-    <!-- Wood tiles spell the wordmark (DOM order ב,ו,ס,ט — RTL renders it right-to-left). -->
+    <!-- Blender render of the wood-tile wordmark (same shot as the end of the 40s promo —
+         "Blender designs/promo/render_app_logo.py"). -->
     <div class="hlogo" role="img" aria-label="בוסט">
-      <div class="hl-tile"><span class="hl-l">ב</span></div>
-      <div class="hl-tile"><span class="hl-l">ו</span></div>
-      <div class="hl-tile"><span class="hl-l">ס</span><svg class="hl-bolt" viewBox="0 0 72 72" aria-hidden="true"><path d="M41 -2 29 34h12L27 76" fill="none" stroke="#071238" stroke-width="4.5" stroke-linejoin="round"/><path d="M41 -2 29 34h12L27 76" fill="none" stroke="#46dcf5" stroke-width="2" stroke-linejoin="round"/></svg></div>
-      <div class="hl-tile"><span class="hl-l">ט</span></div>
+      <img class="hl-img" src="assets/ui/boost-logo.webp" alt="" width="1100" height="450" decoding="async" fetchpriority="high">
     </div>
 
     <!-- ─ "Your turn" strip — shown by menuScreen when N async games wait on you ─ -->
@@ -68,6 +69,8 @@
       <span class="hm-strip-chev" aria-hidden="true">❯</span>
     </button>
 
+    </div><!-- /hm-main -->
+
     <!-- ─ Bottom Navigation ───────────────────────── -->
     <!-- RTL flex-row: first item = RIGHT, last item = LEFT -->
     <nav id="home-bottom-nav" class="em-bottom-nav" aria-label="ניווט">
@@ -97,7 +100,7 @@
 
     <!-- Credit -->
     <div class="credit">
-      <a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20260930203808
+      <a href="privacy-policy.html" target="_blank">מדיניות פרטיות</a> · v2.1 · build 20261001061213
       <br>
       <span dir="ltr">Music: "Inspire Action" by <a href="https://freemusicarchive.org/music/ura-megis/" target="_blank" rel="noopener">Yuri Megis</a> · <a href="https://freemusicarchive.org/music/ura-megis/single/inspire-action-1/" target="_blank" rel="noopener">Free Music Archive</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></span>
     </div>

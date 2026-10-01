@@ -123,7 +123,7 @@ Critical element IDs referenced by game logic (must not be renamed):
 #sn1, #sn2             — player name labels (desktop)
 #is-sv1, #is-sv2       — player score values (mobile inline)
 #is-sn1, #is-sn2       — player name labels (mobile inline)
-#sbar                  — status bar text
+#sbar                  — status pill: errors / game-over / live word-points ("✓ word +N", computeLiveWordPreview); .is-empty hides it (Oct 2026)
 #bag-count-text        — remaining tile count
 #turn-name             — whose turn label
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
@@ -151,8 +151,20 @@ Critical element IDs referenced by game logic (must not be renamed):
 #wr-invite-dropdown    — waiting room friend invite autocomplete dropdown
 #wr-invite-status      — waiting room invite status text
 #wr-countdown          — waiting room live-invite countdown (hidden until live invite sent)
-#ov-bonus              — bonus mini-game overlay (checked by animation poller)
-#ov-bonus-intro        — bonus intro overlay (checked by animation poller)
+#ov-bonus              — bonus mini-game overlay (checked by animation poller).
+                          #bovic/#bovt/#bovd form the compact header (CSS grid),
+                          #btw timer, #bchal puzzle/result, #bok action.
+#ov-bonus-intro        — bonus intro overlay (checked by animation poller);
+                          #bintro-pts = gold points pill (hidden when the copy
+                          already names the points).
+                          Mini-game skin: screens-glass.css "BOOST MINI-GAMES".
+                          Classes: .bz-card/.bz-bolt/.bz-title/.bz-sub (self-hosted
+                          card), .bz-btn (cyan primary), .bz-key (glass key),
+                          .ut / .ut.sl / .ut.sl.fi (wood tile / navy slot / placed),
+                          .is-given/.is-ok/.is-bad tile bezels, .bz-slots (tray),
+                          .bz-bank (rack well), .bz-status/.bz-fb (+ .is-ok/.is-bad/
+                          .is-warn), .bz-score/.bz-pill, .bz-chips/.bz-chip,
+                          .bz-result* (bonusFx.bonusResultHtml), .hc-* honeycomb.
 .bonus-award-positioner — bonus award container (checked by animation poller)
 #net-status            — live connectivity indicator (wifi icon) in the game top-bar.
                           Toggled by connectivityIndicator.js. Classes:
@@ -186,7 +198,7 @@ Storage keys (loadingTipsService.js): 'boost_tips_history' (JSON array, last 10 
   'boost_tips_games_played' (integer, cached from profile.stats.gamesPlayed)
 
 Onboarding overlay (per-screen first-visit tooltips):
-#ov-onboarding         — full-screen dark backdrop (.ov class); hidden by default; z-index 500
+#ov-onboarding         — full-screen dark backdrop (.ov class); hidden by default; z-index 500. DISABLED Oct 2026 — mountOnboardingController is not mounted (see D-live-word-points)
 #onb-icon              — large emoji icon (populated by onboardingController.js)
 #onb-title             — screen title text (ovt style)
 #onb-intro             — optional lead-in paragraph (onb-intro class) above the bullets; gets `hidden` when the screen's content has no `intro` field

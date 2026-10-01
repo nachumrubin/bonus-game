@@ -2,6 +2,84 @@
 
 ---
 
+## Boost mini-games redesigned to the glass + wood skin — October 2026
+
+Intro, play and result screens of every boost mini-game now use the same language as
+the game screen and the other redesigned screens (they had their own "electric" look:
+cream tiles, white hexes, dashed cells, gold/green/blue buttons, emoji medals).
+
+- **One skin** — `screens-glass.css` → "BOOST MINI-GAMES — glass + wood". The Phase-1
+  bonus block in `menu-electric.css` (~630 lines of `#ov-bonus` / `.bz-*` overrides) is
+  removed. Covers `#ov-bonus-intro`, `#ov-bonus`, the self-hosted `.bz-overlay/.bz-card`
+  games (unscramble, wheel), `.bonus-award-card` and `#ov-bonus-spectator`.
+- **Play card**: dialog glass, compact header (48px bolt medal + gold title + one-line
+  description, as a CSS grid — no DOM change), thin cyan timer bar, the puzzle on a glass
+  board tray with navy cells, letters as BOOST-logo wood tiles in a rack well, and the
+  cyan "שבץ" button as the only primary action. Tile states follow the board: placed =
+  white bezel + cyan glow, given = gold, correct = green, wrong = red.
+- **Per game**: honeycomb = wood hexes (gold-bezel centre) on a tray; letter spinner =
+  one big wood tile, then the chosen letter as a small tile beside a gold score pill;
+  hidden word = 4×4 wood grid; fill-middle / unscramble = navy slots over a rack;
+  crossing words = wood letters with the shared cell as a pulsing boost socket;
+  crossword = navy board + wood rack.
+- **Result screen** (all games) — new `bonusFx.bonusResultHtml()`: tray with a ringed
+  medal (gold trophy win / cyan hourglass timeout / red ✕ wrong), headline, gold
+  count-up points, and the word(s) as wood tiles (`wordTilesHtml`), found-word chips,
+  the solved crossing grid, or the crossword's per-word list. Emoji results are gone.
+- **Intro**: points moved from the description into a gold pill (`#bintro-pts`, hidden
+  when the copy already states them — B1/B3 used to read "…100 נקודות · 100 נקודות").
+- **Names match the intros**: crossword "תשבץ!" (was "בוסט אישי!"), crossing words
+  "מילים מצטלבות!" (was "שתי מילים חוצות!"), unscramble "אנגרמה!", fill-middle
+  "מילה חסרה!" (was "בוסט 100 — מלא את החסר"). Spectator medal uses the bolt glyph.
+- New `src/ui/screens/miniGames/bonusUi.js` (`setTone`, `buildWordEntry`,
+  `buildWordFeed`) replaces per-file inline `cssText`; feedback colours are classes
+  (`.is-ok/.is-bad/.is-warn`). Game logic, timers, scoring and events are unchanged.
+- Guide captures: the specs no longer overwrite the real titles; the crossing-words
+  spec hides the boot splash (its success shot showed the loader).
+
+## UI fixes: logo, sheets, live word points, boost cards, partner search — October 2026
+
+- **Home logo** is now the Blender render (`assets/ui/boost-logo.webp`, `<img class="hl-img">`
+  inside `.hlogo`) — the promo's wood tiles with the ס split by the bolt — on home and
+  login. The CSS `.hl-tile` tiles (whose thin bolt line read as a crack) are gone.
+- **Home layout.** Logo + strips + mode cards + leaderboard row are wrapped in `.hm-main`
+  and centred between the topbar and the dock: no dead gap, and the leaderboard row no
+  longer sits squashed against the nav.
+- **Bottom sheets** (join-by-code, pause, create room, exchange, joker, …) float as a
+  complete card: all corners rounded, full border, lifted off the bottom edge
+  (+ safe-area), slide-up entrance. Flush sheets looked cut off on wide windows.
+- **Live word-points counter** (TASKS "Live score preview"): the status pill shows
+  `✓ האור +8` while tiles are placed — new pure helper `src/ui/liveWordPreview.js`
+  (`computeLiveWordPreview`) runs the engine's own `validateMove` / `getAllWords` /
+  `scoreMove`, so the number equals what שבץ commits (base score incl. bingo; boost
+  multipliers are shown by the multiplier banner). A word not in the dictionary shows
+  `✕ word` in red with no points. The idle "בחר אות מהמגש ולחץ על משבצת" hint is gone —
+  the pill is hidden (`.is-empty`, row height kept) when there is nothing to say.
+  `view._firstMove` added to the game controller view for the connectivity check.
+- **Boost cards.** The ⚡ emoji was glued to the top edge of the medal (a
+  `display:block` override). Intro, mini-game and award cards now show a centred,
+  glowing `#gi-bolt` medal (`src/ui/boostIcon.js`; 🎡 kept for the wheel); titles lose
+  the duplicated ⚡ and render as solid gold. Honeycomb card renamed "כוורת!" to match
+  its intro (was "דבורת המילים!") and its garbled "2אות=3 | 3=5…" legend replaced.
+  Intro points now read "· 50 נקודות" (the parenthesis flipped at RTL line wraps).
+  `describeBonus()` gained a plain-text `icon` used for the online `liveBonus` doc.
+- **Bot / 2P setup medallion**: cyan ring and the robot fills it (the icon span had no
+  size, so the image collapsed inside a grey double ring).
+- **Partner search overlay** redesigned: radar rings + rotating sweep, "me" medal vs a
+  gold opponent slot with a spinning dashed ring, VS badge, role pills. Fixed the reel:
+  JS stepped 68px while CSS items were 84px, so avatars/names drifted out of the circle
+  (`ITEM_H` = `.ps-slot-item` height = 88px). `.ps-av` is now the offset parent for the
+  avatar motion canvas.
+- **First-time explanation pop-ups** (`#ov-onboarding`, one per screen) switched off:
+  `mountOnboardingController` is no longer called from `main.js` (controller + copy kept).
+- Guide screenshots (`images/guide/*`) regenerated by the e2e capture specs.
+- Tests: `src/ui/liveWordPreview.test.js` (7), `tests/unit/logo-markup.test.js` updated.
+  Unit 1490 green. E2E 55 pass / 3 fail (`boost-electric-border`, `menu-routing`,
+  `non-menu-buttons` — all pre-existing; the latter two wait for a `#sh .hbtns` that the
+  redesigned home no longer has).
+
+---
+
 ## Phone rendering & load performance fix — September 2026
 
 On Android (Chrome / TWA) the new design showed blurry screens, half-painted cards,

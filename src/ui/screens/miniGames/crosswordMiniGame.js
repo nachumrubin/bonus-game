@@ -23,8 +23,10 @@
 //   CW_INTENT.RESULT
 
 import { startBonusTimer } from './bonusTimer.js';
-import { confettiBurst } from './bonusFx.js';
+import { confettiBurst, bonusResultHtml, startResultCount, escapeHtml } from './bonusFx.js';
+import { setTone } from './bonusUi.js';
 import { g, getGender } from '../../genderText.js';
+import { BOOST_BOLT_ICON_HTML } from '../../boostIcon.js';
 
 const DEFAULT_DURATION_MS = 60_000;
 const DEFAULT_POOL_SIZE   = 20;
@@ -327,14 +329,14 @@ export function mountCrosswordMiniGame({
     const total = legalWords.length + illegalWords.length;
     if (total === 0) {
       statusLine.textContent = 'הרכב מילה על הלוח';
-      statusLine.style.color = 'rgba(255,255,255,.7)';
+      setTone(statusLine, 'bz-status', null);
       return;
     }
     const parts = [];
     legalWords.forEach(w => parts.push('✓' + w));
     illegalWords.forEach(w => parts.push('✗' + w));
     statusLine.textContent = parts.join(' | ') + ' — ' + score + ' נק\'';
-    statusLine.style.color = illegalWords.length > 0 ? '#ffcc66' : '#8eff8e';
+    setTone(statusLine, 'bz-status', illegalWords.length > 0 ? 'warn' : 'ok');
   }
 
   function buildGrid() {
@@ -360,15 +362,15 @@ export function mountCrosswordMiniGame({
   }
 
   function attachLegacy() {
-    bovic.textContent = '⚡';
-    bovt.textContent  = 'בוסט אישי!';
-    bovd.textContent  = `ב-${Math.floor(durationMs/1000)} שניות הרכב מילים מהאותיות שלך — כל אות שימושית פעם אחת בלבד!`;
+    bovic.innerHTML = BOOST_BOLT_ICON_HTML;
+    bovt.textContent  = 'תשבץ!';
+    bovd.textContent  = `הרכב מילים מהאותיות שלך · כל אות פעם אחת · ${Math.floor(durationMs/1000)} שניות`;
     bchal.innerHTML = '';
 
     const wrap = doc.createElement('div');
-    wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;';
+    wrap.className = 'xw-wrap';
     statusLine = doc.createElement('div');
-    statusLine.style.cssText = 'font-size:11px;color:rgba(255,255,255,.8);text-align:center;min-height:18px;font-weight:700;';
+    statusLine.className = 'bz-status';
     statusLine.textContent = g('chooseLetterBoard', getGender());
     wrap.appendChild(statusLine);
 
@@ -391,7 +393,7 @@ export function mountCrosswordMiniGame({
       e?.preventDefault?.();
       finalize({ timedOut: false });
     };
-    bok.textContent = 'סיים ▶';
+    bok.textContent = 'סיים';
     bok.addEventListener('click', handleSubmit);
 
     const stopBar = startBonusTimer({ doc, durationMs });
@@ -401,6 +403,7 @@ export function mountCrosswordMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
         bchal.innerHTML = renderResult(result);
+        startResultCount(bchal, result.earnedPts > 0 ? result.earnedPts : null);
         if (isCleanWin(result)) confettiBurst(ovBonus?.querySelector?.('.ovc'));
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
@@ -413,40 +416,36 @@ export function mountCrosswordMiniGame({
         && Object.keys(result.legal ?? {}).length > 0;
   }
 
+  // Shared result tray + a per-word score list (✓ legal words with their
+  // points, ✗ illegal words struck through — any ✗ zeroes the boost).
   function renderResult(result) {
     const legalWords = Object.keys(result.legal);
     const illegalWords = Object.keys(result.illegal);
-    const total = legalWords.length + illegalWords.length;
-    if (total === 0) {
-      return `<div class="bz-result is-soft">
-        <div class="bz-result-emoji">😌</div>
-        <div class="bz-result-headline">ללא מילים — ללא בוסט</div>
-        <div class="bz-result-sub">המשך לשחק ולחפש הזדמנויות נוספות.</div>
-      </div>`;
+    if (legalWords.length + illegalWords.length === 0) {
+      return bonusResultHtml({
+        success: false, headline: 'ללא מילים — ללא בוסט',
+        sub: 'המשך לשחק ולחפש הזדמנויות נוספות.',
+      });
     }
-    const emoji   = illegalWords.length === 0 ? '🎉' : (legalWords.length > 0 ? '⚠️' : '😔');
-    const headColor = illegalWords.length === 0 ? '#7dffa6' : '#ffb38a';
-    const headline = illegalWords.length === 0
-      ? `כל הכבוד! ${legalWords.length} מילים חוקיות`
-      : 'יש מילות ✗ — הבוסט מתאפס (0 נקודות)';
-    let h = `<div style="text-align:center;margin-bottom:8px"><div style="font-size:34px">${emoji}</div><div style="font-size:14px;font-weight:900;color:${headColor};margin:4px 0">${headline}</div></div>`;
-    h += `<div style="background:rgba(0,0,0,.22);border-radius:6px;padding:5px 10px;font-size:12px;color:#eee;line-height:1.7;">`;
+    let list = '<div class="xw-word-list">';
     legalWords.forEach(w => {
-      h += `<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);padding:1px 0">
-        <span><span style="color:#8eff8e;font-weight:700;margin-left:4px">✓</span><span style="font-weight:900">${w}</span></span>
-        <span style="color:var(--by)">${result.legal[w]}</span>
-      </div>`;
+      list += `<div class="xw-word-row"><span><span class="xw-word-ok">✓</span>${escapeHtml(w)}</span><b>${result.legal[w]}</b></div>`;
     });
     illegalWords.forEach(w => {
-      h += `<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);padding:1px 0;opacity:.8">
-        <span><span style="color:#ff6e6e;font-weight:700;margin-left:4px">✗</span><span style="font-weight:900;text-decoration:line-through;color:#ff8e8e">${w}</span></span>
-        <span style="color:#ff6e6e">0</span>
-      </div>`;
+      list += `<div class="xw-word-row is-bad"><span><span class="xw-word-bad">✗</span><span class="xw-word-invalid">${escapeHtml(w)}</span></span><b>0</b></div>`;
     });
-    h += `<div style="display:flex;justify-content:space-between;padding-top:4px;font-weight:900;border-top:2px solid rgba(255,255,255,.18);margin-top:2px">
-      <span>סה״כ בוסט</span><span style="color:${result.earnedPts > 0 ? '#8eff8e' : '#ff8e8e'}">+${result.earnedPts}</span>
-    </div></div>`;
-    return h;
+    list += '</div>';
+    const clean = illegalWords.length === 0;
+    return bonusResultHtml({
+      success: result.earnedPts > 0,
+      tone: clean ? 'win' : 'bad',
+      icon: clean ? 'trophy' : 'x',
+      headline: clean
+        ? (legalWords.length === 1 ? 'כל הכבוד! מילה חוקית אחת' : `כל הכבוד! ${legalWords.length} מילים חוקיות`)
+        : 'יש מילה לא חוקית — הבוסט מתאפס',
+      points: result.earnedPts > 0 ? result.earnedPts : null,
+      extraHtml: list,
+    });
   }
 
   function attachSelf() {
@@ -454,20 +453,19 @@ export function mountCrosswordMiniGame({
     host.className = 'spine-mini-overlay bz-overlay';
     const card = doc.createElement('div');
     card.className = 'bz-card';
-    card.style.maxWidth = '380px';
 
     const bolt = doc.createElement('div');
     bolt.className = 'bz-bolt';
-    bolt.textContent = '⚡';
+    bolt.innerHTML = BOOST_BOLT_ICON_HTML;
     card.appendChild(bolt);
 
     const title = doc.createElement('div');
     title.className = 'bz-title';
-    title.textContent = 'בוסט אישי!';
+    title.textContent = 'תשבץ!';
     card.appendChild(title);
 
     statusLine = doc.createElement('div');
-    statusLine.style.cssText = 'font-size:11px;color:rgba(255,255,255,.8);text-align:center;min-height:18px;font-weight:700;margin-bottom:6px;';
+    statusLine.className = 'bz-status';
     statusLine.textContent = g('chooseLetterBoard', getGender());
     card.appendChild(statusLine);
 
@@ -479,9 +477,8 @@ export function mountCrosswordMiniGame({
     card.appendChild(poolEl);
 
     const submitBtn = doc.createElement('button');
-    submitBtn.className = 'bz-btn bz-btn-gold';
-    submitBtn.style.cssText = 'margin-top:10px;';
-    submitBtn.textContent = 'סיים ▶';
+    submitBtn.className = 'bz-btn';
+    submitBtn.textContent = 'סיים';
     submitBtn.addEventListener('click', () => finalize({ timedOut: false }));
     card.appendChild(submitBtn);
 

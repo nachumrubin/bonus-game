@@ -123,7 +123,7 @@ export function mountWheelMiniGame({
 
   // ── DOM mount ──
   // Premium chrome (overlay, card, buttons, wheel rim/hub/pointer) lives in
-  // the .bz-* classes in menu-electric.css; only the dynamic bits — the
+  // the .bz-* classes in screens-glass.css; only the dynamic bits — the
   // conic-gradient segments and the final rotation — stay inline here.
   const host = doc.createElement('div');
   host.className = 'spine-wheel-overlay bz-overlay';
@@ -165,7 +165,7 @@ export function mountWheelMiniGame({
   host.innerHTML = `
     <div class="bz-card">
       <div class="bz-burst" data-wheel="burst"></div>
-      <div class="bz-bolt">🎡</div>
+      <div class="bz-bolt is-emoji">🎡</div>
       <div class="bz-title">גלגל המזל!</div>
       <div class="bz-sub" id="spine-wheel-press-hint"></div>
       <div class="bz-wheel-wrap">
@@ -179,7 +179,7 @@ export function mountWheelMiniGame({
         <div class="bz-wheel-pointer"></div>
       </div>
       <div data-wheel="result" class="bz-wheel-result"></div>
-      <button data-wheel="spin" class="bz-btn bz-btn-gold"></button>
+      <button data-wheel="spin" class="bz-btn"></button>
     </div>`;
 
   doc.body?.appendChild(host);

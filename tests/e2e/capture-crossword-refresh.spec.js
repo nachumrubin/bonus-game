@@ -83,10 +83,6 @@ test('capture refreshed crossing words screen', async ({ page }) => {
       words: [],
       durationMs: 45_000,
     });
-    const t = document.getElementById('bovt');
-    if (t) t.textContent = 'מילים מצטלבות';
-    const d = document.getElementById('bovd');
-    if (d) d.textContent = 'מצא את האות המשותפת לשתי המילים';
   })()`);
   await expect(page.locator('#ov-bonus .cw-mini-grid')).toBeVisible();
   await shotBonus(page, 'crossing');
@@ -107,10 +103,6 @@ test('capture refreshed crossword screen', async ({ page }) => {
       rng,
       durationMs: 60_000,
     });
-    const t = document.getElementById('bovt');
-    if (t) t.textContent = 'תשבץ';
-    const d = document.getElementById('bovd');
-    if (d) d.textContent = 'הרכב מילים מהאותיות שלך על הלוח';
   })()`);
   await expect(page.locator('#ov-bonus .xw-board')).toBeVisible();
   for (const cell of ['0-1', '0-2', '1-1']) {

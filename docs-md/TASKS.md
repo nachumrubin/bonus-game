@@ -1,5 +1,23 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## UI fixes — October 2026
+
+- [x] Blender logo on home/login, centred home column, floating bottom sheets, live
+  word-points pill, boost-card medal + titles, setup medallion, partner-search redesign,
+  onboarding pop-ups off, guide screenshots refreshed.
+- [x] Boost mini-games (intro, play, result) redesigned to the glass + wood skin; card
+  titles now match their intros (B8 "תשבץ!", B10 "מילים מצטלבות!"); spectator medal uses
+  the bolt glyph.
+- [ ] B1 intro always says "אנגרמה!", but B1 can open fill-middle ("מילה חסרה!") — the
+  game is picked after the intro; decide it earlier or make the intro copy generic.
+- [ ] Guide capture `crossing-success.png` is shot mid count-up (+37 of 40) — wait for
+  the count-up to settle.
+- [ ] `#ov-tut-prompt` partial is loaded but nothing opens it — delete or wire it.
+- [ ] e2e `menu-routing` / `non-menu-buttons` wait for `#sh .hbtns`, which the redesigned
+  home doesn't have — update the specs to the `.hm-card` buttons.
+- [ ] Run `node scripts/stamp-build.js` on deploy (new modules `liveWordPreview.js`,
+  `boostIcon.js` and `assets/ui/boost-logo.webp`).
+
 ## Phone performance — September 2026
 
 - [x] Hidden screens/overlays no longer composited (`visibility:hidden` after fade).
@@ -38,8 +56,8 @@
   invite; store tier tabs (mockup) vs today's stacked sections; the mini-game bodies
   (`#bchal`) and tutorial bubbles keep their older styling; run `npm run test:e2e` and
   refresh the guide screenshots (`images/guide/*`) that still show the old screens.
-- [ ] **Live score preview** in the status pill / שבץ button ("האור +8") — shown in the
-  mockup, not built: it gives players information they don't get today (game decision).
+- [x] **Live score preview** in the status pill ("✓ האור +8") — built Oct 2026
+  (`src/ui/liveWordPreview.js`, see D-live-word-points).
 - [ ] **Elo under human names** on the scoreboard (mockup) — needs the rating in the game view.
 - [ ] **Real-device check** of canvas performance on a low-end Android (TWA) and
   iOS Safari (sprite sheets are WebP; iOS 14+ required).

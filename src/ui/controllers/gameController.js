@@ -99,6 +99,9 @@ export function createGameController({ bus, session, mySlot = null }) {
     // (a Map keyed "r,c"). Expose the live reference so renderBoard can
     // show tiles that landed on perimeter bonus cells.
     view._bonusBoard = s.bonusBoard;
+    // First-move flag — the live word-points preview runs the engine's
+    // connectivity check, which is waived on the opening move.
+    view._firstMove = !!s.firstMove;
     // Expose turnDeadlineMs for live-mode timer rendering. Online sessions
     // populate this from the room; offline / untimed games leave it null.
     view._turnDeadlineMs = s.turnDeadlineMs ?? null;

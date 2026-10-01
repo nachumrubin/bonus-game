@@ -2,8 +2,11 @@
 //
 //   confettiBurst(container)            — spawns gold/cyan particles
 //   countUp(el, to, opts)               — animates a number 0 → to
-//   showBonusResult(containerEl, opts)  — premium success/failure screen,
-//                                         wiring confetti + count-up for you
+//   bonusResultHtml(opts)               — the shared result markup (medal,
+//                                         headline, gold points, extra html)
+//   showBonusResult(containerEl, opts)  — renders it + confetti + count-up
+//   startResultCount(containerEl, pts)  — count-up for self-rendered results
+//   wordTilesHtml(word, tone)           — a word as a row of small wood tiles
 //
 // Everything is defensive: with no usable DOM (tests pass plain objects or
 // nothing) each function is a no-op, so importing this never forces a browser.
@@ -52,36 +55,83 @@ export function countUp(el, to, { from = 0, durationMs = 650, prefix = '', suffi
   raf(frame);
 }
 
-// Render a premium result screen into `containerEl`. On success it fires a
-// confetti burst on the surrounding card and counts the points up; on failure
-// it shows a calm, encouraging message (no red error styling).
-//
-//   { success, emoji, headline, points, sub, cardEl, doc }
-export function showBonusResult(containerEl, {
+// Result-medal glyphs (#gi-* sprite in index.html). Stroke icons, except the
+// star which reads better filled.
+const RESULT_ICONS = Object.freeze({
+  trophy: '<svg class="gi" aria-hidden="true"><use href="#gi-trophy"/></svg>',
+  star:   '<svg class="gi f" aria-hidden="true"><use href="#gi-star"/></svg>',
+  hour:   '<svg class="gi" aria-hidden="true"><use href="#gi-hour"/></svg>',
+  x:      '<svg class="gi" aria-hidden="true"><use href="#gi-x"/></svg>',
+  check:  '<svg class="gi" aria-hidden="true"><use href="#gi-check"/></svg>',
+});
+
+// Player-typed words end up in innerHTML — escape them.
+export function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+// A word rendered as a row of small wood tiles (same tile as the board rack).
+// `tone` adds a bezel colour: 'ok' (green), 'bad' (red) or '' (cyan).
+export function wordTilesHtml(word, tone = '') {
+  const letters = [...String(word ?? '')];
+  if (!letters.length) return '';
+  const cls = tone ? ` is-${tone}` : '';
+  return `<div class="bz-word">${letters.map(ch => `<span class="bz-tile is-sm${cls}">${escapeHtml(ch)}</span>`).join('')}</div>`;
+}
+
+// Shared result markup for every mini-game (glass tray, ringed medal, gold
+// count-up points). `tone`: 'win' | 'soft' | 'bad' (defaults from `success`).
+// `icon`: a RESULT_ICONS key (defaults: trophy on a win, hourglass otherwise).
+// `extraHtml` is appended inside the tray (word tiles, word lists, …).
+export function bonusResultHtml({
   success = true,
-  emoji = success ? '🎉' : '😌',
+  tone = success ? 'win' : 'soft',
+  icon = success ? 'trophy' : 'hour',
   headline = '',
   points = null,
   sub = '',
+  extraHtml = '',
+} = {}) {
+  const pointsHtml = points != null
+    ? `<div class="bz-result-pts"><b dir="ltr">${success ? '+' : ''}<span data-bz-count>0</span></b><small>נקודות</small></div>`
+    : '';
+  return `<div class="bz-result is-${tone}">`
+    +   `<div class="bz-result-medal">${RESULT_ICONS[icon] ?? RESULT_ICONS.star}</div>`
+    +   (headline ? `<div class="bz-result-headline">${headline}</div>` : '')
+    +   pointsHtml
+    +   (sub ? `<div class="bz-result-sub">${sub}</div>` : '')
+    +   extraHtml
+    + `</div>`;
+}
+
+// Render the result into `containerEl`. On success it fires a confetti burst
+// on the surrounding card and counts the points up; on failure it shows a
+// calm, encouraging message (no red error styling).
+//
+//   { success, tone, icon, headline, points, sub, extraHtml, cardEl, doc }
+export function showBonusResult(containerEl, {
+  success = true,
+  tone,
+  icon,
+  headline = '',
+  points = null,
+  sub = '',
+  extraHtml = '',
   cardEl = null,
   doc = globalThis.document,
 } = {}) {
   if (!containerEl || !('innerHTML' in containerEl)) return;
-  const pointsHtml = points != null
-    ? `<div class="bz-result-big">${success ? '+' : ''}<span data-bz-count>0</span> נק'</div>`
-    : '';
-  containerEl.innerHTML =
-    `<div class="bz-result ${success ? 'is-win' : 'is-soft'}">`
-    +   `<div class="bz-result-emoji">${emoji}</div>`
-    +   (headline ? `<div class="bz-result-headline">${headline}</div>` : '')
-    +   pointsHtml
-    +   (sub ? `<div class="bz-result-sub">${sub}</div>` : '')
-    + `</div>`;
+  containerEl.innerHTML = bonusResultHtml({ success, tone, icon, headline, points, sub, extraHtml });
   const card = cardEl
     || containerEl.closest?.('.bz-card, .ovc')
     || containerEl;
   if (success) confettiBurst(card, { doc });
-  if (points != null) {
-    countUp(containerEl.querySelector?.('[data-bz-count]'), points, { durationMs: 650 });
-  }
+  startResultCount(containerEl, points);
+}
+
+// Count the points up inside an already-rendered result (for games that build
+// their markup with bonusResultHtml themselves).
+export function startResultCount(containerEl, points) {
+  if (points == null) return;
+  countUp(containerEl?.querySelector?.('[data-bz-count]'), points, { durationMs: 650 });
 }

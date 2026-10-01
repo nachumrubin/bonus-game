@@ -4028,7 +4028,7 @@ async function boot() {
           bonusType: pending.bonusType ?? null,
           title: info.title,
           desc: info.desc + (info.pts ? ` (${info.pts} נקודות)` : ''),
-          icon: info.title?.split(' ')[0] ?? null,
+          icon: info.icon ?? null,
         });
       }));
 
@@ -4582,7 +4582,10 @@ async function boot() {
   const replayScreen       = mountReplayScreen({ bus });
   const reportProblemScreen = mountReportProblemScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });
-  const onboarding         = mountOnboardingController({ bus, storage: globalThis.localStorage, getUid: () => activeFbCurrentUser?.uid ?? null });
+  // Per-screen first-time explanation pop-ups (#ov-onboarding) are switched
+  // off (Oct 2026 — players found them annoying). The controller and each
+  // screen's registerOnboardingContent() copy are kept; re-enable by mounting:
+  //   mountOnboardingController({ bus, storage: globalThis.localStorage, getUid: () => activeFbCurrentUser?.uid ?? null });
   const jokerPicker = mountJokerPicker({ bus });
   // In-game overlays
   const endScreen     = mountEndGameScreen({ bus });
@@ -4770,7 +4773,7 @@ function installCutoverGlobals() {
     const e = globalThis.document?.getElementById?.('sbar');
     if (!e) return;
     e.textContent = msg;
-    e.className = `sbar ${cls}`.trim();
+    e.className = `sbar ${cls}${msg ? '' : ' is-empty'}`.trim();
   };
   globalThis.ovClose = globalThis.ovClose ?? function ovClose(id) {
     globalThis.document?.getElementById?.(id)?.classList?.add('hidden');

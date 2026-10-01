@@ -12,6 +12,9 @@
 
 import { EV } from '../../events/eventTypes.js';
 import { $, setText } from '../domHelpers.js';
+import { BOOST_BOLT_ICON_HTML } from '../boostIcon.js';
+
+const escapeIcon = (v) => String(v).replace(/[&<>"']/g, '');
 
 export function mountBonusSpectatorScreen({ root = globalThis.document, bus, sessionRef } = {}) {
   if (!bus) throw new Error('mountBonusSpectatorScreen: bus required');
@@ -41,7 +44,12 @@ export function mountBonusSpectatorScreen({ root = globalThis.document, bus, ses
       return;
     }
 
-    setText(iconEl, liveBonus.icon || '⚡');
+    // ⚡ (or no icon) → the shared bolt medal glyph; other icons (🎡) stay text.
+    const icon = liveBonus.icon || '⚡';
+    if (iconEl) {
+      if (icon === '⚡') iconEl.innerHTML = BOOST_BOLT_ICON_HTML;
+      else iconEl.innerHTML = `<span class="ovic-emoji" aria-hidden="true">${escapeIcon(icon)}</span>`;
+    }
     setText(titleEl, liveBonus.title || 'היריב מקבל בוסט!');
     setText(descEl, liveBonus.desc || '');
     setText(moveEl, formatPlayedMove(liveBonus));

@@ -55,7 +55,6 @@ export const GS = Object.freeze({
   completeWord:          ['השלם את המילה',  'השלימי את המילה'],
   fillAllSquares:        ['מלא את כל המשבצות קודם!', 'מלאי את כל המשבצות קודם!'],
   fillMissing:           ['מלא את החסר',    'מלאי את החסר'],
-  fillMissingTitle:      ['בוסט 100 — מלא את החסר', 'בוסט 100 — מלאי את החסר'],
   // Social / friends
   inviteToGame:          ['✉️ הזמן למשחק',  '✉️ הזמיני למשחק'],
   shareGameMsg:          ['בוא נשחק',       'בואי נשחק'],

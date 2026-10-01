@@ -35,6 +35,9 @@ import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
 import { LOCK_POINT_COST } from '../../game/core/turnManager.js';
 import { BDEFS } from '../../game/boosts/data.js';
+import { isValid as isWordValid, dictReady } from '../../game/core/hebrewDictionary.js';
+import { computeLiveWordPreview } from '../liveWordPreview.js';
+import { BOOST_BOLT_ICON_HTML } from '../boostIcon.js';
 import { EV } from '../../events/eventTypes.js';
 import { BOOST_IGNITION_DURATION_MS, BOOST_RESULT_READY } from '../boostPresentation.js';
 import {
@@ -82,6 +85,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
+  // Last word|points|validity shown by the live word-points pill (renderStatus).
+  let lastPreviewKey = '';
   const boostSquareCues = new Map();
   const boostSquareKey = b => `${b.slot}:${b.bonusIdx}`;
   const revealedBoostSquares = new Set((controller.view.activeBoosts ?? []).map(boostSquareKey));
@@ -1059,17 +1064,52 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     try { renderAll(controller.view); } catch { /* swallow */ }
   }
 
+  // Status pill: errors, game-over, and the live word-points counter
+  // ("✓ האור +8") while tiles are placed. The idle "choose a letter…" hint
+  // is gone — an empty pill is hidden (`.is-empty`, space kept so the board
+  // doesn't jump). Transient setS() toasts still write here and show.
   function renderStatus(v) {
+    const sbar = $('#sbar', root);
+    if (!sbar) return;
+    let text = '';
+    let tone = '';
+    let preview = null;
     if (v.lastInvalidReason) {
-      setText($('#sbar', root), invalidReasonText(v.lastInvalidReason));
+      text = invalidReasonText(v.lastInvalidReason);
+      tone = 'err';
     } else if (v.status === 'completed' || v.status === 'abandoned') {
       const winner = v.scores[0] > v.scores[1] ? 0 : v.scores[1] > v.scores[0] ? 1 : null;
-      setText($('#sbar', root), winner == null ? 'תיקו!' : `שחקן ${winner + 1} ניצח!`);
-    } else if (v.placed?.length) {
-      setText($('#sbar', root), g('pressConfirm'));
-    } else {
-      setText($('#sbar', root), g('chooseLetterBoard'));
+      text = winner == null ? 'תיקו!' : `שחקן ${winner + 1} ניצח!`;
+    } else if (v.placed?.length || v.swappedTiles?.length) {
+      preview = computeLiveWordPreview({
+        board: v._board, bonusBoard: v._bonusBoard, firstMove: v._firstMove,
+        placed: v.placed, swappedTiles: v.swappedTiles,
+        isWordValid: dictReady ? isWordValid : null,
+      });
     }
+    sbar.classList?.remove?.('ok', 'err', 'bon', 'is-empty', 'sbar--preview');
+    if (preview) {
+      const bad = preview.valid === false;
+      sbar.classList?.add?.('sbar--preview', bad ? 'err' : 'ok');
+      sbar.innerHTML = `<span class="sbar-ic" aria-hidden="true">${bad ? '✕' : '✓'}</span>`
+        + `<span class="sbar-w">${escapeForOverlay(preview.word)}</span>`
+        + (bad ? '' : `<span class="sbar-pts" dir="ltr">+${preview.score}</span>`);
+      sbar.setAttribute?.('aria-label', bad ? `${preview.word} — לא במילון` : `${preview.word} — ${preview.score} נקודות`);
+      const key = `${preview.word}|${preview.score}|${bad}`;
+      if (key !== lastPreviewKey) {
+        // Re-trigger the pop on every change of word / points.
+        sbar.classList?.remove?.('sbar--bump');
+        void sbar.offsetWidth;
+        sbar.classList?.add?.('sbar--bump');
+      }
+      lastPreviewKey = key;
+      return;
+    }
+    lastPreviewKey = '';
+    sbar.removeAttribute?.('aria-label');
+    setText(sbar, text);
+    if (tone) sbar.classList?.add?.(tone);
+    if (!text) sbar.classList?.add?.('is-empty');
   }
 
   function renderTopBars(v) {
@@ -2414,7 +2454,7 @@ function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bo
     ? `<div class="ovd" style="margin-bottom:4px;"><img data-boost-img src="${escapeForOverlay(info.image)}" alt="${escapeForOverlay(info.title)}" style="width:72px;height:72px;object-fit:contain;"></div>`
     : bigFallback;
   card.innerHTML = `
-    <div class="ovic">⚡</div>
+    <div class="ovic">${BOOST_BOLT_ICON_HTML}</div>
     <div class="ovt">${escapeForOverlay(info.title)}</div>
     ${bigBlock}
     ${info.sub ? `<div class="ovd" style="margin-bottom:12px;">${escapeForOverlay(info.sub)}</div>` : ''}

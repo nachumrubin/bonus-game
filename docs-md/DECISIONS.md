@@ -5,6 +5,18 @@
 
 ---
 
+## D-live-word-points: the status pill previews the move's score — October 2026
+
+The mockup's `✓ האור +8` pill was held back as a game decision (it tells players the
+score and dictionary validity before they commit). Decided: ship it. The dictionary was
+already one tap away (מילון), and the preview only reports what the engine would do —
+it reuses `validateMove` / `getAllWords` / `scoreMove`, never its own formula. It shows
+the **base** score; boosts are applied on commit and advertised by the multiplier banner.
+Per-screen onboarding pop-ups were switched off in the same pass (players found them
+annoying); re-enable by mounting `mountOnboardingController` in `main.js`.
+
+---
+
 ## D-web-images: PNG masters stay, the service worker serves web-sized WebP — September 2026
 
 **Decision:** art PNGs under `assets/` stay as 1024px masters. `scripts/build-web-images.py`

@@ -12,7 +12,8 @@
 // and degrades gracefully when there's no document (returns a stub).
 
 import { CMD } from '../../../events/commands.js';
-import { confettiBurst } from './bonusFx.js';
+import { confettiBurst, bonusResultHtml, startResultCount, wordTilesHtml } from './bonusFx.js';
+import { BOOST_BOLT_ICON_HTML } from '../../boostIcon.js';
 import { g, getGender } from '../../genderText.js';
 import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 
@@ -136,20 +137,22 @@ export function mountUnscrambleMiniGame({
   const placedSlots = puzzle.word.split('').map(() => '');
 
   function render() {
+    // Same header / timer / tray / rack layout as the #ov-bonus games
+    // (screens-glass.css, "BOOST MINI-GAMES").
     host.innerHTML = `
       <div class="bz-card">
-        <div class="bz-bolt">🔤</div>
-        <div class="bz-title" data-uns="build-title"></div>
+        <div class="bz-bolt">${BOOST_BOLT_ICON_HTML}</div>
+        <div class="bz-title" data-uns="build-title">אנגרמה!</div>
         <div class="bz-sub" data-uns="sub">
-          <span data-uns="timer">${Math.floor(cfg.durationMs/1000)}</span> שניות · עד ${cfg.earnedPts} נקודות
+          <span data-uns="lead"></span> · <span data-uns="timer">${Math.floor(cfg.durationMs/1000)}</span> שניות · עד ${cfg.earnedPts} נקודות
         </div>
-        <div class="tw" style="margin-bottom:14px;"><div data-uns="bar" class="tbar2" style="width:100%;transition:width ${cfg.durationMs}ms linear, background .5s;"></div></div>
-        <div data-uns="answer" style="display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;"></div>
-        <div data-uns="bank"   style="display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;"></div>
-        <button data-uns="submit" class="bz-btn bz-btn-green" style="width:100%;">בדוק ✓</button>
+        <div class="tw"><div data-uns="bar" class="tbar2" style="width:100%;transition:width ${cfg.durationMs}ms linear, background .5s;"></div></div>
+        <div data-uns="answer" class="bz-slots"></div>
+        <div data-uns="bank" class="bz-bank"></div>
+        <button data-uns="submit" class="bz-btn">בדוק ✓</button>
       </div>`;
-    const buildTitle = host.querySelector('[data-uns="build-title"]');
-    if (buildTitle) buildTitle.textContent = g('buildWord', getGender());
+    const lead = host.querySelector('[data-uns="lead"]');
+    if (lead) lead.textContent = g('buildWord', getGender());
     paintAnswer();
     paintBank();
     // Kick off the progress-bar shrink after a frame so the transition fires.
@@ -157,7 +160,7 @@ export function mountUnscrambleMiniGame({
     if (bar) {
       requestAnimationFrame?.(() => {
         bar.style.width = '0%';
-        setTimeout(() => { bar.style.background = '#e74c3c'; }, Math.floor(cfg.durationMs * 0.7));
+        setTimeout(() => { bar.classList?.add?.('urg'); }, Math.floor(cfg.durationMs * 0.7));
       });
     }
   }
@@ -168,9 +171,7 @@ export function mountUnscrambleMiniGame({
     wrap.innerHTML = '';
     placedSlots.forEach((ch, i) => {
       const slot = doc.createElement('div');
-      slot.style.cssText = ch
-        ? 'width:40px;height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#3a2400;cursor:pointer;background:linear-gradient(180deg,#ffe884,#ffc31f);box-shadow:inset 0 2px 0 rgba(255,255,255,.8),0 0 12px rgba(255,200,40,.6);'
-        : 'width:40px;height:44px;border:2px dashed rgba(140,180,230,.45);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;background:rgba(255,255,255,.04);cursor:pointer;box-shadow:inset 0 0 12px rgba(0,60,140,.25);';
+      slot.className = ch ? 'ut sl fi' : 'ut sl';
       slot.textContent = ch;
       slot.addEventListener('click', () => {
         if (!ch) return;
@@ -191,8 +192,9 @@ export function mountUnscrambleMiniGame({
     wrap.innerHTML = '';
     scrambled.forEach((ch, i) => {
       const tile = doc.createElement('button');
+      tile.type = 'button';
+      tile.className = 'ut';
       tile.textContent = ch;
-      tile.style.cssText = 'width:40px;height:44px;border:1px solid rgba(120,90,30,.4);border-radius:9px;background:linear-gradient(180deg,#fbf4dd,#ddcfa6);color:#1a1206;font-family:inherit;font-size:20px;font-weight:900;cursor:pointer;box-shadow:inset 0 2px 0 rgba(255,255,255,.7),inset 0 -3px 5px rgba(120,90,30,.28),0 3px 6px rgba(0,0,0,.4);';
       tile.addEventListener('click', () => {
         const empty = placedSlots.findIndex(x => x === '');
         if (empty < 0) return;
@@ -217,6 +219,8 @@ export function mountUnscrambleMiniGame({
     const r = { success, earnedPts: success ? cfg.earnedPts : 0, answer: puzzle.word, attempt: guess || '' };
     bus.emit(UNS_INTENT.RESULT, r);
     onResult(r);
+    // The round is over — drop the timer bar before the reveal / result.
+    try { host.querySelector('.tw')?.remove(); } catch { /* swallow */ }
     // Visual outcome. On success we print the word the player made. On a
     // failure/timeout, physically rearrange the scrambled tiles into the
     // correct order — better UX than just printing the answer.
@@ -237,11 +241,7 @@ export function mountUnscrambleMiniGame({
       revealCorrectWord(guess);
       return;
     }
-    for (const t of [...(answerWrap.children || [])]) {
-      t.style.background = 'linear-gradient(180deg,#ff9a9a,#e0503f)';
-      t.style.color = '#5a0000';
-      t.style.boxShadow = 'inset 0 2px 0 rgba(255,255,255,.5),0 0 12px rgba(231,76,60,.6)';
-    }
+    for (const t of [...(answerWrap.children || [])]) t.classList?.add?.('is-bad');
     let advanced = false;
     const proceed = () => {
       if (advanced || torn) return;
@@ -268,8 +268,8 @@ export function mountUnscrambleMiniGame({
       && typeof globalThis.requestAnimationFrame === 'function';
   }
 
-  // Correct-answer tile styling (matches a "placed" answer tile).
-  const REVEAL_TILE_CSS = 'width:40px;height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:#3a2400;background:linear-gradient(180deg,#ffe884,#ffc31f);box-shadow:inset 0 2px 0 rgba(255,255,255,.8),0 0 12px rgba(255,200,40,.6);will-change:transform;';
+  // Correct-answer tile: a placed wood tile with the green "correct" bezel.
+  const REVEAL_TILE_CLASS = 'ut sl fi is-ok';
 
   // Rearrange the tiles (a FLIP animation) from their current order into the
   // correct order so the player watches the intended word assemble itself.
@@ -283,7 +283,7 @@ export function mountUnscrambleMiniGame({
 
     // Header: the tiles themselves are the reveal, so just label them.
     const timedOut = !guess;
-    if (titleEl) titleEl.textContent = timedOut ? 'נגמר הזמן ⏰' : 'לא נכון 😌';
+    if (titleEl) titleEl.textContent = timedOut ? 'נגמר הזמן' : 'לא נכון';
     if (subEl)   subEl.textContent   = 'המילה הנכונה:';
 
     // Current visual order: filled answer slots (L→R) then leftover bank tiles.
@@ -300,7 +300,8 @@ export function mountUnscrambleMiniGame({
       const t = doc.createElement('div');
       t.textContent = ch;
       t.dataset.ch = ch;
-      t.style.cssText = REVEAL_TILE_CSS;
+      t.className = REVEAL_TILE_CLASS;
+      t.style.willChange = 'transform';
       answerWrap.appendChild(t);
       return t;
     });
@@ -352,33 +353,28 @@ export function mountUnscrambleMiniGame({
     if (!oldBtn) return;
     const cont = oldBtn.cloneNode(false); // drop the submit listener
     cont.removeAttribute('data-uns');
-    cont.className = 'bz-btn bz-btn-gold';
-    cont.style.cssText = oldBtn.style.cssText;
+    cont.className = 'bz-btn';
     cont.textContent = g('continueMiniGame', getGender());
     cont.addEventListener('click', () => { try { host.remove(); } catch { /* swallow */ } emitClosed(); });
     oldBtn.replaceWith(cont);
   }
   function showResultView(success, guess = '') {
     if (!host?.parentNode) return;
-    const ok = success
-      ? `<div class="bz-result-headline">כל הכבוד!</div><div class="bz-result-big">+${cfg.earnedPts} נק'</div>`
-      : `<div class="bz-result-headline">לא נכון</div>`;
     // On success show only the word the player actually made — the player may
     // have formed a different valid word than the picked one, and revealing the
     // "intended" word just confuses. On failure, reveal the picked answer.
-    const revealLabel = success ? 'מצאת:' : 'המילה הנכונה היא:';
-    const revealWord  = success ? guess  : puzzle.word;
+    const result = success
+      ? bonusResultHtml({ success: true, headline: 'כל הכבוד!', points: cfg.earnedPts, extraHtml: wordTilesHtml(guess, 'ok') })
+      : bonusResultHtml({ success: false, tone: 'bad', icon: 'x', headline: 'לא נכון', sub: 'המילה הנכונה היא:', extraHtml: wordTilesHtml(puzzle.word) });
     host.innerHTML = `
       <div class="bz-card">
-        <div class="bz-result ${success ? 'is-win' : 'is-soft'}">
-          <div class="bz-result-emoji">${success ? '🎉' : '😌'}</div>
-          ${ok}
-          <div class="bz-result-sub">${revealLabel}</div>
-          <div style="font-size:30px;font-weight:900;color:#ffd23f;letter-spacing:2px;margin:6px 0 16px;filter:drop-shadow(0 0 10px rgba(255,190,40,.5));">${revealWord}</div>
-          <button data-uns="continue" class="bz-btn bz-btn-gold" style="width:100%;"></button>
-        </div>
+        <div class="bz-bolt">${BOOST_BOLT_ICON_HTML}</div>
+        <div class="bz-title">אנגרמה!</div>
+        <div class="bz-body">${result}</div>
+        <button data-uns="continue" class="bz-btn"></button>
       </div>`;
     if (success) confettiBurst(host.querySelector('.bz-card'));
+    startResultCount(host, success ? cfg.earnedPts : null);
     const contBtn = host.querySelector('[data-uns="continue"]');
     if (contBtn) contBtn.textContent = g('continueMiniGame', getGender());
     contBtn?.addEventListener('click', () => {
