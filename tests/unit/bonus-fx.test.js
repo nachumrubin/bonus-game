@@ -75,3 +75,39 @@ test('showBonusResult: failure state has no points block and uses is-soft', () =
 test('showBonusResult: tolerates a container without innerHTML', () => {
   assert.doesNotThrow(() => showBonusResult({}, { success: true }));
 });
+
+// ── shared result markup / helpers (Oct 2026 mini-game redesign) ──
+import { bonusResultHtml, wordTilesHtml, escapeHtml } from '../../src/ui/screens/miniGames/bonusFx.js';
+import { setTone } from '../../src/ui/screens/miniGames/bonusUi.js';
+
+test('bonusResultHtml: win → gold trophy medal + count-up points', () => {
+  const h = bonusResultHtml({ success: true, headline: 'כל הכבוד!', points: 40 });
+  assert.match(h, /bz-result is-win/);
+  assert.match(h, /#gi-trophy/);
+  assert.match(h, /data-bz-count/);
+});
+
+test('bonusResultHtml: explicit tone/icon, no points block without points', () => {
+  const h = bonusResultHtml({ success: false, tone: 'bad', icon: 'x', headline: 'לא נכון', extraHtml: '<i id="x"></i>' });
+  assert.match(h, /bz-result is-bad/);
+  assert.match(h, /#gi-x/);
+  assert.doesNotMatch(h, /data-bz-count/);
+  assert.match(h, /<i id="x"><\/i>/);
+});
+
+test('wordTilesHtml: one wood tile per letter, escaped, with a tone bezel', () => {
+  const h = wordTilesHtml('אב<', 'ok');
+  assert.equal((h.match(/bz-tile is-sm is-ok/g) || []).length, 3);
+  assert.match(h, /&lt;/);
+  assert.equal(wordTilesHtml(''), '');
+  assert.equal(escapeHtml('"a"&'), '&quot;a&quot;&amp;');
+});
+
+test('setTone: maps true/false/string/null onto is-* classes', () => {
+  const el = { className: '' };
+  setTone(el, 'bz-status', true);  assert.equal(el.className, 'bz-status is-ok');
+  setTone(el, 'bz-status', false); assert.equal(el.className, 'bz-status is-bad');
+  setTone(el, 'bz-status', 'warn'); assert.equal(el.className, 'bz-status is-warn');
+  setTone(el, 'bz-status', null);  assert.equal(el.className, 'bz-status');
+  assert.doesNotThrow(() => setTone(null, 'x', true));
+});

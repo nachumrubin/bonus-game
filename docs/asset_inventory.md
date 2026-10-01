@@ -23,6 +23,25 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 
 ## Existing
 
+### Sound effects (October 2026)
+
+Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_inventory.md`
+(cue id, file, CC0 source, edits). Until files are added every cue plays its synth fallback.
+
+### Home / login logo (October 2026)
+
+* assets/ui/boost-logo.webp — 1100px transparent render of the wood-tile wordmark
+  (split ס), the final frame of `Blender designs/boost_reveal_v9_H.blend` (same shot
+  as the end of the 40s promo). Rebuilt by `Blender designs/promo/render_app_logo.py`.
+  Deliberately **WebP-only** (no PNG sibling) so `build-web-images.py` never replaces
+  it with a 512px copy. Replaces the CSS-built `.hl-tile` logo.
+
+### Web-sized WebP derivatives (September 2026)
+
+* Every `assets/**/*.png` (except `assets/anim/`) has a generated sibling `*.webp`
+  (≤512px) from `scripts/build-web-images.py`; the service worker serves it in place of
+  the PNG. The PNGs remain the masters. Regenerate after adding or replacing art.
+
 ### UI line icons (code, not art — September 2026 glass skin)
 
 * `#gi-*` SVG symbol sprite inlined at the top of `index.html` — the 24px line-icon set

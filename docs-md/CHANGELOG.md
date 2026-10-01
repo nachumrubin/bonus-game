@@ -2,6 +2,242 @@
 
 ---
 
+## The opponent's boost is shown in the status pill (October 2026)
+
+When the opponent (bot or online player) lands on a boost, the status pill above the
+board (`#sbar`, the live word-points pill) says what they got and the points:
+`🎯 היריב קיבל: תור נוסף`, `⚡ היריב קיבל: אנגרמה +15`. It has no time limit. It
+stays until you place or swap your first tile, until your turn ends without placing,
+or until the opponent's next move.
+
+**Why:** a bot's boost opened a blocking card the human had to dismiss, and the bot's
+mini-game points appeared as an anonymous `+N`. Online, the opponent's bonus points
+arrived silently, because the finalize commit reuses the deferred move's `ts`. Nothing
+said which boost it was.
+
+### Engine (`gameEngine.js`, pure)
+- A bonus-square move's history entry gets `scoringDeferred: true`.
+- `FINALIZE_BOOST_AWARD` sets `scoringDeferred: false` and writes
+  `boost: { bonusType, kind, extra, effects: [{ boostId, payload }] }`.
+  - `effects` covers points, the square's own future effects (from `activeBoosts`,
+    captured before `ON_TURN_END` consumes them), and wheel `queueBoosts`.
+- `MOVE_SCORE_COMMITTED` carries `boost`.
+
+### Online (`onlineGameSession.js`)
+- The deferred commit emits `OPPONENT_MOVED` with `scoringDeferred: true`, so the
+  tiles pop and no score plays yet.
+- The finalize commit (same `ts`) is recognised and replayed once as
+  `MOVE_SCORE_COMMITTED { ..., boost, remote: true }`, followed by `SCORE_CHANGED`,
+  `TURN_CHANGED` and any `turnEffects`. The opponent's points now animate.
+- The spectator overlay closes on that event, so the score chips never play behind it.
+
+### Bot (`main.js`)
+- Bot boosts no longer open the modal award card.
+- `attachBonusFlow` auto-finalizes after `BOOST_RESULT_REVEAL_DELAY_MS` and emits
+  `BONUS_AWARD_ACK`, which is what the card's אישור did.
+
+### UI
+- `gameController`: `view.opponentBoost = { slot, boost }` is set by the opponent's
+  `MOVE_SCORE_COMMITTED`. It is cleared by:
+  - `placeTile` / `swapBoardTile`;
+  - any `MOVE_CONFIRMED` / `OPPONENT_MOVED`;
+  - the local turn ending without a placement.
+- `gameScreen.renderStatus` shows it as `.sbar--boost` (gold), below errors,
+  game-over and the live word preview.
+- `src/ui/boostSummary.js` (new):
+  - `describeBoost` moved here from `gameScreen.js`;
+  - new pure `describeBoostSummary(boost)` builds the pill copy.
+
+### Tests
+- New tests in `gameEngine`, `onlineGameSession`, `gameController`,
+  `animationController` and `boostSummary`.
+- 1529 unit tests pass.
+
+---
+
+## Sound effects: natural recorded sounds across the whole game (October 2026)
+
+Replaced the 10 synth beeps with 55 cues built from 35 CC0 recordings. Anything
+physical sounds real:
+- placing a wooden tile is a real Scrabble tile on a board;
+- a boost is an electric zap;
+- the bag is cloth, coins clink, the timer is a clock, the wheel is a ratchet.
+
+Kenney CC0 UI sounds and jingles are used only for abstract moments.
+
+### Engine
+- **`src/ui/sfx/sfxCatalog.js`:** each cue's tier, file (or variants), vol, rate,
+  pitch jitter, throttle, haptic pattern and synth fallback. Several cues share a
+  file at different pitch and volume (one tile recording covers pick, place, return,
+  opponent tiles, mini-game taps and the letter spinner).
+- **`src/ui/sfx/sfxEngine.js`:**
+  - owns the AudioContext and the first-gesture unlock;
+  - preloads every file after unlock (`.ogg`, or `.m4a` where Vorbis isn't
+    supported);
+  - never refetches a failed file;
+  - throttles per cue and caps playback at 6 voices (tiny sounds drop while a jingle
+    plays);
+  - applies a master volume (`setMasterVolume`) and calls `onDuck` for rewards and
+    jingles.
+- **`feedbackService`:**
+  - routes bus events to cues, with `cue(id, {vol, rate, haptic, delayMs})` and
+    `cueSeq` for screens;
+  - adds a delegated, very quiet `ui.tap` on plain buttons (sound-owning controls
+    excluded) and a wood `mg.tap` on mini-game letters.
+- **`audioService.duck(ms)`:** music dips under jingles and rewards.
+
+### Hooks
+- **`animationController`:** takes an injected `cue`; `soundFor()` maps directives to
+  sounds so each lands with its visual:
+  - boost electricity, bingo, opponent tiles (one per tile, staggered);
+  - rack refill clatter, or the bag shuffle on exchange;
+  - extra-turn and skip-turn whooshes;
+  - award: coins for points, a neon charge for stored powers.
+- **`gameScreen`:** tile pick, place, return and recall-all, lock placement, opening
+  the exchange bag. In the scoring sequence a coin lands per word (rising pitch), the
+  ×N zap plays, and coins drop into the panel.
+- **`turnTimerController`:** emits `timer/warn` (one tick at 10 s, turns longer than
+  15 s) and `timer/timeout`. The 3-2-1 ticks rise in pitch.
+- **Mini-games:**
+  - `bonusFx.startResultCount` plays win or fail (every result passes through it) and
+    coin ticks during the count-up;
+  - `bonusUi.say` and hidden-word `setStatus` play good or bad;
+  - `bonusTimer` ticks the last 5 s;
+  - the letter spinner ticks per letter and clunks on stop;
+  - the wheel plays ratchet clicks timed from the dial's cubic-bezier
+    (`wheelClickTimes`), including the overshoot back-click.
+- **Elsewhere:**
+  - coin toss, VS intro, match found, daily-reward coins, store purchase / not enough
+    coins, emoji reactions, invite countdown (last 5 s), async "your turn" banner;
+  - the **invite sound is fixed**: the banner payload now carries `sound`, because
+    nothing emitted `II_OPEN`.
+
+### Settings
+- New **עוצמה** row (`#sett-sfxvol-low/med/high`, UI pref `sfxVolume`, default
+  `med`). Changing it previews a tile sound.
+- Turning sound effects on plays a switch click.
+
+### Service worker
+- `assets/sfx/*.ogg|m4a` use the persistent `boost-assets-v1` cache (survives deploys,
+  works offline after first load). Not precached at install, since a device only uses
+  one format.
+
+### Tests and tooling
+- Tests cover the engine (gesture gate, master volume, throttle, sample vs synth, no
+  refetch), catalog integrity (every file exists in both formats, no orphan files, every
+  cue is played somewhere in `src/`), the new feedback routes, animation → sound
+  mapping, wheel click timing, and SW routing.
+- `scripts/build-sfx.py` rebuilds the set from the sources.
+
+## Boost mini-games redesigned to the glass + wood skin — October 2026
+
+Intro, play and result screens of every boost mini-game now use the same language as
+the game screen and the other redesigned screens (they had their own "electric" look:
+cream tiles, white hexes, dashed cells, gold/green/blue buttons, emoji medals).
+
+- **One skin** — `screens-glass.css` → "BOOST MINI-GAMES — glass + wood". The Phase-1
+  bonus block in `menu-electric.css` (~630 lines of `#ov-bonus` / `.bz-*` overrides) is
+  removed. Covers `#ov-bonus-intro`, `#ov-bonus`, the self-hosted `.bz-overlay/.bz-card`
+  games (unscramble, wheel), `.bonus-award-card` and `#ov-bonus-spectator`.
+- **Play card**: dialog glass, compact header (48px bolt medal + gold title + one-line
+  description, as a CSS grid — no DOM change), thin cyan timer bar, the puzzle on a glass
+  board tray with navy cells, letters as BOOST-logo wood tiles in a rack well, and the
+  cyan "שבץ" button as the only primary action. Tile states follow the board: placed =
+  white bezel + cyan glow, given = gold, correct = green, wrong = red.
+- **Per game**: honeycomb = wood hexes (gold-bezel centre) on a tray; letter spinner =
+  one big wood tile, then the chosen letter as a small tile beside a gold score pill;
+  hidden word = 4×4 wood grid; fill-middle / unscramble = navy slots over a rack;
+  crossing words = wood letters with the shared cell as a pulsing boost socket;
+  crossword = navy board + wood rack.
+- **Result screen** (all games) — new `bonusFx.bonusResultHtml()`: tray with a ringed
+  medal (gold trophy win / cyan hourglass timeout / red ✕ wrong), headline, gold
+  count-up points, and the word(s) as wood tiles (`wordTilesHtml`), found-word chips,
+  the solved crossing grid, or the crossword's per-word list. Emoji results are gone.
+- **Intro**: points moved from the description into a gold pill (`#bintro-pts`, hidden
+  when the copy already states them — B1/B3 used to read "…100 נקודות · 100 נקודות").
+- **Names match the intros**: crossword "תשבץ!" (was "בוסט אישי!"), crossing words
+  "מילים מצטלבות!" (was "שתי מילים חוצות!"), unscramble "אנגרמה!", fill-middle
+  "מילה חסרה!" (was "בוסט 100 — מלא את החסר"). Spectator medal uses the bolt glyph.
+- New `src/ui/screens/miniGames/bonusUi.js` (`setTone`, `buildWordEntry`,
+  `buildWordFeed`) replaces per-file inline `cssText`; feedback colours are classes
+  (`.is-ok/.is-bad/.is-warn`). Game logic, timers, scoring and events are unchanged.
+- Guide captures: the specs no longer overwrite the real titles; the crossing-words
+  spec hides the boot splash (its success shot showed the loader).
+
+## UI fixes: logo, sheets, live word points, boost cards, partner search — October 2026
+
+- **Home logo** is now the Blender render (`assets/ui/boost-logo.webp`, `<img class="hl-img">`
+  inside `.hlogo`) — the promo's wood tiles with the ס split by the bolt — on home and
+  login. The CSS `.hl-tile` tiles (whose thin bolt line read as a crack) are gone.
+- **Home layout.** Logo + strips + mode cards + leaderboard row are wrapped in `.hm-main`
+  and centred between the topbar and the dock: no dead gap, and the leaderboard row no
+  longer sits squashed against the nav.
+- **Bottom sheets** (join-by-code, pause, create room, exchange, joker, …) float as a
+  complete card: all corners rounded, full border, lifted off the bottom edge
+  (+ safe-area), slide-up entrance. Flush sheets looked cut off on wide windows.
+- **Live word-points counter** (TASKS "Live score preview"): the status pill shows
+  `✓ האור +8` while tiles are placed — new pure helper `src/ui/liveWordPreview.js`
+  (`computeLiveWordPreview`) runs the engine's own `validateMove` / `getAllWords` /
+  `scoreMove`, so the number equals what שבץ commits (base score incl. bingo; boost
+  multipliers are shown by the multiplier banner). A word not in the dictionary shows
+  `✕ word` in red with no points. The idle "בחר אות מהמגש ולחץ על משבצת" hint is gone —
+  the pill is hidden (`.is-empty`, row height kept) when there is nothing to say.
+  `view._firstMove` added to the game controller view for the connectivity check.
+- **Boost cards.** The ⚡ emoji was glued to the top edge of the medal (a
+  `display:block` override). Intro, mini-game and award cards now show a centred,
+  glowing `#gi-bolt` medal (`src/ui/boostIcon.js`; 🎡 kept for the wheel); titles lose
+  the duplicated ⚡ and render as solid gold. Honeycomb card renamed "כוורת!" to match
+  its intro (was "דבורת המילים!") and its garbled "2אות=3 | 3=5…" legend replaced.
+  Intro points now read "· 50 נקודות" (the parenthesis flipped at RTL line wraps).
+  `describeBonus()` gained a plain-text `icon` used for the online `liveBonus` doc.
+- **Bot / 2P setup medallion**: cyan ring and the robot fills it (the icon span had no
+  size, so the image collapsed inside a grey double ring).
+- **Partner search overlay** redesigned: radar rings + rotating sweep, "me" medal vs a
+  gold opponent slot with a spinning dashed ring, VS badge, role pills. Fixed the reel:
+  JS stepped 68px while CSS items were 84px, so avatars/names drifted out of the circle
+  (`ITEM_H` = `.ps-slot-item` height = 88px). `.ps-av` is now the offset parent for the
+  avatar motion canvas.
+- **First-time explanation pop-ups** (`#ov-onboarding`, one per screen) switched off:
+  `mountOnboardingController` is no longer called from `main.js` (controller + copy kept).
+- Guide screenshots (`images/guide/*`) regenerated by the e2e capture specs.
+- Tests: `src/ui/liveWordPreview.test.js` (7), `tests/unit/logo-markup.test.js` updated.
+  Unit 1490 green. E2E 55 pass / 3 fail (`boost-electric-border`, `menu-routing`,
+  `non-menu-buttons` — all pre-existing; the latter two wait for a `#sh .hbtns` that the
+  redesigned home no longer has).
+
+---
+
+## Phone rendering & load performance fix — September 2026
+
+On Android (Chrome / TWA) the new design showed blurry screens, half-painted cards,
+missing images and dialogs that never appeared; localhost on desktop looked fine.
+
+- **Root cause — GPU tile budget.** Hidden screens (`.screen.hidden`) and overlays
+  (`.ov.hidden`) were only `opacity:0`, so all ~50 stayed laid out, composited and
+  rasterised — most carry `backdrop-filter`. Measured on an emulated Pixel 7: 117
+  painted layers ≈ 68 viewports ≈ **700 MB** of raster at DPR 2.6, for one visible
+  screen. Phones run out of tile memory → low-res (blurry) tiles, checkerboarded cards,
+  unpainted images. **Fix** (`styles.css`): hidden screens/overlays also get
+  `visibility:hidden`, applied after the existing .2 s fade (`transition: visibility 0s
+  linear .2s`); they stay laid out, so JS measurement is unaffected. Now 10 layers ≈
+  **39 MB** on home.
+- **Images.** First load pulled 11.4 MB of images — 1024px PNG masters (up to 2.4 MB)
+  drawn at 60–120 px. New `scripts/build-web-images.py` writes a ≤512px WebP next to
+  every PNG under `assets/` (58.4 MB → 7.1 MB); the service worker serves the WebP
+  whenever the PNG is requested (falls back to the PNG). Masters, avatar ids stored in
+  Firebase, and the Blender/atlas inputs are unchanged. A reload now fetches 0.95 MB of
+  images.
+- **Service worker.** Images moved to a persistent `boost-assets-v1` cache that survives
+  deploys (stale-while-revalidate, once per SW lifetime). Before, every deploy's new
+  `CACHE_NAME` wiped them and the phone re-downloaded ~35 MB of precached PNGs in the
+  background on the next launch.
+- Tests: SW URL helpers (`webImageUrl`, `isImageAsset`) in
+  `serviceWorkerRouting.test.js`. Unit 1483 green. E2E 43 pass / 15 fail vs 34 / 24 on
+  the pre-fix tree — every remaining failure also fails without this change (boot
+  loader / onboarding overlay intercepting clicks, see TASKS).
+
+---
+
 ## App-wide redesign in the game-screen style (+ 5 extras) — September 2026
 
 Rolled `tools/screens-mockup/index.html` out to the app. First pass (re-skin only) left

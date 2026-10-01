@@ -25,8 +25,11 @@
 
 import { startBonusTimer } from './bonusTimer.js';
 import { wordPoints } from './honeycombMiniGame.js';
-import { showBonusResult } from './bonusFx.js';
+import { showBonusResult, escapeHtml } from './bonusFx.js';
+import { buildWordEntry, buildWordFeed } from './bonusUi.js';
 import { g, getGender } from '../../genderText.js';
+import { BOOST_BOLT_ICON_HTML } from '../../boostIcon.js';
+import { cue as cueSfx } from '../../feedbackService.js';
 
 // No final-letter forms — a word never opens with a sofit letter.
 export const HEBREW_ALEPHBET = 'אבגדהוזחטיכלמנסעפצקרשת'.split('');
@@ -82,8 +85,7 @@ export function mountLetterSpinnerMiniGame({
   let selfHost = null;
   let inputEl = null;
   let scoreEl = null;
-  let chipsEl = null;
-  let fbEl = null;
+  let feed = null;     // buildWordFeed(): found-word chips + feedback line
   let spinEl = null;
 
   function submitRaw(raw) {
@@ -163,12 +165,14 @@ export function mountLetterSpinnerMiniGame({
     spinTimer = setInterval(() => {
       spinIdx = (spinIdx + 1) % HEBREW_ALEPHBET.length;
       paintSpin();
+      cueSfx('spinner.tick');
     }, spinIntervalMs);
   }
 
   function stopSpin() {
     if (phase !== 'spin' || resolved) return chosenLetter;
     if (spinTimer) { clearInterval(spinTimer); spinTimer = null; }
+    cueSfx('spinner.stop');
     chosenLetter = HEBREW_ALEPHBET[spinIdx % HEBREW_ALEPHBET.length];
     beginPlay();
     return chosenLetter;
@@ -197,39 +201,12 @@ export function mountLetterSpinnerMiniGame({
   // ─── shared play-phase widgets ──────────────────────────
 
   function buildInputRow() {
-    const wrap = doc.createElement('div');
-    wrap.style.cssText = 'margin-bottom:7px;';
-    const row = doc.createElement('div');
-    row.style.cssText = 'display:flex;gap:5px;margin-bottom:6px;align-items:center;';
-
-    inputEl = doc.createElement('input');
-    inputEl.type = 'text';
-    inputEl.id = 'ls-inp';
-    inputEl.className = 'ri';
-    inputEl.style.marginBottom = '0';
-    inputEl.dir = 'rtl';
-    inputEl.placeholder = `מילה שמתחילה ב-${chosenLetter}...`;
-    inputEl.addEventListener('keydown', (e) => {
-      if (e?.key === 'Enter') { e.preventDefault?.(); attemptSubmit(); }
+    const { wrap, input } = buildWordEntry(doc, {
+      inputId: 'ls-inp',
+      placeholder: `מילה שמתחילה ב-${chosenLetter}...`,
+      onSubmit: attemptSubmit,
     });
-
-    const clr = doc.createElement('button');
-    clr.textContent = '⌫';
-    clr.style.cssText = 'flex-shrink:0;height:46px;padding:0 14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:11px;color:#fff;font-size:16px;cursor:pointer;';
-    clr.addEventListener('click', () => { inputEl.value = ''; inputEl.focus?.(); });
-
-    // Full-width "✓" submit BELOW the input line — a big, easy tap target to
-    // finalize a word (the input + ⌫ sit on the row above).
-    const ok = doc.createElement('button');
-    ok.textContent = '✓';
-    ok.className = 'bz-btn bz-btn-gold';
-    ok.style.cssText = 'width:100%;font-size:18px;';
-    ok.addEventListener('click', attemptSubmit);
-
-    row.appendChild(inputEl);
-    row.appendChild(clr);
-    wrap.appendChild(row);
-    wrap.appendChild(ok);
+    inputEl = input;
     return wrap;
   }
 
@@ -239,10 +216,10 @@ export function mountLetterSpinnerMiniGame({
     const r = submitRaw(raw);
     if (r.ok) {
       if (scoreEl) scoreEl.textContent = totalScore + ' נקודות';
-      addChip(accepted[accepted.length - 1]);
-      showFb('+' + r.points + ' נקודות 🎉', '#8eff8e');
+      feed?.addChip(accepted[accepted.length - 1]);
+      feed?.say('+' + r.points + ' נקודות', 'ok');
     } else if (r.reason && r.reason !== 'not-playing') {
-      showFb(reasonMessage(r.reason, chosenLetter), '#ff8e8e');
+      feed?.say(reasonMessage(r.reason, chosenLetter), 'bad');
     }
     return r;
   }
@@ -260,24 +237,9 @@ export function mountLetterSpinnerMiniGame({
       case 'too-short':   return 'לפחות 2 אותיות';
       case 'wrong-start': return `חייב להתחיל ב-"${letter}"!`;
       case 'duplicate':   return 'כבר נמצאה!';
-      case 'invalid':     return 'מילה לא תקינה ✗';
+      case 'invalid':     return 'מילה לא תקינה';
       default:            return '';
     }
-  }
-
-  function addChip(entry) {
-    if (!chipsEl || !entry) return;
-    const chip = doc.createElement('span');
-    chip.className = 'bz-chip';
-    chip.textContent = entry.word + ' +' + entry.points;
-    chipsEl.appendChild(chip);
-    chipsEl.scrollTop = chipsEl.scrollHeight;
-  }
-
-  function showFb(msg, color) {
-    if (!fbEl) return;
-    fbEl.textContent = msg;
-    fbEl.style.color = color || '#fff';
   }
 
   function buildSpinBox() {
@@ -292,34 +254,39 @@ export function mountLetterSpinnerMiniGame({
 
   function buildSpinHint() {
     const hint = doc.createElement('div');
-    hint.style.cssText = 'text-align:center;font-size:12px;color:rgba(255,255,255,.7);margin:8px 0;';
-    hint.textContent = 'לחץ על התיבה כדי לעצור על אות';
+    hint.className = 'bz-hint';
+    hint.textContent = 'לחץ על האות כדי לעצור';
     return hint;
+  }
+
+  // Spin phase: the big wood tile on a tray, with the hint under it.
+  function buildSpin(container) {
+    const tray = doc.createElement('div');
+    tray.className = 'ls-tray';
+    tray.appendChild(buildSpinBox());
+    container.appendChild(tray);
+    container.appendChild(buildSpinHint());
   }
 
   function renderPlayInto(container) {
     if (!container) return;
     container.innerHTML = '';
 
+    // The chosen letter stays on screen as a small wood tile beside the score.
     const lead = doc.createElement('div');
-    lead.style.cssText = 'text-align:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;';
-    lead.innerHTML = `מילים שמתחילות ב-<span style="color:var(--by);font-size:18px">${chosenLetter}</span>`;
-    container.appendChild(lead);
-
-    scoreEl = doc.createElement('div');
-    scoreEl.style.cssText = 'text-align:center;font-size:12px;color:rgba(255,255,255,.7);margin-bottom:5px;';
+    lead.className = 'ls-lead';
+    lead.innerHTML = `<span class="bz-tile is-sm is-given">${escapeHtml(chosenLetter)}</span>`;
+    scoreEl = doc.createElement('span');
+    scoreEl.className = 'bz-score';
     scoreEl.textContent = '0 נקודות';
-    container.appendChild(scoreEl);
+    lead.appendChild(scoreEl);
+    container.appendChild(lead);
 
     container.appendChild(buildInputRow());
 
-    chipsEl = doc.createElement('div');
-    chipsEl.style.cssText = 'max-height:68px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;direction:rtl;margin-bottom:4px;';
-    container.appendChild(chipsEl);
-
-    fbEl = doc.createElement('div');
-    fbEl.style.cssText = 'text-align:center;font-size:12px;min-height:16px;';
-    container.appendChild(fbEl);
+    feed = buildWordFeed(doc);
+    container.appendChild(feed.chips);
+    container.appendChild(feed.fb);
 
     inputEl?.focus?.();
   }
@@ -327,17 +294,14 @@ export function mountLetterSpinnerMiniGame({
   // ─── legacy overlay attach ──────────────────────────────
 
   function attachLegacy() {
-    bovic.textContent = '⚡';
+    bovic.innerHTML = BOOST_BOLT_ICON_HTML;
     bovt.textContent  = 'אות פותחת!';
-    bovd.textContent  = `עצור על אות, ואז חבר מילים שמתחילות בה — 2אות=3 | 3=5 | 4=8 | 5+=10`;
+    bovd.textContent  = `עצור על אות, ואז חבר מילים שמתחילות בה · מילה ארוכה = יותר נקודות`;
     bchal.innerHTML = '';
 
     const body = doc.createElement('div');
     body.setAttribute('data-ls', 'body');
-    if (phase === 'spin') {
-      body.appendChild(buildSpinBox());
-      body.appendChild(buildSpinHint());
-    }
+    if (phase === 'spin') buildSpin(body);
     bchal.appendChild(body);
 
     ovBonus.classList?.remove?.('hidden');
@@ -346,7 +310,7 @@ export function mountLetterSpinnerMiniGame({
     bok.removeAttribute?.('onclick');
     const prevDisplay = bok.style.display;
     const handleSpinStop = (e) => { e?.preventDefault?.(); stopSpin(); };
-    bok.textContent = 'עצור ⏹';
+    bok.textContent = 'עצור';
     bok.addEventListener('click', handleSpinStop);
 
     let stopBar = null;
@@ -375,12 +339,15 @@ export function mountLetterSpinnerMiniGame({
   // Premium success/failure screen (confetti + count-up on a win).
   function renderSpinnerResult(containerEl, result, cardEl) {
     const win = result.earnedPts > 0;
+    const chips = result.foundWords?.length
+      ? `<div class="bz-chips is-result">${result.foundWords.map(w => `<span class="bz-chip">${escapeHtml(w)}</span>`).join('')}</div>`
+      : '';
     showBonusResult(containerEl, {
       success: win,
-      emoji: result.earnedPts >= 30 ? '🎉' : result.earnedPts >= 10 ? '😊' : '😌',
-      headline: result.foundCount ? `${result.foundCount} מילים` : 'אין מילים הפעם',
+      headline: result.foundCount === 1 ? 'מצאת מילה אחת' : result.foundCount ? `מצאת ${result.foundCount} מילים` : 'אין מילים הפעם',
       points: win ? result.earnedPts : null,
       sub: win ? '' : 'המשך לשחק ולחפש הזדמנויות נוספות.',
+      extraHtml: chips,
       cardEl,
     });
   }
@@ -392,32 +359,23 @@ export function mountLetterSpinnerMiniGame({
     host.className = 'spine-mini-overlay bz-overlay';
     const card = doc.createElement('div');
     card.className = 'bz-card';
-
-    const bolt = doc.createElement('div');
-    bolt.className = 'bz-bolt';
-    bolt.textContent = '🎰';
-    card.appendChild(bolt);
-
-    const title = doc.createElement('div');
-    title.className = 'bz-title';
-    title.textContent = 'אות פותחת!';
-    card.appendChild(title);
+    card.innerHTML = `
+      <div class="bz-bolt">${BOOST_BOLT_ICON_HTML}</div>
+      <div class="bz-title">אות פותחת!</div>
+      <div class="bz-sub">עצור על אות, ואז חבר מילים שמתחילות בה</div>`;
 
     const body = doc.createElement('div');
     body.setAttribute('data-ls', 'body');
-    if (phase === 'spin') {
-      body.appendChild(buildSpinBox());
-      body.appendChild(buildSpinHint());
-    }
+    body.className = 'bz-body';
+    if (phase === 'spin') buildSpin(body);
     card.appendChild(body);
 
     // The spin phase needs a "עצור" control to stop the wheel; once stopped
     // there is no "סיים" button — the round ends on the timer (or unmount).
     if (phase === 'spin') {
       const stopBtn = doc.createElement('button');
-      stopBtn.textContent = 'עצור ⏹';
-      stopBtn.className = 'bz-btn bz-btn-gold';
-      stopBtn.style.cssText = 'margin-top:8px;';
+      stopBtn.textContent = 'עצור';
+      stopBtn.className = 'bz-btn';
       stopBtn.addEventListener('click', () => { stopSpin(); stopBtn.remove(); });
       card.appendChild(stopBtn);
     }

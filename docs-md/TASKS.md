@@ -1,5 +1,81 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Opponent boost in the status pill — October 2026
+
+- [x] Engine records the `boost` summary on the move. `scoringDeferred` marks the
+  deferred commit.
+- [x] Online receiver replays the deferred score with the boost as
+  `MOVE_SCORE_COMMITTED { remote: true }`.
+- [x] Bot boosts: the modal award card is replaced by the status-pill notice, with
+  auto-finalize + ack.
+- [x] `#sbar` shows the opponent's boost until the player places a tile.
+- [ ] Verify with real games:
+  - a live bot game where the bot lands on a points square, the wheel and a
+    mini-game (unit tests + a rendered pill capture only so far);
+  - a two-device online game.
+- [ ] `createAnimationController`'s `showOpponentBoostOverlay` option is now unused in
+  production (tests still exercise it). Remove it if nothing needs it.
+- [ ] Possible later: the replay screen could show `moveHistory[].boost` per move.
+
+## Sound effects — October 2026
+
+- [x] Phase 1: `sfxEngine` and `sfxCatalog`; `feedbackService` routes through them.
+- [x] Listening review: wood tiles = a real Scrabble game recording (option B),
+  boost = a sharp electric zap (option B). Rule: physical moments get realistic
+  recordings.
+- [x] Full set, 55 cues and 35 files (all CC0, `docs/sound_inventory.md`):
+  - board play, scoring, timer, boosts, all 8 mini-games, wheel ratchet synced to the
+    dial easing, coin toss, VS, game over, achievements, Elo, coins, store, invites,
+    matchmaking, reactions, async-turn banner, quiet UI taps;
+  - SFX volume setting (`sett-sfxvol-*`) and music ducking;
+  - service worker persistent cache.
+- [x] Invite sound fixed: nothing emitted `II_OPEN`, so the invite banner now carries
+  `sound: 'invite.received'`.
+- [ ] Listen on a real phone (iOS Safari plays `.m4a`) and tune per-cue `vol` in
+  `sfxCatalog.js`. Chromium e2e only proves every cue decodes.
+- [ ] Not added, judged distracting: a sound when the live word becomes valid,
+  matchmaking search ticks, screen open/close whooshes, a hum while the opponent is in
+  a mini-game. Add only if asked.
+- [ ] Possible later: Elo tier-up fanfare (needs a before/after tier compare),
+  achievement progress-bar blips on the end screen.
+- [ ] The first sound after a cold start can be its synth fallback while samples
+  preload (about 440 KB). Consider preloading on the home screen's first tap.
+
+## UI fixes — October 2026
+
+- [x] Blender logo on home/login, centred home column, floating bottom sheets, live
+  word-points pill, boost-card medal + titles, setup medallion, partner-search redesign,
+  onboarding pop-ups off, guide screenshots refreshed.
+- [x] Boost mini-games (intro, play, result) redesigned to the glass + wood skin; card
+  titles now match their intros (B8 "תשבץ!", B10 "מילים מצטלבות!"); spectator medal uses
+  the bolt glyph.
+- [ ] B1 intro always says "אנגרמה!", but B1 can open fill-middle ("מילה חסרה!") — the
+  game is picked after the intro; decide it earlier or make the intro copy generic.
+- [ ] Guide capture `crossing-success.png` is shot mid count-up (+37 of 40) — wait for
+  the count-up to settle.
+- [ ] `#ov-tut-prompt` partial is loaded but nothing opens it — delete or wire it.
+- [ ] e2e `menu-routing` / `non-menu-buttons` wait for `#sh .hbtns`, which the redesigned
+  home doesn't have — update the specs to the `.hm-card` buttons.
+- [ ] Run `node scripts/stamp-build.js` on deploy (new modules `liveWordPreview.js`,
+  `boostIcon.js` and `assets/ui/boost-logo.webp`).
+
+## Phone performance — September 2026
+
+- [x] Hidden screens/overlays no longer composited (`visibility:hidden` after fade).
+- [x] Web-sized WebP for every asset PNG + SW serving + persistent image cache.
+- [ ] Run `python scripts/build-web-images.py` whenever art under `assets/` is added or
+  replaced (a missing WebP just falls back to the PNG). Consider wiring it into the
+  deploy step next to `stamp-build.js`.
+- [ ] First visit (before the SW controls the page) still downloads the PNG masters.
+- [ ] 159 ES modules load network-first on every launch (DOM ready ≈ 4.6 s on prod with
+  4× CPU / 60 ms RTT). Candidates: `<link rel="modulepreload">` for the boot graph.
+- [ ] Boot loader waits for the profile or a 10 s fallback — a fresh signed-out browser
+  always waits the full 10 s.
+- [ ] Pre-existing e2e failures (15, also failing before this fix): `#app-loading` and
+  `#ov-onboarding` intercept clicks in `spine-boot`, `menu-routing`,
+  `non-menu-buttons`; `boost-electric-border`, `capture-crossing-words-states`,
+  `capture-debug-timeline`, `your-turn-timing`.
+
 ## 2.5D avatar & achievement motion — September 2026
 
 - [x] Blender relief models + auto bust rig + pose atlases for all 73 assets
@@ -21,8 +97,8 @@
   invite; store tier tabs (mockup) vs today's stacked sections; the mini-game bodies
   (`#bchal`) and tutorial bubbles keep their older styling; run `npm run test:e2e` and
   refresh the guide screenshots (`images/guide/*`) that still show the old screens.
-- [ ] **Live score preview** in the status pill / שבץ button ("האור +8") — shown in the
-  mockup, not built: it gives players information they don't get today (game decision).
+- [x] **Live score preview** in the status pill ("✓ האור +8") — built Oct 2026
+  (`src/ui/liveWordPreview.js`, see D-live-word-points).
 - [ ] **Elo under human names** on the scoreboard (mockup) — needs the rating in the game view.
 - [ ] **Real-device check** of canvas performance on a low-end Android (TWA) and
   iOS Safari (sprite sheets are WebP; iOS 14+ required).

@@ -7,6 +7,7 @@
 // and will be migrated in slice 2d.
 
 import { $, on, setText } from '../domHelpers.js';
+import { cue as cueSfx } from '../feedbackService.js';
 import { g, getGender } from '../genderText.js';
 
 export const WR_INTENT = Object.freeze({
@@ -61,6 +62,8 @@ export function mountWaitingRoomScreen({ root = globalThis.document, bus } = {})
       const mins = Math.floor(remaining / 60000);
       const secs = Math.floor((remaining % 60000) / 1000);
       setText(countdownEl, `ההזמנה תפוג בעוד ${mins}:${String(secs).padStart(2, '0')}`);
+      // A soft clock tick for the last 5 seconds of the invite.
+      if (remaining > 0 && remaining <= 5000) cueSfx('invite.expiring');
       if (remaining <= 0) {
         globalThis.clearInterval?.(countdownTimer);
         countdownTimer = null;

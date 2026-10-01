@@ -44,7 +44,16 @@ The primary game document. Created by `roomService.createRoom()` / `inviteServic
     placed: PlacedTile[],
     words: string[],
     score: number,
-    reason?: string          // 'pass' | 'timeout' | 'illegal-word' for pass-type moves
+    reason?: string,         // 'pass' | 'timeout' | 'illegal-word' for pass-type moves
+    scoringDeferred?: boolean, // true on a bonus-square move's FIRST (deferred)
+                             // commit: the score is withheld until the bonus
+                             // resolves. false once finalized.
+    boost?: {                // written at FINALIZE_BOOST_AWARD: what the bonus
+      bonusType: string|null,//   square gave ('B1'..'B14')
+      kind: 'minigame'|'wheel'|null,
+      extra: number,         //   points added by the boost
+      effects: { boostId: string, payload: object }[],
+    }                        // The opponent's status pill shows this.
   },
   moveHistory: MoveRecord[], // full history (replay log)
 

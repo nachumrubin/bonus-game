@@ -120,9 +120,6 @@ test('minigame — מילה נסתרת (hidden word)', async ({ page }) => {
       validator: (w) => hd.isValid(w),
       durationMs: 10_000,
     });
-    // Headline + subtitle so the overlay chrome reads naturally.
-    const t = document.getElementById('bovt'); if (t) t.textContent = 'מילה נסתרת';
-    const d = document.getElementById('bovd'); if (d) d.textContent = 'מצא מילה נסתרת ברשת 4×4';
   })()`);
   await page.waitForTimeout(300);
   await shot(page, 'hiddenword');
@@ -149,7 +146,6 @@ test('minigame — אות פותחת (letter spinner)', async ({ page }) => {
     // Populate a few found words so the chips list reads naturally.
     const words = [...hd.DICT].filter(w => [...w][0] === 'ב' && hd.norm(w).length >= 2).slice(0, 5);
     for (const w of words) window.__activeMiniGame.submit(w);
-    const t = document.getElementById('bovt'); if (t) t.textContent = 'אות פותחת';
   })()`);
   await page.waitForTimeout(300);
   await shot(page, 'letterspinner');
@@ -172,8 +168,6 @@ test('minigame — כוורת (honeycomb)', async ({ page }) => {
       rng,
       durationMs: 60_000,
     });
-    const t = document.getElementById('bovt'); if (t) t.textContent = 'כוורת';
-    const d = document.getElementById('bovd'); if (d) d.textContent = 'צור מילים סביב אות מרכזית';
   })()`);
   await page.waitForTimeout(300);
   await shot(page, 'honeycomb');
@@ -195,8 +189,6 @@ test('minigame — סידור מחדש (unscramble)', async ({ page }) => {
       words, tier: 'medium', rng,
       validator: (w) => window.__spine.hebrewDictionary.isValid(w),
     });
-    const t = document.getElementById('bovt'); if (t) t.textContent = 'סידור מחדש';
-    const d = document.getElementById('bovd'); if (d) d.textContent = 'סדר את האותיות למילה תקינה';
   })()`);
   await page.waitForTimeout(300);
   await shot(page, 'unscramble');
@@ -218,8 +210,6 @@ test('minigame — מילים חוצות (crossing words)', async ({ page }) => 
       words, rng,
       durationMs: 45_000,
     });
-    const t = document.getElementById('bovt'); if (t) t.textContent = 'מילים חוצות';
-    const d = document.getElementById('bovd'); if (d) d.textContent = 'מצא שתי מילים שמתחברות';
   })()`);
   await page.waitForTimeout(300);
   await shot(page, 'crossing');
@@ -239,8 +229,6 @@ test('minigame — מילה חסרה (fill middle)', async ({ page }) => {
       validator: (w) => window.__spine.hebrewDictionary.isValid(w),
       durationMs: 30_000,
     });
-    const t = document.getElementById('bovt'); if (t) t.textContent = 'מילה חסרה';
-    const d = document.getElementById('bovd'); if (d) d.textContent = 'השלם את האותיות החסרות במילה';
   })()`);
   await page.waitForTimeout(300);
   await shot(page, 'fill-middle');

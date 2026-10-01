@@ -799,3 +799,74 @@ test('CONFIRM_MOVE forms a valid cross-word and counts both', () => {
 });
 
 console.log = _origLog;
+
+// The opponent learns what a boost gave from the move-history entry (it rides
+// to them in the room doc). Finalize records the square's type, the points
+// and every effect granted, and clears the deferred marker.
+function deferredMoveFixture() {
+  const { state, eng } = freshEngine();
+  state.currentTurnSlot = 0;
+  state.moveHistory = [{ slot: 0, tiles: [], words: ['אב'], wordTiles: [], score: 10, ts: 1, scoringDeferred: true }];
+  state.pendingScoreCommit = {
+    slot: 0, baseScore: 10, multiplier: 1, historyIndex: 0,
+    movePayload: { slot: 0, placed: [], words: ['אב'], wordTiles: [] },
+    lock: null,
+  };
+  state.bonusAssignment = [{ type: 'B3' }, { type: 'B13' }, { type: 'B5' }];
+  return { state, eng };
+}
+
+test('FINALIZE_BOOST_AWARD records a mini-game boost summary on the move', () => {
+  const { state, eng } = deferredMoveFixture();
+  state.pendingBonuses = [{ idx: 0, bonusType: 'B3', slot: 0, kind: 'minigame' }];
+  const commits = [];
+  const off = bus.on(EV.MOVE_SCORE_COMMITTED, p => commits.push(p));
+  eng.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, extra: 15, bonusIdx: 0 } });
+  off();
+  const h = state.moveHistory[0];
+  assert.equal(h.scoringDeferred, false);
+  assert.deepEqual(h.boost, {
+    bonusType: 'B3', kind: 'minigame', extra: 15,
+    effects: [{ boostId: 'auto_extra_score', payload: { extra: 15 } }],
+  });
+  assert.deepEqual(commits.at(-1).boost, h.boost, 'MOVE_SCORE_COMMITTED carries the summary');
+});
+
+test('FINALIZE_BOOST_AWARD records a wheel future effect (queueBoosts)', () => {
+  const { state, eng } = deferredMoveFixture();
+  state.pendingBonuses = [{ idx: 1, bonusType: 'B13', slot: 0, kind: 'wheel' }];
+  eng.dispatch({
+    type: CMD.FINALIZE_BOOST_AWARD,
+    payload: {
+      slot: 0, extra: 0, bonusIdx: 1,
+      queueBoosts: [{ boostId: 'multiply_next_turns', payload: { multiplier: 2, turnsRemaining: 1 }, slot: 0 }],
+    },
+  });
+  assert.deepEqual(state.moveHistory[0].boost, {
+    bonusType: 'B13', kind: 'wheel', extra: 0,
+    effects: [{ boostId: 'multiply_next_turns', payload: { multiplier: 2, turnsRemaining: 1 } }],
+  });
+});
+
+test('FINALIZE_BOOST_AWARD records a future effect granted directly by the square', () => {
+  const { state, eng } = deferredMoveFixture();
+  state.activeBoosts = [{ slot: 0, boostId: 'skip_opponent_turn', payload: {}, bonusIdx: 2, turnNumber: 1 }];
+  eng.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, extra: 0, bonusIdx: 2 } });
+  const { boost } = state.moveHistory[0];
+  assert.equal(boost.bonusType, 'B5');
+  assert.equal(boost.kind, null);
+  assert.deepEqual(boost.effects, [{ boostId: 'skip_opponent_turn', payload: {} }]);
+});
+
+test('CONFIRM_MOVE on a bonus square marks the history entry scoringDeferred', () => {
+  seedDict(['בא']); // ב on the bonus square above the board's א reads top-down
+  const { state, eng } = freshEngine();
+  state.racks[0] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 0;
+  state.firstMove = false;
+  setCommittedTile(state, 0, 1, { letter: 'א', val: 1 });
+  state.bonusAssignment = [{ type: 'B2' }];
+  eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [{ r: -1, c: 1, letter: 'ב', val: 3 }] } });
+  assert.ok(state.pendingScoreCommit, 'move deferred for the bonus');
+  assert.equal(state.moveHistory.at(-1).scoringDeferred, true);
+});

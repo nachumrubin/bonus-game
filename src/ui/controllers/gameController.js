@@ -20,6 +20,12 @@ import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
 import { HV } from '../../game/core/letterDistribution.js';
 
+// The local seat is pinned (online / bot game) and `slot` is the other one.
+// A shared-screen game (mySlot null) has no opponent.
+export function isOpponentSlot(slot, mySlot) {
+  return mySlot != null && slot !== mySlot;
+}
+
 export function createGameController({ bus, session, mySlot = null }) {
   if (!bus) throw new Error('createGameController: bus required');
   if (!session) throw new Error('createGameController: session required');
@@ -53,6 +59,10 @@ export function createGameController({ bus, session, mySlot = null }) {
     // confirms the move. Mutex with `placed` — locking and tile-placement
     // are alternative move types in a single turn.
     pendingLock: null,   // { r, c, duration } | null
+    // The opponent's last boost ({ slot, boost } — engine moveHistory[].boost),
+    // shown in the status pill from their move until the local player starts
+    // placing tiles or their own turn ends. null when there is nothing to say.
+    opponentBoost: null,
   };
 
   function syncFromState() {
@@ -99,6 +109,9 @@ export function createGameController({ bus, session, mySlot = null }) {
     // (a Map keyed "r,c"). Expose the live reference so renderBoard can
     // show tiles that landed on perimeter bonus cells.
     view._bonusBoard = s.bonusBoard;
+    // First-move flag — the live word-points preview runs the engine's
+    // connectivity check, which is waived on the opening move.
+    view._firstMove = !!s.firstMove;
     // Expose turnDeadlineMs for live-mode timer rendering. Online sessions
     // populate this from the room; offline / untimed games leave it null.
     view._turnDeadlineMs = s.turnDeadlineMs ?? null;
@@ -126,6 +139,7 @@ export function createGameController({ bus, session, mySlot = null }) {
   subs.push(bus.on(EV.GAME_STARTED, () => { syncFromState(); _onChange(); }));
   subs.push(bus.on(EV.MOVE_CONFIRMED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra, multiplier }) => {
     tilesMoved = true;
+    view.opponentBoost = null;
     syncFromState();
     view.lastMove = {
       slot, score, words, wordTiles: wordTiles ?? [], placed: placed ?? [],
@@ -139,7 +153,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     view.pendingLock = null;
     _onChange();
   }));
-  subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra, multiplier }) => {
+  subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra, multiplier, boost }) => {
     tilesMoved = true;
     syncFromState();
     view.lastMove = {
@@ -148,11 +162,13 @@ export function createGameController({ bus, session, mySlot = null }) {
       bonusExtra: bonusExtra ?? 0,
       multiplier: multiplier ?? 1,
     };
+    if (boost && isOpponentSlot(slot, mySlot)) view.opponentBoost = { slot, boost };
     view.lastInvalidReason = null;
     _onChange();
   }));
   subs.push(bus.on(EV.OPPONENT_MOVED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra, multiplier }) => {
     tilesMoved = true;
+    view.opponentBoost = null; // a newer opponent move — its own boost (if any) follows
     syncFromState();
     view.lastMove = {
       slot, score, words, wordTiles: wordTiles ?? [], placed: placed ?? [],
@@ -164,7 +180,14 @@ export function createGameController({ bus, session, mySlot = null }) {
   }));
   subs.push(bus.on(EV.SCORE_CHANGED, () => { syncFromState(); _onChange(); }));
   subs.push(bus.on(EV.TURN_CHANGED, () => {
+    const prevTurnSlot = view.currentTurnSlot;
     syncFromState();
+    // The local player's turn ended without placing (pass, exchange, lock,
+    // timeout): the notice about the opponent's previous boost is stale.
+    if (view.opponentBoost && mySlot != null
+      && prevTurnSlot === mySlot && view.currentTurnSlot !== mySlot) {
+      view.opponentBoost = null;
+    }
     // Any pending placement belongs to the turn that just ended (the
     // confirm path already cleared on MOVE_CONFIRMED; if we got here some
     // other way — timeout auto-pass, manual pass, exchange, lock — the
@@ -224,6 +247,7 @@ export function createGameController({ bus, session, mySlot = null }) {
       return false;
     }
     view.placed.push({ r, c, letter, val, isJoker, rackIndex });
+    view.opponentBoost = null; // the player has moved on to their own move
     _onChange();
     return true;
   }
@@ -299,6 +323,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     }
     // Replace any previous pending swap on the same cell.
     view.swappedTiles = view.swappedTiles.filter(s => !(s.r === r && s.c === c));
+    view.opponentBoost = null;
     view.swappedTiles.push({
       r, c,
       letter, val, isJoker,

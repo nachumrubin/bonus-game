@@ -161,6 +161,7 @@ See `/partials/screens/` for corresponding HTML templates.
 | `motionTokens.js` | Canonical motion vocabulary — duration/easing/press-scale constants, mirrored as `:root` CSS custom properties. |
 | `motionPreference.js` | Single source of truth for the effective reduced-motion preference (explicit tri-state → legacy flag → OS → normal); stamps `data-reduced-motion` on the root. |
 | `scoreAnimationTimings.js` | Shared score-sequence timing: `mergeSequenceTiming()` choreography + `scoreInteractionGateMs`/`scoreClockGraceMs` (visual-gate vs clock-fairness, with reduced-motion floors). |
+| `boostSummary.js` | Boost copy: `describeBoost` (award card) and `describeBoostSummary` (the opponent's boost in the status pill, from the engine's `moveHistory[].boost`). |
 | `screenPartialManifest.js` | Screen partial registry. |
 | `screenPartials.js` | Partial HTML loading system. |
 | `screens/gameMenu.js` | In-game ☰ menu toggle (`wireGameMenu`): open/close, outside tap, Escape. |
@@ -255,6 +256,7 @@ See `/partials/screens/` for corresponding HTML templates.
 ## `/scripts/` — Build Tools
 | File | Role |
 |------|------|
+| `build-web-images.py` | Writes a ≤512px WebP next to every PNG under `assets/` (not `assets/anim/`); `sw.js` serves it in place of the PNG. Run after art changes. |
 | `stamp-build.js` | Update build timestamp in `sw.js` + `index.html` (cache name, version meta, SW registration query param). |
 | `export-dictionary-file.js` | Extract embedded dictionary from legacy `index.html` to `data/dictionary.base.txt`. |
 | `add-dictionary-words.js` | Bulk import words to dictionary. |

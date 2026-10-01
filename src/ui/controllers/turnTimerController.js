@@ -30,6 +30,8 @@ export function createTurnTimerController({
   // fresh turn re-arms ticks even if the previous turn fired them already.
   let lastTickKey = null;
   let lastTickSec = null;
+  // Turn key that already got its 10-second 'timer/warn'.
+  let warnedKey = null;
   // JS-driven SVG ring: tracks turn key + captured total duration so we can
   // compute stroke-dashoffset = (1 - remaining/total) * 277 each tick.
   // No CSS animation — dashoffset is set via inline style, which freezes
@@ -375,10 +377,17 @@ export function createTurnTimerController({
     } else if (secs > 3) {
       lastTickSec = null;
     }
+    // One soft clock tick when the ring turns urgent (10 s left) — only for
+    // turns long enough that 10 s is a real warning, once per turn.
+    if (secs === 10 && warnedKey !== turnKey && ringTurnDurationMs > 15000) {
+      warnedKey = turnKey;
+      bus.emit('timer/warn', { secs });
+    }
 
     if (remainingMs <= 0) {
       if (timedOutKey !== turnKey) {
         timedOutKey = turnKey;
+        bus.emit('timer/timeout', {});
         session.dispatch?.({
           type: CMD.PASS_TURN,
           payload: { reason: 'timeout' },

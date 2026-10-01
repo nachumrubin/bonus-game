@@ -527,3 +527,44 @@ test('a fresh boost activation adds a secondary avatarBoostReact; reminders do n
   assert.deepEqual(ac._directives.filter(d => d.kind === 'avatarBoostReact').map(d => d.payload), [{ slot: 0 }]);
   ac.dispose();
 });
+
+test('sound cues ride on their animation directives', () => {
+  bus._reset();
+  const cues = [];
+  const ac = createAnimationController({ bus, mySlot: 0, cue: (id, opts = {}) => cues.push([id, opts.delayMs ?? 0]) });
+  // Opponent move: one wooden tile sound per tile, staggered like a hand.
+  bus.emit(EV.OPPONENT_MOVED, { slot: 1, placed: [{ r: 1, c: 1 }, { r: 1, c: 2 }, { r: 1, c: 3 }], words: ['אבג'], wordTiles: [], score: 6 });
+  const opp = cues.filter(([id]) => id === 'opponent.tile');
+  assert.equal(opp.length, 3);
+  assert.ok(opp[0][1] < opp[1][1] && opp[1][1] < opp[2][1], 'staggered');
+  // Exchange: the bag shuffle replaces the rack-refill clatter.
+  cues.length = 0;
+  bus.emit(EV.TILES_EXCHANGED, { count: 1 });
+  assert.deepEqual(cues.map(([id]) => id), ['exchange.done']);
+  // Turn-effect banners.
+  cues.length = 0;
+  bus.emit(EV.TURN_EFFECTS_APPLIED, { effects: [{ type: 'extra-turn', slot: 0 }, { type: 'skip-turn', slot: 1 }] });
+  assert.deepEqual(cues.map(([id]) => id), ['turn.extra', 'turn.skip']);
+  ac.dispose();
+});
+
+test('a broken cue never breaks the animation pipeline', () => {
+  bus._reset();
+  const ac = createAnimationController({ bus, cue: () => { throw new Error('audio down'); } });
+  bus.emit(EV.TILES_EXCHANGED, { count: 2 });
+  assert.ok(ac._directives.some(d => d.kind === 'bagBounce'));
+  ac.dispose();
+});
+
+// Bot boosts are reported in the status pill, not the modal award card.
+test('a bot boost opens no award card by default (the status pill names it instead)', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  bus._reset();
+  const calls = [];
+  const ac = createAnimationController({ bus, mySlot: 0 });
+  ac.setRenderer({ bonusAwardOverlay: p => calls.push(p) });
+  bus.emit(EV.BOOST_ACTIVATED, { slot: 1, boostId: 'auto_extra_score', bonusIdx: 4, payload: { extra: 20 } });
+  t.mock.timers.tick(BOOST_RESULT_REVEAL_DELAY_MS);
+  assert.equal(calls.length, 0);
+  ac.dispose();
+});

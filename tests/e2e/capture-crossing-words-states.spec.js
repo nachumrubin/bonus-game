@@ -25,6 +25,9 @@ async function bootSpine(page) {
   await page.waitForFunction(() =>
     window.__spine?.enabled === true
     && typeof window.__spine.ui?.mountCrossingWordsMiniGame === 'function');
+  // The boot splash / onboarding popup appear on delayed timers and painted
+  // over the success capture — keep them out of every shot.
+  await page.addStyleTag({ content: '#ov-onboarding,#app-loading{display:none!important}' });
 }
 
 async function showBonusOverlay(page) {
@@ -53,10 +56,6 @@ async function mountCrossing(page) {
       words: [],          // force the static fallback pair (תפוח / חגים)
       durationMs: 45_000,
     });
-    const t = document.getElementById('bovt');
-    if (t) t.textContent = 'שתי מילים חוצות!';
-    const d = document.getElementById('bovd');
-    if (d) d.textContent = 'מצא את האות המשותפת לשתי המילים (+40 נקודות)';
   })()`);
 }
 

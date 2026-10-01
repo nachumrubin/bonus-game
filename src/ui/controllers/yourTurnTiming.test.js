@@ -76,7 +76,7 @@ for (const reducedMotion of [false, true]) {
       assert.equal(x.ready[0].remaining, 20_000, 'full allowance starts at cue');
       assert.equal(x.ready[0].display, '20');
       assert.equal(x.flashes[0].at, x.ready[0].at);
-      assert.deepEqual(x.sounds, soundFx ? [{ at: x.ready[0].at, cue: 'your-turn' }] : []);
+      assert.deepEqual(x.sounds, soundFx ? [{ at: x.ready[0].at, cue: 'turn.yours' }] : []);
       x.turn(); x.advance(1000);
       assert.equal(x.timerEl.textContent, '19');
       assert.equal(x.flashes.length, 1, 'duplicate does not replay');
@@ -184,7 +184,7 @@ test('late chip/count-up completion outlives nominal grace; last completion resu
   bus.emit(EV.SCORE_PRESENTATION_FINISHED, { id: 'chip' });
   assert.equal(x.ready[0].remaining, 20_000);
   assert.equal(x.flashes.length, 1);
-  assert.deepEqual(x.sounds, [{ at: x.ready[0].at, cue: 'your-turn' }]);
+  assert.deepEqual(x.sounds, [{ at: x.ready[0].at, cue: 'turn.yours' }]);
   bus.emit(EV.SCORE_PRESENTATION_FINISHED, { id: 'chip' });
   x.turn(); x.advance(1000);
   assert.equal(x.flashes.length, 1);

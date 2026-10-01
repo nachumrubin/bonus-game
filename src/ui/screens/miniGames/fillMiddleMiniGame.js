@@ -24,9 +24,10 @@
 //   FM_INTENT.RESULT
 
 import { startBonusTimer } from './bonusTimer.js';
-import { confettiBurst } from './bonusFx.js';
+import { confettiBurst, bonusResultHtml, startResultCount, wordTilesHtml } from './bonusFx.js';
 import { g, getGender } from '../../genderText.js';
 import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
+import { BOOST_BOLT_ICON_HTML } from '../../boostIcon.js';
 
 const DEFAULT_DURATION_MS = 40_000;
 const DEFAULT_PTS = 100;
@@ -192,20 +193,18 @@ export function mountFillMiddleMiniGame({
 
   // ─── DOM helpers ────────────────────────────────────────
 
-  // A fixed (given) letter tile — the green first/last bookends.
-  function mkFixed(l) {
+  // A fixed letter tile: the gold-bezel first/last bookends ('is-given'), or
+  // a green-bezel tile of the revealed answer ('is-ok').
+  function mkFixed(l, tone = 'is-given') {
     const d = doc.createElement('div');
-    d.className = 'ut sl fi';
+    d.className = `ut sl fi ${tone}`;
     d.textContent = l;
-    d.style.background = '#c8e8c8';
-    d.style.borderColor = '#4a8a4a';
-    d.style.borderStyle = 'solid';
     return d;
   }
 
   function buildFrame() {
     const frame = doc.createElement('div');
-    frame.style.cssText = 'display:flex;gap:4px;justify-content:center;align-items:center;margin-bottom:10px;flex-wrap:wrap;';
+    frame.className = 'bz-slots';
 
     frame.appendChild(mkFixed(first));
 
@@ -214,7 +213,6 @@ export function mountFillMiddleMiniGame({
       const si = i;
       const s = doc.createElement('div');
       s.className = 'ut sl';
-      s.style.cursor = 'pointer';
       s.addEventListener('click', () => returnFromSlot(si, s));
       frame.appendChild(s);
       slotEls.push(s);
@@ -225,7 +223,7 @@ export function mountFillMiddleMiniGame({
 
   function buildPool() {
     const poolRow = doc.createElement('div');
-    poolRow.style.cssText = 'display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;';
+    poolRow.className = 'bz-bank';
     const poolTiles = [];
     poolLetters.forEach((l, poolIdx) => {
       const t = doc.createElement('div');
@@ -239,7 +237,7 @@ export function mountFillMiddleMiniGame({
     });
 
     const bk = doc.createElement('div');
-    bk.className = 'ut';
+    bk.className = 'bz-key';
     bk.textContent = '⌫';
     bk.addEventListener('click', onBackspace);
     poolRow.appendChild(bk);
@@ -248,9 +246,9 @@ export function mountFillMiddleMiniGame({
   }
 
   function attachLegacy() {
-    bovic.textContent = '⚡';
-    bovt.textContent  = g('fillMissingTitle', getGender());
-    bovd.textContent  = `המילה מתחילה ב-"${first}" ומסתיימת ב-"${last}" — סדר את ${n} האותיות למילה (${Math.floor(durationMs/1000)} שניות!)`;
+    bovic.innerHTML = BOOST_BOLT_ICON_HTML;
+    bovt.textContent  = 'מילה חסרה!';
+    bovd.textContent  = `מתחילה ב-"${first}", מסתיימת ב-"${last}" · ${Math.floor(durationMs/1000)} שניות`;
     bchal.innerHTML = '';
 
     const { frame, slotEls: se } = buildFrame();
@@ -289,11 +287,12 @@ export function mountFillMiddleMiniGame({
         // still shows the word the player made; contexts without a real DOM +
         // rAF fall back to the text result.
         if (!result.success && canAnimateReveal(bchal)) {
-          bovt.textContent = result.attempt ? 'לא נכון 😌' : 'נגמר הזמן ⏰';
+          bovt.textContent = result.attempt ? 'לא נכון' : 'נגמר הזמן';
           bovd.textContent = 'המילה הנכונה:';
           revealMiddleWord();
         } else {
           bchal.innerHTML = renderResult(result);
+          startResultCount(bchal, result.success ? result.earnedPts : null);
           if (result.success) confettiBurst(ovBonus?.querySelector?.('.ovc'));
         }
         bok.textContent = g('continueMiniGame', getGender());
@@ -310,7 +309,7 @@ export function mountFillMiddleMiniGame({
 
     const bolt = doc.createElement('div');
     bolt.className = 'bz-bolt';
-    bolt.textContent = '⚡';
+    bolt.innerHTML = BOOST_BOLT_ICON_HTML;
     card.appendChild(bolt);
 
     const title = doc.createElement('div');
@@ -333,8 +332,7 @@ export function mountFillMiddleMiniGame({
     card.appendChild(poolRow);
 
     const submitBtn = doc.createElement('button');
-    submitBtn.className = 'bz-btn bz-btn-green';
-    submitBtn.style.cssText = 'margin-top:10px;';
+    submitBtn.className = 'bz-btn';
     submitBtn.textContent = 'בדוק ✓';
     submitBtn.addEventListener('click', () => {
       if (typed.includes(null)) return;
@@ -423,7 +421,7 @@ export function mountFillMiddleMiniGame({
     frameEl.appendChild(mkFixed(first));
     const lastTile = mkFixed(last);
     const tiles = current.map((ch) => {
-      const t = mkFixed(ch);           // green "correct" styling
+      const t = mkFixed(ch, 'is-ok');  // green "correct" bezel
       t.dataset.ch = ch;
       t.style.willChange = 'transform';
       frameEl.appendChild(t);
@@ -471,28 +469,25 @@ export function mountFillMiddleMiniGame({
   }
 
   function renderResult(result) {
-    const answerLabel = `המילה הייתה: <strong style="font-size:22px;color:var(--by);display:block;margin-top:4px;letter-spacing:3px;">${answer}</strong>`;
     if (!result.attempt) {
-      return `<div class="bz-result is-soft">
-        <div class="bz-result-emoji">⏰</div>
-        <div class="bz-result-headline">הזמן נגמר!</div>
-        <div class="bz-result-sub">${answerLabel}</div>
-      </div>`;
+      return bonusResultHtml({
+        success: false, icon: 'hour', headline: 'הזמן נגמר!',
+        sub: 'המילה הייתה:', extraHtml: wordTilesHtml(answer),
+      });
     }
     if (result.success) {
       // Only show the word the player actually found. Revealing the "intended"
       // word when they played a different valid one just causes confusion.
-      return `<div class="bz-result is-win">
-        <div class="bz-result-emoji">🎉</div>
-        <div class="bz-result-headline" style="letter-spacing:2px;">${result.attempt}</div>
-        <div class="bz-result-big">+${result.earnedPts} נק'</div>
-      </div>`;
+      return bonusResultHtml({
+        success: true, headline: 'כל הכבוד!', points: result.earnedPts,
+        extraHtml: wordTilesHtml(result.attempt, 'ok'),
+      });
     }
-    return `<div class="bz-result is-soft">
-      <div class="bz-result-emoji">😌</div>
-      <div class="bz-result-headline" style="letter-spacing:2px;">${result.attempt} — לא מילה תקפה</div>
-      <div class="bz-result-sub">${answerLabel}</div>
-    </div>`;
+    return bonusResultHtml({
+      success: false, tone: 'bad', icon: 'x', headline: 'לא מילה תקפה',
+      extraHtml: wordTilesHtml(result.attempt, 'bad')
+        + '<div class="bz-result-sub">המילה הייתה:</div>' + wordTilesHtml(answer),
+    });
   }
 }
 

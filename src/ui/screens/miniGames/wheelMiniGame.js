@@ -10,6 +10,30 @@
 
 import { WHEEL_OUTCOMES } from '../../../game/boosts/bonusTileDefs.js';
 import { g, getGender } from '../../genderText.js';
+import { cue as cueSfx } from '../../feedbackService.js';
+
+// The dial's CSS easing — kept in one place so the ratchet clicks follow it.
+const WHEEL_EASE = [0.18, 0.89, 0.32, 1.27];
+
+// Times (ms) at which the pointer crosses a segment boundary while the dial
+// eases from 0 to `rotation` degrees over `durationMs` with the cubic-bezier
+// `ease`. Sampling the bezier parametrically keeps it exact without solving
+// for x; the overshoot (y > 1) yields the natural back-click at the end.
+export function wheelClickTimes(rotation, segDeg, durationMs, ease = WHEEL_EASE, samples = 600) {
+  const [x1, y1, x2, y2] = ease;
+  const bez = (u, a, b) => 3 * a * u * (1 - u) ** 2 + 3 * b * u * u * (1 - u) + u ** 3;
+  const times = [];
+  let lastSeg = 0;
+  for (let i = 1; i <= samples; i++) {
+    const u = i / samples;
+    const seg = Math.floor((bez(u, y1, y2) * rotation) / segDeg);
+    if (seg !== lastSeg) {
+      times.push(Math.round(bez(u, x1, x2) * durationMs));
+      lastSeg = seg;
+    }
+  }
+  return times;
+}
 
 export const WHEEL_INTENT = Object.freeze({
   RESULT: 'wheel/result',
@@ -123,7 +147,7 @@ export function mountWheelMiniGame({
 
   // ── DOM mount ──
   // Premium chrome (overlay, card, buttons, wheel rim/hub/pointer) lives in
-  // the .bz-* classes in menu-electric.css; only the dynamic bits — the
+  // the .bz-* classes in screens-glass.css; only the dynamic bits — the
   // conic-gradient segments and the final rotation — stay inline here.
   const host = doc.createElement('div');
   host.className = 'spine-wheel-overlay bz-overlay';
@@ -165,13 +189,13 @@ export function mountWheelMiniGame({
   host.innerHTML = `
     <div class="bz-card">
       <div class="bz-burst" data-wheel="burst"></div>
-      <div class="bz-bolt">🎡</div>
+      <div class="bz-bolt is-emoji">🎡</div>
       <div class="bz-title">גלגל המזל!</div>
       <div class="bz-sub" id="spine-wheel-press-hint"></div>
       <div class="bz-wheel-wrap">
         <div class="bz-wheel-rim"></div>
         <div data-wheel="dial" class="bz-wheel" style="background:conic-gradient(${conicStops});
-             transition:transform ${spinDurationMs}ms cubic-bezier(0.18, 0.89, 0.32, 1.27);">
+             transition:transform ${spinDurationMs}ms cubic-bezier(${WHEEL_EASE.join(', ')});">
           ${labelHtml}
         </div>
         <div class="bz-wheel-gloss"></div>
@@ -179,7 +203,7 @@ export function mountWheelMiniGame({
         <div class="bz-wheel-pointer"></div>
       </div>
       <div data-wheel="result" class="bz-wheel-result"></div>
-      <button data-wheel="spin" class="bz-btn bz-btn-gold"></button>
+      <button data-wheel="spin" class="bz-btn"></button>
     </div>`;
 
   doc.body?.appendChild(host);
@@ -199,6 +223,11 @@ export function mountWheelMiniGame({
     spinning = true;
     if (spinBtn) spinBtn.disabled = true;
     if (dial) dial.style.transform = `rotate(${finalRotation}deg)`;
+    // A real ratchet: one click per segment the pointer passes, slowing
+    // down with the dial.
+    for (const at of wheelClickTimes(finalRotation, segDeg, spinDurationMs)) {
+      cueSfx('wheel.click', { delayMs: at });
+    }
     // Online spectator: tell the opponent the wheel is spinning. The wheel
     // is event-driven (no per-second tick), so a single emit at spin-start
     // and another at result is enough to keep the spectator label fresh.
@@ -213,6 +242,7 @@ export function mountWheelMiniGame({
       if (hub) hub.textContent = '✓';
       // Reward "explosion" — gold bloom over the card the moment it lands.
       if (burst) burst.classList.add('is-on');
+      cueSfx('mg.success');
       try {
         bus?.emit?.('liveBonus/progress', { secsLeft: 0, label: labelFor(chosen) });
       } catch { /* swallow */ }

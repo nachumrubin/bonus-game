@@ -29,6 +29,7 @@ function makeDom() {
     ic:      makeEl(),
     title:   makeEl(),
     desc:    makeEl(),
+    pts:     makeEl(),
     start:   makeEl({ onclick: 'startBonusGame()' }),
   };
   const root = {
@@ -38,6 +39,7 @@ function makeDom() {
         case '#bintro-ic':                                 return els.ic;
         case '#bintro-title':                              return els.title;
         case '#bintro-desc':                               return els.desc;
+        case '#bintro-pts':                                return els.pts;
         case 'button[onclick="startBonusGame()"]':         return els.start;
         default: return null;
       }
@@ -104,4 +106,18 @@ test('unmount stops further events', () => {
   bus.emit(BI_OPEN, { bonusType: 'B1' });
   els.start.fireClick();
   assert.equal(n, 1);
+});
+
+test('BI_OPEN: points go to the gold pill, hidden when the copy already states them', () => {
+  bus._reset();
+  const { root, els } = makeDom();
+  mountBonusIntroScreen({ root, bus });
+  bus.emit(BI_OPEN, { bonusType: 'B12' });           // desc has no number
+  assert.equal(els.pts.hidden, false);
+  assert.match(els.pts.innerHTML, /50 נקודות/);
+  assert.doesNotMatch(els.desc.textContent, /50/);
+  bus.emit(BI_OPEN, { bonusType: 'B1' });            // "…וקבל 100 נקודות"
+  assert.equal(els.pts.hidden, true);
+  bus.emit(BI_OPEN, { bonusType: 'B13' });           // wheel: no points
+  assert.equal(els.pts.hidden, true);
 });

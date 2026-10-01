@@ -11,6 +11,11 @@
 //
 // The actual DOM-touching renderer is injected via setRenderer({...}).
 // This keeps the controller pure and testable.
+//
+// Sound: an optional `cue(id, { delayMs?, rate? })` (feedbackService.cue) is
+// called from trigger() so each sound lands with its visual — boost
+// electricity, bingo, tile cascade, opponent tiles, turn-effect banners.
+// Sound is not motion, so it plays even when choreography is disabled.
 
 import { EV } from '../../events/eventTypes.js';
 import { RACK_SIZE } from '../../game/core/tileBag.js';
@@ -25,8 +30,44 @@ export const GOOD_MOVE_SCORE = 40;
 // only leaves the board unobscured long enough for its cause to register.
 export { BOOST_RESULT_REVEAL_DELAY_MS } from '../boostPresentation.js';
 
-export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false, reducedMotion = () => false }) {
+export function createAnimationController({ bus, mySlot = null, showOpponentBoostOverlay = false, reducedMotion = () => false, cue = null }) {
   if (!bus) throw new Error('createAnimationController: bus required');
+  const sound = typeof cue === 'function'
+    ? (id, opts) => { try { cue(id, opts); } catch { /* sound never gates */ } }
+    : () => {};
+  let lastBagSoundAt = -Infinity;
+
+  // Directive → sound, timed to the visual it accompanies.
+  function soundFor({ kind, payload = {} }) {
+    switch (kind) {
+      case 'bonusActivate':
+        sound('boost.activate');
+        break;
+      case 'bingoLabel':
+        sound('bingo', { delayMs: 150 });
+        break;
+      case 'tilePlaceIn': {
+        // Opponent tiles land one by one, like a hand putting them down.
+        const n = Math.min(5, payload.placed?.length ?? 0);
+        for (let i = 0; i < n; i++) sound('opponent.tile', { delayMs: i * (95 + Math.random() * 40) });
+        break;
+      }
+      case 'bagBounce':
+        lastBagSoundAt = Date.now();
+        sound('exchange.done');
+        break;
+      case 'tileCascadeIn':
+        // An exchange already plays the bag shuffle for the same refill.
+        if (Date.now() - lastBagSoundAt > 400) sound('tile.cascade', { delayMs: 120 });
+        break;
+      case 'turnEffectBanner':
+        if (payload.type === 'extra-turn') sound('turn.extra');
+        else if (payload.type === 'skip-turn') sound('turn.skip');
+        break;
+      default:
+        break;
+    }
+  }
 
   let enabled = true;
   let renderer = null;
@@ -61,6 +102,7 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
   }
   function trigger(directive) {
     directives.push(directive);
+    soundFor(directive);
     if (!renderer) return;
     if (!enabled) {
       // Choreography off. Under reduced motion, still forward the small set of
@@ -266,6 +308,10 @@ export function createAnimationController({ bus, mySlot = null, showOpponentBoos
       payload: { slot, boostId, bonusIdx, extra: payload?.extra ?? 0, boostPayload: payload ?? null, isOpponent },
     };
     const fresh = presentBoost({ slot, boostId, bonusIdx, kind: 'award' }, () => {
+      if (!isOpponent || showOpponentBoostOverlay) {
+        // Award card: coins for points, a charging hum for a stored power.
+        sound((payload?.extra ?? 0) > 0 ? 'boost.points' : 'boost.charge');
+      }
       if (renderer && (!isOpponent || showOpponentBoostOverlay)) {
         callRenderer(awardDirective.kind, { ...awardDirective.payload, reducedMotion: reducedMotion() });
       }

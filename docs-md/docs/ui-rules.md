@@ -75,6 +75,14 @@ partials/screens/online-lobby.html  → onlineLobbyScreen.js
 ...etc
 ```
 
+### Hidden screens and overlays (performance)
+
+`.screen.hidden` / `.ov.hidden` are `opacity:0` **and** `visibility:hidden` (the latter
+applied after the .2 s fade). They stay laid out so JS can measure them, but are not
+painted or composited. Do not set `visibility: visible` on anything inside them, and do
+not switch them to opacity-only. Opacity-only hiding kept ~50 full-screen layers alive
+and exhausted phone GPU memory (blurry / half-painted UI).
+
 ### Screen Controller Pattern
 
 Each screen JS module exports a `mount*Screen()` function:
@@ -115,7 +123,7 @@ Critical element IDs referenced by game logic (must not be renamed):
 #sn1, #sn2             — player name labels (desktop)
 #is-sv1, #is-sv2       — player score values (mobile inline)
 #is-sn1, #is-sn2       — player name labels (mobile inline)
-#sbar                  — status bar text
+#sbar                  — status pill: errors / game-over / live word-points ("✓ word +N", computeLiveWordPreview); .is-empty hides it (Oct 2026)
 #bag-count-text        — remaining tile count
 #turn-name             — whose turn label
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
@@ -143,8 +151,20 @@ Critical element IDs referenced by game logic (must not be renamed):
 #wr-invite-dropdown    — waiting room friend invite autocomplete dropdown
 #wr-invite-status      — waiting room invite status text
 #wr-countdown          — waiting room live-invite countdown (hidden until live invite sent)
-#ov-bonus              — bonus mini-game overlay (checked by animation poller)
-#ov-bonus-intro        — bonus intro overlay (checked by animation poller)
+#ov-bonus              — bonus mini-game overlay (checked by animation poller).
+                          #bovic/#bovt/#bovd form the compact header (CSS grid),
+                          #btw timer, #bchal puzzle/result, #bok action.
+#ov-bonus-intro        — bonus intro overlay (checked by animation poller);
+                          #bintro-pts = gold points pill (hidden when the copy
+                          already names the points).
+                          Mini-game skin: screens-glass.css "BOOST MINI-GAMES".
+                          Classes: .bz-card/.bz-bolt/.bz-title/.bz-sub (self-hosted
+                          card), .bz-btn (cyan primary), .bz-key (glass key),
+                          .ut / .ut.sl / .ut.sl.fi (wood tile / navy slot / placed),
+                          .is-given/.is-ok/.is-bad tile bezels, .bz-slots (tray),
+                          .bz-bank (rack well), .bz-status/.bz-fb (+ .is-ok/.is-bad/
+                          .is-warn), .bz-score/.bz-pill, .bz-chips/.bz-chip,
+                          .bz-result* (bonusFx.bonusResultHtml), .hc-* honeycomb.
 .bonus-award-positioner — bonus award container (checked by animation poller)
 #net-status            — live connectivity indicator (wifi icon) in the game top-bar.
                           Toggled by connectivityIndicator.js. Classes:
@@ -178,7 +198,7 @@ Storage keys (loadingTipsService.js): 'boost_tips_history' (JSON array, last 10 
   'boost_tips_games_played' (integer, cached from profile.stats.gamesPlayed)
 
 Onboarding overlay (per-screen first-visit tooltips):
-#ov-onboarding         — full-screen dark backdrop (.ov class); hidden by default; z-index 500
+#ov-onboarding         — full-screen dark backdrop (.ov class); hidden by default; z-index 500. DISABLED Oct 2026 — mountOnboardingController is not mounted (see D-live-word-points)
 #onb-icon              — large emoji icon (populated by onboardingController.js)
 #onb-title             — screen title text (ovt style)
 #onb-intro             — optional lead-in paragraph (onb-intro class) above the bullets; gets `hidden` when the screen's content has no `intro` field
@@ -283,6 +303,18 @@ Legacy hidden compat: #st-streak, #st-words, #stats-wr-pct, #stats-donut-arc
 The Insights panel renders into innerHTML-managed containers; the JS owns the markup inside `#ins-cards`, `#ins-trends`, `#ins-week`, `#ins-words`, `#ins-style`, `#ins-opps`, `#ins-milestones`. All derivation lives in `src/game/account/playerInsights.js` (pure module, 23 unit tests).
 
 Removed in May 2026 simplification (do not re-add without product reason): `#st-avgword`, `#st-pts-tile`, `#st-move-time`, `#st-pts-move`, `#st-vs-stronger-w`, `#st-vs-weaker-w`, `#st-boost-impact-wins`, `#st-boost-impact-best`, `#st-boost-combo`, `#st-fun-luck`, `#st-fun-fastest`, `#st-perf-tier-badge`, `#st-hero-rank`, `#st-wr-pct-lbl`, `#st-streak-lbl`, `#st-best-streak`, `#st-bonuses`. The stats-screen topbar (`.stats-topbar`) and time filter (`.stats-tfseg`) are also removed — navigation lives on the persistent app top bar; cards reflect cumulative totals only.
+
+### Settings Screen — Sound-Effects Volume IDs
+
+```
+#sett-sfxvol-low    — עוצמה: נמוכה (sfxEngine master 0.45)
+#sett-sfxvol-med    — עוצמה: רגילה (default, 0.75)
+#sett-sfxvol-high   — עוצמה: גבוהה (1.0)
+```
+
+Wired as a VALUE_SELECT in `settingsScreen.js` (key `sfxVolume`, a UI preference in
+`spine.uiPreferences`); `feedbackService` applies it and previews a tile sound.
+Elements with `data-sfx="off"` are skipped by the delegated `ui.tap` sound.
 
 ### Settings Screen — Gender Toggle IDs
 
@@ -643,6 +675,25 @@ previously the turn just silently failed to arrive.
 - Duration: `TURN_EFFECT_BANNER_MS = 3400` (exported from `gameScreen.js`), plus
   a ~320ms fade-out.
 - Tones: `.tone-warn` (something was taken from you), `.tone-good`, `.tone-info`.
+
+### Opponent Boost Notice (`#sbar.sbar--boost`)
+
+The status pill above the board shows the opponent's last boost (bot or online):
+`🎯 היריב קיבל: תור נוסף`, `⚡ היריב קיבל: אנגרמה +15`.
+- **Source:** `view.opponentBoost` (gameController), set from the opponent's
+  `MOVE_SCORE_COMMITTED.boost`. It is never set in a shared-screen game
+  (`mySlot === null`), and never for the local player's own boost, which has its award
+  card.
+- **No timer.** It is cleared by:
+  - the local player's first `placeTile` / `swapBoardTile`;
+  - any newer move (`MOVE_CONFIRMED` / `OPPONENT_MOVED`);
+  - the local turn ending without a placement (pass, exchange, lock, timeout).
+
+  On an opponent extra turn it stays until their next move.
+- **Priority in `renderStatus`:** invalid-move error > game over > live word preview >
+  opponent boost.
+- Copy comes from the pure `describeBoostSummary(boost)` (`src/ui/boostSummary.js`).
+- Bot boosts no longer open the modal award card; this pill replaces it.
 
 ### Score Count-Up Gating
 - Active-slot glow holds until count-up finishes

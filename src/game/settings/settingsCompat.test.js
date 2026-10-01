@@ -73,6 +73,7 @@ test('UI preferences support animation skip, music, and last display name', () =
     music: false,
     soundFx: true,    // default applied by normalizer when not provided
     vibration: true,  // default applied by normalizer when not provided
+    sfxVolume: 'med', // default applied by normalizer when not provided
     lastDisplayName: 'Alice',
     gender: 'זכר',   // default applied by normalizer when not provided
   });

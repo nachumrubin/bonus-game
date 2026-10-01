@@ -30,13 +30,18 @@ import { playOnHost, canPlayNowOnHost, preloadFor } from '../avatarMotion/sprite
 import { tierFromPath } from '../avatarMotion/poseClips.js';
 import { wireGameMenu } from './gameMenu.js';
 import { playBoostElectric } from '../boostElectricFx.js';
+import { cue as cueSfx } from '../feedbackService.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
 import { LOCK_POINT_COST } from '../../game/core/turnManager.js';
 import { BDEFS } from '../../game/boosts/data.js';
+import { isValid as isWordValid, dictReady } from '../../game/core/hebrewDictionary.js';
+import { computeLiveWordPreview } from '../liveWordPreview.js';
+import { BOOST_BOLT_ICON_HTML } from '../boostIcon.js';
 import { EV } from '../../events/eventTypes.js';
 import { BOOST_IGNITION_DURATION_MS, BOOST_RESULT_READY } from '../boostPresentation.js';
+import { describeBoost, describeBoostSummary } from '../boostSummary.js';
 import {
   WORD_MERGE_STAGGER_MS as SCORE_MERGE_WORD_STAGGER_MS,
   WORD_MERGE_FLIGHT_MS  as SCORE_MERGE_WORD_FLIGHT_MS,
@@ -82,6 +87,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
+  // Last word|points|validity shown by the live word-points pill (renderStatus).
+  let lastPreviewKey = '';
   const boostSquareCues = new Map();
   const boostSquareKey = b => `${b.slot}:${b.bonusIdx}`;
   const revealedBoostSquares = new Set((controller.view.activeBoosts ?? []).map(boostSquareKey));
@@ -350,6 +357,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // the cascade-in wave — the placed tiles snap back to the rack as a
     // group, so the wave reads as the rack rehydrating.
     animateNextRackRender = true;
+    if (controller.view.placed?.length) cueSfx('tile.recallAll');
     controller.recallAll();
   }));
   cleanups.push(on(btnExchange, 'click', (e) => { e.preventDefault?.(); openExchangeOverlay(); }));
@@ -449,6 +457,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     selectedPlacedCoord = null;
     pendingLockSelected = false;
     selectedRackIndex = (selectedRackIndex === i) ? null : i;
+    if (selectedRackIndex != null) cueSfx('tile.pick');
     // Toggle .sel on the LIVE rack nodes instead of rebuilding the rack. The
     // node survives, so the .bt2 transform transition animates the lift in/out,
     // and an A→B switch settles A down while B lifts — no flicker, no rebuild.
@@ -491,6 +500,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         const returningIdx = existing?.rackIndex;
         if (Number.isInteger(returningIdx)) returnedRackIdxs.add(returningIdx);
         controller.recallTile(r, c);
+        cueSfx('tile.return');
         return;
       }
       selectedRackIndex = null;
@@ -584,6 +594,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         isJoker: !!src.isJoker, rackIndex: src.rackIndex ?? null,
       });
       if (moved === false) tentativeEntryCoords.delete(moveKey);
+      else cueSfx('tile.place');
       return;
     }
     if (pendingLockSelected && controller.view.pendingLock) {
@@ -597,6 +608,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         return;
       }
       controller.setPendingLock?.({ r, c, duration });
+      cueSfx('lock.place');
       renderLockInventory(controller.view);
       renderBoard(controller.view);
       return;
@@ -610,6 +622,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       if (r < 0 || r > 9 || c < 0 || c > 9) return;
       if (isCellBlockedForPlacement(controller.view, r, c)) return;
       controller.setPendingLock?.({ r, c, duration: selectedLock.duration });
+      cueSfx('lock.place');
       selectedLock = null;
       renderLockInventory(controller.view);
       renderBoard(controller.view);
@@ -638,7 +651,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         const placed = controller.placeTile({ r: pr, c: pc, letter: picked, val: 0, isJoker: true, rackIndex: ri });
         if (placed === false) tentativeEntryCoords.delete(jokerKey);
         clearJokerSubs();
-        if (placed !== false) selectedRackIndex = null;
+        if (placed !== false) { selectedRackIndex = null; cueSfx('tile.place'); }
         renderRack(controller.view);
       });
       jokerCancelledSub = bus.on('joker/cancelled', () => {
@@ -652,7 +665,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const entryKey = `${r},${c}`;
     tentativeEntryCoords.add(entryKey);
     const placed = controller.placeTile({ r, c, letter, val: rackTile.val ?? 0, isJoker: false, rackIndex: selectedRackIndex });
-    if (placed !== false) selectedRackIndex = null;
+    if (placed !== false) { selectedRackIndex = null; cueSfx('tile.place'); }
     else tentativeEntryCoords.delete(entryKey);
     renderRack(controller.view);
   }
@@ -683,6 +696,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     exchangeOverlay.classList?.toggle?.('free-swap', exchangeIsFreeSwap);
     renderExchangeRack(new Set());
     exchangeOverlay.classList?.remove('hidden');
+    cueSfx('exchange.open');
   }
 
   function closeExchangeOverlay() {
@@ -704,9 +718,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         // off.
         if (selected.has(i)) {
           selected.delete(i);
+          cueSfx('tile.return');
         } else {
           selected.clear();
           selected.add(i);
+          cueSfx('tile.pick');
         }
         renderExchangeRack(selected);
       }));
@@ -1059,17 +1075,74 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     try { renderAll(controller.view); } catch { /* swallow */ }
   }
 
+  // Status pill: errors, game-over, the live word-points counter
+  // ("✓ האור +8") while tiles are placed, and otherwise the opponent's last
+  // boost ("🎯 היריב קיבל: תור נוסף", "⚡ היריב קיבל: אנגרמה +15") — it stays
+  // until the player starts placing (gameController clears view.opponentBoost).
+  // The idle "choose a letter…" hint
+  // is gone — an empty pill is hidden (`.is-empty`, space kept so the board
+  // doesn't jump). Transient setS() toasts still write here and show.
   function renderStatus(v) {
+    const sbar = $('#sbar', root);
+    if (!sbar) return;
+    let text = '';
+    let tone = '';
+    let preview = null;
+    let boostInfo = null;
     if (v.lastInvalidReason) {
-      setText($('#sbar', root), invalidReasonText(v.lastInvalidReason));
+      text = invalidReasonText(v.lastInvalidReason);
+      tone = 'err';
     } else if (v.status === 'completed' || v.status === 'abandoned') {
       const winner = v.scores[0] > v.scores[1] ? 0 : v.scores[1] > v.scores[0] ? 1 : null;
-      setText($('#sbar', root), winner == null ? 'תיקו!' : `שחקן ${winner + 1} ניצח!`);
-    } else if (v.placed?.length) {
-      setText($('#sbar', root), g('pressConfirm'));
-    } else {
-      setText($('#sbar', root), g('chooseLetterBoard'));
+      text = winner == null ? 'תיקו!' : `שחקן ${winner + 1} ניצח!`;
+    } else if (v.placed?.length || v.swappedTiles?.length) {
+      preview = computeLiveWordPreview({
+        board: v._board, bonusBoard: v._bonusBoard, firstMove: v._firstMove,
+        placed: v.placed, swappedTiles: v.swappedTiles,
+        isWordValid: dictReady ? isWordValid : null,
+      });
+    } else if (v.opponentBoost) {
+      boostInfo = describeBoostSummary(v.opponentBoost.boost);
     }
+    sbar.classList?.remove?.('ok', 'err', 'bon', 'is-empty', 'sbar--preview', 'sbar--boost');
+    if (boostInfo) {
+      sbar.classList?.add?.('sbar--preview', 'sbar--boost');
+      sbar.innerHTML = `<span class="sbar-ic" aria-hidden="true">${escapeForOverlay(boostInfo.icon)}</span>`
+        + `<span class="sbar-w">היריב קיבל: ${escapeForOverlay(boostInfo.name)}</span>`
+        + (boostInfo.showPoints ? `<span class="sbar-pts" dir="ltr">+${boostInfo.extra}</span>` : '');
+      const label = `היריב קיבל בוסט: ${boostInfo.name}${boostInfo.showPoints ? `, ${boostInfo.extra} נקודות` : ''}`;
+      sbar.setAttribute?.('aria-label', label);
+      const key = `boost|${label}`;
+      if (key !== lastPreviewKey) {
+        sbar.classList?.remove?.('sbar--bump');
+        void sbar.offsetWidth;
+        sbar.classList?.add?.('sbar--bump');
+      }
+      lastPreviewKey = key;
+      return;
+    }
+    if (preview) {
+      const bad = preview.valid === false;
+      sbar.classList?.add?.('sbar--preview', bad ? 'err' : 'ok');
+      sbar.innerHTML = `<span class="sbar-ic" aria-hidden="true">${bad ? '✕' : '✓'}</span>`
+        + `<span class="sbar-w">${escapeForOverlay(preview.word)}</span>`
+        + (bad ? '' : `<span class="sbar-pts" dir="ltr">+${preview.score}</span>`);
+      sbar.setAttribute?.('aria-label', bad ? `${preview.word} — לא במילון` : `${preview.word} — ${preview.score} נקודות`);
+      const key = `${preview.word}|${preview.score}|${bad}`;
+      if (key !== lastPreviewKey) {
+        // Re-trigger the pop on every change of word / points.
+        sbar.classList?.remove?.('sbar--bump');
+        void sbar.offsetWidth;
+        sbar.classList?.add?.('sbar--bump');
+      }
+      lastPreviewKey = key;
+      return;
+    }
+    lastPreviewKey = '';
+    sbar.removeAttribute?.('aria-label');
+    setText(sbar, text);
+    if (tone) sbar.classList?.add?.(tone);
+    if (!text) sbar.classList?.add?.('is-empty');
   }
 
   function renderTopBars(v) {
@@ -2080,7 +2153,8 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
     flyChipIntoSum({
       chip, fromEl: wordAnchor,
       delayMs: i * SCORE_MERGE_WORD_STAGGER_MS,
-      onLand: () => { runningSum += ws; updateSumDisplay(); },
+      // Each word's points drop in as a coin, a little higher per word.
+      onLand: () => { runningSum += ws; updateSumDisplay(); cueSfx('score.chip', { rate: 1 + i * 0.07 }); },
     });
   });
 
@@ -2144,6 +2218,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
         chip.remove?.();
         runningSum += multDelta; // sum visibly jumps to the multiplied value
         updateSumDisplay();
+        cueSfx('score.multiplier');
       }, SCORE_MERGE_WORD_FLIGHT_MS);
     }, multStart ?? 0);
   }
@@ -2173,6 +2248,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
         chip.remove?.();
         runningSum += extra;
         updateSumDisplay();
+        cueSfx('score.chip', { rate: 1.25 });
       }, SCORE_MERGE_WORD_FLIGHT_MS);
     }, boostStart ?? 0);
   }
@@ -2209,6 +2285,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
       // number. Phase 3B removed the radial hit-burst and the separate score-pop
       // that used to fire on this same frame (three emphases for one moment).
       flashClass(targetEl, 'score-panel-arrive', 360, onComplete);
+      cueSfx('score.land');
       sumChip.remove?.();
     }, SCORE_MERGE_SUM_FLIGHT_MS);
   }, mergeEnd + SCORE_MERGE_HOLD_AFTER_MS);
@@ -2319,63 +2396,6 @@ function showTurnEffectBanner(root, payload) {
   }, TURN_EFFECT_BANNER_MS);
 }
 
-// One-line Hebrew descriptions of every boost the player can land on. Each
-// row drives the modal overlay so the player always sees what they got.
-function describeBoost(boostId, payload, extra) {
-  const p = payload ?? {};
-  switch (boostId) {
-    case 'auto_extra_score':
-      return {
-        title: 'בוסט ניקוד!',
-        bigText: `+${extra || p.extra || 0} נק'`,
-        sub:   'הנקודות יתווספו עם אישור',
-      };
-    case 'extra_turn':
-      return { title: 'תור נוסף!', image: 'assets/rewards/extra turn.png', sub: 'תקבל תור נוסף ברצף' };
-    case 'multiply_next_turns': {
-      const mult  = Number(p.multiplier ?? 2);
-      const turns = Number(p.turnsRemaining ?? 1);
-      return {
-        title: `הכפלת ניקוד ×${mult}!`,
-        bigText: `×${mult}`,
-        sub: turns > 1 ? `הניקוד יוכפל ב-${turns} התורים הבאים` : 'הניקוד יוכפל בתור הבא',
-      };
-    }
-    case 'timer_bonus':
-      return {
-        title: 'בוסט זמן',
-        bigText: `+${Number(p.seconds ?? 0)} שניות`,
-        sub: 'יתווסף לזמן התור הבא',
-      };
-    // The next three used bare emoji, which the overlay painted gold (see
-    // showBonusAwardOverlay) — they showed up as meaningless yellow discs.
-    // pause.png / rematch.png are already Boost-family art (blue sphere, cyan
-    // ring, glossy 3D), so they slot in next to 'extra turn.png' cleanly.
-    // Bespoke artwork is still tracked in docs/asset_inventory.md.
-    case 'free_tile_swap':
-      return {
-        title: 'החלפת אות חינם',
-        image: 'assets/ui/rematch.png',       // circular swap arrows
-        bigEmoji: '🔄',
-        sub: 'תוכל להחליף אותיות בלי לוותר על התור',
-      };
-    case 'skip_opponent_turn':
-      return {
-        title: 'דילוג על תור היריב',
-        image: 'assets/ui/pause.png',         // the opponent's turn is halted
-        bigEmoji: '⏭️',
-        sub: 'היריב יפסיד את התור הבא',
-      };
-    case 'cancel_next_opponent_bonus':
-      // No usable shield asset (the achievements shield is a multi-object sheet
-      // with a baked-in background), so this stays an emoji — but as bigEmoji it
-      // renders as a real colour shield instead of a gold blob.
-      return { title: 'ביטול בוסט יריב', bigEmoji: '🛡️', sub: 'הבוסט הבא של היריב יבוטל' };
-    default:
-      return { title: 'בוסט הופעל', bigEmoji: '⚡', sub: '' };
-  }
-}
-
 function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bonusIdx, boostPayload, isOpponent } = {}) {
   const doc = ownerDocumentOf(root);
   if (!doc?.createElement) return;
@@ -2414,7 +2434,7 @@ function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bo
     ? `<div class="ovd" style="margin-bottom:4px;"><img data-boost-img src="${escapeForOverlay(info.image)}" alt="${escapeForOverlay(info.title)}" style="width:72px;height:72px;object-fit:contain;"></div>`
     : bigFallback;
   card.innerHTML = `
-    <div class="ovic">⚡</div>
+    <div class="ovic">${BOOST_BOLT_ICON_HTML}</div>
     <div class="ovt">${escapeForOverlay(info.title)}</div>
     ${bigBlock}
     ${info.sub ? `<div class="ovd" style="margin-bottom:12px;">${escapeForOverlay(info.sub)}</div>` : ''}

@@ -13,6 +13,7 @@
 // option; main.js decides per-mode whether to show it.
 
 import { $, on, setText } from '../domHelpers.js';
+import { cue as cueSfx } from '../feedbackService.js';
 
 export const COIN_INTENT = Object.freeze({
   ENTER: 'coin/enter',
@@ -73,6 +74,7 @@ export function mountCoinTossScreen({ root = globalThis.document, bus } = {}) {
       coinDisc.classList?.remove('flipping');
       void coinDisc.offsetWidth;
       coinDisc.classList?.add('flipping');
+      cueSfx('coin.flip');
     }
 
     setTimeout(() => {

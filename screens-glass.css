@@ -132,22 +132,22 @@
 .app-loading-tip-dot { height: 6px !important; border-radius: 3px !important; background: rgba(255,255,255,.2) !important; transition: width .2s ease !important; }
 .app-loading-tip-dot.is-active { width: 16px !important; background: var(--sg-p1) !important; transform: none !important; }
 
-/* ── Home: wood-tile logo ── */
+/* ── Home: logo = Blender render (assets/ui/boost-logo.webp) ── */
 .em-home .hlogo {
-  display: flex; justify-content: center; gap: 8px; direction: rtl; padding: 10px 0 6px !important;
-  filter: none !important; margin: 4px 0 6px !important;
+  display: flex; justify-content: center; padding: 0 !important; margin: 0 0 6px !important;
+  filter: drop-shadow(0 12px 18px rgba(0,0,0,.5)) drop-shadow(0 0 26px rgba(40,212,255,.16)) !important;
 }
-.hl-tile {
-  position: relative; width: 64px; height: 64px; display: grid; place-items: center; border-radius: 13px;
-  color: #8a5324; background: var(--sg-wood); border: 3px solid #46dcf5;
-  box-shadow: 0 0 0 1px rgba(0,60,90,.55), 0 0 8px rgba(40,212,255,.55), inset 0 0 0 1px rgba(255,255,255,.35), 0 4px 0 1px #7a5530;
+.hlogo img.hl-img, .em-home .hlogo img.hl-img {
+  display: block; width: min(92%, 420px) !important; max-width: none !important; min-width: 0 !important;
+  height: auto; aspect-ratio: 1100 / 450; object-fit: contain; user-select: none; -webkit-user-drag: none;
 }
-.hl-tile:nth-child(1) { transform: rotate(6deg) translateY(-4px); }
-.hl-tile:nth-child(2) { transform: rotate(-3deg) translateY(8px); }
-.hl-tile:nth-child(3) { transform: rotate(2deg) translateY(2px); }
-.hl-tile:nth-child(4) { transform: rotate(-5deg) translateY(-2px); }
-.hl-l { font: 900 40px/1 'Heebo', sans-serif; margin-top: -4px; text-shadow: 0 1px 0 rgba(255,245,220,.8), 0 -1px 0 rgba(70,35,10,.55); }
-.hl-bolt { position: absolute; inset: -4px; width: calc(100% + 8px); height: calc(100% + 8px); filter: drop-shadow(0 0 4px #28d4ff); pointer-events: none; }
+@media (max-height: 740px) { .em-home .hlogo img.hl-img { width: min(80%, 42svh) !important; } }
+
+/* Home column: logo + strips + cards + leaderboard row sit together, centred in
+   the space between the topbar and the dock (no dead gap above the dock). */
+.em-home .hm-main { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column; justify-content: center; padding: 8px 0 14px; }
+.em-home .hm-main .hm-cards { flex: none !important; padding-bottom: 4px !important; }
+.em-home .hm-main .hm-strip--lb { margin-top: 4px; }
 
 /* ── Home: strips + mode cards ── */
 .hm-cards { gap: 12px !important; padding: 8px 14px 12px !important; flex: 1; }
@@ -323,17 +323,30 @@ textarea.ri { height: auto; min-height: 110px; padding: 12px 14px; }
 }
 #ov-create-room > .ovc, #ov-join-code > .ovc, #ov-matchmaking > .ovc, #ov-shailta > .ovc, #ov-exch > .ovc, #ov-joker > .ovc,
 #ov-pause > .ovc, #ov-back-confirm > .ovc, #ov-report > .ovc, #ov-champs > .ovc, #ov-friend-detail > .ovc {
-  width: 100% !important; max-width: 480px !important; margin: 0 auto;
-  border-radius: 26px 26px 0 0 !important; border-bottom: none !important; padding: 18px 16px 26px !important;
+  /* Floating sheet: a complete card lifted off the bottom edge (all corners
+     rounded, full border) — flush-to-the-edge sheets read as "cut off" on
+     wide windows and behind browser chrome / the Android gesture bar. */
+  width: calc(100% - 20px) !important; max-width: 480px !important;
+  margin: 0 auto calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: 26px !important; padding: 18px 16px 18px !important;
   background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0) 30%), rgba(10,22,66,.97) !important;
-  border-top: 1px solid rgba(120,190,255,.35) !important; box-shadow: 0 -14px 40px rgba(0,0,0,.6) !important;
-  max-height: 88vh !important;
+  border: 1px solid rgba(120,190,255,.35) !important; box-shadow: 0 -10px 40px rgba(0,0,0,.55), 0 16px 34px rgba(0,0,0,.5) !important;
+  max-height: calc(100svh - 30px - env(safe-area-inset-bottom, 0px)) !important;
 }
 #ov-create-room > .ovc::before, #ov-join-code > .ovc::before, #ov-matchmaking > .ovc::before, #ov-shailta > .ovc::before,
 #ov-exch > .ovc::before, #ov-joker > .ovc::before, #ov-pause > .ovc::before, #ov-back-confirm > .ovc::before,
 #ov-report > .ovc::before, #ov-champs > .ovc::before, #ov-friend-detail > .ovc::before {
   content: ""; display: block; width: 40px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.2); margin: -8px auto 12px;
 }
+
+/* sheets rise from the bottom instead of the generic card scale-in */
+@keyframes gSheetUp { from { opacity: 0; transform: translateY(48px); } to { opacity: 1; transform: none; } }
+#ov-create-room:not(.hidden) > .ovc, #ov-join-code:not(.hidden) > .ovc, #ov-matchmaking:not(.hidden) > .ovc, #ov-shailta:not(.hidden) > .ovc,
+#ov-exch:not(.hidden) > .ovc, #ov-joker:not(.hidden) > .ovc, #ov-pause:not(.hidden) > .ovc, #ov-back-confirm:not(.hidden) > .ovc,
+#ov-report:not(.hidden) > .ovc, #ov-champs:not(.hidden) > .ovc, #ov-friend-detail:not(.hidden) > .ovc {
+  animation: gSheetUp .32s cubic-bezier(.22,1,.36,1) both;
+}
+@media (prefers-reduced-motion: reduce) { #ov-join-code > .ovc, #ov-pause > .ovc { animation: none !important; } }
 
 /* sheet content (mockup .sheet .sh) */
 .ovc.g-sheet { display: flex !important; flex-direction: column !important; gap: 12px; text-align: right !important; overflow-y: auto; }
@@ -980,6 +993,8 @@ svg.gi.g-chev { color: var(--sg-faint); width: 16px; height: 16px; }
 #ov-settings .set-seg { width: 120px; flex: none; padding: 3px !important; }
 #ov-settings .set-seg .set-yn { flex: 1; height: 28px; display: grid; place-items: center; font-size: 13px !important; }
 #ov-settings .set-seg .set-yn.active-yes { background: linear-gradient(180deg, #43e0ff, #1597d6) !important; color: #022038 !important; }
+#ov-settings .set-seg3 { width: 172px; }
+#ov-settings .set-seg3 .set-yn { font-size: 12px !important; }
 #ov-settings .sett-notif-btn { min-height: 32px !important; height: 32px; padding: 0 12px !important; font-size: 13px !important; background: linear-gradient(180deg, #43e0ff, #1597d6) !important; color: #022038 !important; border-radius: 11px !important; }
 #ov-settings .sett-tool-lbl { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 800; color: var(--sg-ink); margin: 0 0 8px; }
 #ov-settings .shin-wrap { margin: 0 0 8px; }
@@ -993,8 +1008,8 @@ svg.gi.g-chev { color: var(--sg-faint); width: 16px; height: 16px; }
 /* ── Auth (#sauth-login / #sauth-signup) ── */
 .auth-g .sf { margin: 0 !important; }
 .auth-g .auth-logo { padding: 10px 0 4px; margin: 0; }
-.auth-g .auth-logo .hl-tile { width: 44px; height: 44px; border-radius: 9px; border-width: 2.3px; }
-.auth-g .auth-logo .hl-l { font-size: 27px; margin-top: -3px; }
+.auth-g .auth-logo { display: flex; justify-content: center; filter: drop-shadow(0 8px 14px rgba(0,0,0,.45)); }
+.auth-g .auth-logo img.hl-img { width: min(70%, 250px) !important; }
 .auth-g .stitle { color: var(--sg-ink); }
 .auth-g .auth-err { min-height: 0; font-size: 12px; font-weight: 700; color: #ff8f9c; text-align: center; }
 .auth-g .auth-err:empty { display: none; }
@@ -1034,23 +1049,52 @@ svg.gi.em-help-dropdown-ic { color: var(--sg-p1); width: 18px; height: 18px; }
 #ov-waiting-room .wr-send-btn { height: 48px; padding: 0 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,.35); background: linear-gradient(180deg, #43e0ff, #1597d6); color: #022038; font: 900 13px 'Heebo', sans-serif; }
 #ov-waiting-room .wr-footer-notice { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; font-size: 11px; font-weight: 600; color: var(--sg-dim); }
 
-/* ── Partner search (#ov-partner-search) ── */
-#ov-partner-search .ps-ovc { position: relative; overflow: hidden; }
-#ov-partner-search .ps-dice-icon { display: none !important; }
-#ov-partner-search .ps-arena { padding: 30px 0; background: radial-gradient(circle at 50% 50%, transparent 0 69px, rgba(40,212,255,.22) 70px 71px, transparent 72px 109px, rgba(40,212,255,.16) 110px 111px, transparent 112px 149px, rgba(40,212,255,.1) 150px 151px, transparent 152px); }
-#ov-partner-search .mf-title { font: 900 20px 'Heebo', sans-serif; color: var(--sg-ink); }
-#ov-partner-search .ps-pcard { background: none; border: none; box-shadow: none; }
-#ov-partner-search .ps-av { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; font-size: 44px;
-  border: 2px solid var(--sg-p1); background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.18), rgba(0,0,0,.35)); box-shadow: 0 0 0 3px rgba(40,212,255,.25), 0 0 18px rgba(40,212,255,.6); }
-#ov-partner-search .ps-av img { width: 92%; height: 92%; object-fit: contain; }
-#ov-partner-search .ps-nm { font-weight: 900; color: var(--sg-ink); }
-#ov-partner-search .ps-lbl { font-size: 12px; color: var(--sg-dim); font-weight: 700; }
-#ov-partner-search .ps-vs { font-size: 20px; font-style: italic; color: var(--sg-dim); text-shadow: none; }
-#ov-partner-search .ps-slot-card .ps-slot-win { width: 84px; height: 84px; border-radius: 50%; border: 2px dashed rgba(255,201,61,.6); background: radial-gradient(circle, rgba(255,201,61,.12), rgba(0,0,0,.3)); }
+/* ── Partner search (#ov-partner-search) ──
+   Radar sweep behind "me" vs a spinning opponent slot. Item height (88px) is
+   mirrored by ITEM_H in matchmakingOverlayScreen.js. */
+#ov-partner-search > .ovc.ps-ovc { position: relative; overflow: hidden; width: min(92vw, 400px) !important; padding: 20px 18px 18px !important; border-radius: 26px !important; }
+#ov-partner-search .ps-body { display: flex; flex-direction: column; align-items: stretch; gap: 0; text-align: center; }
+#ov-partner-search .ps-head { display: flex; align-items: center; justify-content: center; gap: 10px; }
+#ov-partner-search .mf-title { font: 900 20px/1.2 'Heebo', sans-serif; color: var(--sg-ink); margin: 0; }
+#ov-partner-search .ps-dots { margin: 4px 0 0; gap: 5px; }
+#ov-partner-search .ps-dots .ps-dot { width: 6px; height: 6px; background: var(--sg-p1); }
+#ov-partner-search .ps-arena { position: relative; display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; gap: 6px; margin: 16px 0 18px; padding: 18px 0 6px; background: none; isolation: isolate; }
+#ov-partner-search .ps-radar { position: absolute; left: 50%; top: 50%; width: 300px; height: 300px; transform: translate(-50%, -50%); z-index: -1; pointer-events: none; border-radius: 50%;
+  background: radial-gradient(circle, transparent 0 44px, rgba(40,212,255,.20) 45px 46px, transparent 47px 88px, rgba(40,212,255,.14) 89px 90px, transparent 91px 132px, rgba(40,212,255,.09) 133px 134px, transparent 135px);
+  -webkit-mask: radial-gradient(circle, #000 55%, transparent 72%); mask: radial-gradient(circle, #000 55%, transparent 72%); }
+#ov-partner-search .ps-sweep { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, rgba(40,212,255,.28), rgba(40,212,255,0) 70deg, transparent 360deg); animation: psSweep 2.6s linear infinite; }
+@keyframes psSweep { to { transform: rotate(360deg); } }
+#ov-partner-search .ps-pcard, #ov-partner-search #ps-me-card { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; animation: none; gap: 6px; min-width: 0; }
+#ov-partner-search .ps-av, #ov-partner-search .ps-slot-ring { width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; margin: 0 auto; font-size: 44px; }
+#ov-partner-search .ps-av { position: relative; border: 2.5px solid var(--sg-p1); background: radial-gradient(circle at 50% 38%, rgba(40,212,255,.26), rgba(6,16,54,.95) 70%);
+  box-shadow: 0 0 0 4px rgba(40,212,255,.12), 0 0 22px rgba(40,212,255,.5); animation: psMeGlow 2.4s ease-in-out infinite; }
+@keyframes psMeGlow { 50% { box-shadow: 0 0 0 6px rgba(40,212,255,.16), 0 0 30px rgba(40,212,255,.7); } }
+#ov-partner-search .ps-av img { width: 88%; height: 88%; object-fit: contain; }
+#ov-partner-search .ps-slot-ring { position: relative; overflow: visible; border: 2.5px solid rgba(255,201,61,.85); background: radial-gradient(circle at 50% 38%, rgba(255,201,61,.2), rgba(20,14,40,.95) 70%);
+  box-shadow: 0 0 0 4px rgba(255,201,61,.1), 0 0 20px rgba(255,201,61,.35); }
+#ov-partner-search .ps-slot-ring::after { content: ""; position: absolute; inset: -8px; border-radius: 50%; border: 2px dashed rgba(255,201,61,.55); animation: psSweep 6s linear infinite; }
+#ov-partner-search .ps-slot-win { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: none; background: none; position: relative; }
 #ov-partner-search .ps-slot-win::before, #ov-partner-search .ps-slot-win::after { display: none; }
-#ov-partner-search .ps-slot-item { height: 84px; }
-#ov-partner-search .ps-slot-card.ps-found .ps-slot-win { border-style: solid; border-color: var(--sg-p2); box-shadow: 0 0 18px rgba(255,201,61,.6); }
-#ov-partner-search .mf-cancel { width: 100%; height: 50px; margin-top: 14px; background: rgba(255,255,255,.06) !important; border: 1px solid var(--sg-line) !important; color: var(--sg-ink) !important; font-size: 15px !important; }
+#ov-partner-search .ps-slot-item { height: 88px; width: 100%; display: grid; place-items: center; gap: 0; }
+#ov-partner-search .ps-slot-av { width: 80%; height: 80%; display: grid; place-items: center; font-size: 40px; line-height: 1; }
+#ov-partner-search .ps-slot-av img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+#ov-partner-search .ps-slot-reel.ps-spinning .ps-slot-av { filter: blur(.6px) saturate(.8); opacity: .85; }
+#ov-partner-search .ps-slot-nm { display: none; }
+#ov-partner-search .ps-nm { font: 900 15px/1.2 'Heebo', sans-serif; color: var(--sg-ink); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 6px; }
+#ov-partner-search .ps-slot-card:not(.ps-found) .ps-nm { color: var(--sg-dim); font-weight: 700; }
+#ov-partner-search .ps-lbl { justify-self: center; align-self: center; margin: 0 auto; font: 800 11px/1 'Heebo', sans-serif; padding: 4px 10px; border-radius: 999px;
+  color: var(--sg-p2); background: rgba(255,201,61,.1); border: 1px solid rgba(255,201,61,.35); }
+#ov-partner-search .ps-lbl--me { color: var(--sg-p1); background: rgba(40,212,255,.1); border-color: rgba(40,212,255,.35); }
+#ov-partner-search .ps-vs { align-self: start; margin-top: 22px; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  font: italic 900 16px/1 'Heebo', sans-serif; color: #fff; text-shadow: 0 0 8px rgba(40,212,255,.8);
+  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,.18), rgba(8,22,70,.96) 70%); border: 1.5px solid rgba(120,190,255,.45); box-shadow: 0 6px 16px rgba(0,0,0,.45); }
+#ov-partner-search .ps-slot-card.ps-found .ps-slot-ring { border-color: var(--sg-ok); box-shadow: 0 0 0 5px rgba(46,229,157,.15), 0 0 26px rgba(46,229,157,.6); transition: border-color .3s, box-shadow .3s; }
+#ov-partner-search .ps-slot-card.ps-found .ps-slot-ring::after { border-color: rgba(46,229,157,.6); animation: none; }
+#ov-partner-search .ps-slot-card.ps-found .ps-nm { color: var(--sg-ink); font-weight: 900; }
+#ov-partner-search .mf-cancel { width: 100%; height: 50px; margin: 0; background: rgba(255,255,255,.06) !important; border: 1px solid var(--sg-line) !important; color: var(--sg-ink) !important; font-size: 15px !important; }
+@media (prefers-reduced-motion: reduce) {
+  #ov-partner-search .ps-sweep, #ov-partner-search .ps-slot-ring::after, #ov-partner-search .ps-av { animation: none; }
+}
 
 /* ── VS intro (#ov-vs-intro): cyan half (me) / gold half (opponent) ── */
 #ov-vs-intro.vs-intro { background: linear-gradient(180deg, #07123d, #040a22 55%, #030817) !important; backdrop-filter: none !important; }
@@ -1106,6 +1150,13 @@ svg.gi.em-help-dropdown-ic { color: var(--sg-p1); width: 18px; height: 18px; }
 
 /* ── Setup (#ss) ── */
 #ss .ss-hero { padding: 4px 0 2px; }
+/* Mode medallion: cyan ring like the home mode-card art, and the icon fills it
+   (the JS toggles the spans to inline-flex — they need a size, otherwise the
+   74% img collapses to a small robot inside a grey double ring). */
+#ss .ss-medal { background: radial-gradient(circle at 50% 40%, rgba(40,212,255,.26), rgba(6,16,54,.94) 70%);
+  box-shadow: inset 0 0 0 2px rgba(40,212,255,.7), inset 0 0 18px rgba(40,212,255,.22), 0 0 0 6px rgba(40,212,255,.08), 0 0 30px rgba(40,212,255,.3), 0 10px 24px rgba(0,0,0,.5); }
+#ss .ss-medal > span { width: 100%; height: 100%; align-items: center; justify-content: center; line-height: 0; }
+#ss .ss-medal > span > img { width: 80%; height: 80%; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,.55)); }
 #ss .ss-names { display: flex; flex-direction: column; gap: 10px; }
 #ss .ss-names .sf[style*="display: none"], #ss .ss-names .sf[style*="display:none"] { display: none !important; }
 #ss .ss-racks-seg { width: 120px; flex: none; padding: 3px; }
@@ -1134,3 +1185,431 @@ input.g-tog-input { width: 46px !important; height: 28px !important; min-width: 
 #ov-settings .sett-about-tx { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 #ov-settings .sett-about-credit { font-size: 10.5px; color: var(--sg-dim); font-weight: 600; text-align: right; }
 #ov-settings .sett-about-credit a { color: var(--sg-p1); text-decoration: none; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   BOOST MINI-GAMES — glass + wood (Oct 2026)
+   One skin for every boost surface, in the game-screen language:
+     #ov-bonus-intro      — intro dialog ("let's play")
+     #ov-bonus            — the in-card mini-games + their result (#bchal)
+     .bz-overlay/.bz-card — self-hosted games (unscramble, wheel, fallbacks)
+     .bonus-award-card    — boost award dialog (gameScreen.js)
+     #ov-bonus-spectator  — what the opponent sees meanwhile
+   Glass card · compact medal header · glass board tray with navy cells ·
+   BOOST-logo wood tiles (cyan bezel) in a rack well · cyan primary action ·
+   gold = points. Tile states: placed = white bezel + cyan glow, given =
+   gold bezel, correct = green, wrong = red. Replaces the Phase-1 "electric"
+   block that lived in menu-electric.css.
+═══════════════════════════════════════════════════════════════ */
+:root {
+  --bz-wood-hot: repeating-linear-gradient(92deg, rgba(150,95,40,.08) 0 1px, transparent 1px 3px, rgba(150,95,40,.05) 3px 4px, transparent 4px 7px),
+                 radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.5), transparent 60%),
+                 linear-gradient(165deg, #fbe6c0, #efcc98 60%, #e2b981);
+  --bz-wood-gold: repeating-linear-gradient(92deg, rgba(150,95,40,.10) 0 1px, transparent 1px 3px, rgba(150,95,40,.06) 3px 4px, transparent 4px 7px),
+                  radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.45), transparent 60%),
+                  linear-gradient(165deg, #ffe7a8, #f4c76e 60%, #e4aa4a);
+  --bz-cell: linear-gradient(180deg, #22438c, #1b3778);
+  --bz-tray: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0) 30%), rgba(6,14,48,.85);
+  --bz-tile-sh: 0 0 0 1px rgba(0,50,80,.5), 0 0 4px rgba(40,212,255,.3), inset 0 0 0 1px rgba(255,255,255,.35), 0 2px 0 1px #7a5530;
+  --bz-letter-sh: 0 1px 0 rgba(255,245,220,.8), 0 -1px 0 rgba(70,35,10,.55);
+}
+@keyframes bzPopupIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes bzResultIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes bzPopBounce { 0% { transform: scale(.4); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes bzRewardPop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes bzSocket { 0%, 100% { box-shadow: 0 0 10px rgba(40,212,255,.45), inset 0 0 6px rgba(40,212,255,.35); }
+                      50%      { box-shadow: 0 0 18px rgba(40,212,255,.8), inset 0 0 10px rgba(40,212,255,.5); } }
+@keyframes gMedalGlow {
+  0%, 100% { box-shadow: inset 0 0 0 2.5px rgba(40,212,255,.8), inset 0 0 18px rgba(40,212,255,.28), 0 0 22px rgba(40,212,255,.34); }
+  50%      { box-shadow: inset 0 0 0 2.5px rgba(90,228,255,1), inset 0 0 22px rgba(40,212,255,.4), 0 0 34px rgba(40,212,255,.55); }
+}
+
+/* ── Backdrop: the gameplay dimmed + blurred behind every boost surface ── */
+#ov-bonus, #ov-bonus-intro, #ov-bonus-spectator, .bonus-award-positioner, .bz-overlay {
+  background: radial-gradient(ellipse 90% 55% at 50% 35%, rgba(30,80,200,.26), transparent 70%), rgba(2,6,26,.8) !important;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.bz-overlay {
+  position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+  padding: 12px; font-family: 'Heebo', sans-serif;
+}
+
+/* ── Card: the app's dialog glass ── */
+#ov-bonus > .ovc, #ov-bonus-intro > .ovc, .ovc.bonus-award-card, .bz-card {
+  position: relative; color: var(--sg-ink); font-family: 'Heebo', sans-serif;
+  background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,0) 35%), rgba(10,22,66,.97) !important;
+  border: 1px solid rgba(120,190,255,.35) !important; border-radius: 24px !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.3) !important;
+  overflow-x: hidden;
+}
+#ov-bonus:not(.hidden) > .ovc, #ov-bonus-intro:not(.hidden) > .ovc, .bz-card { animation: bzPopupIn .28s cubic-bezier(.22,1,.36,1) both; }
+
+/* ── Play card (#ov-bonus / .bz-card): medal + title/description header ──
+   A 2-column grid: the medal spans the two header rows on the right (RTL),
+   everything after the header runs full width. */
+#ov-bonus > .ovc, .bz-card {
+  display: grid !important; grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; row-gap: 0;
+  align-content: start; text-align: center; box-sizing: border-box;
+  width: calc(100% - 24px) !important; max-width: 400px !important;
+  max-height: calc(100vh - 24px) !important; max-height: calc(100dvh - 24px) !important; overflow-y: auto;
+  padding: 16px !important;
+}
+.bz-card { width: 100% !important; }
+#ov-bonus > .ovc > :not(.bz-confetti), .bz-card > :not(.bz-confetti):not(.bz-burst) { grid-column: 1 / -1; min-width: 0; }
+#ov-bonus > .ovc > .ovic, .bz-card > .bz-bolt {
+  grid-column: 1 !important; grid-row: 1 / span 2; align-self: center;
+  width: 48px !important; height: 48px !important; margin: 0 !important; border-radius: 50%;
+  display: grid !important; place-items: center; font-size: 24px !important; line-height: 1 !important; color: #f2fcff;
+  background: radial-gradient(circle at 50% 36%, rgba(40,212,255,.30), rgba(6,16,54,.96) 70%) !important;
+  box-shadow: inset 0 0 0 2px rgba(40,212,255,.8), inset 0 0 12px rgba(40,212,255,.28), 0 0 16px rgba(40,212,255,.35) !important;
+  filter: none !important; animation: none !important;
+}
+#ov-bonus > .ovc > .ovic svg.gi, .bz-card > .bz-bolt svg.gi { width: 50%; height: 50%; color: #f2fcff; filter: drop-shadow(0 0 4px #28d4ff) drop-shadow(0 0 10px rgba(40,212,255,.6)); }
+#ov-bonus > .ovc > .ovic .ovic-emoji, .bz-card > .bz-bolt.is-emoji { font-size: 26px !important; }
+#ov-bonus > .ovc > .ovt, .bz-card > .bz-title {
+  grid-column: 2 !important; grid-row: 1; align-self: end; text-align: right; margin: 0 !important;
+  font: 900 20px/1.2 'Heebo', sans-serif !important; letter-spacing: 0 !important;
+  background: none !important; -webkit-text-fill-color: currentColor !important; color: #ffd24a !important; filter: none !important;
+  text-shadow: 0 0 12px rgba(255,190,40,.35), 0 2px 0 rgba(90,50,0,.5);
+}
+#ov-bonus > .ovc > .ovd, .bz-card > .bz-sub {
+  grid-column: 2 !important; grid-row: 2; align-self: start; text-align: right; margin: 3px 0 0 !important; min-height: 0;
+  font: 600 12.5px/1.45 'Heebo', sans-serif !important; color: var(--sg-dim) !important;
+}
+#ov-bonus > .ovc > .ovd:empty { display: none; }
+/* title alone (no description): centre it on the medal */
+#ov-bonus > .ovc > .ovt:has(+ .ovd:empty), .bz-card > .bz-title:not(:has(+ .bz-sub)) { grid-row: 1 / span 2; align-self: center; }
+
+/* spacing below the header */
+#ov-bonus #bchal { margin: 12px 0 0 !important; }
+#ov-bonus .ovbtns { margin-top: 12px !important; }
+#ov-bonus .ovbtns > .ovb { flex: 1 !important; }
+.bz-card > :is(.bz-title, .bz-sub) + :not(.bz-sub) { margin-top: 12px; }
+.bz-card > :not(.bz-bolt):not(.bz-title):not(.bz-sub):not(.bz-burst):not(.bz-confetti):not(:last-child) { margin-bottom: 10px; }
+#bchal, .bz-body, [data-ls="body"], .xw-wrap { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+#bchal:empty { display: none; }
+
+/* ── Timer bar ── */
+#ov-bonus .tw, .bz-card .tw {
+  height: 6px !important; margin: 12px 0 0 !important; border-radius: 99px !important; overflow: visible !important;
+  background: rgba(0,0,0,.35) !important; box-shadow: inset 0 1px 2px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+}
+.bz-card .tw { margin: 12px 0 10px !important; }
+#ov-bonus .tw .tbar2, .bz-card .tw .tbar2 {
+  position: relative; height: 100%; border-radius: 99px !important;
+  background: linear-gradient(90deg, #43e0ff, #1597d6) !important; box-shadow: 0 0 10px rgba(40,212,255,.6);
+}
+#ov-bonus .tw .tbar2::after, .bz-card .tw .tbar2::after {
+  content: ''; position: absolute; top: 50%; left: 0; width: 11px; height: 11px; transform: translate(-50%, -50%); border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #7fe8ff 45%, transparent 70%); box-shadow: 0 0 10px rgba(40,212,255,.9);
+}
+#ov-bonus .tw .tbar2.urg, .bz-card .tw .tbar2.urg { background: linear-gradient(90deg, #ff9d5c, #ff5a6e) !important; box-shadow: 0 0 10px rgba(255,90,110,.7); }
+#ov-bonus .tw .tbar2.urg::after, .bz-card .tw .tbar2.urg::after { background: radial-gradient(circle, #fff, #ffb3bd 45%, transparent 70%); box-shadow: 0 0 10px rgba(255,90,110,.9); }
+
+/* ── Board tray + rack well ── */
+:is(#ov-bonus, .bz-card) :is(.hwgrid, .xw-board, .cw-mini-grid, .hc-tray, .ls-tray, .bz-slots) {
+  background: var(--bz-tray); border: 1px solid var(--sg-line); border-radius: 18px; box-sizing: border-box;
+  box-shadow: 0 10px 26px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.4), inset 0 0 40px rgba(40,120,255,.10);
+}
+:is(#ov-bonus, .bz-card) :is(.bz-bank, .xw-pool) {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; margin: 0; border-radius: 14px; box-sizing: border-box;
+  background: rgba(0,0,0,.28); box-shadow: inset 0 2px 6px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+:is(#ov-bonus, .bz-card) .bz-bank:empty { display: none; }
+:is(#ov-bonus, .bz-card) .bz-slots { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 12px 10px; }
+
+/* ── Wood tiles (.ut = rack/slot tile, .bz-tile = static tile) ── */
+:is(#ov-bonus, .bz-card) .ut, .bz-tile {
+  width: 42px; height: 46px; flex: none; box-sizing: border-box; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; cursor: pointer; user-select: none; -webkit-user-select: none;
+  background: var(--sg-wood); border: 1.5px solid #3aaecb; color: #8a5324;
+  font: 900 22px/1 'Heebo', sans-serif; text-shadow: var(--bz-letter-sh); box-shadow: var(--bz-tile-sh);
+  transition: transform .1s, box-shadow .12s, opacity .12s;
+}
+:is(#ov-bonus, .bz-card) .ut:active { transform: translateY(1px) scale(.96); }
+.bz-tile { cursor: default; }
+.bz-tile.is-sm { width: 32px; height: 36px; font-size: 18px; border-radius: 7px; }
+/* empty slot = a navy board cell */
+:is(#ov-bonus, .bz-card) .ut.sl {
+  background: var(--bz-cell); border: 1.5px solid rgba(120,190,255,.2); color: transparent; text-shadow: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.28), inset 0 2px 6px rgba(0,0,0,.25);
+}
+/* placed this turn: white-hot bezel + cyan glow (the board's .btile.nw) */
+:is(#ov-bonus, .bz-card) .ut.sl.fi, :is(#ov-bonus, .bz-card) .ut.is-placed {
+  background: var(--bz-wood-hot); border: 1.5px solid #fff; color: #8a5324; text-shadow: var(--bz-letter-sh);
+  box-shadow: 0 0 0 1px #28d4ff, 0 0 12px #28d4ff, 0 0 20px rgba(40,212,255,.4), inset 0 0 0 1px rgba(255,255,255,.5), 0 3px 0 1px #7a5530;
+}
+/* tone bezels */
+:is(#ov-bonus, .bz-card) :is(.ut.sl.fi, .ut, .cw-cell).is-given, .bz-tile.is-given {
+  background: var(--bz-wood-gold); border-color: #ffc93d; color: #7a4512;
+  box-shadow: 0 0 0 1px rgba(80,50,0,.6), 0 0 10px rgba(255,201,61,.6), inset 0 0 0 1px rgba(255,255,255,.4), 0 2px 0 1px #7a5530;
+}
+:is(#ov-bonus, .bz-card) :is(.ut.sl.fi, .ut, .cw-cell).is-ok, .bz-tile.is-ok {
+  border-color: #2ee59d;
+  box-shadow: 0 0 0 1px rgba(0,70,40,.6), 0 0 12px rgba(46,229,157,.65), inset 0 0 0 1px rgba(255,255,255,.4), 0 2px 0 1px #7a5530;
+}
+:is(#ov-bonus, .bz-card) :is(.ut.sl.fi, .ut, .cw-cell).is-bad, .bz-tile.is-bad {
+  border-color: #ff5a6e; color: #9b2b30;
+  box-shadow: 0 0 0 1px rgba(90,0,20,.6), 0 0 12px rgba(255,90,110,.7), inset 0 0 0 1px rgba(255,255,255,.35), 0 2px 0 1px #7a5530;
+}
+
+/* ── Glass keys (⌫, ↩) ── */
+.bz-key, :is(#ov-bonus, .bz-card) .xw-recall {
+  width: 48px; height: 48px; flex: none; box-sizing: border-box; padding: 0; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; user-select: none;
+  border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid var(--sg-line); color: var(--sg-ink);
+  font: 800 18px/1 'Heebo', sans-serif; box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.bz-key:active, :is(#ov-bonus, .bz-card) .xw-recall:active { transform: scale(.95); background: rgba(40,212,255,.12); }
+.bz-bank .bz-key { width: 42px; height: 46px; border-radius: 8px; }
+
+/* ── Primary action (every in-game button is the cyan "שבץ" button) ── */
+.bz-btn {
+  width: 100%; height: 50px; padding: 0 16px; box-sizing: border-box; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 14px; border: 1px solid rgba(255,255,255,.35);
+  background: linear-gradient(180deg, #43e0ff, #1597d6); color: #022038;
+  font: 900 16px/1 'Heebo', sans-serif; text-shadow: none;
+  box-shadow: 0 6px 18px rgba(40,212,255,.35), inset 0 1px 0 rgba(255,255,255,.6);
+  transition: transform .1s, filter .1s;
+}
+.bz-btn:active { transform: scale(.97); }
+.bz-btn:disabled { opacity: .45; filter: saturate(.4); cursor: default; }
+
+/* ── Status / feedback / hint lines + score pill ── */
+.bz-status, .bz-fb, .bz-hint { text-align: center; font: 700 12.5px/1.4 'Heebo', sans-serif; color: var(--sg-dim); min-height: 18px; }
+.bz-hint { font-weight: 600; min-height: 0; }
+:is(.bz-status, .bz-fb).is-ok { color: var(--sg-ok); }
+:is(.bz-status, .bz-fb).is-bad { color: #ff8f9c; }
+:is(.bz-status, .bz-fb).is-warn { color: var(--sg-p2); }
+.bz-score, .bz-pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; align-self: center; box-sizing: border-box;
+  height: 28px; padding: 0 12px; border-radius: 999px; white-space: nowrap;
+  background: rgba(255,201,61,.1); border: 1px solid rgba(255,201,61,.45); color: var(--sg-p2);
+  font: 800 12.5px/1 'Heebo', sans-serif; font-variant-numeric: tabular-nums;
+}
+.bz-pill[hidden] { display: none; }
+.bz-pill svg.gi { width: 14px; height: 14px; }
+
+/* ── Word entry (honeycomb, letter spinner) ── */
+.bz-entry { display: flex; flex-direction: column; gap: 8px; }
+.bz-entry-row { display: flex; gap: 8px; align-items: center; }
+:is(#ov-bonus, .bz-card) .ri.bz-input { flex: 1; min-width: 0; height: 48px; margin: 0 !important; }
+
+/* ── Found-word chips ── */
+.bz-chips { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; max-height: 64px; overflow-y: auto; }
+.bz-chips:empty { display: none; }
+.bz-chips.is-result { max-height: 96px; margin-top: 4px; }
+.bz-chip {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px;
+  font: 800 12px/1 'Heebo', sans-serif; color: var(--sg-ok);
+  background: rgba(46,229,157,.1); border: 1px solid rgba(46,229,157,.4);
+}
+
+/* ── Honeycomb (B12): wood hexes on a tray, gold-bezel centre ── */
+:is(#ov-bonus, .bz-card) .hc-tray { align-self: center; width: fit-content; margin: 0 auto; padding: 12px 14px; }
+.hc-grid { position: relative; width: 204px; height: 177px; }
+.hc-hex {
+  position: absolute; z-index: 0; display: flex; align-items: center; justify-content: center;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: #3aaecb; color: #8a5324; font: 900 23px/1 'Heebo', sans-serif; text-shadow: var(--bz-letter-sh);
+  cursor: pointer; user-select: none; -webkit-user-select: none; transition: transform .08s, filter .08s;
+}
+.hc-hex::before { content: ''; position: absolute; inset: 2px; z-index: -1; clip-path: inherit; background: var(--sg-wood); }
+.hc-hex.is-center { background: #ffc93d; color: #7a4512; }
+.hc-hex.is-center::before { background: var(--bz-wood-gold); }
+.hc-hex.is-pressed { transform: scale(.92); filter: brightness(.88); }
+
+/* ── Letter spinner (B14): one big wood tile ── */
+:is(#ov-bonus, .bz-card) .ls-tray { align-self: center; width: fit-content; margin: 0 auto; padding: 16px 22px; }
+:is(#ov-bonus, .bz-card) .lsbox {
+  width: 96px; height: 96px; margin: 0; box-sizing: border-box; border-radius: 16px;
+  background: var(--sg-wood); border: 3px solid #46dcf5; color: #8a5324;
+  font: 900 56px/1 'Heebo', sans-serif; text-shadow: var(--bz-letter-sh);
+  box-shadow: 0 0 0 1px rgba(0,60,90,.55), 0 0 16px rgba(40,212,255,.55), inset 0 0 0 1px rgba(255,255,255,.35), 0 4px 0 1px #7a5530;
+}
+.ls-lead { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+/* ── Hidden word (B11): 4×4 wood grid ── */
+:is(#ov-bonus, .bz-card) .hwgrid { gap: 8px; padding: 12px; margin: 0 auto; width: 100%; max-width: 280px; }
+:is(#ov-bonus, .bz-card) .hwcell {
+  border-radius: 10px; background: var(--sg-wood); border: 1.5px solid #3aaecb; color: #8a5324;
+  font: 900 clamp(22px, 7vw, 30px)/1 'Heebo', sans-serif; text-shadow: var(--bz-letter-sh); box-shadow: var(--bz-tile-sh);
+  transition: transform .1s, box-shadow .12s;
+}
+:is(#ov-bonus, .bz-card) .hwcell.hw-sel {
+  background: var(--bz-wood-hot) !important; color: #8a5324 !important; border-color: #fff; transform: translateY(-2px);
+  box-shadow: 0 0 0 1px #28d4ff, 0 0 12px #28d4ff, inset 0 0 0 1px rgba(255,255,255,.5), 0 3px 0 1px #7a5530;
+}
+:is(#ov-bonus, .bz-card) .hwcell.hw-hit {
+  background: var(--bz-wood-hot) !important; color: #8a5324 !important; border-color: #2ee59d;
+  box-shadow: 0 0 0 1px rgba(0,70,40,.6), 0 0 14px rgba(46,229,157,.75), inset 0 0 0 1px rgba(255,255,255,.4), 0 2px 0 1px #7a5530;
+}
+
+/* ── Crossing words (B10): two words crossing, the shared cell is a charged socket ──
+   buildMiniGrid puts h[0] in column 0, so the grid flows RTL for column 0 to
+   be the RIGHTMOST cell (under ltr the word rendered mirror-reversed). */
+:is(#ov-bonus, .bz-card) .cw-mini-grid {
+  display: grid; grid-template-columns: repeat(var(--cw-cols, 5), 38px); gap: 5px; direction: rtl;
+  width: max-content; max-width: 100%; margin: 0 auto; padding: 12px;
+}
+:is(#ov-bonus, .bz-card) .cw-cell {
+  width: 38px; height: 42px; box-sizing: border-box; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font: 900 20px/1 'Heebo', sans-serif; user-select: none;
+}
+:is(#ov-bonus, .bz-card) .cw-cell.is-letter { background: var(--sg-wood); border: 1.5px solid #3aaecb; color: #8a5324; text-shadow: var(--bz-letter-sh); box-shadow: var(--bz-tile-sh); }
+:is(#ov-bonus, .bz-card) .cw-cell.is-empty { background: none; border: none; box-shadow: none; }
+:is(#ov-bonus, .bz-card) .cw-cell.is-cross {
+  background: radial-gradient(circle at 50% 45%, rgba(40,212,255,.28), rgba(8,22,70,.95) 70%);
+  border: 1.5px solid rgba(40,212,255,.85); color: #e9fbff; animation: bzSocket 1.4s ease-in-out infinite;
+}
+:is(#ov-bonus, .bz-card) .cw-input {
+  width: 100%; height: 100%; padding: 0; margin: 0; border: none; outline: none; background: transparent;
+  color: #e9fbff; caret-color: #28d4ff; text-align: center; font: 900 22px/1 'Heebo', sans-serif;
+}
+:is(#ov-bonus, .bz-card) .cw-input::placeholder { color: rgba(40,212,255,.75); }
+:is(#ov-bonus, .bz-card) .cw-mini-grid.is-result { pointer-events: none; margin-top: 4px; }
+
+/* ── Crossword (B8): navy board, wood rack, letters placed with a white-hot bezel ──
+   The grid of empty cells stays `ltr` (scanCrosswordWords reads runs RTL). */
+:is(#ov-bonus, .bz-card) .xw-wrap { width: 100%; }
+:is(#ov-bonus, .bz-card) .xw-board {
+  display: grid; grid-template-columns: repeat(var(--xw-cols, 7), minmax(0, 1fr)); gap: 4px; direction: ltr;
+  width: 100%; max-width: 320px; margin: 0 auto; padding: 8px;
+}
+:is(#ov-bonus, .bz-card) .xw-cell {
+  aspect-ratio: 1; min-width: 0; box-sizing: border-box; border-radius: 6px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform .1s, box-shadow .12s;
+  background: var(--bz-cell); border: 1px solid rgba(120,190,255,.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.28);
+}
+:is(#ov-bonus, .bz-card) .xw-board.is-armed .xw-cell:not(.is-filled) { border-color: rgba(40,212,255,.55); box-shadow: inset 0 0 8px rgba(40,212,255,.3); }
+:is(#ov-bonus, .bz-card) .xw-cell:active { transform: scale(.94); }
+:is(#ov-bonus, .bz-card) .xw-cell.is-filled {
+  background: var(--bz-wood-hot); border: 1.5px solid #fff;
+  box-shadow: 0 0 0 1px #28d4ff, 0 0 8px rgba(40,212,255,.8), inset 0 0 0 1px rgba(255,255,255,.5), 0 2px 0 1px #7a5530;
+}
+:is(#ov-bonus, .bz-card) .xw-letter { font: 900 18px/1 'Heebo', sans-serif; color: #8a5324; text-shadow: var(--bz-letter-sh); }
+:is(#ov-bonus, .bz-card) .xw-pool { direction: rtl; }
+:is(#ov-bonus, .bz-card) .xw-pool-tile, :is(#ov-bonus, .bz-card) .xw-pool-placeholder, :is(#ov-bonus, .bz-card) .xw-pool .xw-recall { width: 36px; height: 40px; border-radius: 8px; }
+:is(#ov-bonus, .bz-card) .xw-pool-tile .xw-letter { font-size: 19px; }
+:is(#ov-bonus, .bz-card) .xw-pool-tile.is-selected {
+  background: var(--bz-wood-hot); border-color: #fff; transform: translateY(-4px);
+  box-shadow: 0 0 0 1px #28d4ff, 0 0 12px #28d4ff, inset 0 0 0 1px rgba(255,255,255,.5), 0 3px 0 1px #7a5530;
+}
+:is(#ov-bonus, .bz-card) .xw-pool-placeholder { flex: none; opacity: 0; pointer-events: none; }
+/* result: per-word list */
+.xw-word-list {
+  align-self: stretch; margin-top: 6px; padding: 2px 12px; border-radius: 14px; text-align: right;
+  background: rgba(0,0,0,.28); box-shadow: inset 0 2px 6px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.xw-word-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; font: 800 14px/1.2 'Heebo', sans-serif; color: var(--sg-ink); }
+.xw-word-row + .xw-word-row { border-top: 1px solid rgba(120,190,255,.12); }
+.xw-word-row b { color: var(--sg-p2); font-variant-numeric: tabular-nums; }
+.xw-word-row.is-bad b { color: #ff8f9c; }
+.xw-word-ok { color: var(--sg-ok); margin-inline-end: 6px; }
+.xw-word-bad { color: #ff8f9c; margin-inline-end: 6px; }
+.xw-word-invalid { color: #ffb3bd; text-decoration: line-through; text-decoration-color: rgba(255,110,125,.7); }
+
+/* ── Result (bonusFx.bonusResultHtml): tray · medal · headline · gold points ── */
+.bz-result {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 14px 16px; text-align: center;
+  border-radius: 18px; background: var(--bz-tray); border: 1px solid var(--sg-line);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.4), inset 0 0 40px rgba(40,120,255,.10);
+  animation: bzResultIn .35s cubic-bezier(.22,1,.36,1) both;
+}
+.bz-result-medal {
+  --c: var(--sg-p1); width: 68px; height: 68px; margin-bottom: 4px; border-radius: 50%; display: grid; place-items: center; color: var(--c);
+  background: radial-gradient(circle at 50% 36%, color-mix(in srgb, var(--c) 28%, transparent), rgba(6,16,54,.96) 70%);
+  box-shadow: inset 0 0 0 2px var(--c), inset 0 0 14px color-mix(in srgb, var(--c) 30%, transparent), 0 0 22px color-mix(in srgb, var(--c) 38%, transparent);
+}
+.bz-result-medal svg.gi { width: 46%; height: 46%; stroke-width: 2.2; filter: drop-shadow(0 0 5px var(--c)); }
+.bz-result.is-win .bz-result-medal { --c: var(--sg-p2); animation: bzPopBounce .5s cubic-bezier(.22,1.5,.36,1) both; }
+.bz-result.is-bad .bz-result-medal { --c: var(--sg-bad); }
+.bz-result-headline { font: 900 17px/1.3 'Heebo', sans-serif; color: var(--sg-ink); }
+.bz-result-pts { display: flex; align-items: baseline; justify-content: center; gap: 6px; color: #ffd24a; }
+.bz-result-pts b { font: 900 44px/1 'Heebo', sans-serif; font-variant-numeric: tabular-nums; text-shadow: 0 0 18px rgba(255,190,40,.45), 0 2px 0 rgba(90,50,0,.5); }
+.bz-result-pts small { font: 800 14px/1 'Heebo', sans-serif; color: rgba(255,210,74,.8); }
+.bz-result-sub { font: 600 12.5px/1.5 'Heebo', sans-serif; color: var(--sg-dim); }
+.bz-word { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin: 4px 0 2px; }
+
+/* ── Confetti (bonusFx.confettiBurst) ── */
+.bz-confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 7; border-radius: inherit; }
+.bz-confetti-piece {
+  position: absolute; top: 38%; left: 50%; width: 8px; height: 12px; opacity: 0;
+  animation-name: bzConfetti; animation-timing-function: cubic-bezier(.2,.6,.3,1); animation-fill-mode: forwards;
+}
+@keyframes bzConfetti {
+  0%   { transform: translate(-50%,-50%) rotate(0); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--bz-x)), calc(-50% + var(--bz-y))) rotate(var(--bz-rot)); opacity: 0; }
+}
+
+/* ── Lucky wheel (B13) ── */
+.bz-burst { position: absolute; inset: 0; pointer-events: none; z-index: 6; border-radius: 24px; overflow: hidden; }
+.bz-burst::before { content: ''; position: absolute; top: 44%; left: 50%; width: 10px; height: 10px; transform: translate(-50%,-50%) scale(0); border-radius: 50%; opacity: 0; }
+.bz-burst.is-on::before { animation: bzFlash .65s ease-out forwards; }
+@keyframes bzFlash {
+  0%   { transform: translate(-50%,-50%) scale(.2); box-shadow: 0 0 0 0 rgba(255,210,70,0); opacity: 0; }
+  28%  { opacity: 1; box-shadow: 0 0 50px 18px rgba(255,210,70,.6); }
+  100% { transform: translate(-50%,-50%) scale(1.7); box-shadow: 0 0 95px 55px rgba(255,210,70,0); opacity: 0; }
+}
+.bz-wheel-wrap { position: relative; width: 248px; height: 248px; margin: 18px auto 16px !important; }
+.bz-wheel-rim {
+  position: absolute; inset: -7px; border-radius: 50%; z-index: 0;
+  background: conic-gradient(from 0deg, #ffe27a, #9a6a14, #ffe27a, #b8801a, #ffe27a, #9a6a14, #ffe27a, #b8801a, #ffe27a);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.4), 0 0 24px rgba(40,212,255,.35), 0 8px 22px rgba(0,0,0,.6);
+}
+.bz-wheel { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; z-index: 1; cursor: pointer; box-shadow: inset 0 0 0 3px rgba(255,255,255,.18), inset 0 0 42px rgba(0,0,0,.5); }
+.bz-wheel-gloss { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 2; background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.3), transparent 44%); }
+.bz-wheel-hub {
+  position: absolute; top: 50%; left: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%; z-index: 3; pointer-events: none;
+  display: flex; align-items: center; justify-content: center; color: #f2fcff; font: 900 16px/1 'Heebo', sans-serif;
+  background: radial-gradient(circle at 50% 36%, rgba(40,212,255,.3), rgba(6,16,54,.98) 70%);
+  box-shadow: inset 0 0 0 2px rgba(40,212,255,.85), 0 0 14px rgba(40,212,255,.5), 0 2px 6px rgba(0,0,0,.5);
+}
+.bz-wheel-pointer {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%); z-index: 4; width: 0; height: 0;
+  border-left: 13px solid transparent; border-right: 13px solid transparent; border-top: 24px solid #ffc93d;
+  filter: drop-shadow(0 0 6px rgba(255,200,60,.9)) drop-shadow(0 2px 2px rgba(0,0,0,.5));
+}
+.bz-wheel-result { min-height: 24px; font: 900 18px/1.3 'Heebo', sans-serif; color: #ffd24a; text-shadow: 0 0 12px rgba(255,190,40,.4); }
+
+/* ── Intro dialog + award card: big medal, gold title ── */
+#ov-bonus-intro > .ovc { width: calc(100% - 32px) !important; max-width: 360px !important; padding: 26px 20px 18px !important; }
+#ov-bonus-intro > .ovc > .ovic, .ovc.bonus-award-card > .ovic {
+  display: grid !important; place-items: center; width: 84px !important; height: 84px !important; border-radius: 50%;
+  margin: 2px auto 14px !important; font-size: 40px !important; line-height: 1 !important; color: #e9fbff;
+  background: radial-gradient(circle at 50% 36%, rgba(40,212,255,.30), rgba(6,16,54,.96) 70%) !important;
+  box-shadow: inset 0 0 0 2.5px rgba(40,212,255,.8), inset 0 0 18px rgba(40,212,255,.28), 0 0 24px rgba(40,212,255,.38) !important;
+  filter: none !important; animation: gMedalGlow 2.2s ease-in-out infinite !important;
+}
+#ov-bonus-intro > .ovc > .ovic svg.gi, .ovc.bonus-award-card > .ovic svg.gi { width: 48%; height: 48%; color: #f2fcff; filter: drop-shadow(0 0 5px #28d4ff) drop-shadow(0 0 14px rgba(40,212,255,.7)); }
+.ovic .ovic-emoji { font-size: 44px; line-height: 1; }
+#ov-bonus-intro > .ovc > .ovt, .ovc.bonus-award-card > .ovt {
+  font: 900 24px/1.2 'Heebo', sans-serif !important; letter-spacing: 0 !important; margin: 0 0 6px !important;
+  background: none !important; -webkit-text-fill-color: currentColor !important; color: #ffd24a !important; filter: none !important;
+  text-shadow: 0 0 14px rgba(255,190,40,.45), 0 2px 0 rgba(90,50,0,.55);
+}
+#ov-bonus-intro > .ovc > .ovd { margin: 0 0 14px !important; }
+.bz-intro-meta { display: flex; justify-content: center; gap: 8px; margin: -4px 0 16px; }
+.bz-intro-meta:not(:has(> :not([hidden]))) { display: none; }
+.bz-pill { height: 30px; padding: 0 14px; font-size: 13px; }
+/* award card: the reward number (bigText is the .ovd right after the title) */
+.ovc.bonus-award-card { padding: 24px 20px 18px !important; }
+.ovc.bonus-award-card > .ovt + .ovd {
+  font: 900 48px/1.05 'Heebo', sans-serif !important; margin: 4px 0 8px !important;
+  color: #ffd24a !important; background: none !important; -webkit-text-fill-color: currentColor !important;
+  text-shadow: 0 0 18px rgba(255,190,40,.45), 0 2px 0 rgba(90,50,0,.5); animation: bzRewardPop .5s cubic-bezier(.22,1.5,.36,1) both;
+}
+/* spectator: the opponent's played word + live progress */
+#ov-bonus-spectator #bspec-move { margin: 8px 0 0 !important; font: 900 16px/1.3 'Heebo', sans-serif !important; }
+#ov-bonus-spectator #bspec-move:empty { display: none; }
+#ov-bonus-spectator #bspec-progress { margin: 12px 0 0 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  #ov-bonus > .ovc, #ov-bonus-intro > .ovc, .bz-card, .bz-result, .bz-result-medal,
+  #ov-bonus-intro > .ovc > .ovic, .ovc.bonus-award-card > .ovic, .ovc.bonus-award-card > .ovt + .ovd,
+  :is(#ov-bonus, .bz-card) .cw-cell.is-cross { animation: none !important; }
+}

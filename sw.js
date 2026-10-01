@@ -69,7 +69,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20260907190058';
+var CACHE_NAME = 'boost-20261001152246';
 var ASSETS = [
   './',
   './index.html',
@@ -178,21 +178,102 @@ var ASSETS = [
   // demand the first time they're viewed, so we avoid bloating install.
 ];  // sw.js intentionally excluded — browser fetches it fresh
 
+// ── Images: persistent cache + web-sized WebP ─────────────────────────────
+// The PNGs under assets/ are 1024px art masters (up to 2.4 MB each). Next to
+// each one, scripts/build-web-images.py writes `<name>.webp` (≤512px, ~10×
+// smaller); whenever a PNG is requested we serve that WebP and fall back to
+// the PNG if it is missing. Images live in ASSET_CACHE, which — unlike
+// CACHE_NAME — survives deploys, so a new build no longer re-downloads every
+// image. Each cached image is refreshed in the background once per SW
+// lifetime (stale-while-revalidate), so replaced art still lands.
+var ASSET_CACHE = 'boost-assets-v1';
+
+function isImageAsset(url) {
+  var path = String(url || '').split('#')[0].split('?')[0];
+  return /\/(assets|images)\//.test(path) && /\.(png|jpe?g|webp|gif)$/i.test(path);
+}
+
+// Sound effects (assets/sfx/*.ogg|m4a) share the persistent asset cache: the
+// engine preloads them after the first tap, so from then on they survive
+// deploys and play offline. They are not precached at install (each device
+// only ever loads one of the two formats).
+function isSoundAsset(url) {
+  var path = String(url || '').split('#')[0].split('?')[0];
+  return path.indexOf('/assets/sfx/') !== -1 && /\.(ogg|m4a)$/i.test(path);
+}
+
+// URL of the web-sized WebP for a PNG under assets/ (not the generated
+// assets/anim/ atlases), or null when the URL has none.
+function webImageUrl(url) {
+  var path = String(url || '').split('#')[0].split('?')[0];
+  if (path.indexOf('/assets/') === -1 || path.indexOf('/assets/anim/') !== -1) return null;
+  return /\.png$/i.test(path) ? path.replace(/\.png$/i, '.webp') : null;
+}
+
+function fetchImage(url) {
+  var web = webImageUrl(url);
+  if (!web) return fetch(url);
+  return fetch(web).then(function(resp){
+    return resp && resp.ok ? resp : fetch(url);
+  }, function(){ return fetch(url); });
+}
+
+var _revalidated = {};
+function refreshImage(cache, key) {
+  _revalidated[key] = true;
+  return fetchImage(key).then(function(resp){
+    if (resp && resp.ok && resp.type === 'basic') {
+      return cache.put(key, resp.clone()).then(function(){ return resp; }, function(){ return resp; });
+    }
+    return resp;
+  });
+}
+
+function imageResponse(request) {
+  var key = request.url.split('#')[0];
+  return caches.open(ASSET_CACHE).then(function(cache){
+    return cache.match(key).then(function(hit){
+      if (hit) {
+        if (!_revalidated[key]) refreshImage(cache, key).catch(function(){});
+        return hit;
+      }
+      return refreshImage(cache, key).catch(function(){
+        return caches.match(key).then(function(old){ return old || Response.error(); });
+      });
+    });
+  });
+}
+
 self.addEventListener('install', function(e){
-  e.waitUntil(
+  var images = [], core = [];
+  ASSETS.forEach(function(u){
+    (isImageAsset(new URL(u, self.location.href).href) ? images : core).push(u);
+  });
+  e.waitUntil(Promise.all([
     caches.open(CACHE_NAME).then(function(cache){
       // Cache each asset independently. cache.addAll() is ATOMIC — a single
       // 404 (e.g. a partial removed from the repo without updating this list)
       // rejects the whole install, so the service worker never registers and
       // the app is left with NO offline cache AND NO push. Per-asset add()
       // with a catch degrades gracefully: a stale entry is just skipped.
-      return Promise.all(ASSETS.map(function(url){
+      return Promise.all(core.map(function(url){
         return cache.add(url).catch(function(err){
           console.warn('[sw] precache skip', url, err && err.message);
         });
       }));
-    })
-  );
+    }),
+    // Images already in the persistent cache are not downloaded again.
+    caches.open(ASSET_CACHE).then(function(cache){
+      return Promise.all(images.map(function(u){
+        var key = new URL(u, self.location.href).href;
+        return cache.match(key).then(function(hit){
+          return hit || refreshImage(cache, key);
+        }).catch(function(err){
+          console.warn('[sw] precache skip', u, err && err.message);
+        });
+      }));
+    }),
+  ]));
   self.skipWaiting();
 });
 
@@ -200,7 +281,7 @@ self.addEventListener('activate', function(e){
   e.waitUntil(
     caches.keys().then(function(keys){
       return Promise.all(
-        keys.filter(function(k){ return k !== CACHE_NAME; })
+        keys.filter(function(k){ return k !== CACHE_NAME && k !== ASSET_CACHE; })
             .map(function(k){ return caches.delete(k); })
       );
     })
@@ -221,6 +302,10 @@ self.addEventListener('fetch', function(e){
     url.endsWith('/') ||
     url.indexOf('index.html') !== -1 ||
     (e.request.headers && (e.request.headers.get('accept') || '').indexOf('text/html') !== -1);
+  if(isImageAsset(url) || isSoundAsset(url)){
+    e.respondWith(imageResponse(e.request));
+    return;
+  }
   if(isHTML){
     e.respondWith(
       fetch(e.request).then(function(resp){

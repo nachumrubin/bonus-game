@@ -437,6 +437,15 @@ A dedicated feedback-system pass should eventually align:
 
 Routine interactions should remain subtle or silent; rare rewards may be stronger.
 
+**Done (October 2026, sound pass).**
+- Sounds use realistic recordings for anything physical: wood tiles, cloth bag,
+  coins, clock, electricity, ratchet.
+- Each animated moment's sound is fired from `animationController` `soundFor()`,
+  so it lands with its visual.
+- Sound is not motion: it plays under reduced motion too.
+
+See `src/ui/sfx/sfxCatalog.js` and `docs/sound_inventory.md`.
+
 ---
 
 ## 13. Agent workflow

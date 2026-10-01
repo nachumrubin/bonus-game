@@ -27,9 +27,10 @@
 // guess without spinning up DOM.
 
 import { startBonusTimer } from './bonusTimer.js';
-import { confettiBurst } from './bonusFx.js';
+import { confettiBurst, bonusResultHtml, startResultCount, escapeHtml } from './bonusFx.js';
 import { isValid as isHebrewWordValid, isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 import { g, getGender } from '../../genderText.js';
+import { BOOST_BOLT_ICON_HTML } from '../../boostIcon.js';
 
 const BLOCKED_SHARED = new Set(['א', 'ה', 'ו', 'י']);
 const DEFAULT_DURATION_MS = 20_000;
@@ -254,9 +255,9 @@ export function mountCrossingWordsMiniGame({
   }
 
   function attachLegacy() {
-    bovic.textContent = '⚡';
-    bovt.textContent  = 'שתי מילים חוצות!';
-    bovd.textContent  = `מצא את האות המשותפת לשתי המילים תוך ${Math.floor(durationMs / 1000)} שניות (+${pts} נקודות!)`;
+    bovic.innerHTML = BOOST_BOLT_ICON_HTML;
+    bovt.textContent  = 'מילים מצטלבות!';
+    bovd.textContent  = `מצא את האות המשותפת · ${Math.floor(durationMs / 1000)} שניות · ${pts} נקודות`;
     bchal.innerHTML = '';
     const { wrap, input } = buildMiniGrid({ withInput: true });
     bchal.appendChild(wrap);
@@ -284,6 +285,7 @@ export function mountCrossingWordsMiniGame({
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleSubmit);
         bchal.innerHTML = renderResult(result);
+        startResultCount(bchal, result.success ? pts : null);
         if (result.success) confettiBurst(ovBonus?.querySelector?.('.ovc'));
         bok.textContent = g('continueMiniGame', getGender());
         if (prevOnclick) bok.setAttribute?.('onclick', prevOnclick);
@@ -291,36 +293,47 @@ export function mountCrossingWordsMiniGame({
     };
   }
 
+  // Result: the crossing re-drawn with the shared letter filled in — green
+  // bezel when the player's letter made two words, otherwise the correct
+  // letter (and the player's wrong guess in red above it).
   function renderResult(result) {
-    const fill = (letter) => ({
-      h: pair.h.slice(0, pair.hpos) + letter + pair.h.slice(pair.hpos + 1),
-      v: pair.v.slice(0, pair.vpos) + letter + pair.v.slice(pair.vpos + 1),
-    });
-    const correct = fill(pair.shared);
-    const correctWordsHtml = `<span style="font-weight:900;color:var(--by);">${correct.h}</span> · <span style="font-weight:900;color:var(--by);">${correct.v}</span>`;
-
+    const solvedGrid = resultGridHtml(pair.shared, result.success ? 'ok' : 'given');
     if (!result.attempt) {
-      return `<div class="bz-result is-soft">
-        <div class="bz-result-emoji">⏰</div>
-        <div class="bz-result-headline">הזמן נגמר!</div>
-        <div class="bz-result-sub">התשובה: ${correctWordsHtml}</div>
-      </div>`;
+      return bonusResultHtml({
+        success: false, icon: 'hour', headline: 'הזמן נגמר!',
+        sub: 'התשובה:', extraHtml: solvedGrid,
+      });
     }
     if (result.success) {
-      const made = fill(result.attempt);
-      return `<div class="bz-result is-win">
-        <div class="bz-result-emoji">🎉</div>
-        <div class="bz-result-headline">${made.h} · ${made.v}</div>
-        <div class="bz-result-big">+${pts} נק'</div>
-        <div class="bz-result-sub">כל הכבוד! הצלחת!</div>
-      </div>`;
+      return bonusResultHtml({
+        success: true, headline: 'כל הכבוד!', points: pts,
+        extraHtml: resultGridHtml(result.attempt, 'ok'),
+      });
     }
-    const made = fill(result.attempt);
-    return `<div class="bz-result is-soft">
-      <div class="bz-result-emoji">😌</div>
-      <div class="bz-result-headline">${made.h} · ${made.v} — לא תקין</div>
-      <div class="bz-result-sub">התשובה הנכונה: ${correctWordsHtml}</div>
-    </div>`;
+    return bonusResultHtml({
+      success: false, tone: 'bad', icon: 'x',
+      headline: `האות ${escapeHtml(result.attempt)} לא יוצרת שתי מילים`,
+      sub: 'התשובה הנכונה:', extraHtml: solvedGrid,
+    });
+  }
+
+  // Static copy of the crossing grid with `letter` in the shared cell.
+  function resultGridHtml(letter, tone) {
+    const cells = [];
+    for (let r = 0; r < pair.v.length; r++) {
+      for (let c = 0; c < pair.h.length; c++) {
+        if (r === pair.vpos && c === pair.hpos) {
+          cells.push(`<div class="cw-cell is-letter is-${tone}">${escapeHtml(letter)}</div>`);
+        } else if (r === pair.vpos) {
+          cells.push(`<div class="cw-cell is-letter">${pair.h[c]}</div>`);
+        } else if (c === pair.hpos) {
+          cells.push(`<div class="cw-cell is-letter">${pair.v[r]}</div>`);
+        } else {
+          cells.push('<div class="cw-cell is-empty"></div>');
+        }
+      }
+    }
+    return `<div class="cw-mini-grid is-result" style="--cw-cols:${pair.h.length}">${cells.join('')}</div>`;
   }
 
   function attachSelf() {
@@ -329,20 +342,17 @@ export function mountCrossingWordsMiniGame({
     const card = doc.createElement('div');
     card.className = 'bz-card';
     card.innerHTML = `
-      <div class="bz-bolt">✚</div>
-      <div class="bz-title">שתי מילים חוצות!</div>
-      <div class="bz-sub">${Math.floor(durationMs / 1000)} שניות · +${pts} נקודות</div>
+      <div class="bz-bolt">${BOOST_BOLT_ICON_HTML}</div>
+      <div class="bz-title">מילים מצטלבות!</div>
+      <div class="bz-sub">${Math.floor(durationMs / 1000)} שניות · ${pts} נקודות</div>
     `;
     const { wrap, input } = buildMiniGrid({ withInput: true });
     card.appendChild(wrap);
-    const inputRow = doc.createElement('div');
-    inputRow.style.cssText = 'margin-top:10px;display:flex;gap:6px;justify-content:center;';
     const submitBtn = doc.createElement('button');
     submitBtn.setAttribute('data-cw', 'submit');
-    submitBtn.className = 'bz-btn bz-btn-green';
+    submitBtn.className = 'bz-btn';
     submitBtn.textContent = 'בדוק ✓';
-    inputRow.appendChild(submitBtn);
-    card.appendChild(inputRow);
+    card.appendChild(submitBtn);
     host.appendChild(card);
     doc.body?.appendChild(host);
     setTimeout(() => input?.focus?.(), 0);

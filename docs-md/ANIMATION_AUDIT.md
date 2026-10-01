@@ -118,14 +118,11 @@ Grouped by feature area. "Implementation" abbreviations: **CSS-kf** = CSS `@keyf
 
 ### B5. Non-visual feedback (for completeness — audio/haptic)
 
-| Trigger | Sound | Haptic | Purpose |
-|---|---|---|---|
-| `EV.INVALID_MOVE_REJECTED` | 180Hz square → 120Hz, 140ms | `[60]` | Rejection |
-| `EV.BOOST_ACTIVATED` (unless consumed/pending) | 660→990Hz sine, 180ms | `[40,30,40]` | Boost fired |
-| Turn-timer tick, last 1-3s | 880Hz sine, 60ms | `[20]` | Urgency |
-| Incoming invite | 2-note 784→1175Hz, staggered 130ms | `[80,60,80]` | Attention |
-| `EV.GAME_COMPLETED` | 3-note arpeggio 523/659/784Hz | `[120,80,120,80,200]` | Celebration |
-| `EV.TURN_CHANGED` (only when it becomes local player's turn; suppressed on game's first turn) | 523Hz triangle, 90ms | `[30]` | "Your turn" — **has no matching visual pulse** (see §F) |
+Superseded October 2026 by the sound pass. Every cue now lives in
+`src/ui/sfx/sfxCatalog.js` (id, sample file, volume, haptic pattern, synth
+fallback). The event → cue routing is in `feedbackService.js`; the cues tied to
+animations are fired from `animationController` `soundFor()`. The full list of
+cues and their sources is in `docs/sound_inventory.md`.
 
 ---
 

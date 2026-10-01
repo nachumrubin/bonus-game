@@ -404,6 +404,10 @@ export function createEngine({ state, bus }) {
       wordTiles: words.map(w => w.map(t => ({ r: t.r, c: t.c, letter: t.letter, val: t.val, ex: !!t.ex }))),
       score: ctx.score,
       ts: Date.now(),
+      // The score is withheld until FINALIZE_BOOST_AWARD. Rides along on the
+      // deferred room write so the opponent's client knows the score (and the
+      // boost summary) is still to come — see onlineGameSession's watcher.
+      ...(hasBonusAwardFlow ? { scoringDeferred: true } : {}),
     });
 
     if (hasBonusAwardFlow) {
@@ -645,6 +649,8 @@ export function createEngine({ state, bus }) {
 
   function handleFinalizeBoostAward({ slot, extra = 0, bonusIdx = null, queueBoosts = [] } = {}) {
     const s = (slot === 0 || slot === 1) ? slot : state.currentTurnSlot;
+    // Read the pending entry's kind before clearPendingBonus drops it.
+    const pendingKind = pendingBonusKind(state, bonusIdx);
     markBonusUsed(state, bonusIdx);
     clearPendingBonus(state, bonusIdx);
     const n = Number(extra) || 0;
@@ -653,11 +659,16 @@ export function createEngine({ state, bus }) {
       const baseScore = Number(pending.baseScore) || 0;
       const total = baseScore + n;
       if (total) state.scores[s] = (state.scores[s] ?? 0) + total;
+      // What the boost gave, for the opponent's score animation. Built before
+      // ON_TURN_END, which may consume the square's future effects.
+      const boost = summarizeBoost(state, { slot: s, bonusIdx, kind: pendingKind, extra: n, queueBoosts });
       const history = state.moveHistory?.[pending.historyIndex];
       if (history) {
         history.score = total;
         history.baseScore = baseScore;
         history.bonusExtra = n;
+        history.scoringDeferred = false;
+        history.boost = boost;
       }
       state.pendingScoreCommit = null;
 
@@ -712,6 +723,7 @@ export function createEngine({ state, bus }) {
         baseScore,
         bonusExtra: n,
         multiplier: pending.multiplier ?? 1,
+        boost,
       });
       emitTurnStartEffects(turnStartEffects, emit, state);
       emit(EV.SCORE_CHANGED, { slot: s, score: state.scores[s] });
@@ -931,6 +943,39 @@ function emitTurnStartEffects(effects, emit, state = null) {
 function bonusTypeForIdx(state, idx) {
   const assignment = state.bonusAssignment?.[idx];
   return assignment?.type ?? assignment ?? BONUS_TYPES[idx % BONUS_TYPES.length].type;
+}
+
+function pendingBonusKind(state, bonusIdx) {
+  if (bonusIdx === null || bonusIdx === undefined || !Array.isArray(state.pendingBonuses)) return null;
+  const idx = Number(bonusIdx);
+  return state.pendingBonuses.find(p => Number(p?.idx) === idx)?.kind ?? null;
+}
+
+// Serializable summary of what a bonus square gave its player: the square's
+// type, the points, and every effect granted (direct future effects already
+// queued on activeBoosts under this bonusIdx, plus wheel queueBoosts). Stored
+// on the move-history entry, so it travels to the opponent in the room doc —
+// JSON round-trip strips `undefined`, which RTDB rejects.
+function summarizeBoost(state, { slot, bonusIdx, kind, extra, queueBoosts }) {
+  const idx = Number.isInteger(Number(bonusIdx)) && bonusIdx !== null ? Number(bonusIdx) : null;
+  const effects = [];
+  if (extra > 0) effects.push({ boostId: 'auto_extra_score', payload: { extra } });
+  if (idx != null) {
+    for (const b of state.activeBoosts ?? []) {
+      if (b && b.slot === slot && Number(b.bonusIdx) === idx && b.boostId !== 'auto_extra_score') {
+        effects.push({ boostId: b.boostId, payload: b.payload ?? {} });
+      }
+    }
+  }
+  for (const b of Array.isArray(queueBoosts) ? queueBoosts : []) {
+    if (b?.boostId) effects.push({ boostId: b.boostId, payload: b.payload ?? {} });
+  }
+  return JSON.parse(JSON.stringify({
+    bonusType: idx != null ? bonusTypeForIdx(state, idx) : null,
+    kind: kind ?? null,
+    extra,
+    effects,
+  }));
 }
 
 function markBonusUsed(state, bonusIdx) {

@@ -5,6 +5,73 @@
 
 ---
 
+## D-opponent-boost-pill: the opponent's boost is shown in the status pill — October 2026
+
+**Decision:** the opponent's boost (bot or online) is reported in the status pill
+above the board (`#sbar`), with no time limit, until the local player starts placing
+tiles. It is not shown in a modal or a timed chip.
+- Bot boosts no longer open the award card. `main.js` auto-finalizes and acks in its
+  place.
+- The engine records a serializable `boost` summary on the move-history entry, so it
+  travels to the online opponent with the move.
+
+**Why:** the bot's card demanded a tap for something the human didn't do. Online, the
+opponent's bonus points arrived silently. A labelled chip inside the score animation
+was tried first and rejected: it disappears after about a second. The pill is free
+until the player places a tile, which is exactly when they need the information.
+
+---
+
+## D-natural-sfx: realistic CC0 recordings for every physical sound — October 2026
+
+**Decision:** sound effects are recorded samples (`assets/sfx/`, `.ogg` + `.m4a`).
+- Anything physical is a realistic recording: real Scrabble tiles on wood, a cloth
+  bag, coins, a clock tick, electricity for boosts, a wheel ratchet, a doorbell.
+- Designed UI sounds and jingles (Kenney) only for abstract moments.
+- The old WebAudio tones stay as the per-cue fallback.
+- Everything is CC0, and its source is recorded in `docs/sound_inventory.md`.
+
+**Why:** the user rejected arcade-style zaps and planks in a listening review. Sounds
+should "add to the game instead of distracting". CC0 keeps us free of attribution and
+licence obligations. A CC0 upload derived from a CC-BY sound is treated as CC-BY and
+avoided.
+
+**How it is wired:**
+- `sfxCatalog` (data) → `sfxEngine` (WebAudio, gesture unlock, preload, throttle,
+  6-voice cap, master volume, music ducking) → `feedbackService` (bus routing,
+  `cue()` for screens).
+- `animationController` takes an injected `cue` so animation sounds stay in sync.
+
+---
+
+## D-live-word-points: the status pill previews the move's score — October 2026
+
+The mockup's `✓ האור +8` pill was held back as a game decision (it tells players the
+score and dictionary validity before they commit). Decided: ship it. The dictionary was
+already one tap away (מילון), and the preview only reports what the engine would do —
+it reuses `validateMove` / `getAllWords` / `scoreMove`, never its own formula. It shows
+the **base** score; boosts are applied on commit and advertised by the multiplier banner.
+Per-screen onboarding pop-ups were switched off in the same pass (players found them
+annoying); re-enable by mounting `mountOnboardingController` in `main.js`.
+
+---
+
+## D-web-images: PNG masters stay, the service worker serves web-sized WebP — September 2026
+
+**Decision:** art PNGs under `assets/` stay as 1024px masters. `scripts/build-web-images.py`
+writes a sibling `<name>.webp` (≤512px); `sw.js` serves it for any `assets/**.png`
+request (not `assets/anim/`), falling back to the PNG. Images live in `boost-assets-v1`,
+a cache that is not deleted on deploy and is refreshed stale-while-revalidate.
+
+**Why:** avatar paths are stored in Firebase as ids, the atlas manifest is keyed by PNG
+path, and the Blender pipeline reads the masters, so renaming references or shrinking
+the masters was not an option. Mapping in the SW needs zero reference changes.
+
+**Rules:** never set `visibility: visible` inside a hidden screen/overlay (it would
+paint again). Rebuild WebPs after art changes.
+
+---
+
 ## D-glass-skin-override: app-wide redesign = late-loaded sheet + g-* primitives — September 2026
 
 **Decision:** the app-wide "glass + wood" skin lives in `screens-glass.css`, loaded after

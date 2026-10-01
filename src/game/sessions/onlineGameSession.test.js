@@ -886,3 +886,69 @@ async function readRoom(db) {
 }
 
 console.log = _origLog;
+
+// The receiving client of a bonus-square move: the deferred commit only pops
+// the tiles (score still pending); the finalize commit — same lastMove ts, so
+// not a "new move" — replays the score sequence as MOVE_SCORE_COMMITTED with
+// the boost summary, so the opponent sees what the boost gave.
+test('online session: opponent\'s deferred bonus move replays its score + boost on the finalize commit', async () => {
+  bus._reset();
+  DICT.clear();
+  const ALEF = 'א';
+  const BET = 'ב';
+  addWordsFromText(`${BET}${ALEF}\n`);
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live');
+
+  const board = new Array(100).fill(null);
+  board[1] = { letter: ALEF, val: 1, isJoker: false };
+  await db.ref('rooms/online-room').update({
+    board,
+    racks: {
+      0: [BET, 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'],
+      1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+    },
+    currentTurnSlot: 0,
+    firstMove: false,
+    bonusAssignment: [{ type: 'B2', pts: 40, ic: '*' }],
+    bonusSqUsed: {},
+  });
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  const sessB = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 1 });
+  sessA.state.firstMove = false;
+
+  const opponentMoves = [];
+  const remoteCommits = [];
+  bus.on(EV.OPPONENT_MOVED, p => opponentMoves.push(p));
+  bus.on(EV.MOVE_SCORE_COMMITTED, p => { if (p.remote) remoteCommits.push(p); });
+
+  sessA.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [{ r: -1, c: 1, letter: BET, val: 3 }] } });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.equal(opponentMoves.length, 1, 'B sees the tiles on the deferred commit');
+  assert.equal(opponentMoves[0].scoringDeferred, true, 'and knows the score is still to come');
+  assert.equal(remoteCommits.length, 0);
+
+  sessA.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, bonusIdx: 0, extra: 20 } });
+  await new Promise(r => setTimeout(r, 0));
+
+  assert.equal(opponentMoves.length, 1, 'tiles are not replayed');
+  assert.equal(remoteCommits.length, 1, 'the score sequence replays exactly once');
+  const c = remoteCommits[0];
+  assert.equal(c.slot, 0);
+  assert.equal(c.score, 24);
+  assert.equal(c.bonusExtra, 20);
+  assert.equal(c.boost.bonusType, 'B2');
+  assert.equal(c.boost.extra, 20);
+  assert.deepEqual(c.boost.effects, [{ boostId: 'auto_extra_score', payload: { extra: 20 } }]);
+  assert.equal(sessB.state.scores[0], 24);
+  assert.equal(sessB.state.currentTurnSlot, 1);
+
+  // A later unrelated write (same lastMove) must not replay it again.
+  await db.ref('rooms/online-room').update({ version: db._data.rooms['online-room'].version + 1 });
+  await new Promise(r => setTimeout(r, 0));
+  assert.equal(remoteCommits.length, 1);
+
+  await sessA.dispose();
+  await sessB.dispose();
+});

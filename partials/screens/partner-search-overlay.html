@@ -1,29 +1,36 @@
-<!-- PARTNER SEARCH OVERLAY — shown while random matchmaking is active -->
+<!-- PARTNER SEARCH OVERLAY — shown while random matchmaking is active.
+     IDs + ps-* hooks are driven by matchmakingOverlayScreen.js (mountPartnerSearchOverlay). -->
 <div id="ov-partner-search" class="ov hidden">
   <div class="ovc ps-ovc mf-ovc">
-    <span class="ps-dice-icon" aria-hidden="true"></span>
-    <div class="mf-body" style="align-items:center;text-align:center;">
-      <div class="mf-title">מחפש יריב...</div>
-      <div class="ps-dots">
-        <div class="ps-dot"></div>
-        <div class="ps-dot"></div>
-        <div class="ps-dot"></div>
+    <div class="mf-body ps-body">
+      <div class="ps-head">
+        <div class="mf-title">מחפש יריב</div>
+        <div class="ps-dots" aria-hidden="true">
+          <div class="ps-dot"></div>
+          <div class="ps-dot"></div>
+          <div class="ps-dot"></div>
+        </div>
       </div>
       <div class="ps-arena">
+        <!-- radar: rings + rotating sweep behind the two players -->
+        <div class="ps-radar" aria-hidden="true"><i class="ps-sweep"></i></div>
         <!-- Player's own card -->
         <div class="ps-pcard" id="ps-me-card">
           <div class="ps-av" id="ps-my-avatar">👑</div>
           <div class="ps-nm" id="ps-my-name">שחקן</div>
-          <div class="ps-lbl">את/ה</div>
+          <div class="ps-lbl ps-lbl--me">את/ה</div>
         </div>
-        <!-- VS divider -->
-        <div class="ps-vs">VS</div>
-        <!-- Slot machine card -->
+        <!-- VS badge -->
+        <div class="ps-vs" aria-hidden="true">VS</div>
+        <!-- Slot machine card: avatars spin inside the ring until a match lands -->
         <div class="ps-pcard ps-slot-card" id="ps-slot-card">
-          <div class="ps-slot-win">
-            <div class="ps-slot-reel" id="ps-slot-reel"></div>
+          <div class="ps-slot-ring">
+            <div class="ps-slot-win">
+              <div class="ps-slot-reel" id="ps-slot-reel"></div>
+            </div>
           </div>
-          <div class="ps-lbl" id="ps-slot-lbl">מחפש...</div>
+          <div class="ps-nm ps-slot-nm-lbl" id="ps-slot-lbl">מחפש...</div>
+          <div class="ps-lbl">יריב</div>
         </div>
       </div>
       <button class="g-btn mf-cancel" id="ps-cancel-btn">ביטול</button>

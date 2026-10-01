@@ -49,9 +49,12 @@ const ALL_DIRECTIONS = [
 ];
 
 import { startBonusTimer } from './bonusTimer.js';
-import { showBonusResult } from './bonusFx.js';
+import { showBonusResult, wordTilesHtml } from './bonusFx.js';
+import { setTone } from './bonusUi.js';
 import { g, getGender } from '../../genderText.js';
 import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
+import { BOOST_BOLT_ICON_HTML } from '../../boostIcon.js';
+import { cue as cueSfx } from '../../feedbackService.js';
 
 const DEFAULT_SIZE = 4;
 const DEFAULT_WORD_LEN = 3;
@@ -280,13 +283,14 @@ export function mountHiddenWordMiniGame({
   // ─── DOM helpers ────────────────────────────────────────
 
   function attachLegacy() {
-    bovic.textContent = '⚡';
+    bovic.innerHTML = BOOST_BOLT_ICON_HTML;
     bovt.textContent  = 'מילה נסתרת!';
     bovd.textContent  = `מצא מילה אחת באורך ${wordLen} אותיות תוך ${Math.floor(durationMs / 1000)} שניות`;
     bchal.innerHTML = '';
 
     statusEl = doc.createElement('div');
-    statusEl.style.cssText = 'text-align:center;font-size:13px;font-weight:700;color:rgba(255,255,255,.7);min-height:20px;margin-bottom:4px;';
+    statusEl.className = 'bz-status';
+    statusEl.textContent = 'לחץ על האות הראשונה ואז על האחרונה';
     bchal.appendChild(statusEl);
 
     const gridEl = buildGridEl(doc);
@@ -297,7 +301,7 @@ export function mountHiddenWordMiniGame({
     const prevOnclick = bok.getAttribute?.('onclick');
     bok.removeAttribute?.('onclick');
     const handleEarly = (e) => { e?.preventDefault?.(); finish(); };
-    bok.textContent = 'סיים ▶';
+    bok.textContent = 'סיים';
     bok.addEventListener('click', handleEarly);
 
     const stopBar = startBonusTimer({ doc, durationMs });
@@ -306,14 +310,14 @@ export function mountHiddenWordMiniGame({
       finalize(result) {
         try { stopBar(); } catch { /* swallow */ }
         bok.removeEventListener('click', handleEarly);
+        // The word itself is shown as wood tiles: the one found (green
+        // bezel) or, on a miss, the hidden one.
         showBonusResult(bchal, {
           success: result.success,
-          emoji: result.success ? '🎉' : '😌',
-          headline: result.success
-            ? `מצאת את המילה "${result.word}"`
-            : `המילה הנסתרת הייתה "${result.hiddenWord}"`,
+          headline: result.success ? 'מצאת את המילה!' : 'המילה הנסתרת הייתה',
           points: result.success ? result.earnedPts : null,
-          sub: result.success ? '' : 'ללא מילה — ללא בוסט. נסה שוב בהזדמנות הבאה.',
+          extraHtml: wordTilesHtml(result.success ? result.word : result.hiddenWord, result.success ? 'ok' : '')
+            + (result.success ? '' : '<div class="bz-result-sub">ללא מילה — ללא בוסט. נסה שוב בהזדמנות הבאה.</div>'),
           cardEl: ovBonus?.querySelector?.('.ovc'),
         });
         bok.textContent = g('continueMiniGame', getGender());
@@ -330,18 +334,18 @@ export function mountHiddenWordMiniGame({
     const inner = doc.createElement('div');
     inner.className = 'bz-card';
     inner.innerHTML = `
-      <div class="bz-bolt">🔍</div>
+      <div class="bz-bolt">${BOOST_BOLT_ICON_HTML}</div>
       <div class="bz-title">מילה נסתרת!</div>
       <div class="bz-sub">מצא מילה באורך ${wordLen} אותיות</div>`;
     const statusHost = doc.createElement('div');
-    statusHost.style.cssText = 'text-align:center;font-size:13px;font-weight:700;color:rgba(255,255,255,.7);min-height:20px;margin-bottom:4px;';
+    statusHost.className = 'bz-status';
+    statusHost.textContent = 'לחץ על האות הראשונה ואז על האחרונה';
     statusEl = statusHost;
     inner.appendChild(statusHost);
     inner.appendChild(buildGridEl(doc));
     const doneBtn = doc.createElement('button');
-    doneBtn.className = 'bz-btn bz-btn-gold';
-    doneBtn.style.cssText = 'margin-top:12px;';
-    doneBtn.textContent = 'סיים ▶';
+    doneBtn.className = 'bz-btn';
+    doneBtn.textContent = 'סיים';
     doneBtn.addEventListener('click', finish);
     inner.appendChild(doneBtn);
     host.appendChild(inner);
@@ -370,7 +374,9 @@ export function mountHiddenWordMiniGame({
   function setStatus(text, ok) {
     if (!statusEl) return;
     statusEl.textContent = text;
-    statusEl.style.color = ok === true ? '#8eff8e' : ok === false ? '#ff9e9e' : 'rgba(255,255,255,.7)';
+    setTone(statusEl, 'bz-status', ok);
+    if (ok === true) cueSfx('mg.good');
+    else if (ok === false) cueSfx('mg.bad');
   }
 
   function clearSel() {

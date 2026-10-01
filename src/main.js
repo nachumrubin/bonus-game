@@ -59,7 +59,7 @@ import { startMatchmaking } from './game/online/spineMatchmaking.js';
 
 import { createGameController } from './ui/controllers/gameController.js';
 import { createAnimationController } from './ui/controllers/animationController.js';
-import { BOOST_RESULT_READY } from './ui/boostPresentation.js';
+import { BOOST_RESULT_READY, BOOST_RESULT_REVEAL_DELAY_MS } from './ui/boostPresentation.js';
 import { getMotionPreference } from './ui/motionPreference.js';
 import { createGameFlowController } from './ui/controllers/gameFlowController.js';
 import { createTurnTimerController } from './ui/controllers/turnTimerController.js';
@@ -1609,6 +1609,7 @@ async function boot() {
           const next = pending.find(i => !seenIds.has(i.inviteId));
           if (next) {
             bus.emit(NOTIF_BANNER_SHOW, {
+              sound:  'invite.received',
               avatar: next.fromAvatar || '🎮',
               text:   `${next.fromName ?? 'שחקן'} מזמין אותך למשחק`,
               action: 'openNotifications',
@@ -1705,6 +1706,7 @@ async function boot() {
             bus.emit(WR_CLOSE, {});
           }
           bus.emit(NOTIF_BANNER_SHOW, {
+            sound:  'invite.declined',
             avatar: '✋',
             text:   last.fromName ? `${last.fromName} דחה את ההזמנה` : 'ההזמנה נדחתה',
             action: 'dismiss',
@@ -3223,9 +3225,9 @@ async function boot() {
         // Auto-equip the freshly bought avatar; the profile watch repaints the store.
         try { await profileService.updateProfile(fbDb, fbUser.uid, { equippedAvatar: id }); }
         catch (e) { console.warn('[spine] store equip after buy', e); }
-        bus.emit(NOTIF_BANNER_SHOW, { text: 'האווטאר נרכש! 🎉', avatar: id });
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'האווטאר נרכש! 🎉', avatar: id, sound: 'store.purchase' });
       } else if (r?.reason === 'insufficient') {
-        bus.emit(NOTIF_BANNER_SHOW, { text: 'אין מספיק מטבעות', avatar: '🪙' });
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'אין מספיק מטבעות', avatar: '🪙', sound: 'store.fail' });
       }
     });
 
@@ -3861,6 +3863,27 @@ async function boot() {
         return;
       }
     }));
+    // The bot's own boosts (auto points, extra turn, ×N, …) no longer open the
+    // modal award card the human had to dismiss — the score-merge chips name
+    // the boost and its points instead (animationController forwards the
+    // opponent's `boost` summary). Do what the card's אישור did: finalize the
+    // deferred score and ack, so the bot / turn timer resume. Deferred past
+    // the square's ignition beat, and out of the engine's own dispatch.
+    const botAwardTimers = new Set();
+    if (botSlot != null) {
+      subs.push(bus.on(EV.BOOST_ACTIVATED, ({ slot, boostId, bonusIdx, payload, consumed, pending } = {}) => {
+        if (slot !== botSlot || consumed || pending) return;
+        const extra = boostId === 'auto_extra_score' ? (Number(payload?.extra) || 0) : 0;
+        const handle = setTimeout(() => {
+          botAwardTimers.delete(handle);
+          try { session.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot, extra, bonusIdx } }); }
+          catch (e) { console.warn('[spine] bot boost finalize', e); }
+          bus.emit(BONUS_AWARD_ACK, { slot, boostId, extra });
+        }, BOOST_RESULT_REVEAL_DELAY_MS);
+        botAwardTimers.add(handle);
+      }));
+    }
+
     // The engine pending/auto-resolution path above stays immediate. Only the
     // intro's presentation follows the square's shared ignition beat.
     subs.push(bus.on(BOOST_RESULT_READY, (payload) => {
@@ -4103,7 +4126,7 @@ async function boot() {
           bonusType: pending.bonusType ?? null,
           title: info.title,
           desc: info.desc + (info.pts ? ` (${info.pts} נקודות)` : ''),
-          icon: info.title?.split(' ')[0] ?? null,
+          icon: info.icon ?? null,
         });
       }));
 
@@ -4211,6 +4234,8 @@ async function boot() {
     return {
       dispose() {
         for (const off of subs) try { off(); } catch {}
+        for (const h of botAwardTimers) clearTimeout(h);
+        botAwardTimers.clear();
         try { ctl.dispose(); }     catch {}
         try { badges.unmount(); }  catch {}
         try { scoreFx.unmount(); } catch {}
@@ -4328,7 +4353,7 @@ async function boot() {
     }
     const session = await createOnlineGameSession({ bus, db, room, mySlot });
     const controller = createGameController({ bus, session, mySlot });
-    const animationController = createAnimationController({ bus, mySlot, reducedMotion: () => getMotionPreference().isReduced() });
+    const animationController = createAnimationController({ bus, mySlot, reducedMotion: () => getMotionPreference().isReduced(), cue: feedbackService.cue });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
       controller,
@@ -4540,7 +4565,7 @@ async function boot() {
     // detection silently stopped working).
     const humanSlot = (bot || mode === 'tutorial') ? 0 : null;
     const controller = createGameController({ bus, session, mySlot: humanSlot });
-    const animationController = createAnimationController({ bus, mySlot: humanSlot, showOpponentBoostOverlay: !!bot, reducedMotion: () => getMotionPreference().isReduced() });
+    const animationController = createAnimationController({ bus, mySlot: humanSlot, reducedMotion: () => getMotionPreference().isReduced(), cue: feedbackService.cue });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
       controller,
@@ -4661,7 +4686,10 @@ async function boot() {
   const replayScreen       = mountReplayScreen({ bus });
   const reportProblemScreen = mountReportProblemScreen({ bus });
   const tutorialScreen     = mountTutorialScreen({ bus });
-  const onboarding         = mountOnboardingController({ bus, storage: globalThis.localStorage, getUid: () => activeFbCurrentUser?.uid ?? null });
+  // Per-screen first-time explanation pop-ups (#ov-onboarding) are switched
+  // off (Oct 2026 — players found them annoying). The controller and each
+  // screen's registerOnboardingContent() copy are kept; re-enable by mounting:
+  //   mountOnboardingController({ bus, storage: globalThis.localStorage, getUid: () => activeFbCurrentUser?.uid ?? null });
   const jokerPicker = mountJokerPicker({ bus });
   // In-game overlays
   const endScreen     = mountEndGameScreen({ bus });
@@ -4849,7 +4877,7 @@ function installCutoverGlobals() {
     const e = globalThis.document?.getElementById?.('sbar');
     if (!e) return;
     e.textContent = msg;
-    e.className = `sbar ${cls}`.trim();
+    e.className = `sbar ${cls}${msg ? '' : ' is-empty'}`.trim();
   };
   globalThis.ovClose = globalThis.ovClose ?? function ovClose(id) {
     globalThis.document?.getElementById?.(id)?.classList?.add('hidden');

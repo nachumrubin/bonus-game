@@ -8,6 +8,7 @@
 import { EV } from '../events/eventTypes.js';
 import { SETTINGS_CHANGED } from '../ui/screens/settingsScreen.js';
 import { REACTIONS, getReactionDisplay } from './reactionsConfig.js';
+import { cue as cueSfx } from '../ui/feedbackService.js';
 import {
   sendReaction,
   clearReaction,
@@ -129,6 +130,7 @@ export function mountReactionController({
     const id   = item.dataset.rxnId;
     if (!canSendReaction()) return;
     closeReactionPanel();
+    cueSfx('reaction.send');
     const now = Date.now();
     recordReactionSent(now);
     startCooldownUI();
@@ -173,7 +175,10 @@ export function mountReactionController({
     if (isReactionMuted(storage)) return;
     if (messagesDisabled()) return;
     const display = getReactionDisplay(reaction);
-    if (display) showReactionBubble(Number(reaction.senderSlot), display, root);
+    if (display) {
+      showReactionBubble(Number(reaction.senderSlot), display, root);
+      cueSfx('reaction.receive');
+    }
   });
   cleanups.push(unsubReaction);
 

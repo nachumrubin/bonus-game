@@ -11,6 +11,7 @@
 import { $, on, setText } from '../domHelpers.js';
 import { BONUS_TILE_DEFS } from '../../game/boosts/bonusTileDefs.js';
 import { g, getGender } from '../genderText.js';
+import { BOOST_BOLT_ICON_HTML } from '../boostIcon.js';
 
 export const BI_INTENT = Object.freeze({
   START: 'bonusIntro/start',
@@ -19,23 +20,25 @@ export const BI_INTENT = Object.freeze({
 export const BI_OPEN  = 'bonusIntro/open';
 export const BI_CLOSE = 'bonusIntro/close';
 
-// Per-bonus copy for the intro overlay. Keyed by bonus type (B1..B13).
+// Per-bonus copy for the intro overlay. Keyed by bonus type (B1..B14).
+// Titles are plain text — the icon lives in the medal above (#bintro-ic), so a
+// leading ⚡ in the title just duplicated it.
 const TITLE_BY_TYPE = {
-  B1:  '⚡ אנגרמה!',
-  B3:  '⚡ אנגרמה!',
-  B8:  '⚡ תשבץ!',
-  B10: '⚡ מילים מצטלבות!',
-  B11: '⚡ מילה נסתרת!',
-  B12: '⚡ כוורת!',
-  B13: '🎡 גלגל המזל!',
-  B14: '⚡ אות פותחת!',
+  B1:  'אנגרמה!',
+  B3:  'אנגרמה!',
+  B8:  'תשבץ!',
+  B10: 'מילים מצטלבות!',
+  B11: 'מילה נסתרת!',
+  B12: 'כוורת!',
+  B13: 'גלגל המזל!',
+  B14: 'אות פותחת!',
 };
 
-// Legacy used the `🎡` Ferris-wheel emoji as the bonus-intro icon for
-// B13 (see HEAD:index.html:6202). We don't override the `#bintro-ic`
-// element via HTML for B13 — the existing emoji-extraction path in the
-// BI_OPEN handler picks up `🎡` from `info.title.split(' ')[0]`.
-const ICON_HTML_BY_TYPE = {};
+// Medal icon HTML per bonus type. Default: the glowing bolt glyph; the wheel
+// keeps its 🎡 (legacy B13 icon, HEAD:index.html:6202).
+const ICON_HTML_BY_TYPE = {
+  B13: '<span class="ovic-emoji" aria-hidden="true">🎡</span>',
+};
 
 function descByType(bonusType) {
   const key = {
@@ -54,9 +57,12 @@ function descByType(bonusType) {
 export function describeBonus(bonusType) {
   const def = BONUS_TILE_DEFS[bonusType];
   return {
-    title:    TITLE_BY_TYPE[bonusType] ?? '⚡ בוסט!',
+    title:    TITLE_BY_TYPE[bonusType] ?? 'בוסט!',
     desc:     descByType(bonusType),
-    iconHtml: ICON_HTML_BY_TYPE[bonusType] ?? null,
+    iconHtml: ICON_HTML_BY_TYPE[bonusType] ?? BOOST_BOLT_ICON_HTML,
+    // Plain-text icon for places that can't take HTML (the online liveBonus
+    // doc the opponent's spectator overlay reads).
+    icon:     bonusType === 'B13' ? '🎡' : '⚡',
     pts:      def?.tilePts ?? 0,
   };
 }
@@ -68,6 +74,7 @@ export function mountBonusIntroScreen({ root = globalThis.document, bus } = {}) 
   const ic      = $('#bintro-ic',      root);
   const titleEl = $('#bintro-title',   root);
   const descEl  = $('#bintro-desc',    root);
+  const ptsEl   = $('#bintro-pts',     root);
   const startBtn = $('button[onclick="startBonusGame()"]', root);
 
   const cleanups = [];
@@ -88,16 +95,14 @@ export function mountBonusIntroScreen({ root = globalThis.document, bus } = {}) 
     pendingPayload = payload;
     const info = describeBonus(payload.bonusType);
     if (titleEl) setText(titleEl, info.title);
-    if (descEl)  setText(descEl,  info.desc + (info.pts ? ` (${info.pts} נקודות)` : ''));
-    if (ic) {
-      if (info.iconHtml != null) {
-        // Allow rich-HTML icons (e.g. for future bonus types that need
-        // more than a plain emoji).
-        ic.innerHTML = info.iconHtml;
-      } else if ((info.title.match(/[🎰⚡🎡]/) || []).length) {
-        setText(ic, info.title.split(' ')[0]);
-      }
+    if (descEl)  setText(descEl,  info.desc);
+    // Points sit in their own gold pill (the B1/B3 copy already says "100
+    // נקודות", so appending them to the description repeated the number).
+    if (ptsEl) {
+      ptsEl.innerHTML = info.pts ? `<svg class="gi f" aria-hidden="true"><use href="#gi-star"/></svg>${info.pts} נקודות` : '';
+      ptsEl.hidden = !info.pts || info.desc.includes(String(info.pts));
     }
+    if (ic) ic.innerHTML = info.iconHtml;
     overlay?.classList?.remove?.('hidden');
   }));
 

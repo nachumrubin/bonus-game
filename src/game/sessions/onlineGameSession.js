@@ -94,6 +94,13 @@ export async function createOnlineGameSession({
   // lastMove happens to be ours, leaving the local state.currentTurnSlot /
   // turnDeadlineMs stale (no turn flip, no timer reset, no "your turn" UI).
   let lastSeenMoveTs = room.lastMove?.ts ?? null;
+  // ts of an opponent move that arrived with its score still deferred (they
+  // landed on a bonus square). Their finalize commit reuses the same lastMove
+  // ts, so it is not a "new move" — this marker is how we recognise it and
+  // replay the score (with the boost summary) as MOVE_SCORE_COMMITTED.
+  let pendingRemoteDeferredTs = (room.lastMove?.scoringDeferred && room.lastMove.slot !== mySlot)
+    ? room.lastMove.ts ?? null
+    : null;
 
   const subs = [];
 
@@ -545,9 +552,12 @@ export async function createOnlineGameSession({
           free: last.type === 'free-exchange',
         });
       } else {
+        const scoringDeferred = !!last.scoringDeferred;
+        pendingRemoteDeferredTs = scoringDeferred ? last.ts : null;
         bus.emit(EV.OPPONENT_MOVED, {
           slot: last.slot, placed: last.tiles, words: last.words, wordTiles: last.wordTiles, score: last.score,
           baseScore: last.baseScore, bonusExtra: last.bonusExtra, multiplier: last.multiplier,
+          scoringDeferred,
         });
         bus.emit(EV.SCORE_CHANGED, { slot: last.slot, score: state.scores[last.slot] });
       }
@@ -561,6 +571,27 @@ export async function createOnlineGameSession({
       // after TURN_CHANGED so the notice lands on an already-updated board.
       // Own-move echoes returned early above, so this only ever fires for the
       // player on the receiving end.
+      const remoteEffects = Array.isArray(incoming.turnEffects) ? incoming.turnEffects : [];
+      if (remoteEffects.length) {
+        bus.emit(EV.TURN_EFFECTS_APPLIED, { effects: remoteEffects, remote: true });
+      }
+    } else if (
+      pendingRemoteDeferredTs != null &&
+      rawLast?.ts === pendingRemoteDeferredTs &&
+      rawLast.slot !== mySlot &&
+      !rawLast.scoringDeferred
+    ) {
+      // The opponent's bonus flow finished: same move, now with its final
+      // score + boost summary. Play the score sequence the deferred commit
+      // held back, then the turn handoff it carries.
+      pendingRemoteDeferredTs = null;
+      bus.emit(EV.MOVE_SCORE_COMMITTED, {
+        slot: rawLast.slot, placed: rawLast.tiles, words: rawLast.words, wordTiles: rawLast.wordTiles,
+        score: rawLast.score, baseScore: rawLast.baseScore, bonusExtra: rawLast.bonusExtra,
+        multiplier: rawLast.multiplier, boost: rawLast.boost ?? null, remote: true,
+      });
+      bus.emit(EV.SCORE_CHANGED, { slot: rawLast.slot, score: state.scores[rawLast.slot] });
+      bus.emit(EV.TURN_CHANGED, { currentTurnSlot: state.currentTurnSlot, turnNumber: state.turnNumber });
       const remoteEffects = Array.isArray(incoming.turnEffects) ? incoming.turnEffects : [];
       if (remoteEffects.length) {
         bus.emit(EV.TURN_EFFECTS_APPLIED, { effects: remoteEffects, remote: true });

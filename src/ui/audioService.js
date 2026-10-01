@@ -12,6 +12,9 @@
 //   isEnabled() / setEnabled(bool)
 //   toggle()                          – flips state, persists, returns new state
 //   refreshButton()                   – paints the toolbar #music-toggle icon
+//   duck(ms)                          – briefly lowers the music under a big
+//                                       sound effect (jingle, reward), then
+//                                       restores it
 //   dispose()
 
 import {
@@ -23,6 +26,9 @@ import {
 } from '../game/settings/settingsCompat.js';
 
 const BUTTON_SELECTOR = '#music-toggle';
+const MUSIC_VOLUME = 0.4;
+const DUCK_VOLUME = 0.12;
+const DUCK_RAMP_MS = 250;
 
 const state = {
   initialized: false,
@@ -31,6 +37,8 @@ const state = {
   audio: null,
   source: '',
   enabled: true,
+  duckTimer: null,
+  rampTimer: null,
 };
 
 export function init({ storage, doc, source } = {}) {
@@ -88,6 +96,31 @@ export function refreshButton() {
   btn.setAttribute?.('aria-pressed', state.enabled ? 'true' : 'false');
 }
 
+export function duck(ms = 1500) {
+  const audio = state.audio;
+  if (!audio || audio.paused) return;
+  clearTimeout(state.duckTimer);
+  rampVolume(DUCK_VOLUME, 80);
+  state.duckTimer = setTimeout(() => {
+    state.duckTimer = null;
+    rampVolume(MUSIC_VOLUME, DUCK_RAMP_MS);
+  }, Math.max(0, ms));
+}
+
+function rampVolume(target, ms) {
+  const audio = state.audio;
+  if (!audio) return;
+  clearInterval(state.rampTimer);
+  const from = Number(audio.volume) || 0;
+  const steps = Math.max(1, Math.round(ms / 20));
+  let i = 0;
+  state.rampTimer = setInterval(() => {
+    i += 1;
+    try { audio.volume = from + (target - from) * (i / steps); } catch {}
+    if (i >= steps) { clearInterval(state.rampTimer); state.rampTimer = null; }
+  }, 20);
+}
+
 export function getStatus() {
   return {
     enabled: state.enabled,
@@ -97,6 +130,10 @@ export function getStatus() {
 }
 
 export function dispose() {
+  clearTimeout(state.duckTimer);
+  clearInterval(state.rampTimer);
+  state.duckTimer = null;
+  state.rampTimer = null;
   if (state.audio) {
     try { state.audio.pause(); } catch {}
   }
@@ -123,7 +160,7 @@ function applyPlaybackState() {
       state.audio = new globalThis.Audio(state.source);
       state.audio.loop = true;
       state.audio.preload = 'auto';
-      state.audio.volume = 0.4;
+      state.audio.volume = MUSIC_VOLUME;
     } catch {
       state.audio = null;
       return;

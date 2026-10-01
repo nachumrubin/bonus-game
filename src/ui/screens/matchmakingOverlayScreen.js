@@ -89,7 +89,9 @@ const SLOT_PROFILES = [
   { av: 'common_6',  nm: 'ענת'   },
 ];
 
-const ITEM_H = 68;
+// Reel step — MUST equal `.ps-slot-item` height in screens-glass.css (the
+// circular window), or the looping spin drifts and avatars sit off-centre.
+const ITEM_H = 88;
 
 function makeItem({ av, nm }) {
   return `<div class="ps-slot-item"><div class="ps-slot-av">${avatarMarkup(av, { fallback: '👑', className: 'av-img' })}</div><div class="ps-slot-nm">${nm}</div></div>`;
