@@ -3233,6 +3233,11 @@
 #sg .sbar .sbar-w { font-weight: 900; letter-spacing: .02em; }
 #sg .sbar.err .sbar-w { color: #ffb3bd; text-decoration: line-through; text-decoration-color: rgba(255,110,125,.7); }
 #sg .sbar .sbar-pts { font-weight: 900; font-size: 14px; color: #28d4ff; text-shadow: 0 0 8px rgba(40,212,255,.55); font-variant-numeric: tabular-nums; }
+/* The opponent's last boost: 🎯 היריב קיבל: תור נוסף / ⚡ היריב קיבל: אנגרמה +15.
+   Gold = boost; the icon is an emoji, so its disc is dropped. */
+#sg .sbar.sbar--boost { background: rgba(255,215,94,.10) !important; border-color: rgba(255,215,94,.45) !important; }
+#sg .sbar.sbar--boost .sbar-ic { width: auto; height: auto; background: none; box-shadow: none; font-size: 15px; }
+#sg .sbar.sbar--boost .sbar-pts { color: #ffd75e; text-shadow: 0 0 8px rgba(255,210,80,.55); }
 #sg .sbar.sbar--bump { animation: sbarBump .28s cubic-bezier(.34,1.56,.64,1); }
 @keyframes sbarBump { 0% { transform: scale(.9); } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { #sg .sbar.sbar--bump { animation: none; } }

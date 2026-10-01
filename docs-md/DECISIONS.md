@@ -5,6 +5,23 @@
 
 ---
 
+## D-opponent-boost-pill: the opponent's boost is shown in the status pill — October 2026
+
+**Decision:** the opponent's boost (bot or online) is reported in the status pill
+above the board (`#sbar`), with no time limit, until the local player starts placing
+tiles. It is not shown in a modal or a timed chip.
+- Bot boosts no longer open the award card. `main.js` auto-finalizes and acks in its
+  place.
+- The engine records a serializable `boost` summary on the move-history entry, so it
+  travels to the online opponent with the move.
+
+**Why:** the bot's card demanded a tap for something the human didn't do. Online, the
+opponent's bonus points arrived silently. A labelled chip inside the score animation
+was tried first and rejected: it disappears after about a second. The pill is free
+until the player places a tile, which is exactly when they need the information.
+
+---
+
 ## D-natural-sfx: realistic CC0 recordings for every physical sound — October 2026
 
 **Decision:** sound effects are recorded samples (`assets/sfx/`, `.ogg` + `.m4a`).

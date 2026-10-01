@@ -160,6 +160,7 @@ See `/partials/screens/` for corresponding HTML templates.
 | `motionTokens.js` | Canonical motion vocabulary — duration/easing/press-scale constants, mirrored as `:root` CSS custom properties. |
 | `motionPreference.js` | Single source of truth for the effective reduced-motion preference (explicit tri-state → legacy flag → OS → normal); stamps `data-reduced-motion` on the root. |
 | `scoreAnimationTimings.js` | Shared score-sequence timing: `mergeSequenceTiming()` choreography + `scoreInteractionGateMs`/`scoreClockGraceMs` (visual-gate vs clock-fairness, with reduced-motion floors). |
+| `boostSummary.js` | Boost copy: `describeBoost` (award card) and `describeBoostSummary` (the opponent's boost in the status pill, from the engine's `moveHistory[].boost`). |
 | `screenPartialManifest.js` | Screen partial registry. |
 | `screenPartials.js` | Partial HTML loading system. |
 | `screens/gameMenu.js` | In-game ☰ menu toggle (`wireGameMenu`): open/close, outside tap, Escape. |

@@ -320,3 +320,30 @@ Index defined: `/globalRatings` indexed on `["rating"]` for leaderboard queries.
 3. **Transaction limitations** — Realtime DB transactions on large subtrees can fail under high contention; room transactions are limited to the `/rooms/{roomId}` subtree
 4. **SDK CDN dependency** — Firebase SDK is loaded from `storage.googleapis.com/firebase-js-sdk/` at runtime; offline first-load fails without this
 5. **Auth token expiry** — Firebase ID tokens expire after 1 hour; auth library auto-refreshes, but `admin` custom claims require token refresh to propagate
+
+---
+
+## Opponent's deferred bonus move: replaying the score (October 2026)
+
+A bonus-square move is committed twice. Both commits carry the same `lastMove`
+object, so the same `ts`.
+1. **Deferred commit:** tiles, no score, no turn rotation, with
+   `lastMove.scoringDeferred === true`.
+   - The receiver's `onlineGameSession` emits `OPPONENT_MOVED { scoringDeferred: true }`.
+     Tiles pop in and no score sequence plays.
+   - It remembers the move's `ts`.
+2. **Finalize commit:** score, turn rotation, and `lastMove.boost`. It is not a "new
+   move" (same `ts`). The receiver matches the remembered `ts` with
+   `scoringDeferred === false` and emits, once:
+   - `MOVE_SCORE_COMMITTED { slot, placed, words, wordTiles, score, baseScore,
+     bonusExtra, multiplier, boost, remote: true }`;
+   - `SCORE_CHANGED`, `TURN_CHANGED` and any `turnEffects`.
+
+   Every `MOVE_SCORE_COMMITTED` subscriber already handled an opponent slot, because
+   bot games emit one. The commit handlers filter `slot === mySlot`.
+   `bonusSpectatorScreen` hides on the remote commit, because the `liveBonus` clear is
+   a separate write that may land later. `gameController` turns `boost` into the
+   status-pill notice.
+
+No rules change: move fields are not validated in `firebase.database.rules.json`.
+

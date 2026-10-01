@@ -41,6 +41,7 @@ import { computeLiveWordPreview } from '../liveWordPreview.js';
 import { BOOST_BOLT_ICON_HTML } from '../boostIcon.js';
 import { EV } from '../../events/eventTypes.js';
 import { BOOST_IGNITION_DURATION_MS, BOOST_RESULT_READY } from '../boostPresentation.js';
+import { describeBoost, describeBoostSummary } from '../boostSummary.js';
 import {
   WORD_MERGE_STAGGER_MS as SCORE_MERGE_WORD_STAGGER_MS,
   WORD_MERGE_FLIGHT_MS  as SCORE_MERGE_WORD_FLIGHT_MS,
@@ -1074,8 +1075,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     try { renderAll(controller.view); } catch { /* swallow */ }
   }
 
-  // Status pill: errors, game-over, and the live word-points counter
-  // ("✓ האור +8") while tiles are placed. The idle "choose a letter…" hint
+  // Status pill: errors, game-over, the live word-points counter
+  // ("✓ האור +8") while tiles are placed, and otherwise the opponent's last
+  // boost ("🎯 היריב קיבל: תור נוסף", "⚡ היריב קיבל: אנגרמה +15") — it stays
+  // until the player starts placing (gameController clears view.opponentBoost).
+  // The idle "choose a letter…" hint
   // is gone — an empty pill is hidden (`.is-empty`, space kept so the board
   // doesn't jump). Transient setS() toasts still write here and show.
   function renderStatus(v) {
@@ -1084,6 +1088,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     let text = '';
     let tone = '';
     let preview = null;
+    let boostInfo = null;
     if (v.lastInvalidReason) {
       text = invalidReasonText(v.lastInvalidReason);
       tone = 'err';
@@ -1096,8 +1101,26 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         placed: v.placed, swappedTiles: v.swappedTiles,
         isWordValid: dictReady ? isWordValid : null,
       });
+    } else if (v.opponentBoost) {
+      boostInfo = describeBoostSummary(v.opponentBoost.boost);
     }
-    sbar.classList?.remove?.('ok', 'err', 'bon', 'is-empty', 'sbar--preview');
+    sbar.classList?.remove?.('ok', 'err', 'bon', 'is-empty', 'sbar--preview', 'sbar--boost');
+    if (boostInfo) {
+      sbar.classList?.add?.('sbar--preview', 'sbar--boost');
+      sbar.innerHTML = `<span class="sbar-ic" aria-hidden="true">${escapeForOverlay(boostInfo.icon)}</span>`
+        + `<span class="sbar-w">היריב קיבל: ${escapeForOverlay(boostInfo.name)}</span>`
+        + (boostInfo.showPoints ? `<span class="sbar-pts" dir="ltr">+${boostInfo.extra}</span>` : '');
+      const label = `היריב קיבל בוסט: ${boostInfo.name}${boostInfo.showPoints ? `, ${boostInfo.extra} נקודות` : ''}`;
+      sbar.setAttribute?.('aria-label', label);
+      const key = `boost|${label}`;
+      if (key !== lastPreviewKey) {
+        sbar.classList?.remove?.('sbar--bump');
+        void sbar.offsetWidth;
+        sbar.classList?.add?.('sbar--bump');
+      }
+      lastPreviewKey = key;
+      return;
+    }
     if (preview) {
       const bad = preview.valid === false;
       sbar.classList?.add?.('sbar--preview', bad ? 'err' : 'ok');
@@ -2371,63 +2394,6 @@ function showTurnEffectBanner(root, payload) {
     el.classList?.remove('is-in');
     setTimeout(() => el.remove?.(), 320);
   }, TURN_EFFECT_BANNER_MS);
-}
-
-// One-line Hebrew descriptions of every boost the player can land on. Each
-// row drives the modal overlay so the player always sees what they got.
-function describeBoost(boostId, payload, extra) {
-  const p = payload ?? {};
-  switch (boostId) {
-    case 'auto_extra_score':
-      return {
-        title: 'בוסט ניקוד!',
-        bigText: `+${extra || p.extra || 0} נק'`,
-        sub:   'הנקודות יתווספו עם אישור',
-      };
-    case 'extra_turn':
-      return { title: 'תור נוסף!', image: 'assets/rewards/extra turn.png', sub: 'תקבל תור נוסף ברצף' };
-    case 'multiply_next_turns': {
-      const mult  = Number(p.multiplier ?? 2);
-      const turns = Number(p.turnsRemaining ?? 1);
-      return {
-        title: `הכפלת ניקוד ×${mult}!`,
-        bigText: `×${mult}`,
-        sub: turns > 1 ? `הניקוד יוכפל ב-${turns} התורים הבאים` : 'הניקוד יוכפל בתור הבא',
-      };
-    }
-    case 'timer_bonus':
-      return {
-        title: 'בוסט זמן',
-        bigText: `+${Number(p.seconds ?? 0)} שניות`,
-        sub: 'יתווסף לזמן התור הבא',
-      };
-    // The next three used bare emoji, which the overlay painted gold (see
-    // showBonusAwardOverlay) — they showed up as meaningless yellow discs.
-    // pause.png / rematch.png are already Boost-family art (blue sphere, cyan
-    // ring, glossy 3D), so they slot in next to 'extra turn.png' cleanly.
-    // Bespoke artwork is still tracked in docs/asset_inventory.md.
-    case 'free_tile_swap':
-      return {
-        title: 'החלפת אות חינם',
-        image: 'assets/ui/rematch.png',       // circular swap arrows
-        bigEmoji: '🔄',
-        sub: 'תוכל להחליף אותיות בלי לוותר על התור',
-      };
-    case 'skip_opponent_turn':
-      return {
-        title: 'דילוג על תור היריב',
-        image: 'assets/ui/pause.png',         // the opponent's turn is halted
-        bigEmoji: '⏭️',
-        sub: 'היריב יפסיד את התור הבא',
-      };
-    case 'cancel_next_opponent_bonus':
-      // No usable shield asset (the achievements shield is a multi-object sheet
-      // with a baked-in background), so this stays an emoji — but as bigEmoji it
-      // renders as a real colour shield instead of a gold blob.
-      return { title: 'ביטול בוסט יריב', bigEmoji: '🛡️', sub: 'הבוסט הבא של היריב יבוטל' };
-    default:
-      return { title: 'בוסט הופעל', bigEmoji: '⚡', sub: '' };
-  }
 }
 
 function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bonusIdx, boostPayload, isOpponent } = {}) {

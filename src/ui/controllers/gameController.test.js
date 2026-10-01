@@ -347,3 +347,58 @@ test('recovery: LOCK_PLACED bus event clears pending placement', () => {
 });
 
 console.log = _origLog;
+
+// The opponent's boost sits in the status pill from their move until the
+// local player starts placing tiles (or their own turn ends without placing).
+const OPP_BOOST = { bonusType: 'B13', kind: 'wheel', extra: 0, effects: [{ boostId: 'extra_turn', payload: {} }] };
+const oppCommit = (over = {}) => ({
+  slot: 1, placed: [], words: ['טי'], wordTiles: [], score: 8, baseScore: 8,
+  bonusExtra: 0, multiplier: 1, boost: OPP_BOOST, ...over,
+});
+
+test('opponentBoost: set by the opponent\'s score commit, not by our own', () => {
+  const { controller } = fresh({ mySlot: 0 });
+  bus.emit(EV.MOVE_SCORE_COMMITTED, oppCommit({ slot: 0 }));
+  assert.equal(controller.view.opponentBoost, null, 'our own boost already had its award card');
+  bus.emit(EV.MOVE_SCORE_COMMITTED, oppCommit());
+  assert.deepEqual(controller.view.opponentBoost, { slot: 1, boost: OPP_BOOST });
+});
+
+test('opponentBoost: never set in a shared-screen game', () => {
+  const { controller } = fresh({ mySlot: null });
+  bus.emit(EV.MOVE_SCORE_COMMITTED, oppCommit());
+  assert.equal(controller.view.opponentBoost, null);
+});
+
+test('opponentBoost: survives the turn handing over to us, cleared by our first tile', () => {
+  const { session, controller } = fresh({ mySlot: 0 });
+  session.state.currentTurnSlot = 1;
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1 });
+  bus.emit(EV.MOVE_SCORE_COMMITTED, oppCommit());
+  session.state.currentTurnSlot = 0;
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0 });
+  assert.ok(controller.view.opponentBoost, 'still showing at the start of our turn');
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1, rackIndex: 0 });
+  assert.equal(controller.view.opponentBoost, null);
+});
+
+test('opponentBoost: cleared when our turn ends without placing (pass / timeout)', () => {
+  const { session, controller } = fresh({ mySlot: 0 });
+  session.state.currentTurnSlot = 0;
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 0 });
+  bus.emit(EV.MOVE_SCORE_COMMITTED, oppCommit());
+  session.state.currentTurnSlot = 1;
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1 });
+  assert.equal(controller.view.opponentBoost, null);
+});
+
+test('opponentBoost: an extra turn (opponent plays again) keeps it until their next move', () => {
+  const { session, controller } = fresh({ mySlot: 0 });
+  session.state.currentTurnSlot = 1;
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1 });
+  bus.emit(EV.MOVE_SCORE_COMMITTED, oppCommit());
+  bus.emit(EV.TURN_CHANGED, { currentTurnSlot: 1 });
+  assert.ok(controller.view.opponentBoost);
+  bus.emit(EV.MOVE_CONFIRMED, { slot: 1, placed: [], words: [], wordTiles: [], score: 4 });
+  assert.equal(controller.view.opponentBoost, null, 'their next move replaces it');
+});

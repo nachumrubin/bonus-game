@@ -676,6 +676,25 @@ previously the turn just silently failed to arrive.
   a ~320ms fade-out.
 - Tones: `.tone-warn` (something was taken from you), `.tone-good`, `.tone-info`.
 
+### Opponent Boost Notice (`#sbar.sbar--boost`)
+
+The status pill above the board shows the opponent's last boost (bot or online):
+`🎯 היריב קיבל: תור נוסף`, `⚡ היריב קיבל: אנגרמה +15`.
+- **Source:** `view.opponentBoost` (gameController), set from the opponent's
+  `MOVE_SCORE_COMMITTED.boost`. It is never set in a shared-screen game
+  (`mySlot === null`), and never for the local player's own boost, which has its award
+  card.
+- **No timer.** It is cleared by:
+  - the local player's first `placeTile` / `swapBoardTile`;
+  - any newer move (`MOVE_CONFIRMED` / `OPPONENT_MOVED`);
+  - the local turn ending without a placement (pass, exchange, lock, timeout).
+
+  On an opponent extra turn it stays until their next move.
+- **Priority in `renderStatus`:** invalid-move error > game over > live word preview >
+  opponent boost.
+- Copy comes from the pure `describeBoostSummary(boost)` (`src/ui/boostSummary.js`).
+- Bot boosts no longer open the modal award card; this pill replaces it.
+
 ### Score Count-Up Gating
 - Active-slot glow holds until count-up finishes
 - Last-move highlight persists until the next move is committed (either player)

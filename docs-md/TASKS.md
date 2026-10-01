@@ -1,5 +1,22 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Opponent boost in the status pill — October 2026
+
+- [x] Engine records the `boost` summary on the move. `scoringDeferred` marks the
+  deferred commit.
+- [x] Online receiver replays the deferred score with the boost as
+  `MOVE_SCORE_COMMITTED { remote: true }`.
+- [x] Bot boosts: the modal award card is replaced by the status-pill notice, with
+  auto-finalize + ack.
+- [x] `#sbar` shows the opponent's boost until the player places a tile.
+- [ ] Verify with real games:
+  - a live bot game where the bot lands on a points square, the wheel and a
+    mini-game (unit tests + a rendered pill capture only so far);
+  - a two-device online game.
+- [ ] `createAnimationController`'s `showOpponentBoostOverlay` option is now unused in
+  production (tests still exercise it). Remove it if nothing needs it.
+- [ ] Possible later: the replay screen could show `moveHistory[].boost` per move.
+
 ## Sound effects — October 2026
 
 - [x] Phase 1: `sfxEngine` and `sfxCatalog`; `feedbackService` routes through them.

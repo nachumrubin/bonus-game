@@ -2,6 +2,59 @@
 
 ---
 
+## The opponent's boost is shown in the status pill (October 2026)
+
+When the opponent (bot or online player) lands on a boost, the status pill above the
+board (`#sbar`, the live word-points pill) says what they got and the points:
+`🎯 היריב קיבל: תור נוסף`, `⚡ היריב קיבל: אנגרמה +15`. It has no time limit. It
+stays until you place or swap your first tile, until your turn ends without placing,
+or until the opponent's next move.
+
+**Why:** a bot's boost opened a blocking card the human had to dismiss, and the bot's
+mini-game points appeared as an anonymous `+N`. Online, the opponent's bonus points
+arrived silently, because the finalize commit reuses the deferred move's `ts`. Nothing
+said which boost it was.
+
+### Engine (`gameEngine.js`, pure)
+- A bonus-square move's history entry gets `scoringDeferred: true`.
+- `FINALIZE_BOOST_AWARD` sets `scoringDeferred: false` and writes
+  `boost: { bonusType, kind, extra, effects: [{ boostId, payload }] }`.
+  - `effects` covers points, the square's own future effects (from `activeBoosts`,
+    captured before `ON_TURN_END` consumes them), and wheel `queueBoosts`.
+- `MOVE_SCORE_COMMITTED` carries `boost`.
+
+### Online (`onlineGameSession.js`)
+- The deferred commit emits `OPPONENT_MOVED` with `scoringDeferred: true`, so the
+  tiles pop and no score plays yet.
+- The finalize commit (same `ts`) is recognised and replayed once as
+  `MOVE_SCORE_COMMITTED { ..., boost, remote: true }`, followed by `SCORE_CHANGED`,
+  `TURN_CHANGED` and any `turnEffects`. The opponent's points now animate.
+- The spectator overlay closes on that event, so the score chips never play behind it.
+
+### Bot (`main.js`)
+- Bot boosts no longer open the modal award card.
+- `attachBonusFlow` auto-finalizes after `BOOST_RESULT_REVEAL_DELAY_MS` and emits
+  `BONUS_AWARD_ACK`, which is what the card's אישור did.
+
+### UI
+- `gameController`: `view.opponentBoost = { slot, boost }` is set by the opponent's
+  `MOVE_SCORE_COMMITTED`. It is cleared by:
+  - `placeTile` / `swapBoardTile`;
+  - any `MOVE_CONFIRMED` / `OPPONENT_MOVED`;
+  - the local turn ending without a placement.
+- `gameScreen.renderStatus` shows it as `.sbar--boost` (gold), below errors,
+  game-over and the live word preview.
+- `src/ui/boostSummary.js` (new):
+  - `describeBoost` moved here from `gameScreen.js`;
+  - new pure `describeBoostSummary(boost)` builds the pill copy.
+
+### Tests
+- New tests in `gameEngine`, `onlineGameSession`, `gameController`,
+  `animationController` and `boostSummary`.
+- 1529 unit tests pass.
+
+---
+
 ## Sound effects: natural recorded sounds across the whole game (October 2026)
 
 Replaced the 10 synth beeps with 55 cues built from 35 CC0 recordings. Anything

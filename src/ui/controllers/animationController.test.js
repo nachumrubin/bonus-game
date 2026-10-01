@@ -555,3 +555,16 @@ test('a broken cue never breaks the animation pipeline', () => {
   assert.ok(ac._directives.some(d => d.kind === 'bagBounce'));
   ac.dispose();
 });
+
+// Bot boosts are reported in the status pill, not the modal award card.
+test('a bot boost opens no award card by default (the status pill names it instead)', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  bus._reset();
+  const calls = [];
+  const ac = createAnimationController({ bus, mySlot: 0 });
+  ac.setRenderer({ bonusAwardOverlay: p => calls.push(p) });
+  bus.emit(EV.BOOST_ACTIVATED, { slot: 1, boostId: 'auto_extra_score', bonusIdx: 4, payload: { extra: 20 } });
+  t.mock.timers.tick(BOOST_RESULT_REVEAL_DELAY_MS);
+  assert.equal(calls.length, 0);
+  ac.dispose();
+});
