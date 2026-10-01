@@ -407,3 +407,17 @@ coin loop). Tests: `avatarStore.test.js`, `avatarStoreScreen.test.js`, extended 
 **Evidence:** `presenceService.js` → `HEARTBEAT_MS = 10_000`, `PRESENCE_GRACE_MS = 30_000`.
 
 **Rationale (inferred):** 10s heartbeat is frequent enough to detect disconnect within 30s window. 30s grace prevents false positives from brief connectivity hiccups.
+
+---
+
+## D-soak-agents: Live soak agents use real compat clients, real meeting flows, real controllers (October 2026)
+
+**Decision:** The soak agents (`scripts/simulator/agents/`, `npm run soak`) are full headless clients. Each one signs in anonymously through the firebase compat SDK, not through rules-unit-testing contexts. Each one has its own connection and creates rooms through the real invite and room-code services. Each one plays through `gameController` + `turnTimerController` + `timeoutWatchdog` instead of dispatching engine commands directly.
+
+**Why:** The bugs we are hunting live in the seams between these pieces. Examples: the local timer auto-pass racing a last-second confirm and the opponent's watchdog claim, the controller's `turn-already-passed` guard, liveBonus freezing the opponent, and invite and room-code handshakes. Driving the engine directly (as `gameRunner.mjs` does) skips all of them. Real auth and one connection per player are also what a staging load test must measure.
+
+**Consequences:**
+- Games run on the wall clock with the real 20/40/60 s speeds. Throughput comes from `--parallel`, not from shortening the timers.
+- Timing is deliberate: about 15% of timed turns commit within ±1.5 s of the deadline.
+- The older `npm run sim` scenarios stay for fast, deterministic, injected-clock checks.
+- Prod is never a soak target. Staging (a separate Firebase project) is the only remote target.

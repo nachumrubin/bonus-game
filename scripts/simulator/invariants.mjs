@@ -91,6 +91,16 @@ function checkLiveBonusGate(prev, next) {
   if (!prevActive) return null;
   const nextActive = !!next.liveBonus?.active;
   if (!nextActive) return null; // mini-game cleared, turn flip would be fine
+  // The bonus owner's own finalize commit rotates the turn, and its separate
+  // "clear liveBonus" write lands just after it (main.js subscribes the
+  // session's commit before the liveBonus clear). Recognise it: same move
+  // (lastMove.ts), owner's slot, scoringDeferred true → false. A watchdog
+  // claim leaves lastMove untouched, so it is still flagged.
+  const ownFinalize = prev.lastMove?.scoringDeferred === true
+    && next.lastMove?.scoringDeferred !== true
+    && next.lastMove?.ts === prev.lastMove?.ts
+    && Number(next.lastMove?.slot) === Number(prev.liveBonus?.slot);
+  if (ownFinalize) return null;
   if (Number(prev.currentTurnSlot) !== Number(next.currentTurnSlot)) {
     return v('live-bonus-gate-violation',
       `turn flipped ${prev.currentTurnSlot} -> ${next.currentTurnSlot} while liveBonus.active=true`);

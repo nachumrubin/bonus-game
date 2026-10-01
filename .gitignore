@@ -51,3 +51,6 @@ android/.idea/
 
 # Generated test reports.
 /test-results/
+
+# Soak agents: staging Firebase project config (separate project, never prod)
+scripts/simulator/staging.config.json

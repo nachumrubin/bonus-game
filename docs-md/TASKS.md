@@ -1077,6 +1077,29 @@ The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG
 
 ---
 
+## TODOs — Live soak agents (`npm run soak`)
+
+- ✅ Phase 1: headless event-driven agents play real live games on the emulator. Real anonymous auth with one connection per player; meeting by invite or room code; the ready handshake; real controllers, timer, watchdog and bonus flow; deadline-band timing; human behaviour (previews, lookups, exchanges, locks, illegal words, reactions); the oracle; failure bundles; the report. See CHANGELOG (October 2026).
+- ✅ Fixed the bugs it found: the stale bag once the bag empties (tile duplication), and spent locks returning after a reconnect. Both were empty arrays dropped by Firebase.
+- [ ] Re-run `npm run soak -- --games 50 --parallel 6` after the bag/lock fix and confirm 0 `invariant-bag-parity` / `desync-tileBagCount`.
+- [ ] Matchmaking strategy: a shared pool of agents running `startMatchmaking` (emulator only), so pairing is emergent.
+- [ ] Socket drops and app lifecycle: `goOffline`/`goOnline` (background/foreground), kill and relaunch mid-turn with a rejoin from `users/{uid}/activeRoom`, and dispose between the two deferred bonus commits. Count the drops in `stats.socketDrops` so the phantom-disconnect check stays meaningful.
+- ✅ Network latency injection (`net/latency.mjs`, `--network`).
+- ✅ Fixed the version-cursor poisoning by a rejected optimistic write (dropped opponent move → false timeout). See GAP_REPORT -3.
+- [ ] Low priority: a game-ending pass, exchange or timeout is never committed. `finishGame` writes `status` only, so the final room keeps `_passCount=3`, a stale `lastMove`, and un-decremented lock timers, and the two clients' post-game `lockedCells` differ (soak run4b g0). It's cosmetic after game end, but `debug-game.mjs` shows a misleading final turn.
+- [ ] Follow-up: after a lost commit race, the local `turnTimerController` auto-passes a turn the server already rotated away. Rules reject it (harmless now), but suppress it. See GAP_REPORT -3.
+- [ ] **Confirmed (Oct 2026):** browser emulator playtesting (`npm run emu` + `?emu=1`) runs WITHOUT security rules. An unauthenticated write to `/admins` in ns `boost-8ef11-default-rtdb` succeeds. The page keeps the prod database URL, so it writes to namespace `boost-8ef11-default-rtdb` on the emulator, while the emulator loads rules only into `demo-bonus-game-default-rtdb`. Point `?emu=1` at the rules namespace (set `databaseURL` / `ns` in the emulator branch of `firebaseClient.js`).
+- [ ] ~~Network latency injection:~~ (done, see above). Original note: wrap each agent's db so transactions and writes are delayed by a mobile-like distribution (50–800 ms, with occasional 2 s spikes). On localhost a tap at deadline − 50 ms is never committed late. The client's own timer auto-pass pre-empts every tap aimed after the deadline (run 2: all `[0,+1500)` aimed turns → `turn-gone-before-action`), so commit-arrives-inside-the-grace races are under-exercised.
+- [ ] Clock skew: run agent B in a child process with a faked `Date.now()` offset of ±0–8 s, to check that the serverClock correction holds.
+- [ ] Async modes at scale (friend-async / random-async): checked, but not yet run in volume.
+- [ ] `moveReplay`: rebuild the board from `moveHistory` at game end and compare its hash with the server board, plus a score-ledger check once end-of-game adjustments are confirmed.
+- [ ] Extract the liveBonus broadcast from `main.js attachBonusFlow` into `src/ui/controllers/liveBonusBroadcastController.js`. `gameAgent.mjs` has a copy today, and it can drift.
+- [ ] Load test against a STAGING Firebase project (`scripts/simulator/staging.config.json`): multi-process workers, a staircase ramp, latency/error/bandwidth metrics, and the behaviour of Spark's 100-connection cap. Needs the user to create the staging project.
+- [ ] Playwright UI layer: two browser contexts against the emulator-hosted app (stub `config.js` so `?emu=1` uses the demo namespace), with an in-page agent using `window.__spine`.
+- [ ] Hardening: `inviteService.acceptInvite` reports a false `invite-already-consumed` when the guest's `/invites/{uid}` cache is cold (no live listener), because the transaction aborts on its first null call. This is safe today (the app keeps `listenForInvites` attached), but any future accept-from-deep-link path would break. Consider the `roomCodeService.claimByCode` approach: remove() guarded by a rule.
+
+---
+
 ## TODOs — Online Simulator (Phase 5)
 
 - [ ] Deferred-score split-write scenario: dispose the active session AFTER `MOVE_CONFIRMED(scoringDeferred=true)` but BEFORE `FINALIZE_BOOST_AWARD`. Verify the room state stays consistent (no half-committed move), the opponent's view isn't corrupted, and the reconnected session correctly sees the move as never-committed. Needs bonus-square placement to be driven deterministically (bonuses sit at off-grid edges; random bot rarely hits them) — either inject a scripted-move bot or seed the engine state with `state.pendingScoreCommit` directly.

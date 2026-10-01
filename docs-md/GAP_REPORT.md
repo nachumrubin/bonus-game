@@ -17,6 +17,27 @@
 
 ## Critical Gaps
 
+### -3. Version cursor could be left ahead of the server by a rejected optimistic write *(Confirmed gap)* — ✅ RESOLVED (October 2026)
+
+**Evidence:** soak run 2026-10-01T19-12-47 g5 (poor-network latency). Agent B's state stayed at turn 8 for 20 s after the server reached v10 (turn 9, B's turn). B was then timed out at v11. Root cause: an optimistic echo of B's rejected auto-pass set `lastAppliedVersion` to a version the server never had, and `forceResync` never lowered it. Reproduced deterministically in `tests/unit/online-version-cursor-poison.test.js`.
+
+**Fix:** realign on version regression, and realign in both directions in `forceResync` (guarded by `watcherApplySeq`).
+
+**Still open (upstream trigger):** after a lost commit race, the client rolls back to "my turn, deadline already passed", and its own `turnTimerController` immediately dispatches a timeout `PASS_TURN` that the rules then reject. This is now harmless, but it is wasted traffic and a confusing `SYNC_REJECTED`. Consider suppressing the local timeout auto-pass for a turn the server has already rotated away (for example, by checking `room.currentTurnSlot` after the rollback before dispatching).
+
+### -2. Empty collections vanish in Firebase, and readers fell back to stale or default values *(Confirmed gap)* — ✅ RESOLVED (October 2026)
+
+**Evidence:** found by the live soak agents (`npm run soak`, run 2026-10-01T18-21-19, games g3 and g4: `invariant-bag-parity`, 101 tiles in a 99-tile set). RTDB never stores `[]` or `{}`, so a key that becomes empty disappears. Three readers treated "missing" as "unknown, keep the old value":
+- `onlineGameSession` watcher: `incoming.bag ?? state.bag` (stale bag, phantom draws and exchanges).
+- `engineStateFromRoom`: bag copied only when it was an array (a fresh full bag on resync or resume).
+- `normalizeLockInventory`: missing slot → `[3,3,5]` (spent locks regained on resync or resume).
+
+**Fix:** missing means empty in all three. Regression tests use `makeMockDb({ emptyAsMissing: true })`. The default mock keeps `[]`, which is why the existing tests never saw this.
+
+**Remaining risk:** any NEW field that can become empty needs the same treatment. Write its tests against `emptyAsMissing`.
+
+**Suspected (not confirmed broken):** `inviteService.acceptInvite` aborts with `invite-already-consumed` when the guest's invites cache is cold. This is safe while `listenForInvites` is always attached. See TASKS (live soak agents).
+
 ### -1. Turn deadlines are compared across unsynchronised device clocks *(Confirmed gap)* — ✅ RESOLVED (August 2026)
 
 **Resolved by** `src/game/online/serverClock.js` — `startServerClock({db})` tracks

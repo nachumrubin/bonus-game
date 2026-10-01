@@ -2,6 +2,75 @@
 
 ---
 
+## Live soak agents, and the sync bugs they found (October 2026)
+
+### New: `npm run soak`: two bots play real live online games
+
+`scripts/simulator/soak/` and `scripts/simulator/agents/` add independent headless players. They play complete online games against each other on the Firebase emulator, using the production rules. Each agent is a full client:
+- It signs in anonymously with the firebase compat SDK and has its own connection.
+- It meets its opponent through the real invite or room-code flow and does the coin-screen ready handshake.
+- It plays through the same `gameController`, `turnTimerController` (its local auto-pass), `timeoutWatchdog`, `bonusActivationController`, presence and `disconnectController` that `main.js` mounts. It also runs a copy of the liveBonus broadcast.
+
+**Timing.** Turns use the real 20/40/60 s speeds, plus an untimed share. Each turn's commit time is sampled across the whole turn. Per persona, about 7–40% of turns (roughly 15% overall) land in a ±1.5 s band around the deadline: just before it, at it, inside the 1 s watchdog grace, and just after it. This exercises the commit / auto-pass / watchdog-claim race.
+
+**Behaviour.**
+- Words come from `searchBotMove` at persona difficulty.
+- Bots do drag previews (`livePreview` writes) and dictionary lookups.
+- They exchange when the rack is poor (rack-quality heuristic) and use the free swap.
+- They attach locks to moves or place a lock alone.
+- They submit invalid words (reject, then auto-pass).
+- They send context-aware reactions within the 5 s cooldown.
+- They play mini-games, spin the wheel, and dismiss award cards with realistic dwell times.
+- Rarely, they resign or walk away from the clock.
+
+**Oracle (`oracle/gameOracle.mjs`).**
+- `invariants.mjs` runs on every commit.
+- Each move's words are re-validated and its base and total scores recomputed.
+- At quiescence, client A, client B and the server must agree on the board, scores, racks, bag, locks and `bonusSqUsed`.
+- Liveness (no stuck turns).
+- End-of-game consistency.
+- Every bonus the server credits must match an outcome the player actually earned.
+
+**Output.** Failures are deduplicated by signature, with up to 3 repro bundles each. Bundles are readable with the new `node scripts/debug-game.mjs --file <bundle>`, and `--emu <roomId>` reads a room in the local emulator. The run report `.simulator-data/soak/<runId>/summary.md` covers results, failures, a deadline-race histogram and behaviour coverage.
+
+**Supporting changes.**
+- `runSimulator.mjs` pointed at the deleted `data/dictionary.base.txt`; it now uses `data/dictionary.txt`, so `npm run sim` runs again.
+- `randomBot.findIllegalPlacement` was added.
+- `mockFirebase` gained an opt-in `emptyAsMissing` mode that mirrors RTDB, which never stores empty arrays.
+- **Emulator namespace.** The RTDB emulator loads `firebase.database.rules.json` only into `demo-bonus-game-default-rtdb`. The bare `demo-bonus-game` namespace accepts every write, including an unauthenticated write to `/admins`. The agents now use the rules namespace, and `runSoak` refuses to start unless an unauthenticated `/admins` write is denied (`assertRulesEnforced`). The first soak runs were rules-free, and one apparent "stale pass overwrote the opponent's turn" finding turned out to be a write the real rules deny.
+- **Simulated phone networks.** `net/latency.mjs` (`--network mixed|off|wifi|4g|poor`, default `mixed`) delays each agent's writes and incoming updates (FIFO, with occasional spikes), so last-second taps really do arrive late. The oracle treats writes still in flight as "not quiescent".
+- **`live-bonus-gate` invariant.** It no longer flags the bonus owner's own finalize. That commit rotates the turn just before its own liveBonus-clear write lands, and the ordering is the same in `main.js`. Watchdog claims are still flagged.
+
+### Fix: the opponent kept a stale tile bag once the bag ran out (tile duplication)
+
+Firebase drops empty arrays, so when the last tiles are drawn the room's `bag` key disappears. `onlineGameSession`'s watcher resynced with `incoming.bag ?? state.bag`, so the other client kept its old bag. It could then exchange or draw tiles that no longer existed. Soak game g3 ended with 101 tiles in a 99-tile set.
+
+`engineStateFromRoom` had the twin bug. It only copied `room.bag` when it was an array, so any reconnect, forceResync or resume after the bag emptied left the freshly seeded **full** bag (about 80 phantom tiles). Both now treat a missing `bag` as empty.
+
+### Fix: a rejected optimistic write left the version cursor ahead of the server, so the opponent's next move was dropped
+
+Found by the soak agents on a simulated poor network (run3b, game g5). The Firebase SDK raises a client's own transaction to its listeners optimistically, before the server answers. `onlineGameSession`'s watcher took it as the echo of our move and set `lastAppliedVersion = N+1`. When the server then **rejected** the write, the SDK reverted to version N, but the cursor stayed at N+1:
+- the watcher ignores anything at or below the cursor, and
+- `forceResync` only ever moved the cursor forward.
+
+The rejected write in the run was a stale auto-pass after a lost commit race; the rules deny it. The opponent's next real commit also carries version N+1, so it was silently discarded. The player never saw the move, never got the turn, and was timed out by the opponent's watchdog.
+
+The fix:
+- A version going backwards in the watcher now realigns both cursors to the server's version and forces a resync.
+- `forceResync` realigns the cursors in either direction. It skips the overwrite if the watcher applied a newer snapshot while the read was in flight (`watcherApplySeq`).
+
+Regression test: `tests/unit/online-version-cursor-poison.test.js`.
+
+### Fix: spent locks came back after a reconnect
+
+A player who used all their locks has an empty inventory, which Firebase also drops. `normalizeLockInventory` turned the missing slot into a fresh `[3, 3, 5]`, so after a reconnect or resume that player had 3 free locks while the opponent's client showed none.
+
+`normalizeLockInventory` now takes `{ missingMeansEmpty }`. `engineStateFromRoom` passes it; `buildRoomDoc` keeps the default for new rooms.
+
+Tests: `tests/unit/online-empty-bag-sync.test.js` (5) and `tests/unit/soak-agents.test.js` (14).
+
+---
+
 ## The opponent's boost is shown in the status pill (October 2026)
 
 When the opponent (bot or online player) lands on a boost, the status pill above the

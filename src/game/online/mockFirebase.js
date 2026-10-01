@@ -35,8 +35,14 @@ function setPath(data, path, value) {
   else cur[last] = value;
 }
 
-export function makeMockDb() {
+// `emptyAsMissing: true` mirrors a real-RTDB behaviour the plain mock does
+// not: Firebase never stores empty arrays / empty objects. A write of
+// `bag: []` leaves NO `bag` key, so readers see `undefined`, not `[]`.
+// Opt-in so existing tests keep their exact semantics; use it for any test
+// about state that can legitimately become empty (bag, racks, locks, …).
+export function makeMockDb({ emptyAsMissing = false } = {}) {
   const data = {};
+  const store = (v) => (emptyAsMissing ? pruneEmpty(v) : v);
   const watchers = new Map(); // path → Set<handler>
 
   function notify(path) {
@@ -73,18 +79,18 @@ export function makeMockDb() {
         return makeRef(path ? `${path}/${k}` : k);
       },
       get: async () => makeSnap(getPath(data, path)),
-      set: async (v) => { setPath(data, path, v == null ? null : deepClone(v)); notify(path); },
+      set: async (v) => { setPath(data, path, v == null ? null : store(deepClone(v))); notify(path); },
       update: async (patch) => {
         if (path === '' || path === '/') {
           // Multi-path top-level update
-          for (const [p, v] of Object.entries(patch)) setPath(data, p, v == null ? null : deepClone(v));
+          for (const [p, v] of Object.entries(patch)) setPath(data, p, v == null ? null : store(deepClone(v)));
           for (const p of Object.keys(patch)) notify(p);
         } else {
           const cur = getPath(data, path);
           const merged = { ...(cur && typeof cur === 'object' ? cur : {}), ...deepClone(patch) };
           // Strip nulls (Firebase semantics: null deletes)
           for (const k of Object.keys(merged)) if (merged[k] === null) delete merged[k];
-          setPath(data, path, merged);
+          setPath(data, path, store(merged));
           notify(path);
         }
       },
@@ -109,9 +115,10 @@ export function makeMockDb() {
         if (next === undefined) {
           return { committed: false, snapshot: makeSnap(cur) };
         }
-        setPath(data, path, next);
+        const stored = store(next);
+        setPath(data, path, stored);
         notify(path);
-        return { committed: true, snapshot: makeSnap(next) };
+        return { committed: true, snapshot: makeSnap(stored) };
       },
       onDisconnect: () => ({
         update: async () => {},
@@ -126,6 +133,22 @@ export function makeMockDb() {
     _data: data,
     _watchers: watchers,
   };
+}
+
+// Drop empty arrays / objects (recursively), like the real database does.
+// Returns null when the value itself ends up empty.
+function pruneEmpty(v) {
+  if (v == null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) {
+    const arr = v.map(pruneEmpty);
+    return arr.some(x => x != null) ? arr : null;
+  }
+  const out = {};
+  for (const [k, val] of Object.entries(v)) {
+    const pv = pruneEmpty(val);
+    if (pv != null) out[k] = pv;
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 function deepClone(v) {

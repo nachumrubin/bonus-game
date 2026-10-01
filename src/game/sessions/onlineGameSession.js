@@ -125,6 +125,11 @@ export async function createOnlineGameSession({
   // runs afterward as belt-and-suspenders.
   let pendingCommitRollback = null;
 
+  // Bumped every time the watcher applies a snapshot past the version bail.
+  // forceResync uses it to detect "a newer snapshot landed while my read was
+  // in flight" so it never rolls state/cursors back to the older read.
+  let watcherApplySeq = 0;
+
   // The post-commit cursor advance must NEVER go past the server's actual
   // room.version. The naive `expectedVersion += 1` races with the watchRoom
   // callback's echo branch: if the snapshot fires before our await resolves,
@@ -152,9 +157,14 @@ export async function createOnlineGameSession({
   // up-to-date. We have to pull explicitly. Surfaced by the simulator's
   // e2e forced-deadline-loss scenario.
   async function forceResync(reason) {
+    const applySeqAtStart = watcherApplySeq;
     let incoming = null;
     try { incoming = await readRoom(db, room.roomId); } catch { /* swallow */ }
     if (!incoming) return;
+    // The watcher applied a NEWER snapshot while our read was in flight:
+    // state is already ahead of `incoming` — don't roll it (or the cursor)
+    // back to the older read.
+    if (watcherApplySeq !== applySeqAtStart && lastAppliedVersion > Number(incoming.version)) return;
     const previousStatus = state.status;
     // Replace engine state with the freshly-read authoritative state. We
     // use engineStateFromRoom so every field is rebuilt — board, racks,
@@ -180,10 +190,13 @@ export async function createOnlineGameSession({
     state.status = fresh.status;
     state.turnDeadlineMs = fresh.turnDeadlineMs;
     state.missedTurns = fresh.missedTurns;
-    // Realign cursors so the next watcher snapshot doesn't double-apply.
+    // Realign cursors to the server's version — in EITHER direction. The room
+    // we just read is authoritative; a cursor left ahead of it (after a
+    // rejected optimistic write) would drop the opponent's next commit, which
+    // reuses that version number.
     const v = Number(incoming.version);
-    if (v > lastAppliedVersion) lastAppliedVersion = v;
-    if (v > expectedVersion) expectedVersion = v;
+    lastAppliedVersion = v;
+    expectedVersion = v;
     bus.emit(EV.TURN_CHANGED, {
       currentTurnSlot: state.currentTurnSlot,
       turnNumber: state.turnNumber,
@@ -454,10 +467,28 @@ export async function createOnlineGameSession({
       lastReactionTs = incomingReactionTs;
       bus.emit(EV.REACTION_RECEIVED, { reaction: incomingReaction });
     }
+    if (incoming.version < lastAppliedVersion) {
+      // The server's version went BACKWARDS relative to what we applied: the
+      // SDK raised our own transaction optimistically (we took it as the echo
+      // and advanced the cursor), then the server rejected the write and the
+      // SDK reverted. The server never had that version, so the opponent's
+      // NEXT real commit will carry the same number — with the cursor left
+      // ahead it would be silently dropped (player never sees the move, never
+      // gets the turn, gets timed out). Realign to the server and resync.
+      // Found by the live soak agents under simulated mobile latency.
+      lastAppliedVersion = incoming.version;
+      expectedVersion = incoming.version;
+      const revertedLast = incoming.lastMove ?? incoming.moveHistory?.[incoming.moveHistory.length - 1];
+      lastSeenMoveTs = revertedLast?.ts ?? null;
+      forceResync('optimistic-reverted');
+      applyTerminalStatusIfNeeded(incoming);
+      return;
+    }
     if (incoming.version <= lastAppliedVersion) {
       applyTerminalStatusIfNeeded(incoming);
       return; // already applied or echo
     }
+    watcherApplySeq++;
 
     const previousTurnSlot = state.currentTurnSlot;
     const previousTurnNumber = state.turnNumber;
@@ -498,7 +529,11 @@ export async function createOnlineGameSession({
     lastAppliedVersion = incoming.version;
     expectedVersion = incoming.version;
     state.scores = { ...incoming.scores };
-    state.bag = [...(incoming.bag ?? state.bag ?? [])];
+    // The room is authoritative. A missing `bag` key means the bag is EMPTY
+    // (Firebase drops empty arrays) — keeping our stale local bag let this
+    // client exchange/draw tiles that no longer existed (found by the soak
+    // agents: 101 tiles in a 99-tile game).
+    state.bag = [...(incoming.bag ?? [])];
     state.racks = { 0: [...(incoming.racks?.[0] ?? [])], 1: [...(incoming.racks?.[1] ?? [])] };
     state.currentTurnSlot = incoming.currentTurnSlot;
     state.turnNumber = incoming.turnNumber;

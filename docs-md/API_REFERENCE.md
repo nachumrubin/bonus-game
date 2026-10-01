@@ -339,7 +339,7 @@ STATUS: { WAITING, PLAYING, COMPLETED, ABANDONED, EXPIRED }
 INVITE_STATUS: { PENDING, ACCEPTED, REJECTED, EXPIRED, CANCELLED }
 
 buildRoomDoc(opts): RoomDoc
-normalizeLockInventory(li): { 0: number[], 1: number[] }
+normalizeLockInventory(li, { missingMeansEmpty = false }): { 0: number[], 1: number[] }   // missing slot → [3,3,5], or [] when missingMeansEmpty (reading a stored room)
 normalizeBonusAssignment(ba): BonusDef[]
 normalizeBonusSqUsed(bsu): Record<string, boolean>
 normalizePendingBonuses(pb): PendingBonus[]

@@ -128,14 +128,18 @@ export function engineStateFromRoom(room) {
   });
   // Replace the freshly-drawn racks / empty board with the persisted state
   state.scores = { ...room.scores };
-  if (Array.isArray(room.bag)) state.bag = [...room.bag];
+  // Firebase never stores an empty array: once the last tiles are drawn the
+  // `bag` key is simply absent. Absent therefore means EMPTY — never fall back
+  // to the freshly seeded full bag from createInitialState (a resync/resume
+  // would otherwise hand the client ~80 phantom tiles).
+  state.bag = Array.isArray(room.bag) ? [...room.bag] : [];
   state.racks = { 0: [...(room.racks?.[0] ?? [])], 1: [...(room.racks?.[1] ?? [])] };
   state.board = deserializeBoard(room.board);
   state.bonusBoard = deserializeBonusBoard(room.bonusBoard);
   state.moveHistory = [...(room.moveHistory ?? [])];
   state.activeBoosts = [...(room.activeBoosts ?? [])];
   state.lockedCells = normalizeLockedCells(room.lockedCells);
-  state.lockInventory = normalizeLockInventory(room.lockInventory);
+  state.lockInventory = normalizeLockInventory(room.lockInventory, { missingMeansEmpty: true });
   state.bonusAssignment = normalizeBonusAssignment(room.bonusAssignment);
   state.bonusSqUsed = normalizeBonusSqUsed(room.bonusSqUsed);
   state.pendingBonuses = normalizePendingBonuses(room.pendingBonuses);
