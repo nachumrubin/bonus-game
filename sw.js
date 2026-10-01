@@ -69,7 +69,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20261001061213';
+var CACHE_NAME = 'boost-20261001132551';
 var ASSETS = [
   './',
   './index.html',
@@ -193,6 +193,15 @@ function isImageAsset(url) {
   return /\/(assets|images)\//.test(path) && /\.(png|jpe?g|webp|gif)$/i.test(path);
 }
 
+// Sound effects (assets/sfx/*.ogg|m4a) share the persistent asset cache: the
+// engine preloads them after the first tap, so from then on they survive
+// deploys and play offline. They are not precached at install (each device
+// only ever loads one of the two formats).
+function isSoundAsset(url) {
+  var path = String(url || '').split('#')[0].split('?')[0];
+  return path.indexOf('/assets/sfx/') !== -1 && /\.(ogg|m4a)$/i.test(path);
+}
+
 // URL of the web-sized WebP for a PNG under assets/ (not the generated
 // assets/anim/ atlases), or null when the URL has none.
 function webImageUrl(url) {
@@ -293,7 +302,7 @@ self.addEventListener('fetch', function(e){
     url.endsWith('/') ||
     url.indexOf('index.html') !== -1 ||
     (e.request.headers && (e.request.headers.get('accept') || '').indexOf('text/html') !== -1);
-  if(isImageAsset(url)){
+  if(isImageAsset(url) || isSoundAsset(url)){
     e.respondWith(imageResponse(e.request));
     return;
   }

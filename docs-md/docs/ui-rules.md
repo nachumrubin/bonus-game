@@ -304,6 +304,18 @@ The Insights panel renders into innerHTML-managed containers; the JS owns the ma
 
 Removed in May 2026 simplification (do not re-add without product reason): `#st-avgword`, `#st-pts-tile`, `#st-move-time`, `#st-pts-move`, `#st-vs-stronger-w`, `#st-vs-weaker-w`, `#st-boost-impact-wins`, `#st-boost-impact-best`, `#st-boost-combo`, `#st-fun-luck`, `#st-fun-fastest`, `#st-perf-tier-badge`, `#st-hero-rank`, `#st-wr-pct-lbl`, `#st-streak-lbl`, `#st-best-streak`, `#st-bonuses`. The stats-screen topbar (`.stats-topbar`) and time filter (`.stats-tfseg`) are also removed — navigation lives on the persistent app top bar; cards reflect cumulative totals only.
 
+### Settings Screen — Sound-Effects Volume IDs
+
+```
+#sett-sfxvol-low    — עוצמה: נמוכה (sfxEngine master 0.45)
+#sett-sfxvol-med    — עוצמה: רגילה (default, 0.75)
+#sett-sfxvol-high   — עוצמה: גבוהה (1.0)
+```
+
+Wired as a VALUE_SELECT in `settingsScreen.js` (key `sfxVolume`, a UI preference in
+`spine.uiPreferences`); `feedbackService` applies it and previews a tile sound.
+Elements with `data-sfx="off"` are skipped by the delegated `ui.tap` sound.
+
 ### Settings Screen — Gender Toggle IDs
 
 ```

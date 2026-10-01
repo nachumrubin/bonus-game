@@ -7,6 +7,9 @@
 //   buildWordFeed(doc)            — found-word chips + one-line feedback
 //
 // Everything tolerates the minimal stub documents the unit tests pass.
+// The feedback line also plays the found / wrong sound.
+
+import { cue as cueSfx } from '../../feedbackService.js';
 
 // tone: 'ok' | 'bad' | 'warn' | true (ok) | false (bad) | null/'' (neutral)
 export function setTone(el, base, tone) {
@@ -81,6 +84,8 @@ export function buildWordFeed(doc) {
     say(msg, tone) {
       fb.textContent = msg;
       setTone(fb, 'bz-fb', tone);
+      if (tone === 'ok' || tone === true) cueSfx('mg.good');
+      else if (tone === 'bad' || tone === false) cueSfx('mg.bad');
     },
   };
 }

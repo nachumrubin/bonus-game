@@ -29,6 +29,7 @@ import { showBonusResult, escapeHtml } from './bonusFx.js';
 import { buildWordEntry, buildWordFeed } from './bonusUi.js';
 import { g, getGender } from '../../genderText.js';
 import { BOOST_BOLT_ICON_HTML } from '../../boostIcon.js';
+import { cue as cueSfx } from '../../feedbackService.js';
 
 // No final-letter forms — a word never opens with a sofit letter.
 export const HEBREW_ALEPHBET = 'אבגדהוזחטיכלמנסעפצקרשת'.split('');
@@ -164,12 +165,14 @@ export function mountLetterSpinnerMiniGame({
     spinTimer = setInterval(() => {
       spinIdx = (spinIdx + 1) % HEBREW_ALEPHBET.length;
       paintSpin();
+      cueSfx('spinner.tick');
     }, spinIntervalMs);
   }
 
   function stopSpin() {
     if (phase !== 'spin' || resolved) return chosenLetter;
     if (spinTimer) { clearInterval(spinTimer); spinTimer = null; }
+    cueSfx('spinner.stop');
     chosenLetter = HEBREW_ALEPHBET[spinIdx % HEBREW_ALEPHBET.length];
     beginPlay();
     return chosenLetter;

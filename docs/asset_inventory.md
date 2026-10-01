@@ -23,6 +23,11 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 
 ## Existing
 
+### Sound effects (October 2026)
+
+Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_inventory.md`
+(cue id, file, CC0 source, edits). Until files are added every cue plays its synth fallback.
+
 ### Home / login logo (October 2026)
 
 * assets/ui/boost-logo.webp — 1100px transparent render of the wood-tile wordmark

@@ -5,6 +5,28 @@
 
 ---
 
+## D-natural-sfx: realistic CC0 recordings for every physical sound — October 2026
+
+**Decision:** sound effects are recorded samples (`assets/sfx/`, `.ogg` + `.m4a`).
+- Anything physical is a realistic recording: real Scrabble tiles on wood, a cloth
+  bag, coins, a clock tick, electricity for boosts, a wheel ratchet, a doorbell.
+- Designed UI sounds and jingles (Kenney) only for abstract moments.
+- The old WebAudio tones stay as the per-cue fallback.
+- Everything is CC0, and its source is recorded in `docs/sound_inventory.md`.
+
+**Why:** the user rejected arcade-style zaps and planks in a listening review. Sounds
+should "add to the game instead of distracting". CC0 keeps us free of attribution and
+licence obligations. A CC0 upload derived from a CC-BY sound is treated as CC-BY and
+avoided.
+
+**How it is wired:**
+- `sfxCatalog` (data) → `sfxEngine` (WebAudio, gesture unlock, preload, throttle,
+  6-voice cap, master volume, music ducking) → `feedbackService` (bus routing,
+  `cue()` for screens).
+- `animationController` takes an injected `cue` so animation sounds stay in sync.
+
+---
+
 ## D-live-word-points: the status pill previews the move's score — October 2026
 
 The mockup's `✓ האור +8` pill was held back as a game decision (it tells players the

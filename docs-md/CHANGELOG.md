@@ -2,6 +2,80 @@
 
 ---
 
+## Sound effects: natural recorded sounds across the whole game (October 2026)
+
+Replaced the 10 synth beeps with 55 cues built from 35 CC0 recordings. Anything
+physical sounds real:
+- placing a wooden tile is a real Scrabble tile on a board;
+- a boost is an electric zap;
+- the bag is cloth, coins clink, the timer is a clock, the wheel is a ratchet.
+
+Kenney CC0 UI sounds and jingles are used only for abstract moments.
+
+### Engine
+- **`src/ui/sfx/sfxCatalog.js`:** each cue's tier, file (or variants), vol, rate,
+  pitch jitter, throttle, haptic pattern and synth fallback. Several cues share a
+  file at different pitch and volume (one tile recording covers pick, place, return,
+  opponent tiles, mini-game taps and the letter spinner).
+- **`src/ui/sfx/sfxEngine.js`:**
+  - owns the AudioContext and the first-gesture unlock;
+  - preloads every file after unlock (`.ogg`, or `.m4a` where Vorbis isn't
+    supported);
+  - never refetches a failed file;
+  - throttles per cue and caps playback at 6 voices (tiny sounds drop while a jingle
+    plays);
+  - applies a master volume (`setMasterVolume`) and calls `onDuck` for rewards and
+    jingles.
+- **`feedbackService`:**
+  - routes bus events to cues, with `cue(id, {vol, rate, haptic, delayMs})` and
+    `cueSeq` for screens;
+  - adds a delegated, very quiet `ui.tap` on plain buttons (sound-owning controls
+    excluded) and a wood `mg.tap` on mini-game letters.
+- **`audioService.duck(ms)`:** music dips under jingles and rewards.
+
+### Hooks
+- **`animationController`:** takes an injected `cue`; `soundFor()` maps directives to
+  sounds so each lands with its visual:
+  - boost electricity, bingo, opponent tiles (one per tile, staggered);
+  - rack refill clatter, or the bag shuffle on exchange;
+  - extra-turn and skip-turn whooshes;
+  - award: coins for points, a neon charge for stored powers.
+- **`gameScreen`:** tile pick, place, return and recall-all, lock placement, opening
+  the exchange bag. In the scoring sequence a coin lands per word (rising pitch), the
+  ×N zap plays, and coins drop into the panel.
+- **`turnTimerController`:** emits `timer/warn` (one tick at 10 s, turns longer than
+  15 s) and `timer/timeout`. The 3-2-1 ticks rise in pitch.
+- **Mini-games:**
+  - `bonusFx.startResultCount` plays win or fail (every result passes through it) and
+    coin ticks during the count-up;
+  - `bonusUi.say` and hidden-word `setStatus` play good or bad;
+  - `bonusTimer` ticks the last 5 s;
+  - the letter spinner ticks per letter and clunks on stop;
+  - the wheel plays ratchet clicks timed from the dial's cubic-bezier
+    (`wheelClickTimes`), including the overshoot back-click.
+- **Elsewhere:**
+  - coin toss, VS intro, match found, daily-reward coins, store purchase / not enough
+    coins, emoji reactions, invite countdown (last 5 s), async "your turn" banner;
+  - the **invite sound is fixed**: the banner payload now carries `sound`, because
+    nothing emitted `II_OPEN`.
+
+### Settings
+- New **עוצמה** row (`#sett-sfxvol-low/med/high`, UI pref `sfxVolume`, default
+  `med`). Changing it previews a tile sound.
+- Turning sound effects on plays a switch click.
+
+### Service worker
+- `assets/sfx/*.ogg|m4a` use the persistent `boost-assets-v1` cache (survives deploys,
+  works offline after first load). Not precached at install, since a device only uses
+  one format.
+
+### Tests and tooling
+- Tests cover the engine (gesture gate, master volume, throttle, sample vs synth, no
+  refetch), catalog integrity (every file exists in both formats, no orphan files, every
+  cue is played somewhere in `src/`), the new feedback routes, animation → sound
+  mapping, wheel click timing, and SW routing.
+- `scripts/build-sfx.py` rebuilds the set from the sources.
+
 ## Boost mini-games redesigned to the glass + wood skin — October 2026
 
 Intro, play and result screens of every boost mini-game now use the same language as

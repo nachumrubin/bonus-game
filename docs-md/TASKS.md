@@ -1,5 +1,29 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Sound effects — October 2026
+
+- [x] Phase 1: `sfxEngine` and `sfxCatalog`; `feedbackService` routes through them.
+- [x] Listening review: wood tiles = a real Scrabble game recording (option B),
+  boost = a sharp electric zap (option B). Rule: physical moments get realistic
+  recordings.
+- [x] Full set, 55 cues and 35 files (all CC0, `docs/sound_inventory.md`):
+  - board play, scoring, timer, boosts, all 8 mini-games, wheel ratchet synced to the
+    dial easing, coin toss, VS, game over, achievements, Elo, coins, store, invites,
+    matchmaking, reactions, async-turn banner, quiet UI taps;
+  - SFX volume setting (`sett-sfxvol-*`) and music ducking;
+  - service worker persistent cache.
+- [x] Invite sound fixed: nothing emitted `II_OPEN`, so the invite banner now carries
+  `sound: 'invite.received'`.
+- [ ] Listen on a real phone (iOS Safari plays `.m4a`) and tune per-cue `vol` in
+  `sfxCatalog.js`. Chromium e2e only proves every cue decodes.
+- [ ] Not added, judged distracting: a sound when the live word becomes valid,
+  matchmaking search ticks, screen open/close whooshes, a hum while the opponent is in
+  a mini-game. Add only if asked.
+- [ ] Possible later: Elo tier-up fanfare (needs a before/after tier compare),
+  achievement progress-bar blips on the end screen.
+- [ ] The first sound after a cold start can be its synth fallback while samples
+  preload (about 440 KB). Consider preloading on the home screen's first tap.
+
 ## UI fixes — October 2026
 
 - [x] Blender logo on home/login, centred home column, floating bottom sheets, live

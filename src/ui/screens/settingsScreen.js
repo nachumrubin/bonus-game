@@ -1,6 +1,7 @@
 // settingsScreen — Phase 1 wiring of #ov-settings.
 //
-// Scope: yes/no toggle pairs (music, soundFx, vibration) and the close button. Each
+// Scope: yes/no toggle pairs (music, soundFx, vibration), value selects
+// (sfxVolume, gender) and the close button. Each
 // settings change emits SETTINGS_CHANGED with the diff.
 //
 // Out of scope (will be migrated separately):
@@ -34,6 +35,14 @@ const TOGGLES = [
 // Value-select controls: one of N string values. Each option has an id.
 // The active option gets `active-yes`; others lose it.
 const VALUE_SELECTS = [
+  {
+    key: 'sfxVolume',
+    options: [
+      { value: 'low',  id: 'sett-sfxvol-low' },
+      { value: 'med',  id: 'sett-sfxvol-med' },
+      { value: 'high', id: 'sett-sfxvol-high' },
+    ],
+  },
   {
     key: 'gender',
     options: [

@@ -12,6 +12,7 @@
 // Implemented with an in-module Map of last-shown timestamps keyed by uid.
 
 import * as inApp from './inAppNotificationService.js';
+import { cue as cueSfx } from '../ui/feedbackService.js';
 
 const DEFAULT_DEDUP_MS = 60 * 1000;
 const lastShownByUid = new Map(); // uid → { signature, atMs }
@@ -60,6 +61,7 @@ export function maybeShow({
     text: buildText(myTurn),
     durationMs: 4500,
   });
+  cueSfx('turn.yours');
   lastShownByUid.set(uid, { signature, atMs: now });
   return { shown: true };
 }

@@ -4,8 +4,13 @@
 // attachLegacy() and the returned stop() inside finalize().
 //
 // The bar shrinks from 100% to 0% over durationMs, switches to the .urg
-// (urgent / red) color in the last 30%, and gracefully no-ops in test
-// environments where the bonus overlay elements aren't in the DOM.
+// (urgent / red) color in the last 30%, ticks a real clock for each of the
+// last 5 seconds, and gracefully no-ops in test environments where the
+// bonus overlay elements aren't in the DOM.
+
+import { cue as cueSfx } from '../../feedbackService.js';
+
+const TICK_LAST_SECONDS = 5;
 
 export function startBonusTimer({ doc = globalThis.document, durationMs = 0 } = {}) {
   const wrap = doc?.getElementById?.('btw');
@@ -25,9 +30,15 @@ export function startBonusTimer({ doc = globalThis.document, durationMs = 0 } = 
 
   const urgentAt = Math.max(0, Math.floor(durationMs * 0.7));
   const urgentTimer = setTimeout(() => bar.classList?.add?.('urg'), urgentAt);
+  const tickTimers = [];
+  for (let s = TICK_LAST_SECONDS; s >= 1; s--) {
+    const at = durationMs - s * 1000;
+    if (at > 0) tickTimers.push(setTimeout(() => cueSfx('mg.tick'), at));
+  }
 
   return function stopBonusTimer() {
     try { clearTimeout(urgentTimer); } catch { /* swallow */ }
+    for (const t of tickTimers) { try { clearTimeout(t); } catch { /* swallow */ } }
     if (wrap) wrap.style.display = 'none';
     if (bar) {
       bar.style.transition = 'none';

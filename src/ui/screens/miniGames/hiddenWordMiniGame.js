@@ -54,6 +54,7 @@ import { setTone } from './bonusUi.js';
 import { g, getGender } from '../../genderText.js';
 import { isMiniGameWord } from '../../../game/core/hebrewDictionary.js';
 import { BOOST_BOLT_ICON_HTML } from '../../boostIcon.js';
+import { cue as cueSfx } from '../../feedbackService.js';
 
 const DEFAULT_SIZE = 4;
 const DEFAULT_WORD_LEN = 3;
@@ -374,6 +375,8 @@ export function mountHiddenWordMiniGame({
     if (!statusEl) return;
     statusEl.textContent = text;
     setTone(statusEl, 'bz-status', ok);
+    if (ok === true) cueSfx('mg.good');
+    else if (ok === false) cueSfx('mg.bad');
   }
 
   function clearSel() {

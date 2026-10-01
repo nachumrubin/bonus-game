@@ -88,6 +88,15 @@ test('service worker routes only images under assets/ and images/ to the image c
   assert.equal(isImageAsset(base + 'src/main.js'), false);
 });
 
+test('service worker routes sound effects under assets/sfx/ to the persistent asset cache', () => {
+  const { isSoundAsset } = loadSw();
+  const base = 'https://boost-8ef11.web.app/';
+  assert.equal(isSoundAsset(base + 'assets/sfx/tile_place_1.ogg'), true);
+  assert.equal(isSoundAsset(base + 'assets/sfx/game_win.m4a?v=2'), true);
+  assert.equal(isSoundAsset(base + 'assets/music/inspire-action.mp3'), false);
+  assert.equal(isSoundAsset(base + 'assets/sfx/readme.txt'), false);
+});
+
 function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }

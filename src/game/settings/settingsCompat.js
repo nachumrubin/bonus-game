@@ -27,6 +27,8 @@ export const DEFAULT_UI_PREFERENCES = Object.freeze({
   music: true,
   soundFx: true,
   vibration: true,
+  // Sound-effects loudness: 'low' | 'med' | 'high' (sfxEngine master volume).
+  sfxVolume: 'med',
   lastDisplayName: '',
   gender: 'זכר',
 });
@@ -127,6 +129,7 @@ export function normalizeUiPreferences(input = {}) {
     music: raw.music != null ? !!raw.music : DEFAULT_UI_PREFERENCES.music,
     soundFx: raw.soundFx != null ? !!raw.soundFx : DEFAULT_UI_PREFERENCES.soundFx,
     vibration: raw.vibration != null ? !!raw.vibration : DEFAULT_UI_PREFERENCES.vibration,
+    sfxVolume: ['low', 'med', 'high'].includes(raw.sfxVolume) ? raw.sfxVolume : DEFAULT_UI_PREFERENCES.sfxVolume,
     lastDisplayName: String(raw.lastDisplayName ?? raw.displayName ?? '').trim().slice(0, 40),
     gender: raw.gender === 'נקבה' ? 'נקבה' : 'זכר',
   };

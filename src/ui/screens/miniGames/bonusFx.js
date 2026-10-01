@@ -5,11 +5,15 @@
 //   bonusResultHtml(opts)               — the shared result markup (medal,
 //                                         headline, gold points, extra html)
 //   showBonusResult(containerEl, opts)  — renders it + confetti + count-up
-//   startResultCount(containerEl, pts)  — count-up for self-rendered results
+//   startResultCount(containerEl, pts)  — count-up for self-rendered results,
+//                                         plus the win / fail sound (every
+//                                         mini-game result passes through here)
 //   wordTilesHtml(word, tone)           — a word as a row of small wood tiles
 //
 // Everything is defensive: with no usable DOM (tests pass plain objects or
 // nothing) each function is a no-op, so importing this never forces a browser.
+
+import { cue as cueSfx } from '../../feedbackService.js';
 
 const CONFETTI_COLORS = ['#ffd23f', '#00d0ff', '#36d97a', '#ff5a8a', '#ffffff', '#b06bff'];
 
@@ -37,12 +41,18 @@ export function confettiBurst(container, { count = 28, doc = globalThis.document
   return layer;
 }
 
-export function countUp(el, to, { from = 0, durationMs = 650, prefix = '', suffix = '' } = {}) {
+export function countUp(el, to, { from = 0, durationMs = 650, prefix = '', suffix = '', tickSound = null } = {}) {
   if (!el) return;
   const target = Number(to) || 0;
   const start  = Number(from) || 0;
   const raf = globalThis.requestAnimationFrame;
-  const setVal = (v) => { el.textContent = `${prefix}${v}${suffix}`; };
+  let shown = null;
+  const setVal = (v) => {
+    el.textContent = `${prefix}${v}${suffix}`;
+    // Coin ticks while the number climbs (the cue itself is throttled).
+    if (tickSound && shown != null && v !== shown) cueSfx(tickSound);
+    shown = v;
+  };
   if (typeof raf !== 'function' || target === start) { setVal(target); return; }
   const now = () => (globalThis.performance?.now?.() ?? Date.now());
   const t0 = now();
@@ -126,12 +136,13 @@ export function showBonusResult(containerEl, {
     || containerEl.closest?.('.bz-card, .ovc')
     || containerEl;
   if (success) confettiBurst(card, { doc });
-  startResultCount(containerEl, points);
+  startResultCount(containerEl, points, { success });
 }
 
 // Count the points up inside an already-rendered result (for games that build
 // their markup with bonusResultHtml themselves).
-export function startResultCount(containerEl, points) {
+export function startResultCount(containerEl, points, { success = Number(points) > 0 } = {}) {
+  cueSfx(success ? 'mg.success' : 'mg.fail');
   if (points == null) return;
-  countUp(containerEl?.querySelector?.('[data-bz-count]'), points, { durationMs: 650 });
+  countUp(containerEl?.querySelector?.('[data-bz-count]'), points, { durationMs: 650, tickSound: 'mg.count' });
 }

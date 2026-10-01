@@ -993,6 +993,8 @@ svg.gi.g-chev { color: var(--sg-faint); width: 16px; height: 16px; }
 #ov-settings .set-seg { width: 120px; flex: none; padding: 3px !important; }
 #ov-settings .set-seg .set-yn { flex: 1; height: 28px; display: grid; place-items: center; font-size: 13px !important; }
 #ov-settings .set-seg .set-yn.active-yes { background: linear-gradient(180deg, #43e0ff, #1597d6) !important; color: #022038 !important; }
+#ov-settings .set-seg3 { width: 172px; }
+#ov-settings .set-seg3 .set-yn { font-size: 12px !important; }
 #ov-settings .sett-notif-btn { min-height: 32px !important; height: 32px; padding: 0 12px !important; font-size: 13px !important; background: linear-gradient(180deg, #43e0ff, #1597d6) !important; color: #022038 !important; border-radius: 11px !important; }
 #ov-settings .sett-tool-lbl { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 800; color: var(--sg-ink); margin: 0 0 8px; }
 #ov-settings .shin-wrap { margin: 0 0 8px; }

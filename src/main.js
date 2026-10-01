@@ -1537,6 +1537,7 @@ async function boot() {
           const next = pending.find(i => !seenIds.has(i.inviteId));
           if (next) {
             bus.emit(NOTIF_BANNER_SHOW, {
+              sound:  'invite.received',
               avatar: next.fromAvatar || '🎮',
               text:   `${next.fromName ?? 'שחקן'} מזמין אותך למשחק`,
               action: 'openNotifications',
@@ -1633,6 +1634,7 @@ async function boot() {
             bus.emit(WR_CLOSE, {});
           }
           bus.emit(NOTIF_BANNER_SHOW, {
+            sound:  'invite.declined',
             avatar: '✋',
             text:   last.fromName ? `${last.fromName} דחה את ההזמנה` : 'ההזמנה נדחתה',
             action: 'dismiss',
@@ -3151,9 +3153,9 @@ async function boot() {
         // Auto-equip the freshly bought avatar; the profile watch repaints the store.
         try { await profileService.updateProfile(fbDb, fbUser.uid, { equippedAvatar: id }); }
         catch (e) { console.warn('[spine] store equip after buy', e); }
-        bus.emit(NOTIF_BANNER_SHOW, { text: 'האווטאר נרכש! 🎉', avatar: id });
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'האווטאר נרכש! 🎉', avatar: id, sound: 'store.purchase' });
       } else if (r?.reason === 'insufficient') {
-        bus.emit(NOTIF_BANNER_SHOW, { text: 'אין מספיק מטבעות', avatar: '🪙' });
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'אין מספיק מטבעות', avatar: '🪙', sound: 'store.fail' });
       }
     });
 
@@ -4253,7 +4255,7 @@ async function boot() {
     }
     const session = await createOnlineGameSession({ bus, db, room, mySlot });
     const controller = createGameController({ bus, session, mySlot });
-    const animationController = createAnimationController({ bus, mySlot, reducedMotion: () => getMotionPreference().isReduced() });
+    const animationController = createAnimationController({ bus, mySlot, reducedMotion: () => getMotionPreference().isReduced(), cue: feedbackService.cue });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
       controller,
@@ -4461,7 +4463,7 @@ async function boot() {
     // detection silently stopped working).
     const humanSlot = (bot || mode === 'tutorial') ? 0 : null;
     const controller = createGameController({ bus, session, mySlot: humanSlot });
-    const animationController = createAnimationController({ bus, mySlot: humanSlot, showOpponentBoostOverlay: !!bot, reducedMotion: () => getMotionPreference().isReduced() });
+    const animationController = createAnimationController({ bus, mySlot: humanSlot, showOpponentBoostOverlay: !!bot, reducedMotion: () => getMotionPreference().isReduced(), cue: feedbackService.cue });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
       controller,

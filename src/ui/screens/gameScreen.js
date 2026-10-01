@@ -30,6 +30,7 @@ import { playOnHost, canPlayNowOnHost, preloadFor } from '../avatarMotion/sprite
 import { tierFromPath } from '../avatarMotion/poseClips.js';
 import { wireGameMenu } from './gameMenu.js';
 import { playBoostElectric } from '../boostElectricFx.js';
+import { cue as cueSfx } from '../feedbackService.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
@@ -355,6 +356,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // the cascade-in wave — the placed tiles snap back to the rack as a
     // group, so the wave reads as the rack rehydrating.
     animateNextRackRender = true;
+    if (controller.view.placed?.length) cueSfx('tile.recallAll');
     controller.recallAll();
   }));
   cleanups.push(on(btnExchange, 'click', (e) => { e.preventDefault?.(); openExchangeOverlay(); }));
@@ -454,6 +456,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     selectedPlacedCoord = null;
     pendingLockSelected = false;
     selectedRackIndex = (selectedRackIndex === i) ? null : i;
+    if (selectedRackIndex != null) cueSfx('tile.pick');
     // Toggle .sel on the LIVE rack nodes instead of rebuilding the rack. The
     // node survives, so the .bt2 transform transition animates the lift in/out,
     // and an A→B switch settles A down while B lifts — no flicker, no rebuild.
@@ -496,6 +499,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         const returningIdx = existing?.rackIndex;
         if (Number.isInteger(returningIdx)) returnedRackIdxs.add(returningIdx);
         controller.recallTile(r, c);
+        cueSfx('tile.return');
         return;
       }
       selectedRackIndex = null;
@@ -589,6 +593,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         isJoker: !!src.isJoker, rackIndex: src.rackIndex ?? null,
       });
       if (moved === false) tentativeEntryCoords.delete(moveKey);
+      else cueSfx('tile.place');
       return;
     }
     if (pendingLockSelected && controller.view.pendingLock) {
@@ -602,6 +607,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         return;
       }
       controller.setPendingLock?.({ r, c, duration });
+      cueSfx('lock.place');
       renderLockInventory(controller.view);
       renderBoard(controller.view);
       return;
@@ -615,6 +621,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       if (r < 0 || r > 9 || c < 0 || c > 9) return;
       if (isCellBlockedForPlacement(controller.view, r, c)) return;
       controller.setPendingLock?.({ r, c, duration: selectedLock.duration });
+      cueSfx('lock.place');
       selectedLock = null;
       renderLockInventory(controller.view);
       renderBoard(controller.view);
@@ -643,7 +650,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         const placed = controller.placeTile({ r: pr, c: pc, letter: picked, val: 0, isJoker: true, rackIndex: ri });
         if (placed === false) tentativeEntryCoords.delete(jokerKey);
         clearJokerSubs();
-        if (placed !== false) selectedRackIndex = null;
+        if (placed !== false) { selectedRackIndex = null; cueSfx('tile.place'); }
         renderRack(controller.view);
       });
       jokerCancelledSub = bus.on('joker/cancelled', () => {
@@ -657,7 +664,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     const entryKey = `${r},${c}`;
     tentativeEntryCoords.add(entryKey);
     const placed = controller.placeTile({ r, c, letter, val: rackTile.val ?? 0, isJoker: false, rackIndex: selectedRackIndex });
-    if (placed !== false) selectedRackIndex = null;
+    if (placed !== false) { selectedRackIndex = null; cueSfx('tile.place'); }
     else tentativeEntryCoords.delete(entryKey);
     renderRack(controller.view);
   }
@@ -688,6 +695,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     exchangeOverlay.classList?.toggle?.('free-swap', exchangeIsFreeSwap);
     renderExchangeRack(new Set());
     exchangeOverlay.classList?.remove('hidden');
+    cueSfx('exchange.open');
   }
 
   function closeExchangeOverlay() {
@@ -709,9 +717,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         // off.
         if (selected.has(i)) {
           selected.delete(i);
+          cueSfx('tile.return');
         } else {
           selected.clear();
           selected.add(i);
+          cueSfx('tile.pick');
         }
         renderExchangeRack(selected);
       }));
@@ -2120,7 +2130,8 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
     flyChipIntoSum({
       chip, fromEl: wordAnchor,
       delayMs: i * SCORE_MERGE_WORD_STAGGER_MS,
-      onLand: () => { runningSum += ws; updateSumDisplay(); },
+      // Each word's points drop in as a coin, a little higher per word.
+      onLand: () => { runningSum += ws; updateSumDisplay(); cueSfx('score.chip', { rate: 1 + i * 0.07 }); },
     });
   });
 
@@ -2184,6 +2195,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
         chip.remove?.();
         runningSum += multDelta; // sum visibly jumps to the multiplied value
         updateSumDisplay();
+        cueSfx('score.multiplier');
       }, SCORE_MERGE_WORD_FLIGHT_MS);
     }, multStart ?? 0);
   }
@@ -2213,6 +2225,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
         chip.remove?.();
         runningSum += extra;
         updateSumDisplay();
+        cueSfx('score.chip', { rate: 1.25 });
       }, SCORE_MERGE_WORD_FLIGHT_MS);
     }, boostStart ?? 0);
   }
@@ -2249,6 +2262,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
       // number. Phase 3B removed the radial hit-burst and the separate score-pop
       // that used to fire on this same frame (three emphases for one moment).
       flashClass(targetEl, 'score-panel-arrive', 360, onComplete);
+      cueSfx('score.land');
       sumChip.remove?.();
     }, SCORE_MERGE_SUM_FLIGHT_MS);
   }, mergeEnd + SCORE_MERGE_HOLD_AFTER_MS);

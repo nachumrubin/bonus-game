@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as bus from '../../../events/bus.js';
 import { WHEEL_OUTCOMES } from '../../../game/boosts/bonusTileDefs.js';
 import {
-  pickOutcome, labelFor, mountWheelMiniGame, listOutcomes, WHEEL_INTENT,
+  pickOutcome, labelFor, mountWheelMiniGame, listOutcomes, WHEEL_INTENT, wheelClickTimes,
 } from './wheelMiniGame.js';
 
 test('listOutcomes returns the wheel outcomes table', () => {
@@ -70,4 +70,17 @@ test('mount (no-DOM): result fires only once', () => {
 
 test('throws if bus is missing', () => {
   assert.throws(() => mountWheelMiniGame({}), /bus required/);
+});
+
+test('wheelClickTimes: one ratchet click per segment crossed, slowing down, within the spin', () => {
+  const segDeg = 45;
+  const rotation = 360 * 5 + 3 * segDeg - segDeg / 2;
+  const times = wheelClickTimes(rotation, segDeg, 3500);
+  // Forward crossings, plus the back-clicks from the easing's overshoot.
+  assert.ok(times.length >= Math.floor(rotation / segDeg));
+  assert.ok(times.every((t, i) => i === 0 || t >= times[i - 1]), 'chronological');
+  assert.ok(times.at(-1) <= 3500);
+  const firstGap = times[1] - times[0];
+  const lastGap = times.at(-1) - times.at(-2);
+  assert.ok(lastGap > firstGap * 4, 'clicks slow down as the dial eases out');
 });
