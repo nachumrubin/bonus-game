@@ -30,11 +30,13 @@ export function stagingProjectId() {
   return { projectId: cfg.projectId, databaseURL: cfg.databaseURL };
 }
 
-export async function getAdminToken() {
+const CLOUD_SCOPES = ['https://www.googleapis.com/auth/cloud-platform'];
+
+export async function getAdminToken(scopes = CLOUD_SCOPES) {
   const auth = require('firebase-tools/lib/auth');
   const acct = auth.getGlobalDefaultAccount();
   if (!acct?.tokens?.refresh_token) throw new Error('Firebase CLI is not logged in (npx firebase login)');
-  const t = await auth.getAccessToken(acct.tokens.refresh_token, ['https://www.googleapis.com/auth/cloud-platform']);
+  const t = await auth.getAccessToken(acct.tokens.refresh_token, scopes);
   return t.access_token;
 }
 
@@ -82,15 +84,26 @@ export async function fetchServerMetrics({ startMs, endMs }) {
   return { points, note: notes.join('; ') || (points.length ? undefined : 'no points yet — Cloud Monitoring lags 3–5 min; re-run `stagingAdmin.mjs metrics --run <id>` later') };
 }
 
-/** Delete soak/load data from the staging database (owner token bypasses rules). */
+/**
+ * Delete soak/load data from the staging database via the Firebase CLI's
+ * `database:remove` (works with the CLI login, which only carries the
+ * cloud-platform scope — the RTDB REST API rejects such tokens with 401).
+ */
 export async function wipeStaging() {
   const { databaseURL, projectId } = stagingProjectId();
-  if (databaseURL.includes(PROD_PROJECT_ID)) throw new Error('refusing to wipe production');
-  const token = await getAdminToken();
+  if (databaseURL.includes(PROD_PROJECT_ID) || projectId === PROD_PROJECT_ID) throw new Error('refusing to wipe production');
+  const { spawnSync } = await import('node:child_process');
   const paths = ['rooms', 'users', 'presence', 'invites', 'inviteAcks', 'pendingRooms', 'matchmakingQueue', 'asyncRooms', 'gameEvents', 'debugGameIndex', 'clientSnapshots', 'globalRatings', 'dictionarySuggestions'];
   for (const p of paths) {
-    const res = await fetch(`${databaseURL}/${p}.json?access_token=${encodeURIComponent(token)}`, { method: 'DELETE' });
-    console.log(`[wipe ${projectId}] /${p} → ${res.status}`);
+    const r = spawnSync('npx', ['firebase', 'database:remove', `/${p}`, '--project', projectId, '--force'], {
+      cwd: REPO_ROOT, shell: true, encoding: 'utf8',
+      env: { ...process.env, MSYS_NO_PATHCONV: '1' }, // stop Git Bash rewriting "/rooms" into a Windows path
+    });
+    const ok = r.status === 0;
+    // ANSI colour codes: ESC '[' digits/';' 'm'. Built without backslashes on purpose.
+    const ansi = new RegExp(String.fromCharCode(27) + '[[][0-9;]*m', 'g');
+    const tail = String(r.stderr || r.stdout).replace(ansi, '').trim().split(String.fromCharCode(10)).pop().trim();
+    console.log(`[wipe ${projectId}] /${p} -> ${ok ? 'removed' : 'FAILED: ' + tail}`);
   }
 }
 
