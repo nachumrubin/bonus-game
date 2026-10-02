@@ -31,8 +31,15 @@ function setPath(data, path, value) {
     cur = cur[p];
   }
   const last = parts[parts.length - 1];
-  if (value === null || value === undefined) delete cur[last];
-  else cur[last] = value;
+  if (value === null || value === undefined) {
+    delete cur[last];
+    // RTDB arrays are just numeric-keyed objects: deleting the tail entries
+    // shortens them. Trim trailing holes so `.length` matches what a reader
+    // of the real database would get.
+    if (Array.isArray(cur)) {
+      while (cur.length && !(cur.length - 1 in cur)) cur.length -= 1;
+    }
+  } else cur[last] = value;
 }
 
 // `emptyAsMissing: true` mirrors a real-RTDB behaviour the plain mock does
@@ -87,10 +94,21 @@ export function makeMockDb({ emptyAsMissing = false } = {}) {
           for (const p of Object.keys(patch)) notify(p);
         } else {
           const cur = getPath(data, path);
-          const merged = { ...(cur && typeof cur === 'object' ? cur : {}), ...deepClone(patch) };
-          // Strip nulls (Firebase semantics: null deletes)
-          for (const k of Object.keys(merged)) if (merged[k] === null) delete merged[k];
-          setPath(data, path, store(merged));
+          // Mirror the rooms/$roomId rule's compare-and-set: a write that
+          // carries `version` must be exactly current + 1 (commitPatch relies
+          // on this instead of a transaction).
+          if (/^rooms\/[^/]+$/.test(path) && cur && typeof cur === 'object'
+              && Object.prototype.hasOwnProperty.call(patch, 'version')
+              && Number(patch.version) !== Number(cur.version) + 1) {
+            const err = new Error('PERMISSION_DENIED: Permission denied');
+            err.code = 'PERMISSION_DENIED';
+            throw err;
+          }
+          // Keys may be multi-segment paths ("board/12"); null deletes.
+          for (const [k, v] of Object.entries(patch)) {
+            setPath(data, `${path}/${k}`, v == null ? null : deepClone(v));
+          }
+          if (emptyAsMissing) setPath(data, path, store(getPath(data, path)));
           notify(path);
         }
       },

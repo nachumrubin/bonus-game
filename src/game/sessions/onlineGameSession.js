@@ -22,7 +22,7 @@ import {
   engineStateFromRoom,
   readRoom,
   watchRoom,
-  commitTransaction,
+  commitPatch,
   leaveRoom,
   setStatus,
   setReady,
@@ -76,6 +76,11 @@ export async function createOnlineGameSession({
 
   // Track the last applied room version so we can detect echo / staleness.
   let lastAppliedVersion = room.version;
+  // Latest copy of the server room we have seen (watcher snapshot, our own
+  // committed write, or a forced re-read). commitPatch diffs against it so a
+  // commit only sends what changed; on a version mismatch it falls back to a
+  // full transaction.
+  let lastServerRoom = room;
 
   // Track expected version for the next outgoing transaction.
   let expectedVersion = room.version;
@@ -130,6 +135,10 @@ export async function createOnlineGameSession({
   // in flight" so it never rolls state/cursors back to the older read.
   let watcherApplySeq = 0;
 
+  // Commits issued by this session that have not resolved yet (see
+  // forceResync: never re-read the room while our own write is pending).
+  let inflightCommits = 0;
+
   // The post-commit cursor advance must NEVER go past the server's actual
   // room.version. The naive `expectedVersion += 1` races with the watchRoom
   // callback's echo branch: if the snapshot fires before our await resolves,
@@ -142,6 +151,9 @@ export async function createOnlineGameSession({
     const newVersion = Number(result?.room?.version ?? (expectedVersion + 1));
     if (newVersion > expectedVersion) expectedVersion = newVersion;
     if (newVersion > lastAppliedVersion) lastAppliedVersion = newVersion;
+    // Our write is now the newest server state we know of (unless the
+    // watcher already saw something later) — the next commit diffs against it.
+    if (result?.room && newVersion >= Number(lastServerRoom?.version ?? -1)) lastServerRoom = result.room;
   }
 
   // Re-read the authoritative room and rebuild local state. Called on
@@ -174,6 +186,15 @@ export async function createOnlineGameSession({
   }
 
   async function forceResync(reason) {
+    // Let our own in-flight commits settle first. While a write is pending,
+    // the SDK's local view (which readRoom can return) still contains it —
+    // the staging load test caught a client that resynced onto its OWN
+    // unconfirmed write, set its cursor to that phantom version and then
+    // ignored every real snapshot until it was forfeited.
+    const settleDeadline = Date.now() + 8000;
+    while (inflightCommits > 0 && Date.now() < settleDeadline) {
+      await new Promise(r => setTimeout(r, 50));
+    }
     const applySeqAtStart = watcherApplySeq;
     let incoming = null;
     try { incoming = await readRoom(db, room.roomId); } catch { /* swallow */ }
@@ -187,6 +208,7 @@ export async function createOnlineGameSession({
     // use engineStateFromRoom so every field is rebuilt — board, racks,
     // scores, bag, currentTurnSlot, turnNumber, status, passCount, ... —
     // anything the failed dispatch may have mutated optimistically.
+    lastServerRoom = incoming;
     const fresh = engineStateFromRoom(incoming);
     state.scores = fresh.scores;
     state.bag = fresh.bag;
@@ -456,6 +478,7 @@ export async function createOnlineGameSession({
   // newer AND whose last move came from the OPPONENT, replay it into the engine.
   const unwatch = watchRoom(db, room.roomId, (incoming) => {
     if (!incoming) return;
+    lastServerRoom = incoming;
     const previewSig = JSON.stringify(incoming.livePreview ?? null);
     if (previewSig !== lastLivePreviewSig) {
       lastLivePreviewSig = previewSig;
@@ -825,10 +848,13 @@ export async function createOnlineGameSession({
   // unhandled rejection out of the bus subscriber. Surfaced by the
   // simulator's e2e forced-deadline-loss scenario.
   async function commitCurrentState({ lastMove = null, deferred = false, finalizeOfTs = null } = {}) {
+    inflightCommits++;
     try {
       return await rawCommitCurrentState({ lastMove, deferred, finalizeOfTs });
     } catch (err) {
       return { committed: false, room: null, error: err };
+    } finally {
+      inflightCommits--;
     }
   }
   // `deferred` = the first of the two writes for a bonus-square move: the tiles
@@ -848,7 +874,7 @@ export async function createOnlineGameSession({
     // the bonus on a retry. We clear it only after the commit resolves.
     const queuedTimerBonusMs = Number(state.turnTimerBonusMs) || 0;
     let appliedTimerBonus = false;
-    return commitTransaction(db, room.roomId, expectedVersion, (currentRoom) => {
+    return commitPatch(db, room.roomId, expectedVersion, lastServerRoom, (currentRoom) => {
       if (finalizeOfTs != null) {
         const serverLast = currentRoom.lastMove;
         const stillOurs = serverLast?.ts === finalizeOfTs

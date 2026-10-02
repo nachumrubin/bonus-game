@@ -17,7 +17,18 @@
 
 ## Critical Gaps
 
-### -4. Opponent-timeout rule branch accepts arbitrary room content *(Confirmed gap — rules, OPEN)*
+### -5. Forfeits with a reason were silently rejected; a terminal status could be overwritten *(Confirmed gaps — rules)* — ✅ RESOLVED (October 2026, not yet deployed)
+
+**Evidence:**
+- **No rule on `abandonReason`.** It has no `.write` rule, so `setStatus`'s single update `{ status, abandonedBy, abandonReason }` was rejected as a whole whenever a reason was included. The opponent-disconnected forfeit (`disconnectController`) never landed. This was proved with an emulator test before the fix.
+- **A terminal status could be overwritten.** Soak run 2026-10-02T04-55-38 g5: a late `completed` overwrote the watchdog's `abandoned`, leaving a contradictory room.
+
+**Fix:** `abandonReason` gets the same rule as `abandonedBy`. `status`, `abandonedBy` and `abandonReason` can't change once the room is terminal. Covered by 6 emulator tests.
+
+### -4. Opponent-timeout rule branch accepts arbitrary room content *(Confirmed gap — rules)* — ✅ MOSTLY RESOLVED (October 2026, not yet deployed)
+
+**Resolution:** the branch now requires `liveBonus.active !== true`, unchanged scores, unchanged racks (cell by cell), unchanged `lastMove.ts`, and `turnNumber + 1`. There are 6 emulator tests. **Remaining:** `board` and `bag` can't be compared in RTDB rules, which have no deep equality. A modified claimant could still alter them, but not the scores. Deploys with the next push to main (CI).
+
 
 **Evidence:** staging load test (room v13→v14). A client's stale finalize, which had a different score, a new `moveHistory` entry and changed `pendingBonuses`, was accepted as a "timeout claim". The `rooms/$roomId` rule's timeout branch only checks four things:
 - `data.turnDeadlineMs <= now`

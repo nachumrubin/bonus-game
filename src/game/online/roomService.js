@@ -175,6 +175,94 @@ export async function commitTransaction(db, roomId, expectedVersion, produceUpda
   };
 }
 
+// Bandwidth-lean version of commitTransaction (October 2026 staging load
+// test: full-room transactions were the main cost — every commit re-sent and
+// re-downloaded the whole room incl. the growing moveHistory).
+//
+// Writes ONLY the fields that changed, as one atomic multi-path update that
+// always includes `version: expectedVersion + 1`. Compare-and-set still holds:
+// the rooms/$roomId rule requires newData.version === data.version + 1, so a
+// write built on a stale base is rejected by the server exactly like a
+// transaction abort, and the update is all-or-nothing.
+//
+// `baseRoom` is the caller's latest copy of the server room. If it does not
+// match `expectedVersion` we cannot diff safely and fall back to a full
+// transaction. Same return shape as commitTransaction; `room` is the post-
+// commit room as written.
+export async function commitPatch(db, roomId, expectedVersion, baseRoom, produceUpdate) {
+  if (!baseRoom || Number(baseRoom.version) !== Number(expectedVersion)) {
+    return commitTransaction(db, roomId, expectedVersion, produceUpdate);
+  }
+  const patch = produceUpdate(baseRoom);
+  if (!patch) return { committed: false, room: null };
+  // Clone: the patch holds live references into the caller's engine state
+  // (e.g. lastMove IS the moveHistory entry). The returned room becomes the
+  // caller's "server copy" and must not change when local state mutates later
+  // (a real write is serialized; a reference is not).
+  const next = structuredClone({ ...baseRoom, ...patch, version: expectedVersion + 1 });
+  const updates = diffRoomForUpdate(baseRoom, next);
+  try {
+    await roomRef(db, roomId).update(updates);
+    return { committed: true, room: next, writtenPaths: Object.keys(updates).length };
+  } catch (err) {
+    return { committed: false, room: null, error: err };
+  }
+}
+
+// Room fields diffed one level deeper (only changed children are written):
+// collections that grow or change piecemeal.
+const DEEP_DIFF_KEYS = new Set([
+  'board', 'bonusBoard', 'moveHistory', 'racks', 'scores', 'bag', 'activeBoosts',
+  'lockedCells', 'lockInventory', 'missedTurns', 'pendingBonuses', 'bonusSqUsed',
+  'bonusAssignment', 'turnEffects', 'ready', 'settings',
+]);
+
+// Stable JSON with null ≡ undefined (Firebase drops nulls) and sorted keys
+// (Firebase returns keys sorted; our objects may not be).
+function canon(v) {
+  if (v === undefined || v === null) return 'null';
+  if (Array.isArray(v)) {
+    // Trailing/holey nulls are equivalent to absent entries.
+    const out = [];
+    for (let i = 0; i < v.length; i++) out.push(canon(v[i]));
+    while (out.length && out[out.length - 1] === 'null') out.pop();
+    return `[${out.join(',')}]`;
+  }
+  if (typeof v === 'object') {
+    const keys = Object.keys(v).filter(k => v[k] !== undefined && v[k] !== null).sort();
+    return `{${keys.map(k => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(v);
+}
+
+function sameValue(a, b) { return canon(a) === canon(b); }
+
+function isContainer(v) { return v !== null && typeof v === 'object'; }
+
+/**
+ * Multi-path update (relative to the room) that turns `base` into `next`.
+ * Exported for tests.
+ */
+export function diffRoomForUpdate(base, next) {
+  const out = {};
+  const keys = new Set([...Object.keys(base ?? {}), ...Object.keys(next ?? {})]);
+  for (const key of keys) {
+    const b = base?.[key];
+    const n = next?.[key];
+    if (sameValue(b, n)) continue;
+    if (DEEP_DIFF_KEYS.has(key) && isContainer(b) && isContainer(n)) {
+      const childKeys = new Set([...Object.keys(b), ...Object.keys(n)]);
+      for (const ck of childKeys) {
+        if (!sameValue(b[ck], n[ck])) out[`${key}/${ck}`] = n[ck] === undefined ? null : n[ck];
+      }
+    } else {
+      out[key] = n === undefined ? null : n;
+    }
+  }
+  out.version = next.version;
+  return out;
+}
+
 // Mark a slot as ready (coin-toss handshake). Both ready → status flips to playing.
 export async function setReady(db, roomId, slot, ready = true) {
   await db.ref(`${PATH.rooms}/${roomId}/${FIELD.ready}/${slot}`).set(!!ready);

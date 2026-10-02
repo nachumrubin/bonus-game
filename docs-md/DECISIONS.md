@@ -421,3 +421,18 @@ coin loop). Tests: `avatarStore.test.js`, `avatarStoreScreen.test.js`, extended 
 - Timing is deliberate: about 15% of timed turns commit within ±1.5 s of the deadline.
 - The older `npm run sim` scenarios stay for fast, deterministic, injected-clock checks.
 - Prod is never a soak target. Staging (a separate Firebase project) is the only remote target.
+
+---
+
+## D-commit-patch: Room commits write changed fields only; the rules provide compare-and-set (October 2026)
+
+**Decision:** `onlineGameSession` commits through `roomService.commitPatch`: one atomic multi-path `update()` with only the changed fields plus `version + 1`. It no longer uses a full-room `transaction()`.
+
+**Why:** the staging load test showed full-room transactions were the main bandwidth cost. Every commit re-sent the whole room, including the growing `moveHistory`, and both clients re-downloaded it. Spark's 10 GB/month and Blaze's per-GB pricing both scale with this.
+
+**Safety:** compare-and-set no longer needs the client-side transaction loop. The `rooms/$roomId` rule already rejects any write whose `version` isn't `data.version + 1`, and a multi-path update is all-or-nothing. A stale base is therefore rejected server-side exactly like a transaction abort, and the session's existing failure path (rollback, `SYNC_REJECTED`, `forceResync`) handles it. When the session's latest server copy doesn't match the expected version, the commit falls back to the full transaction.
+
+**Consequences:**
+- Any new path in the room that must stay version-guarded must keep relying on the `$roomId` rule.
+- The timeout watchdog still uses a transaction, because claims are rare.
+- Unit tests rely on the mock mirroring the version check for `rooms/<id>` updates.

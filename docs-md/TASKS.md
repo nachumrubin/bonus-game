@@ -1088,10 +1088,11 @@ The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG
 - ✅ Fixed the version-cursor poisoning by a rejected optimistic write (dropped opponent move → false timeout). See GAP_REPORT -3.
 - [ ] Low priority: a game-ending pass, exchange or timeout is never committed. `finishGame` writes `status` only, so the final room keeps `_passCount=3`, a stale `lastMove`, and un-decremented lock timers, and the two clients' post-game `lockedCells` differ (soak run4b g0). It's cosmetic after game end, but `debug-game.mjs` shows a misleading final turn.
 - ✅ Fixed: a last-second bonus-square move plus the timer auto-pass let a ghost finalize steal the opponent's turn mid-mini-game (engine `bonus-pending` guard plus session `finalizeOfTs` and `reconcilePendingScore`).
-- [ ] **Rules hardening (security):** the opponent-timeout branch accepts arbitrary content and ignores `liveBonus`. See GAP_REPORT -4. Needs emulator tests before any deploy.
-- [ ] Investigate: after a rejected commit, `forceResync`'s `readRoom` (`get()`) may return the client's own pending optimistic write instead of server truth. Load-test agent A froze at a phantom turn 12 and processed no further snapshots (load run 2026-10-01T23-04-00, w2 g200001). Consider reading through a separate un-written path, or waiting for pending transactions to settle before resyncing.
+- ✅ Rules: a terminal status can't be overwritten, and the `abandonReason` rule was added. Forfeits with a reason (opponent disconnected) were being rejected outright (GAP_REPORT -5). **Not deployed yet. CI deploys on push to main.**
+- ✅ Rules hardening: the timeout-claim branch is locked to a pure turn rotation, with 6 emulator tests (GAP_REPORT -4). **Not deployed yet. CI deploys on push to main.** Board/bag stay uncomparable in rules.
+- ✅ Resync freeze: `forceResync` waits for in-flight commits to settle before re-reading (it was reading the client's own pending write). Re-check in the next staging load run.
 - [ ] Follow-up: after a lost commit race, the local `turnTimerController` auto-passes a turn the server already rotated away. Rules reject it (harmless now), but suppress it. See GAP_REPORT -3.
-- [ ] **Confirmed (Oct 2026):** browser emulator playtesting (`npm run emu` + `?emu=1`) runs WITHOUT security rules. An unauthenticated write to `/admins` in ns `boost-8ef11-default-rtdb` succeeds. The page keeps the prod database URL, so it writes to namespace `boost-8ef11-default-rtdb` on the emulator, while the emulator loads rules only into `demo-bonus-game-default-rtdb`. Point `?emu=1` at the rules namespace (set `databaseURL` / `ns` in the emulator branch of `firebaseClient.js`).
+- ✅ Browser emulator mode (`?emu=1`) now targets the rules namespace `demo-bonus-game-default-rtdb` (`firebaseClient.js`).
 - [ ] ~~Network latency injection:~~ (done, see above). Original note: wrap each agent's db so transactions and writes are delayed by a mobile-like distribution (50–800 ms, with occasional 2 s spikes). On localhost a tap at deadline − 50 ms is never committed late. The client's own timer auto-pass pre-empts every tap aimed after the deadline (run 2: all `[0,+1500)` aimed turns → `turn-gone-before-action`), so commit-arrives-inside-the-grace races are under-exercised.
 - [ ] Clock skew: run agent B in a child process with a faked `Date.now()` offset of ±0–8 s, to check that the serverClock correction holds.
 - [ ] Async modes at scale (friend-async / random-async): checked, but not yet run in volume.
@@ -1105,12 +1106,17 @@ The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG
   - **Bandwidth is the second Spark limit.** About 100 KB per game-minute reaches the two players (about 150 KB measured, including the test observer). A 15-minute game is about 1.5 MB, so Spark's 10 GB/month covers about 6,800 games/month (about 225/day). Main drivers: every commit rewrites the whole room doc, which both clients re-download; `livePreview` writes on every drag; and `liveBonus` progress writes every second during mini-games.
   - **Latency.** Commit p50 is a steady ~250 ms at every step. p95 is 1.3–2.5 s from 18 games up (from one PC and one home uplink, so partly client-side). Opponent-visible p50 is ~220 ms.
   - **Correctness.** One ghost-finalize turn steal (fixed), and one client freeze after a rejected commit (open, see below).
+- 📊 **Second staging load test after the hardening batch** (run 2026-10-02T05-12-52-load, 6→36 games, same mix):
+  - **Bandwidth:** 26–33 KB per game-minute (was 100–160 KB), **about 4–5× less**. A 15-minute game is now about 0.4 MB, so Spark's 10 GB/month covers roughly 25k games/month (was about 5k).
+  - **Commit p95:** 166–643 ms (was 1.3–1.9 s).
+  - **Health:** no SLO breach and no correctness violation up to 36 games. DB load ≤2.1%.
+  - The Spark 100-connection cap (about 48 games) is unchanged. That's a plan limit, not a code one.
 - [ ] Before launch: decide on Blaze (pay-as-you-go: connection cap 200k, bandwidth about $1/GB, so about $0.0015 per game) vs staying on Spark (about 48 concurrent games and about 225 games/day).
-- [ ] Reduce bandwidth per game:
+- ✅ Reduce bandwidth per game: lean commits (`commitPatch`, changed fields only), `livePreview` at most every 500 ms, `liveBonus` progress in 3 s steps. Measured in the next staging load run.
   - commit only the changed fields (`update`), not the full room, inside the transaction
   - throttle `livePreview` writes
   - send `liveBonus` progress every 3–5 s instead of every second
-- [ ] Show a clear "can't connect / server busy" message when the RTDB connection is refused, instead of a silent 30 s wait (watch `.info/connected` during invite or room-code setup).
+- ✅ "No connection to the game server" banner when `.info/connected` stays false 6 s into an online setup (`warnIfGameServerUnreachable` in `main.js`).
 - ✅ Load test tooling (`npm run load -- --confirm-staging …`) against the staging project: multi-process workers, staircase ramp, SLO stop rules, Cloud Monitoring server metrics. See CHANGELOG.
 - [ ] (superseded) Load test against the STAGING Firebase project (`scripts/simulator/staging.config.json`): multi-process workers, a staircase ramp, latency/error/bandwidth metrics, and the behaviour of Spark's 100-connection cap. Needs the user to create the staging project.
 - [ ] Playwright UI layer: two browser contexts against the emulator-hosted app (stub `config.js` so `?emu=1` uses the demo namespace), with an in-page agent using `window.__spine`.

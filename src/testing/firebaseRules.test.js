@@ -23,9 +23,12 @@ test('room write rule requires authenticated v2 room participant and current-tur
   // settings.timelimit=true, and a turn rotation to the claimer's seat). The
   // watchdog path also accepts an abandonment write (status=abandoned with
   // turnDeadlineMs reset to 0) so a stuck timed-out game can be force-ended.
+  // Since October 2026 the watchdog path is also locked to a pure turn
+  // rotation: no claim during a mini-game (liveBonus.active), scores, racks
+  // and lastMove.ts unchanged, turnNumber + 1 exactly (GAP_REPORT -4).
   assert.equal(
     expr,
-    "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && (((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/0/uid').val()) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/1/uid').val())) || (data.child('status').val() === 'playing' && data.child('settings/timelimit').val() === true && data.child('turnDeadlineMs').val() <= now && (newData.child('turnDeadlineMs').val() > now || (newData.child('status').val() === 'abandoned' && newData.child('turnDeadlineMs').val() === 0)) && ((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/1/uid').val() && newData.child('currentTurnSlot').val() === 1) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/0/uid').val() && newData.child('currentTurnSlot').val() === 0))))))",
+    "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && (((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/0/uid').val()) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/1/uid').val())) || (data.child('status').val() === 'playing' && data.child('settings/timelimit').val() === true && data.child('turnDeadlineMs').val() <= now && data.child('liveBonus/active').val() !== true && newData.child('scores/0').val() === data.child('scores/0').val() && newData.child('scores/1').val() === data.child('scores/1').val() && newData.child('turnNumber').val() === data.child('turnNumber').val() + 1 && newData.child('lastMove/ts').val() === data.child('lastMove/ts').val() && newData.child('racks/0/0').val() === data.child('racks/0/0').val() && newData.child('racks/0/1').val() === data.child('racks/0/1').val() && newData.child('racks/0/2').val() === data.child('racks/0/2').val() && newData.child('racks/0/3').val() === data.child('racks/0/3').val() && newData.child('racks/0/4').val() === data.child('racks/0/4').val() && newData.child('racks/0/5').val() === data.child('racks/0/5').val() && newData.child('racks/0/6').val() === data.child('racks/0/6').val() && newData.child('racks/0/7').val() === data.child('racks/0/7').val() && newData.child('racks/1/0').val() === data.child('racks/1/0').val() && newData.child('racks/1/1').val() === data.child('racks/1/1').val() && newData.child('racks/1/2').val() === data.child('racks/1/2').val() && newData.child('racks/1/3').val() === data.child('racks/1/3').val() && newData.child('racks/1/4').val() === data.child('racks/1/4').val() && newData.child('racks/1/5').val() === data.child('racks/1/5').val() && newData.child('racks/1/6').val() === data.child('racks/1/6').val() && newData.child('racks/1/7').val() === data.child('racks/1/7').val() && (newData.child('turnDeadlineMs').val() > now || (newData.child('status').val() === 'abandoned' && newData.child('turnDeadlineMs').val() === 0)) && ((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/1/uid').val() && newData.child('currentTurnSlot').val() === 1) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/0/uid').val() && newData.child('currentTurnSlot').val() === 0))))))",
   );
 
   const players = { 0: { uid: 'a' }, 1: { uid: 'b' } };
@@ -47,7 +50,11 @@ test('room side-channel writes remain participant-scoped', () => {
   const participantExpr = "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())";
   assert.equal(roomRules.settings['.write'], participantExpr);
   assert.equal(roomRules.livePreview['.write'], participantExpr);
-  assert.equal(roomRules.status['.write'], participantExpr);
+  // A terminal status (completed / abandoned / expired) is final: a late
+  // end-of-game write from the other client must not overwrite it (soak
+  // finding, Oct 2026: a late stall-claim 'completed' landed on top of the
+  // watchdog's 'abandoned').
+  assert.equal(roomRules.status['.write'], `${participantExpr} && (data.val() !== 'completed' && data.val() !== 'abandoned' && data.val() !== 'expired')`);
   assert.equal(
     roomRules.players.$slot.oneSignalSubId['.write'],
     "auth != null && auth.uid === root.child('rooms').child($roomId).child('players').child($slot).child('uid').val()",

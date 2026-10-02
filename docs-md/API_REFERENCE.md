@@ -243,6 +243,8 @@ createRoom(db, opts: { roomId, mode, players, settings, engineState, serverTimes
 readRoom(db, roomId: string): Promise<RoomDoc | null>
 watchRoom(db, roomId: string, cb: (room: RoomDoc | null) => void): () => void
 commitTransaction(db, roomId: string, expectedVersion: number, produceUpdate: (room) => Patch): Promise<{ committed: boolean, room: RoomDoc }>
+commitPatch(db, roomId, expectedVersion, baseRoom: RoomDoc | null, produceUpdate): Promise<{ committed, room, writtenPaths? }>   // changed-fields-only multi-path update; CAS via the version rule; falls back to commitTransaction when baseRoom.version !== expectedVersion
+diffRoomForUpdate(base: RoomDoc, next: RoomDoc): Record<string, any>   // multi-path update (incl. version) turning base into next
 setReady(db, roomId: string, slot: 0|1, ready?: boolean): Promise<void>
 markReadyAndMaybeStart(db, roomId: string, slot: 0|1, nowMs?: number): Promise<void>
 setStatus(db, roomId: string, status: string, extras?: object): Promise<void>

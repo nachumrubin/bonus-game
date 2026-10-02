@@ -507,6 +507,25 @@ async function boot() {
   let activePresenceHandle = null;
   let activePresenceUid = null;
   let lastLivePreviewWrite = '';
+  // Bandwidth throttles for the non-versioned live side channels (staging
+  // load test, Oct 2026): preview writes at most every 500 ms; mini-game
+  // progress countdown in 3-second steps.
+  const LIVE_PREVIEW_MIN_INTERVAL_MS = 500;
+  const LIVE_BONUS_PROGRESS_STEP_S = 3;
+  // When the game server can't be reached (offline, or the database refused
+  // the connection — e.g. past the plan's simultaneous-connection cap) the
+  // Firebase SDK retries silently and online setup just spins. Tell the
+  // player instead (staging load test, Oct 2026). Set once the connectivity
+  // monitor starts; read lazily so early UI events never hit a TDZ error.
+  const SERVER_UNREACHABLE_WARN_MS = 6000;
+  let connectivityMonitorRef = null;
+  function warnIfGameServerUnreachable() {
+    setTimeout(() => {
+      const st = connectivityMonitorRef?.current?.();
+      if (!st || st.connected) return;
+      bus.emit(NOTIF_BANNER_SHOW, { avatar: '📡', text: 'אין חיבור לשרת המשחק כרגע. נסו שוב בעוד רגע.' });
+    }, SERVER_UNREACHABLE_WARN_MS);
+  }
   const recoveredSessionForUid = new Set();
   let launchParamsHandled = false;
 
@@ -912,16 +931,41 @@ async function boot() {
     }
   });
 
+  // Live preview (the opponent sees our tentative tiles). Throttled to one
+  // write per LIVE_PREVIEW_MIN_INTERVAL_MS with a trailing flush of the latest
+  // tiles: dragging used to write on every change, and every write is
+  // re-downloaded by both players (staging load test, Oct 2026). Clearing the
+  // preview (no tiles) is written at once so ghost tiles never linger.
+  let livePreviewTimer = null;
+  let livePreviewPending = null;
+  let lastLivePreviewAt = 0;
+  function flushLivePreview() {
+    livePreviewTimer = null;
+    const pending = livePreviewPending;
+    livePreviewPending = null;
+    if (!pending) return;
+    const { db, roomId, slot, tiles, sig } = pending;
+    if (sig === lastLivePreviewWrite) return;
+    lastLivePreviewWrite = sig;
+    lastLivePreviewAt = Date.now();
+    roomService.setLivePreview(db, roomId, { slot, tiles }).catch((e) => {
+      console.warn('[spine] live preview write', e);
+    });
+  }
   bus.on(GAME_SCREEN_INTENT.LIVE_PREVIEW_CHANGED, ({ slot, tiles } = {}) => {
     const ag = globalThis.__spine?.activeGame;
     const db = activeFbDb;
     if (!ag?.online || !db || slot !== ag.session?.mySlot) return;
     const sig = JSON.stringify({ roomId: ag.session.roomId, slot, tiles });
-    if (sig === lastLivePreviewWrite) return;
-    lastLivePreviewWrite = sig;
-    roomService.setLivePreview(db, ag.session.roomId, { slot, tiles }).catch((e) => {
-      console.warn('[spine] live preview write', e);
-    });
+    livePreviewPending = { db, roomId: ag.session.roomId, slot, tiles, sig };
+    const empty = !Array.isArray(tiles) || tiles.length === 0;
+    const wait = LIVE_PREVIEW_MIN_INTERVAL_MS - (Date.now() - lastLivePreviewAt);
+    if (empty || wait <= 0) {
+      if (livePreviewTimer) { clearTimeout(livePreviewTimer); livePreviewTimer = null; }
+      flushLivePreview();
+    } else if (!livePreviewTimer) {
+      livePreviewTimer = setTimeout(flushLivePreview, wait);
+    }
   });
 
   bus.on(SETTINGS_CHANGED, (changes = {}) => {
@@ -1142,6 +1186,7 @@ async function boot() {
     let activeMatchmaking = null;
 
     bus.on(MM_INTENT.SEARCH, async (filters) => {
+      warnIfGameServerUnreachable();
       try { await ensureAuthedUser(); }
       catch (e) { console.warn('[spine] MM_INTENT.SEARCH auth failed:', e?.message ?? e); }
       const fbDb = activeFbDb;
@@ -1248,6 +1293,7 @@ async function boot() {
     globalThis.__spine.teardownPending = teardownPending;
 
     bus.on(CR_INTENT.CONFIRM, async (filters) => {
+      warnIfGameServerUnreachable();
       try { await ensureAuthedUser(); }
       catch (e) { console.warn('[spine] CR_INTENT.CONFIRM auth failed:', e?.message ?? e); }
       const fbDb = activeFbDb;
@@ -1447,6 +1493,7 @@ async function boot() {
 
     // ── Join-by-code flow ──────────────────────────────
     bus.on(JC_INTENT.CONFIRM, async ({ code, name }) => {
+      warnIfGameServerUnreachable();
       try { await ensureAuthedUser(); }
       catch (e) { console.warn('[spine] JC_INTENT.CONFIRM auth failed:', e?.message ?? e); }
       const fbDb = activeFbDb;
@@ -1647,6 +1694,7 @@ async function boot() {
     if (activeFbCurrentUser?.uid) bootInviteListenersFor(activeFbCurrentUser.uid);
 
     bus.on(II_INTENT.ACCEPT, async (invite) => {
+      warnIfGameServerUnreachable();
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !invite?.inviteId) {
@@ -3349,6 +3397,7 @@ async function boot() {
     });
 
     bus.on(NOTIF_INTENT.ACCEPT_INVITE, async (invite) => {
+      warnIfGameServerUnreachable();
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !invite?.inviteId) return;
@@ -4126,8 +4175,14 @@ async function boot() {
       let lastProgressSig = null;
       subs.push(bus.on('liveBonus/progress', (progress = {}) => {
         if (!bonusFlowActive || !currentLiveBonus) return;
+        // The countdown only needs to reach the spectator every few seconds:
+        // bucket secsLeft into 3-second steps (score / label changes still go
+        // out immediately). Was one full liveBonus write per second per
+        // mini-game — a measurable share of per-game bandwidth in the staging
+        // load test.
+        const secs = progress.secsLeft;
         const sig = JSON.stringify({
-          secsLeft: progress.secsLeft ?? null,
+          secsBucket: Number.isFinite(secs) ? Math.ceil(secs / LIVE_BONUS_PROGRESS_STEP_S) : null,
           score: progress.score ?? null,
           label: progress.label ?? null,
         });
@@ -4653,6 +4708,7 @@ async function boot() {
   // on every transition; the controller toggles the icon's classes in
   // response. Visible only during online games (gated on modeDescriptor).
   const connectivityMonitor = startConnectivityMonitor({ db: activeFbDb, bus });
+  connectivityMonitorRef = connectivityMonitor;
   const connectivityCtl = createConnectivityIndicator({
     bus,
     sessionRef: () => globalThis.__spine?.activeGame?.session ?? null,

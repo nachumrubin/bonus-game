@@ -525,7 +525,9 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
     subs.push(bus.on(BONUS_AWARD_ACK, ({ slot } = {}) => { if (slot === mySlot && active) { active = false; clear(); } }));
     subs.push(bus.on('liveBonus/progress', (progress = {}) => {
       if (!active || !current) return;
-      const sig = JSON.stringify({ secsLeft: progress.secsLeft ?? null, score: progress.score ?? null, label: progress.label ?? null });
+      // Mirrors main.js: countdown in 3-second steps (LIVE_BONUS_PROGRESS_STEP_S).
+      const secs = progress.secsLeft;
+      const sig = JSON.stringify({ secsBucket: Number.isFinite(secs) ? Math.ceil(secs / 3) : null, score: progress.score ?? null, label: progress.label ?? null });
       if (sig === lastProgressSig) return;
       lastProgressSig = sig;
       write({ ...current, progress });

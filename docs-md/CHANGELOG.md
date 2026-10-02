@@ -2,6 +2,51 @@
 
 ---
 
+## Hardening batch: timeout-claim rule, lean room commits, resync freeze, unreachable-server banner, emulator rules (October 2026)
+
+### Security rule: a timeout claim can only rotate the turn (`firebase.database.rules.json`)
+The opponent-timeout branch of `rooms/$roomId` now also requires:
+- no mini-game in progress (`liveBonus.active !== true`)
+- `scores/0` and `scores/1` unchanged
+- `turnNumber` advanced by exactly 1
+- `lastMove.ts` unchanged
+- all 16 rack cells unchanged
+
+A legitimate watchdog claim meets all of these. Before, the branch accepted any room content once the deadline had passed (GAP_REPORT -4). Board and bag still can't be compared, because RTDB rules can't deep-compare objects.
+
+There are 6 new emulator tests in `tests/emulator/timer-rules.test.mjs`. 5 of them fail against the old rules, and the legitimate claim passes under both. The pinned rule string in `src/testing/firebaseRules.test.js` is updated. **Rules deploy to production via CI on push to main; this change has not been pushed.**
+
+### Security rules: a finished game stays finished; forfeits with a reason now land
+- **Terminal status is final.** `rooms/$roomId/status` can no longer be written once it is `completed`, `abandoned` or `expired`. `abandonedBy` and `abandonReason` can only be written while the room isn't terminal.
+  - Soak finding: on a slow network, a late stall-claim `completed` landed on top of the opponent watchdog's `abandoned`. The room ended up "completed" yet "abandoned by A", and the two players saw different end screens.
+  - The late writer's `setStatus` is now rejected (already swallowed by the session), and its watcher resyncs to the server's result.
+- **`abandonReason` had no rule at all.** `setStatus` writes `{ status, abandonedBy, abandonReason }` in one update, and an unruled path rejects the whole update.
+  - So **every forfeit that carried a reason** (`disconnectController`'s opponent-disconnected forfeit, `gameFlowController` resigns with a reason) never reached the server. The room stayed `playing` for the opponent until watchdog timeouts ended it.
+  - It now has the same participant-and-not-terminal rule as `abandonedBy`.
+- Tests: 6 new emulator tests (`tests/emulator/timer-rules.test.mjs`), plus an updated pinned status rule in `src/testing/firebaseRules.test.js`.
+
+### Lean room commits (`roomService.commitPatch`)
+Session commits now write **only the changed fields**, plus `version: expected + 1`, as one atomic multi-path `update()`. Collections such as `board`, `moveHistory`, `racks` and `bag` are diffed one level deeper. Compare-and-set still holds, because the rooms rule requires `newData.version === data.version + 1`: a write built on a stale base is rejected exactly like a transaction abort.
+
+The base is the session's `lastServerRoom` (watcher snapshot, own committed write, or forced re-read). If that copy doesn't match the expected version, the commit falls back to the full transaction. Previously every commit re-sent and re-downloaded the whole room, including the growing move history: the main bandwidth cost in the staging load test.
+
+The mock DB now mirrors the version check for `rooms/<id>` updates, supports multi-path keys, and shortens arrays when trailing entries are deleted. Tests: `tests/unit/room-commit-patch.test.js`. The ghost-move rollback stubs now also intercept `update`.
+
+### Live side channels throttled (`main.js`)
+- `livePreview` writes at most every 500 ms, with a trailing flush of the latest tiles. Clearing the preview is written immediately.
+- `liveBonus` progress is written when the countdown crosses a 3-second step, or when the score or label changes. It used to be written every second.
+
+### Resync no longer reads our own pending write (`onlineGameSession.forceResync`)
+`forceResync` now waits (up to 8 s) for this session's in-flight commits to settle before re-reading the room. A load-test client had resynced onto its own unconfirmed write, set its cursor to that phantom version, and ignored every real snapshot until it was forfeited.
+
+### "No connection to the game server" banner (`main.js`)
+When a player starts an online setup and `.info/connected` is still false 6 s later, the existing notification banner shows *"אין חיבור לשרת המשחק כרגע. נסו שוב בעוד רגע."* The setups covered are: random match, create room, join by code, and accepting an invite from the popup or the inbox. This happens offline, or when the database refuses the connection, for example past the plan's connection cap. Before, setup spun silently.
+
+### Browser emulator mode enforces the rules (`firebaseClient.js`)
+With `?emu=1` / `APP_CONFIG.useEmulator`, the app now initializes against `demo-bonus-game` with `databaseURL ...?ns=demo-bonus-game-default-rtdb`, the namespace the emulator loads the rules into. Before, it kept the production URL, so emulator playtesting wrote to a namespace where no rules apply.
+
+---
+
 ## Fix: a last-second bonus-square move could steal the opponent's turn mid-mini-game (October 2026)
 
 Found by the staging load test (real Firebase, 18 concurrent games).
