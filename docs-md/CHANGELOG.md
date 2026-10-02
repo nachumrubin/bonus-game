@@ -2,6 +2,45 @@
 
 ---
 
+## Fix: a last-second bonus-square move could steal the opponent's turn mid-mini-game (October 2026)
+
+Found by the staging load test (real Firebase, 18 concurrent games).
+
+**What happened.** Player B played onto a bonus square about 24 ms before the deadline. In the same instant, B's own turn timer auto-passed. The engine accepted the pass even though the bonus move's score was still pending, so the turn rotated underneath the deferred move. B's mini-game kept running. When it closed, the finalize committed a **ghost move** (+13 for a move whose turn was gone) and rotated the turn to B **while A was mid-mini-game**.
+
+The rules accepted that write through the opponent-timeout branch: the deadline had passed and the write flipped the turn to the writer. A's own finalize then lost, and A's client froze until A was forfeited.
+
+**Fix:**
+- **Engine** (`gameEngine.js`): while `pendingScoreCommit` is set, turn-ending commands (`CONFIRM_MOVE`, `PASS_TURN`, `EXCHANGE_TILE`, `PLACE_LOCK`, `CLAIM_STALL_END`) are refused with `INVALID_MOVE_REJECTED { reason: 'bonus-pending' }`. Resign and the finalize itself still go through.
+- **Session** (`onlineGameSession.js`): the finalize commit carries `finalizeOfTs`. It only lands while the server still holds that deferred move (same `lastMove.ts`, still `scoringDeferred`, our turn); otherwise it aborts, rolls back and resyncs. `reconcilePendingScore` (called from `forceResync` and the watcher's resync) drops a local pending score the server no longer has, and emits `BONUS_ABORTED`.
+- **Mock** (`mockFirebase`): `transaction` now clones what it stores, as RTDB serializes. Before, the stored room aliased the client's own history objects.
+
+**Still open (rules):** the opponent-timeout branch accepts **any** content as long as it flips the turn and sets a future deadline. A modified client could rewrite scores or the board after the opponent's deadline passes, and the branch ignores `liveBonus.active`. See GAP_REPORT -4.
+
+Tests: an engine test (`turn-ending commands are refused while a deferred bonus score is pending`) and a session test (`finalize after the server moved on does not write a ghost move`).
+
+---
+
+## Staging load test: `npm run load` (October 2026)
+
+A new server-load test runs against the separate staging Firebase project `boost-staging-7f3a` (Spark plan, RTDB in us-central1, same rules as production). It never touches production.
+
+**How it runs.** `scripts/simulator/soak/loadTest.mjs` forks worker processes (`loadWorker.mjs`). Each worker holds a target number of concurrent live games: two full soak agents per game, so two real connections, playing with the real timers and the full human write mix. The coordinator ramps the target (`--start-games`, `--step-games`, `--step-minutes`, `--max-games`). It stops at the first step that breaks an SLO, unless `--no-stop` is given.
+
+**Per step it reports:**
+- commit (transaction) latency p50/p95/p99
+- move-to-opponent-visible latency (both agents share a clock)
+- error rate by Firebase code and path (`net/metrics.mjs`)
+- games that failed to start
+- correctness violations
+- lost commits sent more than 0.5 s before the deadline
+
+**Stop rules (SLOs):** commit p95 above 1 s, visible p95 above 2 s, error rate above 0.5% (with at least 3 failures), setup failures above 20%, or any correctness violation. Step 0 is warm-up and never stops the ramp.
+
+**Server side.** `soak/stagingAdmin.mjs` reads RTDB metrics from Cloud Monitoring using the Firebase CLI's login: database load %, active connections, bytes sent. It also wipes staging data (`npm run load:wipe -- --confirm-staging`). It refuses the production project.
+
+**Report:** `.simulator-data/load/<runId>/report.{md,json}`. Fetch late server metrics with `npm run load:metrics -- --run <runId>`.
+
 ## Live soak agents, and the sync bugs they found (October 2026)
 
 ### New: `npm run soak`: two bots play real live online games

@@ -17,6 +17,22 @@
 
 ## Critical Gaps
 
+### -4. Opponent-timeout rule branch accepts arbitrary room content *(Confirmed gap — rules, OPEN)*
+
+**Evidence:** staging load test (room v13→v14). A client's stale finalize, which had a different score, a new `moveHistory` entry and changed `pendingBonuses`, was accepted as a "timeout claim". The `rooms/$roomId` rule's timeout branch only checks four things:
+- `data.turnDeadlineMs <= now`
+- `newData.turnDeadlineMs > now`
+- the writer is the non-active player
+- the turn flips to the writer
+
+It does not check that scores, board, racks, `moveHistory` and bag are unchanged. It also ignores `liveBonus.active`, which is the watchdog's own gate.
+
+**Impact:**
+- Correctness: ghost moves under races. The client-side guard (CHANGELOG, October 2026) closes the known path.
+- Security: once the opponent's deadline passes, a modified client can write any scores or board.
+
+**Proposed fix (needs emulator tests, then deploy via CI):** in the timeout branch, require `newData.child('scores/0').val() === data.child('scores/0').val()` (and the same for `scores/1`). Also require `newData.child('moveHistory').val()` to have the same child count. RTDB rules can't count children directly, so mirror it with a numeric `moveCount` field the clients maintain, or compare `lastMove/ts`. Require `!data.child('liveBonus/active').val()` as well. Don't change this without the emulator test suite.
+
 ### -3. Version cursor could be left ahead of the server by a rejected optimistic write *(Confirmed gap)* — ✅ RESOLVED (October 2026)
 
 **Evidence:** soak run 2026-10-01T19-12-47 g5 (poor-network latency). Agent B's state stayed at turn 8 for 20 s after the server reached v10 (turn 9, B's turn). B was then timed out at v11. Root cause: an optimistic echo of B's rejected auto-pass set `lastAppliedVersion` to a version the server never had, and `forceResync` never lowered it. Reproduced deterministically in `tests/unit/online-version-cursor-poison.test.js`.

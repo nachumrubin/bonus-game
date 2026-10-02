@@ -40,7 +40,7 @@ export async function runAgentGame({
   runId, gameIndex, seed, target, observerDb, wordList, isWordValid, failures,
   modes, strategies, chaos = 0.3, personas, miniGameTimeScale = 1, allow = {},
   clientOpts = {}, roomIdFn = null, botTimes = BOT_TIMES, untimedShare = 0.15, onProgress = null,
-  network = 'mixed',
+  network = 'mixed', agentOpts = {}, signal = null,
 }) {
   const gameSeed = `${seed}/g${gameIndex}`;
   const rng = createRng(gameSeed);
@@ -90,7 +90,7 @@ export async function runAgentGame({
       agents.push(createGameAgent({
         name: i === 0 ? 'A' : 'B', client, persona,
         rng: createRng(`${gameSeed}/${i}`), wordList, isWordValid,
-        opts: { miniGameTimeScale, allow },
+        opts: { miniGameTimeScale, allow, ...agentOpts },
       }));
     }
 
@@ -102,7 +102,19 @@ export async function runAgentGame({
     const slotOf = (uid) => (room.players?.[0]?.uid === uid ? 0 : room.players?.[1]?.uid === uid ? 1 : null);
     await Promise.all(agents.map((a, i) => a.join(room, slotOf(clients[i].uid))));
 
-    const end = await oracle.waitForEnd();
+    // `signal` lets the load test stop games mid-play when a ramp ends.
+    const aborted = new Promise((resolve) => {
+      if (!signal) return;
+      if (signal.aborted) resolve('aborted');
+      signal.addEventListener?.('abort', () => resolve('aborted'), { once: true });
+    });
+    const end = await Promise.race([oracle.waitForEnd(), aborted]);
+    if (end === 'aborted') {
+      result.aborted = true;
+      result.status = 'aborted';
+      oracle.stop();
+      return result;
+    }
     // Let both clients observe the terminal state (GAME_COMPLETED + status write).
     await Promise.race([Promise.all(agents.map(a => a.done)), sleep(15_000)]);
     const { violations, counters, finalRoom } = await oracle.finalize();

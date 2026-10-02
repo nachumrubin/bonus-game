@@ -115,7 +115,9 @@ export function makeMockDb({ emptyAsMissing = false } = {}) {
         if (next === undefined) {
           return { committed: false, snapshot: makeSnap(cur) };
         }
-        const stored = store(next);
+        // Clone like set/update do: real RTDB serializes, so the caller's
+        // objects must never alias what the "server" holds.
+        const stored = store(deepClone(next));
         setPath(data, path, stored);
         notify(path);
         return { committed: true, snapshot: makeSnap(stored) };

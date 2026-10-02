@@ -554,6 +554,15 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
       }
     };
     subs.push(bus.on(EV.OPPONENT_MOVED, onScore));
+    // Load test: how long after the opponent made a move did we see it?
+    // lastMove.ts is stamped by the opponent's engine at commit time; both
+    // agents of a game share one process clock, so this is exact.
+    if (typeof opts.onSample === 'function') {
+      subs.push(bus.on(EV.OPPONENT_MOVED, () => {
+        const ts = Number(state()?.moveHistory?.at?.(-1)?.ts);
+        if (Number.isFinite(ts) && ts > 0) opts.onSample({ kind: 'visible', ms: Date.now() - ts });
+      }));
+    }
     subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, onScore));
     // Impatient poke while waiting on a slow opponent.
     subs.push(bus.on(EV.TURN_CHANGED, () => {

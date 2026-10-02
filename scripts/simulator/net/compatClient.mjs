@@ -23,6 +23,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/database';
 import { withLatency } from './latency.mjs';
+import { withMetrics } from './metrics.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const STAGING_CONFIG_PATH = path.resolve(__dirname, '..', 'staging.config.json');
@@ -88,7 +89,7 @@ function isLocalHost(hostPort) {
  * Create and sign in a real Firebase client.
  * @param {{ target?: 'emu'|'staging'|'prod', label?: string, prodToken?: symbol, prodConfig?: object, stagingConfig?: object }} opts
  */
-export async function makeCompatUser({ target = 'emu', label = 'agent', prodToken = null, prodConfig = null, stagingConfig = null, network = null, rng = Math.random } = {}) {
+export async function makeCompatUser({ target = 'emu', label = 'agent', prodToken = null, prodConfig = null, stagingConfig = null, network = null, rng = Math.random, metrics = null } = {}) {
   let cfg;
   if (target === 'emu') {
     if (!isLocalHost(EMU_DB_HOST)) throw new Error(`emulator host ${EMU_DB_HOST} is not localhost — refusing`);
@@ -115,7 +116,9 @@ export async function makeCompatUser({ target = 'emu', label = 'agent', prodToke
   // Optional mobile-network simulation (see latency.mjs). goOffline/goOnline
   // always act on the raw connection.
   const netStats = {};
-  const db = network ? withLatency(rawDb, { profile: network, rng, stats: netStats }) : rawDb;
+  const netDb = network ? withLatency(rawDb, { profile: network, rng, stats: netStats }) : rawDb;
+  // Optional per-operation timing for the load test (observes only).
+  const db = metrics ? withMetrics(netDb, metrics) : netDb;
 
   const t0 = Date.now();
   const cred = await auth.signInAnonymously();

@@ -156,6 +156,23 @@ export async function createOnlineGameSession({
   // already at its latest version and our watcher's lastAppliedVersion is
   // up-to-date. We have to pull explicitly. Surfaced by the simulator's
   // e2e forced-deadline-loss scenario.
+  // The server is authoritative about whether our bonus-square move is still
+  // awaiting its finalize. If it no longer holds that deferred move on our
+  // turn (lost race, watchdog claim, …), drop the local pending score and tell
+  // the bonus flow to abort — otherwise the engine keeps refusing turn-ending
+  // commands ('bonus-pending') and a later finalize would credit a ghost move.
+  function reconcilePendingScore(incoming, why) {
+    if (!state.pendingScoreCommit) return;
+    const last = incoming?.lastMove;
+    const serverStillPending = last?.scoringDeferred === true
+      && Number(last.slot) === Number(mySlot)
+      && Number(incoming.currentTurnSlot) === Number(mySlot);
+    if (serverStillPending) return;
+    state.pendingScoreCommit = null;
+    deferredCommitPending = false;
+    bus.emit(BONUS_ABORTED, { slot: mySlot, reason: why });
+  }
+
   async function forceResync(reason) {
     const applySeqAtStart = watcherApplySeq;
     let incoming = null;
@@ -190,6 +207,7 @@ export async function createOnlineGameSession({
     state.status = fresh.status;
     state.turnDeadlineMs = fresh.turnDeadlineMs;
     state.missedTurns = fresh.missedTurns;
+    reconcilePendingScore(incoming, `resync:${reason ?? 'sync-rejected'}`);
     // Realign cursors to the server's version — in EITHER direction. The room
     // we just read is authoritative; a cursor left ahead of it (after a
     // rejected optimistic write) would drop the opponent's next commit, which
@@ -307,7 +325,8 @@ export async function createOnlineGameSession({
     // the just-rotated turn slot in the security rule.
     if (!deferredCommitPending) return;
     deferredCommitPending = false;
-    const result = await commitCurrentState({ lastMove: state.moveHistory[state.moveHistory.length - 1] ?? null });
+    const finalLast = state.moveHistory[state.moveHistory.length - 1] ?? null;
+    const result = await commitCurrentState({ lastMove: finalLast, finalizeOfTs: finalLast?.ts ?? null });
     if (result.committed) {
       advanceVersionCursor(result);
     } else {
@@ -553,6 +572,7 @@ export async function createOnlineGameSession({
     state.bonusBoard = deserializeBonusBoardLocal(incoming.bonusBoard);
     state.bonusAssignment = [...(incoming.bonusAssignment ?? state.bonusAssignment ?? [])];
     state.bonusSqUsed = { ...(incoming.bonusSqUsed ?? state.bonusSqUsed ?? {}) };
+    reconcilePendingScore(incoming, 'remote-sync');
     state.pendingBonuses = [...(incoming.pendingBonuses ?? [])];
     state.lockedCells = [...(incoming.lockedCells ?? [])];
     state.lockInventory = {
@@ -804,16 +824,21 @@ export async function createOnlineGameSession({
   // SYNC_REJECTED + forceResync recovery path instead of leaking an
   // unhandled rejection out of the bus subscriber. Surfaced by the
   // simulator's e2e forced-deadline-loss scenario.
-  async function commitCurrentState({ lastMove = null, deferred = false } = {}) {
+  async function commitCurrentState({ lastMove = null, deferred = false, finalizeOfTs = null } = {}) {
     try {
-      return await rawCommitCurrentState({ lastMove, deferred });
+      return await rawCommitCurrentState({ lastMove, deferred, finalizeOfTs });
     } catch (err) {
       return { committed: false, room: null, error: err };
     }
   }
   // `deferred` = the first of the two writes for a bonus-square move: the tiles
   // land, but the turn does not rotate and no score is awarded yet.
-  function rawCommitCurrentState({ lastMove = null, deferred = false } = {}) {
+  // `finalizeOfTs` = this is the SECOND write of a bonus-square move: only
+  // valid while the server still holds that deferred move (same lastMove.ts,
+  // still scoringDeferred) on OUR turn. If the turn moved on meanwhile (lost
+  // race, watchdog claim), abort instead of writing a ghost move over the
+  // current game — found by the staging load test.
+  function rawCommitCurrentState({ lastMove = null, deferred = false, finalizeOfTs = null } = {}) {
     // A timer_bonus boost (B13 wheel +Ns) queued for the slot whose turn is
     // starting was recorded on state.turnTimerBonusMs by the engine's
     // applyTurnStartEffects. The committing client is authoritative for the
@@ -824,6 +849,13 @@ export async function createOnlineGameSession({
     const queuedTimerBonusMs = Number(state.turnTimerBonusMs) || 0;
     let appliedTimerBonus = false;
     return commitTransaction(db, room.roomId, expectedVersion, (currentRoom) => {
+      if (finalizeOfTs != null) {
+        const serverLast = currentRoom.lastMove;
+        const stillOurs = serverLast?.ts === finalizeOfTs
+          && serverLast?.scoringDeferred === true
+          && Number(currentRoom.currentTurnSlot) === Number(mySlot);
+        if (!stillOurs) return null; // abort → committed:false → rollback + resync
+      }
       const settings = { ...(state.settings ?? currentRoom.settings ?? {}) };
       const turnChanged = Number(currentRoom.currentTurnSlot ?? 0) !== Number(state.currentTurnSlot ?? 0);
       // An extra-turn boost keeps the turn with the SAME player, so
