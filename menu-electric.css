@@ -3465,8 +3465,7 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
 #sg .info-strip {
   --av-w: 76px;
   --name-h: 32px;
-  --score-fs: 48px;
-  --score-fs-wide: 40px;
+  --score-fs: 40px;
   --locks-h: 26px;
   grid-template-columns: 1fr 40px 1fr !important;
   margin: 10px 6px 0 !important;
@@ -3566,9 +3565,8 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
   overflow: hidden; text-overflow: ellipsis;
 }
 
-/* Score: the main information. Up to three digits use the full size; a
-   4-character score ([data-wide], set by gameScreen.animateScore) steps down
-   so it still fits the column next to the timer. */
+/* Score: the main information. One size for every score, chosen so four
+   digits still fit the column next to the timer. */
 #sg .info-strip .is-val {
   grid-area: score;
   justify-self: center; align-self: center;
@@ -3577,7 +3575,6 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-#sg .info-strip .is-val[data-wide] { font-size: var(--score-fs-wide) !important; }
 #sg .info-strip .rxn-btn { display: none !important; }
 #sg .info-strip .is-pending-cost { top: 4px; inset-inline-end: 6px; }
 
@@ -3627,7 +3624,7 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
 #sg #info-strip .tt-ring-arc { stroke-width: 8; }
 
 @media (max-width: 390px) {
-  #sg .info-strip { --av-w: 66px; --score-fs: 44px; --score-fs-wide: 34px; --name-h: 30px; grid-template-columns: 1fr 36px 1fr !important; margin-inline: 4px !important; }
+  #sg .info-strip { --av-w: 66px; --score-fs: 34px; --name-h: 30px; grid-template-columns: 1fr 36px 1fr !important; margin-inline: 4px !important; }
   #sg .info-strip .is-pcard { padding: 6px 3px 6px 1px !important; padding-inline-start: 1px !important; padding-inline-end: 3px !important; column-gap: 3px !important; }
   #sg .info-strip .is-pcav { width: var(--av-w); height: auto; }
   #sg .info-strip .is-pcav .av-img { width: var(--av-w) !important; height: var(--av-w) !important; }

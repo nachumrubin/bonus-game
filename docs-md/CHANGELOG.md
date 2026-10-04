@@ -15,12 +15,11 @@ positioned on its own and the timer outweighed the scores.
   `--score-fs`, `--locks-h`).
 - **Names.** A fixed-height header row. The bot difficulty sits under the name, and
   that line is reserved on both sides, so the scores line up.
-- **Scores are the main information.** Up to three digits: 48px (44px on ≤390px
-  screens), 1.6–1.7× the old 28px. A 4-character score (1000+, or −100) gets
-  `data-wide` from `animateScore` and steps down to 40px (34px), so it still fits
-  beside the timer. The score row keeps the large height, so nothing shifts. The
-  size is chosen from the move's target value, so it changes once when the move
-  lands, not mid count-up. Measured with Heebo at 412 and 360px.
+- **Scores are the main information.** One size for every score: 40px, up from
+  28 (34px on ≤390px screens). Digits are slightly tighter, so four digits fit
+  beside the timer without the size changing. Measured with Heebo at 412 and
+  360px. A short-lived variant used 48px with a step-down at four digits; it was
+  dropped in favour of one consistent size.
 - **Avatars at the outer edges.** A fixed portrait box (76px, or 66px at ≤390px)
   holding full-body art on a tier-tinted pedestal glow. The rarity badge is attached
   to the portrait's lower edge, tinted by tier (rare blue, epic purple, legendary
@@ -42,7 +41,7 @@ positioned on its own and the timer outweighed the scores.
 mirror images, and the inventory needs a permanent, unambiguous home. It also gives
 avatar art (including the planned evolving avatars) a fixed, visible portrait.
 
-Files: `menu-electric.css`, `gameScreen.js` (`data-tier`, `data-wide`, lock-slot padding),
+Files: `menu-electric.css`, `gameScreen.js` (`data-tier`, lock-slot padding),
 `reactionController.js`, `docs/ui-rules.md`, `docs/asset_inventory.md`. No DOM IDs
 renamed. The card is about 20px taller; the board moves down slightly but still
 fits on 360×740 and 412×820.

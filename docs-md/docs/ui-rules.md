@@ -122,8 +122,6 @@ Critical element IDs referenced by game logic (must not be renamed):
 #sv1, #sv2             — player score values (desktop)
 #sn1, #sn2             — player name labels (desktop)
 #is-sv1, #is-sv2       — player score values (mobile inline)
-                         ([data-wide] = score is 4+ characters → smaller scoreboard font;
-                         set by gameScreen.animateScore)
 #is-sn1, #is-sn2       — player name labels (mobile inline)
 #sbar                  — status pill: errors / game-over / live word-points ("✓ word +N", computeLiveWordPreview); .is-empty hides it (Oct 2026)
 #bag-count-text        — remaining tile count

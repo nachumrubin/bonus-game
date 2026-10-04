@@ -266,11 +266,6 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   function animateScore(el, target, delayMs = 460) {
     if (!el) return;
     const targetNum = Number(target) || 0;
-    // Width class for the scoreboard: 4+ characters (e.g. 1000, -100) get a
-    // smaller font (CSS [data-wide]). Keyed on the target, so the size changes
-    // once when the move lands rather than mid count-up.
-    if (String(targetNum).length >= 4) el.setAttribute?.('data-wide', '');
-    else el.removeAttribute?.('data-wide');
     let state = scoreTweens.get(el);
     if (!state) {
       // First paint of this element: just snap to the value (avoids a
