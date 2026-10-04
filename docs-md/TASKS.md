@@ -5,10 +5,8 @@
 - [x] Bigger full-body avatar on a pedestal glow, with a tier tint and the badge
   attached to the portrait.
 - [x] One mirrored grid template. Fixed name row with the difficulty line reserved;
-  42px scores that fit four digits; three fixed lock slots; 36px timer with no
+  48px scores (40px once a score reaches 4 digits); three fixed lock slots; 36px timer with no
   dividers; avatar-only turn glow; 😊 hidden (tap your own avatar for reactions).
-- [ ] Decide where the turn timer should live so the scores don't swallow it
-  (proposals in the chat: topbar centre pill, or an arc on the active avatar).
 - [ ] Check on real devices: narrow Android (360px), iPhone SE, a long display name,
   and a 4-digit score late in a game.
 - [ ] Older `.is-pcard` / `.is-pcav` / `.is-pclocks` rules earlier in
