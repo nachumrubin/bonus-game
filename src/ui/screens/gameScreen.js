@@ -955,8 +955,11 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     for (const slot of [0, 1]) {
       const av = $(`#is-av${slot + 1}`, root);
       const src = av?.querySelector?.('img')?.getAttribute?.('src') ?? '';
-      const rar = RARITY_TAG[tierFromPath(src)] ?? '';
+      const tier = tierFromPath(src);
+      const rar = RARITY_TAG[tier] ?? '';
       if (rar) av?.setAttribute?.('data-rar', rar); else av?.removeAttribute?.('data-rar');
+      // data-tier tints the pedestal glow + tag (CSS); absent for common/default.
+      if (rar) av?.setAttribute?.('data-tier', tier); else av?.removeAttribute?.('data-tier');
       const name = $(`#is-sn${slot + 1}`, root);
       const level = BOT_AVATAR_BY_LEVEL.indexOf(avatars[slot]);
       const sub = level >= 0 && players[slot]?.displayName === COMPUTER_NAME_HE ? BOT_LEVEL_TAG[level] : '';

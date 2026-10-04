@@ -2,6 +2,32 @@
 
 ---
 
+## Scoreboard: avatar-first player cards (October 2026)
+
+The avatar is now the biggest thing on each player card in the VS header (`#is-sb1/2`).
+Before, it was a 46px circle competing with the name, score, 😊 button and lock pill.
+
+- **Bigger, uncropped avatar.** About 76px wide (68px at ≤390px), roughly 3× the area.
+  It's a full-body cutout standing on a soft pedestal glow at the card's outer edge,
+  spanning the name, score and lock rows. It's absolutely placed in its grid area, so
+  it can rise above the bar without making the card taller. The board doesn't move.
+- **Turn highlight.** On your turn the pedestal and the avatar's glow light up in the
+  player's colour, instead of a ring around a circle.
+- **Rarity.** The tag moved from over the face to under the feet. It and the pedestal
+  are tinted by tier (rare blue, epic purple, legendary gold, the same colours as the
+  store). `renderIdentityTags` now also sets `data-tier` next to `data-rar`.
+- **Reactions.** The 😊 button is a round chip on the avatar's outer top corner. In
+  online games, tapping your own avatar also opens the reaction panel
+  (`reactionController`, class `rxn-av-trigger`; off when messages are disabled).
+
+**Why:** this makes room for avatar art to be seen, including the planned evolving
+"Boostie" avatars, whose level shows through silhouette and size.
+
+Files: `menu-electric.css` (new block at the end), `gameScreen.js`,
+`reactionController.js`, `docs/ui-rules.md`. No DOM IDs renamed.
+
+---
+
 ## The opponent's boost is shown in the status pill (October 2026)
 
 When the opponent (bot or online player) lands on a boost, the status pill above the

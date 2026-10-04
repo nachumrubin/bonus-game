@@ -59,12 +59,15 @@ export function mountReactionController({
   if (slot1Btn) slot1Btn.style.display = mySlot === 1 ? '' : 'none';
 
   const openBtn = mySlot === 0 ? slot0Btn : slot1Btn;
+  // The local player's own avatar is a second, larger trigger for the panel.
+  const myAvatar = root.getElementById(mySlot === 0 ? 'is-av1' : 'is-av2');
 
   if (!openBtn || !panel || !overlay) return { dispose: () => {} };
 
   function applyMessagingPreference() {
     const off = messagesDisabled();
     if (openBtn) openBtn.style.display = off ? 'none' : '';
+    myAvatar?.classList.toggle('rxn-av-trigger', !off);
     if (off && panelOpen) closeReactionPanel();
   }
   applyMessagingPreference();
@@ -112,6 +115,13 @@ export function mountReactionController({
 
   openBtn.addEventListener('click', onOpenBtnClick);
   cleanups.push(() => openBtn.removeEventListener('click', onOpenBtnClick));
+  if (myAvatar) {
+    myAvatar.addEventListener('click', onOpenBtnClick);
+    cleanups.push(() => {
+      myAvatar.removeEventListener('click', onOpenBtnClick);
+      myAvatar.classList.remove('rxn-av-trigger');
+    });
+  }
 
   // ── ESC closes panel ────────────────────────────────────────────────────────
 

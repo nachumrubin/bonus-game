@@ -3447,3 +3447,95 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
   #sg .info-strip .is-val { font-size: 24px !important; }
   #sg .info-strip .is-pclocks .lock-inv-btn { padding: 1px 2px !important; }
 }
+
+/* ── Scoreboard v2: avatar-first player cards (Oct 2026) ──
+   The avatar is the hero of the card: a tall full-body cutout (no circle crop)
+   standing on a soft pedestal glow at the card's outer edge, spanning all rows
+   and rising a little above the bar. Name / score / locks stack beside it.
+   Rarity tints the pedestal + a small tag under the feet (data-tier, set by
+   gameScreen.renderIdentityTags); the turn lights the pedestal in the player's
+   colour. The local player's 😊 sits as a chip on the avatar, and tapping the
+   avatar itself also opens reactions (reactionController). */
+#sg .info-strip { margin-top: 10px !important; }
+#sg .info-strip .is-pcard {
+  grid-template-columns: var(--av-w) minmax(0, 1fr) !important;
+  grid-template-areas: "av name" "av score" "av locks" "mult mult";
+  align-content: end;
+  row-gap: 3px !important;
+  padding: 8px 8px 10px 4px !important;
+  overflow: visible;
+  --av-w: 76px;
+  --tier: rgba(255,255,255,.22);
+}
+#sg .info-strip .is-pcav[data-tier="rare"]      { --tier: #4da3ff; }
+#sg .info-strip .is-pcav[data-tier="epic"]      { --tier: #b77bff; }
+#sg .info-strip .is-pcav[data-tier="legendary"] { --tier: #ffc93d; }
+/* Absolutely placed inside its grid area (the card is the positioned grid
+   container), so it can rise above the bar without growing the card. */
+#sg .info-strip .is-pcav {
+  position: absolute;
+  inset: auto 0 -2px 0;
+  width: var(--av-w); height: calc(var(--av-w) * 1.32);
+  margin: 0;
+  border: none; border-radius: 0;
+  background: none;
+  display: flex !important; align-items: flex-end; justify-content: center;
+  font-size: 46px !important; line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Pedestal: a flat ellipse of light under the feet. */
+#sg .info-strip .is-pcav::before {
+  content: '';
+  position: absolute; left: 6%; right: 6%; bottom: -4px; height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--tier) 70%, transparent), transparent);
+  transition: background .3s, filter .3s;
+  pointer-events: none;
+}
+#sg .info-strip .is-pcav .av-img {
+  position: relative;
+  width: 100% !important; height: 100% !important;
+  object-fit: contain; object-position: 50% 100%;
+  vertical-align: 0;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,.55));
+}
+#sg .info-strip .is-pcard.act-cell .is-pcav { border: none; box-shadow: none; }
+#sg .info-strip .is-pcard.act-cell .is-pcav::before {
+  background: radial-gradient(closest-side, var(--c), color-mix(in srgb, var(--c) 35%, transparent) 60%, transparent);
+  filter: blur(.5px) brightness(1.15);
+}
+#sg .info-strip .is-pcard.act-cell .is-pcav .av-img {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c) 55%, transparent)) drop-shadow(0 4px 6px rgba(0,0,0,.5));
+}
+/* Rarity tag: small, tier-coloured, under the feet instead of over the face. */
+#sg .info-strip .is-pcav[data-rar]::after {
+  bottom: -9px;
+  padding: 0 5px;
+  font-size: 8px; line-height: 1.35;
+  background: var(--tier); color: #1a1030;
+  box-shadow: 0 1px 4px rgba(0,0,0,.45);
+}
+#sg .info-strip .is-pcname { align-self: end; }
+#sg .info-strip .is-val { align-self: center; }
+#sg .info-strip .is-pclocks { justify-self: start; align-self: start; }
+#sg .info-strip #is-sb2 .is-pclocks { justify-self: end; }
+#sg .info-strip .is-pcard { padding-inline-start: 4px !important; padding-inline-end: 8px !important; }
+/* Reaction chip rides on the avatar's outer top corner (clear of the name). */
+#sg .info-strip .rxn-btn {
+  top: -6px;
+  inset-inline-end: auto;
+  inset-inline-start: 0;
+  width: 26px; height: 26px; padding: 0;
+  background: #10245e;
+  border-color: rgba(255,255,255,.3);
+  box-shadow: 0 2px 6px rgba(0,0,0,.45);
+  font-size: 15px; line-height: 1;
+  border-radius: 50%;
+}
+#sg .info-strip .is-pcav.rxn-av-trigger { cursor: pointer; }
+#sg .info-strip .is-pcav.rxn-av-trigger:active .av-img { transform: scale(.95); }
+@media (max-width: 390px) {
+  #sg .info-strip .is-pcard { --av-w: 68px; padding: 8px 5px 10px 2px !important; padding-inline-start: 2px !important; padding-inline-end: 5px !important; column-gap: 4px !important; }
+  #sg .info-strip .is-pcav { width: var(--av-w); height: calc(var(--av-w) * 1.32); }
+  #sg .info-strip .is-pcav .av-img { width: 100% !important; height: 100% !important; }
+}

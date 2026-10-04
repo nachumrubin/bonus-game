@@ -1,5 +1,18 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Scoreboard: avatar-first player cards — October 2026
+
+- [x] Bigger full-body avatar on a pedestal glow, tier tint, turn glow, tag under the feet.
+- [x] 😊 chip on the avatar, and tapping your own avatar opens reactions (online).
+- [ ] Check on real devices: narrow Android (360px), iPhone SE, and a long display name.
+- [ ] The old `.is-pcav` rules earlier in `menu-electric.css` are now mostly overridden
+  by the v2 block. Fold them together once the layout is approved.
+- [ ] Pre-existing failures, not caused by this change (they fail on a clean tree too):
+  11 unit tests (home champions card, profile screen, online-lobby empty state) and
+  5 `your-turn-timing.spec.js` e2e tests.
+- [ ] For Boosties later: a level badge on the avatar and per-level art. See the
+  avatar concept discussion.
+
 ## Opponent boost in the status pill — October 2026
 
 - [x] Engine records the `boost` summary on the move. `scoringDeferred` marks the

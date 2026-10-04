@@ -128,9 +128,18 @@ Critical element IDs referenced by game logic (must not be renamed):
 #turn-name             — whose turn label
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
 #sb1, #sb2             — score box containers (.act = active turn)
-#is-sb1, #is-sb2       — mobile score boxes (.act-cell = on turn: colour wash + lit avatar ring;
-                         the timer ring follows it — slot 0 cyan, slot 1 gold, red when urgent).
-                         #is-av{n}[data-rar] draws the rarity tag; #is-sn{n}[data-sub] the bot level.
+#is-sb1, #is-sb2       — mobile score boxes (.act-cell = on turn: colour wash + the avatar's
+                         pedestal glow lit in the player's colour; the timer ring follows it —
+                         slot 0 cyan, slot 1 gold, red when urgent).
+                         Avatar-first layout (Oct 2026): #is-av{n} is a full-body cutout (no
+                         circle crop) spanning the card's rows at the outer edge, absolutely
+                         placed in its grid area so it can rise above the bar.
+                         #is-av{n}[data-rar] draws the rarity tag under the feet;
+                         #is-av{n}[data-tier=rare|epic|legendary] tints the pedestal + tag
+                         (both set by gameScreen.renderIdentityTags); #is-sn{n}[data-sub] the bot level.
+                         #is-av{n}.rxn-av-trigger = the local player's avatar opens the
+                         reaction panel on tap (reactionController; off when messages are
+                         disabled). #rxn-btn-slot{0,1} stays and sits as a chip on the avatar.
                          #game-grid.lm-s1 = last move by slot 1 (gold last-move bezel, else cyan).
 #lock-inv-display      — lock inventory buttons (LEGACY: lives in .right-panel,
                          which is `display:none !important` — invisible in the
