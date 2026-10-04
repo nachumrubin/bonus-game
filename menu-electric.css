@@ -3448,94 +3448,190 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
   #sg .info-strip .is-pclocks .lock-inv-btn { padding: 1px 2px !important; }
 }
 
-/* ── Scoreboard v2: avatar-first player cards (Oct 2026) ──
-   The avatar is the hero of the card: a tall full-body cutout (no circle crop)
-   standing on a soft pedestal glow at the card's outer edge, spanning all rows
-   and rising a little above the bar. Name / score / locks stack beside it.
-   Rarity tints the pedestal + a small tag under the feet (data-tier, set by
-   gameScreen.renderIdentityTags); the turn lights the pedestal in the player's
-   colour. The local player's 😊 sits as a chip on the avatar, and tapping the
-   avatar itself also opens reactions (reactionController). */
-#sg .info-strip { margin-top: 10px !important; }
-#sg .info-strip .is-pcard {
-  grid-template-columns: var(--av-w) minmax(0, 1fr) !important;
-  grid-template-areas: "av name" "av score" "av locks" "mult mult";
-  align-content: end;
-  row-gap: 3px !important;
-  padding: 8px 8px 10px 4px !important;
-  overflow: visible;
+/* ── Scoreboard v2: one mirrored player template (Oct 2026) ──
+   Both cards use the SAME grid; #is-sb2 only flips `direction`, so every
+   element sits in the mirrored spot and the halves line up exactly:
+
+     ┌──────────┬────────────────┐
+     │          │ name  (fixed)  │   name row is a fixed height that already
+     │ portrait │ sub   (fixed)  │   reserves the bot-difficulty line, so the
+     │  (fixed) │ SCORE          │   scores align whether or not it is shown
+     │  +badge  │ ▢ ▢ ▢  locks   │   three fixed slots, always
+     └──────────┴────────────────┘
+
+   The turn is shown by a restrained outline + wash around the active half.
+   The 😊 button is not shown here; tapping your own avatar opens reactions
+   (reactionController). */
+#sg .info-strip {
   --av-w: 76px;
-  --tier: rgba(255,255,255,.22);
+  --name-h: 32px;
+  --score-fs: 42px;
+  --locks-h: 26px;
+  grid-template-columns: 1fr 40px 1fr !important;
+  margin: 10px 6px 0 !important;
+  min-height: 0;
 }
+#sg .info-strip .is-pcard {
+  --tier: rgba(255,255,255,.22);
+  display: grid !important;
+  grid-template-columns: var(--av-w) minmax(0, 1fr) !important;
+  grid-template-rows: var(--name-h) calc(var(--score-fs) + 4px) var(--locks-h) auto;
+  grid-template-areas: "av name" "av score" "av locks" "mult mult" !important;
+  align-items: center !important;
+  align-content: center;
+  column-gap: 4px !important; row-gap: 3px !important;
+  margin: 3px;
+  padding: 7px 4px 7px 2px !important;
+  padding-inline-start: 2px !important; padding-inline-end: 4px !important;
+  border: 1.5px solid transparent;
+  border-radius: 15px !important;
+  overflow: visible;
+  transition: border-color .3s, background .3s;
+}
+/* Turn: restrained outline + faint wash, in the player's colour. */
+#sg .info-strip .is-pcard.act-cell,
+#sg .info-strip #is-sb2.act-cell {
+  border-color: color-mix(in srgb, var(--c) 55%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 13%, transparent), color-mix(in srgb, var(--c) 4%, transparent)) !important;
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--c) 12%, transparent);
+}
+
+/* Portrait: fixed box spanning the three rows; art sits on its floor. */
 #sg .info-strip .is-pcav[data-tier="rare"]      { --tier: #4da3ff; }
 #sg .info-strip .is-pcav[data-tier="epic"]      { --tier: #b77bff; }
 #sg .info-strip .is-pcav[data-tier="legendary"] { --tier: #ffc93d; }
-/* Absolutely placed inside its grid area (the card is the positioned grid
-   container), so it can rise above the bar without growing the card. */
 #sg .info-strip .is-pcav {
-  position: absolute;
-  inset: auto 0 -2px 0;
-  width: var(--av-w); height: calc(var(--av-w) * 1.32);
+  grid-area: av;
+  position: relative;
+  align-self: stretch;
+  width: var(--av-w); height: auto;
   margin: 0;
-  border: none; border-radius: 0;
+  border: none; border-radius: 12px;
   background: none;
   display: flex !important; align-items: flex-end; justify-content: center;
   font-size: 46px !important; line-height: 1;
   -webkit-tap-highlight-color: transparent;
 }
-/* Pedestal: a flat ellipse of light under the feet. */
 #sg .info-strip .is-pcav::before {
   content: '';
-  position: absolute; left: 6%; right: 6%; bottom: -4px; height: 18px;
+  position: absolute; left: 8%; right: 8%; bottom: 2px; height: 16px;
   border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--tier) 70%, transparent), transparent);
-  transition: background .3s, filter .3s;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--tier) 65%, transparent), transparent);
   pointer-events: none;
 }
 #sg .info-strip .is-pcav .av-img {
   position: relative;
-  width: 100% !important; height: 100% !important;
+  width: var(--av-w) !important; height: var(--av-w) !important;
   object-fit: contain; object-position: 50% 100%;
   vertical-align: 0;
+  margin-bottom: 4px;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,.55));
 }
 #sg .info-strip .is-pcard.act-cell .is-pcav { border: none; box-shadow: none; }
 #sg .info-strip .is-pcard.act-cell .is-pcav::before {
-  background: radial-gradient(closest-side, var(--c), color-mix(in srgb, var(--c) 35%, transparent) 60%, transparent);
-  filter: blur(.5px) brightness(1.15);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 80%, transparent), transparent);
 }
-#sg .info-strip .is-pcard.act-cell .is-pcav .av-img {
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c) 55%, transparent)) drop-shadow(0 4px 6px rgba(0,0,0,.5));
-}
-/* Rarity tag: small, tier-coloured, under the feet instead of over the face. */
+/* Rarity badge: attached to the portrait's lower edge. */
 #sg .info-strip .is-pcav[data-rar]::after {
-  bottom: -9px;
-  padding: 0 5px;
-  font-size: 8px; line-height: 1.35;
+  bottom: -3px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font: 900 9px/1.3 'Heebo', sans-serif;
   background: var(--tier); color: #1a1030;
-  box-shadow: 0 1px 4px rgba(0,0,0,.45);
-}
-#sg .info-strip .is-pcname { align-self: end; }
-#sg .info-strip .is-val { align-self: center; }
-#sg .info-strip .is-pclocks { justify-self: start; align-self: start; }
-#sg .info-strip #is-sb2 .is-pclocks { justify-self: end; }
-#sg .info-strip .is-pcard { padding-inline-start: 4px !important; padding-inline-end: 8px !important; }
-/* Reaction chip rides on the avatar's outer top corner (clear of the name). */
-#sg .info-strip .rxn-btn {
-  top: -6px;
-  inset-inline-end: auto;
-  inset-inline-start: 0;
-  width: 26px; height: 26px; padding: 0;
-  background: #10245e;
-  border-color: rgba(255,255,255,.3);
-  box-shadow: 0 2px 6px rgba(0,0,0,.45);
-  font-size: 15px; line-height: 1;
-  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,.5);
 }
 #sg .info-strip .is-pcav.rxn-av-trigger { cursor: pointer; }
 #sg .info-strip .is-pcav.rxn-av-trigger:active .av-img { transform: scale(.95); }
+
+/* Name row: fixed height, difficulty line reserved on both sides. */
+#sg .info-strip .is-pcname,
+#sg .info-strip #is-sb2 .is-pcname {
+  grid-area: name;
+  align-self: stretch;
+  display: flex; flex-direction: column; justify-content: flex-start;
+  min-width: 0;
+  direction: rtl;
+  text-align: center !important;
+  font: 800 15px/17px 'Heebo', sans-serif !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#sg .info-strip .is-pcname[data-sub]::after {
+  font: 700 11px/14px 'Heebo', sans-serif;
+  overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Score: the main information. Sized so four digits fit the column. */
+#sg .info-strip .is-val {
+  grid-area: score;
+  justify-self: center; align-self: center;
+  font: 900 var(--score-fs)/1 'Heebo', sans-serif !important;
+  letter-spacing: -.03em !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+#sg .info-strip .rxn-btn { display: none !important; }
+#sg .info-strip .is-pending-cost { top: 4px; inset-inline-end: 6px; }
+
+/* Inventory: three fixed, evenly spaced slots (icon + turns). Empty slots are
+   placeholders (gameScreen.fillLockBox pads to three) so nothing shifts. */
+#sg .info-strip .is-pclocks,
+#sg .info-strip #is-sb2 .is-pclocks {
+  grid-area: locks;
+  justify-self: stretch; align-self: stretch;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: stretch;
+  gap: 0 !important;
+  padding: 0 !important;
+  min-width: 0; max-width: none;
+  border-radius: 9px;
+  direction: ltr;
+  overflow: hidden;
+}
+#sg .info-strip .is-pclocks:has(.lock-inv-btn)::before { content: none; }
+#sg .info-strip .is-pclocks .lock-inv-btn,
+#sg .info-strip .is-pclocks .lock-slot {
+  display: flex !important; align-items: center; justify-content: center; gap: 2px;
+  min-width: 0 !important; height: auto !important;
+  padding: 0 !important; margin: 0 !important;
+  border-radius: 0 !important;
+  font-size: 0 !important;
+}
+#sg .info-strip .is-pclocks > * + *,
+#sg .info-strip .is-pclocks .lock-inv-btn + .lock-inv-btn { border-inline-start: 1px solid rgba(255,255,255,.16) !important; }
+#sg .info-strip .is-pclocks .lock-inv-btn::before,
+#sg .info-strip .is-pclocks .lock-inv-btn + .lock-inv-btn::before {
+  content: '🔒'; font-size: 11px; opacity: 1; margin: 0;
+}
+#sg .info-strip .is-pclocks .lock-inv-btn::after {
+  content: attr(data-lock-duration);
+  font: 800 13px/1 'Heebo', sans-serif;
+  color: var(--gs-ink);
+}
+#sg .info-strip .is-pclocks .lock-slot--empty::before { content: '🔒'; font-size: 11px; opacity: .18; filter: grayscale(1); }
+#sg .info-strip .is-pclocks .lock-inv-btn.active { border-radius: 0 !important; }
+
+/* Smaller central timer (about half the old diameter), with dividers. */
+#sg .gm-vs-center { position: relative; }
+#sg .gm-vs-center::before,
+#sg .gm-vs-center::after {
+  content: ''; position: absolute; top: 18%; bottom: 18%; width: 1px;
+  background: var(--gs-line);
+}
+#sg .gm-vs-center::before { right: 0; }
+#sg .gm-vs-center::after  { left: 0; }
+#sg #info-strip #turn-timer { width: 36px !important; height: 36px !important; }
+#sg #info-strip #turn-timer .tt-value { font-size: 14px !important; }
+#sg #info-strip .tt-ring-track,
+#sg #info-strip .tt-ring-arc { stroke-width: 8; }
+
 @media (max-width: 390px) {
-  #sg .info-strip .is-pcard { --av-w: 68px; padding: 8px 5px 10px 2px !important; padding-inline-start: 2px !important; padding-inline-end: 5px !important; column-gap: 4px !important; }
-  #sg .info-strip .is-pcav { width: var(--av-w); height: calc(var(--av-w) * 1.32); }
-  #sg .info-strip .is-pcav .av-img { width: 100% !important; height: 100% !important; }
+  #sg .info-strip { --av-w: 66px; --score-fs: 35px; --name-h: 30px; grid-template-columns: 1fr 36px 1fr !important; margin-inline: 4px !important; }
+  #sg .info-strip .is-pcard { padding: 6px 3px 6px 1px !important; padding-inline-start: 1px !important; padding-inline-end: 3px !important; column-gap: 3px !important; }
+  #sg .info-strip .is-pcav { width: var(--av-w); height: auto; }
+  #sg .info-strip .is-pcav .av-img { width: var(--av-w) !important; height: var(--av-w) !important; }
+  #sg .info-strip .is-pcname, #sg .info-strip #is-sb2 .is-pcname { font-size: 14px !important; }
+  #sg #info-strip #turn-timer { width: 34px !important; height: 34px !important; }
+  #sg #info-strip #turn-timer .tt-value { font-size: 13px !important; }
+  #sg .info-strip .is-pclocks .lock-inv-btn::after { font-size: 12px; }
 }

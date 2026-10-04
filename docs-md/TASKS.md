@@ -1,17 +1,23 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
-## Scoreboard: avatar-first player cards — October 2026
+## Scoreboard: mirrored player cards — October 2026
 
-- [x] Bigger full-body avatar on a pedestal glow, tier tint, turn glow, tag under the feet.
-- [x] 😊 chip on the avatar, and tapping your own avatar opens reactions (online).
-- [ ] Check on real devices: narrow Android (360px), iPhone SE, and a long display name.
-- [ ] The old `.is-pcav` rules earlier in `menu-electric.css` are now mostly overridden
-  by the v2 block. Fold them together once the layout is approved.
+- [x] Bigger full-body avatar on a pedestal glow, with a tier tint and the badge
+  attached to the portrait.
+- [x] One mirrored grid template. Fixed name row with the difficulty line reserved;
+  42px scores that fit four digits; three fixed lock slots; 36px timer; outline
+  turn highlight; 😊 hidden (tap your own avatar for reactions).
+- [ ] Check on real devices: narrow Android (360px), iPhone SE, a long display name,
+  and a 4-digit score late in a game.
+- [ ] Older `.is-pcard` / `.is-pcav` / `.is-pclocks` rules earlier in
+  `menu-electric.css` are now overridden by the v2 block. Fold them together once
+  the layout is approved.
+- [ ] Bespoke small lock icon for the slots (`assets/ui/lock_slot.png`, see
+  `docs/asset_inventory.md`). 🔒 is the interim icon.
 - [ ] Pre-existing failures, not caused by this change (they fail on a clean tree too):
   11 unit tests (home champions card, profile screen, online-lobby empty state) and
   5 `your-turn-timing.spec.js` e2e tests.
-- [ ] For Boosties later: a level badge on the avatar and per-level art. See the
-  avatar concept discussion.
+- [ ] For the evolving avatars later: a level badge on the portrait and per-level art.
 
 ## Opponent boost in the status pill — October 2026
 

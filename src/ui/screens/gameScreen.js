@@ -34,7 +34,7 @@ import { cue as cueSfx } from '../feedbackService.js';
 import { g, applyGenderToRoot, getGender } from '../genderText.js';
 import { SETTINGS_CHANGED } from './settingsScreen.js';
 import { HV } from '../../game/core/letterDistribution.js';
-import { LOCK_POINT_COST } from '../../game/core/turnManager.js';
+import { LOCK_POINT_COST, LEGACY_LOCK_INVENTORY } from '../../game/core/turnManager.js';
 import { BDEFS } from '../../game/boosts/data.js';
 import { isValid as isWordValid, dictReady } from '../../game/core/hebrewDictionary.js';
 import { computeLiveWordPreview } from '../liveWordPreview.js';
@@ -1486,8 +1486,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     box.innerHTML = '';
     if (!inventory.length) {
       box.classList?.remove?.('is-disabled');
-      box.title = '';
-      setText(box, 'אין');
+      box.title = 'אין מנעולים';
+      padLockSlots(box, 0);
       return;
     }
     if (!affordable) {
@@ -1530,6 +1530,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       }));
       box.appendChild?.(btn);
     });
+    padLockSlots(box, inventory.length);
   }
 
   function emitLivePreview(v) {
@@ -1725,6 +1726,21 @@ function makeExchangeConfirmButton(root, count) {
   btn.textContent = count ? `🔄 החלף (${count})` : '🔄 החלף';
   btn.style.marginInlineStart = '8px';
   return btn;
+}
+
+// The scoreboard lock row keeps a fixed number of slots (the starting
+// inventory size) so spending a lock leaves an empty slot instead of shifting
+// the others. Placeholders are spans, never buttons.
+const LOCK_SLOT_COUNT = LEGACY_LOCK_INVENTORY.length;
+function padLockSlots(box, filled) {
+  const doc = box?.ownerDocument;
+  if (!doc?.createElement || !box.appendChild) return;
+  for (let n = filled; n < LOCK_SLOT_COUNT; n++) {
+    const slot = doc.createElement('span');
+    slot.className = 'lock-slot lock-slot--empty';
+    slot.setAttribute('aria-hidden', 'true');
+    box.appendChild(slot);
+  }
 }
 
 function makeLockButton(root, duration, index, selected) {

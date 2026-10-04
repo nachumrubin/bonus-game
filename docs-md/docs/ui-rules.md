@@ -128,18 +128,22 @@ Critical element IDs referenced by game logic (must not be renamed):
 #turn-name             — whose turn label
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
 #sb1, #sb2             — score box containers (.act = active turn)
-#is-sb1, #is-sb2       — mobile score boxes (.act-cell = on turn: colour wash + the avatar's
-                         pedestal glow lit in the player's colour; the timer ring follows it —
-                         slot 0 cyan, slot 1 gold, red when urgent).
-                         Avatar-first layout (Oct 2026): #is-av{n} is a full-body cutout (no
-                         circle crop) spanning the card's rows at the outer edge, absolutely
-                         placed in its grid area so it can rise above the bar.
-                         #is-av{n}[data-rar] draws the rarity tag under the feet;
-                         #is-av{n}[data-tier=rare|epic|legendary] tints the pedestal + tag
-                         (both set by gameScreen.renderIdentityTags); #is-sn{n}[data-sub] the bot level.
+#is-sb1, #is-sb2       — mobile score boxes. ONE mirrored template (Oct 2026): both cards share
+                         the same grid (portrait | name row / score / lock row); #is-sb2 only
+                         flips `direction`. Don't position elements per card.
+                         .act-cell = on turn: a restrained outline + wash around that half in
+                         the player's colour, and the portrait's pedestal glow lights up. The
+                         small (36px) central timer ring follows it: slot 0 cyan, slot 1 gold,
+                         red when urgent.
+                         The name row is a fixed height that reserves the bot-difficulty line
+                         (#is-sn{n}[data-sub]) on both sides, so the scores stay aligned.
+                         #is-av{n} is a fixed portrait box (full-body art, no circle crop).
+                         [data-rar] draws the rarity badge on the portrait's lower edge;
+                         [data-tier=rare|epic|legendary] tints the badge and pedestal (both set
+                         by gameScreen.renderIdentityTags).
                          #is-av{n}.rxn-av-trigger = the local player's avatar opens the
-                         reaction panel on tap (reactionController; off when messages are
-                         disabled). #rxn-btn-slot{0,1} stays and sits as a chip on the avatar.
+                         reaction panel on tap (reactionController). #rxn-btn-slot{0,1} stays
+                         in the DOM but is hidden on the scoreboard.
                          #game-grid.lm-s1 = last move by slot 1 (gold last-move bezel, else cyan).
 #lock-inv-display      — lock inventory buttons (LEGACY: lives in .right-panel,
                          which is `display:none !important` — invisible in the
@@ -149,7 +153,10 @@ Critical element IDs referenced by game logic (must not be renamed):
                          The acting player's holds clickable .lock-inv-btn
                          chips; the other player's holds the same chips as inert
                          .lock-inv-btn--static. Rendered by
-                         gameScreen.renderLockInventory → fillLockBox.
+                         gameScreen.renderLockInventory → fillLockBox, which pads
+                         the row to three fixed slots with inert
+                         span.lock-slot--empty placeholders (never buttons), so a
+                         spent lock leaves an empty slot instead of shifting the rest.
 #is-cost-1, #is-cost-2 — pending lock-cost preview (−10) on each score card.
                          Shown (.is-visible) only while an unconfirmed lock is
                          on the board; set by gameScreen.renderPendingLockCost.

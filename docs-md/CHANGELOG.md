@@ -2,29 +2,46 @@
 
 ---
 
-## Scoreboard: avatar-first player cards (October 2026)
+## Scoreboard: mirrored player cards, score-first hierarchy (October 2026)
 
-The avatar is now the biggest thing on each player card in the VS header (`#is-sb1/2`).
-Before, it was a 46px circle competing with the name, score, 😊 button and lock pill.
+The VS header (`#info-strip`) was rebuilt in two steps. The first gave avatars more
+room. The second fixed hierarchy and alignment: before, every element was
+positioned on its own and the timer outweighed the scores.
 
-- **Bigger, uncropped avatar.** About 76px wide (68px at ≤390px), roughly 3× the area.
-  It's a full-body cutout standing on a soft pedestal glow at the card's outer edge,
-  spanning the name, score and lock rows. It's absolutely placed in its grid area, so
-  it can rise above the bar without making the card taller. The board doesn't move.
-- **Turn highlight.** On your turn the pedestal and the avatar's glow light up in the
-  player's colour, instead of a ring around a circle.
-- **Rarity.** The tag moved from over the face to under the feet. It and the pedestal
-  are tinted by tier (rare blue, epic purple, legendary gold, the same colours as the
-  store). `renderIdentityTags` now also sets `data-tier` next to `data-rar`.
-- **Reactions.** The 😊 button is a round chip on the avatar's outer top corner. In
-  online games, tapping your own avatar also opens the reaction panel
-  (`reactionController`, class `rxn-av-trigger`; off when messages are disabled).
+- **One mirrored template.** Both cards use the same grid: a portrait column, then
+  a fixed name row, the score, and a fixed lock row. `#is-sb2` only flips
+  `direction`. All of it is in the "Scoreboard v2" block at the end of
+  `menu-electric.css`, sized with shared variables (`--av-w`, `--name-h`,
+  `--score-fs`, `--locks-h`).
+- **Names.** A fixed-height header row. The bot difficulty sits under the name, and
+  that line is reserved on both sides, so the scores line up.
+- **Scores are the main information.** 42px, up from 28 (35px on ≤390px screens),
+  with slightly tighter digit spacing so four digits fit without shrinking or
+  shifting. Measured with Heebo: "9999" fits at 412 and 360px.
+- **Avatars at the outer edges.** A fixed portrait box (76px, or 66px at ≤390px)
+  holding full-body art on a tier-tinted pedestal glow. The rarity badge is attached
+  to the portrait's lower edge, tinted by tier (rare blue, epic purple, legendary
+  gold). `renderIdentityTags` sets `data-tier` next to `data-rar`.
+- **Locks.** A fixed bottom row of three evenly spaced slots, each with 🔒 and the
+  lock's duration in turns. It replaces the `🔒 3 · 3 · 5` cluster. `fillLockBox`
+  pads to three with inert `span.lock-slot--empty` placeholders, so spending a lock
+  leaves an empty slot instead of reflowing the row. Still exactly one `button` per
+  lock, so the lock-box e2e tests are unchanged.
+- **Timer.** The ring is about half its old diameter (70 → 36px), and thin dividers
+  separate it from the two halves.
+- **Turn indicator.** A restrained outline and wash around the active half, in the
+  player's colour, plus the pedestal glow. The 😊 button is hidden on the
+  scoreboard. In online games, tapping your own avatar opens reactions instead
+  (`reactionController`, `.rxn-av-trigger`; off when messages are disabled).
 
-**Why:** this makes room for avatar art to be seen, including the planned evolving
-"Boostie" avatars, whose level shows through silhouette and size.
+**Why:** the score is the information players look for, the halves should read as
+mirror images, and the inventory needs a permanent, unambiguous home. It also gives
+avatar art (including the planned evolving avatars) a fixed, visible portrait.
 
-Files: `menu-electric.css` (new block at the end), `gameScreen.js`,
-`reactionController.js`, `docs/ui-rules.md`. No DOM IDs renamed.
+Files: `menu-electric.css`, `gameScreen.js` (`data-tier`, lock-slot padding),
+`reactionController.js`, `docs/ui-rules.md`, `docs/asset_inventory.md`. No DOM IDs
+renamed. The card is about 20px taller; the board moves down slightly but still
+fits on 360×740 and 412×820.
 
 ---
 
