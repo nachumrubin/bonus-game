@@ -131,8 +131,8 @@ Critical element IDs referenced by game logic (must not be renamed):
 #is-sb1, #is-sb2       — mobile score boxes. ONE mirrored template (Oct 2026): both cards share
                          the same grid (portrait | name row / score / lock row); #is-sb2 only
                          flips `direction`. Don't position elements per card.
-                         .act-cell = on turn: a restrained outline + wash around that half in
-                         the player's colour, and the portrait's pedestal glow lights up. The
+                         .act-cell = on turn: only the portrait's pedestal + avatar glow light
+                         up in the player's colour (no box/outline around the half). The
                          small (36px) central timer ring follows it: slot 0 cyan, slot 1 gold,
                          red when urgent.
                          The name row is a fixed height that reserves the bot-difficulty line

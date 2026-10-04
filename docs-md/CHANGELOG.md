@@ -27,11 +27,12 @@ positioned on its own and the timer outweighed the scores.
   pads to three with inert `span.lock-slot--empty` placeholders, so spending a lock
   leaves an empty slot instead of reflowing the row. Still exactly one `button` per
   lock, so the lock-box e2e tests are unchanged.
-- **Timer.** The ring is about half its old diameter (70 → 36px), and thin dividers
-  separate it from the two halves.
-- **Turn indicator.** A restrained outline and wash around the active half, in the
-  player's colour, plus the pedestal glow. The 😊 button is hidden on the
-  scoreboard. In online games, tapping your own avatar opens reactions instead
+- **Timer.** The ring is about half its old diameter (70 → 36px). There are no
+  dividers, so the strip reads as one continuous bar.
+- **Turn indicator.** Only the active player's avatar lights up: its pedestal and
+  glow take the player's colour. An earlier version also outlined and tinted the
+  whole half; that was rolled back. The 😊 button is hidden on the scoreboard. In
+  online games, tapping your own avatar opens reactions instead
   (`reactionController`, `.rxn-av-trigger`; off when messages are disabled).
 
 **Why:** the score is the information players look for, the halves should read as
