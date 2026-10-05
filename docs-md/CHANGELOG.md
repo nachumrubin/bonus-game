@@ -2,6 +2,23 @@
 
 ---
 
+## Avatar evolution spec: 7 levels and the core-shape ladder (October 2026)
+
+New design doc `docs-md/AVATAR_EVOLUTION.md`, the brief for every evolving Boostie:
+- the 7-level framework (growth / maturity / personality / accessories);
+- the **core-shape ladder**: the cyan chest core keeps one colour and steps up in
+  shape per level (spark, dot, orb, ringed orb, star burst, spreading burst, crowned
+  core with a halo);
+- per-character rules: two cyan elements only, changes readable from the chest up,
+  constant markings, and accessories that match the personality;
+- a paste-ready image-generator template (fill-in block, style block, sheet A =
+  levels 1–4, sheet B = levels 5–7), with Zapi the fox worked through and the
+  existing fox art mapped to the 7 levels.
+
+Docs only, no app code. Decision recorded as `D-avatar-evolution`.
+
+---
+
 ## Scoreboard: mirrored player cards, score-first hierarchy (October 2026)
 
 The VS header (`#info-strip`) was rebuilt in two steps. The first gave avatars more

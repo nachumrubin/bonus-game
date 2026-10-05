@@ -24,6 +24,7 @@ This file is auto-loaded by Claude Code at session start. Read it fully before w
 | Public module APIs | `docs-md/API_REFERENCE.md` |
 | Known risks and fragile modules | `docs-md/GAP_REPORT.md` |
 | Recent architectural decisions | `docs-md/DECISIONS.md` |
+| Evolving avatar (Boostie) art & levels | `docs-md/AVATAR_EVOLUTION.md` |
 
 **For UI or asset-pipeline work:** use the project skill
 `.claude/skills/boost-development-workflow/SKILL.md`. It defines the Boost

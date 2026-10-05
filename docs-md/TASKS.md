@@ -1,5 +1,16 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Boostie avatar evolution — October 2026
+
+- [x] 7-level system, core-shape ladder and prompt template (`docs-md/AVATAR_EVOLUTION.md`).
+- [ ] Zapi: regenerate levels 5–7 with the trickster theme and the core ladder;
+  fix the core shape on levels 1–4.
+- [ ] Fill in the character block and generate sheets for Bubo (owl) and Pipo (dragon).
+  Decide body type per character before generating.
+- [ ] Before any code: decide how levels are earned (XP / coins), where the level is
+  stored on the profile, and how the asset pipeline handles 7 images per
+  character (pose atlases × levels).
+
 ## Scoreboard: mirrored player cards — October 2026
 
 - [x] Bigger full-body avatar on a pedestal glow, with a tier tint and the badge
