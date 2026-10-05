@@ -5,6 +5,25 @@
 
 ---
 
+## D-google-signin: Google by popup, guests linked, then a name step — October 2026
+
+- **Popup, not redirect.** The app runs as a standalone PWA and an Android TWA, served
+  from `boost-8ef11.web.app`, while `authDomain` is `boost-8ef11.firebaseapp.com`. With a
+  redirect, storage partitioning loses the result in iOS standalone mode; a popup works
+  in all of these.
+- **Guests are linked** (`linkWithPopup`), so the uid and everything keyed by it survive:
+  rooms, invites, friends, presence. If the Google account already belongs to a player,
+  we switch to that account (`signInWithCredential(err.credential)`); the guest's
+  session data is left behind, the same as email log-in.
+- **A name step instead of the Google name.** The unique 15-character display name is
+  claimed through the same `provisionNewProfile()` as email sign-up. It is pre-filled
+  with the Google first name, but the player can stay pseudonymous. A Google user with
+  no profile gets the step again on the next launch.
+- In-app browsers (Facebook / Telegram) block Google OAuth, so we show "open in a
+  browser" instead of failing silently.
+
+---
+
 ## D-opponent-boost-pill: the opponent's boost is shown in the status pill — October 2026
 
 **Decision:** the opponent's boost (bot or online) is reported in the status pill

@@ -114,7 +114,7 @@ import {
   DAILY_REWARD_SHOW, DAILY_REWARD_ACK,
 } from './ui/screens/avatarStoreScreen.js';
 import { priceFor } from './ui/screens/avatarStore.js';
-import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe } from './ui/screens/authScreens.js';
+import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe, isSilentAuthCancel, suggestNameFromDisplayName } from './ui/screens/authScreens.js';
 import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER } from './ui/screens/friendsScreen.js';
 import { runInviteFlow, INVITE_REQUIRED } from './ui/inviteFriends.js';
 import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
@@ -678,8 +678,12 @@ async function boot() {
     const auth = activeFbAuth;
     if (auth?.onAuthStateChanged) {
       auth.onAuthStateChanged((user) => {
-        if (user?.uid) bootCrossCuttingFor(user.uid);
-        else teardownCrossCuttingAuth();
+        if (user?.uid) {
+          bootCrossCuttingFor(user.uid);
+          // A Google user who closed the app before picking a game name has
+          // no profile yet — reopen the name step.
+          try { globalThis.__spine.resumeGoogleNameStep?.(user); } catch {}
+        } else teardownCrossCuttingAuth();
       });
     }
     if (activeFbCurrentUser?.uid) bootCrossCuttingFor(activeFbCurrentUser.uid);
@@ -3484,6 +3488,146 @@ async function boot() {
     });
 
     // ── Auth intents (Firebase compat SDK) ──
+
+    // New-account profile setup shared by email sign-up and the Google name
+    // step: atomically claim the unique display name, then write the initial
+    // profile, the rating-leaderboard row and the userId → uid index.
+    // Returns { ok:false, reason:'name-taken' } when the claim loses.
+    async function provisionNewProfile(fbDb, uid, name, { wantsNotifications = true } = {}) {
+      const claim = await profileService.claimUsername(fbDb, { uid, newName: name });
+      if (!claim?.ok) return { ok: false, reason: 'name-taken' };
+      const userId = profileService.generateUserId();
+      const initial = profileService.buildInitialProfile({ displayName: name, userId });
+      initial.wantsNotifications = wantsNotifications !== false;
+      await profileService.updateProfile(fbDb, uid, initial);
+      await ratingService.upsertRatingLeaderboardEntry(fbDb, { uid, profile: initial, rating: initial.rating });
+      await fbDb.ref(`userIds/${userId}`).set(uid);
+      return { ok: true };
+    }
+
+    function afterNewAccount({ wantsNotifications = true } = {}) {
+      showLegacyScreen('sh');
+      if (wantsNotifications !== false) {
+        // User opted in — request push permission immediately after signup.
+        globalThis.requestNotifPermission?.();
+      } else {
+        // User opted out — remind them they can enable later via Settings.
+        bus.emit(NOTIF_BANNER_SHOW, {
+          avatar: '🔔',
+          text: 'ניתן להפעיל התראות בכל עת מתוך הגדרות',
+          action: 'openSettings',
+        });
+      }
+    }
+
+    const isGoogleUser = (user) =>
+      !!user && !user.isAnonymous && (user.providerData ?? []).some(p => p?.providerId === 'google.com');
+
+    // After a Google sign-in: an existing player goes home; a first-timer (no
+    // profile yet) picks a game name first.
+    async function finishGoogleSignIn(user) {
+      const fbDb = activeFbDb;
+      let hasProfile = false;
+      try {
+        const snap = await fbDb?.ref(`users/${user.uid}/profile/displayName`).get();
+        hasProfile = !!snap?.val?.();
+      } catch (e) { console.warn('[spine] google profile read', e); }
+      if (hasProfile) {
+        authScreens.hidePickName();
+        showLegacyScreen('sh');
+        return;
+      }
+      authScreens.showPickName(suggestNameFromDisplayName(user.displayName));
+    }
+
+    globalThis.__spine.resumeGoogleNameStep = (user) => {
+      if (!isGoogleUser(user)) return;
+      // Only nag when there's no profile; never yank an existing player home.
+      activeFbDb?.ref(`users/${user.uid}/profile/displayName`).get()
+        .then(snap => { if (!snap?.val?.()) authScreens.showPickName(suggestNameFromDisplayName(user.displayName)); })
+        .catch(() => {});
+    };
+
+    let googleSignInBusy = false;
+    bus.on(AUTH_INTENT.GOOGLE, async ({ scope = 'login' } = {}) => {
+      if (googleSignInBusy) return;
+      googleSignInBusy = true;
+      // The guest-upgrade overlay has no error line — surface errors on login.
+      const errScope = scope === 'upgrade' ? 'login' : scope;
+      try {
+        try { await ensureFirebaseGlobals(); } catch {}
+        const fbAuth = activeFbAuth;
+        const GoogleAuthProvider = globalThis.firebase?.auth?.GoogleAuthProvider;
+        if (!fbAuth || !GoogleAuthProvider) {
+          if (scope === 'upgrade') showLegacyScreen('sauth-login');
+          authScreens.showError(errScope, 'אין חיבור לשרת. נסה שוב.');
+          return;
+        }
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters?.({ prompt: 'select_account' });
+        // Popup, not redirect: the app is a standalone PWA / TWA served from
+        // web.app while authDomain is firebaseapp.com, and redirect results
+        // are lost to storage partitioning in that setup (iOS standalone).
+        let user = null;
+        const current = fbAuth.currentUser;
+        if (current?.isAnonymous) {
+          // Link so the guest keeps its uid (rooms, invites, friends survive).
+          try {
+            user = (await current.linkWithPopup(provider))?.user ?? null;
+          } catch (e) {
+            // That Google account already belongs to a player → switch to it.
+            if (e?.code === 'auth/credential-already-in-use' && e.credential) {
+              user = (await fbAuth.signInWithCredential(e.credential))?.user ?? null;
+            } else throw e;
+          }
+        } else {
+          user = (await fbAuth.signInWithPopup(provider))?.user ?? null;
+        }
+        if (user) {
+          activeFbCurrentUser = user;
+          await finishGoogleSignIn(user);
+        }
+      } catch (e) {
+        if (!isSilentAuthCancel(e)) {
+          console.warn('[spine] google sign-in', e);
+          if (scope === 'upgrade') showLegacyScreen('sauth-login');
+          authScreens.showError(errScope, firebaseAuthErrorHe(e));
+        }
+      } finally {
+        googleSignInBusy = false;
+      }
+    });
+
+    bus.on(AUTH_INTENT.PICK_NAME, async ({ name }) => {
+      const fbDb = activeFbDb;
+      const user = activeFbAuth?.currentUser;
+      if (!fbDb || !user?.uid) {
+        authScreens.showError('pickname', 'אין חיבור לשרת. נסה שוב.');
+        return;
+      }
+      try {
+        const avail = await profileService.checkUsernameAvailable(fbDb, name);
+        if (avail && avail.available === false) {
+          authScreens.showError('pickname-name', AUTH_ERROR_HE['name-taken']);
+          return;
+        }
+      } catch { /* read failed — fall through to the authoritative claim */ }
+      try {
+        const prov = await provisionNewProfile(fbDb, user.uid, name, { wantsNotifications: true });
+        if (!prov.ok) {
+          authScreens.showError('pickname-name', AUTH_ERROR_HE['name-taken']);
+          return;
+        }
+        authScreens.hidePickName();
+        // A linked guest keeps its uid, so no auth-state change fires —
+        // re-boot the profile watch so menus pick up the new account.
+        try { globalThis.__spine.bootAccount?.(user.uid); } catch {}
+        afterNewAccount({ wantsNotifications: true });
+      } catch (e) {
+        console.warn('[spine] pick name', e);
+        authScreens.showError('pickname', 'אירעה שגיאה. נסו שוב');
+      }
+    });
     bus.on(AUTH_INTENT.SIGN_UP, async ({ name, email, password, wantsNotifications }) => {
       try { await ensureFirebaseGlobals(); } catch {}
       const fbAuth = activeFbAuth;
@@ -3510,31 +3654,14 @@ async function boot() {
         // Atomically claim the (unique) display name. If another account took
         // it in the race window, roll back the just-created auth user so the
         // email stays reusable and no profile-less account lingers.
-        const claim = await profileService.claimUsername(fbDb, { uid, newName: name });
-        if (!claim?.ok) {
+        const prov = await provisionNewProfile(fbDb, uid, name, { wantsNotifications });
+        if (!prov.ok) {
           try { await cred.user?.delete?.(); }
           catch (e) { console.warn('[spine] signup name-taken cleanup', e); }
           authScreens.showError('signup-name', AUTH_ERROR_HE['name-taken']);
           return;
         }
-        const userId = profileService.generateUserId();
-        const initial = profileService.buildInitialProfile({ displayName: name, userId });
-        initial.wantsNotifications = wantsNotifications !== false;
-        await profileService.updateProfile(fbDb, uid, initial);
-        await ratingService.upsertRatingLeaderboardEntry(fbDb, { uid, profile: initial, rating: initial.rating });
-        await fbDb.ref(`userIds/${userId}`).set(uid);
-        showLegacyScreen('sh');
-        if (wantsNotifications !== false) {
-          // User opted in — request push permission immediately after signup.
-          globalThis.requestNotifPermission?.();
-        } else {
-          // User opted out — remind them they can enable later via Settings.
-          bus.emit(NOTIF_BANNER_SHOW, {
-            avatar: '🔔',
-            text: 'ניתן להפעיל התראות בכל עת מתוך הגדרות',
-            action: 'openSettings',
-          });
-        }
+        afterNewAccount({ wantsNotifications });
       } catch (e) {
         authScreens.showError('signup', firebaseAuthErrorHe(e, AUTH_ERROR_HE['bad-email']));
       }

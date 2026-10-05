@@ -3231,7 +3231,12 @@
   font: 900 10px/1 'Heebo', sans-serif; color: #032; background: #2ee59d; box-shadow: 0 0 8px rgba(46,229,157,.55); }
 #sg .sbar.err .sbar-ic { background: #ff6b7d; color: #2a0008; box-shadow: 0 0 8px rgba(255,90,110,.5); }
 #sg .sbar .sbar-w { font-weight: 900; letter-spacing: .02em; }
-#sg .sbar.err .sbar-w { color: #ffb3bd; text-decoration: line-through; text-decoration-color: rgba(255,110,125,.7); }
+/* One chip per formed word (main + cross words), dot-separated. Only the
+   words not in the dictionary are struck through. */
+#sg .sbar .sbar-w { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 0; row-gap: 2px; }
+#sg .sbar .sbar-wd + .sbar-wd::before { content: '·'; margin: 0 6px; color: rgba(233,243,255,.45); text-decoration: none; display: inline-block; }
+#sg .sbar .sbar-w--bad { color: #ffb3bd; text-decoration: line-through; text-decoration-color: rgba(255,110,125,.8); text-decoration-thickness: 2px; }
+#sg .sbar.sbar--many { font-size: 12px !important; gap: 6px; }
 #sg .sbar .sbar-pts { font-weight: 900; font-size: 14px; color: #28d4ff; text-shadow: 0 0 8px rgba(40,212,255,.55); font-variant-numeric: tabular-nums; }
 /* The opponent's last boost: 🎯 היריב קיבל: תור נוסף / ⚡ היריב קיבל: אנגרמה +15.
    Gold = boost; the icon is an emoji, so its disc is dropped. */

@@ -1,5 +1,53 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Score pill shows all words + Google sign-in — October 2026
+
+- [x] `#sbar` preview lists every formed word, with invalid ones struck through.
+- [x] Google sign-in by popup on log-in, sign-up and guest-upgrade; guests are linked
+  (same uid); first-time users pick a game name (`#ov-pick-name`).
+- [ ] **Firebase console:** enable the Google provider for `boost-8ef11` and make sure
+  `boost-8ef11.web.app` is an authorized domain. The button reports
+  "not enabled yet" until this is done.
+- [ ] Verify on real devices:
+  - Android TWA;
+  - iOS standalone PWA;
+  - desktop Chrome;
+  - a guest with an active room links and keeps the room;
+  - the in-app-browser (Facebook / Telegram) message.
+- [ ] Possible later: show the Google account on the profile screen, and let email
+  users link Google from settings.
+
+## Avatar redesign — future version (undecided)
+
+Problems with the current set (`assets/avatars_v2/`):
+- Every face is a blank glossy oval, which reads as eerie or unfinished. The face is
+  most of what shows at the 36–42px game-card size.
+- Drawing faces for real modern figures (Golda, Rabin, Ofra Haza, Ilan Ramon, Miriam
+  Peretz, who is alive) carries likeness and publicity-rights risk, and a caricature
+  can come across as disrespectful.
+- The Hebrew on Moses' tablets is garbled AI text.
+- Canvas sizes and framing are inconsistent (307px to 1024px).
+- `epic/rambam.png` has a solid background.
+- Detailed props don't read at 40px.
+
+Candidate themes:
+- [ ] **Living Letters (אותיות חיות)** — recommended core set. Each Hebrew letter is a
+  character whose shape sets its personality (ש three-headed, ל tall and proud, ק an
+  explorer below the line). That is 22 letters + 5 final forms. Tiers:
+  - common: the plain letter;
+  - rare: costumes;
+  - epic: niqqud (vowel-mark) power-ups;
+  - legendary: final forms or "boosted" glowing versions.
+- [ ] **Jewish legends** for epic and legendary: Leviathan, Ziz, Behemoth, the Golem,
+  the Shamir, the Re'em, the Milcham (phoenix), the Lion of Judah.
+- [ ] Alternatives:
+  - Israeli wildlife (hoopoe, ibex, hyrax, gazelle);
+  - Boost energy spirits that change with tier;
+  - keep the common-tier professions and give them faces.
+- [ ] Whatever is chosen: simple stylised faces, with the tier colour moved to a
+  rim or ring, and every avatar checked at 40px. The pose-atlas pipeline
+  (`Blender designs/icons3d/`) can be reused.
+
 ## Opponent boost in the status pill — October 2026
 
 - [x] Engine records the `boost` summary on the move. `scoringDeferred` marks the

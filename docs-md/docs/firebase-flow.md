@@ -7,7 +7,7 @@
 ## Firebase Services Used
 
 - **Firebase Realtime Database** — game state, rooms, presence, invites, matchmaking, user data
-- **Firebase Authentication** — anonymous + email/password + Google (Unknown / needs verification — auth providers not fully traced; only `firebase.auth()` usage confirmed)
+- **Firebase Authentication** — anonymous (lazy, before online actions) + email/password + Google (popup). Google on a guest uses `linkWithPopup`, so the uid is kept; if the Google account already exists, it signs in with `err.credential`. A first-time Google user picks a unique name in `#ov-pick-name`, then `provisionNewProfile()` writes `usernames/`, `users/{uid}/profile`, `globalRatings/` and `userIds/`, the same as email sign-up (see D-google-signin). No Facebook.
 - **Firebase Hosting** — static PWA hosting
 
 Firebase SDK version: compat v10.13.0 (loaded from CDN at runtime).

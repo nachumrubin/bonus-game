@@ -2,6 +2,29 @@
 
 ---
 
+## Score pill lists every word; Google sign-in (October 2026)
+
+### The status pill shows every word the move forms (`#sbar`)
+The live preview pill used to show only the main word, while its ✓/✕ and `+N` already covered the cross words too. When a cross word was invalid, players saw a red ✕ next to a word that was fine.
+- `computeLiveWordPreview` now also returns `items: [{ text, valid }]`, one per formed word (main word first). `words`, `score` and `valid` are unchanged.
+- `renderStatus` renders one chip per word (`.sbar-wd`, dot-separated). Only words not in the dictionary get `.sbar-w--bad` (red, struck through). Three or more words add `.sbar--many` (smaller, wraps).
+- `aria-label` names the invalid word(s). The bump key includes every word, so changing only a cross word still pops the pill.
+- Tests: a cross-word case in `liveWordPreview.test.js` and a chip render test in `gameScreen.test.js`.
+
+### Google sign-in (popup)
+Google sign-in had never been built; the docs claiming it existed were wrong.
+- Buttons: `#li-google-btn` (log in), `#su-google-btn` (sign up) and `#ovgu-google-btn` (guest-upgrade overlay). All of them emit `AUTH_INTENT.GOOGLE { scope }`.
+- `main.js` runs `signInWithPopup`, or for an anonymous guest `currentUser.linkWithPopup`, so the guest keeps its uid along with its rooms, invites and friends.
+  - If that Google account already belongs to a player (`auth/credential-already-in-use`), it signs in with `err.credential` instead.
+- First-time Google users get a new `#ov-pick-name` overlay (`partials/screens/pick-name-overlay.html`), pre-filled with their Google first name.
+  - It applies the same 15-character, unique-name claim as email sign-up, through the new shared `provisionNewProfile()`. The `SIGN_UP` handler now uses that helper too.
+  - If the user closes the app before picking a name, the overlay comes back on the next auth-state change (`__spine.resumeGoogleNameStep`).
+- Errors are mapped to Hebrew: popup blocked, in-app browser not supported, provider not enabled, and email already used with a password. Closing the popup shows nothing.
+- No rules change was needed.
+- **Manual step:** enable the Google provider in the Firebase console (`boost-8ef11`) and confirm that `boost-8ef11.web.app` is an authorized domain.
+
+---
+
 ## Hardening batch: timeout-claim rule, lean room commits, resync freeze, unreachable-server banner, emulator rules (October 2026)
 
 ### Security rule: a timeout claim can only rotate the turn (`firebase.database.rules.json`)

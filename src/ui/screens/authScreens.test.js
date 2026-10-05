@@ -5,6 +5,7 @@ import * as bus from '../../events/bus.js';
 import {
   mountAuthScreens, validateSignupForm, validateLoginForm, validateResetForm,
   AUTH_ERROR_HE, AUTH_INTENT, firebaseAuthErrorHe,
+  validatePickNameForm, suggestNameFromDisplayName, isSilentAuthCancel,
 } from './authScreens.js';
 
 test('firebaseAuthErrorHe: maps backend codes to Hebrew, never the raw string', () => {
@@ -73,7 +74,7 @@ function makeBtn({ onclick } = {}) {
 function makeInput(value = '') { return { value }; }
 function makeLabel() { return { textContent: '', style: { color: '' } }; }
 
-function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass = '' } = {}) {
+function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass = '', pnName = '' } = {}) {
   const els = {
     suSubmit: makeBtn(),
     suError:  makeLabel(),
@@ -90,6 +91,13 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
     goSignup: makeBtn({ onclick: "showSc('sauth-signup')" }),
     guest:    makeBtn({ onclick: 'continueAsGuest()' }),
     upgradeOverlay: { classList: { add(){}, remove(){}, contains: () => false } },
+    liGoogle: makeBtn(),
+    suGoogle: makeBtn(),
+    ovguGoogle: makeBtn(),
+    pnOverlay: (() => { const c = new Set(['hidden']); return { _cls: c, classList: { add: x => c.add(x), remove: x => c.delete(x), contains: x => c.has(x) } }; })(),
+    pnName: makeInput(pnName),
+    pnError: makeLabel(),
+    pnSubmit: makeBtn(),
   };
   const root = {
     querySelector(sel) {
@@ -108,6 +116,13 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
         case "button[onclick=\"showSc('sauth-login')\"]":  return els.goLogin;
         case "button[onclick=\"showSc('sauth-signup')\"]": return els.goSignup;
         case '#ov-guest-upgrade': return els.upgradeOverlay;
+        case '#li-google-btn':   return els.liGoogle;
+        case '#su-google-btn':   return els.suGoogle;
+        case '#ovgu-google-btn': return els.ovguGoogle;
+        case '#ov-pick-name':    return els.pnOverlay;
+        case '#pn-name':         return els.pnName;
+        case '#pn-error':        return els.pnError;
+        case '#pn-submit':       return els.pnSubmit;
         default: return null;
       }
     },
@@ -221,4 +236,57 @@ test('showInfo paints login status with success color', () => {
   screen.showInfo('login', 'נשלח אימייל לאיפוס הסיסמה');
   assert.equal(els.liError.textContent, 'נשלח אימייל לאיפוס הסיסמה');
   assert.equal(els.liError.style.color, '#8be38b');
+});
+
+test('google buttons emit GOOGLE with the screen scope', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  const events = [];
+  bus.on(AUTH_INTENT.GOOGLE, (p) => events.push(p.scope));
+  mountAuthScreens({ root, bus });
+  els.liGoogle.fireClick();
+  els.suGoogle.fireClick();
+  els.ovguGoogle.fireClick();
+  assert.deepEqual(events, ['login', 'signup', 'upgrade']);
+});
+
+test('pick-name: valid → PICK_NAME intent; invalid → error, no intent', () => {
+  bus._reset();
+  const { root, els } = makeRoot({ pnName: '  דנה  ' });
+  const events = [];
+  bus.on(AUTH_INTENT.PICK_NAME, (p) => events.push(p));
+  const api = mountAuthScreens({ root, bus });
+  els.pnSubmit.fireClick();
+  assert.deepEqual(events, [{ name: 'דנה' }]);
+
+  els.pnName.value = '';
+  api.showError('pickname-name', '');
+  els.pnSubmit.fireClick();
+  assert.equal(events.length, 1);
+  assert.equal(els.pnError.textContent, AUTH_ERROR_HE['no-name']);
+});
+
+test('showPickName opens the overlay pre-filled; hidePickName closes it', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  const api = mountAuthScreens({ root, bus });
+  api.showPickName('נחום');
+  assert.equal(els.pnOverlay.classList.contains('hidden'), false);
+  assert.equal(els.pnName.value, 'נחום');
+  api.showError('pickname-name', AUTH_ERROR_HE['name-taken']);
+  assert.equal(els.pnError.textContent, AUTH_ERROR_HE['name-taken']);
+  api.hidePickName();
+  assert.equal(els.pnOverlay.classList.contains('hidden'), true);
+});
+
+test('validatePickNameForm / suggestNameFromDisplayName / isSilentAuthCancel', () => {
+  assert.equal(validatePickNameForm({ name: '' }).reason, 'no-name');
+  assert.equal(validatePickNameForm({ name: 'א'.repeat(16) }).reason, 'name-too-long');
+  assert.equal(validatePickNameForm({ name: 'דני' }).ok, true);
+  assert.equal(suggestNameFromDisplayName('Nachum Rubin'), 'Nachum');
+  assert.equal(suggestNameFromDisplayName('Abcdefghijklmnopqrs'), 'Abcdefghijklmno');
+  assert.equal(suggestNameFromDisplayName(null), '');
+  assert.equal(isSilentAuthCancel({ code: 'auth/popup-closed-by-user' }), true);
+  assert.equal(isSilentAuthCancel({ code: 'auth/popup-blocked' }), false);
+  assert.notEqual(firebaseAuthErrorHe({ code: 'auth/popup-blocked' }), 'אירעה שגיאה. נסו שוב');
 });

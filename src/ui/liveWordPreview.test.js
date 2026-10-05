@@ -16,7 +16,24 @@ test('opening move: word + base score, validity from the checker', () => {
     placed: [t(4, 3, 'א', 1), t(4, 4, 'ו', 1), t(4, 5, 'ר', 2)],
     isWordValid: dict('אור'),
   });
-  assert.deepEqual(p, { word: 'אור', words: ['אור'], score: 4, valid: true });
+  assert.deepEqual(p, { word: 'אור', words: ['אור'], items: [{ text: 'אור', valid: true }], score: 4, valid: true });
+});
+
+test('cross words: every formed word is listed with its own validity', () => {
+  // Committed vertical אב at (3,4)-(4,4); placing ר at (5,4) + ו at (5,5) forms
+  // main word רו (row 5) and cross word אבר (col 4).
+  const board = createEmptyBoard();
+  board[3][4] = { letter: 'א', val: 1 };
+  board[4][4] = { letter: 'ב', val: 3 };
+  const p = computeLiveWordPreview({
+    board, placed: [t(5, 4, 'ר', 2), t(5, 5, 'ו', 1)], isWordValid: dict('אבר'),
+  });
+  assert.equal(p.words.length, 2);
+  assert.deepEqual(p.items.map(i => i.text).sort(), ['אבר', 'רו'].sort());
+  assert.equal(p.items.find(i => i.text === 'אבר').valid, true);
+  assert.equal(p.items.find(i => i.text === 'רו').valid, false);
+  assert.equal(p.valid, false);
+  assert.equal(p.score, (2 + 1) + (1 + 3 + 2)); // both words counted
 });
 
 test('not in dictionary → valid:false (score still computed)', () => {
