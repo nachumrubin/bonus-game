@@ -2,6 +2,45 @@
 
 ---
 
+## Fix: app stuck on the loading screen (October 2026)
+
+Boot crashed with `ReferenceError: CHAMPS_OPEN is not defined` in
+`mountProfileScreen`, so the app never left the loader. Merge #366
+(improved-animations) had dropped several import lines, and later merges carried
+the breakage to `main`.
+
+- `profileScreen.js`: restored `import { CHAMPS_OPEN } from './championsScreen.js'`.
+  This was the boot crash.
+- `asyncGamesScreen.js`: restored `import { MENU_INTENT } from './menuScreen.js'`.
+  The empty-state "find a game" button threw on tap.
+- `profile-screen.html`: restored the `#btn-profile-champs` "טבלת דירוגים" row
+  (leaderboard), in the glass list style. `profileScreen.js` still bound it, but
+  the redesign merge had dropped the markup.
+- `menuScreen.test.js`: restored its `CHAMPS_OPEN` import.
+
+Unit tests: 1593/1593 pass (the 11 failures listed as pre-existing in earlier
+entries were this breakage). Verified in a browser that boot reaches the home
+screen and the profile row opens `#ov-champs`.
+
+---
+
+## Avatar evolution spec: 7 levels and the core-shape ladder (October 2026)
+
+New design doc `docs-md/AVATAR_EVOLUTION.md`, the brief for every evolving Boostie:
+- the 7-level framework (growth / maturity / personality / accessories);
+- the **core-shape ladder**: the cyan chest core keeps one colour and steps up in
+  shape per level (spark, dot, orb, ringed orb, star burst, spreading burst, crowned
+  core with a halo);
+- per-character rules: two cyan elements only, changes readable from the chest up,
+  constant markings, and accessories that match the personality;
+- a paste-ready image-generator template (fill-in block, style block, sheet A =
+  levels 1–4, sheet B = levels 5–7), with Zapi the fox worked through and the
+  existing fox art mapped to the 7 levels.
+
+Docs only, no app code. Decision recorded as `D-avatar-evolution`.
+
+---
+
 ## Scoreboard: mirrored player cards, score-first hierarchy (October 2026)
 
 The VS header (`#info-strip`) was rebuilt in two steps. The first gave avatars more

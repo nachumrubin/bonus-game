@@ -5,6 +5,26 @@
 
 ---
 
+## D-avatar-evolution: 7-level Boosties, cyan chest core shows the level by shape — October 2026
+
+**Decision:** evolving "Boostie" avatars have **7 levels** (not 10). Each level
+advances along growth, maturity, personality and accessories, with each axis leading
+in a different part of the range. Every character has a **cyan chest core** whose
+**shape** (spark → dot → orb → ringed orb → star burst → spreading burst → crowned
+core) is the level indicator, plus exactly one signature cyan feature. Full spec and
+prompt template: `docs-md/AVATAR_EVOLUTION.md`.
+
+**Why:** test sheets with 10 levels produced near-duplicate neighbours. 7 gives
+every upgrade a visible headline change. The core keeps **one colour (cyan)**
+because colour already means rarity (blue/purple/gold) and player side (cyan/gold),
+cyan is the Boost brand, and a 7-colour ladder is hard to learn and unreadable for
+colour-blind players. Shape survives all of that.
+
+**Not chosen:** a per-level core colour, and a level-number badge on the
+scoreboard portrait (declined for now).
+
+---
+
 ## D-google-signin: Google by popup, guests linked, then a name step — October 2026
 
 - **Popup, not redirect.** The app runs as a standalone PWA and an Android TWA, served

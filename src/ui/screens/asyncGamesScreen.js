@@ -15,6 +15,7 @@
 import { $, on } from '../domHelpers.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 import { avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
+import { MENU_INTENT } from './menuScreen.js';
 
 export const MG_INTENT = Object.freeze({
   RESUME:  'myGames/resume',

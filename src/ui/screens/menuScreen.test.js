@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import * as bus from '../../events/bus.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH, turnStripText } from './menuScreen.js';
+import { CHAMPS_OPEN } from './championsScreen.js';
 
 function makeButton({ onclick, id }) {
   const listeners = [];

@@ -1,5 +1,16 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Boostie avatar evolution — October 2026
+
+- [x] 7-level system, core-shape ladder and prompt template (`docs-md/AVATAR_EVOLUTION.md`).
+- [ ] Zapi: regenerate levels 5–7 with the trickster theme and the core ladder;
+  fix the core shape on levels 1–4.
+- [ ] Fill in the character block and generate sheets for Bubo (owl) and Pipo (dragon).
+  Decide body type per character before generating.
+- [ ] Before any code: decide how levels are earned (XP / coins), where the level is
+  stored on the profile, and how the asset pipeline handles 7 images per
+  character (pose atlases × levels).
+
 ## Scoreboard: mirrored player cards — October 2026
 
 - [x] Bigger full-body avatar on a pedestal glow, with a tier tint and the badge
@@ -14,9 +25,9 @@
   the layout is approved.
 - [ ] Bespoke small lock icon for the slots (`assets/ui/lock_slot.png`, see
   `docs/asset_inventory.md`). 🔒 is the interim icon.
-- [ ] Pre-existing failures, not caused by this change (they fail on a clean tree too):
-  11 unit tests (home champions card, profile screen, online-lobby empty state) and
-  5 `your-turn-timing.spec.js` e2e tests.
+- [x] The 11 failing unit tests were lost imports from merge #366 (boot crash). Fixed.
+- [ ] 5 `your-turn-timing.spec.js` e2e tests still fail (they also fail on `main` before
+  this branch's work). Not investigated yet.
 - [ ] For the evolving avatars later: a level badge on the portrait and per-level art.
 ## Score pill shows all words + Google sign-in — October 2026
 
