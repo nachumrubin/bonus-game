@@ -18,6 +18,7 @@ import { SPINE_AVATARS, avatarIconSrc } from './avatarScreens.js';
 import { isStoreAvatarId } from './avatarStore.js';
 import { startIdle } from '../avatarMotion/idleMotion.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
+import { CHAMPS_OPEN } from './championsScreen.js';
 
 export const PROFILE_INTENT = Object.freeze({
   EDIT_NAME:        'profile/editName',
