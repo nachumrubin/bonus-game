@@ -118,3 +118,14 @@ test('checkInvariants: terminal-scores-missing fires when scores absent on compl
   }));
   assert.ok(violations.some(v => v.class === 'terminal-scores-missing'));
 });
+
+test('liveBonus gate: the bonus owner\'s own finalize is allowed; a watchdog claim is flagged', async () => {
+  const { checkInvariants } = await import('../../scripts/simulator/invariants.mjs');
+  const base = { schemaVersion: 2, status: 'playing', version: 10, currentTurnSlot: 0, bag: [], racks: {}, board: [] };
+  const prev = { ...base, liveBonus: { active: true, slot: 0 }, lastMove: { slot: 0, ts: 111, scoringDeferred: true } };
+  const finalize = { ...base, version: 11, currentTurnSlot: 1, liveBonus: { active: true, slot: 0 }, lastMove: { slot: 0, ts: 111, scoringDeferred: false } };
+  const claim = { ...base, version: 11, currentTurnSlot: 1, liveBonus: { active: true, slot: 0 }, lastMove: { slot: 0, ts: 111, scoringDeferred: true } };
+  const gate = (a, b) => checkInvariants(a, b).filter(v => v.class === 'live-bonus-gate-violation');
+  assert.equal(gate(prev, finalize).length, 0);
+  assert.equal(gate(prev, claim).length, 1);
+});

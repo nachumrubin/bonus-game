@@ -90,6 +90,38 @@ function findLegalPlacement(state, mySlot, rng) {
   return null;
 }
 
+/**
+ * Find a placement that passes structural validation (connected, no gaps,
+ * in-grid) but forms at least one word NOT in the dictionary — what a real
+ * player submits when they guess at a word. Used by the soak agents to
+ * exercise the illegal-word reject → auto-pass path. Returns null if none is
+ * found within the attempt budget. Each tile carries its rackIndex.
+ */
+export function findIllegalPlacement(state, mySlot, rng, attempts = MAX_PLACEMENT_ATTEMPTS) {
+  const rack = [...(state.racks?.[mySlot] ?? [])];
+  if (rack.length < 2) return null;
+  const anchors = collectAnchors(state);
+  const isFirstMove = !!state.firstMove;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const tileCount = pickInt(rng, 2, Math.min(4, rack.length));
+    const orientation = rng() < 0.5 ? 'h' : 'v';
+    const startCell = isFirstMove
+      ? pickFirstMoveStart(rng, tileCount, orientation)
+      : pickAnchorStart(anchors, rng, tileCount, orientation, state);
+    if (!startCell) continue;
+    const chosenRackIdx = sampleIndices(rack.length, tileCount, rng);
+    const placed = buildPlacement(state, startCell, orientation, chosenRackIdx.map(i => rack[i]), rng);
+    if (!placed) continue;
+    if (placed.some(p => isBonusPos(p.r, p.c))) continue;
+    if (!validateMove(state, placed).ok) continue;
+    const words = getAllWords(state, placed);
+    if (!words.length) continue;
+    if (words.every(w => isWordValid(w.map(t => t.letter).join('')))) continue;
+    return placed.map((p, i) => ({ ...p, rackIndex: chosenRackIdx[i] }));
+  }
+  return null;
+}
+
 function collectAnchors(state) {
   const out = [];
   for (let r = 0; r < BOARD_SIZE; r++) {

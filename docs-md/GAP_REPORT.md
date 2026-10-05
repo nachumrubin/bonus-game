@@ -17,6 +17,54 @@
 
 ## Critical Gaps
 
+### -5. Forfeits with a reason were silently rejected; a terminal status could be overwritten *(Confirmed gaps — rules)* — ✅ RESOLVED (October 2026, not yet deployed)
+
+**Evidence:**
+- **No rule on `abandonReason`.** It has no `.write` rule, so `setStatus`'s single update `{ status, abandonedBy, abandonReason }` was rejected as a whole whenever a reason was included. The opponent-disconnected forfeit (`disconnectController`) never landed. This was proved with an emulator test before the fix.
+- **A terminal status could be overwritten.** Soak run 2026-10-02T04-55-38 g5: a late `completed` overwrote the watchdog's `abandoned`, leaving a contradictory room.
+
+**Fix:** `abandonReason` gets the same rule as `abandonedBy`. `status`, `abandonedBy` and `abandonReason` can't change once the room is terminal. Covered by 6 emulator tests.
+
+### -4. Opponent-timeout rule branch accepts arbitrary room content *(Confirmed gap — rules)* — ✅ MOSTLY RESOLVED (October 2026, not yet deployed)
+
+**Resolution:** the branch now requires `liveBonus.active !== true`, unchanged scores, unchanged racks (cell by cell), unchanged `lastMove.ts`, and `turnNumber + 1`. There are 6 emulator tests. **Remaining:** `board` and `bag` can't be compared in RTDB rules, which have no deep equality. A modified claimant could still alter them, but not the scores. Deploys with the next push to main (CI).
+
+
+**Evidence:** staging load test (room v13→v14). A client's stale finalize, which had a different score, a new `moveHistory` entry and changed `pendingBonuses`, was accepted as a "timeout claim". The `rooms/$roomId` rule's timeout branch only checks four things:
+- `data.turnDeadlineMs <= now`
+- `newData.turnDeadlineMs > now`
+- the writer is the non-active player
+- the turn flips to the writer
+
+It does not check that scores, board, racks, `moveHistory` and bag are unchanged. It also ignores `liveBonus.active`, which is the watchdog's own gate.
+
+**Impact:**
+- Correctness: ghost moves under races. The client-side guard (CHANGELOG, October 2026) closes the known path.
+- Security: once the opponent's deadline passes, a modified client can write any scores or board.
+
+**Proposed fix (needs emulator tests, then deploy via CI):** in the timeout branch, require `newData.child('scores/0').val() === data.child('scores/0').val()` (and the same for `scores/1`). Also require `newData.child('moveHistory').val()` to have the same child count. RTDB rules can't count children directly, so mirror it with a numeric `moveCount` field the clients maintain, or compare `lastMove/ts`. Require `!data.child('liveBonus/active').val()` as well. Don't change this without the emulator test suite.
+
+### -3. Version cursor could be left ahead of the server by a rejected optimistic write *(Confirmed gap)* — ✅ RESOLVED (October 2026)
+
+**Evidence:** soak run 2026-10-01T19-12-47 g5 (poor-network latency). Agent B's state stayed at turn 8 for 20 s after the server reached v10 (turn 9, B's turn). B was then timed out at v11. Root cause: an optimistic echo of B's rejected auto-pass set `lastAppliedVersion` to a version the server never had, and `forceResync` never lowered it. Reproduced deterministically in `tests/unit/online-version-cursor-poison.test.js`.
+
+**Fix:** realign on version regression, and realign in both directions in `forceResync` (guarded by `watcherApplySeq`).
+
+**Still open (upstream trigger):** after a lost commit race, the client rolls back to "my turn, deadline already passed", and its own `turnTimerController` immediately dispatches a timeout `PASS_TURN` that the rules then reject. This is now harmless, but it is wasted traffic and a confusing `SYNC_REJECTED`. Consider suppressing the local timeout auto-pass for a turn the server has already rotated away (for example, by checking `room.currentTurnSlot` after the rollback before dispatching).
+
+### -2. Empty collections vanish in Firebase, and readers fell back to stale or default values *(Confirmed gap)* — ✅ RESOLVED (October 2026)
+
+**Evidence:** found by the live soak agents (`npm run soak`, run 2026-10-01T18-21-19, games g3 and g4: `invariant-bag-parity`, 101 tiles in a 99-tile set). RTDB never stores `[]` or `{}`, so a key that becomes empty disappears. Three readers treated "missing" as "unknown, keep the old value":
+- `onlineGameSession` watcher: `incoming.bag ?? state.bag` (stale bag, phantom draws and exchanges).
+- `engineStateFromRoom`: bag copied only when it was an array (a fresh full bag on resync or resume).
+- `normalizeLockInventory`: missing slot → `[3,3,5]` (spent locks regained on resync or resume).
+
+**Fix:** missing means empty in all three. Regression tests use `makeMockDb({ emptyAsMissing: true })`. The default mock keeps `[]`, which is why the existing tests never saw this.
+
+**Remaining risk:** any NEW field that can become empty needs the same treatment. Write its tests against `emptyAsMissing`.
+
+**Suspected (not confirmed broken):** `inviteService.acceptInvite` aborts with `invite-already-consumed` when the guest's invites cache is cold. This is safe while `listenForInvites` is always attached. See TASKS (live soak agents).
+
 ### -1. Turn deadlines are compared across unsynchronised device clocks *(Confirmed gap)* — ✅ RESOLVED (August 2026)
 
 **Resolved by** `src/game/online/serverClock.js` — `startServerClock({db})` tracks

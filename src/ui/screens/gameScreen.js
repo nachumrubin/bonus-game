@@ -1107,7 +1107,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     } else if (v.opponentBoost) {
       boostInfo = describeBoostSummary(v.opponentBoost.boost);
     }
-    sbar.classList?.remove?.('ok', 'err', 'bon', 'is-empty', 'sbar--preview', 'sbar--boost');
+    sbar.classList?.remove?.('ok', 'err', 'bon', 'is-empty', 'sbar--preview', 'sbar--boost', 'sbar--many');
     if (boostInfo) {
       sbar.classList?.add?.('sbar--preview', 'sbar--boost');
       sbar.innerHTML = `<span class="sbar-ic" aria-hidden="true">${escapeForOverlay(boostInfo.icon)}</span>`
@@ -1126,12 +1126,21 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     }
     if (preview) {
       const bad = preview.valid === false;
+      // Every formed word (main + cross words) gets a chip; the ones not in the
+      // dictionary are struck through so the player sees which word broke it.
+      const items = preview.items ?? [{ text: preview.word, valid: preview.valid }];
       sbar.classList?.add?.('sbar--preview', bad ? 'err' : 'ok');
+      if (items.length >= 3) sbar.classList?.add?.('sbar--many');
+      else sbar.classList?.remove?.('sbar--many');
       sbar.innerHTML = `<span class="sbar-ic" aria-hidden="true">${bad ? '✕' : '✓'}</span>`
-        + `<span class="sbar-w">${escapeForOverlay(preview.word)}</span>`
+        + `<span class="sbar-w">${items.map(i =>
+          `<span class="sbar-wd${i.valid === false ? ' sbar-w--bad' : ''}">${escapeForOverlay(i.text)}</span>`).join('')}</span>`
         + (bad ? '' : `<span class="sbar-pts" dir="ltr">+${preview.score}</span>`);
-      sbar.setAttribute?.('aria-label', bad ? `${preview.word} — לא במילון` : `${preview.word} — ${preview.score} נקודות`);
-      const key = `${preview.word}|${preview.score}|${bad}`;
+      const badWords = items.filter(i => i.valid === false).map(i => i.text);
+      sbar.setAttribute?.('aria-label', bad
+        ? `${badWords.join(', ')} — לא במילון`
+        : `${items.map(i => i.text).join(', ')} — ${preview.score} נקודות`);
+      const key = `${items.map(i => `${i.text}:${i.valid}`).join(',')}|${preview.score}|${bad}`;
       if (key !== lastPreviewKey) {
         // Re-trigger the pop on every change of word / points.
         sbar.classList?.remove?.('sbar--bump');

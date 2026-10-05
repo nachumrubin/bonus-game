@@ -1,4 +1,5 @@
-// authScreens — wires #sauth-signup, #sauth-login, and #ov-guest-upgrade.
+// authScreens — wires #sauth-signup, #sauth-login, #ov-guest-upgrade and the
+// post-Google-sign-in name picker #ov-pick-name.
 //
 // It pushes intents on the bus with form payloads. main.js wires those to
 // Firebase auth through the compat SDK.
@@ -6,6 +7,7 @@
 // Pure helpers (tested):
 //   validateSignupForm({ name, email, password })
 //   validateLoginForm({ email, password })
+//   validatePickNameForm({ name })
 //
 // Both surface localised error strings so the screen can paint them.
 
@@ -20,6 +22,8 @@ export const AUTH_INTENT = Object.freeze({
   GO_LOGIN:       'auth/goLogIn',
   UPGRADE:        'auth/upgrade',
   DISMISS_UPGRADE:'auth/dismissUpgrade',
+  GOOGLE:         'auth/google',
+  PICK_NAME:      'auth/pickName',
 });
 
 const NAME_MAX = 15;
@@ -47,6 +51,20 @@ export function validateLoginForm({ email, password } = {}) {
   if (!EMAIL_RE.test(e)) return { ok: false, reason: 'bad-email' };
   if (!password || password.length === 0) return { ok: false, reason: 'no-pass' };
   return { ok: true, payload: { email: e, password } };
+}
+
+export function validatePickNameForm({ name } = {}) {
+  const n = (name ?? '').trim();
+  if (n.length === 0) return { ok: false, reason: 'no-name' };
+  if (n.length > NAME_MAX) return { ok: false, reason: 'name-too-long' };
+  return { ok: true, payload: { name: n } };
+}
+
+// Pre-fill for the name picker: the first word of the Google display name,
+// clipped to the game's name limit. Empty when Google gave us nothing.
+export function suggestNameFromDisplayName(displayName) {
+  const first = String(displayName ?? '').trim().split(/\s+/)[0] ?? '';
+  return first.slice(0, NAME_MAX);
 }
 
 export function validateResetForm({ email } = {}) {
@@ -81,7 +99,19 @@ export const FIREBASE_AUTH_ERROR_HE = {
   'auth/network-request-failed':    'אין חיבור לאינטרנט. נסו שוב',
   'auth/email-already-in-use':      'הדוא״ל הזה כבר רשום',
   'auth/weak-password':             `סיסמה חייבת להיות לפחות ${PASS_MIN} תווים`,
+  // Google popup flow
+  'auth/popup-blocked':             'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב',
+  'auth/operation-not-supported-in-this-environment': 'פתחו את המשחק בדפדפן (Chrome / Safari) כדי להתחבר עם Google',
+  'auth/web-storage-unsupported':   'פתחו את המשחק בדפדפן (Chrome / Safari) כדי להתחבר עם Google',
+  'auth/unauthorized-domain':       'התחברות עם Google לא זמינה בכתובת הזו',
+  'auth/operation-not-allowed':     'התחברות עם Google עדיין לא הופעלה',
+  'auth/account-exists-with-different-credential': 'הדוא״ל הזה כבר רשום עם סיסמה. היכנסו עם דוא״ל וסיסמה',
 };
+
+// The user closed / superseded the Google popup — not an error worth showing.
+export function isSilentAuthCancel(e) {
+  return e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request';
+}
 
 // Resolve a thrown Firebase Auth error (or anything with a `.code`) to a
 // Hebrew message, never the raw English string. Unknown codes fall back.
@@ -205,6 +235,57 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
     cleanups.push(on(btn, 'click', () => bus.emit(AUTH_INTENT.DISMISS_UPGRADE, {})));
   }
 
+  // ── Google sign-in buttons ──
+  // One intent for all three entry points; main.js decides between linking a
+  // guest account and a plain sign-in. `scope` routes errors back to the
+  // screen the player pressed it on.
+  const googleBtns = [
+    ['#li-google-btn',   'login'],
+    ['#su-google-btn',   'signup'],
+    ['#ovgu-google-btn', 'upgrade'],
+  ];
+  for (const [sel, scope] of googleBtns) {
+    const btn = $(sel, root);
+    if (!btn) continue;
+    cleanups.push(on(btn, 'click', (e) => {
+      e?.preventDefault?.();
+      if (scope === 'upgrade') upgradeOverlay?.classList?.add?.('hidden');
+      showError(scope, '');
+      bus.emit(AUTH_INTENT.GOOGLE, { scope });
+    }));
+  }
+
+  // ── Pick-name overlay (#ov-pick-name) ──
+  const pnOverlay = $('#ov-pick-name', root);
+  const pnName    = $('#pn-name',      root);
+  const pnError   = $('#pn-error',     root);
+  const pnSubmit  = $('#pn-submit',    root);
+  if (pnSubmit) {
+    cleanups.push(on(pnSubmit, 'click', (e) => {
+      e?.preventDefault?.();
+      const v = validatePickNameForm({ name: pnName?.value });
+      if (!v.ok) {
+        if (pnError) setText(pnError, AUTH_ERROR_HE[v.reason] ?? v.reason);
+        return;
+      }
+      if (pnError) setText(pnError, '');
+      pnSubmit.disabled = true;
+      bus.emit(AUTH_INTENT.PICK_NAME, v.payload);
+    }));
+  }
+
+  function showPickName(prefill = '') {
+    if (!pnOverlay) return;
+    if (pnName && !pnName.value) pnName.value = prefill;
+    if (pnError) setText(pnError, '');
+    if (pnSubmit) pnSubmit.disabled = false;
+    pnOverlay.classList?.remove?.('hidden');
+  }
+  function hidePickName() {
+    pnOverlay?.classList?.add?.('hidden');
+    if (pnSubmit) pnSubmit.disabled = false;
+  }
+
   // ── Show/hide password toggles ─────────────
   // Any button with class `pw-toggle` and `data-pw-target="<input id>"`
   // flips that input between type=password and type=text. The button text
@@ -232,6 +313,10 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
     // Field-level error rendered directly under the שם תצוגה input.
     if (scope === 'signup-name' && suNameError) setText(suNameError, msg ?? '');
     if (scope === 'login') paintLogin(msg ?? '');
+    if (scope === 'pickname' || scope === 'pickname-name') {
+      if (pnError) setText(pnError, msg ?? '');
+      if (pnSubmit) pnSubmit.disabled = false;
+    }
   }
 
   function showInfo(scope, msg) {
@@ -245,5 +330,7 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
     },
     showError,
     showInfo,
+    showPickName,
+    hidePickName,
   };
 }

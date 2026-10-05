@@ -5,6 +5,25 @@
 
 ---
 
+## D-google-signin: Google by popup, guests linked, then a name step — October 2026
+
+- **Popup, not redirect.** The app runs as a standalone PWA and an Android TWA, served
+  from `boost-8ef11.web.app`, while `authDomain` is `boost-8ef11.firebaseapp.com`. With a
+  redirect, storage partitioning loses the result in iOS standalone mode; a popup works
+  in all of these.
+- **Guests are linked** (`linkWithPopup`), so the uid and everything keyed by it survive:
+  rooms, invites, friends, presence. If the Google account already belongs to a player,
+  we switch to that account (`signInWithCredential(err.credential)`); the guest's
+  session data is left behind, the same as email log-in.
+- **A name step instead of the Google name.** The unique 15-character display name is
+  claimed through the same `provisionNewProfile()` as email sign-up. It is pre-filled
+  with the Google first name, but the player can stay pseudonymous. A Google user with
+  no profile gets the step again on the next launch.
+- In-app browsers (Facebook / Telegram) block Google OAuth, so we show "open in a
+  browser" instead of failing silently.
+
+---
+
 ## D-opponent-boost-pill: the opponent's boost is shown in the status pill — October 2026
 
 **Decision:** the opponent's boost (bot or online) is reported in the status pill
@@ -407,3 +426,32 @@ coin loop). Tests: `avatarStore.test.js`, `avatarStoreScreen.test.js`, extended 
 **Evidence:** `presenceService.js` → `HEARTBEAT_MS = 10_000`, `PRESENCE_GRACE_MS = 30_000`.
 
 **Rationale (inferred):** 10s heartbeat is frequent enough to detect disconnect within 30s window. 30s grace prevents false positives from brief connectivity hiccups.
+
+---
+
+## D-soak-agents: Live soak agents use real compat clients, real meeting flows, real controllers (October 2026)
+
+**Decision:** The soak agents (`scripts/simulator/agents/`, `npm run soak`) are full headless clients. Each one signs in anonymously through the firebase compat SDK, not through rules-unit-testing contexts. Each one has its own connection and creates rooms through the real invite and room-code services. Each one plays through `gameController` + `turnTimerController` + `timeoutWatchdog` instead of dispatching engine commands directly.
+
+**Why:** The bugs we are hunting live in the seams between these pieces. Examples: the local timer auto-pass racing a last-second confirm and the opponent's watchdog claim, the controller's `turn-already-passed` guard, liveBonus freezing the opponent, and invite and room-code handshakes. Driving the engine directly (as `gameRunner.mjs` does) skips all of them. Real auth and one connection per player are also what a staging load test must measure.
+
+**Consequences:**
+- Games run on the wall clock with the real 20/40/60 s speeds. Throughput comes from `--parallel`, not from shortening the timers.
+- Timing is deliberate: about 15% of timed turns commit within ±1.5 s of the deadline.
+- The older `npm run sim` scenarios stay for fast, deterministic, injected-clock checks.
+- Prod is never a soak target. Staging (a separate Firebase project) is the only remote target.
+
+---
+
+## D-commit-patch: Room commits write changed fields only; the rules provide compare-and-set (October 2026)
+
+**Decision:** `onlineGameSession` commits through `roomService.commitPatch`: one atomic multi-path `update()` with only the changed fields plus `version + 1`. It no longer uses a full-room `transaction()`.
+
+**Why:** the staging load test showed full-room transactions were the main bandwidth cost. Every commit re-sent the whole room, including the growing `moveHistory`, and both clients re-downloaded it. Spark's 10 GB/month and Blaze's per-GB pricing both scale with this.
+
+**Safety:** compare-and-set no longer needs the client-side transaction loop. The `rooms/$roomId` rule already rejects any write whose `version` isn't `data.version + 1`, and a multi-path update is all-or-nothing. A stale base is therefore rejected server-side exactly like a transaction abort, and the session's existing failure path (rollback, `SYNC_REJECTED`, `forceResync`) handles it. When the session's latest server copy doesn't match the expected version, the commit falls back to the full transaction.
+
+**Consequences:**
+- Any new path in the room that must stay version-guarded must keep relying on the `$roomId` rule.
+- The timeout watchdog still uses a transaction, because claims are rare.
+- Unit tests rely on the mock mirroring the version check for `rooms/<id>` updates.

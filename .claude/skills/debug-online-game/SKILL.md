@@ -104,6 +104,34 @@ State plainly: **bug or working-as-designed**, the evidence (move index, square,
 `base`/`bonus`, veto check), and — if a bug — the file/line at fault. If the room doc can't
 settle it (UI-presentation questions), say so and point at the admin timeline / client logs.
 
+## Soak-agent failures (games played by the bots)
+
+`npm run soak` plays live games between two headless agents (`scripts/simulator/soak/`).
+Failures are written as bundles at
+`.simulator-data/failures/<runId>/<signature>/<gameId>.json`, with the run report at
+`.simulator-data/soak/<runId>/summary.md`.
+
+- `node scripts/debug-game.mjs --file <bundle.json>` gives the violations, each agent's
+  slot, persona and bonus outcomes, and then the usual room analysis of `finalRoom`.
+- `node scripts/debug-game.mjs <roomId> --emu` reads a room that is still in the local
+  emulator (while the emulator is running).
+- Bundle fields:
+  - `violations[]`: oracle findings, each with a class and detail.
+  - `roomSnapshots[]`: every committed version the observer saw, with a timestamp.
+  - `agents.{A,B}.events`: that client's bus log. It includes `agent/plan`, `agent/execute`,
+    `agent/refused`, `agent/sync-rejected`, `agent/bonus-*` and `agent/reaction` notes, so
+    you can line up "what each player did and saw" against the server timeline.
+  - `agents.{A,B}.stats.deadline[]`: for each timed turn, its phase, how far from the
+    deadline the move was planned and actually made, and the outcome.
+  - `replayRecord`: feed to `npm run sim -- --replay <file>` to re-run the moves.
+- Violation classes:
+  - `desync-<field>`: a client and the server disagree at a quiet moment.
+  - `stuck-turn`: the version stopped moving.
+  - `move-*`: a stored word or score is wrong.
+  - `bonus-credited-not-earned`: the server credited bonus points that the player never earned.
+  - `end-*`: the game ended inconsistently on one client.
+  - `invariant-*`: from `scripts/simulator/invariants.mjs`.
+
 ## Guardrails
 
 - These scripts are **read-only**. Never write to `/rooms` from a debug script.

@@ -7,7 +7,8 @@
       "Skill(capture-screenshot:*)",
       "Skill(boost-development-workflow)",
       "Skill(boost-development-workflow:*)",
-      "PowerShell(& magick identify \"c:\\\\Users\\\\Admin\\\\Documents\\\\GitHub\\\\bonus-game\\\\images\\\\icons\\\\more_navigation_buttons.png\")"
+      "PowerShell(& magick identify \"c:\\\\Users\\\\Admin\\\\Documents\\\\GitHub\\\\bonus-game\\\\images\\\\icons\\\\more_navigation_buttons.png\")",
+      "Bash(grep -n \"export function \\\\$\\\\|export function setText\" -A6 src/ui/domHelpers.js)"
     ],
     "defaultMode": "acceptEdits"
   }

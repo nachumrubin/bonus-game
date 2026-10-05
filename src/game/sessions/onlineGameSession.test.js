@@ -952,3 +952,60 @@ test('online session: opponent\'s deferred bonus move replays its score + boost 
   await sessA.dispose();
   await sessB.dispose();
 });
+
+// Regression (staging load test, Oct 2026): a bonus-square move's tiles landed
+// (deferred commit) but the turn was then taken away on the server (watchdog
+// claim / lost race) while the mini-game was still open. When the mini-game
+// closed, the finalize committed `baseScore + extra` and rotated the turn on
+// top of the CURRENT game — stealing the opponent's turn mid-mini-game. The
+// finalize must only land while the server still holds our deferred move on
+// our turn; otherwise abort, drop the pending score and tell the bonus flow.
+test('online session: finalize after the server moved on does not write a ghost move', async () => {
+  bus._reset();
+  DICT.clear();
+  const ALEF = 'א';
+  const BET = 'ב';
+  addWordsFromText(`${BET}${ALEF}\n`);
+  const db = makeMockDb();
+  await setupRoom(db, 'friend-live');
+  const board = new Array(100).fill(null);
+  board[1] = { letter: ALEF, val: 1, isJoker: false };
+  await db.ref('rooms/online-room').update({
+    board,
+    racks: {
+      0: [BET, 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'],
+      1: ['ט', 'י', 'כ', 'ל', 'מ', 'נ', 'ס', 'ע'],
+    },
+    currentTurnSlot: 0, firstMove: false,
+    bonusAssignment: [{ type: 'B2', pts: 40, ic: '*' }], bonusSqUsed: {},
+  });
+  const sessA = await createOnlineGameSession({ bus, db, room: await readRoom(db), mySlot: 0 });
+  sessA.state.firstMove = false;
+  sessA.start();
+  const aborted = [];
+  bus.on('bonus/aborted', (p) => aborted.push(p));
+
+  sessA.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [{ r: -1, c: 1, letter: BET, val: 3 }] } });
+  await new Promise(r => setTimeout(r, 0));
+  const afterDeferred = await readRoom(db);
+  assert.equal(afterDeferred.version, 2, 'deferred tiles landed');
+
+  // The opponent's watchdog takes the turn (lastMove preserved, slot flips).
+  await db.ref('rooms/online-room').set({
+    ...afterDeferred, version: 3, currentTurnSlot: 1, turnNumber: afterDeferred.turnNumber + 1,
+    missedTurns: { 0: 1, 1: 0 }, turnDeadlineMs: Date.now() + 20_000,
+  });
+  for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
+
+  sessA.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, bonusIdx: 0, extra: 20 } });
+  for (let i = 0; i < 10; i++) await new Promise(r => setImmediate(r));
+
+  const room = await readRoom(db);
+  assert.equal(room.version, 3, 'no ghost finalize written');
+  assert.equal(room.currentTurnSlot, 1, "opponent keeps the turn they claimed");
+  assert.equal(room.scores[0] ?? 0, 0, 'no points for a move whose turn was lost');
+  assert.equal(sessA.state.pendingScoreCommit ?? null, null, 'pending score dropped');
+  assert.ok(aborted.length >= 1, 'bonus flow told to abort');
+  assert.equal(sessA.state.currentTurnSlot, 1, 'client resynced to the server turn');
+  await sessA.dispose();
+});

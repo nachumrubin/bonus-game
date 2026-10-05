@@ -1,0 +1,7 @@
+{
+  "_comment": "Copy to staging.config.json (gitignored). Web config of a SEPARATE Firebase project used for soak/load tests - never boost-8ef11. Enable Anonymous sign-in and deploy the same rules: npx firebase deploy --only database --project <staging-project-id>",
+  "apiKey": "<staging web api key>",
+  "authDomain": "<staging-project-id>.firebaseapp.com",
+  "projectId": "<staging-project-id>",
+  "databaseURL": "https://<staging-project-id>-default-rtdb.firebaseio.com"
+}

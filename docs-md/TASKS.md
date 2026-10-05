@@ -18,6 +18,53 @@
   11 unit tests (home champions card, profile screen, online-lobby empty state) and
   5 `your-turn-timing.spec.js` e2e tests.
 - [ ] For the evolving avatars later: a level badge on the portrait and per-level art.
+## Score pill shows all words + Google sign-in — October 2026
+
+- [x] `#sbar` preview lists every formed word, with invalid ones struck through.
+- [x] Google sign-in by popup on log-in, sign-up and guest-upgrade; guests are linked
+  (same uid); first-time users pick a game name (`#ov-pick-name`).
+- [ ] **Firebase console:** enable the Google provider for `boost-8ef11` and make sure
+  `boost-8ef11.web.app` is an authorized domain. The button reports
+  "not enabled yet" until this is done.
+- [ ] Verify on real devices:
+  - Android TWA;
+  - iOS standalone PWA;
+  - desktop Chrome;
+  - a guest with an active room links and keeps the room;
+  - the in-app-browser (Facebook / Telegram) message.
+- [ ] Possible later: show the Google account on the profile screen, and let email
+  users link Google from settings.
+
+## Avatar redesign — future version (undecided)
+
+Problems with the current set (`assets/avatars_v2/`):
+- Every face is a blank glossy oval, which reads as eerie or unfinished. The face is
+  most of what shows at the 36–42px game-card size.
+- Drawing faces for real modern figures (Golda, Rabin, Ofra Haza, Ilan Ramon, Miriam
+  Peretz, who is alive) carries likeness and publicity-rights risk, and a caricature
+  can come across as disrespectful.
+- The Hebrew on Moses' tablets is garbled AI text.
+- Canvas sizes and framing are inconsistent (307px to 1024px).
+- `epic/rambam.png` has a solid background.
+- Detailed props don't read at 40px.
+
+Candidate themes:
+- [ ] **Living Letters (אותיות חיות)** — recommended core set. Each Hebrew letter is a
+  character whose shape sets its personality (ש three-headed, ל tall and proud, ק an
+  explorer below the line). That is 22 letters + 5 final forms. Tiers:
+  - common: the plain letter;
+  - rare: costumes;
+  - epic: niqqud (vowel-mark) power-ups;
+  - legendary: final forms or "boosted" glowing versions.
+- [ ] **Jewish legends** for epic and legendary: Leviathan, Ziz, Behemoth, the Golem,
+  the Shamir, the Re'em, the Milcham (phoenix), the Lion of Judah.
+- [ ] Alternatives:
+  - Israeli wildlife (hoopoe, ibex, hyrax, gazelle);
+  - Boost energy spirits that change with tier;
+  - keep the common-tier professions and give them faces.
+- [ ] Whatever is chosen: simple stylised faces, with the tier colour moved to a
+  rim or ring, and every avatar checked at 40px. The pose-atlas pipeline
+  (`Blender designs/icons3d/`) can be reused.
 
 ## Opponent boost in the status pill — October 2026
 
@@ -1093,6 +1140,53 @@ The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG
 - [ ] **Canary the `?dict=v2` flag.** Open the app with `?dict=v2` and exercise the formerly-rejected-real-words list. Watch the console for `[isValidV2]` logs.
 - [ ] **Flip default.** Change `dictionaryModeFromUrl()` in `main.js` to default `'v2'`. Keep `?dict=v1` as a rollback switch for one release.
 - [ ] **Cleanup commit (separate PR):** delete `data/dictionary.base.txt`, the v1 morphology chain in `hebrewDictionary.js` (`candidateLemmas`, `spellingVariants`, `POSSESSIVE_SUFFIXES`, `VERB_SUFFIXES`, `looksLikePrefixedParticle`, `looksLikePossessive`, `analyze`'s lemma branch), the v1 loader, and the mode switch. Update tests accordingly.
+
+---
+
+## TODOs — Live soak agents (`npm run soak`)
+
+- ✅ Phase 1: headless event-driven agents play real live games on the emulator. Real anonymous auth with one connection per player; meeting by invite or room code; the ready handshake; real controllers, timer, watchdog and bonus flow; deadline-band timing; human behaviour (previews, lookups, exchanges, locks, illegal words, reactions); the oracle; failure bundles; the report. See CHANGELOG (October 2026).
+- ✅ Fixed the bugs it found: the stale bag once the bag empties (tile duplication), and spent locks returning after a reconnect. Both were empty arrays dropped by Firebase.
+- [ ] Re-run `npm run soak -- --games 50 --parallel 6` after the bag/lock fix and confirm 0 `invariant-bag-parity` / `desync-tileBagCount`.
+- [ ] Matchmaking strategy: a shared pool of agents running `startMatchmaking` (emulator only), so pairing is emergent.
+- [ ] Socket drops and app lifecycle: `goOffline`/`goOnline` (background/foreground), kill and relaunch mid-turn with a rejoin from `users/{uid}/activeRoom`, and dispose between the two deferred bonus commits. Count the drops in `stats.socketDrops` so the phantom-disconnect check stays meaningful.
+- ✅ Network latency injection (`net/latency.mjs`, `--network`).
+- ✅ Fixed the version-cursor poisoning by a rejected optimistic write (dropped opponent move → false timeout). See GAP_REPORT -3.
+- [ ] Low priority: a game-ending pass, exchange or timeout is never committed. `finishGame` writes `status` only, so the final room keeps `_passCount=3`, a stale `lastMove`, and un-decremented lock timers, and the two clients' post-game `lockedCells` differ (soak run4b g0). It's cosmetic after game end, but `debug-game.mjs` shows a misleading final turn.
+- ✅ Fixed: a last-second bonus-square move plus the timer auto-pass let a ghost finalize steal the opponent's turn mid-mini-game (engine `bonus-pending` guard plus session `finalizeOfTs` and `reconcilePendingScore`).
+- ✅ Rules: a terminal status can't be overwritten, and the `abandonReason` rule was added. Forfeits with a reason (opponent disconnected) were being rejected outright (GAP_REPORT -5). **Not deployed yet. CI deploys on push to main.**
+- ✅ Rules hardening: the timeout-claim branch is locked to a pure turn rotation, with 6 emulator tests (GAP_REPORT -4). **Not deployed yet. CI deploys on push to main.** Board/bag stay uncomparable in rules.
+- ✅ Resync freeze: `forceResync` waits for in-flight commits to settle before re-reading (it was reading the client's own pending write). Re-check in the next staging load run.
+- [ ] Follow-up: after a lost commit race, the local `turnTimerController` auto-passes a turn the server already rotated away. Rules reject it (harmless now), but suppress it. See GAP_REPORT -3.
+- ✅ Browser emulator mode (`?emu=1`) now targets the rules namespace `demo-bonus-game-default-rtdb` (`firebaseClient.js`).
+- [ ] ~~Network latency injection:~~ (done, see above). Original note: wrap each agent's db so transactions and writes are delayed by a mobile-like distribution (50–800 ms, with occasional 2 s spikes). On localhost a tap at deadline − 50 ms is never committed late. The client's own timer auto-pass pre-empts every tap aimed after the deadline (run 2: all `[0,+1500)` aimed turns → `turn-gone-before-action`), so commit-arrives-inside-the-grace races are under-exercised.
+- [ ] Clock skew: run agent B in a child process with a faked `Date.now()` offset of ±0–8 s, to check that the serverClock correction holds.
+- [ ] Async modes at scale (friend-async / random-async): checked, but not yet run in volume.
+- [ ] `moveReplay`: rebuild the board from `moveHistory` at game end and compare its hash with the server board, plus a score-ledger check once end-of-game adjustments are confirmed.
+- [ ] Extract the liveBonus broadcast from `main.js attachBonusFlow` into `src/ui/controllers/liveBonusBroadcastController.js`. `gameAgent.mjs` has a copy today, and it can drift.
+- ✅ Staging project `boost-staging-7f3a` ("Boost Staging", Spark plan) created October 2026. It has its own RTDB `boost-staging-7f3a-default-rtdb` in us-central1, the committed rules deployed, and anonymous auth on. The config lives in the gitignored `scripts/simulator/staging.config.json`. Smoke test: `npm run soak:staging -- --games 2 --network off` gave 2/2 clean (invite and code, 20 s turns, real network).
+  Redeploy after a rules change: `npx firebase deploy --only database --project boost-staging-7f3a`. Never point `--project` at boost-8ef11 for soak or load work.
+- 📊 **First staging load test (run 2026-10-01T23-04-00-load, ramp 6→60 games, real 20/40/60 s timers, full human write mix):**
+  - **Server compute is not the limit.** RTDB load peaked around 2.4% at the 100-connection plateau.
+  - **The Spark connection cap is the hard limit.** Connections were pinned at exactly 100, which is about 48 concurrent live games (two connections per player pair). Past it, new players sign in fine but their database connection is silently refused. Invites and room codes just time out after 30 s with no error shown (12k setup failures at 54–60 games). Games already running continued, but with slower moves (opponent-visible p95 1.1–1.9 s).
+  - **Bandwidth is the second Spark limit.** About 100 KB per game-minute reaches the two players (about 150 KB measured, including the test observer). A 15-minute game is about 1.5 MB, so Spark's 10 GB/month covers about 6,800 games/month (about 225/day). Main drivers: every commit rewrites the whole room doc, which both clients re-download; `livePreview` writes on every drag; and `liveBonus` progress writes every second during mini-games.
+  - **Latency.** Commit p50 is a steady ~250 ms at every step. p95 is 1.3–2.5 s from 18 games up (from one PC and one home uplink, so partly client-side). Opponent-visible p50 is ~220 ms.
+  - **Correctness.** One ghost-finalize turn steal (fixed), and one client freeze after a rejected commit (open, see below).
+- 📊 **Second staging load test after the hardening batch** (run 2026-10-02T05-12-52-load, 6→36 games, same mix):
+  - **Bandwidth:** 26–33 KB per game-minute (was 100–160 KB), **about 4–5× less**. A 15-minute game is now about 0.4 MB, so Spark's 10 GB/month covers roughly 25k games/month (was about 5k).
+  - **Commit p95:** 166–643 ms (was 1.3–1.9 s).
+  - **Health:** no SLO breach and no correctness violation up to 36 games. DB load ≤2.1%.
+  - The Spark 100-connection cap (about 48 games) is unchanged. That's a plan limit, not a code one.
+- [ ] Before launch: decide on Blaze (pay-as-you-go: connection cap 200k, bandwidth about $1/GB, so about $0.0015 per game) vs staying on Spark (about 48 concurrent games and about 225 games/day).
+- ✅ Reduce bandwidth per game: lean commits (`commitPatch`, changed fields only), `livePreview` at most every 500 ms, `liveBonus` progress in 3 s steps. Measured in the next staging load run.
+  - commit only the changed fields (`update`), not the full room, inside the transaction
+  - throttle `livePreview` writes
+  - send `liveBonus` progress every 3–5 s instead of every second
+- ✅ "No connection to the game server" banner when `.info/connected` stays false 6 s into an online setup (`warnIfGameServerUnreachable` in `main.js`).
+- ✅ Load test tooling (`npm run load -- --confirm-staging …`) against the staging project: multi-process workers, staircase ramp, SLO stop rules, Cloud Monitoring server metrics. See CHANGELOG.
+- [ ] (superseded) Load test against the STAGING Firebase project (`scripts/simulator/staging.config.json`): multi-process workers, a staircase ramp, latency/error/bandwidth metrics, and the behaviour of Spark's 100-connection cap. Needs the user to create the staging project.
+- [ ] Playwright UI layer: two browser contexts against the emulator-hosted app (stub `config.js` so `?emu=1` uses the demo namespace), with an in-page agent using `window.__spine`.
+- [ ] Hardening: `inviteService.acceptInvite` reports a false `invite-already-consumed` when the guest's `/invites/{uid}` cache is cold (no live listener), because the transaction aborts on its first null call. This is safe today (the app keeps `listenForInvites` attached), but any future accept-from-deep-link path would break. Consider the `roomCodeService.claimByCode` approach: remove() guarded by a rule.
 
 ---
 

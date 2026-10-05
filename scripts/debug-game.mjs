@@ -16,7 +16,11 @@
 //   node scripts/debug-game.mjs fc_1783939961090_ukvp3f
 //   node scripts/debug-game.mjs <roomId> --json      (machine-readable)
 //   node scripts/debug-game.mjs <roomId> --move 21   (full JSON of one move)
+//   node scripts/debug-game.mjs <roomId> --emu       (local emulator, e.g. a soak game)
+//   node scripts/debug-game.mjs --file <bundle.json> (a soak failure bundle's final room,
+//                                                    plus what each agent earned in bonuses)
 
+import fs from 'node:fs';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/database';
 import { BDEFS } from '../src/game/boosts/data.js';
@@ -28,11 +32,13 @@ const PROD_CONFIG = {
 };
 
 function parseArgs(argv) {
-  const opts = { roomId: null, json: false, move: null };
+  const opts = { roomId: null, json: false, move: null, emu: false, file: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--json') opts.json = true;
     else if (a === '--move') opts.move = Number(argv[++i]);
+    else if (a === '--emu') opts.emu = true;
+    else if (a === '--file') opts.file = argv[++i];
     else if (!a.startsWith('--')) opts.roomId = a;
   }
   return opts;
@@ -49,15 +55,37 @@ function catOf(type) {
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
-  if (!opts.roomId) {
-    console.error('Usage: node scripts/debug-game.mjs <roomId> [--json] [--move N]');
+  if (!opts.roomId && !opts.file) {
+    console.error('Usage: node scripts/debug-game.mjs <roomId> [--json] [--move N] [--emu] | --file <bundle.json>');
     process.exit(2);
   }
 
-  firebase.initializeApp(PROD_CONFIG);
-  const db = firebase.database();
-  const room = (await db.ref(`rooms/${opts.roomId}`).get()).val();
-  await firebase.app().delete();
+  let room;
+  let bundle = null;
+  if (opts.file) {
+    bundle = JSON.parse(fs.readFileSync(opts.file, 'utf8'));
+    room = bundle.finalRoom;
+    opts.roomId = bundle.roomId ?? opts.roomId;
+  } else {
+    if (opts.emu) {
+      firebase.initializeApp({ databaseURL: 'http://127.0.0.1:9000?ns=demo-bonus-game-default-rtdb', projectId: 'demo-bonus-game' });
+      firebase.database().useEmulator('127.0.0.1', 9000);
+    } else {
+      firebase.initializeApp(PROD_CONFIG);
+    }
+    const db = firebase.database();
+    room = (await db.ref(`rooms/${opts.roomId}`).get()).val();
+    await firebase.app().delete();
+  }
+  if (bundle && !opts.json) {
+    console.log(`Soak bundle ${bundle.gameId} — signature ${bundle.signature}`);
+    for (const v of bundle.violations ?? []) console.log(`  ✗ ${v.class}: ${v.detail}`);
+    for (const [name, a] of Object.entries(bundle.agents ?? {})) {
+      const extras = (a.chosenExtras ?? []).map(x => `${x.kind}${x.outcomeId ? ':' + x.outcomeId : ''}=${x.extra ?? '-'}`).join(', ');
+      console.log(`  agent ${name} slot=${a.mySlot} persona=${a.persona} bonuses: ${extras || 'none'}`);
+    }
+    console.log('');
+  }
 
   if (!room) {
     console.error(`Room ${opts.roomId} not found.`);

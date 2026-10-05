@@ -11,7 +11,12 @@
     "emu": "firebase emulators:start --project demo-bonus-game --only auth,database,hosting",
     "test:e2e:headed": "playwright test --headed",
     "dict:absorb": "node scripts/absorb-firebase-dict.mjs",
-    "find-room": "node scripts/find-room.mjs"
+    "find-room": "node scripts/find-room.mjs",
+    "soak": "node scripts/simulator/soak/launchSoak.mjs",
+    "soak:staging": "node scripts/simulator/soak/runSoak.mjs --target staging",
+    "load": "node scripts/simulator/soak/loadTest.mjs",
+    "load:metrics": "node scripts/simulator/soak/stagingAdmin.mjs metrics",
+    "load:wipe": "node scripts/simulator/soak/stagingAdmin.mjs wipe"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.1",

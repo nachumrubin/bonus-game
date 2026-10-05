@@ -14,11 +14,13 @@ import { validateMove } from '../game/core/moveValidator.js';
 import { getAllWords, scoreMove } from '../game/core/scoringEngine.js';
 
 /**
- * @returns {null | { word: string, words: string[], score: number, valid: boolean|null }}
+ * @returns {null | { word: string, words: string[], items: { text: string, valid: boolean|null }[], score: number, valid: boolean|null }}
  *   null  → nothing meaningful to show (no tiles, not in one line, gaps, not connected,
  *           or no word of 2+ letters yet).
  *   valid → true/false from `isWordValid` on every formed word; null when no checker
  *           was supplied (dictionary not loaded).
+ *   items → every formed word (main word first, then cross words) with its own
+ *           validity, so the pill can point at the word that broke the move.
  */
 export function computeLiveWordPreview({ board, bonusBoard = null, firstMove = false, placed = [], swappedTiles = [], isWordValid = null } = {}) {
   if (!Array.isArray(board)) return null;
@@ -35,6 +37,8 @@ export function computeLiveWordPreview({ board, bonusBoard = null, firstMove = f
   if (!formed.length || formed[0].length < 2) return null;
 
   const words = formed.map(w => w.map(t => t.letter).join(''));
-  const valid = typeof isWordValid === 'function' ? words.every(w => !!isWordValid(w)) : null;
-  return { word: words[0], words, score: scoreMove(formed, tiles.length), valid };
+  const canCheck = typeof isWordValid === 'function';
+  const items = words.map(text => ({ text, valid: canCheck ? !!isWordValid(text) : null }));
+  const valid = canCheck ? items.every(i => i.valid) : null;
+  return { word: words[0], words, items, score: scoreMove(formed, tiles.length), valid };
 }
