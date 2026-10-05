@@ -114,7 +114,7 @@ import {
   DAILY_REWARD_SHOW, DAILY_REWARD_ACK,
 } from './ui/screens/avatarStoreScreen.js';
 import { priceFor } from './ui/screens/avatarStore.js';
-import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe } from './ui/screens/authScreens.js';
+import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe, isSilentAuthCancel, suggestNameFromDisplayName } from './ui/screens/authScreens.js';
 import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER } from './ui/screens/friendsScreen.js';
 import { runInviteFlow, INVITE_REQUIRED } from './ui/inviteFriends.js';
 import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
@@ -579,6 +579,25 @@ async function boot() {
   let activePresenceHandle = null;
   let activePresenceUid = null;
   let lastLivePreviewWrite = '';
+  // Bandwidth throttles for the non-versioned live side channels (staging
+  // load test, Oct 2026): preview writes at most every 500 ms; mini-game
+  // progress countdown in 3-second steps.
+  const LIVE_PREVIEW_MIN_INTERVAL_MS = 500;
+  const LIVE_BONUS_PROGRESS_STEP_S = 3;
+  // When the game server can't be reached (offline, or the database refused
+  // the connection — e.g. past the plan's simultaneous-connection cap) the
+  // Firebase SDK retries silently and online setup just spins. Tell the
+  // player instead (staging load test, Oct 2026). Set once the connectivity
+  // monitor starts; read lazily so early UI events never hit a TDZ error.
+  const SERVER_UNREACHABLE_WARN_MS = 6000;
+  let connectivityMonitorRef = null;
+  function warnIfGameServerUnreachable() {
+    setTimeout(() => {
+      const st = connectivityMonitorRef?.current?.();
+      if (!st || st.connected) return;
+      bus.emit(NOTIF_BANNER_SHOW, { avatar: '📡', text: 'אין חיבור לשרת המשחק כרגע. נסו שוב בעוד רגע.' });
+    }, SERVER_UNREACHABLE_WARN_MS);
+  }
   const recoveredSessionForUid = new Set();
   let launchParamsHandled = false;
 
@@ -731,8 +750,12 @@ async function boot() {
     const auth = activeFbAuth;
     if (auth?.onAuthStateChanged) {
       auth.onAuthStateChanged((user) => {
-        if (user?.uid) bootCrossCuttingFor(user.uid);
-        else teardownCrossCuttingAuth();
+        if (user?.uid) {
+          bootCrossCuttingFor(user.uid);
+          // A Google user who closed the app before picking a game name has
+          // no profile yet — reopen the name step.
+          try { globalThis.__spine.resumeGoogleNameStep?.(user); } catch {}
+        } else teardownCrossCuttingAuth();
       });
     }
     if (activeFbCurrentUser?.uid) bootCrossCuttingFor(activeFbCurrentUser.uid);
@@ -984,16 +1007,41 @@ async function boot() {
     }
   });
 
+  // Live preview (the opponent sees our tentative tiles). Throttled to one
+  // write per LIVE_PREVIEW_MIN_INTERVAL_MS with a trailing flush of the latest
+  // tiles: dragging used to write on every change, and every write is
+  // re-downloaded by both players (staging load test, Oct 2026). Clearing the
+  // preview (no tiles) is written at once so ghost tiles never linger.
+  let livePreviewTimer = null;
+  let livePreviewPending = null;
+  let lastLivePreviewAt = 0;
+  function flushLivePreview() {
+    livePreviewTimer = null;
+    const pending = livePreviewPending;
+    livePreviewPending = null;
+    if (!pending) return;
+    const { db, roomId, slot, tiles, sig } = pending;
+    if (sig === lastLivePreviewWrite) return;
+    lastLivePreviewWrite = sig;
+    lastLivePreviewAt = Date.now();
+    roomService.setLivePreview(db, roomId, { slot, tiles }).catch((e) => {
+      console.warn('[spine] live preview write', e);
+    });
+  }
   bus.on(GAME_SCREEN_INTENT.LIVE_PREVIEW_CHANGED, ({ slot, tiles } = {}) => {
     const ag = globalThis.__spine?.activeGame;
     const db = activeFbDb;
     if (!ag?.online || !db || slot !== ag.session?.mySlot) return;
     const sig = JSON.stringify({ roomId: ag.session.roomId, slot, tiles });
-    if (sig === lastLivePreviewWrite) return;
-    lastLivePreviewWrite = sig;
-    roomService.setLivePreview(db, ag.session.roomId, { slot, tiles }).catch((e) => {
-      console.warn('[spine] live preview write', e);
-    });
+    livePreviewPending = { db, roomId: ag.session.roomId, slot, tiles, sig };
+    const empty = !Array.isArray(tiles) || tiles.length === 0;
+    const wait = LIVE_PREVIEW_MIN_INTERVAL_MS - (Date.now() - lastLivePreviewAt);
+    if (empty || wait <= 0) {
+      if (livePreviewTimer) { clearTimeout(livePreviewTimer); livePreviewTimer = null; }
+      flushLivePreview();
+    } else if (!livePreviewTimer) {
+      livePreviewTimer = setTimeout(flushLivePreview, wait);
+    }
   });
 
   bus.on(SETTINGS_CHANGED, (changes = {}) => {
@@ -1214,6 +1262,7 @@ async function boot() {
     let activeMatchmaking = null;
 
     bus.on(MM_INTENT.SEARCH, async (filters) => {
+      warnIfGameServerUnreachable();
       try { await ensureAuthedUser(); }
       catch (e) { console.warn('[spine] MM_INTENT.SEARCH auth failed:', e?.message ?? e); }
       const fbDb = activeFbDb;
@@ -1320,6 +1369,7 @@ async function boot() {
     globalThis.__spine.teardownPending = teardownPending;
 
     bus.on(CR_INTENT.CONFIRM, async (filters) => {
+      warnIfGameServerUnreachable();
       try { await ensureAuthedUser(); }
       catch (e) { console.warn('[spine] CR_INTENT.CONFIRM auth failed:', e?.message ?? e); }
       const fbDb = activeFbDb;
@@ -1519,6 +1569,7 @@ async function boot() {
 
     // ── Join-by-code flow ──────────────────────────────
     bus.on(JC_INTENT.CONFIRM, async ({ code, name }) => {
+      warnIfGameServerUnreachable();
       try { await ensureAuthedUser(); }
       catch (e) { console.warn('[spine] JC_INTENT.CONFIRM auth failed:', e?.message ?? e); }
       const fbDb = activeFbDb;
@@ -1719,6 +1770,7 @@ async function boot() {
     if (activeFbCurrentUser?.uid) bootInviteListenersFor(activeFbCurrentUser.uid);
 
     bus.on(II_INTENT.ACCEPT, async (invite) => {
+      warnIfGameServerUnreachable();
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !invite?.inviteId) {
@@ -3421,6 +3473,7 @@ async function boot() {
     });
 
     bus.on(NOTIF_INTENT.ACCEPT_INVITE, async (invite) => {
+      warnIfGameServerUnreachable();
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !invite?.inviteId) return;
@@ -3507,6 +3560,146 @@ async function boot() {
     });
 
     // ── Auth intents (Firebase compat SDK) ──
+
+    // New-account profile setup shared by email sign-up and the Google name
+    // step: atomically claim the unique display name, then write the initial
+    // profile, the rating-leaderboard row and the userId → uid index.
+    // Returns { ok:false, reason:'name-taken' } when the claim loses.
+    async function provisionNewProfile(fbDb, uid, name, { wantsNotifications = true } = {}) {
+      const claim = await profileService.claimUsername(fbDb, { uid, newName: name });
+      if (!claim?.ok) return { ok: false, reason: 'name-taken' };
+      const userId = profileService.generateUserId();
+      const initial = profileService.buildInitialProfile({ displayName: name, userId });
+      initial.wantsNotifications = wantsNotifications !== false;
+      await profileService.updateProfile(fbDb, uid, initial);
+      await ratingService.upsertRatingLeaderboardEntry(fbDb, { uid, profile: initial, rating: initial.rating });
+      await fbDb.ref(`userIds/${userId}`).set(uid);
+      return { ok: true };
+    }
+
+    function afterNewAccount({ wantsNotifications = true } = {}) {
+      showLegacyScreen('sh');
+      if (wantsNotifications !== false) {
+        // User opted in — request push permission immediately after signup.
+        globalThis.requestNotifPermission?.();
+      } else {
+        // User opted out — remind them they can enable later via Settings.
+        bus.emit(NOTIF_BANNER_SHOW, {
+          avatar: '🔔',
+          text: 'ניתן להפעיל התראות בכל עת מתוך הגדרות',
+          action: 'openSettings',
+        });
+      }
+    }
+
+    const isGoogleUser = (user) =>
+      !!user && !user.isAnonymous && (user.providerData ?? []).some(p => p?.providerId === 'google.com');
+
+    // After a Google sign-in: an existing player goes home; a first-timer (no
+    // profile yet) picks a game name first.
+    async function finishGoogleSignIn(user) {
+      const fbDb = activeFbDb;
+      let hasProfile = false;
+      try {
+        const snap = await fbDb?.ref(`users/${user.uid}/profile/displayName`).get();
+        hasProfile = !!snap?.val?.();
+      } catch (e) { console.warn('[spine] google profile read', e); }
+      if (hasProfile) {
+        authScreens.hidePickName();
+        showLegacyScreen('sh');
+        return;
+      }
+      authScreens.showPickName(suggestNameFromDisplayName(user.displayName));
+    }
+
+    globalThis.__spine.resumeGoogleNameStep = (user) => {
+      if (!isGoogleUser(user)) return;
+      // Only nag when there's no profile; never yank an existing player home.
+      activeFbDb?.ref(`users/${user.uid}/profile/displayName`).get()
+        .then(snap => { if (!snap?.val?.()) authScreens.showPickName(suggestNameFromDisplayName(user.displayName)); })
+        .catch(() => {});
+    };
+
+    let googleSignInBusy = false;
+    bus.on(AUTH_INTENT.GOOGLE, async ({ scope = 'login' } = {}) => {
+      if (googleSignInBusy) return;
+      googleSignInBusy = true;
+      // The guest-upgrade overlay has no error line — surface errors on login.
+      const errScope = scope === 'upgrade' ? 'login' : scope;
+      try {
+        try { await ensureFirebaseGlobals(); } catch {}
+        const fbAuth = activeFbAuth;
+        const GoogleAuthProvider = globalThis.firebase?.auth?.GoogleAuthProvider;
+        if (!fbAuth || !GoogleAuthProvider) {
+          if (scope === 'upgrade') showLegacyScreen('sauth-login');
+          authScreens.showError(errScope, 'אין חיבור לשרת. נסה שוב.');
+          return;
+        }
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters?.({ prompt: 'select_account' });
+        // Popup, not redirect: the app is a standalone PWA / TWA served from
+        // web.app while authDomain is firebaseapp.com, and redirect results
+        // are lost to storage partitioning in that setup (iOS standalone).
+        let user = null;
+        const current = fbAuth.currentUser;
+        if (current?.isAnonymous) {
+          // Link so the guest keeps its uid (rooms, invites, friends survive).
+          try {
+            user = (await current.linkWithPopup(provider))?.user ?? null;
+          } catch (e) {
+            // That Google account already belongs to a player → switch to it.
+            if (e?.code === 'auth/credential-already-in-use' && e.credential) {
+              user = (await fbAuth.signInWithCredential(e.credential))?.user ?? null;
+            } else throw e;
+          }
+        } else {
+          user = (await fbAuth.signInWithPopup(provider))?.user ?? null;
+        }
+        if (user) {
+          activeFbCurrentUser = user;
+          await finishGoogleSignIn(user);
+        }
+      } catch (e) {
+        if (!isSilentAuthCancel(e)) {
+          console.warn('[spine] google sign-in', e);
+          if (scope === 'upgrade') showLegacyScreen('sauth-login');
+          authScreens.showError(errScope, firebaseAuthErrorHe(e));
+        }
+      } finally {
+        googleSignInBusy = false;
+      }
+    });
+
+    bus.on(AUTH_INTENT.PICK_NAME, async ({ name }) => {
+      const fbDb = activeFbDb;
+      const user = activeFbAuth?.currentUser;
+      if (!fbDb || !user?.uid) {
+        authScreens.showError('pickname', 'אין חיבור לשרת. נסה שוב.');
+        return;
+      }
+      try {
+        const avail = await profileService.checkUsernameAvailable(fbDb, name);
+        if (avail && avail.available === false) {
+          authScreens.showError('pickname-name', AUTH_ERROR_HE['name-taken']);
+          return;
+        }
+      } catch { /* read failed — fall through to the authoritative claim */ }
+      try {
+        const prov = await provisionNewProfile(fbDb, user.uid, name, { wantsNotifications: true });
+        if (!prov.ok) {
+          authScreens.showError('pickname-name', AUTH_ERROR_HE['name-taken']);
+          return;
+        }
+        authScreens.hidePickName();
+        // A linked guest keeps its uid, so no auth-state change fires —
+        // re-boot the profile watch so menus pick up the new account.
+        try { globalThis.__spine.bootAccount?.(user.uid); } catch {}
+        afterNewAccount({ wantsNotifications: true });
+      } catch (e) {
+        console.warn('[spine] pick name', e);
+        authScreens.showError('pickname', 'אירעה שגיאה. נסו שוב');
+      }
+    });
     bus.on(AUTH_INTENT.SIGN_UP, async ({ name, email, password, wantsNotifications }) => {
       try { await ensureFirebaseGlobals(); } catch {}
       const fbAuth = activeFbAuth;
@@ -3533,31 +3726,14 @@ async function boot() {
         // Atomically claim the (unique) display name. If another account took
         // it in the race window, roll back the just-created auth user so the
         // email stays reusable and no profile-less account lingers.
-        const claim = await profileService.claimUsername(fbDb, { uid, newName: name });
-        if (!claim?.ok) {
+        const prov = await provisionNewProfile(fbDb, uid, name, { wantsNotifications });
+        if (!prov.ok) {
           try { await cred.user?.delete?.(); }
           catch (e) { console.warn('[spine] signup name-taken cleanup', e); }
           authScreens.showError('signup-name', AUTH_ERROR_HE['name-taken']);
           return;
         }
-        const userId = profileService.generateUserId();
-        const initial = profileService.buildInitialProfile({ displayName: name, userId });
-        initial.wantsNotifications = wantsNotifications !== false;
-        await profileService.updateProfile(fbDb, uid, initial);
-        await ratingService.upsertRatingLeaderboardEntry(fbDb, { uid, profile: initial, rating: initial.rating });
-        await fbDb.ref(`userIds/${userId}`).set(uid);
-        showLegacyScreen('sh');
-        if (wantsNotifications !== false) {
-          // User opted in — request push permission immediately after signup.
-          globalThis.requestNotifPermission?.();
-        } else {
-          // User opted out — remind them they can enable later via Settings.
-          bus.emit(NOTIF_BANNER_SHOW, {
-            avatar: '🔔',
-            text: 'ניתן להפעיל התראות בכל עת מתוך הגדרות',
-            action: 'openSettings',
-          });
-        }
+        afterNewAccount({ wantsNotifications });
       } catch (e) {
         authScreens.showError('signup', firebaseAuthErrorHe(e, AUTH_ERROR_HE['bad-email']));
       }
@@ -4201,8 +4377,14 @@ async function boot() {
       let lastProgressSig = null;
       subs.push(bus.on('liveBonus/progress', (progress = {}) => {
         if (!bonusFlowActive || !currentLiveBonus) return;
+        // The countdown only needs to reach the spectator every few seconds:
+        // bucket secsLeft into 3-second steps (score / label changes still go
+        // out immediately). Was one full liveBonus write per second per
+        // mini-game — a measurable share of per-game bandwidth in the staging
+        // load test.
+        const secs = progress.secsLeft;
         const sig = JSON.stringify({
-          secsLeft: progress.secsLeft ?? null,
+          secsBucket: Number.isFinite(secs) ? Math.ceil(secs / LIVE_BONUS_PROGRESS_STEP_S) : null,
           score: progress.score ?? null,
           label: progress.label ?? null,
         });
@@ -4732,6 +4914,7 @@ async function boot() {
   // on every transition; the controller toggles the icon's classes in
   // response. Visible only during online games (gated on modeDescriptor).
   const connectivityMonitor = startConnectivityMonitor({ db: activeFbDb, bus });
+  connectivityMonitorRef = connectivityMonitor;
   const connectivityCtl = createConnectivityIndicator({
     bus,
     sessionRef: () => globalThis.__spine?.activeGame?.session ?? null,

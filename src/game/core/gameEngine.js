@@ -120,6 +120,12 @@ export function createInitialState({ mode, tileBagSeed, players, startingSlot = 
  * @param {{ state: GameState, bus: SpineBusWriter }} options
  * @returns {SpineEngine}
  */
+// Commands that end or replace the current turn — refused while a deferred
+// bonus-square score is pending (see dispatch()).
+const TURN_ENDING_CMDS = new Set([
+  CMD.CONFIRM_MOVE, CMD.PASS_TURN, CMD.EXCHANGE_TILE, CMD.PLACE_LOCK, CMD.CLAIM_STALL_END,
+]);
+
 export function createEngine({ state, bus }) {
   if (!state) throw new Error('createEngine: state is required');
   if (!bus) throw new Error('createEngine: bus is required');
@@ -129,6 +135,17 @@ export function createEngine({ state, bus }) {
   function dispatch(cmd) {
     if (!cmd || typeof cmd.type !== 'string') return;
     if (state.status !== 'playing' && cmd.type !== CMD.RESIGN_GAME) return;
+
+    // A bonus-square move is mid-flight (tiles placed, score + turn rotation
+    // waiting on FINALIZE_BOOST_AWARD). Nothing may end or replace this turn
+    // until it finalizes: a turn-timer auto-pass landing in the same instant
+    // used to rotate the turn underneath the deferred move, and its later
+    // finalize then committed a ghost move over the opponent's turn (found by
+    // the staging load test). Resign stays allowed.
+    if (state.pendingScoreCommit && TURN_ENDING_CMDS.has(cmd.type)) {
+      emit(EV.INVALID_MOVE_REJECTED, { reason: 'bonus-pending', command: cmd.type });
+      return;
+    }
 
     switch (cmd.type) {
       case CMD.CONFIRM_MOVE: return handleConfirmMove(cmd.payload ?? {});

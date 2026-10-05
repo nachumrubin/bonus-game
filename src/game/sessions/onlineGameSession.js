@@ -22,7 +22,7 @@ import {
   engineStateFromRoom,
   readRoom,
   watchRoom,
-  commitTransaction,
+  commitPatch,
   leaveRoom,
   setStatus,
   setReady,
@@ -76,6 +76,11 @@ export async function createOnlineGameSession({
 
   // Track the last applied room version so we can detect echo / staleness.
   let lastAppliedVersion = room.version;
+  // Latest copy of the server room we have seen (watcher snapshot, our own
+  // committed write, or a forced re-read). commitPatch diffs against it so a
+  // commit only sends what changed; on a version mismatch it falls back to a
+  // full transaction.
+  let lastServerRoom = room;
 
   // Track expected version for the next outgoing transaction.
   let expectedVersion = room.version;
@@ -125,6 +130,15 @@ export async function createOnlineGameSession({
   // runs afterward as belt-and-suspenders.
   let pendingCommitRollback = null;
 
+  // Bumped every time the watcher applies a snapshot past the version bail.
+  // forceResync uses it to detect "a newer snapshot landed while my read was
+  // in flight" so it never rolls state/cursors back to the older read.
+  let watcherApplySeq = 0;
+
+  // Commits issued by this session that have not resolved yet (see
+  // forceResync: never re-read the room while our own write is pending).
+  let inflightCommits = 0;
+
   // The post-commit cursor advance must NEVER go past the server's actual
   // room.version. The naive `expectedVersion += 1` races with the watchRoom
   // callback's echo branch: if the snapshot fires before our await resolves,
@@ -137,6 +151,9 @@ export async function createOnlineGameSession({
     const newVersion = Number(result?.room?.version ?? (expectedVersion + 1));
     if (newVersion > expectedVersion) expectedVersion = newVersion;
     if (newVersion > lastAppliedVersion) lastAppliedVersion = newVersion;
+    // Our write is now the newest server state we know of (unless the
+    // watcher already saw something later) — the next commit diffs against it.
+    if (result?.room && newVersion >= Number(lastServerRoom?.version ?? -1)) lastServerRoom = result.room;
   }
 
   // Re-read the authoritative room and rebuild local state. Called on
@@ -151,15 +168,47 @@ export async function createOnlineGameSession({
   // already at its latest version and our watcher's lastAppliedVersion is
   // up-to-date. We have to pull explicitly. Surfaced by the simulator's
   // e2e forced-deadline-loss scenario.
+  // The server is authoritative about whether our bonus-square move is still
+  // awaiting its finalize. If it no longer holds that deferred move on our
+  // turn (lost race, watchdog claim, …), drop the local pending score and tell
+  // the bonus flow to abort — otherwise the engine keeps refusing turn-ending
+  // commands ('bonus-pending') and a later finalize would credit a ghost move.
+  function reconcilePendingScore(incoming, why) {
+    if (!state.pendingScoreCommit) return;
+    const last = incoming?.lastMove;
+    const serverStillPending = last?.scoringDeferred === true
+      && Number(last.slot) === Number(mySlot)
+      && Number(incoming.currentTurnSlot) === Number(mySlot);
+    if (serverStillPending) return;
+    state.pendingScoreCommit = null;
+    deferredCommitPending = false;
+    bus.emit(BONUS_ABORTED, { slot: mySlot, reason: why });
+  }
+
   async function forceResync(reason) {
+    // Let our own in-flight commits settle first. While a write is pending,
+    // the SDK's local view (which readRoom can return) still contains it —
+    // the staging load test caught a client that resynced onto its OWN
+    // unconfirmed write, set its cursor to that phantom version and then
+    // ignored every real snapshot until it was forfeited.
+    const settleDeadline = Date.now() + 8000;
+    while (inflightCommits > 0 && Date.now() < settleDeadline) {
+      await new Promise(r => setTimeout(r, 50));
+    }
+    const applySeqAtStart = watcherApplySeq;
     let incoming = null;
     try { incoming = await readRoom(db, room.roomId); } catch { /* swallow */ }
     if (!incoming) return;
+    // The watcher applied a NEWER snapshot while our read was in flight:
+    // state is already ahead of `incoming` — don't roll it (or the cursor)
+    // back to the older read.
+    if (watcherApplySeq !== applySeqAtStart && lastAppliedVersion > Number(incoming.version)) return;
     const previousStatus = state.status;
     // Replace engine state with the freshly-read authoritative state. We
     // use engineStateFromRoom so every field is rebuilt — board, racks,
     // scores, bag, currentTurnSlot, turnNumber, status, passCount, ... —
     // anything the failed dispatch may have mutated optimistically.
+    lastServerRoom = incoming;
     const fresh = engineStateFromRoom(incoming);
     state.scores = fresh.scores;
     state.bag = fresh.bag;
@@ -180,10 +229,14 @@ export async function createOnlineGameSession({
     state.status = fresh.status;
     state.turnDeadlineMs = fresh.turnDeadlineMs;
     state.missedTurns = fresh.missedTurns;
-    // Realign cursors so the next watcher snapshot doesn't double-apply.
+    reconcilePendingScore(incoming, `resync:${reason ?? 'sync-rejected'}`);
+    // Realign cursors to the server's version — in EITHER direction. The room
+    // we just read is authoritative; a cursor left ahead of it (after a
+    // rejected optimistic write) would drop the opponent's next commit, which
+    // reuses that version number.
     const v = Number(incoming.version);
-    if (v > lastAppliedVersion) lastAppliedVersion = v;
-    if (v > expectedVersion) expectedVersion = v;
+    lastAppliedVersion = v;
+    expectedVersion = v;
     bus.emit(EV.TURN_CHANGED, {
       currentTurnSlot: state.currentTurnSlot,
       turnNumber: state.turnNumber,
@@ -294,7 +347,8 @@ export async function createOnlineGameSession({
     // the just-rotated turn slot in the security rule.
     if (!deferredCommitPending) return;
     deferredCommitPending = false;
-    const result = await commitCurrentState({ lastMove: state.moveHistory[state.moveHistory.length - 1] ?? null });
+    const finalLast = state.moveHistory[state.moveHistory.length - 1] ?? null;
+    const result = await commitCurrentState({ lastMove: finalLast, finalizeOfTs: finalLast?.ts ?? null });
     if (result.committed) {
       advanceVersionCursor(result);
     } else {
@@ -424,6 +478,7 @@ export async function createOnlineGameSession({
   // newer AND whose last move came from the OPPONENT, replay it into the engine.
   const unwatch = watchRoom(db, room.roomId, (incoming) => {
     if (!incoming) return;
+    lastServerRoom = incoming;
     const previewSig = JSON.stringify(incoming.livePreview ?? null);
     if (previewSig !== lastLivePreviewSig) {
       lastLivePreviewSig = previewSig;
@@ -454,10 +509,28 @@ export async function createOnlineGameSession({
       lastReactionTs = incomingReactionTs;
       bus.emit(EV.REACTION_RECEIVED, { reaction: incomingReaction });
     }
+    if (incoming.version < lastAppliedVersion) {
+      // The server's version went BACKWARDS relative to what we applied: the
+      // SDK raised our own transaction optimistically (we took it as the echo
+      // and advanced the cursor), then the server rejected the write and the
+      // SDK reverted. The server never had that version, so the opponent's
+      // NEXT real commit will carry the same number — with the cursor left
+      // ahead it would be silently dropped (player never sees the move, never
+      // gets the turn, gets timed out). Realign to the server and resync.
+      // Found by the live soak agents under simulated mobile latency.
+      lastAppliedVersion = incoming.version;
+      expectedVersion = incoming.version;
+      const revertedLast = incoming.lastMove ?? incoming.moveHistory?.[incoming.moveHistory.length - 1];
+      lastSeenMoveTs = revertedLast?.ts ?? null;
+      forceResync('optimistic-reverted');
+      applyTerminalStatusIfNeeded(incoming);
+      return;
+    }
     if (incoming.version <= lastAppliedVersion) {
       applyTerminalStatusIfNeeded(incoming);
       return; // already applied or echo
     }
+    watcherApplySeq++;
 
     const previousTurnSlot = state.currentTurnSlot;
     const previousTurnNumber = state.turnNumber;
@@ -498,7 +571,11 @@ export async function createOnlineGameSession({
     lastAppliedVersion = incoming.version;
     expectedVersion = incoming.version;
     state.scores = { ...incoming.scores };
-    state.bag = [...(incoming.bag ?? state.bag ?? [])];
+    // The room is authoritative. A missing `bag` key means the bag is EMPTY
+    // (Firebase drops empty arrays) — keeping our stale local bag let this
+    // client exchange/draw tiles that no longer existed (found by the soak
+    // agents: 101 tiles in a 99-tile game).
+    state.bag = [...(incoming.bag ?? [])];
     state.racks = { 0: [...(incoming.racks?.[0] ?? [])], 1: [...(incoming.racks?.[1] ?? [])] };
     state.currentTurnSlot = incoming.currentTurnSlot;
     state.turnNumber = incoming.turnNumber;
@@ -518,6 +595,7 @@ export async function createOnlineGameSession({
     state.bonusBoard = deserializeBonusBoardLocal(incoming.bonusBoard);
     state.bonusAssignment = [...(incoming.bonusAssignment ?? state.bonusAssignment ?? [])];
     state.bonusSqUsed = { ...(incoming.bonusSqUsed ?? state.bonusSqUsed ?? {}) };
+    reconcilePendingScore(incoming, 'remote-sync');
     state.pendingBonuses = [...(incoming.pendingBonuses ?? [])];
     state.lockedCells = [...(incoming.lockedCells ?? [])];
     state.lockInventory = {
@@ -769,16 +847,24 @@ export async function createOnlineGameSession({
   // SYNC_REJECTED + forceResync recovery path instead of leaking an
   // unhandled rejection out of the bus subscriber. Surfaced by the
   // simulator's e2e forced-deadline-loss scenario.
-  async function commitCurrentState({ lastMove = null, deferred = false } = {}) {
+  async function commitCurrentState({ lastMove = null, deferred = false, finalizeOfTs = null } = {}) {
+    inflightCommits++;
     try {
-      return await rawCommitCurrentState({ lastMove, deferred });
+      return await rawCommitCurrentState({ lastMove, deferred, finalizeOfTs });
     } catch (err) {
       return { committed: false, room: null, error: err };
+    } finally {
+      inflightCommits--;
     }
   }
   // `deferred` = the first of the two writes for a bonus-square move: the tiles
   // land, but the turn does not rotate and no score is awarded yet.
-  function rawCommitCurrentState({ lastMove = null, deferred = false } = {}) {
+  // `finalizeOfTs` = this is the SECOND write of a bonus-square move: only
+  // valid while the server still holds that deferred move (same lastMove.ts,
+  // still scoringDeferred) on OUR turn. If the turn moved on meanwhile (lost
+  // race, watchdog claim), abort instead of writing a ghost move over the
+  // current game — found by the staging load test.
+  function rawCommitCurrentState({ lastMove = null, deferred = false, finalizeOfTs = null } = {}) {
     // A timer_bonus boost (B13 wheel +Ns) queued for the slot whose turn is
     // starting was recorded on state.turnTimerBonusMs by the engine's
     // applyTurnStartEffects. The committing client is authoritative for the
@@ -788,7 +874,14 @@ export async function createOnlineGameSession({
     // the bonus on a retry. We clear it only after the commit resolves.
     const queuedTimerBonusMs = Number(state.turnTimerBonusMs) || 0;
     let appliedTimerBonus = false;
-    return commitTransaction(db, room.roomId, expectedVersion, (currentRoom) => {
+    return commitPatch(db, room.roomId, expectedVersion, lastServerRoom, (currentRoom) => {
+      if (finalizeOfTs != null) {
+        const serverLast = currentRoom.lastMove;
+        const stillOurs = serverLast?.ts === finalizeOfTs
+          && serverLast?.scoringDeferred === true
+          && Number(currentRoom.currentTurnSlot) === Number(mySlot);
+        if (!stillOurs) return null; // abort → committed:false → rollback + resync
+      }
       const settings = { ...(state.settings ?? currentRoom.settings ?? {}) };
       const turnChanged = Number(currentRoom.currentTurnSlot ?? 0) !== Number(state.currentTurnSlot ?? 0);
       // An extra-turn boost keeps the turn with the SAME player, so

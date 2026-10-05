@@ -870,3 +870,34 @@ test('CONFIRM_MOVE on a bonus square marks the history entry scoringDeferred', (
   assert.ok(state.pendingScoreCommit, 'move deferred for the bonus');
   assert.equal(state.moveHistory.at(-1).scoringDeferred, true);
 });
+
+// A bonus-square move is mid-flight (pendingScoreCommit): a turn-timer
+// auto-pass (or any other turn-ending command) landing in the same instant used
+// to rotate the turn underneath the deferred move, and the later finalize then
+// committed a ghost move over the opponent's turn. Found by the staging load test.
+test('turn-ending commands are refused while a deferred bonus score is pending', () => {
+  const { state, eng } = freshEngine();
+  state.currentTurnSlot = 0;
+  state.pendingScoreCommit = {
+    slot: 0, baseScore: 10, multiplier: 1, historyIndex: -1,
+    movePayload: { slot: 0, placed: [], words: [] }, lock: null,
+  };
+  const rejects = [];
+  bus.on(EV.INVALID_MOVE_REJECTED, (p) => rejects.push(p.reason));
+  const turnBefore = state.turnNumber;
+  for (const cmd of [
+    { type: CMD.PASS_TURN, payload: { reason: 'timeout' } },
+    { type: CMD.EXCHANGE_TILE, payload: { letters: [state.racks[0][0]] } },
+    { type: CMD.PLACE_LOCK, payload: { r: 5, c: 5, duration: 3 } },
+    { type: CMD.CLAIM_STALL_END, payload: { slot: 0 } },
+    { type: CMD.CONFIRM_MOVE, payload: { placed: [] } },
+  ]) eng.dispatch(cmd);
+  assert.deepEqual(rejects, ['bonus-pending', 'bonus-pending', 'bonus-pending', 'bonus-pending', 'bonus-pending']);
+  assert.equal(state.currentTurnSlot, 0, 'turn did not rotate');
+  assert.equal(state.turnNumber, turnBefore);
+  assert.ok(state.pendingScoreCommit, 'pending score untouched');
+  // The finalize itself still goes through and rotates the turn.
+  eng.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, extra: 5 } });
+  assert.equal(state.pendingScoreCommit, null);
+  assert.equal(state.currentTurnSlot, 1);
+});

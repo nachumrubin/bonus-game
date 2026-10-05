@@ -27,7 +27,7 @@ import { runE2EBatch } from './scenarios/e2eFullStack.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const DICT_PATH = path.join(REPO_ROOT, 'data', 'dictionary.base.txt');
+const DICT_PATH = path.join(REPO_ROOT, 'data', 'dictionary.txt');
 const OUT_DIR = path.join(REPO_ROOT, '.simulator-data');
 
 function parseArgs(argv) {

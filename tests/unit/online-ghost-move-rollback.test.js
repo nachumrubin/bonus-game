@@ -107,6 +107,16 @@ test('ghost-move rollback: failed commit does not leave optimistic tiles on the 
         }
         return realTx(updateFn);
       };
+      // Commits now go through commitPatch (multi-path update with a
+      // version compare-and-set enforced by the rules): fail that the same way.
+      const realUpdate = ref.update.bind(ref);
+      ref.update = (patch) => {
+        if (pendingFails > 0 && patch && Object.prototype.hasOwnProperty.call(patch, 'version')) {
+          pendingFails--;
+          return Promise.reject(Object.assign(new Error('PERMISSION_DENIED'), { code: 'PERMISSION_DENIED' }));
+        }
+        return realUpdate(patch);
+      };
     }
     return ref;
   };
@@ -186,6 +196,7 @@ test('synchronous rollback: ghost tiles wiped before forceResync\'s readRoom rou
     if (p === 'rooms/room' && stubbed > 0) {
       stubbed--;
       ref.transaction = () => Promise.resolve({ committed: false, snapshot: null });
+      ref.update = () => Promise.reject(Object.assign(new Error('PERMISSION_DENIED'), { code: 'PERMISSION_DENIED' }));
       ref.get = () => new Promise(() => { /* hang forever */ });
     }
     return ref;
@@ -327,6 +338,19 @@ test('forceResync emits GAME_COMPLETED when room was abandoned by watchdog durin
           return Promise.resolve({ committed: false, snapshot: null });
         }
         return realTx(updateFn);
+      };
+      const realUpdate = ref.update.bind(ref);
+      ref.update = (patch) => {
+        if (pendingFails > 0 && patch && Object.prototype.hasOwnProperty.call(patch, 'version')) {
+          pendingFails--;
+          const roomData = db._data.rooms.room;
+          roomData.status = 'abandoned';
+          roomData.abandonedBy = 0;
+          roomData.abandonReason = 'missed-turns';
+          roomData.version = (roomData.version ?? 1) + 1;
+          return Promise.reject(Object.assign(new Error('PERMISSION_DENIED'), { code: 'PERMISSION_DENIED' }));
+        }
+        return realUpdate(patch);
       };
     }
     return ref;

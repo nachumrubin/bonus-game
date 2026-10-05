@@ -42,6 +42,10 @@ function detectEmulatorOpts(cfg) {
   return null;
 }
 
+// Project id the local emulators run under (package.json `emu` script:
+// `firebase emulators:start --project demo-bonus-game`).
+export const EMULATOR_PROJECT_ID = 'demo-bonus-game';
+
 const SDK_VERSION = '10.13.0';
 const SDK_URLS = [
   `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-app-compat.js`,
@@ -98,7 +102,18 @@ export function ensureApp() {
     await loadFirebaseSDK();
     const fb = globalThis.firebase;
     if (!fb) throw new Error('firebase SDK did not load');
-    const app = (fb.apps && fb.apps.length > 0) ? fb.apps[0] : fb.initializeApp(_appConfig);
+    // Emulator mode must target the namespace the emulator loads the security
+    // rules into (`<projectId>-default-rtdb` of the emulator project). Keeping
+    // the production databaseURL put every write into the prod-named namespace
+    // on the emulator, where NO rules apply — playtesting ran rules-free.
+    const appConfig = _emulatorOpts
+      ? {
+          ..._appConfig,
+          projectId: EMULATOR_PROJECT_ID,
+          databaseURL: `http://${_emulatorOpts.dbHost}:${_emulatorOpts.dbPort}?ns=${EMULATOR_PROJECT_ID}-default-rtdb`,
+        }
+      : _appConfig;
+    const app = (fb.apps && fb.apps.length > 0) ? fb.apps[0] : fb.initializeApp(appConfig);
     const db = fb.database();
     const auth = fb.auth ? fb.auth() : null;
     if (_emulatorOpts) {

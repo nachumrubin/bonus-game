@@ -357,3 +357,136 @@ test('timer: opponent CANNOT write turnDeadlineMs=0 without flipping status to a
       'rule must reject deadline=0 when status is still playing');
   });
 });
+
+// ── Timeout-claim hardening (October 2026, staging load test GAP_REPORT -4) ──
+// The opponent-timeout branch used to accept ANY content as long as it flipped
+// the turn to the writer and set a future deadline: a stale or malicious
+// client could rewrite scores / racks / history while "claiming" a timeout,
+// even during the active player's mini-game. A legitimate claim only rotates
+// the turn (turnNumber + 1), resets the deadline and missed counts.
+
+async function claimWith(env, mutate, seedOverrides = {}) {
+  await seedWithoutRules(env, async (db) => {
+    await db.ref('rooms/timer-room').set(roomDoc({
+      scores: { 0: 40, 1: 55 },
+      racks: { 0: ['א', 'ב', 'ג'], 1: ['ד', 'ה', 'ו'] },
+      lastMove: { slot: 1, ts: 123456, type: 'pass' },
+      ...seedOverrides,
+    }));
+  });
+  const host = makeUserApp(env, HOST_UID); // slot 0 = the OPPONENT of slot 1
+  const base = await readAs(host, 'rooms/timer-room');
+  const legit = {
+    ...base,
+    version: base.version + 1,
+    currentTurnSlot: 0,
+    turnNumber: base.turnNumber + 1,
+    turnDeadlineMs: Date.now() + 20_000,
+    missedTurns: { 0: 0, 1: 1 },
+  };
+  try {
+    await host.ref('rooms/timer-room').set(mutate(legit));
+    return 'allowed';
+  } catch {
+    return 'denied';
+  }
+}
+
+test('timer hardening: a legitimate timeout claim is still allowed', async () => {
+  await withTestEnv(async (env) => {
+    assert.equal(await claimWith(env, (r) => r), 'allowed');
+  });
+});
+
+test('timer hardening: a timeout claim cannot change scores', async () => {
+  await withTestEnv(async (env) => {
+    assert.equal(await claimWith(env, (r) => ({ ...r, scores: { 0: 400, 1: 55 } })), 'denied');
+  });
+});
+
+test('timer hardening: a timeout claim cannot change racks', async () => {
+  await withTestEnv(async (env) => {
+    assert.equal(await claimWith(env, (r) => ({ ...r, racks: { ...r.racks, 0: ['ש', 'ש', 'ש'] } })), 'denied');
+  });
+});
+
+test('timer hardening: a timeout claim cannot replace the last move', async () => {
+  await withTestEnv(async (env) => {
+    assert.equal(await claimWith(env, (r) => ({ ...r, lastMove: { slot: 0, ts: 999999, type: 'move' } })), 'denied');
+  });
+});
+
+test('timer hardening: a timeout claim must advance turnNumber by exactly one', async () => {
+  await withTestEnv(async (env) => {
+    assert.equal(await claimWith(env, (r) => ({ ...r, turnNumber: r.turnNumber + 2 })), 'denied');
+  });
+});
+
+test('timer hardening: no timeout claim while the active player is in a mini-game', async () => {
+  await withTestEnv(async (env) => {
+    assert.equal(await claimWith(env, (r) => r, { liveBonus: { active: true, slot: 1, kind: 'minigame' } }), 'denied');
+  });
+});
+
+// ── Terminal status is final (October 2026 soak finding) ──────────────────
+// A late end-of-game write from one client (stall-claim 'completed' on a slow
+// network) landed on top of the opponent watchdog's 'abandoned', leaving a
+// contradictory room (completed + abandonedBy) and two different end screens.
+
+async function seedStatus(env, status, extra = {}) {
+  await seedWithoutRules(env, async (db) => {
+    await db.ref('rooms/timer-room').set(roomDoc({ status, ...extra }));
+  });
+  return makeUserApp(env, HOST_UID);
+}
+async function tryUpdate(app, patch) {
+  try { await app.ref('rooms/timer-room').update(patch); return 'allowed'; } catch { return 'denied'; }
+}
+
+test('terminal status: a playing game can still be completed', async () => {
+  await withTestEnv(async (env) => {
+    const host = await seedStatus(env, 'playing');
+    assert.equal(await tryUpdate(host, { status: 'completed' }), 'allowed');
+  });
+});
+
+test('terminal status: a completed game cannot be re-ended as abandoned', async () => {
+  await withTestEnv(async (env) => {
+    const host = await seedStatus(env, 'completed');
+    assert.equal(await tryUpdate(host, { status: 'abandoned', abandonedBy: 1 }), 'denied');
+  });
+});
+
+test('terminal status: an abandoned game cannot be overwritten as completed', async () => {
+  await withTestEnv(async (env) => {
+    const host = await seedStatus(env, 'abandoned', { abandonedBy: 0 });
+    assert.equal(await tryUpdate(host, { status: 'completed' }), 'denied');
+    const room = await readAs(host, 'rooms/timer-room');
+    assert.equal(room.status, 'abandoned');
+  });
+});
+
+test('terminal status: abandonedBy cannot be rewritten after the game ended', async () => {
+  await withTestEnv(async (env) => {
+    const host = await seedStatus(env, 'abandoned', { abandonedBy: 0 });
+    assert.equal(await tryUpdate(host, { abandonedBy: 1 }), 'denied');
+  });
+});
+
+test('terminal status: status + abandonedBy together still work while playing (forfeit)', async () => {
+  await withTestEnv(async (env) => {
+    const host = await seedStatus(env, 'playing');
+    assert.equal(await tryUpdate(host, { status: 'abandoned', abandonedBy: 1 }), 'allowed');
+  });
+});
+
+test('forfeit with a reason: status + abandonedBy + abandonReason in one update is allowed while playing', async () => {
+  // disconnectController / gameFlowController resign with a reason; the
+  // session's setStatus writes { status, abandonedBy, abandonReason } as one
+  // update. If any of those paths had no rule, the WHOLE update is rejected
+  // and the forfeit never reaches the opponent.
+  await withTestEnv(async (env) => {
+    const host = await seedStatus(env, 'playing');
+    assert.equal(await tryUpdate(host, { status: 'abandoned', abandonedBy: 1, abandonReason: 'disconnect' }), 'allowed');
+  });
+});

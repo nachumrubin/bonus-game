@@ -477,6 +477,29 @@ test('renderer reflects INVALID_MOVE_REJECTED reason in #sbar', () => {
   assert.equal(elements.get('sbar').textContent, 'המילה חייבת להיות לפחות 2 אותיות!');
 });
 
+test('live pill lists every formed word and strikes only the invalid one', () => {
+  const { session, controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+  // Turn 1 commits אב on row 4.
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 });
+  controller.placeTile({ r: 4, c: 5, letter: 'ב', val: 3 });
+  controller.confirmMove();
+  // Turn 2 places ג (4,6) + ה (5,6) down column 6: main word גה (not in the
+  // dictionary) + cross word אבג on row 4 (valid).
+  session.state.racks[1] = ['ג', 'ה', 'ט', 'י', 'כ', 'ל', 'מ', 'נ'];
+  bus.emit(EV.SCORE_CHANGED, {});
+  controller.placeTile({ r: 4, c: 6, letter: 'ג', val: 2 });
+  controller.placeTile({ r: 5, c: 6, letter: 'ה', val: 1 });
+  const html = elements.get('sbar').innerHTML;
+  const chips = html.match(/<span class="sbar-wd[^"]*">[^<]*<\/span>/g) ?? [];
+  assert.equal(chips.length, 2, `two word chips, got: ${html}`);
+  assert.ok(chips.some(c => /sbar-w--bad">גה</.test(c)), 'invalid main word is struck through');
+  assert.ok(chips.some(c => /class="sbar-wd">אבג</.test(c)), 'valid cross word is shown plainly');
+  assert.ok(elements.get('sbar').classList.contains('err'));
+  assert.match(elements.get('sbar').getAttribute('aria-label'), /גה — לא במילון/);
+});
+
 test('lock inventory click then board click places a spine lock', () => {
   const { session, controller } = fresh();
   session.state.scores[0] = 10; // afford the 10-pt lock cost

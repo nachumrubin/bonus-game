@@ -2,6 +2,182 @@
 
 ---
 
+## Score pill lists every word; Google sign-in (October 2026)
+
+### The status pill shows every word the move forms (`#sbar`)
+The live preview pill used to show only the main word, while its ✓/✕ and `+N` already covered the cross words too. When a cross word was invalid, players saw a red ✕ next to a word that was fine.
+- `computeLiveWordPreview` now also returns `items: [{ text, valid }]`, one per formed word (main word first). `words`, `score` and `valid` are unchanged.
+- `renderStatus` renders one chip per word (`.sbar-wd`, dot-separated). Only words not in the dictionary get `.sbar-w--bad` (red, struck through). Three or more words add `.sbar--many` (smaller, wraps).
+- `aria-label` names the invalid word(s). The bump key includes every word, so changing only a cross word still pops the pill.
+- Tests: a cross-word case in `liveWordPreview.test.js` and a chip render test in `gameScreen.test.js`.
+
+### Google sign-in (popup)
+Google sign-in had never been built; the docs claiming it existed were wrong.
+- Buttons: `#li-google-btn` (log in), `#su-google-btn` (sign up) and `#ovgu-google-btn` (guest-upgrade overlay). All of them emit `AUTH_INTENT.GOOGLE { scope }`.
+- `main.js` runs `signInWithPopup`, or for an anonymous guest `currentUser.linkWithPopup`, so the guest keeps its uid along with its rooms, invites and friends.
+  - If that Google account already belongs to a player (`auth/credential-already-in-use`), it signs in with `err.credential` instead.
+- First-time Google users get a new `#ov-pick-name` overlay (`partials/screens/pick-name-overlay.html`), pre-filled with their Google first name.
+  - It applies the same 15-character, unique-name claim as email sign-up, through the new shared `provisionNewProfile()`. The `SIGN_UP` handler now uses that helper too.
+  - If the user closes the app before picking a name, the overlay comes back on the next auth-state change (`__spine.resumeGoogleNameStep`).
+- Errors are mapped to Hebrew: popup blocked, in-app browser not supported, provider not enabled, and email already used with a password. Closing the popup shows nothing.
+- No rules change was needed.
+- **Manual step:** enable the Google provider in the Firebase console (`boost-8ef11`) and confirm that `boost-8ef11.web.app` is an authorized domain.
+
+---
+
+## Hardening batch: timeout-claim rule, lean room commits, resync freeze, unreachable-server banner, emulator rules (October 2026)
+
+### Security rule: a timeout claim can only rotate the turn (`firebase.database.rules.json`)
+The opponent-timeout branch of `rooms/$roomId` now also requires:
+- no mini-game in progress (`liveBonus.active !== true`)
+- `scores/0` and `scores/1` unchanged
+- `turnNumber` advanced by exactly 1
+- `lastMove.ts` unchanged
+- all 16 rack cells unchanged
+
+A legitimate watchdog claim meets all of these. Before, the branch accepted any room content once the deadline had passed (GAP_REPORT -4). Board and bag still can't be compared, because RTDB rules can't deep-compare objects.
+
+There are 6 new emulator tests in `tests/emulator/timer-rules.test.mjs`. 5 of them fail against the old rules, and the legitimate claim passes under both. The pinned rule string in `src/testing/firebaseRules.test.js` is updated. **Rules deploy to production via CI on push to main; this change has not been pushed.**
+
+### Security rules: a finished game stays finished; forfeits with a reason now land
+- **Terminal status is final.** `rooms/$roomId/status` can no longer be written once it is `completed`, `abandoned` or `expired`. `abandonedBy` and `abandonReason` can only be written while the room isn't terminal.
+  - Soak finding: on a slow network, a late stall-claim `completed` landed on top of the opponent watchdog's `abandoned`. The room ended up "completed" yet "abandoned by A", and the two players saw different end screens.
+  - The late writer's `setStatus` is now rejected (already swallowed by the session), and its watcher resyncs to the server's result.
+- **`abandonReason` had no rule at all.** `setStatus` writes `{ status, abandonedBy, abandonReason }` in one update, and an unruled path rejects the whole update.
+  - So **every forfeit that carried a reason** (`disconnectController`'s opponent-disconnected forfeit, `gameFlowController` resigns with a reason) never reached the server. The room stayed `playing` for the opponent until watchdog timeouts ended it.
+  - It now has the same participant-and-not-terminal rule as `abandonedBy`.
+- Tests: 6 new emulator tests (`tests/emulator/timer-rules.test.mjs`), plus an updated pinned status rule in `src/testing/firebaseRules.test.js`.
+
+### Lean room commits (`roomService.commitPatch`)
+Session commits now write **only the changed fields**, plus `version: expected + 1`, as one atomic multi-path `update()`. Collections such as `board`, `moveHistory`, `racks` and `bag` are diffed one level deeper. Compare-and-set still holds, because the rooms rule requires `newData.version === data.version + 1`: a write built on a stale base is rejected exactly like a transaction abort.
+
+The base is the session's `lastServerRoom` (watcher snapshot, own committed write, or forced re-read). If that copy doesn't match the expected version, the commit falls back to the full transaction. Previously every commit re-sent and re-downloaded the whole room, including the growing move history: the main bandwidth cost in the staging load test.
+
+The mock DB now mirrors the version check for `rooms/<id>` updates, supports multi-path keys, and shortens arrays when trailing entries are deleted. Tests: `tests/unit/room-commit-patch.test.js`. The ghost-move rollback stubs now also intercept `update`.
+
+### Live side channels throttled (`main.js`)
+- `livePreview` writes at most every 500 ms, with a trailing flush of the latest tiles. Clearing the preview is written immediately.
+- `liveBonus` progress is written when the countdown crosses a 3-second step, or when the score or label changes. It used to be written every second.
+
+### Resync no longer reads our own pending write (`onlineGameSession.forceResync`)
+`forceResync` now waits (up to 8 s) for this session's in-flight commits to settle before re-reading the room. A load-test client had resynced onto its own unconfirmed write, set its cursor to that phantom version, and ignored every real snapshot until it was forfeited.
+
+### "No connection to the game server" banner (`main.js`)
+When a player starts an online setup and `.info/connected` is still false 6 s later, the existing notification banner shows *"אין חיבור לשרת המשחק כרגע. נסו שוב בעוד רגע."* The setups covered are: random match, create room, join by code, and accepting an invite from the popup or the inbox. This happens offline, or when the database refuses the connection, for example past the plan's connection cap. Before, setup spun silently.
+
+### Browser emulator mode enforces the rules (`firebaseClient.js`)
+With `?emu=1` / `APP_CONFIG.useEmulator`, the app now initializes against `demo-bonus-game` with `databaseURL ...?ns=demo-bonus-game-default-rtdb`, the namespace the emulator loads the rules into. Before, it kept the production URL, so emulator playtesting wrote to a namespace where no rules apply.
+
+---
+
+## Fix: a last-second bonus-square move could steal the opponent's turn mid-mini-game (October 2026)
+
+Found by the staging load test (real Firebase, 18 concurrent games).
+
+**What happened.** Player B played onto a bonus square about 24 ms before the deadline. In the same instant, B's own turn timer auto-passed. The engine accepted the pass even though the bonus move's score was still pending, so the turn rotated underneath the deferred move. B's mini-game kept running. When it closed, the finalize committed a **ghost move** (+13 for a move whose turn was gone) and rotated the turn to B **while A was mid-mini-game**.
+
+The rules accepted that write through the opponent-timeout branch: the deadline had passed and the write flipped the turn to the writer. A's own finalize then lost, and A's client froze until A was forfeited.
+
+**Fix:**
+- **Engine** (`gameEngine.js`): while `pendingScoreCommit` is set, turn-ending commands (`CONFIRM_MOVE`, `PASS_TURN`, `EXCHANGE_TILE`, `PLACE_LOCK`, `CLAIM_STALL_END`) are refused with `INVALID_MOVE_REJECTED { reason: 'bonus-pending' }`. Resign and the finalize itself still go through.
+- **Session** (`onlineGameSession.js`): the finalize commit carries `finalizeOfTs`. It only lands while the server still holds that deferred move (same `lastMove.ts`, still `scoringDeferred`, our turn); otherwise it aborts, rolls back and resyncs. `reconcilePendingScore` (called from `forceResync` and the watcher's resync) drops a local pending score the server no longer has, and emits `BONUS_ABORTED`.
+- **Mock** (`mockFirebase`): `transaction` now clones what it stores, as RTDB serializes. Before, the stored room aliased the client's own history objects.
+
+**Still open (rules):** the opponent-timeout branch accepts **any** content as long as it flips the turn and sets a future deadline. A modified client could rewrite scores or the board after the opponent's deadline passes, and the branch ignores `liveBonus.active`. See GAP_REPORT -4.
+
+Tests: an engine test (`turn-ending commands are refused while a deferred bonus score is pending`) and a session test (`finalize after the server moved on does not write a ghost move`).
+
+---
+
+## Staging load test: `npm run load` (October 2026)
+
+A new server-load test runs against the separate staging Firebase project `boost-staging-7f3a` (Spark plan, RTDB in us-central1, same rules as production). It never touches production.
+
+**How it runs.** `scripts/simulator/soak/loadTest.mjs` forks worker processes (`loadWorker.mjs`). Each worker holds a target number of concurrent live games: two full soak agents per game, so two real connections, playing with the real timers and the full human write mix. The coordinator ramps the target (`--start-games`, `--step-games`, `--step-minutes`, `--max-games`). It stops at the first step that breaks an SLO, unless `--no-stop` is given.
+
+**Per step it reports:**
+- commit (transaction) latency p50/p95/p99
+- move-to-opponent-visible latency (both agents share a clock)
+- error rate by Firebase code and path (`net/metrics.mjs`)
+- games that failed to start
+- correctness violations
+- lost commits sent more than 0.5 s before the deadline
+
+**Stop rules (SLOs):** commit p95 above 1 s, visible p95 above 2 s, error rate above 0.5% (with at least 3 failures), setup failures above 20%, or any correctness violation. Step 0 is warm-up and never stops the ramp.
+
+**Server side.** `soak/stagingAdmin.mjs` reads RTDB metrics from Cloud Monitoring using the Firebase CLI's login: database load %, active connections, bytes sent. It also wipes staging data (`npm run load:wipe -- --confirm-staging`). It refuses the production project.
+
+**Report:** `.simulator-data/load/<runId>/report.{md,json}`. Fetch late server metrics with `npm run load:metrics -- --run <runId>`.
+
+## Live soak agents, and the sync bugs they found (October 2026)
+
+### New: `npm run soak`: two bots play real live online games
+
+`scripts/simulator/soak/` and `scripts/simulator/agents/` add independent headless players. They play complete online games against each other on the Firebase emulator, using the production rules. Each agent is a full client:
+- It signs in anonymously with the firebase compat SDK and has its own connection.
+- It meets its opponent through the real invite or room-code flow and does the coin-screen ready handshake.
+- It plays through the same `gameController`, `turnTimerController` (its local auto-pass), `timeoutWatchdog`, `bonusActivationController`, presence and `disconnectController` that `main.js` mounts. It also runs a copy of the liveBonus broadcast.
+
+**Timing.** Turns use the real 20/40/60 s speeds, plus an untimed share. Each turn's commit time is sampled across the whole turn. Per persona, about 7–40% of turns (roughly 15% overall) land in a ±1.5 s band around the deadline: just before it, at it, inside the 1 s watchdog grace, and just after it. This exercises the commit / auto-pass / watchdog-claim race.
+
+**Behaviour.**
+- Words come from `searchBotMove` at persona difficulty.
+- Bots do drag previews (`livePreview` writes) and dictionary lookups.
+- They exchange when the rack is poor (rack-quality heuristic) and use the free swap.
+- They attach locks to moves or place a lock alone.
+- They submit invalid words (reject, then auto-pass).
+- They send context-aware reactions within the 5 s cooldown.
+- They play mini-games, spin the wheel, and dismiss award cards with realistic dwell times.
+- Rarely, they resign or walk away from the clock.
+
+**Oracle (`oracle/gameOracle.mjs`).**
+- `invariants.mjs` runs on every commit.
+- Each move's words are re-validated and its base and total scores recomputed.
+- At quiescence, client A, client B and the server must agree on the board, scores, racks, bag, locks and `bonusSqUsed`.
+- Liveness (no stuck turns).
+- End-of-game consistency.
+- Every bonus the server credits must match an outcome the player actually earned.
+
+**Output.** Failures are deduplicated by signature, with up to 3 repro bundles each. Bundles are readable with the new `node scripts/debug-game.mjs --file <bundle>`, and `--emu <roomId>` reads a room in the local emulator. The run report `.simulator-data/soak/<runId>/summary.md` covers results, failures, a deadline-race histogram and behaviour coverage.
+
+**Supporting changes.**
+- `runSimulator.mjs` pointed at the deleted `data/dictionary.base.txt`; it now uses `data/dictionary.txt`, so `npm run sim` runs again.
+- `randomBot.findIllegalPlacement` was added.
+- `mockFirebase` gained an opt-in `emptyAsMissing` mode that mirrors RTDB, which never stores empty arrays.
+- **Emulator namespace.** The RTDB emulator loads `firebase.database.rules.json` only into `demo-bonus-game-default-rtdb`. The bare `demo-bonus-game` namespace accepts every write, including an unauthenticated write to `/admins`. The agents now use the rules namespace, and `runSoak` refuses to start unless an unauthenticated `/admins` write is denied (`assertRulesEnforced`). The first soak runs were rules-free, and one apparent "stale pass overwrote the opponent's turn" finding turned out to be a write the real rules deny.
+- **Simulated phone networks.** `net/latency.mjs` (`--network mixed|off|wifi|4g|poor`, default `mixed`) delays each agent's writes and incoming updates (FIFO, with occasional spikes), so last-second taps really do arrive late. The oracle treats writes still in flight as "not quiescent".
+- **`live-bonus-gate` invariant.** It no longer flags the bonus owner's own finalize. That commit rotates the turn just before its own liveBonus-clear write lands, and the ordering is the same in `main.js`. Watchdog claims are still flagged.
+
+### Fix: the opponent kept a stale tile bag once the bag ran out (tile duplication)
+
+Firebase drops empty arrays, so when the last tiles are drawn the room's `bag` key disappears. `onlineGameSession`'s watcher resynced with `incoming.bag ?? state.bag`, so the other client kept its old bag. It could then exchange or draw tiles that no longer existed. Soak game g3 ended with 101 tiles in a 99-tile set.
+
+`engineStateFromRoom` had the twin bug. It only copied `room.bag` when it was an array, so any reconnect, forceResync or resume after the bag emptied left the freshly seeded **full** bag (about 80 phantom tiles). Both now treat a missing `bag` as empty.
+
+### Fix: a rejected optimistic write left the version cursor ahead of the server, so the opponent's next move was dropped
+
+Found by the soak agents on a simulated poor network (run3b, game g5). The Firebase SDK raises a client's own transaction to its listeners optimistically, before the server answers. `onlineGameSession`'s watcher took it as the echo of our move and set `lastAppliedVersion = N+1`. When the server then **rejected** the write, the SDK reverted to version N, but the cursor stayed at N+1:
+- the watcher ignores anything at or below the cursor, and
+- `forceResync` only ever moved the cursor forward.
+
+The rejected write in the run was a stale auto-pass after a lost commit race; the rules deny it. The opponent's next real commit also carries version N+1, so it was silently discarded. The player never saw the move, never got the turn, and was timed out by the opponent's watchdog.
+
+The fix:
+- A version going backwards in the watcher now realigns both cursors to the server's version and forces a resync.
+- `forceResync` realigns the cursors in either direction. It skips the overwrite if the watcher applied a newer snapshot while the read was in flight (`watcherApplySeq`).
+
+Regression test: `tests/unit/online-version-cursor-poison.test.js`.
+
+### Fix: spent locks came back after a reconnect
+
+A player who used all their locks has an empty inventory, which Firebase also drops. `normalizeLockInventory` turned the missing slot into a fresh `[3, 3, 5]`, so after a reconnect or resume that player had 3 free locks while the opponent's client showed none.
+
+`normalizeLockInventory` now takes `{ missingMeansEmpty }`. `engineStateFromRoom` passes it; `buildRoomDoc` keeps the default for new rooms.
+
+Tests: `tests/unit/online-empty-bag-sync.test.js` (5) and `tests/unit/soak-agents.test.js` (14).
+
+---
+
 ## The opponent's boost is shown in the status pill (October 2026)
 
 When the opponent (bot or online player) lands on a boost, the status pill above the

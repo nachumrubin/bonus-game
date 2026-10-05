@@ -1,0 +1,17 @@
+<!-- PICK GAME NAME OVERLAY — shown once after a first Google sign-in, before a
+     profile exists. Same 15-char unique-name rule as #sauth-signup. -->
+<div id="ov-pick-name" class="ov hidden">
+  <div class="ovc auth-g">
+    <div class="ovh"></div>
+    <div class="ovic ovic--gold"><svg class="gi"><use href="#gi-user"/></svg></div>
+    <div class="ovt">בחרו שם למשחק</div>
+    <div class="ovd">זה השם שהיריבים יראו. אפשר לשנות אותו מתוך הפרופיל.</div>
+    <div class="sf">
+      <div class="g-fld"><svg class="gi"><use href="#gi-user"/></svg><input id="pn-name" type="text" maxlength="15" placeholder="השם שיופיע במשחק" autocomplete="nickname"></div>
+      <div id="pn-error" class="auth-err" style="margin-top:4px"></div>
+    </div>
+    <div class="ovbtns">
+      <button class="ovb p" id="pn-submit" type="button">יאללה, לשחק</button>
+    </div>
+  </div>
+</div>

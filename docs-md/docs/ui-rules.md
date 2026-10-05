@@ -123,7 +123,7 @@ Critical element IDs referenced by game logic (must not be renamed):
 #sn1, #sn2             — player name labels (desktop)
 #is-sv1, #is-sv2       — player score values (mobile inline)
 #is-sn1, #is-sn2       — player name labels (mobile inline)
-#sbar                  — status pill: errors / game-over / live word-points ("✓ word +N", computeLiveWordPreview); .is-empty hides it (Oct 2026)
+#sbar                  — status pill: errors / game-over / live word-points ("✓ word · cross +N", computeLiveWordPreview). One .sbar-wd chip per formed word; invalid ones get .sbar-w--bad; .sbar--many when there are 3 or more; .is-empty hides it (Oct 2026)
 #bag-count-text        — remaining tile count
 #turn-name             — whose turn label
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
@@ -866,3 +866,12 @@ globalThis.__spine              // spine API (used by legacy code to call spine 
 ```
 
 Do not remove these until the corresponding legacy code is removed.
+
+### Auth: Google sign-in + name picker (Oct 2026)
+```
+#li-google-btn         — log-in screen "המשך עם Google" (AUTH_INTENT.GOOGLE, scope login)
+#su-google-btn         — sign-up screen "הרשמה עם Google" (scope signup)
+#ovgu-google-btn       — guest-upgrade overlay Google button (scope upgrade)
+#ov-pick-name          — first Google sign-in: choose a game name (partials/screens/pick-name-overlay.html)
+#pn-name, #pn-error, #pn-submit — its input (maxlength 15), error line, submit (AUTH_INTENT.PICK_NAME)
+```

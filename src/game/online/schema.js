@@ -110,11 +110,14 @@ export function buildRoomDoc({ roomId, mode, players, settings = {}, engineState
   };
 }
 
-export function normalizeLockInventory(lockInventory) {
-  return {
-    0: Array.isArray(lockInventory?.[0]) ? lockInventory[0].map(Number).filter(n => Number.isInteger(n) && n > 0) : [3, 3, 5],
-    1: Array.isArray(lockInventory?.[1]) ? lockInventory[1].map(Number).filter(n => Number.isInteger(n) && n > 0) : [3, 3, 5],
-  };
+// `missingMeansEmpty`: set when reading a STORED room. Firebase drops empty
+// arrays, so a player who has spent every lock has no inventory key at all —
+// that must read back as [] (no locks left), not as a fresh [3, 3, 5].
+// Building a new room (buildRoomDoc) keeps the default.
+export function normalizeLockInventory(lockInventory, { missingMeansEmpty = false } = {}) {
+  const fallback = missingMeansEmpty ? [] : [3, 3, 5];
+  const slot = (v) => (Array.isArray(v) ? v.map(Number).filter(n => Number.isInteger(n) && n > 0) : [...fallback]);
+  return { 0: slot(lockInventory?.[0]), 1: slot(lockInventory?.[1]) };
 }
 
 export function normalizeBonusAssignment(bonusAssignment) {
