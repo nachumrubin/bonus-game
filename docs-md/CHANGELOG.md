@@ -2,6 +2,49 @@
 
 ---
 
+## Scoreboard: mirrored player cards, score-first hierarchy (October 2026)
+
+The VS header (`#info-strip`) was rebuilt in two steps. The first gave avatars more
+room. The second fixed hierarchy and alignment: before, every element was
+positioned on its own and the timer outweighed the scores.
+
+- **One mirrored template.** Both cards use the same grid: a portrait column, then
+  a fixed name row, the score, and a fixed lock row. `#is-sb2` only flips
+  `direction`. All of it is in the "Scoreboard v2" block at the end of
+  `menu-electric.css`, sized with shared variables (`--av-w`, `--name-h`,
+  `--score-fs`, `--locks-h`).
+- **Names.** A fixed-height header row. The bot difficulty sits under the name, and
+  that line is reserved on both sides, so the scores line up.
+- **Scores are the main information.** One size for every score: 40px, up from
+  28 (34px on ≤390px screens). Digits are slightly tighter, so four digits fit
+  beside the timer without the size changing. Measured with Heebo at 412 and
+  360px. A short-lived variant used 48px with a step-down at four digits; it was
+  dropped in favour of one consistent size.
+- **Avatars at the outer edges.** A fixed portrait box (76px, or 66px at ≤390px)
+  holding full-body art on a tier-tinted pedestal glow. The rarity badge is attached
+  to the portrait's lower edge, tinted by tier (rare blue, epic purple, legendary
+  gold). `renderIdentityTags` sets `data-tier` next to `data-rar`.
+- **Locks.** A fixed bottom row of three evenly spaced slots, each with 🔒 and the
+  lock's duration in turns. It replaces the `🔒 3 · 3 · 5` cluster. `fillLockBox`
+  pads to three with inert `span.lock-slot--empty` placeholders, so spending a lock
+  leaves an empty slot instead of reflowing the row. Still exactly one `button` per
+  lock, so the lock-box e2e tests are unchanged.
+- **Timer.** The ring is about half its old diameter (70 → 36px). There are no
+  dividers, so the strip reads as one continuous bar.
+- **Turn indicator.** Only the active player's avatar lights up: its pedestal and
+  glow take the player's colour. An earlier version also outlined and tinted the
+  whole half; that was rolled back. The 😊 button is hidden on the scoreboard. In
+  online games, tapping your own avatar opens reactions instead
+  (`reactionController`, `.rxn-av-trigger`; off when messages are disabled).
+
+**Why:** the score is the information players look for, the halves should read as
+mirror images, and the inventory needs a permanent, unambiguous home. It also gives
+avatar art (including the planned evolving avatars) a fixed, visible portrait.
+
+Files: `menu-electric.css`, `gameScreen.js` (`data-tier`, lock-slot padding),
+`reactionController.js`, `docs/ui-rules.md`, `docs/asset_inventory.md`. No DOM IDs
+renamed. The card is about 20px taller; the board moves down slightly but still
+fits on 360×740 and 412×820.
 ## Score pill lists every word; Google sign-in (October 2026)
 
 ### The status pill shows every word the move forms (`#sbar`)

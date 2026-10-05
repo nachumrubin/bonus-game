@@ -1,5 +1,23 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Scoreboard: mirrored player cards — October 2026
+
+- [x] Bigger full-body avatar on a pedestal glow, with a tier tint and the badge
+  attached to the portrait.
+- [x] One mirrored grid template. Fixed name row with the difficulty line reserved;
+  40px scores at one size (four digits fit); three fixed lock slots; 36px timer with no
+  dividers; avatar-only turn glow; 😊 hidden (tap your own avatar for reactions).
+- [ ] Check on real devices: narrow Android (360px), iPhone SE, a long display name,
+  and a 4-digit score late in a game.
+- [ ] Older `.is-pcard` / `.is-pcav` / `.is-pclocks` rules earlier in
+  `menu-electric.css` are now overridden by the v2 block. Fold them together once
+  the layout is approved.
+- [ ] Bespoke small lock icon for the slots (`assets/ui/lock_slot.png`, see
+  `docs/asset_inventory.md`). 🔒 is the interim icon.
+- [ ] Pre-existing failures, not caused by this change (they fail on a clean tree too):
+  11 unit tests (home champions card, profile screen, online-lobby empty state) and
+  5 `your-turn-timing.spec.js` e2e tests.
+- [ ] For the evolving avatars later: a level badge on the portrait and per-level art.
 ## Score pill shows all words + Google sign-in — October 2026
 
 - [x] `#sbar` preview lists every formed word, with invalid ones struck through.

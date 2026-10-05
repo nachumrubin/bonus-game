@@ -18,6 +18,11 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
   multi-object sheet with a baked-in background). **Highest priority**: it's the
   only boost still without an icon.
 
+* assets/ui/lock_slot.png — small transparent lock icon for the scoreboard's three
+  lock slots (`#is-locks-1/2`). Interim: 🔒 emoji, the same icon the board's lock
+  badge uses. `assets/ui/lock.png` can't be used at 11px because its background
+  is baked in. Optional: per-duration variants if lock tiers are ever introduced.
+
 * (stats-letter-icon.png was proposed for the favorite-letter card, but that card
   renders the actual Hebrew letter dynamically — no static icon needed.)
 
