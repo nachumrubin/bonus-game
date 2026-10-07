@@ -809,7 +809,7 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#btn-resume-home`: hidden if `!hasSavedGame`
 - `#btn-share-game`: hidden if `!isAuthed`; on first reveal: plays `menuBtnIn` animation
 - `#home-user-label`: shows `displayName`
-- `#home-avatar-ic`: shows `avatar` emoji when provided
+- `#home-avatar-ic`: shows the equipped avatar still; its `.em-avatar-wrap` gets a live 3D canvas (`.b3d-cv`, `.b3d-on` hides the still) while `#sh` shows (homeAvatarLive.js)
 - `#home-elo-label`: hidden if `!isAuthed`. When visible it is its own hit target (`role="button"`, `aria-label="טבלת דירוגים"`): click/Enter/Space emits `CHAMPS_OPEN` and stops propagation so `#btn-profile-home` does not also open. Avatar and `#home-user-label` still open profile/auth. This is the only home-screen entry to `#ov-champs`.
 - `#home-elo-value`: shows `rating` formatted as locale number
 - `#home-elo-bolt`: tier emoji (🪙/🥈/🥇/💎); set by `ratingTierEmoji()` in `menuScreen.js`
