@@ -1,0 +1,27 @@
+<!doctype html><html><body style="margin:0;background:#dfe6e9">
+<script type="importmap">{"imports":{"three":"../../node_modules/three/build/three.module.js","three/addons/":"../../node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { buildRiley } from './riley.js';
+const { root, clips } = buildRiley(THREE, mergeVertices);
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+r.setSize(700, 700); r.shadowMap.enabled = true; document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#dfe6e9');
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a6a, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(1.5, 3, 2); sun.castShadow = true; scene.add(sun);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(1.2, 48), new THREE.MeshStandardMaterial({ color: '#c9d3d6' }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+scene.add(root);
+const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
+window.view = (az, el, dist = 2.6, ty = 0.55, fov = 30) => {
+  cam.fov = fov; cam.updateProjectionMatrix();
+  cam.position.set(Math.sin(az) * Math.cos(el) * dist, ty + Math.sin(el) * dist, Math.cos(az) * Math.cos(el) * dist);
+  cam.lookAt(0, ty, 0); r.render(scene, cam); return r.domElement.toDataURL('image/png');
+};
+window.pose = (clipName, t) => { const m = new THREE.AnimationMixer(root); const a = m.clipAction(clips.find(c => c.name === clipName)); a.play(); m.setTime(t); };
+window.exportGlb = () => new Promise((res, rej) => new GLTFExporter().parse(root, (buf) => {
+  const b = new Uint8Array(buf); let s = ''; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); res(btoa(s)); }, rej, { binary: true, animations: clips }));
+window.ready = true;
+</script></body></html>

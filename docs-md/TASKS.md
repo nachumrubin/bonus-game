@@ -1,5 +1,11 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Riley the dog 3D model — October 2026
+
+- [x] Hand-built three.js model and `riley.glb` from Riley's photos (`tools/riley-3d/`).
+- [ ] Optional: run `meshy_generate.py` on a front photo of Riley for a more realistic mesh.
+- [ ] Decide whether Riley appears in the app (avatar, guide, easter egg). Nothing is wired up yet.
+
 ## Boostie avatar evolution — October 2026
 
 - [x] 7-level system, core-shape ladder and prompt template (`docs-md/AVATAR_EVOLUTION.md`).

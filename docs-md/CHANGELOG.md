@@ -2,6 +2,15 @@
 
 ---
 
+## Riley the dog in 3D (October 2026)
+
+New `tools/riley-3d/`: a hand-built three.js model of Riley the dog, made from four
+photos, exported as `riley.glb` with `idle`, `wag` and `tilt` clips. Built by hand because
+Meshy and TRELLIS (the photo-to-3D route) were not reachable from the cloud session.
+Not used in the app; no game code changed.
+
+---
+
 ## Profile avatar alive (October 2026)
 
 The big avatar on the profile screen (`#sprofile`, the ring around
