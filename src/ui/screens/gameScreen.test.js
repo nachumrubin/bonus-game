@@ -201,25 +201,25 @@ test('render: live avatar by uid replaces the one frozen into the room', async (
   const asked = [];
   mountGameScreen({
     controller, root,
-    resolveAvatar: async (uid) => { asked.push(uid); return uid === 'a' ? '🦁' : null; },
+    resolveAvatar: async (uid) => { asked.push(uid); return uid === 'a' ? 'bubo:4' : null; },
   });
 
   await new Promise(r => setTimeout(r, 0)); // let the lookup settle
   assert.deepEqual(asked.filter(u => u === 'a').length, 1, 'looked the player up by uid');
-  assert.match(avatarOf(elements.get('is-av1')), /🦁/, 'renders the CURRENT avatar, not the crown fallback');
+  assert.match(avatarOf(elements.get('is-av1')), /boosties\/bubo\/l4_bust/, 'renders the CURRENT avatar, not the crown fallback');
 });
 
 test('render: falls back to the room-stored avatar when there is no live one', async () => {
-  const { controller } = freshWithPlayers(playersWithAvatar('🐸'));
+  const { controller } = freshWithPlayers(playersWithAvatar('zapi:3'));
   const { root, elements } = makeGameDom();
   mountGameScreen({ controller, root, resolveAvatar: async () => null });
 
   await new Promise(r => setTimeout(r, 0));
-  assert.match(avatarOf(elements.get('is-av1')), /🐸/, 'stored avatar still renders when no profile avatar exists');
+  assert.match(avatarOf(elements.get('is-av1')), /boosties\/zapi\/l3_bust/, 'stored avatar still renders when no profile avatar exists');
 });
 
 test('render: a failing avatar lookup keeps the stored avatar and is not retried', async () => {
-  const { controller } = freshWithPlayers(playersWithAvatar('🐸'));
+  const { controller } = freshWithPlayers(playersWithAvatar('zapi:3'));
   const { root, elements } = makeGameDom();
   let calls = 0;
   const origWarn = console.warn;
@@ -233,15 +233,15 @@ test('render: a failing avatar lookup keeps the stored avatar and is not retried
     controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 }); // forces re-render
     await new Promise(r => setTimeout(r, 0));
     assert.equal(calls, 1, 'a failed lookup is cached, not re-fetched on every render');
-    assert.match(avatarOf(elements.get('is-av1')), /🐸/, 'stored avatar survives the failure');
+    assert.match(avatarOf(elements.get('is-av1')), /boosties\/zapi\/l3_bust/, 'stored avatar survives the failure');
   } finally { console.warn = origWarn; }
 });
 
 test('render: no resolveAvatar wired → stored avatar renders unchanged', () => {
-  const { controller } = freshWithPlayers(playersWithAvatar('🐸'));
+  const { controller } = freshWithPlayers(playersWithAvatar('zapi:3'));
   const { root, elements } = makeGameDom();
   mountGameScreen({ controller, root });
-  assert.match(avatarOf(elements.get('is-av1')), /🐸/);
+  assert.match(avatarOf(elements.get('is-av1')), /boosties\/zapi\/l3_bust/);
 });
 
 test('mount: removes inline onclick from #btn-play and #btn-recall', () => {

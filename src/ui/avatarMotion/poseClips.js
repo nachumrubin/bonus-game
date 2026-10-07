@@ -179,7 +179,7 @@ export const CLIPS = Object.freeze({
     pose: [[0, 'yaw', -30], [700, 'yaw', 10], [950, 'yaw', 0], [1050, 'sweep', 1], [1450, 'sweep', 8], [1500, 'sweep', 0]],
     scale: [[0, 0.35], [700, 1.12], [1000, 1]],
   },
-  unlockRevealGrand: { // legend_owner: slower, bigger, a full turn, a longer sweep
+  unlockRevealGrand: { // new_boostie: slower, bigger, a full turn, a longer sweep
     duration: 2100,
     pose: [[0, 'yaw', -30], [650, 'yaw', 30], [1150, 'yaw', 0], [1300, 'sweep', 1], [1950, 'sweep', 8], [2100, 'sweep', 0]],
     scale: [[0, 0.25], [900, 1.18], [1300, 1]],

@@ -3552,6 +3552,20 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
 }
 #sg .info-strip .is-pcav.rxn-av-trigger { cursor: pointer; }
 #sg .info-strip .is-pcav.rxn-av-trigger:active .av-img { transform: scale(.95); }
+/* Live 3D Boostie (src/ui/boostie3d): a canvas over the still, same box. The still
+   stays in the layout as the fallback and hides once the 3D has drawn (.b3d-on). */
+#sg .info-strip .is-pcav .b3d-cv {
+  position: absolute; left: 50%; bottom: 4px;
+  width: var(--av-w); height: var(--av-w);
+  transform: translateX(-50%);
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,.55));
+}
+#sg .info-strip .is-pcav.b3d-on .av-img { visibility: hidden; }
+#sg .info-strip .is-pcard.act-cell .is-pcav .b3d-cv {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c) 55%, transparent)) drop-shadow(0 4px 6px rgba(0,0,0,.5));
+}
+#sg .info-strip .is-pcav.rxn-av-trigger:active .b3d-cv { transform: translateX(-50%) scale(.95); }
 
 /* Name row: fixed height, difficulty line reserved on both sides. */
 #sg .info-strip .is-pcname,

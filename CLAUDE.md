@@ -31,6 +31,12 @@ This file is auto-loaded by Claude Code at session start. Read it fully before w
 developer/art-director split, missing-asset workflow, and required
 `docs/asset_inventory.md` updates.
 
+**For new evolving avatars (Boosties):** use the project skill
+`.claude/skills/boostie-evolution/SKILL.md`. Part 1 covers the 2D sheets
+(character block, prompts, review, saving). Part 2 covers the 3D models
+(multi-angle reference sheets, TRELLIS, `Blender designs/boosties/build_boostie.py`
+with its mandatory upgrades).
+
 ---
 
 ## Hard Rules (Non-Negotiable)

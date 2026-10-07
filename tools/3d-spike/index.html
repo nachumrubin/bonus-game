@@ -1,0 +1,1134 @@
+<meta charset="utf-8">
+<title>Scoreboard 3D Test</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap">
+<!--
+  Dev-only feasibility test: can a phone run two live 3D avatars on the game
+  scoreboard? Loads a rigged .glb twice, places each in a ~76px slot of a mock
+  scoreboard, and renders ONLY while a reaction plays (the board has no loops).
+  Models: models/Fox.glb (Khronos sample, CC0 model / CC-BY 4.0 rig) and
+  models/Xbot.glb (three.js example, Mixamo; test use only, never ship).
+  Local: python tools/avatar-motion/nocache_server.py, open /tools/3d-spike/
+-->
+<style>
+  /* Layout: one phone-width column — the mock game screen on top, test controls and results below. */
+  :root {
+    --ink: #0b1230;        /* app background navy */
+    --panel: #131d45;      /* card surface */
+    --raise: #1b2a63;      /* buttons */
+    --line: rgba(0, 210, 255, .28);
+    --cyan: #00d2ff;       /* Boost energy */
+    --gold: #ffc940;       /* score / highlight */
+    --txt: #e8f3ff;
+    --dim: rgba(232, 243, 255, .58);
+    --ok: #3ddc84; --warn: #ffb020; --bad: #ff5a6a;
+    --f-ui: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-num: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--ink); color: var(--txt); }
+  body { font: 14px/1.45 var(--f-ui); padding-inline: 16px; padding-block: 12px 32px; }
+  .wrap { max-width: 440px; margin: 0 auto; display: grid; gap: 14px; }
+  h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: .01em; }
+  h2 { font-size: 12px; margin: 0; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); font-weight: 500; }
+  .sub { color: var(--dim); font-size: 12.5px; margin: 2px 0 0; }
+
+  /* --- mock game screen --- */
+  .game { background: linear-gradient(180deg, #0f1a44, var(--ink)); border: 1px solid var(--line); border-radius: 16px; padding: 10px; display: grid; gap: 10px; }
+  .score { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .card { display: flex; align-items: center; gap: 8px; background: rgba(19, 29, 69, .85); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 6px; min-width: 0; }
+  .card.opp { flex-direction: row-reverse; text-align: right; }
+  .card.is-turn { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 0 14px rgba(0,210,255,.25); }
+  .slot { width: 76px; height: 76px; flex: none; border-radius: 10px; background: radial-gradient(circle at 50% 40%, rgba(0,210,255,.16), rgba(0,0,0,.25) 70%); }
+  .who { min-width: 0; }
+  .who b { display: block; font-size: 13px; }
+  .who span { font: 700 20px/1.1 var(--f-num); color: var(--gold); font-variant-numeric: tabular-nums; }
+  .slot.tap { cursor: pointer; }
+  .slot.tap:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .slot.hint { animation: hint 1.6s ease-in-out infinite; }
+  @keyframes hint { 50% { box-shadow: 0 0 0 3px rgba(0,210,255,.55); } }
+  .cd { display: block; height: 3px; margin-top: 4px; border-radius: 2px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .cd::after { content: ""; display: block; height: 100%; background: var(--cyan); transform-origin: left; transform: scaleX(var(--cd, 1)); }
+  .bubble { position: absolute; top: -6px; z-index: 2; pointer-events: none; font: 700 12px var(--f-ui); color: var(--ink); background: var(--gold); padding: 3px 9px; border-radius: 99px; opacity: 0; transform: translateY(4px) scale(.9); transition: opacity .18s, transform .18s; white-space: nowrap; }
+  .bubble.show { opacity: 1; transform: none; }
+  #bubMe { left: 12px; } #bubOpp { right: 12px; }
+  .picker { display: grid; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+  .picker header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .picker header b { font-size: 13px; }
+  .picker header span { font-size: 11.5px; color: var(--dim); }
+  .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; }
+  .chips button { display: grid; gap: 2px; justify-items: center; padding: 8px 4px; min-height: 54px; }
+  .chips button i { font-style: normal; font-size: 18px; line-height: 1; }
+  .chips button small { font-size: 12px; }
+  .chips button.locked { background: transparent; border-style: dashed; color: var(--dim); }
+  .chips button.locked small::after { content: " · shop"; color: var(--gold); }
+  .toast { margin: 0; font-size: 12px; color: var(--gold); min-height: 1.2em; }
+  @media (prefers-reduced-motion: reduce) { .slot.hint { animation: none; box-shadow: 0 0 0 2px rgba(0,210,255,.55); } }
+  #gl { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .board { display: grid; grid-template-columns: repeat(15, 1fr); gap: 2px; aspect-ratio: 1; max-width: 100%; }
+  .board i { background: rgba(255,255,255,.05); border-radius: 2px; font: 700 9px/1 var(--f-ui); font-style: normal; display: grid; place-items: center; color: #3a2a10; }
+  .board i.t { background: #e9c98f; }
+  .board i.b { background: rgba(0,210,255,.22); }
+  .board.flash i.t { animation: zap .5s ease-out; }
+  @keyframes zap { 40% { background: #bff3ff; box-shadow: 0 0 8px var(--cyan); } }
+
+  /* --- controls --- */
+  .acts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  button, select { font: 500 13.5px var(--f-ui); color: var(--txt); background: var(--raise); border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px; min-height: 42px; }
+  button { cursor: pointer; }
+  button:active { transform: translateY(1px); }
+  button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  button.go { background: var(--cyan); color: var(--ink); border-color: var(--cyan); font-weight: 700; }
+  button.go.on { background: var(--gold); border-color: var(--gold); }
+  .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .settings label { display: grid; gap: 4px; font-size: 12px; color: var(--dim); min-width: 0; }
+  .settings select { width: 100%; padding: 8px; }
+  /* --- reaction sounds --- */
+  .full { display: grid; gap: 8px; }
+  .full summary { cursor: pointer; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); }
+  .full p { margin: 0; font-size: 12px; color: var(--dim); }
+  #glFull { display: block; width: 100%; height: min(70vh, 520px); border-radius: 12px; touch-action: none; cursor: grab;
+            background: radial-gradient(circle at 50% 40%, rgba(0,210,255,.12), rgba(0,0,0,.25) 70%); }
+  #glFull:active { cursor: grabbing; }
+  .snd { display: grid; gap: 8px; }
+  .snd .row { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 12.5px; color: var(--dim); }
+  .snd .row label { display: flex; align-items: center; gap: 6px; }
+  .snd input[type=checkbox] { accent-color: var(--cyan); width: 16px; height: 16px; }
+  .voices { display: grid; gap: 6px; }
+  .voices > div { display: grid; grid-template-columns: 6.5em 1fr; align-items: center; gap: 8px; min-width: 0; }
+  .voices b { font-weight: 500; font-size: 12.5px; }
+  .voices .opts { display: flex; gap: 6px; }
+  .voices .opts button { flex: 1; min-height: 36px; padding: 4px; font: 700 12.5px var(--f-ui); background: transparent; }
+  .voices .opts button[aria-pressed=true] { background: var(--raise); border-color: var(--cyan); color: var(--cyan); }
+  .snd p { margin: 0; font-size: 12px; color: var(--dim); }
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tools button { flex: 1 1 auto; min-height: 36px; padding: 6px 10px; font-size: 12.5px; background: transparent; }
+
+  /* --- results --- */
+  .verdict { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--panel); border: 1px solid rgba(255,255,255,.08); }
+  .pill { font: 700 12px var(--f-ui); padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.08); color: var(--dim); white-space: nowrap; }
+  .pill.ok { background: rgba(61,220,132,.16); color: var(--ok); }
+  .pill.warn { background: rgba(255,176,32,.16); color: var(--warn); }
+  .pill.bad { background: rgba(255,90,106,.16); color: var(--bad); }
+  .verdict p { margin: 0; font-size: 12.5px; color: var(--dim); min-width: 0; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 12.5px; }
+  dt { color: var(--dim); }
+  dd { margin: 0; font-family: var(--f-num); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+  .how { font-size: 12.5px; color: var(--dim); margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .how b { color: var(--txt); font-weight: 500; }
+  #err { color: var(--bad); font-size: 13px; }
+  #copyOut { width: 100%; height: 0; opacity: 0; position: absolute; }
+  @media (prefers-reduced-motion: reduce) { .board.flash i.t { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Scoreboard 3D test</h1>
+    <p class="sub">Two live 3D avatars in the game's scoreboard slots. <b>Tap your Boostie</b> to send a reaction. The buttons below play the game's own moments.</p>
+  </header>
+
+  <section class="game" aria-label="Mock game screen">
+    <div class="score" id="score">
+      <div class="card me" id="cardMe"><div class="slot tap hint" id="slotMe" role="button" tabindex="0" aria-label="Your Boostie: choose a reaction" aria-expanded="false" aria-controls="picker"></div><div class="who"><b>You</b><span id="ptsMe">128</span><i class="cd" id="cdMe" aria-hidden="true"></i></div></div>
+      <div class="card opp" id="cardOpp"><div class="slot" id="slotOpp"></div><div class="who"><b>Rival</b><span id="ptsOpp">112</span></div></div>
+      <canvas id="gl"></canvas>
+      <span class="bubble" id="bubMe" aria-live="polite"></span>
+      <span class="bubble" id="bubOpp" aria-live="polite"></span>
+    </div>
+    <div class="picker" id="picker" hidden>
+      <header><b>Send a reaction</b><span>Your rival sees it on your Boostie</span></header>
+      <div class="chips" id="chips"></div>
+      <p class="toast" id="toast" aria-live="polite"></p>
+    </div>
+    <div class="board" id="board" aria-hidden="true"></div>
+  </section>
+
+  <details class="full" id="fullBox" open>
+    <summary>Full body view</summary>
+    <canvas id="glFull" aria-label="Your Boostie, full body. Drag to turn it."></canvas>
+    <p>Your Boostie, live: it plays the same moves as the scoreboard slot. Drag sideways to turn it. Close this panel for clean performance numbers.</p>
+  </details>
+
+  <p id="err" hidden></p>
+
+  <section class="acts" aria-label="Reactions">
+    <button id="aTurnMe" type="button">Your turn</button>
+    <button id="aTurnOpp" type="button">Rival's turn</button>
+    <button id="aGood" type="button">Good move</button>
+    <button id="aBoost" type="button">Boost (both)</button>
+    <button id="aRival" type="button" style="grid-column: 1 / -1">Rival sends a reaction</button>
+    <button id="aAuto" class="go" type="button" style="grid-column: 1 / -1">Start auto game</button>
+  </section>
+
+  <section class="snd" aria-label="Reaction sounds">
+    <h2>Reaction sounds</h2>
+    <div class="row">
+      <label><input type="checkbox" id="sndOn" checked> Sound on</label>
+      <label><input type="checkbox" id="sndMuteRival"> Mute rival's reactions</label>
+    </div>
+    <div class="voices" id="voices"></div>
+    <p>Tap A, B or C to hear an option. The one you pick plays when that reaction is sent, on both phones. Blinks, glances and the idle "heh" stay silent.</p>
+  </section>
+
+  <section class="verdict" aria-live="polite">
+    <span class="pill" id="vPill">No data yet</span>
+    <p id="vText">Play a few reactions, or start the auto game for a minute.</p>
+  </section>
+
+  <section style="display:grid;gap:8px">
+    <h2>Results</h2>
+    <dl id="stats"></dl>
+  </section>
+
+  <section class="tools">
+    <button id="bCopy" type="button">Copy results</button>
+    <button id="bReset" type="button">Reset numbers</button>
+    <button id="bLose" type="button">Simulate GPU reset</button>
+  </section>
+  <textarea id="copyOut" aria-hidden="true" tabindex="-1"></textarea>
+
+  <section style="display:grid;gap:8px">
+    <h2>Settings</h2>
+    <div class="settings">
+      <label for="sModel">Model
+        <select id="sModel">
+          <option value="zapi2">Zapi level 2 (Meshy, young fox)</option>
+          <option value="bubo1">Bubo level 1 (Meshy, owl chick)</option>
+          <option value="bubo2">Bubo level 2 (Meshy, young owl)</option>
+          <option value="bubo3">Bubo level 3 (Meshy, spectacles)</option>
+          <option value="bubo4">Bubo level 4 (Meshy, satchel)</option>
+          <option value="bubo5">Bubo level 5 (Meshy, cape and book)</option>
+          <option value="bubo6">Bubo level 6 (Meshy, scholar's robe)</option>
+          <option value="bubo7">Bubo level 7 (Meshy, circlet and halo)</option>
+          <option value="zapi1">Zapi level 1 (Meshy, kit)</option>
+          <option value="zapi7">Zapi level 7 (Meshy, hooded)</option>
+          <option value="zapi6">Zapi level 6 (Meshy, two tails)</option>
+          <option value="zapi5">Zapi level 5 (Meshy)</option>
+          <option value="zapi4">Zapi level 4 (Meshy)</option>
+          <option value="zapi3">Zapi level 3 (Meshy)</option>
+          <option value="zapi4t">Zapi level 4 (TRELLIS)</option>
+          <option value="zapi3t">Zapi level 3 (TRELLIS)</option>
+          <option value="zapi">Zapi level 3 (BlenderKit)</option>
+          <option value="fox">Fox (light, 576 tris)</option>
+          <option value="xbot">Robot (heavy, ~49k tris)</option>
+        </select>
+      </label>
+      <label for="sMode">When to draw
+        <select id="sMode">
+          <option value="demand">Only during reactions</option>
+          <option value="always">Always animating</option>
+        </select>
+      </label>
+      <label for="sRes">Resolution
+        <select id="sRes">
+          <option value="2">Sharp (up to 2×)</option>
+          <option value="1">Low (1×)</option>
+          <option value="max">Native (full)</option>
+        </select>
+      </label>
+      <label for="sLook">Look
+        <select id="sLook">
+          <option value="lively">Lively (eyes, springs, rim light)</option>
+          <option value="plain">Plain (as before)</option>
+        </select>
+      </label>
+      <label for="sShade">Shading
+        <select id="sShade">
+          <option value="std">Realistic</option>
+          <option value="toon">Toon</option>
+        </select>
+      </label>
+      <label for="sFrame">Framing
+        <select id="sFrame">
+          <option value="bust">Bust</option>
+          <option value="full">Full body</option>
+        </select>
+      </label>
+      <label for="sWarm">Shader warm-up
+        <select id="sWarm">
+          <option value="on">On</option>
+          <option value="off">Off</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:8px">
+    <h2>How to run it</h2>
+    <ol class="how">
+      <li>Open this on your <b>cheapest Android</b> and on an <b>iPhone</b>.</li>
+      <li>Tap <b>Start auto game</b> and leave it running for 2–3 minutes. Watch the avatars for stutter.</li>
+      <li>Switch <b>When to draw</b> to <b>Always animating</b> for the worst case, and the model to <b>Robot</b>, about 5× heavier than a Boostie needs to be.</li>
+      <li>Put the app in the background for a few seconds and come back: both avatars should still be there.</li>
+      <li>Tap <b>Copy results</b> after each run and paste them into the chat.</li>
+    </ol>
+  </section>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const $ = (id) => document.getElementById(id);
+
+// Which clip stands in for which game moment, per test model, and how long it plays.
+const MODELS = {
+  zapi2: { file: 'models/zapi_l2.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  bubo1: { file: 'models/bubo_l1.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.95, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  bubo2: { file: 'models/bubo_l2.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.95, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  bubo3: { file: 'models/bubo_l3.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.95, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  bubo4: { file: 'models/bubo_l4.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.95, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  bubo5: { file: 'models/bubo_l5.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.95, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  bubo6: { file: 'models/bubo_l6.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.95, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  bubo7: { file: 'models/bubo_l7.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.95, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  zapi1: { file: 'models/zapi_l1.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  zapi7: { file: 'models/zapi_l7.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  zapi6: { file: 'models/zapi_l6.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  zapi5: { file: 'models/zapi_l5.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  zapi4: { file: 'models/zapi_l4.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  zapi4t: { file: 'models/zapi_l4_trellis.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  zapi3: { file: 'models/zapi_l3.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature', laugh: 'laugh', wow: 'wow', stare: 'stare', yawn: 'yawn', wink: 'wink' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8, laugh: 1.25, wow: 1.45, stare: 1.55, yawn: 1.95, wink: 0.75 } },
+  zapi3t: { file: 'models/zapi_l3_trellis.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost', signature: 'signature' }, dur: { turn: 1.2, good: 1.0, boost: 0.8, signature: 0.8 } },
+  zapi: { file: 'models/zapi_l3_blenderkit.glb', rest: 'idle', clips: { turn: 'turn', good: 'good', boost: 'boost' }, dur: { turn: 1.2, good: 1.0, boost: 0.8 } },
+  fox:  { file: 'models/Fox.glb',  rest: 'Survey', clips: { turn: 'Survey', good: 'Walk', boost: 'Run' }, dur: { turn: 1.4, good: 1.0, boost: 0.7 } },
+  xbot: { file: 'models/Xbot.glb', rest: 'idle',   clips: { turn: 'idle',   good: 'walk', boost: 'run' }, dur: { turn: 1.6, good: 1.2, boost: 0.8 } },
+};
+const FADE = 0.18;
+const YAW = 0.6;          // 3/4 view; the rival gets the true mirror (-YAW), not a CSS flip
+const FOV = 30;
+
+// ---------- mock board ----------
+(() => {
+  const word = { 97: 'ב', 98: 'ו', 99: 'ס', 100: 'ט', 52: 'מ', 67: 'י', 82: 'ל', 112: 'ה', 127: 'ר' };
+  const html = [];
+  for (let i = 0; i < 225; i++) html.push(word[i] ? `<i class="t">${word[i]}</i>` : `<i class="${i % 37 === 0 ? 'b' : ''}"></i>`);
+  $('board').innerHTML = html.join('');
+})();
+
+// ---------- state ----------
+const settings = { model: 'bubo7', look: 'lively', mode: 'demand', res: '2', shade: 'std', frame: 'bust', warm: 'on' };
+let renderer = null, avatars = [], raf = 0, lastT = 0, skipDelta = true;
+let stats, sessionStart = performance.now();
+const loader = new GLTFLoader();
+const bufCache = {};
+
+function freshStats() {
+  return { frames: [], cpu: [], busyMs: 0, runStart: performance.now(), reactions: 0, lost: 0, restored: 0,
+           load: stats?.load || {}, start: performance.now() };
+}
+stats = freshStats();
+
+// ---------- renderer ----------
+function pixelRatio() {
+  const d = window.devicePixelRatio || 1;
+  return settings.res === 'max' ? d : Math.min(d, Number(settings.res));
+}
+
+function makeRenderer() {
+  const canvas = $('gl');
+  const r = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'low-power' });
+  r.autoClear = false;
+  r.info.autoReset = false;
+  r.outputColorSpace = THREE.SRGBColorSpace;
+  canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); stats.lost++; renderStats(); });
+  canvas.addEventListener('webglcontextrestored', () => { stats.restored++; drawOnce(); renderStats(); });
+  return r;
+}
+
+function sizeRenderer() {
+  const box = $('score').getBoundingClientRect();
+  renderer.setPixelRatio(pixelRatio());
+  renderer.setSize(box.width, box.height, false);
+}
+
+function gpuName() {
+  const gl = renderer.getContext();
+  const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+}
+
+// ---------- avatars ----------
+function parseGlb(buf) {
+  // GLTFLoader decodes embedded textures with fetch(blob:) when createImageBitmap exists.
+  // Sandboxed hosts can block that fetch (the model then renders untextured, i.e. white),
+  // so hide createImageBitmap while the parser is built: it falls back to <img> loading.
+  return new Promise((res, rej) => {
+    const cib = window.createImageBitmap;
+    window.createImageBitmap = undefined;
+    try { loader.parse(buf.slice(0), '', res, rej); } finally { window.createImageBitmap = cib; }
+  });
+}
+
+function toonGradient() {
+  const d = new Uint8Array([90, 170, 255]);
+  const t = new THREE.DataTexture(d, 3, 1, THREE.RedFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter;
+  t.needsUpdate = true;
+  return t;
+}
+const GRADIENT = toonGradient();
+
+function frameCamera(av) {
+  const { root, camera, box } = av;
+  const size = box.getSize(new THREE.Vector3());
+  const biped = size.y > size.z;
+  const local = settings.frame === 'full'
+    ? box.getCenter(new THREE.Vector3())
+    : new THREE.Vector3(0, box.min.y + size.y * (biped ? 0.72 : 0.68), biped ? 0 : box.max.z * 0.5);
+  const target = local.applyAxisAngle(new THREE.Vector3(0, 1, 0), root.rotation.y);
+  const span = settings.frame === 'full' ? Math.max(size.y, size.z * 0.8) * 1.15 : size.y * (biped ? 0.62 : 0.8);
+  const dist = span / (2 * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+  camera.near = dist / 50; camera.far = dist * 20;
+  camera.position.copy(target).add(new THREE.Vector3(0, span * 0.12, dist));
+  camera.lookAt(target);
+  camera.updateProjectionMatrix();
+}
+
+function applyShading(av) {
+  av.root.traverse((o) => {
+    if (!o.isMesh) return;
+    if (!o.userData.std) {
+      o.userData.std = o.material;
+      const m = o.material;
+      o.userData.toon = new THREE.MeshToonMaterial({ color: m.color, map: m.map || null, gradientMap: GRADIENT });
+    }
+    o.material = settings.shade === 'toon' ? o.userData.toon : o.userData.std;
+  });
+}
+
+// ---------- liveliness: real eyes, springs, rim light, glow ----------
+// The build script gives Boosties eyeball + lid bones (eye.L/R, lid.L/R) and glow anchors
+// (core_glow, tail_glow), and a jaw. Here they come alive: blinks, glances, mood lids,
+// springy ears and tail, and now and then a little "heh" of the mouth. On the board this only wakes the 3D for a blink or an ear flick now and then.
+const LID = { smug: 0, turn: 14, boost: 26, good: -24, laugh: -26, wow: 30, stare: 36, yawn: -58, closed: -82 };   // degrees from the build's rest lid
+const LIDLOW = { good: 5, laugh: 9 };   // lower lid (almond eyes only), positive raises it: a smiling squint
+const SPRING = { ear: { k: 170, c: 13, couple: 26 }, tail: { k: 80, c: 8, couple: 12 } };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const V = () => new THREE.Vector3();
+const X_AXIS = new THREE.Vector3(1, 0, 0), Y_AXIS = new THREE.Vector3(0, 1, 0);
+const _v = V(), _v2 = V(), _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion();
+
+function quatToVec(q, out) {          // rotation as axis * angle
+  const qq = q.w < 0 ? _q2.set(-q.x, -q.y, -q.z, -q.w) : q;
+  const s = Math.sqrt(Math.max(0, 1 - qq.w * qq.w));
+  if (s < 1e-6) return out.set(0, 0, 0);
+  return out.set(qq.x / s, qq.y / s, qq.z / s).multiplyScalar(2 * Math.acos(Math.min(1, qq.w)));
+}
+function vecToQuat(v, out) {
+  const a = v.length();
+  return a < 1e-9 ? out.identity() : out.setFromAxisAngle(_v2.copy(v).divideScalar(a), a);
+}
+
+const GLOW_TEX = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.35, 'rgba(255,255,255,0.45)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+
+function makeLights(mirror) {
+  const s = mirror ? -1 : 1;
+  const plain = new THREE.Group();
+  plain.add(new THREE.HemisphereLight(0xdff6ff, 0x1a2350, 1.6));
+  const k0 = new THREE.DirectionalLight(0xffffff, 2.2); k0.position.set(2 * s, 3, 4); plain.add(k0);
+  const lively = new THREE.Group();
+  lively.add(new THREE.HemisphereLight(0xd6ecff, 0x3a2418, 0.7));
+  const key = new THREE.DirectionalLight(0xfff0dc, 2.6); key.position.set(1.6 * s, 2.6, 3); lively.add(key);
+  const rim = new THREE.DirectionalLight(0xcfeaff, 3.4); rim.position.set(-2.2 * s, 2.2, -3); lively.add(rim);
+  const fill = new THREE.DirectionalLight(0xffcfa8, 0.6); fill.position.set(-2 * s, 0.4, 2); lively.add(fill);
+  return { plain, lively };
+}
+
+function setupLive(av) {
+  const get = (n) => av.root.getObjectByName(n);
+  const now = performance.now() / 1000;
+  const L = { eyes: [], lids: [], lows: [], low: 0, springs: [], sprites: [], head: get('head'), mood: 'smug', moodUntil: 0, lid: 0,
+              blinkAt: now + rnd(1.2, 3.5), blinkT: -1, double: false, flickAt: now + rnd(5, 10),
+              sigAt: now + rnd(6, 12), hasSig: av.clipNames.includes('signature'),
+              jaw: null, hehAt: now + rnd(8, 15), hehT: -1, winkT: -1,
+              gaze: V(), gazeTarget: V(), glanceUntil: 0, headPrev: new THREE.Quaternion(), headInit: false };
+  for (const s of ['L', 'R']) {
+    const eye = get('eye' + s), lid = get('lid' + s);
+    if (eye) L.eyes.push({ bone: eye, rest: eye.quaternion.clone() });
+    if (lid) L.lids.push({ bone: lid, rest: lid.quaternion.clone(), side: s });
+    const low = get('lidlow' + s);
+    if (low) L.lows.push({ bone: low, rest: low.quaternion.clone() });
+  }
+  const jaw = get('jaw');
+  if (jaw) L.jaw = { bone: jaw, anim: jaw.quaternion.clone() };
+  for (const [n, kind] of [['earL', 'ear'], ['earR', 'ear'], ['tail1', 'tail'], ['tail2', 'tail'], ['tail3', 'tail'], ['tail4', 'tail'],
+                          ['tailb1', 'tail'], ['tailb2', 'tail'], ['tailb3', 'tail'], ['tailb4', 'tail']]) {
+    const b = get(n);
+    if (b) L.springs.push({ bone: b, kind, anim: b.quaternion.clone(), sim: b.quaternion.clone(), w: V() });
+  }
+  const h = av.box.getSize(V()).y;
+  for (const [n, size, opacity] of [['core_glow', 0.15, 0.4], ['tail_glow', 0.45, 0.2], ['tail_glow_b', 0.45, 0.2]]) {
+    const node = get(n);
+    if (!node) continue;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0x38d6ff, transparent: true, opacity,
+      blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false }));
+    sp.scale.setScalar(h * size);
+    sp.renderOrder = 10;
+    node.add(sp);
+    L.sprites.push(sp);
+  }
+  av.rim = { rimStrength: { value: 0.4 }, rimColor: { value: new THREE.Color(1.0, 0.86, 0.72) } };
+  av.root.traverse((o) => {
+    if (!o.isMesh || /eye/i.test(o.name)) return;
+    for (const m of [].concat(o.material)) {
+      if (!m.isMeshStandardMaterial) continue;
+      m.onBeforeCompile = (sh) => {
+        sh.uniforms.rimStrength = av.rim.rimStrength;
+        sh.uniforms.rimColor = av.rim.rimColor;
+        sh.fragmentShader = 'uniform float rimStrength;\nuniform vec3 rimColor;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>',
+          '#include <emissivemap_fragment>\n{ float rimF = 1.0 - saturate(dot(normalize(normal), normalize(vViewPosition)));\n' +
+          '  totalEmissiveRadiance += rimColor * pow(rimF, 2.5) * rimStrength; }');
+      };
+      m.customProgramCacheKey = () => 'boostie-rim';
+      m.needsUpdate = true;
+    }
+  });
+  av.live = L;
+}
+
+function lively() { return settings.look === 'lively'; }
+window.__boostie = { avatars: () => avatars, startLoop: () => startLoop() };   // dev hook for tests
+
+function applyLook() {
+  if (!renderer) return;
+  renderer.toneMapping = lively() ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  for (const av of avatars) {
+    av.lights.lively.visible = lively();
+    av.lights.plain.visible = !lively();
+    av.rim.rimStrength.value = lively() ? 0.4 : 0;
+    const L = av.live;
+    L.sprites.forEach((s) => { s.visible = lively(); });
+    if (!lively()) {
+      L.eyes.forEach((e) => e.bone.quaternion.copy(e.rest));
+      L.lids.forEach((l) => l.bone.quaternion.copy(l.rest));
+      L.lows.forEach((l) => l.bone.quaternion.copy(l.rest));
+      L.springs.forEach((sp) => { sp.bone.quaternion.copy(sp.anim); sp.sim.copy(sp.anim); sp.w.set(0, 0, 0); });
+      if (L.jaw) { L.jaw.bone.quaternion.copy(L.jaw.anim); L.hehT = -1; }
+    }
+  }
+  scheduleWake();
+}
+
+// before the mixer runs: give spring bones back their animated pose, so bones the clip
+// doesn't touch keep a stable target instead of the spring's own output
+function preLive(av) {
+  if (!lively()) return;
+  av.live.springs.forEach((sp) => sp.bone.quaternion.copy(sp.anim));
+  if (av.live.jaw) av.live.jaw.bone.quaternion.copy(av.live.jaw.anim);
+}
+
+// after the mixer: springs, lids, gaze. Returns true while something is still moving.
+function updateLive(av, dt, now) {
+  if (!lively()) return false;
+  const L = av.live;
+  let busy = false;
+  // head motion this frame, used to kick the ears and tail (follow-through)
+  const hv = V();
+  if (L.head) {
+    L.head.getWorldQuaternion(_q);
+    if (L.headInit) quatToVec(_q2.copy(L.headPrev).invert().premultiply(_q), hv);
+    L.headPrev.copy(_q);
+    L.headInit = true;
+  }
+  if (L.hasSig && now >= L.sigAt) {                     // the character's own movement, even on the board
+    if (!av.current) play(av, 'signature');
+    L.sigAt = now + rnd(10, 20);
+  }
+  if (!L.hasSig && now >= L.flickAt && L.springs.length) {   // generic ear flick for models without one
+    const ears = L.springs.filter((s) => s.kind === 'ear');
+    const ear = ears[Math.floor(Math.random() * ears.length)] || L.springs[0];
+    ear.w.add(V().set(rnd(-1, 1), rnd(-0.3, 0.3), rnd(-1, 1)).normalize().multiplyScalar(rnd(5, 8)));
+    L.flickAt = now + rnd(7, 14);
+  }
+  // jaw: whatever the clip says, plus a quiet two-beat "heh" between reactions (negative X opens)
+  if (L.jaw) {
+    L.jaw.anim.copy(L.jaw.bone.quaternion);
+    if (L.hehT < 0 && now >= L.hehAt) {
+      if (!av.current) L.hehT = 0;
+      L.hehAt = now + rnd(12, 24);
+    }
+    let open = 0;
+    if (L.hehT >= 0) {
+      const d = 0.55, t = (L.hehT += dt) / d;
+      open = 9 * Math.pow(Math.sin(Math.PI * 2 * Math.min(1, t)), 2) * (t < 0.5 ? 1 : 0.6);
+      busy = true;
+      if (t >= 1) L.hehT = -1;
+    }
+    L.jaw.bone.quaternion.copy(L.jaw.anim).multiply(_q.setFromAxisAngle(X_AXIS, -THREE.MathUtils.degToRad(open)));
+  }
+  const e = V();
+  for (const sp of L.springs) {
+    const c = SPRING[sp.kind];
+    sp.anim.copy(sp.bone.quaternion);
+    quatToVec(_q.copy(sp.anim).multiply(_q2.copy(sp.sim).invert()), e);
+    sp.w.addScaledVector(e, c.k * dt).addScaledVector(sp.w, -c.c * dt).addScaledVector(hv, -c.couple);
+    sp.sim.premultiply(vecToQuat(_v.copy(sp.w).multiplyScalar(dt), _q)).normalize();
+    sp.bone.quaternion.copy(sp.sim);
+    if (sp.w.length() > 0.03 || e.length() > 0.004) busy = true;
+  }
+  // lids: mood + blink
+  const mood = now < L.moodUntil ? L.mood : 'smug';
+  const target = LID[mood], lowTarget = LIDLOW[mood] || 0;
+  L.lid += (target - L.lid) * Math.min(1, dt * 10);
+  L.low += (lowTarget - L.low) * Math.min(1, dt * 10);
+  if (Math.abs(target - L.lid) > 0.3 || Math.abs(lowTarget - L.low) > 0.1) busy = true;
+  if (L.blinkT < 0 && now >= L.blinkAt) L.blinkT = 0;
+  let blink = 0;
+  if (L.blinkT >= 0) {
+    const d = 0.17;
+    L.blinkT += dt;
+    blink = Math.sin(Math.PI * Math.min(1, L.blinkT / d));
+    busy = true;
+    if (L.blinkT >= d) {
+      L.blinkT = -1;
+      if (L.double) { L.double = false; L.blinkAt = now + 0.1; }
+      else {
+        L.blinkAt = now + rnd(2.2, 5.5);
+        L.double = Math.random() < 0.2;
+        if (now > L.glanceUntil) L.gazeTarget.set(rnd(-0.8, 0.8), rnd(-0.4, 0.5), 0);   // eyes shift with a blink
+      }
+    }
+  }
+  let wink = 0;                                          // one lid shuts, holds, opens
+  if (L.winkT >= 0) {
+    const t = (L.winkT += dt) / 0.6;
+    wink = t < 0.25 ? t / 0.25 : t < 0.7 ? 1 : Math.max(0, 1 - (t - 0.7) / 0.3);
+    busy = true;
+    if (t >= 1) L.winkT = -1;
+  }
+  const lidDeg = L.lid + (LID.closed - L.lid) * blink;
+  for (const l of L.lids) {
+    const d = l.side === 'L' ? lidDeg + (LID.closed - lidDeg) * wink : lidDeg + 8 * wink;   // the other eye squints a touch
+    l.bone.quaternion.copy(l.rest).multiply(_q.setFromAxisAngle(X_AXIS, THREE.MathUtils.degToRad(d)));
+  }
+  for (const l of L.lows) l.bone.quaternion.copy(l.rest).multiply(_q.setFromAxisAngle(X_AXIS, THREE.MathUtils.degToRad(L.low * (1 - blink))));
+  // gaze: look at the viewer (the camera), offset by the current glance
+  if (L.glanceUntil && now > L.glanceUntil) { L.glanceUntil = 0; L.gazeTarget.set(0, 0, 0); }
+  L.gaze.lerp(L.gazeTarget, Math.min(1, dt * 22));
+  if (L.gaze.distanceTo(L.gazeTarget) > 0.01) busy = true;
+  if (L.eyes.length) {
+    av.root.updateMatrixWorld(true);
+    const cam = av.camera, S = av.box.getSize(_v).y * 0.35;
+    const tgt = V().copy(cam.position)
+      .addScaledVector(V().setFromMatrixColumn(cam.matrixWorld, 0), L.gaze.x * S)
+      .addScaledVector(V().setFromMatrixColumn(cam.matrixWorld, 1), L.gaze.y * S);
+    for (const eye of L.eyes) {
+      const wp = eye.bone.getWorldPosition(V());
+      const dir = tgt.clone().sub(wp).normalize().applyQuaternion(eye.bone.parent.getWorldQuaternion(_q).invert());
+      const fwd = Y_AXIS.clone().applyQuaternion(eye.rest);
+      const q = new THREE.Quaternion().setFromUnitVectors(fwd, dir);
+      const ang = 2 * Math.acos(Math.min(1, Math.abs(q.w)));
+      if (ang > 0.4) q.slerp(new THREE.Quaternion(), 1 - 0.4 / ang);
+      eye.bone.quaternion.copy(q).multiply(eye.rest);
+    }
+  }
+  return busy;
+}
+
+function nextWake(av) {
+  const L = av.live;
+  return L.blinkT >= 0 || L.hehT >= 0 || L.winkT >= 0 ? 0 : Math.min(L.blinkAt, L.hasSig ? L.sigAt : L.flickAt, L.jaw ? L.hehAt : Infinity);
+}
+let wakeTimer = 0;
+function scheduleWake() {
+  clearTimeout(wakeTimer);
+  if (raf || settings.mode === 'always' || !lively() || !avatars.length) return;
+  const at = Math.min(...avatars.map(nextWake));
+  wakeTimer = setTimeout(startLoop, Math.max(0, at * 1000 - performance.now()));
+}
+
+async function buildAvatar(buf, def, slotId, mirror) {
+  const gltf = await parseGlb(buf);
+  const scene = new THREE.Scene();
+  const lights = makeLights(mirror);
+  scene.add(lights.plain, lights.lively);
+  const root = gltf.scene;
+  scene.add(root);
+  const box = new THREE.Box3().setFromObject(root);   // measured facing forward, before the 3/4 turn
+  root.rotation.y = mirror ? -YAW : YAW;
+  const mixer = new THREE.AnimationMixer(root);
+  const byName = (n) => gltf.animations.find((c) => c.name === n) || gltf.animations[0];
+  const rest = mixer.clipAction(byName(def.rest));
+  rest.play();
+  rest.paused = settings.mode !== 'always';
+  mixer.update(0);
+  const av = { scene, root, box, mixer, rest, byName, def, lights, clipNames: gltf.animations.map((c) => c.name), slot: $(slotId), camera: new THREE.PerspectiveCamera(FOV, 1, 0.1, 1000),
+               current: null, endAt: 0, idleAt: 0 };
+  frameCamera(av);
+  applyShading(av);
+  setupLive(av);
+  return av;
+}
+
+async function loadModel() {
+  const def = MODELS[settings.model];
+  stopLoop();
+  avatars.forEach((a) => a.scene.traverse((o) => { o.geometry?.dispose(); }));
+  avatars = [];
+  try {
+    const t0 = performance.now();
+    if (!bufCache[def.file]) {
+      // The repo serves the .glb; the hosted copy can't serve .glb, so it ships base64 text beside it.
+      let resp = await fetch(def.file).catch(() => null);
+      if (resp?.ok && !(resp.headers.get('content-type') || '').includes('html')) {
+        bufCache[def.file] = await resp.arrayBuffer();
+      } else {
+        resp = await fetch(def.file + '.b64.txt');
+        if (!resp.ok) throw new Error(`Could not download ${def.file} (HTTP ${resp.status}).`);
+        bufCache[def.file] = Uint8Array.from(atob((await resp.text()).trim()), (c) => c.charCodeAt(0)).buffer;
+      }
+    }
+    const buf = bufCache[def.file];
+    const t1 = performance.now();
+    avatars = [await buildAvatar(buf, def, 'slotMe', false), await buildAvatar(buf, def, 'slotOpp', true)];
+    const t2 = performance.now();
+    applyLook();
+    avatars.forEach((a) => { a.camera.updateMatrixWorld(); updateLive(a, 0, performance.now() / 1000); });
+    if (settings.warm === 'on') avatars.forEach((a) => renderer.compile(a.scene, a.camera));
+    const t3 = performance.now();
+    drawOnce();
+    const t4 = performance.now();
+    stats.load = { model: settings.model, kb: Math.round(buf.byteLength / 1024), download: t1 - t0, parse: t2 - t1,
+                   warm: settings.warm === 'on' ? t3 - t2 : null, firstDraw: t4 - t3 };
+    if (settings.mode === 'always') startLoop();
+  } catch (e) {
+    showError(e.message || String(e));
+  }
+  renderStats();
+}
+
+// ---------- reactions ----------
+function play(av, kind) {
+  if (!av || !av.def.clips[kind] || !av.byName(av.def.clips[kind])) return;   // older models lack laugh/wow
+  const action = av.mixer.clipAction(av.byName(av.def.clips[kind]));
+  if (av.current && av.current !== action) av.current.fadeOut(FADE);
+  if (av.rest !== action) av.rest.fadeOut(FADE);
+  action.reset().setEffectiveWeight(1).fadeIn(FADE).play();
+  const now = performance.now() / 1000;
+  av.current = action;
+  av.endAt = now + av.def.dur[kind];
+  av.idleAt = av.endAt + FADE + 0.05;
+  if (av.live && kind in LID) {        // the face reacts too: mood lids, eyes on the viewer
+    av.live.mood = kind;
+    av.live.moodUntil = av.endAt;
+    av.live.gazeTarget.set(0, 0, 0);
+    av.live.glanceUntil = 0;
+    if (kind !== 'boost') {            // the other avatar glances over at the one reacting
+      for (const o of avatars) {
+        if (o === av || !o.live) continue;
+        o.live.gazeTarget.set(o === avatars[0] ? 2.4 : -2.4, 0.1, 0);
+        o.live.glanceUntil = now + 0.9;
+      }
+    }
+  }
+  stats.reactions++;
+  startLoop();
+}
+
+function settle(av, now) {
+  if (!av.current || now < av.endAt) return;
+  if (av.current === av.rest) {           // the reaction was the rest clip itself: just freeze it
+    av.rest.paused = settings.mode !== 'always';
+    av.current = null;
+    av.idleAt = now;
+    return;
+  }
+  av.current.fadeOut(FADE);
+  av.rest.reset();
+  av.rest.paused = settings.mode !== 'always';
+  av.rest.fadeIn(FADE).play();
+  av.current = null;
+}
+
+function setTurn(me) {
+  $('cardMe').classList.toggle('is-turn', me);
+  $('cardOpp').classList.toggle('is-turn', !me);
+}
+function bump(id, n) { const el = $(id); el.textContent = Number(el.textContent) + n; }
+
+const act = {
+  turnMe() { setTurn(true); play(avatars[0], 'turn'); },
+  turnOpp() { setTurn(false); play(avatars[1], 'turn'); },
+  good() { const me = $('cardMe').classList.contains('is-turn'); bump(me ? 'ptsMe' : 'ptsOpp', 14); play(avatars[me ? 0 : 1], 'good'); },
+  boost() {
+    const b = $('board'); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
+    play(avatars[0], 'boost'); play(avatars[1], 'boost');
+  },
+  rival() { react(1, FREE[Math.floor(Math.random() * FREE.length)]); },
+};
+
+// ---------- player reactions (D-boostie-reactions) ----------
+// Expressive reactions are the player's choice, never automatic: tap your own Boostie,
+// pick one, and both players see it. Free ones are always there; the rest are sold in
+// the shop (here they only preview on your own avatar). A cooldown keeps them meaningful.
+const REACTIONS = {
+  laugh: { label: 'Laugh', icon: '😂', free: true },
+  wow:   { label: 'Wow', icon: '😮', free: true },
+  stare: { label: 'Wide eyes', icon: '👀', free: true },
+  wink:  { label: 'Wink', icon: '😉' },
+  yawn:  { label: 'Yawn', icon: '🥱' },
+};
+// Sound: a short voice clip per reaction, played on both phones (sender and receiver).
+// Three CC0 options each, to choose by ear; sources are listed in tools/3d-spike/sfx/SOURCES.md.
+const VOICE = { laugh: 'a', wow: 'a', stare: 'a', wink: 'a', yawn: 'b' };
+try { Object.assign(VOICE, JSON.parse(localStorage.getItem('spikeVoices') || '{}')); } catch (e) {}
+const SND = { on: true, muteRival: false };
+const sndCache = {};
+function voice(kind, opt = VOICE[kind], vol = 0.8) {
+  const src = `sfx/${kind}_${opt}.mp3`;
+  const base = sndCache[src] || (sndCache[src] = Object.assign(new Audio(src), { preload: 'auto' }));
+  const a = base.cloneNode();
+  a.volume = vol;
+  a.play().catch(() => {});
+}
+function buildVoices() {
+  $('voices').innerHTML = '';
+  for (const [kind, r] of Object.entries(REACTIONS)) {
+    const row = document.createElement('div');
+    row.innerHTML = `<b>${r.icon} ${r.label}</b><div class="opts" role="group" aria-label="${r.label} sound"></div>`;
+    for (const opt of ['a', 'b', 'c']) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = opt.toUpperCase();
+      b.setAttribute('aria-pressed', String(VOICE[kind] === opt));
+      b.setAttribute('aria-label', `${r.label} sound option ${opt.toUpperCase()}`);
+      b.onclick = () => {
+        VOICE[kind] = opt;
+        try { localStorage.setItem('spikeVoices', JSON.stringify(VOICE)); } catch (e) {}
+        row.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        voice(kind, opt);
+      };
+      row.querySelector('.opts').append(b);
+    }
+    $('voices').append(row);
+  }
+}
+const FREE = Object.keys(REACTIONS).filter((k) => REACTIONS[k].free);
+const COOLDOWN = 4;
+let cooldownUntil = 0, toastTimer = 0;
+
+function react(who, kind) {
+  const av = avatars[who];
+  if (!av) return false;
+  if (kind === 'wink') {
+    // the baked clip moves the head and jaw; the live lids (which override baked lid keys)
+    // shut the left eye in step with it
+    if (!av.live) return false;
+    if (av.def.clips.wink && av.byName(av.def.clips.wink)) play(av, 'wink');
+    av.live.winkT = 0;
+    startLoop();
+  } else if (!av.def.clips[kind] || !av.byName(av.def.clips[kind])) {
+    return false;
+  } else {
+    play(av, kind);
+  }
+  if (SND.on && !(who && SND.muteRival)) voice(kind);
+  const bub = $(who ? 'bubOpp' : 'bubMe');
+  bub.textContent = REACTIONS[kind].icon + ' ' + REACTIONS[kind].label;
+  bub.classList.add('show');
+  clearTimeout(bub._t);
+  bub._t = setTimeout(() => bub.classList.remove('show'), 1600);
+  return true;
+}
+
+function toast(msg) {
+  $('toast').textContent = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('toast').textContent = ''; }, 2600);
+}
+
+function setPicker(open) {
+  $('picker').hidden = !open;
+  $('slotMe').setAttribute('aria-expanded', String(open));
+  $('slotMe').classList.remove('hint');
+}
+
+function buildChips() {
+  $('chips').innerHTML = '';
+  for (const [kind, r] of Object.entries(REACTIONS)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = r.free ? '' : 'locked';
+    b.innerHTML = `<i aria-hidden="true">${r.icon}</i><small>${r.label}</small>`;
+    b.setAttribute('aria-label', r.free ? `Send ${r.label}` : `Preview ${r.label}, sold in the shop`);
+    b.onclick = () => {
+      const now = performance.now() / 1000;
+      if (!r.free) {                       // shop item: preview on your own avatar only
+        react(0, kind);
+        toast(`Preview only. Unlock ${r.label} in the shop to send it.`);
+        return;
+      }
+      if (now < cooldownUntil) { toast(`Ready again in ${Math.ceil(cooldownUntil - now)} s`); return; }
+      if (!react(0, kind)) { toast(`This model has no ${r.label} yet.`); return; }
+      cooldownUntil = now + COOLDOWN;
+      runCooldown();
+      setPicker(false);
+    };
+    $('chips').append(b);
+  }
+}
+
+function runCooldown() {
+  const bar = $('cdMe');
+  const tick = () => {
+    const left = Math.max(0, cooldownUntil - performance.now() / 1000);
+    bar.style.setProperty('--cd', String(1 - left / COOLDOWN));
+    if (left > 0) requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+buildChips();
+buildVoices();
+$('sndOn').onchange = (e) => { SND.on = e.target.checked; };
+$('sndMuteRival').onchange = (e) => { SND.muteRival = e.target.checked; };
+$('slotMe').onclick = () => setPicker($('picker').hidden);
+$('slotMe').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPicker($('picker').hidden); } };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setPicker(false); });
+
+let auto = 0, autoMe = true;
+function autoStep() {
+  const r = Math.random();
+  if (r < 0.45) { autoMe = !autoMe; autoMe ? act.turnMe() : act.turnOpp(); }
+  else if (r < 0.72) act.good();
+  else if (r < 0.8) act.rival();
+  else act.boost();
+}
+function toggleAuto() {
+  const btn = $('aAuto');
+  if (auto) { clearInterval(auto); auto = 0; btn.textContent = 'Start auto game'; btn.classList.remove('on'); return; }
+  autoStep();
+  auto = setInterval(autoStep, 2600);
+  btn.textContent = 'Stop auto game'; btn.classList.add('on');
+}
+
+// ---------- render loop (runs only while something moves) ----------
+function draw() {
+  const canvasBox = $('gl').getBoundingClientRect();
+  renderer.info.reset();
+  renderer.setScissorTest(false);
+  renderer.setClearColor(0x000000, 0);
+  renderer.clear();
+  renderer.setScissorTest(true);
+  for (const av of avatars) {
+    const s = av.slot.getBoundingClientRect();
+    const x = s.left - canvasBox.left, y = canvasBox.bottom - s.bottom;
+    renderer.setViewport(x, y, s.width, s.height);
+    renderer.setScissor(x, y, s.width, s.height);
+    av.camera.aspect = s.width / s.height;
+    av.camera.updateProjectionMatrix();
+    renderer.render(av.scene, av.camera);
+  }
+  drawFull();
+}
+function drawOnce() { if (renderer && avatars.length) draw(); }
+
+// ---------- full body view: a second renderer on the "You" avatar's scene ----------
+let fullR = null, orbit = 0;
+const fullCam = new THREE.PerspectiveCamera(FOV, 1, 0.1, 1000);
+function fullOn() { return fullR && $('fullBox').open && avatars.length; }
+function sizeFull() {
+  if (!fullR) return;
+  const c = $('glFull');
+  fullR.setPixelRatio(pixelRatio());
+  fullR.setSize(c.clientWidth, c.clientHeight, false);
+}
+function drawFull() {
+  if (!fullOn()) return;
+  const av = avatars[0], c = $('glFull');
+  if (!c.clientWidth || !c.clientHeight) return;
+  const size = av.box.getSize(new THREE.Vector3());
+  const target = av.box.getCenter(new THREE.Vector3()).applyAxisAngle(new THREE.Vector3(0, 1, 0), av.root.rotation.y);
+  fullCam.aspect = c.clientWidth / c.clientHeight;
+  const tanV = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+  const dist = Math.max(size.y / (2 * tanV), Math.max(size.x, size.z) / (2 * tanV * fullCam.aspect)) * 1.2;
+  const a = av.root.rotation.y + orbit;   // orbit 0 = straight on
+  fullCam.near = dist / 50; fullCam.far = dist * 20;
+  fullCam.position.set(target.x + Math.sin(a) * dist, target.y + size.y * 0.08, target.z + Math.cos(a) * dist);
+  fullCam.lookAt(target);
+  fullCam.updateProjectionMatrix();
+  fullR.setClearColor(0x000000, 0);
+  fullR.clear();
+  fullR.render(av.scene, fullCam);
+}
+function makeFull() {
+  const c = $('glFull');
+  fullR = new THREE.WebGLRenderer({ canvas: c, alpha: true, antialias: true, powerPreference: 'low-power' });
+  fullR.outputColorSpace = THREE.SRGBColorSpace;
+  sizeFull();
+  let dragX = null;
+  c.addEventListener('pointerdown', (e) => { dragX = e.clientX; c.setPointerCapture(e.pointerId); });
+  c.addEventListener('pointermove', (e) => {
+    if (dragX === null) return;
+    orbit -= (e.clientX - dragX) * 0.012; dragX = e.clientX;
+    if (!raf) drawFull();
+  });
+  const end = () => { dragX = null; };
+  c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+  new ResizeObserver(() => { sizeFull(); drawFull(); }).observe(c);
+  $('fullBox').addEventListener('toggle', () => { sizeFull(); drawFull(); });
+}
+
+function startLoop() {
+  if (raf) return;
+  lastT = performance.now();
+  skipDelta = true;
+  stats.runStart = lastT;
+  raf = requestAnimationFrame(tick);
+}
+function stopLoop() {
+  if (!raf) return;
+  cancelAnimationFrame(raf);
+  raf = 0;
+  stats.busyMs += performance.now() - stats.runStart;
+}
+
+function tick(t) {
+  const dtMs = t - lastT;
+  if (!skipDelta && !document.hidden) stats.frames.push(dtMs);
+  skipDelta = false;
+  lastT = t;
+  const now = t / 1000;
+  const dt = Math.min(dtMs / 1000, 0.05);
+  let liveBusy = false;
+  for (const av of avatars) {
+    preLive(av);
+    av.mixer.update(Math.min(dtMs / 1000, 0.1));
+    settle(av, now);
+    if (updateLive(av, dt, now)) liveBusy = true;
+  }
+  const c0 = performance.now();
+  draw();
+  stats.cpu.push(performance.now() - c0);
+  if (stats.frames.length > 6000) { stats.frames.splice(0, 1000); stats.cpu.splice(0, 1000); }
+  const busy = settings.mode === 'always' || liveBusy || avatars.some((a) => now < a.idleAt);
+  if (busy) raf = requestAnimationFrame(tick);
+  else { raf = 0; stats.busyMs += performance.now() - stats.runStart; scheduleWake(); }
+}
+
+// ---------- results ----------
+const pct = (arr, p) => { if (!arr.length) return 0; const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+const ms = (v) => v == null ? '—' : `${v.toFixed(1)} ms`;
+
+function summary() {
+  const f = stats.frames;
+  const elapsed = performance.now() - stats.start;
+  const busy = stats.busyMs + (raf ? performance.now() - stats.runStart : 0);
+  const mem = performance.memory ? `${Math.round(performance.memory.usedJSHeapSize / 1048576)} MB` : 'n/a (not Chrome)';
+  const L = stats.load;
+  return [
+    ['Device GPU', renderer ? gpuName() : '—'],
+    ['Screen', `${window.innerWidth}×${window.innerHeight} @${(window.devicePixelRatio || 1).toFixed(2)}x, drawing at ${pixelRatio().toFixed(2)}x`],
+    ['Settings', `${settings.model}, ${settings.mode}, ${settings.shade}, ${settings.frame}, warm-up ${settings.warm}`],
+    ['Model size', L.kb ? `${L.kb} KB` : '—'],
+    ['Load: download / parse', L.kb ? `${L.download.toFixed(0)} / ${L.parse.toFixed(0)} ms` : '—'],
+    ['Load: warm-up / first draw', L.kb ? `${L.warm == null ? '—' : L.warm.toFixed(0) + ' ms'} / ${L.firstDraw.toFixed(0)} ms` : '—'],
+    ['Reactions played', String(stats.reactions)],
+    ['Frames measured', String(f.length)],
+    ['Average FPS while moving', f.length ? (1000 / avg(f)).toFixed(1) : '—'],
+    ['Frame time median', ms(f.length ? pct(f, 0.5) : null)],
+    ['Frame time 95th pct', ms(f.length ? pct(f, 0.95) : null)],
+    ['Worst frame', ms(f.length ? Math.max(...f) : null)],
+    ['Dropped frames (>34 ms)', f.length ? `${f.filter((x) => x > 34).length} (${(100 * f.filter((x) => x > 34).length / f.length).toFixed(1)}%)` : '—'],
+    ['Draw cost per frame (CPU)', ms(stats.cpu.length ? avg(stats.cpu) : null)],
+    ['3D active time', `${(busy / 1000).toFixed(0)} s of ${(elapsed / 1000).toFixed(0)} s (${elapsed ? (100 * busy / elapsed).toFixed(0) : 0}%)`],
+    ['Triangles / draw calls', renderer ? `${renderer.info.render.triangles} / ${renderer.info.render.calls}` : '—'],
+    ['JS memory', mem],
+    ['GPU resets (lost / back)', `${stats.lost} / ${stats.restored}`],
+  ];
+}
+
+function verdict() {
+  const f = stats.frames;
+  if (f.length < 90) return ['', 'No data yet', 'Play a few reactions, or start the auto game for a minute.'];
+  const p95 = pct(f, 0.95);
+  if (p95 <= 20) return ['ok', 'Smooth', `95% of frames under ${p95.toFixed(0)} ms. This phone handles two 3D avatars.`];
+  if (p95 <= 34) return ['warn', 'OK at 30 fps', `95th-percentile frame ${p95.toFixed(0)} ms. Playable; try Low resolution or Toon to see what helps.`];
+  return ['bad', 'Struggling', `95th-percentile frame ${p95.toFixed(0)} ms. This phone needs the still-image fallback.`];
+}
+
+function renderStats() {
+  $('stats').innerHTML = summary().map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  const [cls, label, text] = verdict();
+  $('vPill').className = `pill ${cls}`;
+  $('vPill').textContent = label;
+  $('vText').textContent = text;
+}
+setInterval(renderStats, 1000);
+
+function showError(msg) { $('err').hidden = false; $('err').textContent = msg; }
+
+// ---------- wiring ----------
+$('aTurnMe').onclick = act.turnMe;
+$('aTurnOpp').onclick = act.turnOpp;
+$('aGood').onclick = act.good;
+$('aBoost').onclick = act.boost;
+$('aRival').onclick = act.rival;
+$('aAuto').onclick = toggleAuto;
+$('bReset').onclick = () => { const wasRunning = !!raf; stopLoop(); stats = freshStats(); if (wasRunning) startLoop(); renderStats(); };
+$('bLose').onclick = () => {
+  const ext = renderer?.getContext().getExtension('WEBGL_lose_context');
+  if (!ext) { showError('This browser cannot simulate a GPU reset.'); return; }
+  ext.loseContext();
+  setTimeout(() => ext.restoreContext(), 800);
+};
+$('bCopy').onclick = () => {
+  const [, label] = verdict();
+  const text = `Scoreboard 3D test — ${label}\n` + summary().map(([k, v]) => `${k}: ${v}`).join('\n') + `\nBrowser: ${navigator.userAgent}`;
+  const done = () => { $('bCopy').textContent = 'Copied'; setTimeout(() => { $('bCopy').textContent = 'Copy results'; }, 1500); };
+  const fallback = () => { const ta = $('copyOut'); ta.value = text; ta.select(); try { document.execCommand('copy'); done(); } catch { showError('Copy failed. Select the Results list and copy it by hand.'); } };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch { fallback(); }
+};
+
+for (const key of Object.keys(settings)) {
+  const el = $('s' + key[0].toUpperCase() + key.slice(1));
+  el.onchange = () => {
+    settings[key] = el.value;
+    if (key === 'model' || key === 'warm') { stats = freshStats(); stats.load = {}; loadModel(); return; }
+    if (key === 'look') applyLook();
+    if (key === 'res') { sizeRenderer(); sizeFull(); }
+    if (key === 'shade') avatars.forEach(applyShading);
+    if (key === 'frame') avatars.forEach(frameCamera);
+    if (key === 'mode') {
+      avatars.forEach((a) => { a.rest.paused = el.value !== 'always'; });
+      if (el.value === 'always') startLoop();
+    }
+    stats = freshStats();
+    drawOnce();
+    renderStats();
+  };
+}
+
+new ResizeObserver(() => { if (!renderer) return; sizeRenderer(); drawOnce(); }).observe($('score'));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { skipDelta = true; drawOnce(); } });
+
+try {
+  renderer = makeRenderer();
+  sizeRenderer();
+  try { makeFull(); } catch (e) { $('fullBox').hidden = true; }
+  loadModel();
+} catch (e) {
+  showError('3D is not available in this browser (WebGL 2 failed to start). The app would show the still image here.');
+}
+renderStats();
+</script>

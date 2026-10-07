@@ -2,6 +2,575 @@
 
 ---
 
+## Phase 5: Boostie reactions (October 2026)
+
+Players can now make their own Boostie react in an online game, and preview reactions in
+the store.
+
+- **Tray:** the reaction panel has a new top row, "הבוסטי שלך", with the free set (laugh,
+  wow, stare) plus the reactions bought in the store (wink, yawn). The emoji and message
+  reactions are unchanged.
+- **In game:** sending one plays the clip on your live 3D Boostie. The other player sees
+  it on your Boostie too, even if they don't own that reaction, and their own Boostie
+  glances over. Where a Boostie is a still (reduced motion, no WebGL 2, slow phone), the
+  reaction's emoji shows in the usual bubble instead. Mute and "disable messages" apply.
+- **Transport:** a new reaction type `boostie` on the existing `liveReaction` path and
+  `EV.REACTION_RECEIVED`. No new `EV.*`, no rules change. Reactions are only ever
+  player-chosen (D-boostie-reactions).
+- **Store:** tapping a reaction tile, owned or not, plays it on your equipped Boostie in
+  a preview stage above the list (`#store-rx-preview`). It shows the still and the emoji
+  when 3D can't run, and closes itself (freeing its WebGL) after 8 s idle or when you
+  leave the store.
+- `scoreboardLive` now takes any number of slots (the store preview uses one) and has
+  `ready(slot)`. `BOOSTIE_REACTIONS` entries carry their `emoji`; `REACTION_ICON` is
+  derived from it.
+- Tests: `src/reactions/reactions.test.js` (config, tray row, play-or-bubble on send and
+  receive), a one-slot `scoreboardLive` test and a store preview test.
+
+---
+
+## Phase 4: Boostie level-up evolution (October 2026)
+
+When the equipped Boostie levels up, the player now sees the old form turn into the new one.
+
+- **Scene** (`src/ui/boostie3d/evolutionScene.js`, three.js, imported only when needed):
+  the old form plays `boost` while its rim light builds and light gathers at the chest core,
+  both forms go white, they swap at the peak, and the new form pops in (0.9 → 1.0), plays
+  `signature` then `good` while the camera orbits ~30°. About 4 s, skippable ("דלג").
+  The white flash is a `flash` uniform added to the shared rim shader (`boostieLive.js`).
+- **Overlay + queue** (`evolutionScreen.js`, `#ov-evolution`, built in JS): the card says
+  "<name> reached level N", the level name (§1) and what the new form adds. The profile
+  watcher feeds it every snapshot; levels already celebrated on this device are kept in
+  localStorage (`boost.boostieSeen.<uid>`), so a level reached on another device plays
+  here once and a reload never replays. It waits while a game is still being played and
+  ~2.4 s after the game-over screen opens. A chain unlock (a new Boostie arriving with a
+  level-7 level-up) follows with an "equip now / later" card.
+- **Stills instead** without WebGL 2, on a load error or after 5 s of loading: a cross-fade
+  between the full-body stills with a CSS flash. Reduced motion: the plain cross-fade.
+- **Store:** owned Boosties above level 1 get "▶ התפתחות" to replay their latest evolution.
+- **Sound:** `evolve.charge` (neon hum), `evolve.burst` (electric zap) and `evolve.reveal`
+  (jingle), all reusing existing CC0 files.
+- Tests: `src/ui/boostie3d/evolution.test.js` (9).
+
+## Phase 3: live 3D Boosties on the scoreboard (October 2026)
+
+The two scoreboard portraits (`#is-av1/2`) now show the Boostie (or bot) model live, with
+the still image kept underneath as the fallback.
+
+- **three.js 0.169 vendored** in `src/vendor/three/` (module build, GLTFLoader,
+  BufferGeometryUtils, meshopt decoder; MIT). No bundler, works offline.
+- **`src/ui/boostie3d/`**, ported from the `tools/3d-spike` page:
+  - `scoreboardLive.js`: the game screen's handle. Has no three.js; it imports
+    `scoreboard3d.js` only when a slot has a model, WebGL 2 exists and reduced motion is off.
+  - `scoreboard3d.js`: one off-screen WebGL renderer drawn into a small canvas per slot;
+    renders only while something moves, pauses when the tab is hidden, survives context
+    loss. The avatars face each other. Busts are framed like `render_stills.py`.
+  - `boostieLive.js`: eyes and gaze, blinks, lid moods, ear/tail springs, jaw "heh",
+    signature every 10–20 s, glow and rim light. The wink clip's lids pass through. Bot
+    screen faces snap to one face at a time (fixes faces sinking behind the glass mid-clip).
+  - `boostieLoader.js` and `boostieSources.js` (pure: model paths incl. bots, clip names,
+    the slow-frame check).
+- **Game directives:** `yourTurnCue` → `turn`, `avatarGoodMove` → `good`,
+  `avatarBoostReact` → `boost`. The 3D clip is tried first; the pose-atlas / CSS cue runs
+  when the slot isn't live. Expressive reactions are not auto-triggered (Phase 5).
+- **Stills instead:** reduced motion, no WebGL 2, a failed load, or a slow phone (median of
+  30 frames > 45 ms). Everything is disposed when the game screen unmounts.
+- **`sw.js`:** `assets/boosties/*.glb` use the persistent asset cache (stale-while-revalidate).
+- Tests: `src/ui/boostie3d/boostie3d.test.js` (10).
+
+## Boosties: old avatars removed, two starters, wink clip, new achievements (October 2026)
+
+Prep before Phase 3. The app isn't in production, so there's no migration script.
+
+- **Old avatars removed.** `assets/avatars_v2` (90 files) and its pose atlases, the old
+  store catalog (`avatarStore.js`, `purchaseAvatar`, `ownedAvatars`), `SPINE_AVATARS`,
+  `avatarEmoji`, `findAvatar`, `scripts/migrate-default-avatar.mjs`, and the three
+  purchase achievements with their art. The coin icon moved to `coinIcon.js`.
+- **Bubo is free.** Both Boosties are starters (`STARTER_BOOSTIES`); every profile owns
+  them. The target roster is 4–5 starters plus 2–3 locked ones (`CHAIN_ORDER` is empty
+  until a locked Boostie exists).
+- **Wink clip** in all 14 models (`build_boostie.py` `CLIPS`/`LID_CLIPS`, patched into the
+  built models with `add_wink.py`): the left lid shuts and opens, the head tilts, the jaw
+  grins. The wink reaction plays it.
+- **New achievements** replace `first_buy` / `collector` / `legend_owner`: מתפתח (a
+  Boostie at level 4), בוסטי חדש (unlock a non-starter Boostie), מלך התגובות (own 2 paid
+  reactions). Read through `achievementSnapshot(profile)`. Emoji icons until art exists.
+- **Fix:** an emoji achievement icon no longer shows Zapi in the unlock banner
+  (`avatarIconSrc` returns null for non-id values).
+- **Bot 3D models.** Easy (green), Medium (yellow) and Hard (red) robots: turnarounds
+  (prompts 13–15) → Meshy → `build_boostie.py` (`bot_*` entries, antenna-wobble signature,
+  arms on the shared wing tracks). Models in `assets/boosties/bot_*.glb`, stills in
+  `assets/avatars/bots/`, shown for bot opponents and on the setup screen's level cards
+  (`botStillSrc`, `botModelSrc`). `stills_to_webp.py` handles single-level bot keys.
+- **Bot screen faces.** `build_boostie.py` `screen` upgrade: a glass layer over the painted
+  face and eight glowing expressions (rest, blink, happy, laugh, wow, stare, yawn, wink) on
+  `face.<expr>` bones, switched inside the baked clips (`SCREEN_CLIPS`), so the bots blink
+  and react with no app code. Each bot keeps its rest personality (happy / focused /
+  angry). `screen_check.py` renders every face for review.
+
+## Boosties replace the old avatars: XP, stills everywhere, new store (October 2026)
+
+Phases 0–2 of the Boostie plan (D-boostie-xp). Live 3D on the scoreboard, the level-up
+scene, Boostie reactions in game and buying coins come next.
+
+- **Assets.** `scripts/optimize-boosties.mjs` shrinks the 14 models (meshopt +
+  quantization) from ~3 MB to ~1 MB into `assets/boosties/<id>_l<N>.glb`.
+  `Blender designs/boosties/render_stills.py` + `stills_to_webp.py` render a bust (256 px)
+  and a full body (512 px) still per level into `assets/avatars/boosties/<id>/`.
+- **XP and levels** (`src/game/account/boostieXp.js`, `boostieCatalog.js`). Every finished
+  game gives 10 XP, a win +10, a draw +5; abandoned games give nothing. XP is not the
+  rating. Levels at 0/50/150/350/700/1200/2000 XP (level 4 in about a week at 3 games a
+  day). XP goes to the equipped Boostie; reaching level 7 unlocks the next Boostie.
+- **Profile.** New `boosties: { <id>: { xp, level } }` and `ownedReactions`.
+  `profileService.bumpBoostieXp` (transaction) runs after online and bot games and emits
+  `PROFILE_EVT.BOOSTIE_LEVEL_UP`. `DEFAULT_AVATAR` is now `'zapi'`. Firebase rules: XP only
+  grows, by at most one win per write; level stays 1–7 and only grows.
+- **Every screen shows Boosties.** `avatarIconSrc` / `avatarMarkup` / `setAvatarEl` render
+  the Boostie still. Avatar values that travel on rooms, invites, the queue and friend
+  lists are now `'<id>:<level>'` (`profileAvatarValue`), so opponents see your level. Old
+  avatar ids (store portraits, emojis) show Zapi at level 1. Bots keep their art for now.
+- **Store rebuilt.** A Boosties section (level, XP bar, next form, equip; locked ones
+  show the level-7 unlock and a coin price) and a reactions section (laugh, wow, wide eyes
+  free; wink and yawn 250 coins). Purchases use `profileService.purchaseStoreItem`, with
+  prices from the catalog.
+
+## Scoreboard 3D test: full body view (October 2026)
+
+- `tools/3d-spike/index.html`: new "Full body view" panel under the mock game. It shows the
+  "You" Boostie whole and live (same idle, reactions and moments as its scoreboard slot),
+  drawn by a second renderer on the same scene. Drag sideways to turn it. Closing the panel
+  stops drawing it, so the performance numbers measure only the scoreboard again.
+
+## Bubo level 7 in 3D: all seven Bubo levels built (October 2026)
+
+- Turnaround from `12_bubo_l7_turnaround.md`, accepted: gold circlet with an amber gem,
+  ornate green robe with gold clasps and tassels, satchel, star burst with a halo ring.
+- Meshy with the front, side and back views, clean first try. New `bubo_l7` LEVELS entry
+  (as `bubo_l6`). The eyes sit cleanly behind the spectacles, the circlet gem doesn't glow,
+  and the wings flap outward.
+- Test page: "Bubo level 7 (Meshy, circlet and halo)" is the default model. All 14 levels
+  (Zapi and Bubo) are now on the page.
+
+## Bubo level 6 in 3D (October 2026)
+
+- Turnaround from `11_bubo_l6_turnaround.md`, accepted: long green robe with a high collar
+  and gold embroidery, larger energy tufts, star burst with energy lines across the breast.
+- Meshy with the front, side and back views, clean first try. New `bubo_l6` LEVELS entry
+  (as `bubo_l5`, heavier lids). The robe panels flare out with the wing flap.
+- Test page: "Bubo level 6 (Meshy, scholar's robe)" is the default model.
+
+## Bubo level 5 in 3D (October 2026)
+
+- Turnaround from `10_bubo_l5_turnaround.md`, accepted: cyan energy tufts, short green cape
+  with gold clasps, strap and green book, star-burst core.
+- Meshy with the front, side and back views, clean first try. New `bubo_l5` LEVELS entry
+  (as `bubo_l4`; the wing bones start just under the cape's edge so a flap doesn't drag
+  the cape).
+- Test page: "Bubo level 5 (Meshy, cape and book)" is the default model.
+
+## Bubo level 4 in 3D (October 2026)
+
+- Turnaround from `09_bubo_l4_turnaround.md`, accepted (tufts no more cyan than L3; the strap
+  and the orb ring carry the change from the chest up).
+- Meshy with the front, side and back views, clean first try: spectacle rings, strap and
+  satchel (scroll, quill) all came through, and the satchel stays put when the wing flaps.
+  New `bubo_l4` LEVELS entry (as `bubo_l3`).
+- Test page: "Bubo level 4 (Meshy, satchel)" is the default model.
+
+## Bubo level 3 in 3D (October 2026)
+
+- Turnaround from the updated `08_bubo_l3_turnaround.md`, accepted: round gold spectacles,
+  cyan over the top of the tufts, an eye-sized orb.
+- Meshy with the front, side and back views, clean first try; the spectacles came out as
+  real rings just in front of the eyes. New `bubo_l3` LEVELS entry (owl rig as `bubo_l2`,
+  `eyes.reach` 1.25 so the cream socket cover stays off the rings, half-lidded `open` 25).
+- Test page: "Bubo level 3 (Meshy, spectacles)" is the default model.
+
+## Bubo level 2 in 3D (October 2026)
+
+- Turnaround from `07_bubo_l2_turnaround.md`, accepted (tuft tips bolder than "faint", so
+  `08_bubo_l3_turnaround.md` now asks for cyan over the top third of each tuft and an
+  eye-sized orb, to keep L2 and L3 apart).
+- Meshy with the front, side and back views, clean first try. New `bubo_l2` LEVELS entry
+  (owl rig and deep-disc eye settings as `bubo_l1`); `glow_bones` = the ear tufts, so the
+  cyan tips glow.
+- Test page: "Bubo level 2 (Meshy, young owl)" is the default model.
+
+## Bubo level 1 in 3D: first owl (October 2026)
+
+- Turnaround from `06_bubo_l1_turnaround.md`; the first image had an orb-sized core (that's
+  L3 on the core ladder), fixed with the edit prompt `06b_bubo_l1_core_fix.md`.
+- Meshy with the front, side and back views. New `bubo_l1` LEVELS entry: upright owl rig
+  with the ear tufts on `ear.L`/`ear.R`, a short `tail.0-4` and new `wing.L`/`wing.R` bones
+  (thin `radii`), which flap outward in `good`, `boost`, `laugh` and `wow`. New `bubo`
+  signature (head swivel and tilt, tufts up).
+- `build_boostie.py` options: `glow_bones` (which bones may glow when the cyan feature
+  isn't a tail; `[]` = core only), and for eyes in a deep owl face disc `eyes.sink` (start
+  depth, default 0.55), `eyes.reach` (painted-eye cover radius) and `eyes.socket` (cover
+  colour; the disc cream instead of the dark socket, so no painted iris pokes out under the
+  ball).
+- Test page: "Bubo level 1 (Meshy, owl chick)" is the default model.
+
+## Zapi level 2 in 3D: all seven Zapi levels built (October 2026)
+
+- Turnaround from `05_zapi_l2_turnaround.md`, accepted: cheeky open grin, a bigger cyan dot
+  than L1, cyan tail tip.
+- Meshy with the front, side and back views, clean first try. New `zapi_l2` LEVELS entry
+  (quadruped rig and wide-open round eyes as `zapi_l1`); the painted open grin works with
+  the jaw.
+- Test page: "Zapi level 2 (Meshy, young fox)" is the default model. Zapi L1–L7 are now all
+  on it.
+
+## Zapi level 1 in 3D (October 2026)
+
+- Turnaround from `04_zapi_l1_turnaround.md`, accepted (the core is a small dot rather
+  than a pinpoint spark; L2's image must show a clearly bigger dot).
+- Meshy with the front, side and back views (the 3/4 view had an open mouth). New
+  `zapi_l1` LEVELS entry with the quadruped rig of `zapi_l3`. Round baby eyes: bigger
+  balls (`r` 0.042, `width` 1.15) and the lid opened to 45° (`open`) instead of the smug
+  half-lid.
+- `zapi_l6`/`zapi_l7`: core heights corrected (read from the 0.1-per-50px ortho grid).
+- Test page: "Zapi level 1 (Meshy, kit)" is the default model.
+
+## Zapi level 7 in 3D (October 2026)
+
+- Turnaround from `03_zapi_l7_turnaround.md`, accepted as generated
+  (`Blender designs/boosties/sources/zapi_l7_turnaround.png`): hood with circlet and ruby,
+  star burst with halo ring, two energy tails low behind the hips.
+- Meshy with the front, side and back views (the L6 lesson) gave two clean tails and no
+  fur tail, first try, so no `cut`. New `zapi_l7` LEVELS entry with the `tailb.*` chain;
+  the almond eyes fit under the hood brim.
+- Test page: "Zapi level 7 (Meshy, hooded)" is the default model.
+
+## Zapi level 6 in 3D: two energy tails (October 2026)
+
+- Turnaround from `02_zapi_l6_turnaround.md`, accepted as generated
+  (`Blender designs/boosties/sources/zapi_l6_turnaround.png`).
+- Meshy, first try (four views): the two tails merged into one plume. Second try with only
+  the front, side and back views (the 3/4 view shows the tails overlapping) gave two
+  separate tails, plus an orange fur tail between them that the spec rules out.
+- `build_boostie.py`: new `cut` option (boxes in source space; faces centred inside are
+  deleted), used to remove that fur tail. New second tail chain `tailb.0–4`: it copies the
+  `tail.*` keys of every clip, mirrored, joins the glow mask, and gets its own
+  `tail_glow_b` anchor. New `zapi_l6` LEVELS entry (L4/L5 almond eyes).
+- Test page: "Zapi level 6 (Meshy, two tails)" is the default model; `tailb1–4` are spring
+  bones and `tail_glow_b` gets a glow sprite.
+
+## Zapi level 5 in 3D (October 2026)
+
+- First image from the prompt folder (`01_zapi_l5_turnaround.md`), accepted as generated
+  and saved as `Blender designs/boosties/sources/zapi_l5_turnaround.png`.
+- Meshy four-view mesh, normalised (`sources/zapi_l5_meshy.glb`), with a new `zapi_l5`
+  LEVELS entry in `build_boostie.py`. It copies L4's eye shape (almond, `show` 0.22), and
+  the mouth and the five-bone energy tail are measured from the ortho grids.
+- Test page: "Zapi level 5 (Meshy)" added as the default model.
+
+## Image prompt folder; email automation dropped (October 2026)
+
+- New `docs-md/image-prompts/`: one Markdown file per image the 3D workflow still needs,
+  in priority order (`README.md` lists them). Each has what to attach, the prompt in one
+  copyable box, a check-before-sending list and where the result is saved. It starts
+  with 12 four-view turnarounds: Zapi L5, L6, L7, L1, L2 and Bubo L1–7.
+- The email route below didn't work: the mails arrived, but ChatGPT's trigger couldn't
+  generate and reply. The user pastes prompts into ChatGPT again. `image_mail.py` is
+  kept but marked unused, and the boostie-evolution skill now points to the prompt
+  folder.
+
+## Boostie images by email to ChatGPT (October 2026)
+
+- New `Blender designs/boosties/image_mail.py`, so image generation no longer needs the
+  user to paste prompts and images by hand. `send` mails a `BOOST_AVATAR_REQUEST` (fixed
+  subject and body convention, reference images attached) from and to the studio Gmail
+  account, which ChatGPT watches. `poll` waits for the `BOOST_AVATAR_RESULT` reply and
+  saves its PNGs. Uses the Gmail SMTP/IMAP standard library only, with an app password
+  from `BOOST_GMAIL_APP_PASSWORD`. No paid image API.
+- Each request has a local ledger, `requests/<id>/request.json`, holding the status, the
+  RFC Message-ID and Gmail's message and thread ids. Status moves to `AWAITING_IMAGES`
+  only after Gmail accepts the send.
+- Requests are sent from nachum.a.rubin@gmail.com (`--from`, with its own app password
+  in `BOOST_GMAIL_FROM_APP_PASSWORD`) to the studio account. ChatGPT's trigger didn't
+  fire on mail the studio account sent to itself, so `send` now refuses to do that.
+- The boostie-evolution skill now uses this as the default way to get sheets,
+  turnarounds and inpaint fixes.
+
+---
+
+## Boosties switch to Meshy for 3D generation (October 2026)
+
+- Decision D-boostie-meshy. With the same single front image, Meshy beat TRELLIS
+  clearly (face likeness, texture, back view). Tripo's generation hung.
+- New `Blender designs/boosties/meshy_generate.py`: image(s) → Meshy API → .glb, plus
+  the base-colour texture and a preview. The key comes from `MESHY_API_KEY`.
+- New `compare_models.py`: renders several .glb candidates side by side (front,
+  three-quarter, side, back, bust) under the same light, with triangle, texture and
+  loose-part counts.
+- The boostie-evolution skill, step 9, now uses Meshy, with TRELLIS as the fallback.
+- First Pro runs (Zapi L3, 30 credits each, about 1 minute each): the four-view
+  turnaround beat the front view alone, so four views are the default input.
+  `meshy_generate.py --task <id>` resumes an interrupted run without new credits.
+- Zapi L3 rebuilt from the Meshy mesh. New `normalize_glb.py` scales Meshy output
+  (about 1.9 units) to the 1.0 size `measure.py` and the build expect; Meshy levels set
+  `smooth.enabled = False` to keep Meshy's UVs. Old entry kept as `zapi_l3_trellis`.
+  The test page offers both L3 models, and L3 now has the laugh, wow, stare and yawn
+  reactions.
+- Zapi L4 generated with Meshy from a new four-view turnaround (arms held away from the
+  body, for rigging) and built the same way; the old entry is `zapi_l4_trellis`. Meshy:
+  one clean piece, 31k triangles, 2k texture; TRELLIS gave three loose parts and a dark,
+  lumpy tail (`sources/meshy/compare_l4_trellis_meshy.png`).
+- Zapi L4 eyes fixed: one eye's ray hit a brow tuft, so the ball floated half outside the
+  face, looked upward and bulged past the head outline in the scoreboard's 3/4 view. New
+  `eyes.show` option in LEVELS (used for Meshy levels): averages the surface normal over a
+  ring of rays around the pupil, then pushes each ball in until only that share of it is
+  outside the face (L4: 0.22, eye radius 0.022).
+- Eye shapes: new optional `eyes.shape` in LEVELS — `width` (ball and lids stretched
+  sideways), `open` (upper lid edge), `low` (a new fixed lower lid on a `lidlow` bone) and
+  `tilt` (outer corner up). The two lid edges arch and meet at the corners, so the opening
+  is an almond; the lower lid overlaps at the corners so a blink closes fully, and the
+  painted-eye darkening stretches with the eye. Zapi L4: width 1.3, open 14, low 38, tilt
+  12 (sly almond instead of a round googly eye). Levels without `shape` are unchanged.
+  Zapi L3 now uses the same almond shape and `show` 0.22 fitting (eye radius 0.021).
+- Test page (`tools/3d-spike`): the lower lid moves now. `LIDLOW` raises it on "good" (5°)
+  and "laugh" (9°), and the laugh's upper lid opens a little (−34° → −26°), so the laugh
+  is a smiling squint with a crescent of iris showing. A blink lowers the lower lid back.
+- `meshy_generate.py --split` now moves each cut to the emptiest pixel column nearby, so a
+  tail that reaches past its quarter isn't sliced off (it would have been on the L4 sheet).
+
+## Reaction sounds on the Boostie test page (October 2026)
+
+- Test page (`tools/3d-spike`, artifact v13): each player-sent reaction plays a short
+  cartoon voice clip on both phones. There are three CC0 Freesound options per reaction
+  (A/B/C) to pick by ear, a "Sound on" switch, and "Mute rival's reactions".
+- Idle life (blinks, glances, the "heh") stays silent.
+- Sources are listed in `tools/3d-spike/sfx/SOURCES.md`.
+
+## Player-chosen Boostie reactions, with shop items (October 2026)
+
+- Decision D-boostie-reactions: expressive reactions are only sent by the player. The
+  game itself only plays turn, good move and boost.
+- Test page (`tools/3d-spike`, artifact v11):
+  - Tap your Boostie to open a reaction tray. Free: Laugh, Wow, Wide eyes. Locked
+    shop items: Wink, Yawn, which play a preview on your own avatar only.
+  - A 4 s cooldown bar under your score, and a label over the Boostie that reacted.
+  - "Rival sends a reaction" simulates an incoming one.
+  - The Laugh/Wow test buttons are gone.
+- `build_boostie.py`: new shared clips **stare** (wide eyes: leans in, ears forward)
+  and **yawn** (slow jaw stretch, sleepy lids). Wink is done live in the app, one lid
+  only.
+
+## Boosties get a mouth that opens: Zapi L4, laugh and wow (October 2026)
+
+- `build_boostie.py` has a new mouth step, using a `mouth` entry in `LEVELS`:
+  - It slices the muzzle with the lip-line plane, so the lips get one clean edge.
+    Cutting along the existing triangles had left a zigzag of fur slivers.
+  - The lower lip and chin hang on a new `jaw` bone. The weights blend behind the mouth
+    corners, so the cheeks stretch instead of tearing.
+  - A dark-to-pink inner skin sits 3 mm under the surface. It stays hidden while the
+    mouth is closed and stretches across the gap when it opens.
+  - Fangs were tried and dropped: tucked in deep enough to hide, they never showed.
+  - TRELLIS paints a smile line that curves up the cheeks, past the end of the cut.
+    It's painted out of the texture around and behind the corners, by filling in
+    from the fur nearby. Otherwise the drawn mouth looked longer than the opening,
+    which was obvious mid-yawn (artifact v12).
+- New shared clips: **laugh** (jaw chatter, head back, tail wag) and **wow** (the jaw
+  drops and hangs, ears up). The jaw also opens in **good** (a grin) and **boost** (a gasp).
+- Test page (`tools/3d-spike`, artifact v10):
+  - Laugh and Wow buttons, also used by the auto game.
+  - Mood lids: laugh squints, wow goes wide.
+  - An idle two-beat "heh" of the mouth every 12–24 s.
+- `measure.py --side Y Z`: a side close-up with a 0.02 grid, for reading the mouth line.
+- The skill and `AVATAR_EVOLUTION.md` §8 now list the mouth as a mandatory upgrade.
+
+## boostie-evolution skill, part 2: the 3D pipeline (October 2026)
+
+- The skill now covers 3D (steps 8–14): a multi-angle reference sheet per level, then
+  TRELLIS, inspect, measure, build, review and docs. A failure-mode table is included.
+- New spec sections in `AVATAR_EVOLUTION.md`: §7 is the turnaround prompt (four views
+  in equal columns, neutral pose, no glow haze), §8 is the upgrade table and the
+  per-character signature movements.
+- Every model gets the same mandatory upgrades: smooth body, real eyes that act, a
+  signature movement, glow and the rig.
+- `build_boostie.py` now has a `SIGNATURES` table and exports each character's own
+  `signature` clip (Zapi: double ear twitch). The test page plays it every 10–20 s
+  in place of the generic ear flick.
+- The build warns when a level has no `eyes` entry or its character has no signature.
+- It also repairs the mesh after the reduction step.
+- New scripts in `Blender designs/boosties/`:
+  - `trellis_generate.py`: single or multi-view generation through the Space API;
+    `--split N` cuts a turnaround sheet into views.
+  - `measure.py`: gridded ortho, pupil close-up and spin views.
+- The source folder is now `sources/` (was `tripo_inputs/`).
+
+---
+
+## Boosties: smooth rebuilt bodies (October 2026)
+
+TRELLIS surfaces are flat planes with jagged edges, which read as "a group of sharp
+geometric components". `build_boostie.py` now rebuilds every level as one smooth
+surface before anything else:
+1. Thicken thin parts (so the plume edge and ears survive).
+2. Voxel-fuse the mesh into one watertight volume.
+3. Relax it (Laplacian, volume-preserving) and reduce it to about 19k faces.
+4. Unwrap it and copy the painting across texel by texel, each taking the colour of
+   the nearest point on the original surface (about 10 s per level).
+
+Cycles' selected-to-active bake came out black on these meshes, so the transfer is
+done in Python. Tune per level with `smooth` (`voxel`, `thicken`, `relax`, `faces`,
+`enabled`).
+
+---
+
+## Lively Boosties: real eyes, springs, rim light (October 2026)
+
+The TRELLIS models looked accurate but dead. Changes:
+- `build_boostie.py` adds **real eyes** for levels with an `eyes` entry (Zapi L4 so
+  far). Each eye is a glossy eyeball with an amber iris and highlights, and an upper
+  lid with a lash line, each on its own non-deforming bone (`eye.L/R`, `lid.L/R`).
+  The painted eyes underneath become dark sockets.
+- The script also adds `core_glow` and `tail_glow` anchors for glow sprites.
+- The reactions were re-keyed with anticipation and overshoot.
+- The test page has a **Look: lively / plain** setting. Lively adds:
+  - blinks (sometimes double), with an eye shift on each blink;
+  - eyes that follow the viewer, and a glance at the other player when they react;
+  - lids that follow the mood: smug at rest, alert on your turn, a squint on a
+    good move, wide on a boost;
+  - spring follow-through on the ears and tail, plus random ear flicks;
+  - a fresnel rim light, ACES tone mapping, a key/rim/fill light rig and soft glow
+    sprites.
+- In the default draw-on-demand mode the page sleeps until the next blink or flick.
+- New decision **D-boostie-live-3d** allows blinks and ear flicks on the board for
+  Boosties.
+- Fix from the first phone test: the eyes slid over the face when the head turned.
+  Skin weights now measure distance in units of each bone's thickness (`RADIUS`;
+  override per level with `radii`). Before, the face was split between the head
+  and neck bones (with some on the ears), while the eyeballs ride rigidly on the
+  head bone. Now the head owns the whole skull and an ear only owns the thin ear.
+
+---
+
+## Boostie 3D pipeline: TRELLIS + one build script (October 2026)
+
+- `Blender designs/boosties/build_boostie.py <level>` replaces the one-off L4 script.
+  Each level is a small settings block: source mesh, body centre, core position,
+  bone list, glow thresholds and an optional head-yaw fix. Every layout uses the same
+  bone names, so the four clips are shared.
+- Glow is kept only on tail faces and around the core. The faces are rasterised into
+  the texture's UV space, because colour alone also caught stray bluish texels on legs
+  and ears (the texture is an AI patchwork atlas).
+- Textures are capped at 1024 px for phones.
+- Claude can now generate models itself: `gradio_client` drives
+  `trellis-community/TRELLIS` with the user's Hugging Face login, about 1 minute per
+  model and roughly 1–2 models a day on the free quota. Zapi L3 was made this way. It
+  has the sheet's leggy proportions, which the BlenderKit fox never got.
+- The test page offers L4 and L3 (TRELLIS) plus L3 (BlenderKit) for comparison.
+  The BlenderKit script is now `build_zapi_l3_blenderkit.py`.
+
+---
+
+## Zapi level 4 from TRELLIS image-to-3D (October 2026)
+
+TRELLIS (Microsoft, MIT) generated a textured, unrigged mesh from the L4 crop of the
+Zapi sheet, at 17k triangles. It matches the sheet far better than the BlenderKit
+route and solves the two-legged levels. A build script (now `build_boostie.py`)
+turns it into a game-ready model:
+- Stands the mesh on the ground and recentres it.
+- Repaints the teal texels as glowing cyan. It also catches the plume's near-black
+  edge, by rasterising the outer-tail faces into the texture's UV space.
+- Adds a 12-bone rig (spine, neck, head, ears, five tail bones). TRELLIS meshes
+  aren't watertight, so Blender's automatic weighting fails; the weights come from
+  distance to each bone instead.
+- Keys the same four clips and exports a ~0.9 MB `zapi_l4.glb`.
+
+The phone test page now defaults to L4, and its bust framing is wider for big-headed
+characters. The TRELLIS Space can be called by API (`gradio_client`,
+`trellis-community/TRELLIS`), but anonymous ZeroGPU quota allows about one run a day.
+
+---
+
+## Zapi level 3: first 3D Boostie (October 2026)
+
+`Blender designs/boosties/build_zapi_l3_blenderkit.py` builds Zapi L3 from the free BlenderKit
+"Stylized fox character" (Royalty Free: commercial use and edits allowed, no credit,
+but no redistributing the raw asset). Running it gives a ~2 MB `zapi_l3.glb`. What
+the script does:
+- Pushes the fur to Zapi orange.
+- Projects the cream bolt onto the forehead.
+- Recolours the eyes amber and poses the smug half-lidded face with the face rig.
+- Lifts a crimson neckerchief off the body's own neck faces, so it keeps the skin
+  weights and bends with the neck.
+- Adds a round cyan core (level 3 of the core ladder) and turns the outer tail to
+  cyan energy.
+- Keys four clips: idle, turn, good and boost.
+- Bakes everything to plain textures and exports deform bones only.
+
+The source .blend, the outputs and the .glb stay local (see `.gitignore`), because
+the repo is public. The phone test page now defaults to Zapi L3: two of them come to
+about 28k triangles.
+
+The scripted blockout from earlier, `build_zapi_l4_blockout.py`, was the look test that
+led to this approach. Shapes built purely from script came out too plain.
+
+---
+
+## Live 3D avatar phone test (October 2026)
+
+Before modelling the Boosties in Blender, we need to know whether a phone can run
+two live 3D avatars on the game scoreboard. `tools/3d-spike/index.html` is a
+dev-only page that answers this. It shows a mock scoreboard with two rigged models
+in the 76px slots: the Khronos Fox (light) or the three.js Xbot (~49k triangles,
+for a stress test). The models only draw while a reaction plays, because the board
+has no looping motion. The page measures frame times, load time, how long the 3D
+is active and GPU resets, then gives a verdict and a "Copy results" button.
+
+The models live in `tools/3d-spike/models/`. Xbot is a Mixamo asset: use it for
+testing only, never ship it. `tools/**` is excluded from Firebase hosting, so
+nothing reaches the app. The GitHub Pages workflow deploys the whole repo, though,
+so remove Xbot before merging to main if that matters.
+
+---
+
+## Bubo the owl: second Boostie (October 2026)
+
+Made with the `boostie-evolution` skill: an eagle owl that stays a bird, with cyan
+ear tufts as the signature and a scholar theme (spectacles, satchel, forest-green
+robe, brow circlet). Sheet A was accepted as generated. Sheet B needed one inpaint
+round. Sheets are in `assets/avatars/evolution/bubo/`, and the character block and
+review log are in `AVATAR_EVOLUTION.md` §6.
+
+Spec changes from the review:
+- §2 / §4d: the core must never be crossed or touched by a chain, strap or clasp,
+  or it reads as a pendant. The L7 core must be a star burst, never a round orb,
+  or it looks like L4. The L7 ring may circle the burst or float above it.
+- §4d: gems, clasps and trim are never cyan and never glow (until now this was
+  only fixed by inpainting).
+- Skill: four new rows in the failure table, plus advice on outfit colours.
+
+---
+
+## Avatar evolution spec: fixes after the first Zapi sheets (October 2026)
+
+Reviewed the first image-generator sheets made from `AVATAR_EVOLUTION.md`. Sheet A
+(levels 1–4) is accepted. Sheet B (levels 5–7) needs regenerating. Spec changes:
+- Zapi's forehead bolt is **cream**, on all levels. The spec said cyan "from level
+  2", which broke the two-cyan-elements rule and the constant-marks rule.
+- Rule 3: face markings are never cyan. The signature feature keeps the same body
+  part and position, so an energy tail can't turn into wings, and once it is fully
+  energy it replaces the normal tail.
+- Sheet B template: each level must be taller than the last, the L6 energy lines
+  must clearly reach the shoulders, and the L7 halo and body glow must be large and
+  obvious.
+- Replaced the old-sheet mapping table with a review of the new sheets.
+- A second sheet B from the updated template is accepted, with four small inpaint
+  fixes listed in §5 (most important: the cyan circlet gem on L7). The inpainted
+  version fixes all four, so all 7 Zapi levels are final.
+- Saved the final sheets to `assets/avatars/evolution/zapi/` and listed them in
+  `docs/asset_inventory.md`.
+- New project skill `.claude/skills/boostie-evolution/`. It turns the Zapi process
+  into a repeatable workflow (character block → sheet A → review → sheet B → review
+  → inpaint → save → docs), with a review checklist and a table of the generator
+  failures we hit.
+
+---
+
 ## Fix: app stuck on the loading screen (October 2026)
 
 Boot crashed with `ReferenceError: CHAMPS_OPEN is not defined` in

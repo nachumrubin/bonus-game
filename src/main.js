@@ -48,6 +48,8 @@ import * as sessionPersistence from './game/online/sessionPersistence.js';
 import { loadLocalGame, clearLocalGame, hasLocalSavedGame } from './game/sessions/localSaveService.js';
 import { createTimeoutWatchdog } from './game/online/timeoutWatchdog.js';
 import * as profileService from './game/account/profileService.js';
+import { profileAvatarValue, normalizeBoosties } from './game/account/boostieXp.js';
+import { isBoostieId, parseStoreItem, boostieName, boostieAvatarValue, DEFAULT_BOOSTIE } from './game/account/boostieCatalog.js';
 import * as friendsService from './game/account/friendsService.js';
 import * as ratingService from './game/account/ratingService.js?v=20260513111500';
 import * as dictionaryService from './game/account/dictionaryService.js';
@@ -61,6 +63,7 @@ import { createGameController } from './ui/controllers/gameController.js';
 import { createAnimationController } from './ui/controllers/animationController.js';
 import { BOOST_RESULT_READY, BOOST_RESULT_REVEAL_DELAY_MS } from './ui/boostPresentation.js';
 import { getMotionPreference } from './ui/motionPreference.js';
+import { mountEvolutionScreen } from './ui/boostie3d/evolutionScreen.js';
 import { createGameFlowController } from './ui/controllers/gameFlowController.js';
 import { createTurnTimerController } from './ui/controllers/turnTimerController.js';
 import { createDisconnectController } from './ui/controllers/disconnectController.js';
@@ -102,18 +105,17 @@ import { mountCrossingWordsMiniGame, playCrossingWordsForBonus } from './ui/scre
 import { mountHoneycombMiniGame,     playHoneycombForBonus     } from './ui/screens/miniGames/honeycombMiniGame.js';
 import { mountLetterSpinnerMiniGame, playLetterSpinnerForBonus } from './ui/screens/miniGames/letterSpinnerMiniGame.js';
 import { mountScoreBonusAnimation } from './ui/controllers/scoreBonusAnimation.js';
-import { mountProfileScreen, PROFILE_INTENT, PROFILE_RENDER, avatarEmoji } from './ui/screens/profileScreen.js';
+import { mountProfileScreen, PROFILE_INTENT, PROFILE_RENDER } from './ui/screens/profileScreen.js';
 import { mountStatsScreen, STATS_INTENT } from './ui/screens/statsScreen.js';
 import {
   mountAvatarPickerScreen, mountAvatarUnlockedScreen,
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
-  diffNewlyCompletedAchievements, progressBumps, AV_PROGRESS_BUMP, findAvatar, botAvatarForLevel,
+  diffNewlyCompletedAchievements, progressBumps, AV_PROGRESS_BUMP, achievementSnapshot, botAvatarForLevel,
 } from './ui/screens/avatarScreens.js';
 import {
   mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER,
   DAILY_REWARD_SHOW, DAILY_REWARD_ACK,
 } from './ui/screens/avatarStoreScreen.js';
-import { priceFor } from './ui/screens/avatarStore.js';
 import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe, isSilentAuthCancel, suggestNameFromDisplayName } from './ui/screens/authScreens.js';
 import { mountFriendsScreen, FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER } from './ui/screens/friendsScreen.js';
 import { runInviteFlow, INVITE_REQUIRED } from './ui/inviteFriends.js';
@@ -328,6 +330,7 @@ let activeFbCurrentUser = null;
 let activeFbServerTimestamp = null;
 let dictionaryLoadPromise = null;
 let botWordsLoadPromise = null;
+let evolutionScreen = null;   // ui/boostie3d/evolutionScreen.js, mounted with the screens
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCE-Im2HzYhJVlRd07uIHqcsCGTQQhYgDo',
   authDomain: 'boost-8ef11.firebaseapp.com',
@@ -799,19 +802,15 @@ async function boot() {
   // player had an avatar, which then shows the 👑 fallback forever. Reading the
   // profile at render time keeps the strip current without touching the room.
   //
-  // Returns null when there's no profile / no avatar equipped, which tells
+  // Returns null when there's no profile, which tells
   // gameScreen to keep using the value stored on the room.
   async function resolveAvatarForUid(uid) {
     if (!uid || !activeFbDb) return null;
     try {
       const profile = await profileService.readProfile(activeFbDb, uid);
-      // The profile's choice lives in `equippedAvatar` (an id like 'diamond'
-      // or a store id like 'rare_3'); `avatar` is only on legacy profiles.
-      // avatarEmoji() translates ids to the emoji/store-id form that
-      // setAvatarEl renders — and defaults to 👑, so only call it when the
-      // player actually has something equipped.
-      const equipped = profile?.equippedAvatar ?? profile?.avatar ?? null;
-      return equipped != null ? (avatarEmoji(equipped) ?? null) : null;
+      // The Boostie they have equipped, with its level from profile.boosties
+      // ('zapi:4'); old avatar ids resolve to the starter Boostie.
+      return profile ? profileAvatarValue(profile) : null;
     } catch (e) {
       console.warn('[spine] resolveAvatarForUid read', e);
       return null;
@@ -1284,7 +1283,7 @@ async function boot() {
       globalThis.document?.getElementById?.('ov-matchmaking')?.classList?.add?.('hidden');
       bus.emit(PS_INTENT.SHOW, {
         name:   displayName,
-        avatar: avatarEmoji(profile.equippedAvatar) || '👑',
+        avatar: profileAvatarValue(profile),
       });
 
       activeMatchmaking = startMatchmaking({
@@ -1298,7 +1297,7 @@ async function boot() {
           // the queue always stored null → opponent's matched-modal always
           // defaulted to 👑. Translate to emoji at the boundary so room/queue
           // consumers (gameScreen.js, matched modal) render it directly.
-          avatar: avatarEmoji(profile.equippedAvatar ?? profile.avatar) ?? null,
+          avatar: profileAvatarValue(profile),
           rating,
         },
         settings: {
@@ -1314,7 +1313,7 @@ async function boot() {
         if (!fullRoom) return;
         const opponentSlot = 1 - mySlot;
         const opponent = fullRoom.players?.[opponentSlot];
-        const oppAvatar = avatarEmoji(opponent?.avatar) || '👑';
+        const oppAvatar = opponent?.avatar || DEFAULT_BOOSTIE;
         bus.emit(PS_INTENT.MATCHED, {
           name:   opponent?.displayName ?? 'שחקן',
           avatar: oppAvatar,
@@ -1324,7 +1323,7 @@ async function boot() {
         // (globalRatings); it fills in if it arrives while the intro is up.
         bus.emit(PS_INTENT.HIDE, {});
         await playVsIntro({
-          me:  { name: displayName, avatar: avatarEmoji(profile.equippedAvatar) || '👑', rating },
+          me:  { name: displayName, avatar: profileAvatarValue(profile), rating },
           opp: { name: opponent?.displayName ?? 'שחקן', avatar: oppAvatar },
           oppUid: opponent?.uid ?? null,
           db: fbDb,
@@ -1387,7 +1386,7 @@ async function boot() {
         // Profile's avatar choice lives in `equippedAvatar` (an id like
         // 'diamond'). Translate to an emoji at the boundary so room/queue
         // consumers can render it raw.
-        avatar:      avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar ?? profile.equippedAvatar ?? profile.avatar) ?? null,
+        avatar:      profileAvatarValue(globalThis.__spine?.currentProfile ?? profile),
         rating:     (profile.rating != null) ? profile.rating : 1000,
       };
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: hostProfile.displayName });
@@ -1583,7 +1582,7 @@ async function boot() {
       const resolvedGuestName = await resolveMyDisplayName();
       const guestProfile = {
         displayName: name ?? resolvedGuestName ?? 'שחקן 2',
-        avatar:      avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar ?? profile.equippedAvatar ?? profile.avatar) ?? null,
+        avatar:      profileAvatarValue(globalThis.__spine?.currentProfile ?? profile),
         rating:     (profile.rating != null) ? profile.rating : 1000,
       };
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: guestProfile.displayName });
@@ -1780,12 +1779,7 @@ async function boot() {
       const resolvedName = await resolveMyDisplayName();
       const accepterProfile = {
         displayName: resolvedName ?? 'שחקן 2',
-        avatar: avatarEmoji(
-          globalThis.__spine?.currentProfile?.equippedAvatar
-          ?? lastProfile?.equippedAvatar
-          ?? globalThis.currentUserProfile?.equippedAvatar
-          ?? globalThis.currentUserProfile?.avatar,
-        ) ?? null,
+        avatar: profileAvatarValue(globalThis.__spine?.currentProfile ?? lastProfile),
       };
       try {
         const result = await inviteService.acceptInvite(fbDb, {
@@ -2988,7 +2982,7 @@ async function boot() {
       const uid = activeFbCurrentUser?.uid;
       const friendUids = lastFriends.map(f => f.uid).filter(Boolean);
       if (!fbDb || !uid || friendUids.length === 0) return;
-      const avatar = lastProfile?.equippedAvatar ?? null;
+      const avatar = lastProfile ? profileAvatarValue(lastProfile) : null;
       const name   = lastProfile?.displayName ?? '';
       const sig = JSON.stringify([uid, avatar, name, [...friendUids].sort()]);
       if (sig === lastSelfSyncSig) return;
@@ -3020,19 +3014,21 @@ async function boot() {
         // point, the same false→true achievement transition would be detected
         // again and pay forever (RangeError: Maximum call stack size exceeded).
         // Advancing first makes the re-entrant fire diff profile-against-itself
-        // (stats/ownedAvatars unchanged → empty), so the payout runs exactly once.
+        // (snapshot unchanged → empty), so the payout runs exactly once.
         lastProfile = profile;
         globalThis.__spine.currentProfile = profile;
+        // Boostie levels this device hasn't celebrated yet → the evolution scene.
+        if (profile) evolutionScreen?.noteProfile(uid, profile.boosties);
         // Detect newly completed achievements (using the captured prev snapshot).
         // Each pays out tier-scaled coins and pops the completion overlay. Fires
         // only on the false→true transition between consecutive snapshots, and is
         // skipped on the first watch fire (prev=null), so already-earned
-        // achievements don't re-pay on reload. Conditions read both stats and
-        // ownedAvatars (purchase achievements).
+        // achievements don't re-pay on reload. Conditions read stats, boosties and
+        // ownedReactions (achievementSnapshot).
         if (prev && profile) {
           const newly = diffNewlyCompletedAchievements(
-            { stats: prev.stats, ownedAvatars: prev.ownedAvatars },
-            { stats: profile.stats, ownedAvatars: profile.ownedAvatars },
+            achievementSnapshot(prev),
+            achievementSnapshot(profile),
           );
           for (const ach of newly) {
             const reward = profileService.ACHIEVEMENT_COIN_REWARD[ach.tier] ?? 0;
@@ -3042,8 +3038,8 @@ async function boot() {
           // Unfinished achievements that moved (e.g. streak 3/5 -> 4/5): the
           // end-game screen bumps them so progress feels earned.
           const bumps = progressBumps(
-            { stats: prev.stats, ownedAvatars: prev.ownedAvatars },
-            { stats: profile.stats, ownedAvatars: profile.ownedAvatars },
+            achievementSnapshot(prev),
+            achievementSnapshot(profile),
           );
           if (bumps.length) bus.emit(AV_PROGRESS_BUMP, { bumps });
         }
@@ -3079,18 +3075,18 @@ async function boot() {
           isAuthed: !!fbUser?.uid && !fbUser?.isAnonymous,
           displayName: profile?.displayName ?? fbUser?.displayName ?? '',
           rating: profile?.rating ?? null,
-          avatar: avatarEmoji(profile?.equippedAvatar) || null,
+          avatar: profile ? profileAvatarValue(profile) : null,
           coins: economy.coins,
         });
         bus.emit(AV_RENDER, {
-          stats: profile?.stats ?? {},
-          ownedAvatars: economy.ownedAvatars,
+          ...achievementSnapshot(profile),
           coinRewardByTier: profileService.ACHIEVEMENT_COIN_REWARD,
         });
         bus.emit(STORE_RENDER, {
           coins: economy.coins,
-          ownedAvatars: economy.ownedAvatars,
+          boosties: profile?.boosties ?? null,
           equippedAvatar: profile?.equippedAvatar ?? null,
+          ownedReactions: profile?.ownedReactions ?? [],
         });
         bus.emit(FRIENDS_RENDER, {
           myUserId: profile?.userId ?? '------',
@@ -3233,6 +3229,8 @@ async function boot() {
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !id) return;
+      // Only an owned Boostie can be equipped.
+      if (!isBoostieId(id) || !normalizeBoosties(lastProfile?.boosties)[id]) return;
       try { await profileService.updateProfile(fbDb, fbUser.uid, { equippedAvatar: id }); }
       catch (e) { console.warn('[spine] avatar equip', e); }
       // The friend-edge avatar snapshot is refreshed by the profile watch once
@@ -3257,8 +3255,9 @@ async function boot() {
         const economy = profileService.normalizeProfileEconomy(lastProfile);
         bus.emit(STORE_RENDER, {
           coins: economy.coins,
-          ownedAvatars: economy.ownedAvatars,
+          boosties: lastProfile?.boosties ?? null,
           equippedAvatar: lastProfile?.equippedAvatar ?? null,
+          ownedReactions: lastProfile?.ownedReactions ?? [],
         });
       }
       showLegacyScreen('savatar-store');
@@ -3272,12 +3271,16 @@ async function boot() {
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !id) return;
-      const r = await profileService.purchaseAvatar(fbDb, fbUser.uid, id, priceFor(id));
-      if (r?.ok) {
-        // Auto-equip the freshly bought avatar; the profile watch repaints the store.
-        try { await profileService.updateProfile(fbDb, fbUser.uid, { equippedAvatar: id }); }
+      // id = 'boostie:bubo' | 'reaction:wink'; the price comes from the catalog.
+      const r = await profileService.purchaseStoreItem(fbDb, fbUser.uid, id);
+      const item = parseStoreItem(id);
+      if (r?.ok && item?.kind === 'boostie') {
+        // Auto-equip the freshly bought Boostie; the profile watch repaints the store.
+        try { await profileService.updateProfile(fbDb, fbUser.uid, { equippedAvatar: item.id }); }
         catch (e) { console.warn('[spine] store equip after buy', e); }
-        bus.emit(NOTIF_BANNER_SHOW, { text: 'האווטאר נרכש! 🎉', avatar: id, sound: 'store.purchase' });
+        bus.emit(NOTIF_BANNER_SHOW, { text: `${boostieName(item.id)} הצטרף אליך! 🎉`, avatar: boostieAvatarValue(item.id, 1), sound: 'store.purchase' });
+      } else if (r?.ok) {
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'התגובה נרכשה! 🎉', avatar: profileAvatarValue(lastProfile), sound: 'store.purchase' });
       } else if (r?.reason === 'insufficient') {
         bus.emit(NOTIF_BANNER_SHOW, { text: 'אין מספיק מטבעות', avatar: '🪙', sound: 'store.fail' });
       }
@@ -3296,7 +3299,7 @@ async function boot() {
       const r = await friendsService.sendFriendRequest(fbDb, {
         fromUid: fbUser.uid, toUid: targetUid,
         fromName: lastProfile?.displayName ?? '',
-        fromAvatar: avatarEmoji(lastProfile?.equippedAvatar) ?? null,
+        fromAvatar: lastProfile ? profileAvatarValue(lastProfile) : null,
       });
       if (r.ok) bus.emit(FRIENDS_RENDER, { addStatus: 'בקשה נשלחה' });
       else if (r.reason === 'self') bus.emit(FRIENDS_RENDER, { addStatus: 'אי אפשר להוסיף את עצמך' });
@@ -3480,12 +3483,7 @@ async function boot() {
       const resolvedName = await resolveMyDisplayName();
       const accepterProfile = {
         displayName: resolvedName ?? 'שחקן 2',
-        avatar: avatarEmoji(
-          globalThis.__spine?.currentProfile?.equippedAvatar
-          ?? lastProfile?.equippedAvatar
-          ?? globalThis.currentUserProfile?.equippedAvatar
-          ?? globalThis.currentUserProfile?.avatar,
-        ) ?? null,
+        avatar: profileAvatarValue(globalThis.__spine?.currentProfile ?? lastProfile),
       };
       try {
         const result = await inviteService.acceptInvite(fbDb, {
@@ -3816,6 +3814,32 @@ async function boot() {
       const mySlot = players[0]?.uid === fbUser.uid ? 0 : players[1]?.uid === fbUser.uid ? 1 : 0;
       const oppUid = players[1 - mySlot]?.uid;
       const myScore = finalScores?.[mySlot] ?? session?.state?.scores?.[mySlot] ?? 0;
+
+      // Boostie XP (boostieXp.js): every finished game counts, a win counts more; it
+      // has nothing to do with the rating. Online games and games against a bot count;
+      // the tutorial and pass-and-play on one phone don't. A player who walks out, or
+      // a game with no moves, gives nothing. Guarded against GAME_COMPLETED firing twice.
+      if (!ag?._xpApplied && (ag?.online || (ag?.bot && !ag?.tutorial))) {
+        ag._xpApplied = true;
+        const xpSlot = ag.online ? mySlot : (ag.mySlot ?? 0);
+        const xsc = session?.state?.scores ?? {};
+        const x0 = Number(xsc[0] ?? 0);
+        const x1 = Number(xsc[1] ?? 0);
+        const xpWinner = (abandonedBy === 0 || abandonedBy === 1)
+          ? ((x0 === 0 && x1 === 0) ? null : 1 - abandonedBy)
+          : (winnerSlot != null ? winnerSlot : (x0 === x1 ? null : (x0 > x1 ? 0 : 1)));
+        const xpResult = xpWinner == null ? 'draw' : (xpWinner === xpSlot ? 'win' : 'loss');
+        const moved = Number(session?.state?.moveHistory?.length ?? 0) > 0;
+        if (moved && abandonedBy !== xpSlot) {
+          profileService.bumpBoostieXp(fbDb, fbUser.uid, lastProfile?.equippedAvatar, xpResult)
+            .then((r) => {
+              if (r?.ok && (r.levelUp || r.unlocked)) {
+                bus.emit(profileService.PROFILE_EVT.BOOSTIE_LEVEL_UP, { levelUp: r.levelUp, unlocked: r.unlocked });
+              }
+            })
+            .catch(() => {});
+        }
+      }
 
       if (!ag?.online) {
         refreshChampions('end');
@@ -4436,7 +4460,7 @@ async function boot() {
       me: {
         name: me.name ?? profile.displayName ?? 'שחקן',
         // Same default as the game's player box (anonymous player for guests).
-        avatar: me.avatar ?? (avatarEmoji(profile.equippedAvatar ?? profileService.DEFAULT_AVATAR) || null),
+        avatar: me.avatar ?? profileAvatarValue(profile),
         rating: me.rating ?? profile.rating ?? null,
       },
       opp,
@@ -4455,7 +4479,7 @@ async function boot() {
     const theirs = room?.players?.[1 - mySlot] ?? {};
     return {
       me: { name: mine.displayName ?? undefined },
-      opp: { name: theirs.displayName ?? 'שחקן', avatar: avatarEmoji(theirs.avatar) || '👑' },
+      opp: { name: theirs.displayName ?? 'שחקן', avatar: theirs.avatar || DEFAULT_BOOSTIE },
       oppUid: theirs.uid ?? null,
     };
   }
@@ -4556,6 +4580,8 @@ async function boot() {
       roomId: room.roomId,
       mySlot,
       storage: globalThis.localStorage ?? null,
+      getOwnedReactions: () => globalThis.__spine?.currentProfile?.ownedReactions ?? [],
+      playBoostie: (slot, clip) => screen?.playBoostieReaction?.(slot, clip) ?? false,
     });
     // Async modes show the "home" button (back to menu without resigning);
     // live modes hide it (the pause button is shown by the game screen
@@ -4682,7 +4708,7 @@ async function boot() {
           mode,
           tileBagSeed,
           players: {
-            0: { uid: 'p0', displayName: p1Name, avatar: avatarEmoji(globalThis.__spine?.currentProfile?.equippedAvatar ?? profileService.DEFAULT_AVATAR) || null },
+            0: { uid: 'p0', displayName: p1Name, avatar: profileAvatarValue(globalThis.__spine?.currentProfile) },
             1: { uid: 'p1', displayName: bot ? 'המחשב' : p2Name, avatar: bot ? botAvatarForLevel(difficulty) : profileService.DEFAULT_AVATAR },
           },
           startingSlot,
@@ -4857,7 +4883,18 @@ async function boot() {
   const statsScreen        = mountStatsScreen({ bus });
   const avatarPicker       = mountAvatarPickerScreen({ bus });
   const avatarUnlocked     = mountAvatarUnlockedScreen({ bus });
-  const avatarStore        = mountAvatarStoreScreen({ bus });
+  const avatarStore        = mountAvatarStoreScreen({ bus, prefersReducedMotion: () => getMotionPreference().isReduced() });
+  // Level-up evolution (Phase 4): fed by the profile watcher; waits while a game is
+  // still being played and plays after the game-over result.
+  evolutionScreen = mountEvolutionScreen({
+    bus,
+    prefersReducedMotion: () => getMotionPreference().isReduced(),
+    isBusy: () => {
+      const st = globalThis.__spine?.activeGame?.session?.state?.status;
+      return !!globalThis.__spine?.activeGame && !['completed', 'abandoned', 'expired'].includes(st);
+    },
+    endOpenEvent: END_OPEN,
+  });
   const authScreens        = mountAuthScreens({ bus });
   const friendsScreen      = mountFriendsScreen({ bus });
   const notificationsScreen = mountNotificationsScreen({ bus });

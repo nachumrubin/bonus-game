@@ -211,8 +211,8 @@ test('partner search: matched avatar renders image markup once', () => {
   const { root, ids } = makePartnerSearchDom();
   mountPartnerSearchOverlay({ root, bus });
 
-  bus.emit(PS_INTENT.MATCHED, { avatar: 'rare_3', name: 'Tamar' });
+  bus.emit(PS_INTENT.MATCHED, { avatar: 'bubo:6', name: 'Tamar' });
 
-  assert.match(ids['ps-slot-reel'].innerHTML, /assets\/avatars_v2\/rare\/hertzel\.png/);
+  assert.match(ids['ps-slot-reel'].innerHTML, /assets\/avatars\/boosties\/bubo\/l6_bust\.webp/);
   assert.doesNotMatch(ids['ps-slot-reel'].innerHTML, /&lt;img/);
 });

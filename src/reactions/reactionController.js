@@ -2,12 +2,20 @@
 // Pure UI concern: never touches game state, scoring, turns, or timers.
 //
 // Public API:
-//   mountReactionController({ bus, db, roomId, mySlot, storage, root })
+//   mountReactionController({ bus, db, roomId, mySlot, storage, root,
+//                             getOwnedReactions, playBoostie })
 //   → returns { dispose }
+//
+// Boostie reactions (Phase 5): the panel's top row holds the player's Boostie reactions
+// (the free set plus the ones bought in the store, getOwnedReactions()). Sending one plays
+// the clip on the sender's live 3D Boostie; the receiver plays it on the sender's slot
+// too, owned or not (the sender paid for it). playBoostie(slot, clip) returns false where
+// that slot is a still, and the clip's emoji shows in a bubble instead.
 
 import { EV } from '../events/eventTypes.js';
 import { SETTINGS_CHANGED } from '../ui/screens/settingsScreen.js';
-import { REACTIONS, getReactionDisplay } from './reactionsConfig.js';
+import { REACTIONS, getReactionDisplay, getBoostieClip } from './reactionsConfig.js';
+import { BOOSTIE_REACTIONS, ownsReaction } from '../game/account/boostieCatalog.js';
 import { cue as cueSfx } from '../ui/feedbackService.js';
 import {
   sendReaction,
@@ -35,6 +43,8 @@ export function mountReactionController({
   mySlot,
   storage = globalThis.localStorage ?? null,
   root    = globalThis.document,
+  getOwnedReactions = () => [],
+  playBoostie = () => false,
 }) {
   if (!bus)    throw new Error('mountReactionController: bus required');
   if (!db)     throw new Error('mountReactionController: db required');
@@ -81,6 +91,7 @@ export function mountReactionController({
   function openReactionPanel() {
     if (panelOpen) return;
     panelOpen = true;
+    panel.innerHTML = buildPanelHTML();   // reactions bought since the last open
     overlay.style.display = 'flex';
     overlay.removeAttribute('aria-hidden');
     requestAnimationFrame(() => overlay.classList.add('rxn-overlay-visible'));
@@ -147,9 +158,21 @@ export function mountReactionController({
     sendReaction(db, roomId, { type, id, senderSlot: mySlot }).catch((err) => {
       console.warn('[reactions] sendReaction failed:', err);
     });
-    // Show own bubble immediately (don't wait for Firebase echo)
-    const display = getReactionDisplay({ type, id });
-    if (display) showReactionBubble(mySlot, display, root);
+    // Show own reaction immediately (don't wait for Firebase echo)
+    present(mySlot, { type, id });
+  }
+
+  // A Boostie reaction plays on that slot's live 3D Boostie; everything else (and a
+  // Boostie reaction on a still) is a bubble.
+  function present(slot, reaction) {
+    const clip = getBoostieClip(reaction);
+    if (clip) {
+      let played = false;
+      try { played = !!playBoostie(slot, clip); } catch { played = false; }
+      if (played) return;
+    }
+    const display = getReactionDisplay(reaction);
+    if (display) showReactionBubble(slot, display, root);
   }
 
   panel.addEventListener('click', onPanelClick);
@@ -184,11 +207,9 @@ export function mountReactionController({
     if (Number(reaction.senderSlot) === mySlot) return;
     if (isReactionMuted(storage)) return;
     if (messagesDisabled()) return;
-    const display = getReactionDisplay(reaction);
-    if (display) {
-      showReactionBubble(Number(reaction.senderSlot), display, root);
-      cueSfx('reaction.receive');
-    }
+    if (!getReactionDisplay(reaction)) return;
+    present(Number(reaction.senderSlot), reaction);
+    cueSfx('reaction.receive');
   });
   cleanups.push(unsubReaction);
 
@@ -232,6 +253,13 @@ export function mountReactionController({
       `<button class="rxn-emoji-item" data-rxn-type="emoji" data-rxn-id="${e.id}" aria-label="${e.id}" type="button">${e.value}</button>`
     ).join('');
 
+    let owned = [];
+    try { owned = getOwnedReactions() ?? []; } catch { owned = []; }
+    const boostieItems = BOOSTIE_REACTIONS.filter(r => ownsReaction(r.id, owned)).map(r =>
+      `<button class="rxn-boostie-item" data-rxn-type="boostie" data-rxn-id="${r.id}" aria-label="${r.name}" type="button">`
+      + `<span class="rxn-boostie-ic" aria-hidden="true">${r.emoji}</span><span class="rxn-boostie-name">${r.name}</span></button>`
+    ).join('');
+
     const msgItems = REACTIONS.messages.map(m =>
       `<button class="rxn-msg-item" data-rxn-type="message" data-rxn-id="${m.id}" type="button">${m.text}</button>`
     ).join('');
@@ -242,6 +270,7 @@ export function mountReactionController({
         <button class="rxn-mute-btn" id="rxn-mute-btn" type="button">${muteLabel}</button>
         <button class="rxn-close-btn" id="rxn-close-btn" type="button" aria-label="סגור">×</button>
       </div>
+      ${boostieItems ? `<div class="rxn-sec-label">הבוסטי שלך</div><div class="rxn-boostie-row">${boostieItems}</div>` : ''}
       <div class="rxn-emoji-grid">${emojiItems}</div>
       <div class="rxn-msg-list">${msgItems}</div>
     `;

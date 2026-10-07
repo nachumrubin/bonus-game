@@ -8,7 +8,7 @@
 import { $, on, setText } from '../domHelpers.js';
 import { EV } from '../../events/eventTypes.js';
 import { RATING_EVT } from '../../game/account/ratingService.js';
-import { setAvatarEl, AV_PROGRESS_BUMP, achievementIconSrc, isBotAvatar, nextAchievement } from './avatarScreens.js';
+import { setAvatarEl, AV_PROGRESS_BUMP, achievementIconSrc, isBotAvatar, nextAchievement, achievementSnapshot } from './avatarScreens.js';
 import { playOnHost, playOnImg } from '../avatarMotion/spritePlayer.js';
 import { CHAMPS_RENDER } from './championsScreen.js';
 import { confettiBurst } from './miniGames/bonusFx.js';
@@ -166,7 +166,7 @@ export function mountEndGameScreen({ root = globalThis.document, bus } = {}) {
     // "Next achievement" row: static until a real progress bump replaces it.
     try {
       const prof = globalThis.__spine?.currentProfile;
-      const nxt = prof ? nextAchievement({ stats: prof.stats, ownedAvatars: prof.ownedAvatars }) : null;
+      const nxt = prof ? nextAchievement(achievementSnapshot(prof)) : null;
       if (nxt) renderProgressBumps([nxt], { next: true });
     } catch { /* decorative */ }
     applyOutcomePresentation(outcome, { effectiveWinner, score0, score1, abandonedBy });

@@ -3056,6 +3056,42 @@ button[aria-disabled="true"] {
 }
 .rxn-close-btn:active { background: rgba(255,255,255,.18); }
 
+/* ── Boostie reactions (Phase 5): your Boostie plays the clip; emoji where it's a still ── */
+.rxn-sec-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(143,243,255,.85);
+  margin-bottom: 5px;
+}
+.rxn-boostie-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.rxn-boostie-item {
+  flex: 1 0 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 4px 6px;
+  background: rgba(40,212,255,.1);
+  border: 1px solid rgba(40,212,255,.4);
+  border-radius: 12px;
+  color: rgba(255,255,255,.92);
+  font-family: 'Heebo', system-ui, sans-serif;
+  cursor: pointer;
+  transition: background .1s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.rxn-boostie-item:active { transform: scale(.9); }
+.rxn-boostie-ic { font-size: 24px; line-height: 1; }
+.rxn-boostie-name { font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.rxn-boostie-item.rxn-item-disabled { opacity: .38; cursor: not-allowed; pointer-events: none; }
+
 /* ── Emoji grid (fixed 4 columns so cells fit nicely on narrow phones) ── */
 .rxn-emoji-grid {
   display: grid;

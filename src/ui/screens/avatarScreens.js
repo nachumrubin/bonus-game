@@ -1,18 +1,17 @@
-// Avatar-related screens, kept together because they share the avatar
-// definition table:
-//   - mountAvatarPickerScreen — wires #sav-gallery (achievements + avatar picker).
+// Avatar + achievement screens:
+//   - avatar helpers (avatarIconSrc / avatarMarkup / setAvatarEl) — every avatar slot
+//     in the app renders through these; avatars are Boosties (boostieCatalog.js).
+//   - ACHIEVEMENTS + their pure evaluation (achievementMetric & co).
+//   - mountAvatarPickerScreen — wires #sav-gallery (the trophy room).
 //   - mountAvatarUnlockedScreen — wires #ov-avatar-unlocked overlay.
-//
-// The legacy AVATAR_DEFS lives in the inline <script>; this module ships
-// a parallel SPINE_AVATARS table with the same id/emoji set so the spine
-// doesn't depend on the legacy global at module load. Stats-driven unlock
-// is computed pure-ly via `isAvatarUnlocked(avatar, stats)`.
 
 import { $, on, setText } from '../domHelpers.js';
-import { isStoreAvatarId, storeAvatarSrc, findStoreAvatar, COIN_ICON_HTML } from './avatarStore.js';
+import { COIN_ICON_HTML } from './coinIcon.js';
 import { playOnImg, canPlayNow, preloadFor } from '../avatarMotion/spritePlayer.js';
 import { confettiBurst } from './miniGames/bonusFx.js';
 import { specialFor, playUnlockSpecial } from '../avatarMotion/unlockFx.js';
+import { parseBoostieAvatar, boostieStillSrc, DEFAULT_BOOSTIE, BOOSTIES } from '../../game/account/boostieCatalog.js';
+import { normalizeBoosties } from '../../game/account/boostieXp.js';
 
 export const AV_INTENT = Object.freeze({
   SELECT:     'avatar/select',
@@ -27,65 +26,36 @@ export const AV_UNLOCK_CLOSE = 'avatar/unlockClose';
 // { bumps: [{ achievement, from, to, target }] } — progress moved on unfinished achievements.
 export const AV_PROGRESS_BUMP = 'avatar/progressBump';
 
-// Pared-down avatar table — id, emoji, Hebrew name, rarity, unlock rule.
-// Mirrors the legacy AVATAR_DEFS contract. Used by diffNewlyUnlocked() and
-// the unlock-popup system — do not remove or rename entries.
-export const SPINE_AVATARS = [
-  { id: 'crown',     emoji: '👑', nameHe: 'כתר',       rarity: 'free',   unlock: { stat: 'gamesPlayed',      min: 0    } },
-  { id: 'star',      emoji: '⭐', nameHe: 'כוכב',      rarity: 'free',   unlock: { stat: 'gamesPlayed',      min: 0    } },
-  { id: 'fire',      emoji: '🔥', nameHe: 'אש',        rarity: 'bronze', unlock: { stat: 'gamesPlayed',      min: 5    } },
-  { id: 'shark',     emoji: '🦈', nameHe: 'כריש',      rarity: 'bronze', unlock: { stat: 'gamesWon',         min: 5    } },
-  { id: 'diamond',   emoji: '💎', nameHe: 'יהלום',     rarity: 'silver', unlock: { stat: 'gamesPlayed',      min: 25   } },
-  { id: 'tiger',     emoji: '🐯', nameHe: 'נמר',       rarity: 'silver', unlock: { stat: 'longestStreak',    min: 5    } },
-  { id: 'fox',       emoji: '🦊', nameHe: 'שועל',      rarity: 'silver', unlock: { stat: 'cleanWins',        min: 1    } },
-  { id: 'bulb',      emoji: '💡', nameHe: 'נורה',      rarity: 'silver', unlock: { stat: 'highestMoveScore', min: 100  } },
-  { id: 'handshake', emoji: '🤝', nameHe: 'חברים',     rarity: 'silver', unlock: { stat: 'friendsCount',     min: 20   } },
-  { id: 'dragon',    emoji: '🐉', nameHe: 'דרקון',     rarity: 'gold',   unlock: { stat: 'gamesPlayed',      min: 40   } },
-  { id: 'wizard',    emoji: '🧙', nameHe: 'קוסם',      rarity: 'gold',   unlock: { stat: 'highScore',        min: 250  } },
-  { id: 'shield',    emoji: '🛡️', nameHe: 'מגן',       rarity: 'gold',   unlock: { stat: 'longestStreak',    min: 15   } },
-  { id: 'bolt',      emoji: '⚡', nameHe: 'ברק',       rarity: 'gold',   unlock: { stat: 'fastGamePlayed',   min: 1    } },
-  { id: 'alien',     emoji: '👾', nameHe: 'חייזר',     rarity: 'legend', unlock: { stat: 'gamesPlayed',      min: 100  } },
-  { id: 'robot',     emoji: '🤖', nameHe: 'רובוט',     rarity: 'legend', unlock: { stat: 'gamesWon',         min: 50   } },
-  { id: 'trophy',    emoji: '🏆', nameHe: 'גביע',      rarity: 'legend', unlock: { stat: 'longestStreak',    min: 25   } },
-  { id: 'books',     emoji: '📚', nameHe: 'ספרים',     rarity: 'legend', unlock: { stat: 'uniqueWordsCount', min: 1000 } },
-  { id: 'hero',      emoji: '🦸', nameHe: 'גיבור-על',  rarity: 'legend', unlock: { stat: 'noLossWeekStreaks',min: 1    } },
-  { id: 'target',    emoji: '🎯', nameHe: 'מטרה',      rarity: 'legend', unlock: { stat: 'beatNumberOne',    min: 1    } },
-  { id: 'ambassador',emoji: '🤩', nameHe: 'שגריר',    rarity: 'gold',   unlock: { stat: 'invitesSent',      min: 5    } },
-];
-
 // Named achievements — collectible "trophies". Completing one awards COINS
-// (by tier — see profileService.ACHIEVEMENT_COIN_REWARD), NOT an avatar; avatars
-// come exclusively from the store now. Each entry has a `condition`:
-//   { stat, min }                              — numeric profile-stat threshold
-//   { type:'ownedCount', min }                 — total purchased store avatars
-//   { type:'ownedCategories', categories:[…] } — owns ≥1 from each listed category
-//   { type:'ownedInCategory', category, min }  — owns ≥min from one category
-// `rewardAvatarId` (legacy) only drives the trophy-icon emoji fallback; ownership
-// achievements use `emoji` instead. `tier` drives the coin reward.
+// (by tier — see profileService.ACHIEVEMENT_COIN_REWARD). Each entry has a `condition`:
+//   { stat, min }                       — numeric profile-stat threshold
+//   { type:'boostieLevel', min }        — any owned Boostie reached this level
+//   { type:'boostiesUnlocked', min }    — Boosties owned beyond the starters
+//   { type:'reactionsOwned', min }      — reactions bought in the store
+// `emoji` is the fallback when the trophy PNG is missing. `tier` drives the coin reward.
 export const ACHIEVEMENTS = [
-  { id: 'first_steps',  titleHe: 'צעדים ראשונים', descHe: 'שחק 5 משחקים',                                       condition: { stat: 'gamesPlayed',      min: 5    }, rewardAvatarId: 'fire',      tier: 'bronze' },
-  { id: 'winner',       titleHe: 'מנצח',           descHe: 'ניצח 5 משחקים',                                       condition: { stat: 'gamesWon',         min: 5    }, rewardAvatarId: 'shark',     tier: 'bronze' },
-  { id: 'seasoned',     titleHe: 'שחקן מנוסה',     descHe: 'שחק 25 משחקים',                                       condition: { stat: 'gamesPlayed',      min: 25   }, rewardAvatarId: 'diamond',   tier: 'silver' },
-  { id: 'streaker',     titleHe: 'רצף מנצחים',     descHe: 'הגע לרצף של 5 ניצחונות',                             condition: { stat: 'longestStreak',    min: 5    }, rewardAvatarId: 'tiger',     tier: 'silver' },
-  { id: 'clean_winner', titleHe: 'שועל ותיק',      descHe: 'צא לניצחון בלי להשתמש בריבוע מיוחד',                 condition: { stat: 'cleanWins',        min: 1    }, rewardAvatarId: 'fox',       tier: 'silver' },
-  { id: 'word_genius',  titleHe: 'גאון מילים',     descHe: 'צבור 100 נקודות במהלך אחד',                          condition: { stat: 'highestMoveScore', min: 100  }, rewardAvatarId: 'bulb',      tier: 'silver' },
-  { id: 'social',       titleHe: 'חבר של כולם',    descHe: 'הגע ל-20 חברים',                                      condition: { stat: 'friendsCount',     min: 20   }, rewardAvatarId: 'handshake', tier: 'silver' },
-  { id: 'veteran',      titleHe: 'ותיק',            descHe: 'שחק 40 משחקים',                                       condition: { stat: 'gamesPlayed',      min: 40   }, rewardAvatarId: 'dragon',    tier: 'gold'   },
-  { id: 'wordsmith',    titleHe: 'אמן המילים',      descHe: 'הגע לשיא של 250 נקודות',                              condition: { stat: 'highScore',        min: 250  }, rewardAvatarId: 'wizard',    tier: 'gold'   },
-  { id: 'undefeated',   titleHe: 'בלתי מנוצח',     descHe: 'רצף של 15 ניצחונות',                                  condition: { stat: 'longestStreak',    min: 15   }, rewardAvatarId: 'shield',    tier: 'gold'   },
-  { id: 'lightning',    titleHe: 'ברק חי',         descHe: 'שחק משחק במהירות ממוצעת מתחת ל-3 שניות למהלך',     condition: { stat: 'fastGamePlayed',   min: 1    }, rewardAvatarId: 'bolt',      tier: 'gold'   },
-  { id: 'legend',       titleHe: 'אגדה',            descHe: 'שחק 100 משחקים',                                      condition: { stat: 'gamesPlayed',      min: 100  }, rewardAvatarId: 'alien',     tier: 'legend' },
-  { id: 'champion',     titleHe: 'אלוף',            descHe: 'ניצח 50 משחקים',                                      condition: { stat: 'gamesWon',         min: 50   }, rewardAvatarId: 'robot',     tier: 'legend' },
-  { id: 'untouchable',  titleHe: 'בלתי נתפס',      descHe: 'נצח 25 משחקים ברצף',                                  condition: { stat: 'longestStreak',    min: 25   }, rewardAvatarId: 'trophy',    tier: 'legend' },
-  { id: 'dictionary',   titleHe: 'מילון מהלך',      descHe: 'השתמש ב-1000 מילים שונות',                            condition: { stat: 'uniqueWordsCount', min: 1000 }, rewardAvatarId: 'books',     tier: 'legend' },
-  { id: 'superhuman',   titleHe: 'על-אנושי',        descHe: 'שבוע שלם בלי הפסד',                                   condition: { stat: 'noLossWeekStreaks',min: 1    }, rewardAvatarId: 'hero',      tier: 'legend' },
-  { id: 'the_one',      titleHe: 'האחד',            descHe: 'נצח את שחקן המקום הראשון',                            condition: { stat: 'beatNumberOne',    min: 1    }, rewardAvatarId: 'target',     tier: 'legend' },
-  { id: 'recruiter',   titleHe: 'חבר מביא חבר',  descHe: 'הזמן 5 חברים לבוסט',                                  condition: { stat: 'invitesSent',      min: 5    }, rewardAvatarId: 'ambassador', tier: 'gold'   },
-  // Avatar-store / purchasing achievements (June 2026). No reward avatar — these
-  // are pure trophies that pay out coins; condition reads profile.ownedAvatars.
-  { id: 'first_buy',   titleHe: 'קנייה ראשונה',  descHe: 'רכוש את האווטאר הראשון שלך בחנות',                    condition: { type: 'ownedCount', min: 1 },                              emoji: '🛍️', tier: 'bronze' },
-  { id: 'collector',   titleHe: 'אספן',           descHe: 'החזק לפחות אווטאר אחד מכל קטגוריה (נדיר, אפי, אגדי)', condition: { type: 'ownedCategories', categories: ['rare','epic','legendary'] }, emoji: '🗂️', tier: 'gold'   },
-  { id: 'legend_owner',    titleHe: 'בעל אגדה',       descHe: 'רכוש אווטאר אגדי מהחנות',                             condition: { type: 'ownedInCategory', category: 'legendary', min: 1 },  emoji: '💫', tier: 'legend' },
+  { id: 'first_steps',  titleHe: 'צעדים ראשונים', descHe: 'שחק 5 משחקים',                                       condition: { stat: 'gamesPlayed',      min: 5    }, emoji: '🔥',      tier: 'bronze' },
+  { id: 'winner',       titleHe: 'מנצח',           descHe: 'ניצח 5 משחקים',                                       condition: { stat: 'gamesWon',         min: 5    }, emoji: '🦈',     tier: 'bronze' },
+  { id: 'seasoned',     titleHe: 'שחקן מנוסה',     descHe: 'שחק 25 משחקים',                                       condition: { stat: 'gamesPlayed',      min: 25   }, emoji: '💎',   tier: 'silver' },
+  { id: 'streaker',     titleHe: 'רצף מנצחים',     descHe: 'הגע לרצף של 5 ניצחונות',                             condition: { stat: 'longestStreak',    min: 5    }, emoji: '🐯',     tier: 'silver' },
+  { id: 'clean_winner', titleHe: 'שועל ותיק',      descHe: 'צא לניצחון בלי להשתמש בריבוע מיוחד',                 condition: { stat: 'cleanWins',        min: 1    }, emoji: '🦊',       tier: 'silver' },
+  { id: 'word_genius',  titleHe: 'גאון מילים',     descHe: 'צבור 100 נקודות במהלך אחד',                          condition: { stat: 'highestMoveScore', min: 100  }, emoji: '💡',      tier: 'silver' },
+  { id: 'social',       titleHe: 'חבר של כולם',    descHe: 'הגע ל-20 חברים',                                      condition: { stat: 'friendsCount',     min: 20   }, emoji: '🤝', tier: 'silver' },
+  { id: 'veteran',      titleHe: 'ותיק',            descHe: 'שחק 40 משחקים',                                       condition: { stat: 'gamesPlayed',      min: 40   }, emoji: '🐉',    tier: 'gold'   },
+  { id: 'wordsmith',    titleHe: 'אמן המילים',      descHe: 'הגע לשיא של 250 נקודות',                              condition: { stat: 'highScore',        min: 250  }, emoji: '🧙',    tier: 'gold'   },
+  { id: 'undefeated',   titleHe: 'בלתי מנוצח',     descHe: 'רצף של 15 ניצחונות',                                  condition: { stat: 'longestStreak',    min: 15   }, emoji: '🛡️',    tier: 'gold'   },
+  { id: 'lightning',    titleHe: 'ברק חי',         descHe: 'שחק משחק במהירות ממוצעת מתחת ל-3 שניות למהלך',     condition: { stat: 'fastGamePlayed',   min: 1    }, emoji: '⚡',      tier: 'gold'   },
+  { id: 'legend',       titleHe: 'אגדה',            descHe: 'שחק 100 משחקים',                                      condition: { stat: 'gamesPlayed',      min: 100  }, emoji: '👾',     tier: 'legend' },
+  { id: 'champion',     titleHe: 'אלוף',            descHe: 'ניצח 50 משחקים',                                      condition: { stat: 'gamesWon',         min: 50   }, emoji: '🤖',     tier: 'legend' },
+  { id: 'untouchable',  titleHe: 'בלתי נתפס',      descHe: 'נצח 25 משחקים ברצף',                                  condition: { stat: 'longestStreak',    min: 25   }, emoji: '🏆',    tier: 'legend' },
+  { id: 'dictionary',   titleHe: 'מילון מהלך',      descHe: 'השתמש ב-1000 מילים שונות',                            condition: { stat: 'uniqueWordsCount', min: 1000 }, emoji: '📚',     tier: 'legend' },
+  { id: 'superhuman',   titleHe: 'על-אנושי',        descHe: 'שבוע שלם בלי הפסד',                                   condition: { stat: 'noLossWeekStreaks',min: 1    }, emoji: '🦸',      tier: 'legend' },
+  { id: 'the_one',      titleHe: 'האחד',            descHe: 'נצח את שחקן המקום הראשון',                            condition: { stat: 'beatNumberOne',    min: 1    }, emoji: '🎯',     tier: 'legend' },
+  { id: 'recruiter',   titleHe: 'חבר מביא חבר',  descHe: 'הזמן 5 חברים לבוסט',                                  condition: { stat: 'invitesSent',      min: 5    }, emoji: '🤩', tier: 'gold'   },
+  // Boostie achievements (October 2026, D-boostie-xp).
+  { id: 'boostie_grown',  titleHe: 'מתפתח',       descHe: 'הבא בוסטי לשלב 4',      condition: { type: 'boostieLevel', min: 4 },     emoji: '🌱', tier: 'silver' },
+  { id: 'new_boostie',    titleHe: 'בוסטי חדש',   descHe: 'פתח בוסטי חדש',          condition: { type: 'boostiesUnlocked', min: 1 }, emoji: '✨', tier: 'gold'   },
+  { id: 'reaction_fan',   titleHe: 'מלך התגובות', descHe: 'פתח 2 תגובות בחנות',     condition: { type: 'reactionsOwned', min: 2 },   emoji: '🎭', tier: 'silver' },
   { id: 'word_contributor', titleHe: 'תורם מילים', descHe: 'הצע 20 מילים שהתקבלו למילון', condition: { stat: 'wordsAccepted', min: 20 }, emoji: '📖', tier: 'gold' },
 ];
 
@@ -96,34 +66,27 @@ export const ACHIEVEMENTS = [
 const ACH_ICON_DIR = 'assets/achievements/';
 const ACH_LOCK_ICON = 'assets/ui/lock.png';
 
-export function findAvatar(id) {
-  return SPINE_AVATARS.find(a => a.id === id) ?? null;
-}
-
-export function findAchievementByRewardId(avatarId) {
-  return ACHIEVEMENTS.find(a => a.rewardAvatarId === avatarId) ?? null;
-}
-
 export function achievementIconSrc(achievement) {
   return achievement?.titleHe ? encodeURI(ACH_ICON_DIR + achievement.titleHe + '.png') : null;
 }
 
-// Resolve an avatar (id like 'robot' OR its emoji '🤖') to the achievement
-// trophy-icon PNG that represents it, so the equipped avatar displays as the
-// collected achievement art instead of the legacy emoji. Returns null for
-// avatars with no achievement (the free crown/star) or unknown values — caller
-// then falls back to the emoji.
 export const BOT_AVATAR_SRC = 'assets/avatars/bot.png';
 
-// Per-difficulty bot avatars (the same art as the setup screen's level cards).
-// 'bot' (generic) stays valid for older saved games.
+// Per-difficulty bot avatars: stills of the bots' 3D models (AVATAR_EVOLUTION §9), also
+// on the setup screen's level cards. 'bot' (generic) stays valid for older saved games.
 export const BOT_AVATAR_BY_LEVEL = Object.freeze(['bot_easy', 'bot_medium', 'bot_hard']);
 const BOT_LEVEL_SRC = Object.freeze({
   bot: BOT_AVATAR_SRC,
-  bot_easy: 'assets/avatars/green bot.png',
-  bot_medium: 'assets/avatars/yellow bot.png',
-  bot_hard: 'assets/avatars/red bot.png',
+  bot_easy: 'assets/avatars/bots/bot_easy_{kind}.webp',
+  bot_medium: 'assets/avatars/bots/bot_medium_{kind}.webp',
+  bot_hard: 'assets/avatars/bots/bot_hard_{kind}.webp',
 });
+export function botStillSrc(id, kind = 'bust') {
+  return BOT_LEVEL_SRC[id].replace('{kind}', kind === 'full' ? 'full' : 'bust');
+}
+export function botModelSrc(id) {   // the 3D model (Phase 3); the generic 'bot' has none
+  return id !== 'bot' && Object.hasOwn(BOT_LEVEL_SRC, id) ? `assets/boosties/${id}.glb` : null;
+}
 export function botAvatarForLevel(difficulty) {
   return BOT_AVATAR_BY_LEVEL[Number(difficulty)] ?? 'bot';
 }
@@ -131,20 +94,18 @@ export function isBotAvatar(value) {
   return typeof value === 'string' && Object.hasOwn(BOT_LEVEL_SRC, value);
 }
 
-export function avatarIconSrc(value) {
-  if (value == null) return null;
-  if (isBotAvatar(value)) return encodeURI(BOT_LEVEL_SRC[value]);
-  // Store avatars (common_/rare_/epic_/legendary_) are image-only — resolve
-  // their PNG here so an equipped store avatar shows everywhere avatars render
-  // (profile, game screen, opponent cards) via setAvatarEl/avatarMarkup.
-  const storeSrc = storeAvatarSrc(value);
-  if (storeSrc) return storeSrc;
-  const av = SPINE_AVATARS.find(a => a.id === value)
-    ?? SPINE_AVATARS.find(a => a.emoji === value);
-  if (!av) return null;
-  const ach = findAchievementByRewardId(av.id);
-  if (!ach) return null;
-  return achievementIconSrc(ach);
+// Avatars are Boosties (boostieCatalog.js). A value is 'zapi:4' / 'zapi' / { id, level }.
+// Bots keep their own art. Any other id-like value (an old avatar id still on a dev
+// profile or room) shows the starter Boostie at level 1. Non-id text (an emoji such as
+// a banner's '🔔') and null / '' / '👤' → null; callers render the text or the
+// anonymous portrait.
+const AVATAR_ID_RE = /^[a-z][a-z0-9_]*(?::\d+)?$/;
+export function avatarIconSrc(value, { kind = 'bust' } = {}) {
+  if (value == null || value === '') return null;
+  if (isBotAvatar(value)) return encodeURI(botStillSrc(value, kind));
+  const b = parseBoostieAvatar(value);
+  if (b) return boostieStillSrc(b.id, b.level, kind);
+  return typeof value === 'string' && AVATAR_ID_RE.test(value) ? boostieStillSrc(DEFAULT_BOOSTIE, 1, kind) : null;
 }
 
 function escapeAvatar(s) {
@@ -154,19 +115,13 @@ function escapeAvatar(s) {
 
 export const ANON_AVATAR_SRC = 'assets/avatars/anonymous player.png';
 
-// Emoji/text fallback for an avatar value (id → emoji, else the raw value, else
-// the fallback). Mirrors the per-screen resolveAvatar() helpers.
+// Text for an avatar value with no image (an emoji passed as the avatar), else the fallback.
 export function avatarText(value, fallback = '👤') {
-  const av = SPINE_AVATARS.find(a => a.id === value);
-  if (av) return av.emoji;
-  // Store ids have no emoji; if the PNG is unavailable, degrade to the generic
-  // person icon rather than printing the raw id (e.g. 'rare_3').
-  if (isStoreAvatarId(value)) return fallback;
-  return (value != null && value !== '') ? value : fallback;
+  return (typeof value === 'string' && value !== '') ? value : fallback;
 }
 
-// Avatar as an HTML string: the achievement trophy <img> when the avatar maps
-// to one, else the escaped emoji/text. `className` controls the img sizing
+// Avatar as an HTML string: the Boostie (or bot) still <img>; with no avatar,
+// the anonymous portrait, or the escaped `fallback` text when one is given. `className` controls the img sizing
 // (defaults to `.av-img`, which scales with the container font-size).
 export function avatarMarkup(value, { fallback = '👤', className = 'av-img' } = {}) {
   const src = avatarIconSrc(value);
@@ -200,46 +155,32 @@ export function progressPct(achievement, stats = {}) {
   return Math.min(1, val / achievement.condition.min);
 }
 
-export function isAvatarUnlocked(avatar, stats = {}) {
-  if (!avatar?.unlock) return true;
-  const min = avatar.unlock.min ?? 0;
-  if (min === 0) return true;
-  const value = stats[avatar.unlock.stat] ?? 0;
-  return value >= min;
+// ── Achievement evaluation (trophy-centric) ─────────
+// `data` is achievementSnapshot(profile) = { stats, boosties, ownedReactions }.
+// Returns { current, target } for the achievement's condition.
+export function achievementSnapshot(profile) {
+  return {
+    stats: profile?.stats ?? {},
+    boosties: profile?.boosties ?? null,
+    ownedReactions: Array.isArray(profile?.ownedReactions) ? profile.ownedReactions : [],
+  };
 }
 
-// Pure: given a profile's stats and the prior known unlocks, return the
-// new unlocks that should fire achievement popups.
-export function diffNewlyUnlocked(prevStats = {}, nextStats = {}) {
-  const out = [];
-  for (const a of SPINE_AVATARS) {
-    const before = isAvatarUnlocked(a, prevStats);
-    const after  = isAvatarUnlocked(a, nextStats);
-    if (!before && after) out.push(a);
-  }
-  return out;
-}
-
-// ── Achievement evaluation (trophy-centric, decoupled from avatars) ─────────
-// `data` is a profile-like { stats, ownedAvatars }. Returns { current, target }
-// for the achievement's condition (stat threshold or store-ownership rule).
 export function achievementMetric(ach, data = {}) {
   const c = ach?.condition ?? {};
-  const owned = Array.isArray(data.ownedAvatars) ? data.ownedAvatars : [];
   if (c.stat) {
     return { current: data.stats?.[c.stat] ?? 0, target: c.min ?? 0 };
   }
-  if (c.type === 'ownedCount') {
-    return { current: owned.length, target: c.min ?? 1 };
+  if (c.type === 'boostieLevel') {
+    const levels = Object.values(normalizeBoosties(data.boosties)).map(b => b.level);
+    return { current: Math.max(1, ...levels), target: c.min ?? 1 };
   }
-  if (c.type === 'ownedInCategory') {
-    const n = owned.filter(id => findStoreAvatar(id)?.category === c.category).length;
-    return { current: n, target: c.min ?? 1 };
+  if (c.type === 'boostiesUnlocked') {
+    const extra = Object.keys(normalizeBoosties(data.boosties)).filter(id => BOOSTIES[id]?.unlock !== 'starter');
+    return { current: extra.length, target: c.min ?? 1 };
   }
-  if (c.type === 'ownedCategories') {
-    const cats = new Set(owned.map(id => findStoreAvatar(id)?.category).filter(Boolean));
-    const have = (c.categories ?? []).filter(cat => cats.has(cat)).length;
-    return { current: have, target: (c.categories ?? []).length };
+  if (c.type === 'reactionsOwned') {
+    return { current: Array.isArray(data.ownedReactions) ? data.ownedReactions.length : 0, target: c.min ?? 1 };
   }
   return { current: 0, target: 1 };
 }
@@ -256,7 +197,7 @@ export function achievementProgressPct(ach, data = {}) {
 }
 
 // Pure: achievements newly completed between two profile-like snapshots
-// ({ stats, ownedAvatars }). Drives coin payout + the completion popup.
+// (achievementSnapshot). Drives coin payout + the completion popup.
 export function diffNewlyCompletedAchievements(prev = {}, next = {}) {
   const out = [];
   for (const ach of ACHIEVEMENTS) {
@@ -285,7 +226,7 @@ export function progressBumps(prev = {}, next = {}, { limit = 2 } = {}) {
 // from === to. Drives the end screen's "next achievement" row when no
 // progress moved this game. null when everything is done / no data.
 export function nextAchievement(snapshot = {}) {
-  if (!snapshot || (!snapshot.stats && !snapshot.ownedAvatars)) return null;
+  if (!snapshot || (!snapshot.stats && !snapshot.boosties && !snapshot.ownedReactions)) return null;
   let best = null;
   let bestPct = -1;
   for (const ach of ACHIEVEMENTS) {
@@ -333,7 +274,7 @@ export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}
     const complete = isAchievementComplete(ach, data);
     const { current, target } = achievementMetric(ach, data);
     const badge = `${Math.min(current, target)}/${target}`;
-    const emoji = ach.emoji ?? findAvatar(ach.rewardAvatarId)?.emoji ?? '🏆';
+    const emoji = ach.emoji ?? '🏆';
     const icon = `<img class="ach-ic-img" src="${achievementIconSrc(ach)}" alt="">`
       + `<span class="ach-ic-emoji" style="display:none">${emoji}</span>`;
     const cls = ['ach-iccell'];
@@ -349,11 +290,12 @@ export function mountAvatarPickerScreen({ root = globalThis.document, bus } = {}
   }
 
   let prevCompletedIds = null;
-  let lastData = { stats: {}, ownedAvatars: [] };
+  let lastData = achievementSnapshot(null);
 
-  function paint({ stats = {}, ownedAvatars = [], coinRewardByTier: rewards } = {}) {
+  // AV_RENDER { stats, boosties, ownedReactions, coinRewardByTier }
+  function paint({ coinRewardByTier: rewards, ...profile } = {}) {
     if (rewards) coinRewardByTier = rewards;
-    lastData = { stats: stats ?? {}, ownedAvatars: Array.isArray(ownedAvatars) ? ownedAvatars : [] };
+    lastData = achievementSnapshot(profile);
     if (!grid) return;
     const completed = ACHIEVEMENTS.filter(a => isAchievementComplete(a, lastData));
     if (countEl) setText(countEl, `${completed.length} מתוך ${ACHIEVEMENTS.length} הושגו`);
@@ -456,7 +398,7 @@ export function mountAvatarUnlockedScreen({ root = globalThis.document, bus } = 
     else overlay.setAttribute?.('data-ach-id', achId);
     if (icEl) {
       const iconSrc = achievementIconSrc(achievement);
-      const fallback = achievement?.emoji ?? findAvatar(achievement?.rewardAvatarId)?.emoji ?? '🏆';
+      const fallback = achievement?.emoji ?? '🏆';
       if (iconSrc) {
         icEl.innerHTML = `<img class="ach-ic-img" src="${iconSrc}" alt=""><span class="ach-ic-emoji" style="display:none">${fallback}</span>`;
         const img = icEl.querySelector?.('.ach-ic-img');

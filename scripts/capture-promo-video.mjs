@@ -412,7 +412,7 @@ async function achievements(page) {
         invitesSent: 8,
         wordsAccepted: 24,
       },
-      ownedAvatars: ['rare_1', 'rare_7', 'epic_2', 'legendary_4'],
+      ownedReactions: ['wink'],
       coinRewardByTier: { bronze: 50, silver: 100, gold: 250, legend: 750 },
     });
   });
@@ -429,8 +429,8 @@ async function avatars(page) {
     window.showSc?.('savatar-store');
     window.__spine.bus.emit(window.__spine.ui.STORE_RENDER ?? 'store/render', {
       coins: 3880,
-      ownedAvatars: ['rare_1', 'rare_7', 'epic_2', 'legendary_4'],
-      equippedAvatar: 'legendary_4',
+      ownedReactions: ['wink'],
+      equippedAvatar: 'bubo',
     });
   });
   await page.locator('#savatar-store').waitFor({ state: 'visible' });
@@ -466,7 +466,7 @@ async function profileAndStats(page) {
   const payload = {
     profile: {
       displayName: 'נחום רובין',
-      equippedAvatar: 'legendary_4',
+      equippedAvatar: 'bubo',
       rating: 886,
       coins: 3880,
       userId: 'BOOST886',
@@ -501,7 +501,7 @@ async function profileAndStats(page) {
           ori: { name: 'אורי', played: 8, won: 5, lost: 2, draw: 1 },
         },
       },
-      ownedAvatars: ['rare_1', 'rare_7', 'epic_2', 'legendary_4'],
+      ownedReactions: ['wink'],
     },
     isAnonymous: false,
     email: 'boost@example.test',

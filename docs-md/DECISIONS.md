@@ -5,6 +5,33 @@
 
 ---
 
+## D-boostie-xp: Boosties level up from games played, not from the rating — October 2026
+
+**Decision:** Boosties replace every older avatar (store portraits, achievement emojis).
+A Boostie's level comes from **XP, which counts finished games**: 10 XP per game, +10 for
+a win, +5 for a draw; abandoned or forfeited games give nothing. XP is completely
+separate from the ELO rating. Levels need 0/50/150/350/700/1200/2000 XP, so about three
+games a day reaches level 4 in about a week and level 7 in 6–7 weeks. Constants live in
+`src/game/account/boostieXp.js`.
+
+- XP belongs to the **equipped** Boostie; each one keeps its own XP and level in
+  `profile.boosties = { <id>: { xp, level } }`. Owning a Boostie = having an entry.
+- New players own every **starter** Boostie (target: 4–5 starters plus 2–3 locked ones;
+  today Zapi and Bubo are both starters). Reaching level 7 unlocks the next locked
+  Boostie in `CHAIN_ORDER` for free; it can also be bought with coins.
+- No migration of old profiles: the app wasn't in production when Boosties shipped.
+- Avatar values that travel (rooms, invites, queue, friend lists) are `'<id>:<level>'`,
+  so other players see your current form. Unknown or old values show the starter at
+  level 1.
+- Rendering is hybrid: stills everywhere, live 3D only on the in-game scoreboard.
+- The store sells Boosties and extra reactions. Coins will also be sold for real money,
+  which first needs the economy to move server-side (Phase 6a, see TASKS).
+
+**Rules:** XP may only grow, by at most one win (20) per write; level stays 1–7 and
+only grows. The client still writes coins and owned items until Phase 6a.
+
+**Supersedes:** D-avatar-store (the 36-portrait coin store).
+
 ## D-avatar-evolution: 7-level Boosties, cyan chest core shows the level by shape — October 2026
 
 **Decision:** evolving "Boostie" avatars have **7 levels** (not 10). Each level
@@ -151,6 +178,54 @@ path.
 
 ---
 
+## D-boostie-live-3d: Boosties are live 3D (three.js), with blinks allowed on the board — October 2026
+
+**Decision:** the evolving Boostie avatars are real-time 3D models (.glb, three.js),
+not pose atlases. That includes the game scoreboard. The 3D only draws while
+something moves. On the board, a Boostie may **blink, glance and flick an ear**
+every few seconds between reactions. Nothing else idles there.
+
+**Why:** a phone test (`tools/3d-spike/`) ran two live avatars at 95% of frames under
+8 ms. Without blinks the characters read as dead. A blink every few seconds wakes
+the 3D for about 0.2 s, so the cost stays negligible.
+
+**Amends** D-avatar-motion's "no loops on the board" for Boosties only: no breathing
+loop or idle sway on the board. The old 2D avatars keep the old rule.
+
+---
+
+## D-boostie-reactions: expressive reactions are player-chosen, and extra ones are sold — October 2026
+
+**Decision:** the game triggers only reactions that report game state: turn, good move
+and boost, plus idle life (blinks, glances, the signature movement, a small mouth
+"heh"). Expressive reactions (laugh, wow, wide eyes, …) never play on their own:
+
+- A player taps **their own** Boostie, picks a reaction, and **both** players see it
+  on that Boostie, with a short label.
+- A cooldown (4 s in the prototype) stops spamming.
+- A free starter set (Laugh, Wow, Wide eyes) is always available. More reactions
+  (Wink, Yawn, …) are **shop items**. Before buying, a player can preview one on
+  their own avatar only.
+
+**Why:** a reaction the player chose means something to the rival, while automatic
+ones turn into background noise. Reactions are also a natural thing to sell.
+
+**Settled in Phase 5 (Oct 2026):**
+- Transport: the existing `liveReaction` path and `EV.REACTION_RECEIVED`, with a new
+  reaction type `boostie`. No new `EV.*`.
+- The receiver plays the clip even without owning it (the sender paid). Where a Boostie
+  is a still, the reaction's emoji shows in the bubble.
+- The cooldown is the reaction system's 5 s; the existing mute and "disable messages"
+  settings apply.
+- Prices: wink and yawn 250 coins (tunable in `boostieCatalog.js`).
+- The store preview plays on the player's own equipped Boostie.
+
+**Not decided yet:** per-game limits beyond the cooldown.
+
+Prototype: `tools/3d-spike/` (tap "You").
+
+---
+
 ## D-matchmaking-exact-search: "חיפוש מדויק" makes settings hard; flexible = closest-from-pool — June 2026
 
 **Decision:** "חיפוש מדויק" (exact search) is a per-player switch that turns **all**
@@ -200,6 +275,8 @@ proximity to dominate, swap the axis order in `matchDistance`.
 ---
 
 ## D-avatar-store: separate coin-bought avatar collection, client-authoritative economy — June 2026
+
+> **Superseded by D-boostie-xp (October 2026).** The store now sells Boosties and reactions.
 
 **Decision:** The avatar **store** is a NEW collection of 36 avatars (`assets/avatars/`,
 common/rare/epic/legendary) bought with a coin currency. It **coexists** with — does not replace — the existing
@@ -460,6 +537,27 @@ coin loop). Tests: `avatarStore.test.js`, `avatarStoreScreen.test.js`, extended 
 - Timing is deliberate: about 15% of timed turns commit within ±1.5 s of the deadline.
 - The older `npm run sim` scenarios stay for fast, deterministic, injected-clock checks.
 - Prod is never a soak target. Staging (a separate Firebase project) is the only remote target.
+
+---
+
+## D-boostie-meshy: Boostie 3D models are generated with Meshy, not TRELLIS — October 2026
+
+**Decision:** Boostie level meshes are generated with Meshy image-to-3D on a paid plan,
+through `Blender designs/boosties/meshy_generate.py` (API, `MESHY_API_KEY`). TRELLIS
+(`trellis_generate.py`) stays as the free fallback. Everything after generation stays
+the same: `build_boostie.py` and the upgrades.
+
+**Test (Zapi L3, same single front image):**
+- Meshy's best model kept the concept's face: the lightning mark, the brows and the
+  eye shape. It had a crisp painted-fur texture and a believable back and tail. The
+  free Meshy 6 Lite mesh was one clean piece.
+- TRELLIS gave a soft, generic face (the mark became a tuft), a blurry texture and a
+  lumpy, flat tail. The free quota is also only about 1–2 runs a day.
+- Tripo couldn't be judged: the web generation hung for 20+ minutes with no result.
+
+**Why paid:** the free plan can't download Meshy 6/7 models. Pro (about $20, 1000
+credits, about 30 per model) also gives API access and commercial rights. Free-plan
+output must not ship.
 
 ---
 

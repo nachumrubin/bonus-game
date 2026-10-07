@@ -3,23 +3,15 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import {
-  SPINE_AVATARS, ACHIEVEMENTS,
-  findAvatar, findAchievementByRewardId, isAvatarUnlocked, diffNewlyUnlocked, progressPct,
+  ACHIEVEMENTS, progressPct, achievementSnapshot,
   achievementMetric, isAchievementComplete, achievementProgressPct, diffNewlyCompletedAchievements,
-  avatarIconSrc, achievementIconSrc, avatarText,
+  avatarIconSrc, avatarMarkup, setAvatarEl, achievementIconSrc, avatarText, botModelSrc,
   mountAvatarPickerScreen, mountAvatarUnlockedScreen,
   AV_INTENT, AV_RENDER, AV_UNLOCK_OPEN, AV_UNLOCK_CLOSE,
 } from './avatarScreens.js';
 
 // Coin reward map (mirrors profileService.ACHIEVEMENT_COIN_REWARD) passed via AV_RENDER.
 const TIER_REWARD = { bronze: 50, silver: 100, gold: 250, legend: 750 };
-
-test('SPINE_AVATARS contains the expected ids', () => {
-  const ids = SPINE_AVATARS.map(a => a.id);
-  assert.ok(ids.includes('crown'));
-  assert.ok(ids.includes('dragon'));
-  assert.ok(ids.includes('alien'));
-});
 
 test('ACHIEVEMENTS includes the May 2026 expansion (fox, bulb, handshake, shield, bolt, trophy, books, hero, target)', () => {
   const ids = new Set(ACHIEVEMENTS.map(a => a.id));
@@ -33,50 +25,22 @@ test('ACHIEVEMENTS includes the May 2026 expansion (fox, bulb, handshake, shield
   assert.equal(wg.condition.min, 100);
 });
 
-test('ACHIEVEMENTS covers all non-free avatars', () => {
-  const rewardIds = new Set(ACHIEVEMENTS.map(a => a.rewardAvatarId));
-  const nonFree = SPINE_AVATARS.filter(a => a.rarity !== 'free');
-  for (const av of nonFree) {
-    assert.ok(rewardIds.has(av.id), `no achievement for avatar '${av.id}'`);
+test('ACHIEVEMENTS: unique ids, every entry has an emoji fallback and a tier', () => {
+  const ids = ACHIEVEMENTS.map(a => a.id);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const a of ACHIEVEMENTS) {
+    assert.ok(a.emoji, `${a.id} needs an emoji fallback`);
+    assert.ok(['bronze', 'silver', 'gold', 'legend'].includes(a.tier), a.id);
+    assert.equal(a.rewardAvatarId, undefined, `${a.id} must not reward an old avatar`);
   }
 });
 
 test('progressPct: returns 0 at start, 1 when met or exceeded', () => {
-  const ach = ACHIEVEMENTS.find(a => a.rewardAvatarId === 'dragon'); // min 40
+  const ach = ACHIEVEMENTS.find(a => a.id === 'veteran'); // gamesPlayed >= 40
   assert.equal(progressPct(ach, {}), 0);
   assert.equal(progressPct(ach, { gamesPlayed: 20 }), 0.5);
   assert.equal(progressPct(ach, { gamesPlayed: 40 }), 1);
   assert.equal(progressPct(ach, { gamesPlayed: 99 }), 1);
-});
-
-test('findAchievementByRewardId: known + unknown', () => {
-  assert.equal(findAchievementByRewardId('dragon').id, 'veteran');
-  assert.equal(findAchievementByRewardId('xx'), null);
-});
-
-test('findAvatar: known + unknown', () => {
-  assert.equal(findAvatar('crown').emoji, '👑');
-  assert.equal(findAvatar('xx'), null);
-});
-
-test('isAvatarUnlocked: free avatars always unlocked', () => {
-  assert.equal(isAvatarUnlocked(findAvatar('crown'), { gamesPlayed: 0 }), true);
-});
-
-test('isAvatarUnlocked: stat-gated avatars respect threshold', () => {
-  const dragon = findAvatar('dragon'); // gamesPlayed >= 40
-  assert.equal(isAvatarUnlocked(dragon, { gamesPlayed: 39 }), false);
-  assert.equal(isAvatarUnlocked(dragon, { gamesPlayed: 40 }), true);
-});
-
-test('diffNewlyUnlocked: returns avatars that just crossed their threshold', () => {
-  const before = { gamesPlayed: 4,  gamesWon: 4, highScore: 100 };
-  const after  = { gamesPlayed: 5,  gamesWon: 5, highScore: 100 };
-  const newly = diffNewlyUnlocked(before, after);
-  // 'fire' (gamesPlayed >= 5) and 'shark' (gamesWon >= 5) should fire.
-  const ids = newly.map(a => a.id);
-  assert.ok(ids.includes('fire'));
-  assert.ok(ids.includes('shark'));
 });
 
 function makeGrid() {
@@ -138,7 +102,7 @@ test('AvatarPicker: AV_RENDER paints a trophy tile per achievement + count + coi
   bus._reset();
   const { root, grid, count } = makePickerRoot();
   mountAvatarPickerScreen({ root, bus });
-  bus.emit(AV_RENDER, { stats: { gamesPlayed: 100, gamesWon: 50, highScore: 250, longestStreak: 5 }, ownedAvatars: [], coinRewardByTier: TIER_REWARD });
+  bus.emit(AV_RENDER, { stats: { gamesPlayed: 100, gamesWon: 50, highScore: 250, longestStreak: 5 }, coinRewardByTier: TIER_REWARD });
   // One tile per achievement (data-ach-id = achievement id, not an avatar id).
   for (const ach of ACHIEVEMENTS) {
     assert.match(grid.innerHTML, new RegExp(`data-ach-id="${ach.id}"`));
@@ -158,7 +122,7 @@ test('AvatarPicker: clicking a trophy never equips an avatar (no EQUIP/SELECT)',
   bus.on(AV_INTENT.EQUIP,  () => assert.fail('trophies must not equip'));
   bus.on(AV_INTENT.SELECT, () => assert.fail('trophies must not emit SELECT'));
   mountAvatarPickerScreen({ root, bus });
-  bus.emit(AV_RENDER, { stats: { gamesPlayed: 999, gamesWon: 999 }, ownedAvatars: [], coinRewardByTier: TIER_REWARD });
+  bus.emit(AV_RENDER, { stats: { gamesPlayed: 999, gamesWon: 999 }, coinRewardByTier: TIER_REWARD });
   grid.fireClick({
     tagName: 'BUTTON',
     getAttribute: (k) => k === 'data-ach-id' ? 'veteran' : null,
@@ -171,7 +135,7 @@ test('AvatarPicker: clicking a locked trophy shows a hint with description + coi
   bus._reset();
   const { root, grid, hint } = makePickerRoot();
   mountAvatarPickerScreen({ root, bus });
-  bus.emit(AV_RENDER, { stats: { gamesPlayed: 0 }, ownedAvatars: [], coinRewardByTier: TIER_REWARD });
+  bus.emit(AV_RENDER, { stats: { gamesPlayed: 0 }, coinRewardByTier: TIER_REWARD });
   grid.fireClick({
     tagName: 'BUTTON',
     getAttribute: (k) => ({ 'data-ach-id': 'veteran', 'data-locked': '1' }[k] ?? null),
@@ -242,10 +206,10 @@ test('AvatarUnlocked: UNLOCK_ACK + AV_UNLOCK_CLOSE rehide', () => {
   const overlay = makeOverlay();
   const root = { querySelector: (sel) => sel === '#ov-avatar-unlocked' ? overlay : null };
   mountAvatarUnlockedScreen({ root, bus });
-  bus.emit(AV_UNLOCK_OPEN, { achievement: { id: 'first_buy' }, coins: 50 });
+  bus.emit(AV_UNLOCK_OPEN, { achievement: { id: 'reaction_fan' }, coins: 50 });
   bus.emit(AV_INTENT.UNLOCK_ACK, {});
   assert.equal(overlay.classList.contains('hidden'), true);
-  bus.emit(AV_UNLOCK_OPEN, { achievement: { id: 'first_buy' }, coins: 50 });
+  bus.emit(AV_UNLOCK_OPEN, { achievement: { id: 'reaction_fan' }, coins: 50 });
   bus.emit(AV_UNLOCK_CLOSE, {});
   assert.equal(overlay.classList.contains('hidden'), true);
 });
@@ -255,33 +219,53 @@ test('throws if bus missing', () => {
   assert.throws(() => mountAvatarUnlockedScreen({}), /bus required/);
 });
 
-test('avatarIconSrc: resolves store-avatar ids to their PNG, achievement/emoji unchanged', () => {
-  assert.equal(avatarIconSrc('rare_3'), 'assets/avatars_v2/rare/hertzel.png');
-  assert.equal(avatarIconSrc('legendary_2'), 'assets/avatars_v2/legendary/david.png');
-  assert.equal(avatarIconSrc('common_1'), 'assets/avatars_v2/common/basketball_player.png');
-  // Achievement avatar still maps to the trophy art (not the store dir).
-  assert.ok(avatarIconSrc('dragon')?.includes('assets/achievements/'));
-  // Free avatar with no achievement → null (emoji fallback handled by caller).
-  assert.equal(avatarIconSrc('crown'), null);
+test('avatarIconSrc: Boostie values resolve to their still at the right level', () => {
+  assert.equal(avatarIconSrc('zapi:4'), 'assets/avatars/boosties/zapi/l4_bust.webp');
+  assert.equal(avatarIconSrc('bubo'), 'assets/avatars/boosties/bubo/l1_bust.webp');
+  assert.equal(avatarIconSrc({ id: 'bubo', level: 7 }, { kind: 'full' }), 'assets/avatars/boosties/bubo/l7_full.webp');
 });
 
-test('avatarText: store ids degrade to the generic fallback, not the raw id', () => {
-  assert.equal(avatarText('rare_3'), '👤');
-  assert.equal(avatarText('legendary_1', '🎮'), '🎮');
-  // Achievement id still returns its emoji.
-  assert.equal(avatarText('dragon'), '🐉');
-});
-
-// ── Purchase achievements + achievement evaluation ───────────
-
-test('ACHIEVEMENTS includes the purchase trophies (first_buy, collector, legend_owner)', () => {
-  const byId = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
-  for (const id of ['first_buy', 'collector', 'legend_owner']) {
-    assert.ok(byId.has(id), `missing achievement: ${id}`);
-    assert.ok(byId.get(id).emoji, `purchase achievement ${id} needs an emoji fallback`);
-    assert.equal(byId.get(id).rewardAvatarId, undefined, `${id} must not reward an avatar`);
+test('avatarIconSrc: old avatar values show the starter Boostie, bots keep their art, no player → null', () => {
+  for (const old of ['rare_3', 'common_17', 'dragon', 'crown', 'zapi:9']) {
+    assert.match(avatarIconSrc(old), /assets\/avatars\/boosties\/zapi\/l\d_bust\.webp/, old);
   }
+  // Emoji (banner icons such as '🔔') aren't avatar ids: no image, the caller shows the text.
+  for (const emoji of ['👑', '🔔', '🪙']) assert.equal(avatarIconSrc(emoji), null, emoji);
+  assert.equal(avatarIconSrc('bot_hard'), 'assets/avatars/bots/bot_hard_bust.webp');
+  assert.equal(avatarIconSrc('bot_easy', { kind: 'full' }), 'assets/avatars/bots/bot_easy_full.webp');
+  assert.equal(avatarIconSrc('bot'), 'assets/avatars/bot.png');
+  assert.equal(avatarIconSrc(null), null);
+  assert.equal(avatarIconSrc(''), null);
+  assert.equal(avatarIconSrc('👤'), null);
 });
+
+test('botModelSrc: each difficulty has a 3D model; the generic bot and other ids have none', () => {
+  assert.equal(botModelSrc('bot_medium'), 'assets/boosties/bot_medium.glb');
+  assert.equal(botModelSrc('bot'), null);
+  assert.equal(botModelSrc('zapi'), null);
+});
+
+test('avatarMarkup / setAvatarEl: Boostie img, anonymous portrait with no player', () => {
+  assert.match(avatarMarkup('zapi:3'), /src="assets\/avatars\/boosties\/zapi\/l3_bust\.webp"/);
+  assert.match(avatarMarkup(null), /anonymous player\.png/);
+  const el = { innerHTML: '', textContent: '', firstElementChild: null };
+  setAvatarEl(el, 'bubo:2');
+  assert.match(el.innerHTML, /bubo\/l2_bust\.webp/);
+});
+
+test('avatarText: an emoji value is its own text; nothing → the fallback', () => {
+  assert.equal(avatarText('🔔'), '🔔');
+  assert.equal(avatarText(null), '👤');
+  assert.equal(avatarText('', '🎮'), '🎮');
+});
+
+test('setAvatarEl: an emoji banner avatar shows the emoji, not a Boostie', () => {
+  const el = { innerHTML: '', textContent: '', firstElementChild: null };
+  setAvatarEl(el, '🔔', { fallback: '🔔' });
+  assert.doesNotMatch(el.innerHTML, /boosties/);
+});
+
+// ── Achievement evaluation ───────────
 
 test('achievementMetric: stat condition reads profile.stats', () => {
   const veteran = ACHIEVEMENTS.find(a => a.id === 'veteran'); // gamesPlayed >= 40
@@ -290,39 +274,45 @@ test('achievementMetric: stat condition reads profile.stats', () => {
   assert.equal(achievementProgressPct(veteran, { stats: { gamesPlayed: 20 } }), 0.5);
 });
 
-test('achievementMetric: ownedCount (first_buy) counts purchased avatars', () => {
-  const firstBuy = ACHIEVEMENTS.find(a => a.id === 'first_buy');
-  assert.equal(isAchievementComplete(firstBuy, { ownedAvatars: [] }), false);
-  assert.equal(isAchievementComplete(firstBuy, { ownedAvatars: ['rare_1'] }), true);
+test('ACHIEVEMENTS includes the Boostie trophies (level 4, new Boostie, 2 reactions)', () => {
+  const byId = new Map(ACHIEVEMENTS.map(a => [a.id, a]));
+  assert.deepEqual(byId.get('boostie_grown').condition, { type: 'boostieLevel', min: 4 });
+  assert.deepEqual(byId.get('new_boostie').condition, { type: 'boostiesUnlocked', min: 1 });
+  assert.deepEqual(byId.get('reaction_fan').condition, { type: 'reactionsOwned', min: 2 });
+  for (const gone of ['first_buy', 'collector', 'legend_owner']) assert.equal(byId.has(gone), false, gone);
 });
 
-test('achievementMetric: ownedInCategory (legend_owner) needs a legendary', () => {
-  const legend = ACHIEVEMENTS.find(a => a.id === 'legend_owner');
-  assert.equal(isAchievementComplete(legend, { ownedAvatars: ['rare_1', 'epic_2'] }), false);
-  assert.equal(isAchievementComplete(legend, { ownedAvatars: ['legendary_3'] }), true);
+test('achievementMetric: boostieLevel reads the highest Boostie level from XP', () => {
+  const grown = ACHIEVEMENTS.find(a => a.id === 'boostie_grown');
+  assert.deepEqual(achievementMetric(grown, achievementSnapshot(null)), { current: 1, target: 4 });
+  const snap = achievementSnapshot({ boosties: { zapi: { xp: 60 }, bubo: { xp: 400 } } }); // L2, L4
+  assert.deepEqual(achievementMetric(grown, snap), { current: 4, target: 4 });
+  assert.equal(isAchievementComplete(grown, snap), true);
 });
 
-test('achievementMetric: ownedCategories (collector) needs one of each tier', () => {
-  const collector = ACHIEVEMENTS.find(a => a.id === 'collector');
-  assert.deepEqual(achievementMetric(collector, { ownedAvatars: ['rare_1', 'epic_2'] }), { current: 2, target: 3 });
-  assert.equal(isAchievementComplete(collector, { ownedAvatars: ['rare_1', 'epic_2'] }), false);
-  assert.equal(isAchievementComplete(collector, { ownedAvatars: ['rare_1', 'epic_2', 'legendary_1'] }), true);
-  // common avatars don't count toward the purchasable-tier requirement
-  assert.equal(isAchievementComplete(collector, { ownedAvatars: ['common_1', 'common_2'] }), false);
+test('achievementMetric: boostiesUnlocked ignores the starters', () => {
+  const nb = ACHIEVEMENTS.find(a => a.id === 'new_boostie');
+  assert.deepEqual(achievementMetric(nb, achievementSnapshot({ boosties: { zapi: {}, bubo: {} } })), { current: 0, target: 1 });
 });
 
-test('diffNewlyCompletedAchievements: fires on a purchase that crosses a threshold', () => {
-  const prev = { stats: {}, ownedAvatars: ['rare_1', 'epic_2'] };
-  const next = { stats: {}, ownedAvatars: ['rare_1', 'epic_2', 'legendary_1'] };
+test('achievementMetric: reactionsOwned counts bought reactions', () => {
+  const fan = ACHIEVEMENTS.find(a => a.id === 'reaction_fan');
+  assert.equal(isAchievementComplete(fan, achievementSnapshot({ ownedReactions: ['wink'] })), false);
+  assert.equal(isAchievementComplete(fan, achievementSnapshot({ ownedReactions: ['wink', 'yawn'] })), true);
+});
+
+test('diffNewlyCompletedAchievements: fires when a Boostie reaches level 4 or a 2nd reaction is bought', () => {
+  const prev = achievementSnapshot({ boosties: { zapi: { xp: 349 } }, ownedReactions: ['wink'] });
+  const next = achievementSnapshot({ boosties: { zapi: { xp: 350 } }, ownedReactions: ['wink', 'yawn'] });
   const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
-  assert.ok(ids.includes('collector'));     // now owns all three tiers
-  assert.ok(ids.includes('legend_owner'));  // now owns a legendary
-  assert.ok(!ids.includes('first_buy'));    // already owned avatars before
+  assert.ok(ids.includes('boostie_grown'));
+  assert.ok(ids.includes('reaction_fan'));
+  assert.deepEqual(diffNewlyCompletedAchievements(next, next), []);
 });
 
 test('diffNewlyCompletedAchievements: stat-based achievements still fire', () => {
-  const prev = { stats: { gamesPlayed: 4 }, ownedAvatars: [] };
-  const next = { stats: { gamesPlayed: 5 }, ownedAvatars: [] };
+  const prev = { stats: { gamesPlayed: 4 } };
+  const next = { stats: { gamesPlayed: 5 } };
   const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
   assert.ok(ids.includes('first_steps')); // gamesPlayed >= 5
 });
@@ -339,15 +329,15 @@ test('ACHIEVEMENTS includes word_contributor (wordsAccepted >= 20, gold tier)', 
 });
 
 test('word_contributor: fires at 20 wordsAccepted', () => {
-  const prev = { stats: { wordsAccepted: 19 }, ownedAvatars: [] };
-  const next = { stats: { wordsAccepted: 20 }, ownedAvatars: [] };
+  const prev = { stats: { wordsAccepted: 19 } };
+  const next = { stats: { wordsAccepted: 20 } };
   const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
   assert.ok(ids.includes('word_contributor'));
 });
 
 test('word_contributor: does not fire below threshold', () => {
-  const prev = { stats: { wordsAccepted: 0 }, ownedAvatars: [] };
-  const next = { stats: { wordsAccepted: 19 }, ownedAvatars: [] };
+  const prev = { stats: { wordsAccepted: 0 } };
+  const next = { stats: { wordsAccepted: 19 } };
   const ids = diffNewlyCompletedAchievements(prev, next).map(a => a.id);
   assert.ok(!ids.includes('word_contributor'));
 });
@@ -356,7 +346,7 @@ test('nextAchievement: closest unfinished achievement, static (from === to); nul
   const { nextAchievement, ACHIEVEMENTS } = await import('./avatarScreens.js');
   assert.equal(nextAchievement(null), null);
   assert.equal(nextAchievement({}), null);
-  const n = nextAchievement({ stats: {}, ownedAvatars: [] });
+  const n = nextAchievement({ stats: {} });
   assert.ok(n && n.from === n.to && n.target > 0 && n.to < n.target);
   assert.ok(ACHIEVEMENTS.includes(n.achievement));
 });

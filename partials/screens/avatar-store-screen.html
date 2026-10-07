@@ -7,8 +7,14 @@
       <div class="g-end"><span class="g-chip gd g-num store-balance-chip"><img src="assets/rewards/gold coin.png" class="coin-ic" alt=""><span id="store-coin-balance">0</span></span></div>
     </div>
     <div id="store-hint" class="store-hint"></div>
+    <!-- Reaction preview: tapping a reaction tile plays it on your Boostie (avatarStoreScreen.js) -->
+    <div id="store-rx-preview" class="store-rx-preview hidden" aria-live="polite">
+      <div class="srp-av"><img class="av-img srp-still" alt=""></div>
+      <div class="srp-cap"></div>
+      <button type="button" class="srp-close" aria-label="סגור">×</button>
+    </div>
     <div class="g-scroll">
-      <!-- Category sections (common / rare / epic / legendary) rendered by avatarStoreScreen.js -->
+      <!-- Boosties + reactions sections rendered by avatarStoreScreen.js (storeHtml) -->
       <div id="store-grid" class="store-grid"></div>
     </div>
   </div>

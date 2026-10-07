@@ -1,6 +1,14 @@
 // Central config for the in-game reaction system.
 // Only predefined, child-safe reactions are allowed.
 // Never add offensive, taunting, or user-generated content here.
+//
+// Three types travel through rooms/$roomId/liveReaction:
+//   emoji    — a bubble with an emoji (REACTIONS.emojis)
+//   message  — a bubble with a short Hebrew line (REACTIONS.messages)
+//   boostie  — the sender's Boostie plays a clip (BOOSTIE_REACTIONS, Phase 5). Where the
+//              Boostie is a still, the clip's emoji shows in a bubble instead.
+
+import { BOOSTIE_REACTIONS } from '../game/account/boostieCatalog.js';
 
 export const REACTIONS = Object.freeze({
   emojis: Object.freeze([
@@ -39,6 +47,7 @@ export const REACTIONS = Object.freeze({
 // Pre-built lookup sets for O(1) validation
 const VALID_EMOJI_IDS   = new Set(REACTIONS.emojis.map(e => e.id));
 const VALID_MESSAGE_IDS = new Set(REACTIONS.messages.map(m => m.id));
+const VALID_BOOSTIE_IDS = new Set(BOOSTIE_REACTIONS.map(r => r.id));
 
 /**
  * Validate a reaction payload received from Firebase or local send.
@@ -49,6 +58,7 @@ export function validateReactionPayload(payload) {
   if (!payload || typeof payload !== 'object') return false;
   if (payload.type === 'emoji')   return VALID_EMOJI_IDS.has(String(payload.id ?? ''));
   if (payload.type === 'message') return VALID_MESSAGE_IDS.has(String(payload.id ?? ''));
+  if (payload.type === 'boostie') return VALID_BOOSTIE_IDS.has(String(payload.id ?? ''));
   return false;
 }
 
@@ -61,5 +71,16 @@ export function getReactionDisplay(payload) {
   if (payload.type === 'emoji') {
     return REACTIONS.emojis.find(e => e.id === payload.id)?.value ?? null;
   }
+  if (payload.type === 'boostie') {
+    return BOOSTIE_REACTIONS.find(r => r.id === payload.id)?.emoji ?? null;
+  }
   return REACTIONS.messages.find(m => m.id === payload.id)?.text ?? null;
+}
+
+/**
+ * The animation clip a validated Boostie reaction plays, or null for any other payload.
+ */
+export function getBoostieClip(payload) {
+  if (payload?.type !== 'boostie' || !validateReactionPayload(payload)) return null;
+  return BOOSTIE_REACTIONS.find(r => r.id === payload.id)?.clip ?? null;
 }

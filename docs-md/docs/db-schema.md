@@ -242,7 +242,11 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
   // equippedAvatar, rating, stats, createdAt, and the economy fields below).
   displayName?: string,
   avatar?: string,           // legacy; equippedAvatar is the current field
-  equippedAvatar?: string,   // achievement avatar id, store avatar id, or emoji
+  equippedAvatar?: string,   // Boostie id ('zapi', 'bubo'); older ids (store/emoji) render as 'zapi'
+  boosties?: {              // owned Boosties (D-boostie-xp); every starter (zapi, bubo) is always owned
+    [boostieId: string]: { xp: number, level: number },  // rules: xp only grows (≤ +20/write), level 1–7 only grows
+  },
+  ownedReactions?: string[], // bought reaction ids ('wink', 'yawn'); the free set is implicit
   stats?: {
     gamesPlayed: number,
     gamesWon: number,
@@ -251,7 +255,6 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
   // Avatar-store economy (added June 2026; see profileService.js). Profile
   // ROOT fields, NOT under stats. Client-authoritative for v1.
   coins?: number,            // spendable balance (starter grant seeds 150)
-  ownedAvatars?: string[],   // purchased store ids only (common are free/implicit)
   lastLoginDate?: string,    // 'YYYY-MM-DD' of last claimed daily reward
   loginStreak?: number,      // consecutive-day login streak
   activeRoom?: string,       // roomId of current live game (or null)

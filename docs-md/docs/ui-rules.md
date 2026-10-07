@@ -141,6 +141,10 @@ Critical element IDs referenced by game logic (must not be renamed):
                          [data-rar] draws the rarity badge on the portrait's lower edge;
                          [data-tier=rare|epic|legendary] tints the badge and pedestal (both set
                          by gameScreen.renderIdentityTags).
+                         Live 3D (Oct 2026, src/ui/boostie3d): when the slot's avatar has a
+                         model, a <canvas.b3d-cv> is appended inside #is-av{n} and the host
+                         gets .b3d-on once it has drawn (hides the .av-img still, which stays
+                         as the fallback). Removed again on fallback/dispose.
                          #is-av{n}.rxn-av-trigger = the local player's avatar opens the
                          reaction panel on tap (reactionController). #rxn-btn-slot{0,1} stays
                          in the DOM but is hidden on the scoreboard.
@@ -193,6 +197,9 @@ Reaction system (online games only):
 #rxn-btn-slot1         — reaction trigger button inside #is-sb2 (shown for mySlot=1)
 #rxn-overlay           — full-screen backdrop wrapping the reaction modal (click → close)
 #rxn-panel             — reaction modal panel (centered child of #rxn-overlay, filled by reactionController)
+  .rxn-boostie-row     — top row "הבוסטי שלך": [data-rxn-type="boostie"] buttons (.rxn-boostie-item),
+                         free set + owned; sending plays the clip on the sender's live 3D Boostie
+                         on both screens, else the emoji bubble (Phase 5). Rebuilt on every open.
 
 Help dropdown / Guide / FAQ (top-bar `?` button):
 #em-help-dropdown      — anchored dropdown opened by MENU_INTENT.OPEN_HELP_MENU; items emit OPEN_TUTORIAL/OPEN_GUIDE/OPEN_FAQ
@@ -283,7 +290,12 @@ Load-bearing IDs (do not rename without updating `avatarStoreScreen.js`):
   #store-confirm-avatar, #store-confirm-price, #store-confirm-yes, #store-confirm-no
 #ov-daily-reward       — daily login reward overlay
   #daily-reward-coins, #daily-reward-streak, #daily-reward-ok
+#store-rx-preview      — reaction preview stage above the list (Phase 5); class `hidden` when closed.
+  .srp-av (3D host: .b3d-cv canvas over .srp-still; .b3d-on hides the still), .srp-cap, .srp-close
 ```
+Reaction tiles (`.rx-tile[data-reaction]`, role=button) open the preview on tap / Enter: the equipped
+Boostie plays the clip (owned or not). Stills + emoji pop under reduced motion or without 3D. The stage
+closes after 8 s idle, on ×, and on `STORE_INTENT.CLOSE` (its WebGL is freed).
 Each tile is `<button class="store-tile" data-store-id="{id}" data-action="equip|buy|tooexpensive">`. Click:
 `equip` → `STORE_INTENT.EQUIP`; `buy` → open confirm → `STORE_INTENT.CONFIRM_PURCHASE`; `tooexpensive` → hint.
 Equipped store avatars render everywhere via `avatarIconSrc()` (resolves store ids → PNG); `avatarEmoji()` passes
@@ -529,6 +541,17 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `avatarBoostReact` | Booster's avatar: small push + edge glow (secondary to the board ignition) |
 | `avatarGoodMove` | Mover's avatar nods when a ≥ `GOOD_MOVE_SCORE` (40) sum lands (`delayMs` = panel landing) |
 
+### Boostie evolution overlay (October 2026, Phase 4)
+
+`#ov-evolution` (`.evo-ov`, z-index 140, above `#ov-avatar-unlocked`) is created by
+`src/ui/boostie3d/evolutionScreen.js` on first use — there is no partial. Inside:
+`.evo-stage` (`.evo-cv` 3D canvas, `.evo-still--from/--to` full-body stills, `.evo-flash`),
+`.evo-skip`, and the card `.ovc.evo-card` (`#evo-title`, `.evo-kicker`, `.evo-lvl`,
+`.evo-change`, buttons `[data-evo=close|equip]`). State classes: `evo-level` / `evo-unlock`,
+`is-loading`, `is-3d` or `is-stills`, `is-charging`, `is-flash`, `is-swapped`, `is-card`.
+Escape skips, then closes. Styles: `screens-glass.css`. Store replay button:
+`#savatar-store .bst-btn--watch` (`data-store-action="watch"`).
+
 ### Avatar / achievement 2.5D motion (September 2026)
 
 `src/ui/avatarMotion/` plays pose-atlas clips on a `<canvas.av-motion-canvas>` inserted after the avatar
@@ -538,6 +561,7 @@ the 3D clip **or** their existing CSS cue in the same frame (never both), after 
 
 | Where | Clip | Notes |
 |---|---|---|
+| `#is-av1/2` (live 3D Boostie, Oct 2026) | 3D `turn` / `good` / `boost` | tried **first** via `live3d.play(slot, kind)`; on `false` the pose-atlas / CSS cue below runs |
 | `#is-av1/2` on `yourTurnCue` | `yourTurn` | card gets `.your-turn-cue` + `.your-turn-cue--avatar` (no pulse/halo) |
 | `#is-av1/2` | `boostReact`, `goodMove` | via the directives above |
 | `#ov-vs-intro` | `vsEnterStart` / `vsEnterEnd` | CSS slide fallback (`.vs-3d-me/.vs-3d-opp` mark 3D sides) |

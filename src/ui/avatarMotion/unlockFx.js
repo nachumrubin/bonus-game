@@ -7,19 +7,20 @@
 //   streaker     → cyan streaks stack up behind the badge
 //   undefeated   → a shield-like pulse expands outward
 //   word_genius  → a halo builds behind the trophy
-//   collector    → rare / epic / legendary avatar cards sweep past behind it
-//   legend_owner → the grand version: gold + cyan rays, push-in, big burst
+//   boostie_grown → Boostie stills (levels 1 / 4 / 7) sweep past behind it
+//   new_boostie   → the grand version: gold + cyan rays, push-in, big burst
 //   other Legend-tier achievements → slow gold rays
 
 import { getMotionPreference } from '../motionPreference.js';
+import { boostieStillSrc, DEFAULT_BOOSTIE } from '../../game/account/boostieCatalog.js';
 
 export const UNLOCK_SPECIALS = Object.freeze({
   dictionary: 'letters',
   streaker: 'streaks',
   undefeated: 'shield',
   word_genius: 'halo',
-  collector: 'cards',
-  legend_owner: 'grand',
+  boostie_grown: 'cards',
+  new_boostie: 'grand',
 });
 
 export function specialFor(achievement) {
@@ -28,11 +29,7 @@ export function specialFor(achievement) {
 }
 
 const LETTERS = ['ב', 'ו', 'ס', 'ט', 'מ', 'י', 'ל', 'ה'];
-const COLLECTOR_CARDS = [
-  'assets/avatars_v2/rare/golda.png',
-  'assets/avatars_v2/epic/esther.PNG',
-  'assets/avatars_v2/legendary/david.png',
-];
+const EVOLUTION_CARDS = [1, 4, 7].map((level) => boostieStillSrc(DEFAULT_BOOSTIE, level));
 const FX_LIFETIME_MS = 2600;
 
 function motionAllowed() {
@@ -67,7 +64,7 @@ export function playUnlockSpecial(kind, iconEl, { doc = globalThis.document } = 
       add('i', 'ach-fx-halo');
       break;
     case 'cards':
-      COLLECTOR_CARDS.forEach((src, i) => {
+      EVOLUTION_CARDS.forEach((src, i) => {
         const card = add('span', 'ach-fx-card', `--d:${i * 140}ms;--y:${-18 + i * 18}px;--r:${-8 + i * 8}deg`);
         const img = doc.createElement('img');
         img.src = src; img.alt = '';

@@ -10,10 +10,11 @@ import {
   lookupUidByUsername, lookupUidByUserId,
   bumpStats, EMPTY_STATS, RATING_START, DEFAULT_AVATAR,
   STARTER_GRANT, DAILY_BASE, DAILY_STREAK_INCREMENT, DAILY_STREAK_CAP,
-  normalizeProfileEconomy, bumpCoins, purchaseAvatar,
+  normalizeProfileEconomy, bumpCoins,
   computeDailyReward, dailyCoinsForDay, dailyWeek, claimDailyReward, isYesterday, ymd,
-  MAX_COIN_BALANCE, clampCoins, clampCoinsBalance,
+  MAX_COIN_BALANCE, clampCoins, clampCoinsBalance, bumpBoostieXp, purchaseStoreItem,
 } from './profileService.js';
+import { xpForGame, LEVEL_XP } from './boostieXp.js';
 
 test('buildInitialProfile: includes defaults', () => {
   const p = buildInitialProfile({ displayName: 'נחום', userId: '123456' });
@@ -326,19 +327,18 @@ test('computeLiveGameStatsDelta: deduplicates repeated words within one game', (
 test('buildInitialProfile: seeds the economy fields with the starter grant', () => {
   const p = buildInitialProfile({ displayName: 'נחום', userId: '123456' });
   assert.equal(p.coins, STARTER_GRANT);
-  assert.deepEqual(p.ownedAvatars, []);
+  assert.equal(p.ownedAvatars, undefined);
   assert.equal(p.lastLoginDate, null);
   assert.equal(p.loginStreak, 0);
 });
 
 test('normalizeProfileEconomy: safe defaults for a legacy profile', () => {
-  assert.deepEqual(normalizeProfileEconomy(null), { coins: 0, ownedAvatars: [], lastLoginDate: null, loginStreak: 0 });
+  assert.deepEqual(normalizeProfileEconomy(null), { coins: 0, lastLoginDate: null, loginStreak: 0 });
   assert.deepEqual(
-    normalizeProfileEconomy({ coins: '40', ownedAvatars: ['rare_1'], lastLoginDate: '2026-06-22', loginStreak: 3 }),
-    { coins: 40, ownedAvatars: ['rare_1'], lastLoginDate: '2026-06-22', loginStreak: 3 },
+    normalizeProfileEconomy({ coins: '40', lastLoginDate: '2026-06-22', loginStreak: 3 }),
+    { coins: 40, lastLoginDate: '2026-06-22', loginStreak: 3 },
   );
   // junk fields → zero/empty
-  assert.deepEqual(normalizeProfileEconomy({ coins: -5, ownedAvatars: 'x' }).ownedAvatars, []);
   assert.equal(normalizeProfileEconomy({ coins: -5 }).coins, 0);
 });
 
@@ -404,33 +404,6 @@ test('clampCoinsBalance: pulls an over-cap balance down to the cap; no-op otherw
   await updateProfile(db, 'u2', { coins: 500 });
   assert.equal(await clampCoinsBalance(db, 'u2'), null); // not committed
   assert.equal((await readProfile(db, 'u2')).coins, 500);
-});
-
-test('purchaseAvatar: success deducts coins and records ownership', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: 500, ownedAvatars: ['rare_1'] });
-  // epic costs 700 but the player only has 500 → insufficient, no charge
-  const r = await purchaseAvatar(db, 'u1', 'epic_2', 700);
-  assert.equal(r.ok, false);
-  assert.equal(r.reason, 'insufficient');
-
-  const r2 = await purchaseAvatar(db, 'u1', 'rare_3', 250);
-  assert.equal(r2.ok, true);
-  assert.equal(r2.coins, 250);
-  assert.deepEqual(r2.ownedAvatars, ['rare_1', 'rare_3']);
-  const p = await readProfile(db, 'u1');
-  assert.equal(p.coins, 250);
-  assert.deepEqual(p.ownedAvatars, ['rare_1', 'rare_3']);
-});
-
-test('purchaseAvatar: rejects an already-owned avatar without charging', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: 1000, ownedAvatars: ['epic_1'] });
-  const r = await purchaseAvatar(db, 'u1', 'epic_1', 700);
-  assert.equal(r.ok, false);
-  assert.equal(r.reason, 'already-owned');
-  const p = await readProfile(db, 'u1');
-  assert.equal(p.coins, 1000); // untouched
 });
 
 test('computeDailyReward: first claim, consecutive growth, cap, gap reset, same-day no-op', () => {
@@ -506,4 +479,77 @@ test('dailyWeek: the window rolls after day 7', () => {
   assert.equal(w[1].state, 'today');
   assert.equal(dailyWeek(7)[6].state, 'today');
   assert.equal(dailyWeek(1)[0].state, 'today');
+});
+
+// ── Boosties ────────────────────────────────────────────────────────────────
+
+test('buildInitialProfile: owns every starter Boostie at level 1, no reactions bought', () => {
+  const p = buildInitialProfile({ displayName: 'x', userId: '1' });
+  assert.deepEqual(p.boosties, { zapi: { xp: 0, level: 1 }, bubo: { xp: 0, level: 1 } });
+  assert.deepEqual(p.ownedReactions, []);
+});
+
+test('bumpBoostieXp: adds game XP to the equipped Boostie', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { boosties: { zapi: { xp: 0, level: 1 } } });
+  const r = await bumpBoostieXp(db, 'u1', 'zapi', 'win');
+  assert.equal(r.ok, true);
+  assert.equal(r.gained, xpForGame('win'));
+  assert.equal(r.levelUp, null);
+  const stored = (await db.ref('users/u1/profile/boosties').get()).val();
+  assert.deepEqual(stored.zapi, { xp: xpForGame('win'), level: 1 });
+});
+
+test('bumpBoostieXp: works on a legacy profile without boosties', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 5 });
+  const r = await bumpBoostieXp(db, 'u1', 'common_17', 'loss');
+  assert.equal(r.ok, true);
+  assert.equal(r.boosties.zapi.xp, xpForGame('loss'));
+});
+
+test('bumpBoostieXp: the level-up is reported', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { boosties: { zapi: { xp: LEVEL_XP[6] - 1, level: 6 } } });
+  const r = await bumpBoostieXp(db, 'u1', 'zapi', 'loss');
+  assert.deepEqual(r.levelUp, { id: 'zapi', from: 6, to: 7 });
+  assert.equal(r.unlocked, null); // no locked Boosties yet: both are starters
+});
+
+test('bumpBoostieXp: an unfinished game writes nothing', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { boosties: { zapi: { xp: 7, level: 1 } } });
+  const r = await bumpBoostieXp(db, 'u1', 'zapi', 'abandoned');
+  assert.equal(r.ok, false);
+  assert.equal((await db.ref('users/u1/profile/boosties/zapi/xp').get()).val(), 7);
+});
+
+test('DEFAULT_AVATAR is the starter Boostie', () => {
+  assert.equal(DEFAULT_AVATAR, 'zapi');
+});
+
+test('purchaseStoreItem: buys reactions, price from the catalog', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 600, boosties: { zapi: { xp: 60, level: 2 } } });
+  const r = await purchaseStoreItem(db, 'u1', 'reaction:wink');
+  assert.equal(r.ok, true);
+  assert.equal(r.coins, 350);
+  const r2 = await purchaseStoreItem(db, 'u1', 'reaction:yawn');
+  assert.equal(r2.ok, true);
+  assert.equal(r2.coins, 100);
+  const p = await readProfile(db, 'u1');
+  assert.deepEqual(p.boosties.zapi, { xp: 60, level: 2 });
+  assert.deepEqual(p.ownedReactions, ['wink', 'yawn']);
+});
+
+test('purchaseStoreItem: refuses owned, unaffordable, free and unknown items without charging', async () => {
+  const db = makeMockDb();
+  await updateProfile(db, 'u1', { coins: 100, ownedReactions: ['yawn'] });
+  assert.equal((await purchaseStoreItem(db, 'u1', 'reaction:yawn')).reason, 'already-owned');
+  assert.equal((await purchaseStoreItem(db, 'u1', 'reaction:wink')).reason, 'insufficient');
+  assert.equal((await purchaseStoreItem(db, 'u1', 'boostie:zapi')).reason, 'unknown-item'); // starters aren't sold
+  assert.equal((await purchaseStoreItem(db, 'u1', 'boostie:bubo')).reason, 'unknown-item');
+  assert.equal((await purchaseStoreItem(db, 'u1', 'reaction:laugh')).reason, 'unknown-item');
+  assert.equal((await purchaseStoreItem(db, 'u1', 'rare_3')).reason, 'unknown-item');
+  assert.equal((await readProfile(db, 'u1')).coins, 100);
 });

@@ -6,7 +6,8 @@ import {
   mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER,
   DAILY_REWARD_SHOW, dailyDaysHtml,
 } from './avatarStoreScreen.js';
-import { STORE_PRICES } from './avatarStore.js';
+import { findReaction } from '../../game/account/boostieCatalog.js';
+import { LEVEL_XP } from '../../game/account/boostieXp.js';
 
 function makeEl() {
   return { textContent: '', innerHTML: '', style: { opacity: '0' } };
@@ -71,45 +72,60 @@ function makeStoreRoot() {
   return { els, root: { querySelector: (sel) => map[sel] ?? null } };
 }
 
-// Build a fake click target resolving to a store tile button.
+// Build a fake click target resolving to a store action button.
 function tileTarget(id, action) {
-  const btn = { getAttribute: (k) => ({ 'data-store-id': id, 'data-action': action }[k] ?? null) };
-  return { closest: (sel) => sel === 'button.store-tile' ? btn : null };
+  const btn = { getAttribute: (k) => ({ 'data-store-id': id, 'data-store-action': action }[k] ?? null) };
+  return { closest: (sel) => sel === '[data-store-action]' ? btn : null };
 }
 
-test('STORE_RENDER: paints sections, tile states, and the coin balance', () => {
+test('STORE_RENDER: Boostie cards show level, XP bar, next form; both starters are owned', () => {
   bus._reset();
   const { els, root } = makeStoreRoot();
   mountAvatarStoreScreen({ root, bus });
-  bus.emit(STORE_RENDER, { coins: 300, ownedAvatars: ['rare_1'], equippedAvatar: 'common_2' });
+  bus.emit(STORE_RENDER, { coins: 300, boosties: { zapi: { xp: LEVEL_XP[2] + 50 } }, equippedAvatar: 'zapi', ownedReactions: [] });
 
   assert.equal(els.balance.textContent, '300');
   const html = els.grid.innerHTML;
-  assert.match(html, /store-tile-name[^>]*>משה רבנו</);
-  assert.match(html, /alt="משה רבנו"/);
-  // common is always owned (free) and common_2 is equipped
-  assert.match(html, /data-store-id="common_2"[^>]*data-action="equip"/);
-  assert.match(html, /is-equipped"[^>]*data-store-id="common_2"/);
-  // owned rare → equip action
-  assert.match(html, /data-store-id="rare_1"[^>]*data-action="equip"/);
-  // affordable unowned rare (250 ≤ 300) → buy
-  assert.match(html, /data-store-id="rare_2"[^>]*data-action="buy"/);
-  // epic costs 700 > 300 → too expensive
-  assert.match(html, /data-store-id="epic_1"[^>]*data-action="tooexpensive"/);
+  // owned + equipped Zapi at level 3, its full still, XP toward level 4, next-form bust
+  assert.match(html, /bst-card is-owned is-equipped" data-boostie="zapi"/);
+  assert.match(html, /boosties\/zapi\/l3_full\.webp/);
+  assert.match(html, /שלב 3/);
+  assert.match(html, new RegExp(`${LEVEL_XP[2] + 50} / ${LEVEL_XP[3]}`));
+  assert.match(html, /boosties\/zapi\/l4_bust\.webp/);
+  assert.match(html, /נבחר ✓/);
+  // Bubo is a starter: owned, offered for equip, never sold
+  assert.match(html, /bst-card is-owned" data-boostie="bubo"/);
+  assert.match(html, /data-store-action="equip" data-store-id="bubo"/);
+  assert.doesNotMatch(html, /boostie:bubo/);
+  // reactions: free set owned, paid ones affordable at 300
+  assert.match(html, /rx-tile is-owned" data-reaction="laugh"/);
+  assert.match(html, /data-store-action="buy" data-store-id="reaction:wink"/);
 });
 
-test('clicking an owned/free tile emits EQUIP', () => {
+test('STORE_RENDER: an owned, unequipped Boostie offers equip; top level shows no next form', () => {
+  bus._reset();
+  const { els, root } = makeStoreRoot();
+  mountAvatarStoreScreen({ root, bus });
+  bus.emit(STORE_RENDER, { coins: 0, boosties: { zapi: { xp: 99999 }, bubo: { xp: 0 } }, equippedAvatar: 'bubo', ownedReactions: ['yawn'] });
+  const html = els.grid.innerHTML;
+  assert.match(html, /data-store-action="equip" data-store-id="zapi"/);
+  assert.match(html, /שלב מקסימלי!/);
+  assert.doesNotMatch(html, /zapi\/l8/);
+  assert.match(html, /rx-tile is-owned" data-reaction="yawn"/);
+});
+
+test('clicking an equip button emits EQUIP', () => {
   bus._reset();
   const { els, root } = makeStoreRoot();
   const equips = [];
   bus.on(STORE_INTENT.EQUIP, (p) => equips.push(p.id));
   mountAvatarStoreScreen({ root, bus });
-  bus.emit(STORE_RENDER, { coins: 0, ownedAvatars: [], equippedAvatar: null });
-  els.grid.fireClick(tileTarget('common_5', 'equip'));
-  assert.deepEqual(equips, ['common_5']);
+  bus.emit(STORE_RENDER, { coins: 0, boosties: { zapi: {}, bubo: {} }, equippedAvatar: 'zapi' });
+  els.grid.fireClick(tileTarget('bubo', 'equip'));
+  assert.deepEqual(equips, ['bubo']);
 });
 
-test('clicking an affordable tile opens the confirm overlay; confirm emits CONFIRM_PURCHASE', () => {
+test('clicking an affordable item opens the confirm overlay; confirm emits CONFIRM_PURCHASE', () => {
   bus._reset();
   const { els, root } = makeStoreRoot();
   const purchases = [];
@@ -117,27 +133,38 @@ test('clicking an affordable tile opens the confirm overlay; confirm emits CONFI
   bus.on(STORE_INTENT.PURCHASE, (p) => purchases.push(p.id));
   bus.on(STORE_INTENT.CONFIRM_PURCHASE, (p) => confirms.push(p.id));
   mountAvatarStoreScreen({ root, bus });
-  bus.emit(STORE_RENDER, { coins: 1000, ownedAvatars: [], equippedAvatar: null });
+  bus.emit(STORE_RENDER, { coins: 5000, boosties: null, equippedAvatar: null });
 
-  els.grid.fireClick(tileTarget('epic_3', 'buy'));
-  assert.deepEqual(purchases, ['epic_3']);
+  els.grid.fireClick(tileTarget('reaction:wink', 'buy'));
+  assert.deepEqual(purchases, ['reaction:wink']);
   assert.equal(els.confirmOv.classList.contains('hidden'), false); // overlay shown
-  assert.match(els.confirmPrice.innerHTML, new RegExp(String(STORE_PRICES.epic)));
+  assert.match(els.confirmImg.innerHTML, /boosties\/zapi\/l1_bust\.webp/);
+  assert.match(els.confirmPrice.innerHTML, new RegExp(String(findReaction('wink').price)));
   assert.match(els.confirmPrice.innerHTML, /gold coin\.png/); // coin image, not emoji
 
   els.confirmYes.fireClick();
-  assert.deepEqual(confirms, ['epic_3']);
+  assert.deepEqual(confirms, ['reaction:wink']);
   assert.equal(els.confirmOv.classList.contains('hidden'), true); // closed after confirm
 });
 
-test('clicking a too-expensive tile shows a hint and does not purchase', () => {
+test('buying a reaction previews it on your own Boostie', () => {
+  bus._reset();
+  const { els, root } = makeStoreRoot();
+  mountAvatarStoreScreen({ root, bus });
+  bus.emit(STORE_RENDER, { coins: 5000, boosties: { zapi: { xp: LEVEL_XP[1] } }, equippedAvatar: 'zapi' });
+  els.grid.fireClick(tileTarget('reaction:yawn', 'buy'));
+  assert.match(els.confirmImg.innerHTML, /boosties\/zapi\/l2_bust\.webp/);
+  assert.match(els.confirmImg.innerHTML, /🥱/);
+});
+
+test('clicking a too-expensive item shows a hint and does not purchase', () => {
   bus._reset();
   const { els, root } = makeStoreRoot();
   let purchased = false;
   bus.on(STORE_INTENT.PURCHASE, () => { purchased = true; });
   mountAvatarStoreScreen({ root, bus });
-  bus.emit(STORE_RENDER, { coins: 10, ownedAvatars: [], equippedAvatar: null });
-  els.grid.fireClick(tileTarget('legendary_1', 'tooexpensive'));
+  bus.emit(STORE_RENDER, { coins: 10, boosties: null, equippedAvatar: null });
+  els.grid.fireClick(tileTarget('reaction:yawn', 'tooexpensive'));
   assert.equal(purchased, false);
   assert.equal(els.hint.style.opacity, '1');
 });
@@ -183,4 +210,38 @@ test('back button emits STORE_INTENT.CLOSE', () => {
 
 test('throws if bus missing', () => {
   assert.throws(() => mountAvatarStoreScreen({}), /bus required/);
+});
+
+test('store: tapping a reaction tile plays it on the equipped Boostie (owned or not)', async () => {
+  const { els, root } = makeStoreRoot();
+  const cls = new Set(['hidden']);
+  const preview = {
+    classList: { add: (c) => cls.add(c), remove: (c) => cls.delete(c), contains: (c) => cls.has(c) },
+    querySelector: (sel) => ({ '.srp-av': av, '.srp-still': still, '.srp-cap': cap }[sel] ?? null),
+  };
+  const av = {}, still = { src: '' }, cap = { innerHTML: '' };
+  const map = { '#store-rx-preview': preview };
+  const rootWithPreview = { querySelector: (sel) => map[sel] ?? root.querySelector(sel) };
+  const played = [];
+  const liveCalls = [];
+  const fakeLive = {
+    sync: (v) => liveCalls.push(['sync', v]),
+    ready: async () => true,
+    play: (slot, clip) => { played.push([slot, clip]); return true; },
+    dispose: () => liveCalls.push(['dispose']),
+  };
+  const screen = mountAvatarStoreScreen({ root: rootWithPreview, bus, createLive: ({ hosts }) => { liveCalls.push(['create', hosts()[0] === av]); return fakeLive; } });
+  bus.emit(STORE_RENDER, { coins: 0, boosties: { bubo: { xp: LEVEL_XP[2] } }, equippedAvatar: 'bubo', ownedReactions: [] });
+  const tile = { getAttribute: (k) => (k === 'data-reaction' ? 'yawn' : null) };
+  els.grid.fireClick({ closest: (sel) => (sel === '[data-reaction]' ? tile : null) });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(cls.has('hidden'), false, 'the stage opens');
+  assert.match(still.src, /bubo/);
+  assert.match(cap.innerHTML, /🥱/);
+  assert.deepEqual(liveCalls.slice(0, 2), [['create', true], ['sync', [{ id: 'bubo', level: 3 }]]]);
+  assert.deepEqual(played, [[0, 'yawn']], 'a reaction not yet bought still previews');
+  bus.emit(STORE_INTENT.CLOSE, {});
+  assert.equal(cls.has('hidden'), true);
+  assert.deepEqual(liveCalls.at(-1), ['dispose']);
+  screen.unmount();
 });

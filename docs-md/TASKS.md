@@ -3,13 +3,172 @@
 ## Boostie avatar evolution — October 2026
 
 - [x] 7-level system, core-shape ladder and prompt template (`docs-md/AVATAR_EVOLUTION.md`).
-- [ ] Zapi: regenerate levels 5–7 with the trickster theme and the core ladder;
-  fix the core shape on levels 1–4.
-- [ ] Fill in the character block and generate sheets for Bubo (owl) and Pipo (dragon).
+- [x] Zapi sheet A (levels 1–4) generated from the spec and accepted.
+- [x] Zapi sheet B (levels 5–7) regenerated with the updated template and accepted.
+- [x] Zapi sheet B inpaint fixes: L7 circlet gem cyan → gold/crimson; lower the L7
+  left tail behind the hip; optionally split the L6 tails and make the cyan shoulder
+  clasps bronze (see `AVATAR_EVOLUTION.md` §5).
+- [x] Zapi sheets saved to `assets/avatars/evolution/zapi/`. The process is now the
+  `boostie-evolution` skill.
+- [x] Bubo (owl): all 7 levels final, sheets in `assets/avatars/evolution/bubo/`
+  (`AVATAR_EVOLUTION.md` §6).
+- [ ] Cut each level out of the Zapi and Bubo sheets as its own transparent PNG
+  (7 files each). For Bubo, centre the L3 core while doing this.
+- [ ] Fill in the character block and generate sheets for Pipo (dragon) with the
+  `boostie-evolution` skill.
   Decide body type per character before generating.
-- [ ] Before any code: decide how levels are earned (XP / coins), where the level is
-  stored on the profile, and how the asset pipeline handles 7 images per
-  character (pose atlases × levels).
+- [x] Decided how levels are earned: XP from games played (D-boostie-xp), stored per
+  Boostie in `profile.boosties`. Stills per level replace the pose atlases.
+- [x] Phase 0: models optimized into `assets/boosties/`, stills rendered into
+  `assets/avatars/boosties/`.
+- [x] Phase 1: `boostieCatalog.js`, `boostieXp.js`, `bumpBoostieXp` after each game,
+  Firebase rules for XP and level.
+- [x] Phase 2: Boostie stills on every screen, `'<id>:<level>'` avatar values, store
+  rebuilt (Boosties + reactions).
+- [ ] Phase 0: bot 3D avatars (Easy, Medium, Hard) via the `boostie-evolution` skill.
+  Bots show their old portraits until then.
+- [x] Phase 3: live 3D on the scoreboard (vendor three.js, `src/ui/boostie3d/`, still
+  fallback). Oct 2026.
+- [ ] Phase 3 follow-up: real-phone check of the scoreboard (cheap Android + iPhone). The
+  slow-phone fallback gives up when the median of 30 frames > 45 ms (`SLOW_FRAME_MS`); tune
+  it if mid-range phones drop to stills.
+- [ ] Phase 3 follow-up: re-export the bots' face-scale keys as CONSTANT in
+  `build_boostie.py` (the player snaps them today, so this is cosmetic).
+- [x] Phase 4: level-up evolution scene on game over + chain-unlock card + replay from
+  the store (`src/ui/boostie3d/evolution*.js`). Oct 2026.
+- [ ] Phase 4 follow-up: watch the evolution on a real phone (two models load at once;
+  stills after 5 s). Check the CHANGE_LINES copy against the final sheets of each new
+  Boostie (`evolutionData.js`).
+- [ ] Phase 4 follow-up: the chain-unlock card can only be seen once a `chain` Boostie
+  exists (every Boostie is a starter today); check it then.
+- [x] Phase 5: Boostie reactions in game (`reactionsConfig.js` type `boostie`, tray row of
+  owned ones, `gameScreen.playBoostieReaction` → `live3d.play`, emoji bubble on stills) and
+  the live 3D preview in the store (`#store-rx-preview`). Oct 2026.
+- [ ] Phase 5 follow-up: try the reactions in a real online game between two phones (both
+  sides play the clip; the opponent glances at the one reacting).
+- [ ] Phase 5 follow-up: Firebase rules still accept any `liveReaction` payload from a
+  player (the client validates on receive). Add a `.validate` on type/id if it matters.
+- [ ] Phase 6a: move the coin economy into the Cloudflare Worker (claim-daily,
+  achievement, buy, ledger); lock `coins`, owned Boosties and `ownedReactions` in the rules.
+- [ ] Phase 6b: buy coins with real money (Play Billing in the Android app, Stripe on
+  web). Needs the user's merchant accounts and coin-pack prices.
+- [x] No migration script (not in production): Bubo became a starter, so every profile
+  owns Zapi and Bubo.
+- [x] Purchase achievements replaced with Boostie goals (level 4, a new Boostie, 2
+  reactions).
+- [ ] Art for the new achievement icons (`boostie_grown`, `new_boostie`, `reaction_fan`);
+  emoji until then.
+- [x] Cleanup: old store catalog, `assets/avatars_v2` and their pose atlases removed.
+- [ ] Roster target: 4–5 starters + 2–3 locked (chain/store) Boosties. Price the locked
+  ones when they exist; reactions 250.
+- [x] Wink clip in all 14 models (`add_wink.py`).
+- [x] Phase 3: the live lid controller lets the `wink` clip's lid tracks through
+  (`CLIPS_WITH_LIDS` in `boostieSources.js`).
+- [x] Bot 3D models built (`bot_easy` / `bot_medium` / `bot_hard`): antenna bone and wobble
+  signature, arms on the wing tracks; stills wired into `avatarScreens.js` and setup.html.
+- [x] Bot "screen face" upgrade: glass + 8 glowing expressions switched in the clips.
+- [ ] Bots: chest light glowing in the bot's colour (optional).
+- [x] Phase 3: bot face layers over the MASK glass. The LINEAR scale keys + crossfades let
+  faces sink behind the curved glass mid-clip, so `boostieLive.js` snaps every frame: the
+  largest face shows at scale 1, the others at `FACE_HIDE`. Checked at rest and mid-clip.
+- [x] Phase 3: bot opponents load `botModelSrc(id)` on the scoreboard (`modelSrcForAvatar`).
+- [ ] Bot busts are framed from the mesh, so Easy shows more body than Hard; tune the bust
+  camera per bot if it reads unevenly in the 76 px slot.
+- [ ] Dev mockups under `tools/*-mockup` still point at `assets/avatars_v2` (removed).
+- [x] Built a phone test for live 3D avatars on the scoreboard (`tools/3d-spike/`):
+  two rigged .glb models in the 76px slots, drawn only during reactions.
+- [ ] Run the 3D test on the cheapest Android and an iPhone; based on the results,
+  choose live 3D vs pre-rendered frames for the board, then lock the movement list
+  and the rigs per character (L1–3 / L4–7) before modelling.
+- [x] Zapi L3 from the BlenderKit fox (`build_zapi_l3_blenderkit.py`): kept only for
+  comparison now that TRELLIS gives better results.
+- [x] TRELLIS pipeline: Claude generates via the HF API (user's login), and
+  `build_boostie.py <level>` cleans up, rigs, animates and exports. Zapi L3 and L4 are done.
+- [ ] Generate Zapi L1, L2, L5, L6, L7 (about 1–2 a day on free quota): crop from the
+  sheets, add a LEVELS entry per level (measure joints from ortho views).
+- [ ] Then Bubo L1–7 the same way (needs a bird layout: wings instead of a tail chain;
+  ear tufts as the signature).
+- [x] Liveliness prototype on Zapi L4: real eyes and lids, blinks, gaze, mood lids,
+  springs, rim light, glow sprites (test page "Look: lively").
+- [x] boostie-evolution skill part 2 (3D): multi-angle sheets, TRELLIS, mandatory
+  upgrades (smooth body, real eyes, signature movement, glow, rig).
+- [x] Zapi L4 mouth: the muzzle is sliced along the lip line, with a `jaw` bone and a
+  dark inner skin. New laugh and wow clips, an idle "heh", and a mouth upgrade in the
+  skill.
+- [ ] Zapi L3: the four-view turnaround is saved (`sources/zapi_l3_turnaround.png`, split
+  checked). Run `trellis_generate.py --split 4` once the HF quota resets, then add
+  `eyes` and `mouth`.
+- [x] Player-chosen reactions prototype (D-boostie-reactions): tap your Boostie, pick
+  from a tray. Free: Laugh, Wow, Wide eyes. Shop previews: Wink, Yawn. A 4 s cooldown,
+  a label over the sender, and "Rival sends a reaction" on the test page.
+- [ ] In-app reactions: an `EV.*` event to send a reaction to the rival (both players
+  see it), the tray UI on the real scoreboard, the cooldown, and a mute option for the
+  receiver.
+- [x] Reaction sounds prototype: A/B/C voice options per reaction on the test page (v13).
+- [ ] Reaction sounds in the app: once picks are made, add them to `scripts/build-sfx.py`,
+  `sfxCatalog` (e.g. `reaction.laugh`) and `docs/sound_inventory.md`. Play them on send
+  and receive, respecting the sound setting and the receiver's mute. Later, give each
+  Boostie its own voice, and unique sounds for paid reactions.
+- [ ] Shop: the reaction catalogue (which are free, which are paid, prices), ownership
+  in the player profile, and preview-before-buy. More paid ideas: cheer, facepalm,
+  shrug, a victory dance, the character's own signature on demand.
+- [ ] Define Bubo's signature movement (tuft flare or head swivel) before his first model.
+- [ ] Add `eyes` entries for the other levels (L3 next, after it's regenerated from
+  the front-facing reference image); measure the pupils from a front ortho render.
+- [ ] Polish: TRELLIS faces are faceted up close; the core glow may be strong; check
+  the head-yaw fix on L3 against the sheet.
+- [ ] Colours look darker in three.js than in Blender: tune the page lighting or tone
+  mapping.
+- [x] Generator comparison (D-boostie-meshy): Meshy beats TRELLIS; Tripo hung.
+  `meshy_generate.py` and `compare_models.py` (side-by-side renders) added.
+- [x] Meshy Pro and `MESHY_API_KEY` set. Zapi L3 tested from the front view alone and
+  from the four-view turnaround: **four views win** (square to camera, proportions,
+  face). Result: `sources/meshy/zapi_l3_4view.glb`.
+- [x] Zapi L4 four-view turnaround (`sources/zapi_l4_turnaround.png`), generated with Meshy
+  and built (`zapi_l4`; the old one is `zapi_l4_trellis`). On the test page as the default.
+- [x] Zapi L3 rebuilt from the Meshy four-view mesh (`zapi_l3`; the old one is
+  `zapi_l3_trellis`). `build_boostie.py` works on Meshy output with the smooth rebuild
+  off; eyes, mouth, glow and rig re-measured. On the test page as "Zapi level 3 (Meshy)",
+  with all reactions.
+- [ ] Zapi L4 is bipedal but has no arm bones: the arms only follow the chest. Add
+  upper/lower arm bones so the good/boost clips can move them.
+- [x] Zapi almond eyes on L3 and L4; the laugh and "good" moods raise the `lidlow` bone on
+  the test page (smiling squint).
+- [ ] Eye shapes for the next character: Bubo = big and round (no `shape`, or open wide).
+- [ ] Port the lid moods (`LID` / `LIDLOW` from `tools/3d-spike`) into the in-app 3D avatar.
+- [ ] Check the L4 chest glow (orb + ring) on a phone: at 3.0 emission it is bright in
+  the Blender previews.
+- [x] Tried automating image generation by email to ChatGPT (`image_mail.py`). Sending
+  worked, but ChatGPT's trigger couldn't generate and reply. Dropped; back to pasting.
+- [ ] Generate the 12 turnarounds in `docs-md/image-prompts/` (Zapi L5, L6, L7, L1, L2,
+  then Bubo L1–7), then build each with Meshy. Done: all of Zapi (L1, L2, L5, L6, L7) and all of Bubo (L1–7).
+- [x] Zapi L5 built from its four-view turnaround (`zapi_l5`): almond eyes, mouth, glow,
+  energy-tail rig. On the test page as the default model.
+- [x] Zapi L6 built (`zapi_l6`): two energy tails (`tail.*` + mirrored `tailb.*`), Meshy's
+  extra fur tail removed with `cut`. On the test page.
+- [x] Zapi L7 built (`zapi_l7`): hood, circlet, halo core, two tails. On the test page.
+- [x] Zapi L1 built (`zapi_l1`): quadruped kit, wide-open round eyes. On the test page.
+- [x] Zapi L2 built (`zapi_l2`): quadruped, cheeky grin.
+- [x] Bubo L1 built (`bubo_l1`): owl chick, wing bones, `bubo` signature, only the core glows.
+- [x] Bubo L2 built (`bubo_l2`): cyan tuft tips glow (`glow_bones` = the ears).
+- [x] Bubo L3 built (`bubo_l3`): Meshy modelled the spectacles as real rings in front of the
+  eyes.
+- [x] Bubo L4 built (`bubo_l4`): satchel with scroll and quill, strap, ringed orb.
+- [x] Bubo L5 built (`bubo_l5`): energy tufts, short green cape, book, star-burst core. Wing
+  bones start under the cape edge so the flap barely moves the cape.
+- [x] Bubo L6 built (`bubo_l6`): scholar's robe, star burst with lines. The robe's front
+  panels swing out with the wing flap (reads as a cloak flare).
+- [x] Bubo L7 built (`bubo_l7`): circlet, ornate robe, star burst with a halo ring.
+  Default on the test page.
+- [x] Test page: full body view panel (live "You" Boostie, drag to turn).
+- [ ] Tuft glow sprites (Bubo L2+): the page and the in-app player only have core and tail
+  glow anchors; add `tuft_glow` anchors if the tufts need a halo.
+- [ ] In-app player: `wing.L`/`wing.R` tracks and the `bubo` signature clip (check the
+  player drives them).
+- [ ] In-app 3D player: treat `tailb1–4` as spring bones and add a sprite on `tail_glow_b`,
+  as the test page does (L6 and L7 have two tails).
+- [ ] Decide whether the TRELLIS .glb files go into the repo. They're our own design
+  and TRELLIS is MIT, so they could. The BlenderKit-derived files must stay out.
 
 ## Scoreboard: mirrored player cards — October 2026
 

@@ -29,10 +29,9 @@ test('buildFriendsListHtml: empty placeholder', () => {
 });
 
 test('buildFriendsListHtml: renders avatar + name + menu button', () => {
-  // '🦈' is the winner achievement reward → avatar renders as its trophy icon.
-  const html = buildFriendsListHtml([{ uid: 'u1', name: 'נחום', avatar: '🦈' }]);
+  const html = buildFriendsListHtml([{ uid: 'u1', name: 'נחום', avatar: 'zapi:5' }]);
   assert.match(html, /data-fr-row="u1"/);
-  assert.match(html, /assets\/achievements\//);
+  assert.match(html, /assets\/avatars\/boosties\/zapi\/l5_bust\.webp/);
   assert.match(html, /נחום/);
   assert.match(html, /assets\/ui\/remote\.png/);
   assert.match(html, /data-fr-menu="u1"/);
@@ -144,7 +143,7 @@ test('FRIENDS_RENDER paints my-id, requests, friends, count, badge', () => {
 // 'crown') to its emoji, exactly like the friends list does. A past fix
 // added resolveAvatar() to the list but missed the detail header, so the
 // literal word "crown" rendered next to the friend's name.
-test('FRIENDS_DETAIL_RENDER resolves an avatar id to its emoji (no literal "crown")', () => {
+test('FRIENDS_DETAIL_RENDER resolves an old avatar id to the starter Boostie (no literal "crown")', () => {
   bus._reset();
   const { root, els } = makeRoot();
   mountFriendsScreen({ root, bus });
@@ -155,7 +154,7 @@ test('FRIENDS_DETAIL_RENDER resolves an avatar id to its emoji (no literal "crow
     activeGames: [],
     myUid: 'me',
   });
-  assert.equal(els.fdAvatar.textContent, '👑');
+  assert.match(els.fdAvatar.innerHTML ?? '', /boosties\/zapi\/l1_bust\.webp/);
   assert.notEqual(els.fdAvatar.textContent, 'crown');
   assert.equal(els.fdName.textContent, 'הודיה');
 });

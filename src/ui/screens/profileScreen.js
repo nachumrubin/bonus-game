@@ -14,8 +14,8 @@
 // main.js subscribes to these to drive profileService / friendsService / auth flows.
 
 import { $, on, setText } from '../domHelpers.js';
-import { SPINE_AVATARS, avatarIconSrc } from './avatarScreens.js';
-import { isStoreAvatarId } from './avatarStore.js';
+import { avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
+import { profileAvatarValue } from '../../game/account/boostieXp.js';
 import { startIdle } from '../avatarMotion/idleMotion.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 import { CHAMPS_OPEN } from './championsScreen.js';
@@ -34,29 +34,6 @@ export const PROFILE_INTENT = Object.freeze({
 });
 
 export const PROFILE_RENDER = 'profile/render';
-
-// Avatar id → emoji table. Derived from SPINE_AVATARS so additions there are
-// automatically reflected here. Falls back to 👑 (the legacy DEFAULT_AVATAR).
-const AVATAR_EMOJI = Object.fromEntries(SPINE_AVATARS.map(a => [a.id, a.emoji]));
-const KNOWN_AVATAR_EMOJIS = new Set(Object.values(AVATAR_EMOJI));
-
-// Resolve an avatar value to its emoji character.
-// Accepts an id ('diamond' → '💎'), an already-resolved emoji ('💎' → '💎'),
-// or null/undefined/unknown (→ '👑'). The pass-through case matters because
-// some legacy code paths (queue entries, invites, room players) store the
-// raw emoji string directly while others store the id — both should render.
-export function avatarEmoji(value) {
-  if (value == null) return AVATAR_EMOJI.crown;
-  if (typeof value !== 'string') return AVATAR_EMOJI.crown;
-  if (AVATAR_EMOJI[value]) return AVATAR_EMOJI[value];
-  if (KNOWN_AVATAR_EMOJIS.has(value)) return value;
-  // Store avatars are image-only and have no emoji. Pass the id through
-  // unchanged so it survives into room/queue player objects (player.avatar);
-  // consumers resolve it to its PNG via avatarIconSrc. Without this the id
-  // would collapse to 👑 at the room boundary and never show on opponents.
-  if (isStoreAvatarId(value)) return value;
-  return AVATAR_EMOJI.crown;
-}
 
 // Pure: derive a derived stats object including winRate.
 export function deriveStats(profile) {
@@ -143,20 +120,17 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
   function render({ profile, isAnonymous, email } = {}) {
     if (!profile) return;
     if (avatarEl) {
-      const iconSrc = avatarIconSrc(profile.equippedAvatar);
-      if (iconSrc) {
-        const cur = avatarEl.firstElementChild;
-        if (!(cur?.tagName === 'IMG' && cur.getAttribute?.('src') === iconSrc)) {
-          avatarEl.innerHTML = `<img class="pf-avatar-img" src="${iconSrc}" alt="">`;
-          const img = avatarEl.firstElementChild;
-          if (img) img.onerror = () => setText(avatarEl, isStoreAvatarId(profile.equippedAvatar) ? '👑' : (avatarEmoji(profile.equippedAvatar) || '👑'));
-        }
-        // Calm screen → the avatar breathes (and glances now and then). Started
-        // after the screen transition so the visibility check sees it shown.
-        if (!idle?.running) setTimeout(() => { if (!idle?.running) idle = startIdle(avatarEl, { secondary: true }); }, 350);
-      } else {
-        setText(avatarEl, avatarEmoji(profile.equippedAvatar));
+      // The equipped Boostie at its current level (old avatar ids → the starter).
+      const iconSrc = avatarIconSrc(profileAvatarValue(profile));
+      const cur = avatarEl.firstElementChild;
+      if (!(cur?.tagName === 'IMG' && cur.getAttribute?.('src') === iconSrc)) {
+        avatarEl.innerHTML = `<img class="pf-avatar-img" src="${iconSrc}" alt="">`;
+        const img = avatarEl.firstElementChild;
+        if (img) img.onerror = () => { img.onerror = null; img.src = ANON_AVATAR_SRC; };
       }
+      // Calm screen → the avatar breathes (and glances now and then). Started
+      // after the screen transition so the visibility check sees it shown.
+      if (!idle?.running) setTimeout(() => { if (!idle?.running) idle = startIdle(avatarEl, { secondary: true }); }, 350);
     }
     if (nameEl)    setText(nameEl,   profile.displayName ?? '');
     if (emailEl) setText(emailEl, email ?? '');
