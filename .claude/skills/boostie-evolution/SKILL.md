@@ -101,7 +101,8 @@ and quality of the reference image only; the creature is a different character."
 
 ## Step 3 and 5: review a sheet
 
-Look at the pasted image and fill in this table, one column per level:
+Open the pasted image at full size with Read (the inline preview is too small to count
+limbs) and fill in this table, one column per level:
 
 | Check | Lv … |
 |---|---|
@@ -111,11 +112,15 @@ Look at the pasted image and fill in this table, one column per level:
 | Exactly two cyan elements (core + signature) | |
 | Taller than the previous level | |
 | Constant marks, eye colour and palette unchanged | |
+| **Anatomy: count the legs, arms and hands**; no extra limb behind a cape, prop or tail | |
+| Props whole and straight (handles not bent, cut off or fused into a hand) | |
 
 Then check the whole sheet:
 
 - **64px test.** Could the core shapes of neighbouring levels be told apart if
   shrunk to 64px? Look at L5 → L6 and L6 → L7 in particular.
+- **Same-size test.** Mentally scale levels 5, 6 and 7 to the same height. If they
+  only differ in outfit, reject: level 6 must double the signature, level 7 transform it.
 - **Bust test.** Imagine only the head, shoulders and upper chest. Does each level
   still look different?
 - **Theme.** Do the accessories stay inside the chosen theme? Generic knight armour
@@ -146,6 +151,12 @@ sheet B produced all the generic rules now in §3 and §4d.
 | Energy lines end in glowing cyan shoulder discs | L6–7 | Inpaint the clasps to plain bronze |
 | L7 body aura barely visible | L7 | "visible soft cyan glow outlining the whole body" |
 | Two tails merge into one plume | L6 | Inpaint: "two separate … fanning apart" |
+| Energy feature drawn as flames, smoke or blue hair, old part still underneath (Rocco's horns) | sheet B | §4d: "keeps the exact shape … like polished glowing cyan crystal, never flames … no trace of the old part" |
+| Level 5 back on four legs after standing up at level 4 | sheet B | §4d: "all three levels stand upright on two legs like level 4" |
+| Busy armour, dangling bells, L6 and L7 in the same pose | L6–7 | "a few large readable pieces, no bells"; L7 "a different, prouder pose" |
+| Centaur body (four legs plus two arms), an extra leg behind a cape or prop | sheet B (Rocco) | §4d anatomy line: "exactly two legs and two arms … never a four-legged body with arms on top" |
+| Held hammer with a stub handle vanishing into the head, gripped at odd angles | L6–7 | §4d: hands empty, props strapped to the back or belt |
+| L5–7 look the same, only bigger | sheet B | §4d: L6 doubles the signature into something countable, L7 transforms its shape; "clearly different even at the same size" |
 | L1 core drawn as an orb (looks like L3) | turnaround | Edit: "tiny pinpoint spark, no bigger than the eye's pupil" (Bubo `06b`) |
 | A chain between the clasps runs through the core, so it reads as a pendant | L5–7 | Inpaint: remove the chain, or hang it well below the core |
 | L7 core drawn as a round orb with a ring, which looks like L4 at 64px | L7 core | Inpaint: "a radiant star-shaped burst with long sharp rays, bigger than level 6" |

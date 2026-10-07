@@ -2,6 +2,26 @@
 
 ---
 
+## Three new Boosties planned: Rocco, Lumi, Drako (October 2026)
+
+- Character blocks for Rocco the ram (brave, cyan horns), Lumi the axolotl (cheerful,
+  cyan gill frills) and Drako the dragon (proud, cyan wing membranes) in
+  `AVATAR_EVOLUTION.md` §10.
+- Evolution sheet prompts `docs-md/image-prompts/16–21_*_sheet_{a,b}.md`, listed in the
+  prompts README. Docs only, no code.
+- All six evolution sheets accepted and saved in `assets/avatars/evolution/{rocco,lumi,drako}/`.
+  The sheet B template (§4d) gained anatomy, empty-hands and "energy keeps the real
+  shape, like crystal" lines after two rejected Rocco attempts; the `boostie-evolution`
+  skill's review now opens sheets at full size and counts limbs.
+- Sheet B redone: levels 5–7 looked the same, only bigger. Level 6 now doubles the
+  signature (four horns, four wings, twice the frills) and level 7 transforms it (crown of
+  horns, fan crest, wings above the head). The new sheets were accepted on the fourth
+  try, and all 21 turnaround prompts (`image-prompts/22–42`) are written.
+- Rocco's seven turnarounds came back four-legged and off-spec, but each level looks
+  clearly different, so they were accepted as they are; Rocco stays a quadruped.
+
+---
+
 ## Coins move server-side (Phase 6a, October 2026)
 
 Coins will be sold for real money, so the client can no longer write them
