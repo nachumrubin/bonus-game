@@ -701,6 +701,10 @@ svg.gi.g-chev { color: var(--sg-faint); width: 16px; height: 16px; }
 #sprofile .pf-g-av { position: relative; width: 112px; margin: 0 auto; cursor: pointer; }
 #sprofile #profile-avatar-display { width: 92%; height: 92%; display: grid; place-items: center; font-size: 56px; line-height: 1; }
 #sprofile #profile-avatar-display img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0,0,0,.5)); }
+/* Live 3D Boostie (homeAvatarLive.js): canvas over the still, clipped to the ring */
+#sprofile .pf-g-av .g-avr { overflow: hidden; }
+#sprofile .pf-g-av .g-avr .b3d-cv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#sprofile .pf-g-av .g-avr.b3d-on #profile-avatar-display { visibility: hidden; }
 #sprofile .pf-g-pen { position: absolute; bottom: 4px; left: -4px; width: 32px; height: 32px; min-width: 32px; background: #0b1d5c; }
 #sprofile .pf-g-name { font: 900 24px/1.2 'Heebo', sans-serif; margin-top: 14px; cursor: pointer; color: var(--sg-ink); }
 #sprofile .pf-name-edit { max-width: 260px; margin: 10px auto 0; }

@@ -64,7 +64,7 @@ import { createAnimationController } from './ui/controllers/animationController.
 import { BOOST_RESULT_READY, BOOST_RESULT_REVEAL_DELAY_MS } from './ui/boostPresentation.js';
 import { getMotionPreference } from './ui/motionPreference.js';
 import { mountEvolutionScreen } from './ui/boostie3d/evolutionScreen.js';
-import { mountHomeAvatarLive } from './ui/boostie3d/homeAvatarLive.js';
+import { mountHomeAvatarLive, mountProfileAvatarLive } from './ui/boostie3d/homeAvatarLive.js';
 import { createGameFlowController } from './ui/controllers/gameFlowController.js';
 import { createTurnTimerController } from './ui/controllers/turnTimerController.js';
 import { createDisconnectController } from './ui/controllers/disconnectController.js';
@@ -333,6 +333,7 @@ let dictionaryLoadPromise = null;
 let botWordsLoadPromise = null;
 let evolutionScreen = null;   // ui/boostie3d/evolutionScreen.js, mounted with the screens
 let homeAvatarLive = null;    // ui/boostie3d/homeAvatarLive.js — the live Boostie in the home top bar
+let profileAvatarLive = null; // … and on the profile screen
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCE-Im2HzYhJVlRd07uIHqcsCGTQQhYgDo',
   authDomain: 'boost-8ef11.firebaseapp.com',
@@ -3022,6 +3023,7 @@ async function boot() {
         // Boostie levels this device hasn't celebrated yet → the evolution scene.
         if (profile) evolutionScreen?.noteProfile(uid, profile.boosties);
         homeAvatarLive?.refresh();
+        profileAvatarLive?.refresh();
         // Detect newly completed achievements (using the captured prev snapshot).
         // Each pays out tier-scaled coins and pops the completion overlay. Fires
         // only on the false→true transition between consecutive snapshots, and is
@@ -4898,15 +4900,18 @@ async function boot() {
     },
     endOpenEvent: END_OPEN,
   });
-  // The player's Boostie, alive in the home top bar (live 3D only while #sh shows).
-  homeAvatarLive = mountHomeAvatarLive({
+  // The player's Boostie, alive in the home top bar and on the profile screen (live 3D
+  // only while that screen shows).
+  const avatarLiveOpts = {
     getAvatar: () => {
       const u = activeFbCurrentUser;
       const p = globalThis.__spine?.currentProfile;
       return u?.uid && !u.isAnonymous && p ? profileAvatarValue(p) : null;
     },
     prefersReducedMotion: () => getMotionPreference().isReduced(),
-  });
+  };
+  homeAvatarLive = mountHomeAvatarLive(avatarLiveOpts);
+  profileAvatarLive = mountProfileAvatarLive(avatarLiveOpts);
   const authScreens        = mountAuthScreens({ bus });
   const friendsScreen      = mountFriendsScreen({ bus });
   const notificationsScreen = mountNotificationsScreen({ bus });
