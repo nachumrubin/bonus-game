@@ -69,14 +69,21 @@ function finder(root) {
   };
 }
 
+// Lively mode (the home top bar, where the avatar is tiny and has nothing else to do):
+// the eyes keep looking around and the head follows them, with a slow sway.
+const LIVELY = { lookEvery: [0.8, 2.4], gazeX: 1.8, gazeY: [-0.6, 0.9], center: 0.3, headYaw: 18, headPitch: 10, swayRoll: 4, follow: 3 };
+
 // av: { root, box, clipNames }. Adds av.live and av.rim.
-export function setupLive(av, now) {
+// lively: keep moving between clips (see LIVELY); the scoreboard leaves it off.
+export function setupLive(av, now, { lively = false } = {}) {
   const get = finder(av.root);
   const L = { eyes: [], lids: [], lows: [], low: 0, springs: [], sprites: [], faces: null, head: get('head'), mood: 'smug', moodUntil: 0, lid: 0,
     blinkAt: now + rnd(1.2, 3.5), blinkT: -1, double: false, flickAt: now + rnd(5, 10),
     sigAt: now + rnd(6, 12), hasSig: av.clipNames.includes('signature'),
     jaw: null, hehAt: now + rnd(8, 15), hehT: -1,
-    gaze: V(), gazeTarget: V(), glanceUntil: 0, headPrev: new THREE.Quaternion(), headInit: false };
+    gaze: V(), gazeTarget: V(), glanceUntil: 0, headPrev: new THREE.Quaternion(), headInit: false,
+    lively, lookAt: now + 0.6, headLook: V(), headW: 1, headAnim: null };
+  if (lively && L.head) L.headAnim = L.head.quaternion.clone();
   for (const s of ['L', 'R']) {
     const eye = get('eye' + s), lid = get('lid' + s), low = get('lidlow' + s);
     if (eye) L.eyes.push({ bone: eye, rest: eye.quaternion.clone() });
@@ -140,6 +147,34 @@ export function setupLive(av, now) {
 export function preLive(av) {
   av.live.springs.forEach((sp) => sp.bone.quaternion.copy(sp.anim));
   if (av.live.jaw) av.live.jaw.bone.quaternion.copy(av.live.jaw.anim);
+  if (av.live.headAnim) av.live.head.quaternion.copy(av.live.headAnim);
+}
+
+// Lively mode: pick a new place to look now and then, and turn the head after the eyes
+// (slower than the eyes, so it reads as looking around). Fades out while a clip plays,
+// so the clip's own head motion stays clean.
+function livelyHead(av, dt, now) {
+  const L = av.live;
+  if (!av.current && now >= L.lookAt && now > L.glanceUntil) {
+    if (Math.random() < LIVELY.center) L.gazeTarget.set(0, 0, 0);
+    else L.gazeTarget.set(rnd(-LIVELY.gazeX, LIVELY.gazeX), rnd(...LIVELY.gazeY), 0);
+    L.lookAt = now + rnd(...LIVELY.lookEvery);
+  }
+  if (!L.headAnim) return;
+  L.headAnim.copy(L.head.quaternion);
+  L.headW += ((av.current ? 0 : 1) - L.headW) * Math.min(1, dt * 4);
+  L.headLook.lerp(L.gazeTarget, Math.min(1, dt * LIVELY.follow));
+  const yaw = deg(L.headLook.x * LIVELY.headYaw) * L.headW;
+  const pitch = deg(L.headLook.y * LIVELY.headPitch) * L.headW;
+  const roll = deg(Math.sin(now * 0.7) * LIVELY.swayRoll) * L.headW;
+  av.root.updateMatrixWorld(true);
+  const right = V().setFromMatrixColumn(av.camera.matrixWorld, 0);
+  const fwd = V().setFromMatrixColumn(av.camera.matrixWorld, 2);
+  const turn = new THREE.Quaternion().setFromAxisAngle(Y_AXIS, yaw)
+    .multiply(_q.setFromAxisAngle(right, -pitch))
+    .multiply(_q2.setFromAxisAngle(fwd, roll));
+  const world = L.head.getWorldQuaternion(new THREE.Quaternion()).premultiply(turn);
+  L.head.quaternion.copy(L.head.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(world));
 }
 
 // A reaction starts: the face takes the mood, the eyes come back to the viewer.
@@ -162,7 +197,8 @@ export function glance(av, dir, until) {
 // Returns true while something is still moving.
 export function updateLive(av, dt, now, play) {
   const L = av.live;
-  let busy = false;
+  let busy = L.lively;                  // lively: always something moving
+  if (L.lively) livelyHead(av, dt, now);
   const hv = V();                       // head motion this frame kicks the ears and tail
   if (L.head) {
     L.head.getWorldQuaternion(_q);

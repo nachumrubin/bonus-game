@@ -1,16 +1,22 @@
 // homeAvatarLive — the player's Boostie, alive in the home screen's top-bar avatar
 // (.em-avatar-wrap around #home-avatar-ic). Same live 3D as the scoreboard (one slot of
-// scoreboardLive): eyes, blinks, springs, and now and then its signature move. The 3D
+// scoreboardLive), in lively mode: the eyes keep looking around and the head follows,
+// and every few seconds it does a gesture (yawn, stare, its signature move…). The 3D
 // runs only while the home screen (#sh) is showing, and is torn down (WebGL freed) as
 // soon as it hides; the still <img> underneath is the fallback and what every other
 // screen shows.
 //
-// Only idle life plays here (D-boostie-reactions: expressive clips are player-chosen).
+// The avatar is only 34px here, so the gestures are frequent on purpose. They are idle
+// moves on the player's own avatar on their own screen, not reactions sent to anyone
+// (D-boostie-reactions still holds for the game).
 
 import { createScoreboardLive, canUseLive3d } from './scoreboardLive.js';
 
-const SIGNATURE_FIRST_MS = 1800;              // a little hello once the home screen shows
-const SIGNATURE_EVERY_MS = [14000, 26000];    // then every so often (random in range)
+const GESTURE_FIRST_MS = 1200;                // a hello soon after the home screen shows
+const GESTURE_EVERY_MS = [5000, 9000];         // then every few seconds (random in range)
+// Clips every Boostie has; a model without one is skipped (play() returns false).
+export const HOME_GESTURES = Object.freeze(['yawn', 'signature', 'stare', 'wow', 'wink', 'laugh']);
+const LOOK = { lively: true, yaw: 0.3 };       // nearly facing the viewer, so the eyes read
 
 export function mountHomeAvatarLive({
   doc = globalThis.document,
@@ -27,6 +33,7 @@ export function mountHomeAvatarLive({
 
   let live = null;
   let timer = 0;
+  let last = null;
   const win = doc.defaultView ?? globalThis;
 
   const homeShowing = () => !screen.classList.contains('hidden') && !doc.hidden;
@@ -38,13 +45,23 @@ export function mountHomeAvatarLive({
     live = null;
   }
 
-  function scheduleSignature(ms) {
+  // A different gesture from the last one; the first the model has.
+  function gesture() {
+    const order = HOME_GESTURES.filter((g) => g !== last);
+    const start = Math.floor(random() * order.length);
+    for (let k = 0; k < order.length; k++) {
+      const g = order[(start + k) % order.length];
+      if (live.play(0, g)) { last = g; return; }
+    }
+  }
+
+  function scheduleGesture(ms) {
     win.clearTimeout(timer);
     timer = win.setTimeout(() => {
       if (!live || !homeShowing()) return;
-      live.play(0, 'signature');
-      const [a, b] = SIGNATURE_EVERY_MS;
-      scheduleSignature(a + random() * (b - a));
+      gesture();
+      const [a, b] = GESTURE_EVERY_MS;
+      scheduleGesture(a + random() * (b - a));
     }, ms);
   }
 
@@ -53,9 +70,9 @@ export function mountHomeAvatarLive({
     const value = getAvatar();
     if (!value || !homeShowing() || prefersReducedMotion()) { stop(); return; }
     const fresh = !live;
-    live ??= createLive({ hosts: () => [host], prefersReducedMotion });
+    live ??= createLive({ hosts: () => [host], prefersReducedMotion, look: LOOK });
     live.sync([value]);
-    if (fresh) scheduleSignature(SIGNATURE_FIRST_MS);
+    if (fresh) scheduleGesture(GESTURE_FIRST_MS);
   }
 
   // The home screen shows / hides by its `hidden` class; the menu rewrites the icon when

@@ -20,6 +20,7 @@ export function createScoreboardLive({
   prefersReducedMotion = () => false,
   enabled = canUseLive3d(),
   importer = () => import('./scoreboard3d.js'),
+  look = {},                 // passed to createScoreboard3d: { lively, yaw } (the home top bar)
 } = {}) {
   let board = null, loading = null, off = !enabled, disposed = false;
   let wanted = [];
@@ -32,7 +33,7 @@ export function createScoreboardLive({
     loading = importer()
       .then(({ createScoreboard3d }) => {
         if (disposed) return;
-        board = createScoreboard3d({ hosts: els, onFallback: () => { off = true; board = null; } });
+        board = createScoreboard3d({ ...look, hosts: els, onFallback: () => { off = true; board = null; } });
         pending = wanted.map((src, i) => board.setAvatar(i, src));
       })
       .catch((e) => {

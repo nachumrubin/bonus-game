@@ -558,6 +558,11 @@ loadModel(src): Promise<GLTF>                     // fetch cached per src, mesho
 // homeAvatarLive.js — live 3D in .em-avatar-wrap (#home-avatar-ic) while #sh is visible
 mountHomeAvatarLive({ doc?, getAvatar: () => value|null, prefersReducedMotion?, enabled?, createLive?, random? })
   => { refresh(), unmount() }   // main.js calls refresh() on every profile snapshot
+HOME_GESTURES  // ['yawn','signature','stare','wow','wink','laugh'], one every 5–9 s
+// Lively mode, used by the home avatar only:
+createScoreboardLive({ ..., look: { lively, yaw } })     // look → createScoreboard3d
+createScoreboard3d({ hosts, onFallback?, slowFrameMs?, lively = false, yaw = 0.6 })
+setupLive(av, now, { lively })   // boostieLive: eyes wander, head follows, sway; always busy
 ```
 
 ### boostie3d — level-up evolution (October 2026, Phase 4)
