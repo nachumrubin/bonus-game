@@ -27,7 +27,9 @@ function finderBone(root, name) {
 
 // hosts: the slot elements (the scoreboard's two, or the store preview's one). onFallback(reason) when 3D gives up for this game.
 // slowFrameMs: median frame time above which it gives up (Infinity turns the check off).
-export function createScoreboard3d({ hosts, onFallback = () => {}, slowFrameMs = SLOW_FRAME_MS }) {
+// lively: keep the eyes and head moving between clips (boostieLive LIVELY; the home top
+// bar). yaw: how far the avatar turns from the viewer (radians).
+export function createScoreboard3d({ hosts, onFallback = () => {}, slowFrameMs = SLOW_FRAME_MS, lively = false, yaw = YAW }) {
   const doc = hosts[0].ownerDocument;
   const win = doc.defaultView;
   const glCanvas = doc.createElement('canvas');
@@ -123,11 +125,11 @@ export function createScoreboard3d({ hosts, onFallback = () => {}, slowFrameMs =
     root.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(root);   // measured facing forward, before the 3/4 turn
     const bust = measureBust(root, box);
-    root.rotation.y = right ? YAW : -YAW;
+    root.rotation.y = right ? yaw : -yaw;
     const av = { scene, root, box, bust, mixer, rest, byName, right, clipNames: clips.map((c) => c.name),
       camera: new THREE.PerspectiveCamera(FOV, 1, 0.1, 1000), current: null, kind: null, endAt: 0, idleAt: 0 };
     frameBust(av);
-    setupLive(av, performance.now() / 1000);
+    setupLive(av, performance.now() / 1000, { lively });
     return av;
   }
 

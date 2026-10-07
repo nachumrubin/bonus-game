@@ -210,6 +210,10 @@ and boost, plus idle life (blinks, glances, the signature movement, a small mout
 **Why:** a reaction the player chose means something to the rival, while automatic
 ones turn into background noise. Reactions are also a natural thing to sell.
 
+**Exception (Oct 2026, user request):** the home top-bar avatar plays expressive clips
+(yawn, wow, wink, …) on its own, as idle gestures. It's the player's own avatar on their
+own screen and nothing is sent to anyone, so the rule above still holds for games.
+
 **Settled in Phase 5 (Oct 2026):**
 - Transport: the existing `liveReaction` path and `EV.REACTION_RECEIVED`, with a new
   reaction type `boostie`. No new `EV.*`.

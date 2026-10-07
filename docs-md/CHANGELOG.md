@@ -2,6 +2,24 @@
 
 ---
 
+## Home avatar: bigger, clearer gestures (October 2026)
+
+At 34px the home avatar looked frozen: the scoreboard's live code sleeps between rare
+blinks and signatures. On the home top bar it now runs in a new **lively** mode:
+
+- the eyes look somewhere new every 0.8–2.4 s, and the head turns and tilts after them
+  (up to 18° left/right, 10° up/down) with a slow side-to-side sway;
+- every 5–9 s it does a gesture: yawn, signature, stare, wow, wink or laugh, never the
+  same one twice in a row (a clip the model lacks is skipped);
+- it turns less away from the viewer (yaw 0.3 instead of 0.6), so the eyes read.
+
+`createScoreboard3d` takes `{ lively, yaw }` and `createScoreboardLive` passes them as
+`look`; the game scoreboard is unchanged. Lively mode draws every frame while the home
+screen shows (one tiny canvas). The same request asked for the yawn on home, so
+D-boostie-reactions now notes the home-screen exception.
+
+---
+
 ## Home avatar alive + original bot buttons (October 2026)
 
 - The player's Boostie in the home top bar (`.em-avatar-wrap`) is now live 3D
