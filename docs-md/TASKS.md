@@ -44,6 +44,9 @@
 - [x] Phase 5: Boostie reactions in game (`reactionsConfig.js` type `boostie`, tray row of
   owned ones, `gameScreen.playBoostieReaction` → `live3d.play`, emoji bubble on stills) and
   the live 3D preview in the store (`#store-rx-preview`). Oct 2026.
+- [x] Home top-bar Boostie is live 3D while the home screen shows (`homeAvatarLive.js`);
+  setup difficulty buttons back to the original bot heads. Oct 2026.
+- [ ] Home avatar follow-up: check it on a real phone (an extra WebGL context on home).
 - [ ] Phase 5 follow-up: try the reactions in a real online game between two phones (both
   sides play the clip; the opponent glances at the one reacting).
 - [ ] Phase 5 follow-up: Firebase rules still accept any `liveReaction` payload from a

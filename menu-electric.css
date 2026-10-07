@@ -3652,3 +3652,9 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
   #sg #info-strip #turn-timer .tt-value { font-size: 13px !important; }
   #sg .info-strip .is-pclocks .lock-inv-btn::after { font-size: 12px; }
 }
+
+/* Live 3D Boostie in the home top bar (src/ui/boostie3d/homeAvatarLive.js): a canvas over
+   the still, only while the home screen shows; the still hides once the 3D has drawn. */
+.em-avatar-wrap { position: relative; }
+.em-avatar-wrap .b3d-cv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.em-avatar-wrap.b3d-on .em-avatar-img { visibility: hidden; }

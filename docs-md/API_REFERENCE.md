@@ -553,6 +553,13 @@ SLOW_FRAME_MS = 45; SLOW_SAMPLE = 30; median(xs); isTooSlow(frameMs, budget?, sa
 loadModel(src): Promise<GLTF>                     // fetch cached per src, meshopt-decoded
 ```
 
+### boostie3d — live home avatar (October 2026)
+```typescript
+// homeAvatarLive.js — live 3D in .em-avatar-wrap (#home-avatar-ic) while #sh is visible
+mountHomeAvatarLive({ doc?, getAvatar: () => value|null, prefersReducedMotion?, enabled?, createLive?, random? })
+  => { refresh(), unmount() }   // main.js calls refresh() on every profile snapshot
+```
+
 ### boostie3d — level-up evolution (October 2026, Phase 4)
 ```typescript
 // evolutionScreen.js — #ov-evolution overlay + queue (DOM; three.js only via importer)

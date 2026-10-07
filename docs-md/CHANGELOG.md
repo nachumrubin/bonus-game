@@ -2,6 +2,19 @@
 
 ---
 
+## Home avatar alive + original bot buttons (October 2026)
+
+- The player's Boostie in the home top bar (`.em-avatar-wrap`) is now live 3D
+  (`src/ui/boostie3d/homeAvatarLive.js`, one slot of `scoreboardLive`): eyes, blinks,
+  springs, a signature move shortly after the home screen shows and then every 14–26 s.
+  It runs only while `#sh` is visible and is torn down when you leave (WebGL freed);
+  stills under reduced motion, without WebGL 2, or for guests.
+- The difficulty buttons on the vs-computer setup screen use the original bot head
+  images again (`assets/avatars/{green,yellow,red} bot.webp`); the 3D bot busts were
+  cropped at different heights.
+
+---
+
 ## Phase 5: Boostie reactions (October 2026)
 
 Players can now make their own Boostie react in an online game, and preview reactions in
