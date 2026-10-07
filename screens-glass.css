@@ -1619,3 +1619,95 @@ input.g-tog-input { width: 46px !important; height: 28px !important; min-width: 
   #ov-bonus-intro > .ovc > .ovic, .ovc.bonus-award-card > .ovic, .ovc.bonus-award-card > .ovt + .ovd,
   :is(#ov-bonus, .bz-card) .cw-cell.is-cross { animation: none !important; }
 }
+
+/* ── Store: Boostie cards + reactions (avatarStoreScreen.storeHtml) ── */
+#savatar-store .bst-list { display: grid; gap: 10px; }
+#savatar-store .bst-card { display: grid; grid-template-columns: 42% 1fr; gap: 10px; align-items: center; padding: 10px; border-radius: 18px; background: var(--sg-glass); border: 1px solid var(--sg-line); }
+#savatar-store .bst-card.is-equipped { border: 1.5px solid #fff; box-shadow: 0 0 0 1px #28d4ff, 0 0 14px rgba(40,212,255,.45); }
+#savatar-store .bst-stage { aspect-ratio: 1; max-width: 100%; border-radius: 14px; display: grid; place-items: center; background: radial-gradient(circle at 50% 55%, rgba(40,212,255,.32), rgba(0,0,0,.25) 70%); overflow: hidden; }
+#savatar-store .bst-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+#savatar-store .bst-card.is-locked .bst-img { filter: brightness(.25) saturate(0) drop-shadow(0 0 6px rgba(40,212,255,.5)); }
+#savatar-store .bst-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; align-items: flex-start; }
+#savatar-store .bst-name { font-size: 16px; font-weight: 900; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+#savatar-store .bst-lvl { font-size: 11px; font-weight: 800; color: var(--sg-p1); padding: 1px 7px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--sg-p1) 50%, transparent); }
+#savatar-store .bst-xp { width: 100%; height: 8px; border-radius: 999px; background: rgba(0,0,0,.35); overflow: hidden; }
+#savatar-store .bst-xp-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #28d4ff, #8ff3ff); box-shadow: 0 0 8px rgba(40,212,255,.6); }
+#savatar-store .bst-xp-txt { font-size: 11px; color: var(--sg-dim); }
+#savatar-store .bst-next { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--sg-dim); }
+#savatar-store .bst-next-img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: rgba(0,0,0,.3); filter: brightness(.55) saturate(.6); }
+#savatar-store .bst-unlock { font-size: 11.5px; color: var(--sg-dim); line-height: 1.35; }
+#savatar-store .bst-btn { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 14px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; background: var(--sg-p1); color: #022038; border: none; }
+#savatar-store .bst-btn--buy { background: rgba(255,201,61,.12); border: 1px solid rgba(255,201,61,.45); color: var(--sg-p2); }
+#savatar-store .bst-btn--buy.is-short { opacity: .55; }
+#savatar-store .bst-btn--watch { background: rgba(40,212,255,.1); border: 1px solid rgba(40,212,255,.45); color: var(--sg-p1); }
+#savatar-store .bst-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#savatar-store .bst-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11px; background: rgba(46,229,157,.1); border: 1px solid rgba(46,229,157,.4); color: var(--sg-ok); }
+#savatar-store .bst-tag.is-equipped { background: var(--sg-p1); color: #022038; border-color: transparent; }
+#savatar-store .store-section--reactions { margin-top: 14px; }
+#savatar-store .rx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+#savatar-store .rx-tile { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 6px; border-radius: 16px; background: var(--sg-glass); border: 1px solid var(--sg-line); }
+#savatar-store .rx-ic { font-size: 28px; line-height: 1; }
+#savatar-store .rx-name { font-size: 11.5px; font-weight: 700; text-align: center; }
+#savatar-store .rx-tile[data-reaction] { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .1s, border-color .15s; }
+#savatar-store .rx-tile[data-reaction]:active { transform: scale(.96); }
+#savatar-store .rx-tile[data-reaction]:focus-visible { outline: 2px solid var(--sg-p1); outline-offset: 2px; }
+/* Reaction preview (#store-rx-preview, Phase 5): your Boostie plays the tapped reaction.
+   The 3D canvas (.b3d-cv) sits over the still; the still hides once it has drawn. */
+#savatar-store .store-rx-preview { position: relative; display: flex; align-items: center; gap: 12px; margin: 0 0 8px; padding: 6px 12px 6px 40px;
+  border-radius: 18px; background: radial-gradient(90% 120% at 85% 50%, rgba(40,212,255,.16), transparent 70%), var(--sg-glass); border: 1px solid var(--sg-line); }
+#savatar-store .store-rx-preview.hidden { display: none; }
+#savatar-store .srp-av { position: relative; width: 112px; height: 112px; flex: none; }
+#savatar-store .srp-av .srp-still, #savatar-store .srp-av .b3d-cv { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+#savatar-store .srp-av .b3d-cv { filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+#savatar-store .srp-av.b3d-on .srp-still { visibility: hidden; }
+#savatar-store .srp-cap { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; min-width: 0; }
+#savatar-store .srp-emoji { font-size: 26px; line-height: 1; display: inline-block; }
+#savatar-store .store-rx-preview.is-pop .srp-emoji { animation: srp-pop .5s var(--ease-standard, ease-out); }
+#savatar-store .srp-close { position: absolute; top: 6px; inset-inline-end: 8px; width: 28px; height: 28px; border-radius: 50%; border: none; background: rgba(255,255,255,.08); color: inherit; font-size: 18px; line-height: 1; cursor: pointer; }
+@keyframes srp-pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { #savatar-store .store-rx-preview.is-pop .srp-emoji { animation: none; } }
+#ov-store-confirm .store-confirm-av { position: relative; }
+#ov-store-confirm .store-confirm-rx { position: absolute; bottom: 8px; inset-inline-end: 8px; font-size: 34px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+
+/* ── Boostie evolution overlay (#ov-evolution, evolutionScreen.js — Phase 4) ── */
+.evo-ov { position: fixed; inset: 0; z-index: 140; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: env(safe-area-inset-top, 0px) 16px env(safe-area-inset-bottom, 0px);
+  background: radial-gradient(120% 70% at 50% 42%, rgba(40,212,255,.18), rgba(4,10,38,.96) 62%), #040a26;
+  transition: opacity .25s, visibility 0s; }
+.evo-ov.hidden { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .25s, visibility 0s linear .25s; }
+.evo-ov .evo-stage { position: relative; width: min(92vw, 420px); height: min(62vh, 520px); flex: none; transition: transform .45s var(--ease-standard); }
+.evo-ov.is-card .evo-stage { transform: translateY(-9vh) scale(.86); }
+.evo-ov .evo-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+.evo-ov.is-3d .evo-cv { display: block; }
+.evo-ov .evo-still { position: absolute; inset: 6% 8%; width: 84%; height: 88%; object-fit: contain; opacity: 0;
+  filter: drop-shadow(0 14px 22px rgba(0,0,0,.55)); transition: opacity .5s; }
+.evo-ov.is-loading .evo-still--from, .evo-ov.is-stills .evo-still--from { opacity: 1; }
+.evo-ov.is-stills.is-swapped .evo-still--from { opacity: 0; }
+.evo-ov.is-stills.is-swapped .evo-still--to { opacity: 1; }
+.evo-ov.is-stills.is-charging:not(.is-swapped) .evo-still--from { animation: evo-charge 1.7s ease-in forwards; }
+.evo-ov.is-stills.is-swapped:not(.is-card) .evo-still--to { animation: evo-pop .5s var(--ease-bounce); }
+.evo-ov .evo-flash { position: absolute; inset: -20%; pointer-events: none; opacity: 0; transition: opacity .55s ease-out;
+  background: radial-gradient(closest-side, rgba(235,250,255,.95), rgba(150,230,255,.55) 45%, rgba(40,212,255,0)); }
+.evo-ov.is-flash .evo-flash { opacity: 1; transition-duration: .2s; }
+.evo-ov .evo-skip { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); inset-inline-start: 16px; height: 34px; padding: 0 14px;
+  border-radius: 17px; border: 1px solid var(--sg-line); background: rgba(12,26,74,.6); color: var(--sg-dim); font: inherit; font-size: 13px; font-weight: 700; }
+.evo-ov.is-card .evo-skip { visibility: hidden; }
+.evo-ov .evo-card { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); left: 50%; width: min(92vw, 400px);
+  transform: translate(-50%, 30px); opacity: 0; visibility: hidden; text-align: center; transition: opacity .35s, transform .45s var(--ease-bounce), visibility 0s linear .35s; }
+.evo-ov.is-card .evo-card { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition-delay: 0s; }
+.evo-ov .evo-kicker { font-size: 13px; font-weight: 800; letter-spacing: .04em; color: var(--sg-p1); text-shadow: 0 0 10px rgba(40,212,255,.6); }
+.evo-ov .evo-title { font-size: 24px; font-weight: 900; color: var(--sg-ink); margin-top: 4px; text-wrap: balance; }
+.evo-ov .evo-lvl { font-size: 15px; font-weight: 800; color: var(--sg-p2); margin-top: 2px; }
+.evo-ov .evo-change { font-size: 14px; color: var(--sg-dim); margin: 8px 0 4px; text-wrap: balance; }
+.evo-ov .evo-btns { margin-top: 12px; display: flex; justify-content: center; }
+.evo-ov.evo-unlock .evo-stage { transform: translateY(-9vh) scale(.86); }
+@keyframes evo-charge {
+  0% { filter: drop-shadow(0 14px 22px rgba(0,0,0,.55)) brightness(1); transform: scale(1); }
+  70% { filter: drop-shadow(0 0 22px rgba(40,212,255,.85)) brightness(1.5); transform: scale(1.02); }
+  100% { filter: drop-shadow(0 0 40px rgba(220,248,255,1)) brightness(3.2) saturate(.2); transform: scale(1.04); }
+}
+@keyframes evo-pop { 0% { transform: scale(.9); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .evo-ov .evo-still, .evo-ov .evo-card, .evo-ov .evo-stage { transition: opacity .4s !important; animation: none !important; }
+  .evo-ov.is-card .evo-stage { transform: translateY(-9vh) scale(.86); }
+}

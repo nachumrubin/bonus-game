@@ -28,6 +28,49 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 
 ## Existing
 
+### Boostie models and stills (October 2026)
+
+In-app Boostie assets (paths built by `src/game/account/boostieCatalog.js`):
+
+* assets/boosties/<id>_l<N>.glb — rigged 3D model per level, meshopt-compressed by
+  `scripts/optimize-boosties.mjs` from `Blender designs/boosties/out/`. 14 files
+  (zapi, bubo × L1–7), ~0.8–1.0 MB each. Used by the live scoreboard (Phase 3).
+  Clips: idle, turn, good, boost, signature, laugh, wow, stare, yawn, wink.
+* assets/boosties/bot_{easy,medium,hard}.glb — the bots' 3D models (~0.65 MB each,
+  single level, screen face with 8 expressions; AVATAR_EVOLUTION §9).
+* assets/avatars/bots/bot_{easy,medium,hard}_{bust,full}.webp — bot stills (opponent
+  avatar, setup level cards). The old portraits (`assets/avatars/{green,yellow,red} bot.png`)
+  are no longer used by the app; `bot.png` stays for the generic bot.
+* **Missing:** achievement icons for `boostie_grown` (מתפתח), `new_boostie` (בוסטי חדש),
+  `reaction_fan` (מלך התגובות); they show emoji. The old store portraits
+  (`assets/avatars_v2`) were removed in October 2026.
+* assets/avatars/boosties/<id>/l<N>_bust.webp — 256 px head-and-shoulders still (every
+  avatar slot, lists, fallback for 3D).
+* assets/avatars/boosties/<id>/l<N>_full.webp — 512 px full-body still (store cards,
+  purchase confirm, level-up fallback).
+
+Rendered by `Blender designs/boosties/render_stills.py` and `stills_to_webp.py`.
+
+* src/vendor/three/ — three.js r169 (`three.module.min.js`, `GLTFLoader.js`,
+  `BufferGeometryUtils.js`, `meshopt_decoder.module.js`), MIT (`LICENSE` alongside).
+  Code, not art; loaded only by the live scoreboard (`src/ui/boostie3d/`).
+
+### Boostie evolution sheets (October 2026)
+
+Reference art for the 7-level evolving avatars (spec: `docs-md/AVATAR_EVOLUTION.md`,
+workflow: the `boostie-evolution` skill). These are design sheets, not in-app assets:
+nothing references them yet. Each level still has to be cut out as its own
+transparent PNG before it can become an avatar or pose atlas.
+
+* assets/avatars/evolution/zapi/zapi_sheet_a_levels_1-4.png — Zapi (fox), levels 1–4, final
+* assets/avatars/evolution/zapi/zapi_sheet_b_levels_5-7.png — Zapi (fox), levels 5–7, final (inpainted)
+
+* assets/avatars/evolution/bubo/bubo_sheet_a_levels_1-4.png — Bubo (owl), levels 1–4, final
+* assets/avatars/evolution/bubo/bubo_sheet_b_levels_5-7.png — Bubo (owl), levels 5–7, final (inpainted)
+
+Missing: per-level transparent cut-outs of Zapi and Bubo (7 PNGs each); sheets
+for Pipo (dragon).
+
 ### Sound effects (October 2026)
 
 Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_inventory.md`
@@ -61,9 +104,8 @@ Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_invento
 ### Generated motion assets (not bespoke art — rebuilt from the PNGs below)
 
 * assets/anim/manifest.json — pose-atlas index keyed by source PNG path
-* assets/anim/achievements/*.webp — 23 achievement atlases (turn + light sweep)
+* assets/anim/achievements/*.webp — 20 achievement atlases (turn + light sweep)
 * assets/anim/avatars/*.webp — 5 bot/anonymous atlases (bust poses)
-* assets/anim/avatars_v2/<common|rare|epic|legendary>/*.webp — 45 avatar atlases (bust poses)
 * Rebuild: `Blender designs/icons3d/` → `build_relief.py --atlas` then `pack_atlas.py` (see its README)
 
 ### Source art
@@ -73,10 +115,8 @@ Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_invento
 * assets/achievements/אגדה.png
 * assets/achievements/אלוף.png
 * assets/achievements/אמן המילים.png
-* assets/achievements/אספן.png
 * assets/achievements/בלתי מנוצח.png
 * assets/achievements/בלתי נתפס.png
-* assets/achievements/בעל אגדה.png
 * assets/achievements/ברק חי.png
 * assets/achievements/גאון מילים.png
 * assets/achievements/האחד.png
@@ -87,7 +127,6 @@ Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_invento
 * assets/achievements/מנצח.png
 * assets/achievements/על-אנושי.png
 * assets/achievements/צעדים ראשונים.png
-* assets/achievements/קנייה ראשונה.png
 * assets/achievements/רצף מנצחים.png
 * assets/achievements/שועל ותיק.png
 * assets/achievements/שחקן מנוסה.png
@@ -97,49 +136,6 @@ Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_invento
 * assets/avatars/green bot.png
 * assets/avatars/red bot.png
 * assets/avatars/yellow bot.png
-* assets/avatars_v2/common/basketball_player.png
-* assets/avatars_v2/common/common_1_1.png
-* assets/avatars_v2/common/common_1_2.png
-* assets/avatars_v2/common/common_1_3.png
-* assets/avatars_v2/common/common_1_4.png
-* assets/avatars_v2/common/common_2_split.png
-* assets/avatars_v2/common/doctor.png
-* assets/avatars_v2/common/fire_dep.png
-* assets/avatars_v2/common/gamer.png
-* assets/avatars_v2/common/hacker.png
-* assets/avatars_v2/common/police.png
-* assets/avatars_v2/common/shef.png
-* assets/avatars_v2/common/soccer_fan.png
-* assets/avatars_v2/common/soccer_player.png
-* assets/avatars_v2/common/soldier.png
-* assets/avatars_v2/common/su_shef.png
-* assets/avatars_v2/rare/david_ben_gur.png
-* assets/avatars_v2/rare/golda.png
-* assets/avatars_v2/rare/hertzel.png
-* assets/avatars_v2/rare/ilan_ramon.png
-* assets/avatars_v2/rare/miriam_peretz.png
-* assets/avatars_v2/rare/moshe dayan.png
-* assets/avatars_v2/rare/ofra_haza.png
-* assets/avatars_v2/rare/rabin.png
-* assets/avatars_v2/rare/rare_1_bottom_left.png
-* assets/avatars_v2/rare/rare_1_bottom_right.png
-* assets/avatars_v2/rare/rare_1_top_left.png
-* assets/avatars_v2/rare/rare_1_top_right.png
-* assets/avatars_v2/epic/esther.PNG
-* assets/avatars_v2/epic/jacob.png
-* assets/avatars_v2/epic/rachel.png
-* assets/avatars_v2/epic/ruth.PNG
-* assets/avatars_v2/epic/shmoel.png
-* assets/avatars_v2/epic/מרדכי היהודי.PNG
-* assets/avatars_v2/epic/joshua.png
-* assets/avatars_v2/epic/rambam.png
-* assets/avatars_v2/epic/adam.png
-* assets/avatars_v2/epic/yehuda_hamaccabi.png
-* assets/avatars_v2/legendary/aharon.png
-* assets/avatars_v2/legendary/david.png
-* assets/avatars_v2/legendary/joseph.png
-* assets/avatars_v2/legendary/moses.png
-* assets/avatars_v2/legendary/samson.png
 * assets/icons/1v1.png
 * assets/icons/5_references.png
 * assets/icons/acheivments.png

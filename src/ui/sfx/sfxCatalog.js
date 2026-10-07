@@ -216,6 +216,20 @@ export const SFX = Object.freeze({
     tier: 'stinger', file: 'achievement', vol: 0.65, haptic: [70, 45, 110],
     synth: [tone(587, 105, 'sine', 0.15), tone(740, 120, 'sine', 0.16, null, 95), tone(880, 190, 'triangle', 0.15, null, 205)],
   },
+  // Boostie evolution (Phase 4): the core is electric, so the charge is the real neon
+  // hum and the transform the real zap; the reveal reuses the achievement jingle.
+  'evolve.charge': {
+    tier: 'stinger', file: 'power_up', vol: 0.5, rate: 0.82, haptic: [20],
+    synth: tone(180, 1500, 'sawtooth', 0.05, 720),
+  },
+  'evolve.burst': {
+    tier: 'stinger', file: 'boost_activate', vol: 0.65, rate: 0.9, haptic: [60, 40, 90],
+    synth: tone(880, 260, 'sine', 0.16, 1320),
+  },
+  'evolve.reveal': {
+    tier: 'stinger', file: 'achievement', vol: 0.6, haptic: null,
+    synth: [tone(587, 105, 'sine', 0.15), tone(740, 120, 'sine', 0.16, null, 95), tone(988, 220, 'triangle', 0.15, null, 205)],
+  },
   'elo.up': {
     tier: 'event', file: 'elo_up', vol: 0.4, haptic: [35, 30, 45],
     synth: tone(440, 105, 'triangle', 0.10, 554),

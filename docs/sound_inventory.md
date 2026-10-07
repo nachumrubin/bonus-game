@@ -44,8 +44,8 @@ says how to get the sources (Freesound HQ previews by id, plus the Kenney zips).
 | `coins_collect` | score.land | Freesound #368203 "Coin Dropped" by kermite607 | CC0 | 0.32 s, peak −3 dB |
 | `coins_pile` | boost.points, coins.gain | Freesound #684167 "Coins Falling Into Pile" by AKkingStudio | CC0 | 0.75 s, peak −3 dB |
 | `clock_tick` | timer.warn, timer.tick, mg.tick, invite.expiring | Freesound #450509 "ClockTickSound_01" by abyeditsound | CC0 | one tick at 2.15 s, 0.25 s, peak −3 dB |
-| `boost_activate` | boost.activate, score.multiplier | Freesound #136542 "ELECTRIC_ZAP_001" by JoelAudio | CC0 | 0.8 s, 10 ms fade-in, −16 LUFS |
-| `power_up` | boost.charge | Freesound #351430 "Neon Lamp, Switch On, Hum" by Kinoton | CC0 | 0.30–1.20 s, −16 LUFS |
+| `boost_activate` | boost.activate, score.multiplier, evolve.burst | Freesound #136542 "ELECTRIC_ZAP_001" by JoelAudio | CC0 | 0.8 s, 10 ms fade-in, −16 LUFS |
+| `power_up` | boost.charge, evolve.charge | Freesound #351430 "Neon Lamp, Switch On, Hum" by Kinoton | CC0 | 0.30–1.20 s, −16 LUFS |
 | `short_circuit` | boost.vetoed | Freesound #205879 "Amp short circuit 1" by unreadpages | CC0 | 3.90–4.60 s, −16 LUFS |
 | `wheel_click` | wheel.click | Freesound #752284 "Spin the wheel clicks" by leocb | CC0 | single click at 8.578 s, 70 ms, peak −3 dB |
 | `coin_flip` | coin.flip | Freesound #181189 "coin flip.wav" by Raventhornn | CC0 | 0.07–1.47 s, peak −3 dB |
@@ -64,7 +64,7 @@ says how to get the sources (Freesound HQ previews by id, plus the Kenney zips).
 | `game_lose` | game.lose | Kenney *Music Jingles* `jingles_STEEL05` (−5 semitones, falling) | CC0 | −16 LUFS |
 | `game_draw` | game.draw | Kenney *Music Jingles* `jingles_STEEL08` (level) | CC0 | −16 LUFS |
 | `bingo` | bingo | Kenney *Music Jingles* `jingles_PIZZI10` (+5.5 st, rising) | CC0 | −16 LUFS |
-| `achievement` | achievement.unlock | Kenney *Music Jingles* `jingles_STEEL02` (+6.9 st, rising) | CC0 | −16 LUFS |
+| `achievement` | achievement.unlock, evolve.reveal | Kenney *Music Jingles* `jingles_STEEL02` (+6.9 st, rising) | CC0 | −16 LUFS |
 | `mg_success` | mg.success | Kenney *Music Jingles* `jingles_PIZZI15` (+5.5 st) | CC0 | −16 LUFS |
 | `mg_fail` | mg.fail | Kenney *Music Jingles* `jingles_PIZZI05` (−9.7 st, gentle fall) | CC0 | −16 LUFS |
 

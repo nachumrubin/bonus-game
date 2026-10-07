@@ -462,17 +462,13 @@ showBrowserNotification(opts: {
 ### profileService.js — avatar-store economy (June 2026)
 ```typescript
 // Profile gains four ROOT fields (siblings of `rating`/`stats`), seeded by
-// buildInitialProfile: coins, ownedAvatars, lastLoginDate, loginStreak.
+// buildInitialProfile: coins, lastLoginDate, loginStreak (ownedAvatars removed Oct 2026).
 // Constants (tunable): STARTER_GRANT=150, DAILY_BASE=20, DAILY_STREAK_INCREMENT=10,
 // DAILY_STREAK_CAP=10, ACHIEVEMENT_COIN_REWARD={bronze:50,silver:100,gold:250,legend:750}.
 
-normalizeProfileEconomy(profile): { coins, ownedAvatars, lastLoginDate, loginStreak }  // pure, safe defaults
+normalizeProfileEconomy(profile): { coins, lastLoginDate, loginStreak }  // pure, safe defaults
 
 bumpCoins(db, uid, amount): Promise<number|null>          // atomic; floors at 0; emits PROFILE_EVT.CHANGED
-
-purchaseAvatar(db, uid, avatarId, price):                 // single whole-profile transaction
-  Promise<{ ok: boolean, reason?: 'no-uid'|'no-avatar'|'no-profile'|'already-owned'|'insufficient',
-            coins: number, ownedAvatars: string[] }>
 
 computeDailyReward(lastLoginDate, loginStreak, today):    // pure
   { coinsAwarded: number, newStreak: number, alreadyClaimedToday: boolean }
@@ -481,20 +477,123 @@ ymd(date?): string            // local 'YYYY-MM-DD'
 isYesterday(prev, today): boolean
 ```
 
-### avatarStore.js — store catalog (pure, no DOM/Firebase)
+### boostieCatalog.js — Boosties, reactions, asset paths (pure, October 2026)
 ```typescript
-STORE_PRICES = { common:0, rare:250, epic:700, legendary:2500 }   // flat per tier, tunable
-STORE_AVATARS: Array<{ id, category, src, price }>                // 36 entries
-findStoreAvatar(id) | isStoreAvatarId(id) | storeAvatarSrc(id) | priceFor(id)
-isOwned(id, ownedAvatars=[]): boolean        // common always owned
-storeAvatarsByCategory(): { common, rare, epic, legendary }
+BOOSTIE_LEVELS = 7; DEFAULT_BOOSTIE = 'zapi'
+BOOSTIES: { [id]: { id, name, species, unlock: 'starter'|'chain', price } }   // zapi, bubo
+STARTER_BOOSTIES = ['zapi', 'bubo']     // owned by every profile (unlock: 'starter')
+CHAIN_ORDER = []                        // locked ('chain') ids; a level-7 Boostie unlocks the first not owned
+isBoostieId(id) | clampLevel(level) | boostieName(id) | nextChainBoostie(owned, order = CHAIN_ORDER)
+boostieStillSrc(id, level, kind='bust'|'full')  // assets/avatars/boosties/<id>/l<N>_<kind>.webp
+boostieModelSrc(id, level)                       // assets/boosties/<id>_l<N>.glb
+boostieAvatarValue(id, level): '<id>:<level>'    // the avatar value on rooms/invites/friends
+parseBoostieAvatar(value): { id, level } | null  // 'zapi', 'zapi:4' or { id|char, level }
+BOOSTIE_REACTIONS: Array<{ id, name, clip, emoji, price }>   // laugh, wow, stare free; wink, yawn 250
+// model clips: idle, turn, good, boost, signature, laugh, wow, stare, yawn, wink (wink keys lid.L/lid.R)
+findReaction(id) | ownsReaction(id, ownedReactions)
+parseStoreItem('boostie:<id>' | 'reaction:<id>'): { kind, id, price } | null   // only priced items
 ```
 
-### avatarStoreScreen.js — store UI
+### boostieXp.js — XP and levels (pure, October 2026)
 ```typescript
-mountAvatarStoreScreen({ root?, bus }): { paint, unmount }
+XP_PER_GAME = 10; XP_WIN_BONUS = 10; XP_DRAW_BONUS = 5; MAX_GAME_XP = 20
+LEVEL_XP = [0, 50, 150, 350, 700, 1200, 2000]   // total XP for levels 1..7
+xpForGame('win'|'loss'|'draw'): number           // anything else → 0
+levelFromXp(xp) | clampXp(xp) | progressToNext(xp): { level, xp, into, span, ratio, nextAt }
+xpFromPastStats(stats): number                   // migration
+normalizeBoosties(raw): { [id]: { xp, level } }  // known ids, recomputed levels, always every starter
+applyGameXp(boosties, equipped, result): { boosties, gained, levelUp: { id, from, to } | null, unlocked: id | null }
+equippedBoostie(profile): { id, xp, level }      // unowned/old equippedAvatar → starter
+profileAvatarValue(profile): '<id>:<level>'
+```
+
+### profileService.js — Boosties (October 2026)
+```typescript
+DEFAULT_AVATAR = 'zapi'
+bumpBoostieXp(db, uid, equipped, result):        // transaction on profile/boosties
+  Promise<{ ok, gained, levelUp, unlocked, boosties } | { ok: false, reason }>
+purchaseStoreItem(db, uid, 'boostie:<id>' | 'reaction:<id>'):   // whole-profile txn, catalog price
+  Promise<{ ok, reason?: 'no-uid'|'unknown-item'|'no-profile'|'already-owned'|'insufficient', coins }>
+PROFILE_EVT.BOOSTIE_LEVEL_UP  // { levelUp, unlocked } after a game's XP lands
+```
+
+### coinIcon.js — shared coin icon (`src/ui/screens/`)
+```typescript
+COIN_ICON_SRC; COIN_ICON_HTML   // <img> markup used by the store, picker and rewards
+```
+
+### avatarScreens.js — achievements (October 2026 changes)
+```typescript
+achievementSnapshot(profile): { stats, boosties, ownedReactions }   // input to every achievement check
+// condition types: { type:'stat', key, min } | { type:'boostieLevel', min }
+//   | { type:'boostiesUnlocked', min }  (non-starter Boosties owned) | { type:'reactionsOwned', min }
+avatarIconSrc(value, { kind })   // Boostie or bot still for id-like values; null for emoji / other text
+botStillSrc(botId, kind='bust'|'full')   // assets/avatars/bots/<id>_<kind>.webp ('bot' → bot.png)
+botModelSrc(botId)                       // assets/boosties/<id>.glb; null for 'bot' / non-bots
+```
+
+### boostie3d — live 3D scoreboard (October 2026)
+```typescript
+// scoreboardLive.js — no three.js; lazily imports scoreboard3d.js
+canUseLive3d(win = globalThis): boolean            // WebGL 2 + DOM + rAF
+createScoreboardLive({ hosts: () => [el0, el1, …], prefersReducedMotion?, enabled?, importer? }) => {
+  sync(values: [avatar0, avatar1, …]),             // one per host; call after every identity render
+  play(slot, kind: 'turn'|'good'|'boost'|clip): boolean,  // false → caller uses its other cue
+  ready(slot): Promise<boolean>,                   // after the slot's model loaded (true = play() can run)
+  canPlay(slot): boolean,
+  dispose(),
+}
+// scoreboard3d.js — three.js; throws without WebGL 2
+createScoreboard3d({ hosts, onFallback, slowFrameMs = SLOW_FRAME_MS }) => { setAvatar(i, src|null), play, canPlay, dispose }
+// boostieSources.js — pure
+modelSrcForAvatar(value): string | null           // Boostie '<id>:<level>' / {id,level} / bot id → .glb
+GAME_CLIPS = { turn, good, boost }; CLIPS_WITH_LIDS = ['wink']; SCREEN_FACES; FACE_HIDE = 0.001
+SLOW_FRAME_MS = 45; SLOW_SAMPLE = 30; median(xs); isTooSlow(frameMs, budget?, sample?)
+// boostieLoader.js
+loadModel(src): Promise<GLTF>                     // fetch cached per src, meshopt-decoded
+```
+
+### boostie3d — level-up evolution (October 2026, Phase 4)
+```typescript
+// evolutionScreen.js — #ov-evolution overlay + queue (DOM; three.js only via importer)
+mountEvolutionScreen({ bus, doc?, storage?, isBusy?, prefersReducedMotion?, canUse3d?, importer?, endOpenEvent? }) => {
+  noteProfile(uid, boosties),   // every profile snapshot; queues unseen level-ups / chain unlocks
+  unmount(),
+}
+// evolutionData.js — pure
+EVO_SHOW = 'evolution/show'      // { id, from, to } replay (store button)
+EVO_CLOSED = 'evolution/closed'  // { kind, id, … } after the player closes one
+diffEvolutions(seen | null, boosties) => { seen, events: [{kind:'level',id,from,to} | {kind:'unlock',id}] }
+evolutionCopy(id, to) => { title, levelName, change }; LEVEL_NAMES; CHANGE_LINES; SEEN_KEY_PREFIX
+EVO_T = { charge, flashPeak, flashEnd, popEnd, card, orbitEnd }; flashAt(t)
+// evolutionScene.js — three.js; throws without WebGL 2 / on a load error
+createEvolutionScene({ canvas, fromSrc, toSrc }) => Promise<{ start, skip, onFlash, onSwap, onCard, dispose }>
+```
+
+### reactions — in-game reactions (Boostie reactions: October 2026, Phase 5)
+```typescript
+// reactionsConfig.js — pure
+validateReactionPayload({ type: 'emoji'|'message'|'boostie', id }): boolean
+getReactionDisplay(payload): string | null     // emoji / text; a boostie reaction → its emoji
+getBoostieClip(payload): string | null          // boostie reactions only
+// reactionController.js — online games only
+mountReactionController({ bus, db, roomId, mySlot, storage?, root?,
+  getOwnedReactions?: () => string[],           // profile.ownedReactions (free set always offered)
+  playBoostie?: (slot, clip) => boolean,        // gameScreen.playBoostieReaction; false → emoji bubble
+}) => { dispose }
+// gameScreen.js
+mountGameScreen(...).playBoostieReaction(slot, clip): boolean   // live3d.play on that slot
+```
+
+### avatarStoreScreen.js — store UI (Boosties + reactions, October 2026)
+```typescript
+mountAvatarStoreScreen({ root?, bus, prefersReducedMotion?, createLive? }): { paint, previewReaction(id): Promise<boolean>, unmount }
 STORE_INTENT = { OPEN, EQUIP, PURCHASE, CONFIRM_PURCHASE, CANCEL_PURCHASE, CLOSE }
-STORE_RENDER  // { coins, ownedAvatars, equippedAvatar }
+STORE_RENDER  // { coins, boosties, equippedAvatar, ownedReactions }
+// EQUIP { id: boostieId }; PURCHASE / CONFIRM_PURCHASE { id: 'boostie:<id>' | 'reaction:<id>' }
+normalizeStoreState(payload) | storeHtml(state) | boostieCardHtml(id, state) | reactionTileHtml(reaction, state)
+REACTION_ICON  // emoji per reaction id (from BOOSTIE_REACTIONS)
+// Tapping a reaction tile → previewReaction(id) in #store-rx-preview (one-slot scoreboardLive)
 DAILY_REWARD_SHOW | DAILY_REWARD_ACK
 ```
 

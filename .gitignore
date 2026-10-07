@@ -48,6 +48,13 @@ android/.idea/
 !/Blender designs/icons3d/*.py
 !/Blender designs/icons3d/*.json
 !/Blender designs/icons3d/*.md
+# Boostie 3D build scripts are tracked; their outputs (.blend, renders, .glb) stay local
+# because they embed BlenderKit sources whose licence forbids redistributing them.
+!/Blender designs/boosties/
+/Blender designs/boosties/*
+!/Blender designs/boosties/*.py
+!/Blender designs/boosties/*.md
+/tools/3d-spike/models/
 
 # Generated test reports.
 /test-results/

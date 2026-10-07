@@ -22,7 +22,7 @@
 //      right stats + rating updates on both players' profiles.
 //   3. End-to-end loss: streak resets, rating drops.
 //   4. End-to-end draw: ratings unchanged on equal-Elo players.
-//   5. diffNewlyUnlocked fires only on the first threshold crossing.
+//   5. diffNewlyCompletedAchievements fires only on the first threshold crossing.
 //   6. Symmetric rating delta: myDelta + oppDelta === 0 for any result.
 //   7. High-score field uses {max} semantics — a worse game doesn't lower it.
 
@@ -246,35 +246,26 @@ test('parity: upset (low-rated beats high-rated) yields larger delta than even w
 
 // ───────────────────────────────────────────────────────────────────────
 // 3. Avatar unlocks fire only on the first crossing.
-test('parity: diffNewlyUnlocked returns avatars only on the threshold crossing', async () => {
+test('parity: achievements fire only on the threshold crossing', async () => {
   const m = await loadModules();
-  // gamesPlayed crossing 5 → "fire" avatar; gamesWon crossing 5 → "shark".
-  const before = { gamesPlayed: 4, gamesWon: 4, longestStreak: 0, highScore: 0 };
-  const after  = { gamesPlayed: 5, gamesWon: 5, longestStreak: 0, highScore: 0 };
-  const unlocked = m.avatar.diffNewlyUnlocked(before, after);
-  const ids = unlocked.map(a => a.id).sort();
-  assert.deepEqual(ids, ['fire', 'shark']);
+  // gamesPlayed crossing 5 → first_steps; gamesWon crossing 5 → winner.
+  const before = { stats: { gamesPlayed: 4, gamesWon: 4, longestStreak: 0, highScore: 0 } };
+  const after  = { stats: { gamesPlayed: 5, gamesWon: 5, longestStreak: 0, highScore: 0 } };
+  const ids = m.avatar.diffNewlyCompletedAchievements(before, after).map(a => a.id).sort();
+  assert.deepEqual(ids, ['first_steps', 'winner']);
 
   // Crossing the same threshold again on a later game doesn't refire.
-  const later = { gamesPlayed: 6, gamesWon: 5, longestStreak: 0, highScore: 0 };
-  const again = m.avatar.diffNewlyUnlocked(after, later);
-  assert.equal(again.length, 0);
+  const later = { stats: { gamesPlayed: 6, gamesWon: 5, longestStreak: 0, highScore: 0 } };
+  assert.equal(m.avatar.diffNewlyCompletedAchievements(after, later).length, 0);
 });
 
-test('parity: high-score avatar unlock fires when stat crosses min', async () => {
+test('parity: high-score achievement fires when stat crosses min', async () => {
   const m = await loadModules();
-  const unlocked = m.avatar.diffNewlyUnlocked(
-    { gamesPlayed: 1, highScore: 249 },
-    { gamesPlayed: 1, highScore: 250 },
-  );
-  assert.deepEqual(unlocked.map(a => a.id), ['wizard']);
-});
-
-test('parity: locked avatars stay locked until threshold; isAvatarUnlocked reflects stat', async () => {
-  const m = await loadModules();
-  const wizard = m.avatar.findAvatar('wizard');
-  assert.equal(m.avatar.isAvatarUnlocked(wizard, { highScore: 100 }), false);
-  assert.equal(m.avatar.isAvatarUnlocked(wizard, { highScore: 250 }), true);
+  const ids = m.avatar.diffNewlyCompletedAchievements(
+    { stats: { gamesPlayed: 1, highScore: 249 } },
+    { stats: { gamesPlayed: 1, highScore: 250 } },
+  ).map(a => a.id);
+  assert.deepEqual(ids, ['wordsmith']);
 });
 
 // ───────────────────────────────────────────────────────────────────────

@@ -144,8 +144,8 @@ test('unlock specials: named achievements get their flourish, other Legend tier 
   assert.equal(specialFor({ id: 'streaker', tier: 'silver' }), 'streaks');
   assert.equal(specialFor({ id: 'undefeated', tier: 'gold' }), 'shield');
   assert.equal(specialFor({ id: 'word_genius', tier: 'silver' }), 'halo');
-  assert.equal(specialFor({ id: 'collector', tier: 'gold' }), 'cards');
-  assert.equal(specialFor({ id: 'legend_owner', tier: 'legend' }), 'grand');
+  assert.equal(specialFor({ id: 'boostie_grown', tier: 'silver' }), 'cards');
+  assert.equal(specialFor({ id: 'new_boostie', tier: 'gold' }), 'grand');
   assert.equal(specialFor({ id: 'champion', tier: 'legend' }), 'rays');
   assert.equal(specialFor({ id: 'winner', tier: 'bronze' }), null);
   assert.equal(specialFor(null), null);
@@ -153,8 +153,8 @@ test('unlock specials: named achievements get their flourish, other Legend tier 
 
 test('progressBumps lists moved, unfinished achievements closest-to-done first', async () => {
   const { progressBumps } = await import('../screens/avatarScreens.js');
-  const prev = { stats: { gamesPlayed: 3, longestStreak: 3, gamesWon: 2 }, ownedAvatars: [] };
-  const next = { stats: { gamesPlayed: 4, longestStreak: 4, gamesWon: 5 }, ownedAvatars: [] };
+  const prev = { stats: { gamesPlayed: 3, longestStreak: 3, gamesWon: 2 } };
+  const next = { stats: { gamesPlayed: 4, longestStreak: 4, gamesWon: 5 } };
   const bumps = progressBumps(prev, next);
   assert.equal(bumps.length, 2);
   // winner (5 wins) completed -> excluded; streaker 4/5 (80%) beats first_steps 4/5? tie -> both 80%

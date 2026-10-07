@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import {
-  mountProfileScreen, deriveStats, avatarEmoji,
+  mountProfileScreen, deriveStats,
   PROFILE_INTENT, PROFILE_RENDER,
 } from './profileScreen.js';
 import { CHAMPS_OPEN } from './championsScreen.js';
@@ -89,29 +89,6 @@ function makeDom() {
   return { root, els };
 }
 
-test('avatarEmoji: known + fallback', () => {
-  assert.equal(avatarEmoji('crown'),   '👑');
-  assert.equal(avatarEmoji('dragon'),  '🐉');
-  assert.equal(avatarEmoji('mystery'), '👑');
-});
-
-test('avatarEmoji: pass-through for already-resolved emoji values', () => {
-  // Some legacy paths (room players, queue entries, invites) store the raw
-  // emoji character instead of the id — both should render the same icon.
-  assert.equal(avatarEmoji('💎'), '💎');
-  assert.equal(avatarEmoji('🐉'), '🐉');
-  assert.equal(avatarEmoji(null), '👑');
-  assert.equal(avatarEmoji(undefined), '👑');
-});
-
-test('avatarEmoji: passes store-avatar ids through (room/queue boundary)', () => {
-  // Store avatars are image-only; the id must survive into player.avatar so the
-  // opponent resolves it to a PNG. Without this it would collapse to 👑.
-  assert.equal(avatarEmoji('rare_3'), 'rare_3');
-  assert.equal(avatarEmoji('legendary_1'), 'legendary_1');
-  assert.equal(avatarEmoji('common_16'), 'common_16');
-});
-
 test('deriveStats: empty profile → all zeros', () => {
   assert.deepEqual(deriveStats({}), {
     gamesPlayed: 0, gamesWon: 0, winRate: 0,
@@ -129,13 +106,12 @@ test('PROFILE_RENDER paints avatar/name/stats and toggles upgrade button', () =>
   const { root, els } = makeDom();
   mountProfileScreen({ root, bus });
   bus.emit(PROFILE_RENDER, {
-    profile: { displayName: 'נחום', equippedAvatar: 'dragon', stats: { gamesPlayed: 10, gamesWon: 4, highScore: 200 } },
+    profile: { displayName: 'נחום', equippedAvatar: 'bubo', boosties: { zapi: { xp: 0 }, bubo: { xp: 160 } }, stats: { gamesPlayed: 10, gamesWon: 4, highScore: 200 } },
     isAnonymous: true,
     email: 'me@example.com',
   });
-  // 'dragon' is the veteran achievement reward → avatar renders as its trophy
-  // icon (an <img>), not the legacy 🐉 emoji.
-  assert.match(els.avatar.innerHTML ?? '', /assets\/achievements\//);
+  // The equipped Boostie at the level its XP reached (160 XP → level 3).
+  assert.match(els.avatar.innerHTML ?? '', /assets\/avatars\/boosties\/bubo\/l3_bust\.webp/);
   assert.equal(els.name.textContent,   'נחום');
   assert.equal(els.played.textContent, '10');
   assert.equal(els.wins.textContent,   '4');

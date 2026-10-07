@@ -28,6 +28,7 @@ import { $, on, setText, setClass, bonusOverlayOpen, flashAnimation } from '../d
 import { setAvatarEl, isBotAvatar, BOT_AVATAR_BY_LEVEL } from './avatarScreens.js';
 import { playOnHost, canPlayNowOnHost, preloadFor } from '../avatarMotion/spritePlayer.js';
 import { tierFromPath } from '../avatarMotion/poseClips.js';
+import { createScoreboardLive } from '../boostie3d/scoreboardLive.js';
 import { wireGameMenu } from './gameMenu.js';
 import { playBoostElectric } from '../boostElectricFx.js';
 import { cue as cueSfx } from '../feedbackService.js';
@@ -87,6 +88,12 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
+  // Live 3D Boosties in the scoreboard slots (Phase 3). Stills stay underneath and are
+  // all you see under reduced motion, without WebGL 2, or on a phone too slow for 3D.
+  const live3d = createScoreboardLive({
+    hosts: () => [lookup(root, 'is-av1'), lookup(root, 'is-av2')],
+    prefersReducedMotion,
+  });
   // Last word|points|validity shown by the live word-points pill (renderStatus).
   let lastPreviewKey = '';
   const boostSquareCues = new Map();
@@ -946,6 +953,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       if (src) preloadFor(src).catch(() => {});
     }
     renderIdentityTags([p0, p1], [avatarFor(p0), p1Avatar]);
+    live3d.sync([avatarFor(p0) ?? null, p1Avatar ?? null]);
   }
 
   // Scoreboard tags, drawn by CSS from data attributes so they survive the
@@ -1643,15 +1651,18 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         boostSquareCues.get(bonusIdx)?.clear();
         boostSquareCues.set(bonusIdx, { slot, clear: flashBonusSquare(root, bonusIdx, { electric: !reducedMotion }) });
       },
-      yourTurnCue:        ({ slot }) => emphasizeYourTurn(root, slot),
-      // Event-driven avatar reactions (pose atlas); silently skipped when the
-      // avatar can't animate — they are secondary to the board/score cues.
+      yourTurnCue:        ({ slot }) => emphasizeYourTurn(root, slot, live3d),
+      // Event-driven avatar reactions: the live 3D clip, else the pose atlas;
+      // silently skipped when the avatar can't animate — they are secondary to
+      // the board/score cues.
       avatarBoostReact:   ({ slot }) => {
+        if (live3d.play(slot, 'boost')) return;
         const host = lookup(root, `is-av${slot + 1}`);
         if (canPlayNowOnHost(host, 'boostReact')) playOnHost(host, 'boostReact');
       },
       avatarGoodMove:     ({ slot, delayMs = 0 }) => {
         setTimeout(() => {
+          if (disposed || live3d.play(slot, 'good')) return;
           const host = lookup(root, `is-av${slot + 1}`);
           if (canPlayNowOnHost(host, 'goodMove')) playOnHost(host, 'goodMove');
         }, delayMs);
@@ -1682,6 +1693,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   function unmount() {
     // Stops an in-flight avatar lookup from painting a torn-down screen.
     disposed = true;
+    live3d.dispose();
     clearBoostSquareCues();
     clearJokerSubs();
     for (const state of scoreTweens.values()) {
@@ -1703,6 +1715,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
 
   return {
     unmount,
+    // A player-chosen Boostie reaction (reactionController, Phase 5): plays the clip on
+    // that slot's live 3D Boostie; false where the slot is a still (the caller shows a bubble).
+    playBoostieReaction: (slot, clip) => !disposed && live3d.play(slot, clip),
     // Test-only seams (the DOM stub can't parse rack children, so selection
     // state isn't observable via innerHTML). Prefixed `_`, unused in production.
     _getSelectedRackIndex: () => selectedRackIndex,
@@ -2544,12 +2559,16 @@ function flashBonusSquare(root, bonusIdx, { electric = true } = {}) {
 }
 
 // One dominant "your turn" moment (BOOST_MOTION_SPEC rule 6): when the avatar
-// can play its 3D lean, that IS the cue and the card only gets a steady outline;
-// otherwise (reduced motion, no atlas yet) the card's pulse + halo run as before.
-function emphasizeYourTurn(root, slot) {
+// can play its turn clip (live 3D Boostie, else the pose atlas), that IS the cue
+// and the card only gets a steady outline; otherwise (reduced motion, stills
+// only) the card's pulse + halo run as before.
+function emphasizeYourTurn(root, slot, live3d) {
   const avHost = lookup(root, `is-av${slot + 1}`);
-  const avatarLeads = canPlayNowOnHost(avHost, 'yourTurn');
-  if (avatarLeads) playOnHost(avHost, 'yourTurn');
+  let avatarLeads = !!live3d?.play(slot, 'turn');
+  if (!avatarLeads && canPlayNowOnHost(avHost, 'yourTurn')) {
+    playOnHost(avHost, 'yourTurn');
+    avatarLeads = true;
+  }
   for (const id of [`sb${slot + 1}`, `is-sb${slot + 1}`]) {
     const card = lookup(root, id);
     // `.your-turn-cue` stays the card's contract (e2e timing specs read it);

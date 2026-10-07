@@ -174,9 +174,6 @@ var ASSETS = [
   './partials/screens/tutorial-intro-modal.html',
   './partials/screens/tutorial-overlay-elements.html',
   './partials/screens/tutorial-prompt-shown-to-new-users-on-first-game-mode-entry.html',
-  // NOTE: the 40 store-avatar PNGs in ./assets/avatars_v2/<category>/ are
-  // deliberately NOT precached — the runtime fetch handler caches them on
-  // demand the first time they're viewed, so we avoid bloating install.
 ];  // sw.js intentionally excluded — browser fetches it fresh
 
 // ── Images: persistent cache + web-sized WebP ─────────────────────────────
@@ -201,6 +198,14 @@ function isImageAsset(url) {
 function isSoundAsset(url) {
   var path = String(url || '').split('#')[0].split('?')[0];
   return path.indexOf('/assets/sfx/') !== -1 && /\.(ogg|m4a)$/i.test(path);
+}
+
+// Boostie 3D models (assets/boosties/*.glb, src/ui/boostie3d) share the
+// persistent asset cache too: fetched the first time a game shows them, then
+// kept across deploys and available offline.
+function isModelAsset(url) {
+  var path = String(url || '').split('#')[0].split('?')[0];
+  return path.indexOf('/assets/boosties/') !== -1 && /\.glb$/i.test(path);
 }
 
 // URL of the web-sized WebP for a PNG under assets/ (not the generated
@@ -303,7 +308,7 @@ self.addEventListener('fetch', function(e){
     url.endsWith('/') ||
     url.indexOf('index.html') !== -1 ||
     (e.request.headers && (e.request.headers.get('accept') || '').indexOf('text/html') !== -1);
-  if(isImageAsset(url) || isSoundAsset(url)){
+  if(isImageAsset(url) || isSoundAsset(url) || isModelAsset(url)){
     e.respondWith(imageResponse(e.request));
     return;
   }

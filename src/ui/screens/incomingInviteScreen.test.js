@@ -58,8 +58,8 @@ test('II_OPEN paints avatar + body + unhides overlay', () => {
   bus._reset();
   const { root, els } = makeDom();
   mountIncomingInviteScreen({ root, bus });
-  bus.emit(II_OPEN, { fromName: 'נחום', fromAvatar: '🦁', mode: 'friend-live', inviteId: 'i1' });
-  assert.equal(els.avatar.textContent, '🦁');
+  bus.emit(II_OPEN, { fromName: 'נחום', fromAvatar: 'zapi:2', mode: 'friend-live', inviteId: 'i1' });
+  assert.match(els.avatar.innerHTML ?? '', /boosties\/zapi\/l2_bust\.webp/);
   assert.match(els.body.textContent, /נחום/);
   assert.match(els.body.textContent, /לייב/);
   assert.equal(els.overlay.classList.contains('hidden'), false);

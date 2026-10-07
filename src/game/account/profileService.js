@@ -9,6 +9,8 @@
 
 import * as bus from '../../events/bus.js';
 import { BDEFS, BONUS_TYPES } from '../boosts/data.js';
+import { applyGameXp, normalizeBoosties } from './boostieXp.js';
+import { DEFAULT_BOOSTIE, parseStoreItem } from './boostieCatalog.js';
 
 export const PATH = Object.freeze({
   users:     'users',
@@ -20,20 +22,21 @@ export const PROFILE_EVT = Object.freeze({
   CHANGED:        'profile/changed',
   STATS_CHANGED:  'profile/statsChanged',
   AVATAR_UNLOCK:  'profile/avatarUnlock',
+  // { levelUp: { id, from, to } | null, unlocked: id | null } after a game's XP lands
+  BOOSTIE_LEVEL_UP: 'profile/boostieLevelUp',
 });
 
-// New accounts start with the neutral "anonymous player" store avatar. Must
-// stay in sync with avatarStore.DEFAULT_STORE_AVATAR_ID (kept as a literal here
-// so the game layer doesn't import the UI catalog). Existing 'crown' defaults
-// are migrated by scripts/migrate-default-avatar.mjs.
-export const DEFAULT_AVATAR = 'common_17';
+// New accounts start with the starter Boostie (boostieCatalog.DEFAULT_BOOSTIE).
+// Older avatar ids on dev profiles render as the starter too (no migration: the app
+// isn't in production yet).
+export const DEFAULT_AVATAR = DEFAULT_BOOSTIE;
 export const RATING_START   = 800;
 
 // ── Avatar-store economy (coins) ──────────────────────────────────────────
 // All tunable. "Grindy / prestige" tuning — a legendary avatar is a long-haul
 // goal. Coins are earned three ways: a one-time starter grant on sign-up, a
 // daily login + consecutive-day streak bonus, and achievement completions.
-// Spent in the avatar store (src/ui/screens/avatarStore.js). These live at the
+// Spent in the store (src/ui/screens/avatarStoreScreen.js). These live at the
 // profile root (siblings of `rating`/`stats`), never inside `stats`.
 export const STARTER_GRANT          = 150;
 export const DAILY_BASE             = 20;
@@ -84,13 +87,15 @@ export function buildInitialProfile({ displayName, userId, avatar = DEFAULT_AVAT
     equippedAvatar: avatar,
     rating: RATING_START,
     stats: { ...EMPTY_STATS },
-    // Avatar-store economy. A new player starts with the one-time grant so the
-    // store feels reachable from day one. `ownedAvatars` holds purchased store
-    // ids only (common store avatars are free / implicitly owned).
+    // Store economy. A new player starts with the one-time grant so the store
+    // feels reachable from day one.
     coins: STARTER_GRANT,
-    ownedAvatars: [],
     lastLoginDate: null, // 'YYYY-MM-DD' of the last claimed daily reward
     loginStreak: 0,
+    // Boosties (boostieCatalog.js): XP and level per owned Boostie; the starter is
+    // owned from the start. ownedReactions holds Boostie reactions bought in the store.
+    boosties: normalizeBoosties(null),
+    ownedReactions: [],
     createdAt: Date.now(),
   };
 }
@@ -100,7 +105,6 @@ export function buildInitialProfile({ displayName, userId, avatar = DEFAULT_AVAT
 export function normalizeProfileEconomy(profile) {
   return {
     coins: clampCoins(profile?.coins),
-    ownedAvatars: Array.isArray(profile?.ownedAvatars) ? profile.ownedAvatars.slice() : [],
     lastLoginDate: typeof profile?.lastLoginDate === 'string' ? profile.lastLoginDate : null,
     loginStreak: Math.max(0, Math.floor(Number(profile?.loginStreak) || 0)),
   };
@@ -259,36 +263,53 @@ export async function clampCoinsBalance(db, uid) {
   return result.snapshot?.val?.() ?? null;
 }
 
-// Atomically purchase a store avatar: verify it isn't already owned and the
-// player can afford it, then deduct coins and append to ownedAvatars in a
-// single transaction on the whole profile node (so coins-check and append
-// can't race). `price` should come from the catalog (priceFor(id)), never a
-// client-supplied value. Returns { ok, reason?, coins, ownedAvatars }.
-export async function purchaseAvatar(db, uid, avatarId, price) {
-  if (!uid)      return { ok: false, reason: 'no-uid' };
-  if (!avatarId) return { ok: false, reason: 'no-avatar' };
-  const cost = Math.max(0, Math.floor(Number(price) || 0));
+// Buy a store item ('boostie:bubo' | 'reaction:wink') with coins, in one transaction
+// on the profile node: check the price from the catalog (never from the caller) and
+// the balance, deduct, grant. A Boostie arrives at level 1 (profile.boosties), a
+// reaction joins profile.ownedReactions. Returns { ok, reason?, coins }.
+// (Phase 6a moves this into the Cloudflare Worker once coins can be bought.)
+export async function purchaseStoreItem(db, uid, item) {
+  if (!uid) return { ok: false, reason: 'no-uid' };
+  const it = parseStoreItem(item);
+  if (!it) return { ok: false, reason: 'unknown-item' };
   let reason = null;
   const result = await profileRef(db, uid).transaction((p) => {
     if (!p) { reason = 'no-profile'; return; }
-    const owned = Array.isArray(p.ownedAvatars) ? p.ownedAvatars : [];
-    if (owned.includes(avatarId)) { reason = 'already-owned'; return; }
     const coins = Number(p.coins) || 0;
-    if (coins < cost) { reason = 'insufficient'; return; }
-    return { ...p, coins: coins - cost, ownedAvatars: [...owned, avatarId] };
+    const boosties = normalizeBoosties(p.boosties);
+    const reactions = Array.isArray(p.ownedReactions) ? p.ownedReactions : [];
+    const owned = it.kind === 'boostie' ? !!boosties[it.id] : reactions.includes(it.id);
+    if (owned) { reason = 'already-owned'; return; }
+    if (coins < it.price) { reason = 'insufficient'; return; }
+    const next = { ...p, coins: coins - it.price };
+    if (it.kind === 'boostie') next.boosties = { ...boosties, [it.id]: { xp: 0, level: 1 } };
+    else next.ownedReactions = [...reactions, it.id];
+    return next;
   });
+  const v = result?.snapshot?.val?.() ?? null;
   if (result?.committed) {
-    const v = result.snapshot?.val?.() ?? null;
-    bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: v?.coins, ownedAvatars: v?.ownedAvatars } });
-    return { ok: true, coins: v?.coins ?? 0, ownedAvatars: v?.ownedAvatars ?? [] };
+    bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: v?.coins, boosties: v?.boosties, ownedReactions: v?.ownedReactions } });
+    return { ok: true, coins: Number(v?.coins) || 0 };
   }
-  const snap = result?.snapshot?.val?.() ?? null;
-  return {
-    ok: false,
-    reason: reason ?? 'aborted',
-    coins: Number(snap?.coins) || 0,
-    ownedAvatars: Array.isArray(snap?.ownedAvatars) ? snap.ownedAvatars : [],
-  };
+  return { ok: false, reason: reason ?? 'aborted', coins: Number(v?.coins) || 0 };
+}
+
+// Add one finished game's XP to the equipped Boostie (boostieXp.applyGameXp), atomically
+// on profile/boosties. XP counts games, not the rating. `result` is 'win' | 'loss' |
+// 'draw'; anything else gives nothing. Reaching the top level unlocks the next Boostie
+// in the chain. Returns { ok, gained, levelUp, unlocked, boosties }.
+export async function bumpBoostieXp(db, uid, equipped, result) {
+  if (!uid) return { ok: false, reason: 'no-uid' };
+  let outcome = null;
+  const tx = await db.ref(`${PATH.users}/${uid}/profile/boosties`).transaction((current) => {
+    outcome = applyGameXp(current, equipped, result);
+    if (!outcome.gained) return;   // abort: nothing to add
+    return outcome.boosties;
+  });
+  if (!tx?.committed || !outcome) return { ok: false, reason: 'aborted', gained: 0, levelUp: null, unlocked: null };
+  const boosties = normalizeBoosties(tx.snapshot?.val?.() ?? outcome.boosties);
+  bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { boosties } });
+  return { ok: true, gained: outcome.gained, levelUp: outcome.levelUp, unlocked: outcome.unlocked, boosties };
 }
 
 // Pure: format a Date as a local 'YYYY-MM-DD' string (the daily-reward key).

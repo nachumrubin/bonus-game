@@ -74,19 +74,18 @@ export const PS_INTENT = Object.freeze({
   MATCHED: 'partnerSearch/matched',
 });
 
-// Sample opponents shown in the search spinner. Avatars are avatars_v2 store
-// ids (resolved to PNGs by avatarMarkup), spread across tiers for variety — the
-// old achievement-avatar ids rendered the achievement trophy art here.
+// Sample opponents shown in the search spinner: Boosties at mixed levels
+// (resolved to their stills by avatarMarkup).
 const SLOT_PROFILES = [
-  { av: 'common_1',  nm: 'שרה'   }, { av: 'rare_1',    nm: 'מרים'  },
-  { av: 'epic_1',    nm: 'יוסי'  }, { av: 'legendary_1', nm: 'רונית' },
-  { av: 'common_2',  nm: 'נועה'  }, { av: 'rare_2',    nm: 'אמיר'  },
-  { av: 'epic_2',    nm: 'גיל'   }, { av: 'common_3',  nm: 'אלי'   },
-  { av: 'rare_3',    nm: 'תמר'   }, { av: 'epic_3',    nm: 'ניר'   },
-  { av: 'common_4',  nm: 'לילך'  }, { av: 'rare_4',    nm: 'דוד'   },
-  { av: 'legendary_2', nm: 'משה' }, { av: 'common_5',  nm: 'עינת'  },
-  { av: 'epic_4',    nm: 'דניאל' }, { av: 'rare_5',    nm: 'אורה'  },
-  { av: 'common_6',  nm: 'ענת'   },
+  { av: 'zapi:1', nm: 'שרה' }, { av: 'bubo:4', nm: 'מרים' },
+  { av: 'zapi:7', nm: 'יוסי' }, { av: 'bubo:3', nm: 'רונית' },
+  { av: 'zapi:6', nm: 'נועה' }, { av: 'bubo:2', nm: 'אמיר' },
+  { av: 'zapi:5', nm: 'גיל' }, { av: 'bubo:1', nm: 'אלי' },
+  { av: 'zapi:4', nm: 'תמר' }, { av: 'bubo:7', nm: 'ניר' },
+  { av: 'zapi:3', nm: 'לילך' }, { av: 'bubo:6', nm: 'דוד' },
+  { av: 'zapi:2', nm: 'משה' }, { av: 'bubo:5', nm: 'עינת' },
+  { av: 'zapi:1', nm: 'דניאל' }, { av: 'bubo:4', nm: 'אורה' },
+  { av: 'zapi:7', nm: 'ענת' },
 ];
 
 // Reel step — MUST equal `.ps-slot-item` height in screens-glass.css (the
