@@ -89,7 +89,8 @@ export function createScoreboard3d({ hosts, onFallback = () => {}, slowFrameMs =
     }
     if (!Number.isFinite(top)) return null;
     const hh = top - neck.y;
-    const frame = hh * 1.9;               // visible height
+    // visible height; a head wider than it is tall (Rocco's horns) sets it by its width in the 3/4 view
+    const frame = Math.max(hh * 1.9, ((x1 - x0) * Math.cos(yaw) + (z1 - z0) * Math.sin(yaw)) * 1.1);
     return { target: new THREE.Vector3((x0 + x1) / 2, top + hh * 0.14 - frame / 2, (z0 + z1) / 2), frame };
   }
 

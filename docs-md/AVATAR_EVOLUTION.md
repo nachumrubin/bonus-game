@@ -398,6 +398,7 @@ Signature movements (one per character, small, under 1 s):
 |---|---|
 | Zapi | Double ear twitch, left ear leading, the tail tip answering |
 | Bubo | The owl head swivel: a quick turn and a curious sideways tilt, tufts perking |
+| Rocco | The head-butt: rears back, butts down sharply, a small rebound; ears flick back, tail tip wags |
 
 Shared clips (every Boostie, `CLIPS` in `build_boostie.py`): idle, turn, good, boost,
 laugh, wow, stare, yawn and **wink**. Wink is the only clip that keys the lids
@@ -475,7 +476,7 @@ PERSONALITY:     brave
 SIGNATURE CYAN:  the two curled horns: brown nubs at 1, cyan tips at 2, half-turn curl with cyan streaks at 3, half energy at 4, crystal horns growing from short brown roots at 5, a second smaller pair at 6 (four horns), all four huge at 7, forming a crown of horns; always from the top of the head curling back and down beside the ears, never covered by a helmet
 ACCESSORY THEME: Viking blacksmith: leather bracers, tool belt with a small hammer, fur shoulder mantle, iron pauldrons, rune hammer
 BODY TYPE:       quadruped at levels 1–3, becomes bipedal at level 4
-CONSTANT MARKS:  cream blaze from forehead to muzzle, curly grey wool fringe between the horns, dark-grey nose, warm amber eyes (round pupils)
+CONSTANT MARKS:  cream blaze from forehead to muzzle, curly grey wool fringe between the horns, dark-grey nose, steel-blue eyes (round pupils; changed from amber in Oct 2026 so he doesn't share Zapi's eye colour)
 ```
 
 Choices: the L7 headpiece is a rune circlet below the horns, not a horned helm, so the
@@ -620,3 +621,53 @@ The images came unordered; they were ranked by outfit (simplest first) and youth
 face: L1 collar and ankle bands, L2 plain harness, L3 harness and saddlebags, L4 wool and
 blue scarf, L5 grey armour harness, L6 gold collar armour and blue cloth, L7 full gold
 armour. Saved as `Blender designs/boosties/sources/rocco_l<N>_turnaround.png`.
+
+### Rocco 3D models (October 2026)
+
+All seven turnarounds went through Meshy (`meshy_generate.py --split 4`) and
+`build_boostie.py` (`rocco_l1`–`rocco_l7`). The rig is a quadruped like Zapi's, plus
+rigid `horn.L` / `horn.R` bones; `glow_bones` is just the two horns, so only the horn
+stripes and the core glow. Ankle bands, harness gems and armour stay plain. Every level
+gets the same steel-blue iris, so the turnarounds' mixed eye colours don't show.
+Eye fixes after the first phone check: L1 had a black ring round each eye (the default
+dark socket plus Meshy's painted liner), fixed with a cream-tan `socket` and `reach` 1.5.
+L4's right eye sat too deep; a bigger ball (`r` 0.038), a tan socket and `show` 0.32 /
+`sink` 0.3 bring it level with the left. All seven are on the scoreboard test page.
+
+### Eye colour, gaze and rim (October 2026)
+
+- **One iris colour per character**, the same at every level (§3 rule 4). It lives in the
+  `IRIS` table in `build_boostie.py`: Zapi amber, Bubo bright golden-yellow, Rocco steel
+  blue, Lumi violet, Drako bright gold. Before this every build used Zapi's amber.
+  Bubo's models and stills were updated by swapping the iris texture (no rebuild).
+- **Eyes stay in sync.** The build aims each eyeball half along the face normal, so the two
+  eyes splayed 15–47° apart and some looked different ways. `boostieLive.js` now evens
+  them out at load (`alignEyes`, 8° outward each) and turns both eyes by the same amount
+  when they follow a target (`aimEyes`, at most 26°).
+- **Softer rim.** The rim light was a pale, near-white edge on every model, which looked like
+  plastic or carved wood. It is now tinted by the surface colour, tighter (power 3) and the
+  rim light is about half as strong.
+- **Bust framing** in `scoreboard3d.js` and `render_stills.py` uses the head's width as well
+  as its height, so wide heads (Rocco's horns) fit the scoreboard frame.
+
+### Review log: Lumi turnarounds (October 2026)
+
+As with Rocco, the generator ignored most of the prompts. The user chose to **use the
+seven as they are**, because every level looks clearly different. Known deviations, accepted:
+
+- Upright on two legs at every level (the spec has four legs at 1–3).
+- No DJ theme: no star headband, headphones, sequin jacket, cape or crown. Each level
+  wears its own gold-and-purple harness or collar instead.
+- Skin drifts from pink (L1–2) through lavender to deep purple galaxy (L7). Every level
+  keeps a different set of spots.
+- Blue-violet eyes, not dark brown. The 3D build follows the images: Lumi's iris is
+  **violet** (`IRIS` in `build_boostie.py`).
+- Cyan beyond the core and frills: forehead marks, bracer gems, tail glow.
+- Every level is the same size, and the frills don't follow the fronds → streamers → fan
+  crest ladder.
+
+The images came unordered; they were ranked by outfit and how far the skin has moved
+from pink to purple: L1 no outfit, L2 harness with a silver star core, L3 purple straps
+and bracers, L4 purple-and-gold collar with ankle bands, L5 gold collar with purple gloves
+and feet, L6 moon mark and galaxy core, L7 leaf shoulder armour and crystal crest. Saved as
+`Blender designs/boosties/sources/lumi_l<N>_turnaround.png`.

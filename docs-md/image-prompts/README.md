@@ -38,13 +38,13 @@ three bots (no evolution sheet: attach the bot's current portrait instead).
 | 26 | [Rocco level 5](26_rocco_l5_turnaround.md) | `rocco_sheet_b_levels_5-7.png` | ✅ |
 | 27 | [Rocco level 6](27_rocco_l6_turnaround.md) | `rocco_sheet_b_levels_5-7.png` | ✅ |
 | 28 | [Rocco level 7](28_rocco_l7_turnaround.md) | `rocco_sheet_b_levels_5-7.png` | ✅ |
-| 29 | [Lumi level 1](29_lumi_l1_turnaround.md) | `lumi_sheet_a_levels_1-4.png` | |
-| 30 | [Lumi level 2](30_lumi_l2_turnaround.md) | `lumi_sheet_a_levels_1-4.png` | |
-| 31 | [Lumi level 3](31_lumi_l3_turnaround.md) | `lumi_sheet_a_levels_1-4.png` | |
-| 32 | [Lumi level 4](32_lumi_l4_turnaround.md) | `lumi_sheet_a_levels_1-4.png` | |
-| 33 | [Lumi level 5](33_lumi_l5_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | |
-| 34 | [Lumi level 6](34_lumi_l6_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | |
-| 35 | [Lumi level 7](35_lumi_l7_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | |
+| 29 | [Lumi level 1](29_lumi_l1_turnaround.md) | `lumi_sheet_a_levels_1-4.png` | ✅ |
+| 30 | [Lumi level 2](30_lumi_l2_turnaround.md) | `lumi_sheet_a_levels_1-4.png` | ✅ |
+| 31 | [Lumi level 3](31_lumi_l3_turnaround.md) | `lumi_sheet_a_levels_1-4.png` | ✅ |
+| 32 | [Lumi level 4](32_lumi_l4_turnaround.md) | `lumi_sheet_a_levels_1-4.png` | ✅ |
+| 33 | [Lumi level 5](33_lumi_l5_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | ✅ |
+| 34 | [Lumi level 6](34_lumi_l6_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | ✅ |
+| 35 | [Lumi level 7](35_lumi_l7_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | ✅ |
 | 36 | [Drako level 1](36_drako_l1_turnaround.md) | `drako_sheet_a_levels_1-4.png` | |
 | 37 | [Drako level 2](37_drako_l2_turnaround.md) | `drako_sheet_a_levels_1-4.png` | |
 | 38 | [Drako level 3](38_drako_l3_turnaround.md) | `drako_sheet_a_levels_1-4.png` | |

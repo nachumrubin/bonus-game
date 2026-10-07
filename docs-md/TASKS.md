@@ -17,7 +17,14 @@
   the fourth try). Turnaround prompts `image-prompts/22–42` written; next the seven
   turnarounds each and the 3D builds. Rig needs: Drako four wings, Lumi many frond
   springs. Rocco: seven four-legged turnarounds accepted as generated (user's call, they
-  don't match the sheets; see the review log), Meshy meshes next, then `build_boostie.py`.
+  don't match the sheets; see the review log). Rocco's 3D models L1–7 built (`rocco_l1`–`l7`
+  in `build_boostie.py`, head-butt signature) and on the test page. First phone check done
+  (eye colour, eye sync, rim, framing, L1/L4 eyes fixed). Next for Rocco: second phone
+  check, then ship them (`optimize-boosties.mjs`, stills, `boostieCatalog.js`). Lumi and Drako
+  turnarounds still awaited. Lumi: seven upright turnarounds accepted as generated (no DJ
+  theme, violet eyes; see the review log); Meshy meshes next, then `build_boostie.py`.
+- [ ] Check the evolution scene's charge-up on a phone: the rim is now tinted by the surface
+  colour, so the build-up glow on dark fur may need a higher `rimStrength` in `evolutionScene.js`.
 - [ ] Cut each level out of the Zapi and Bubo sheets as its own transparent PNG
   (7 files each). For Bubo, centre the L3 core while doing this.
 - [ ] Fill in the character block and generate sheets for Pipo (dragon) with the

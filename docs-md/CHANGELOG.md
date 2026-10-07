@@ -19,6 +19,24 @@
   try, and all 21 turnaround prompts (`image-prompts/22–42`) are written.
 - Rocco's seven turnarounds came back four-legged and off-spec, but each level looks
   clearly different, so they were accepted as they are; Rocco stays a quadruped.
+- Rocco's seven 3D models are built (Meshy, then `build_boostie.py` entries `rocco_l1`–`l7`).
+  The signature clip is a head-butt, and only the horn stripes and the core glow. All seven are
+  on the scoreboard test page. They are not in the app yet.
+
+## Boostie eyes, rim and framing fixes (October 2026)
+
+- Each Boostie has its own eye colour (`IRIS` in `build_boostie.py`): Zapi amber, Bubo
+  golden-yellow, Rocco steel blue, Lumi dark brown, Drako gold. Bubo's shipped models and
+  stills were updated.
+- Both eyes now look the same way: `boostieLive.js` evens out the built eyes' splay at load
+  and turns both eyes together when they follow a target.
+- The whitish rim edge (a "plastic or carved wood" look on every model) is softer: tinted by
+  the surface colour, tighter, and the rim light is half as strong.
+- Scoreboard heads were too big and cut off for wide heads; the bust framing now uses the
+  head's width too (`scoreboard3d.js`, `render_stills.py`).
+- Rocco L1 lost the black ring round its eyes, and Rocco L4's right eye no longer sits too deep.
+- Lumi's seven turnarounds were accepted as generated: upright at every level, no DJ outfit,
+  violet eyes (her `IRIS` entry changed from dark brown to violet to match).
 
 ---
 

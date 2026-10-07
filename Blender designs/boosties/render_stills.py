@@ -58,7 +58,10 @@ neck = RIG.matrix_world @ RIG.data.bones["head"].head_local
 hp = [p for p in pts if p.z > neck.z and abs(p.x - head.x) < size * 0.3 and abs(p.y - head.y) < size * 0.2]   # not the tail
 top = max(p.z for p in hp)
 hh = top - neck.z
-frame = hh * 1.9                          # visible height
+# visible height; a head wider than it is tall (Rocco's horns) sets it by its width in this view
+yaw = math.atan2(-view.x, -view.y)
+frame = max(hh * 1.9, ((max(p.x for p in hp) - min(p.x for p in hp)) * math.cos(yaw)
+                       + (max(p.y for p in hp) - min(p.y for p in hp)) * math.sin(yaw)) * 1.1)
 cx = (min(p.x for p in hp) + max(p.x for p in hp)) / 2
 cy = (min(p.y for p in hp) + max(p.y for p in hp)) / 2
 target = Vector((cx, cy, top + hh * 0.14 - frame / 2))

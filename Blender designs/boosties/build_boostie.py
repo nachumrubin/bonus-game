@@ -467,6 +467,210 @@ LEVELS = {
             ("tail.4", (0.0, 0.19, -0.44),  (0.0, 0.22, -0.48),  "tail.3", FWD),
         ],
     },
+    "rocco_l1": {   # Meshy, four-view turnaround, normalised to 1.0; quadruped ram (rig as zapi_l1)
+        "src": "rocco_l1_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.31, -0.10),
+        "eyes": {"R": (-0.076, 0.233), "L": (0.081, 0.231), "r": 0.040, "show": 0.22,
+                 "reach": 1.5, "socket": "D9BE9C",   # cream-tan under the ball: the dark default plus Meshy's painted liner made a black ring
+                 "shape": {"width": 1.05, "open": 45}},   # big round young eyes, wide open
+        "mouth": {"x": 0.0, "tip": (-0.405, 0.118), "corner": (-0.34, 0.143), "half": 0.055,
+                  "hinge": (0.0, -0.30, 0.14)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["horn.L", "horn.R"],   # the cyan horn stripes; ankle and harness gems stay plain
+        "radii": {"ear.L": 0.025, "ear.R": 0.025, "horn.L": 0.07, "horn.R": 0.07},
+        "bones": [
+            ("root",   (0.0, -0.05, -0.50), (0.0, -0.05, -0.38), None,     UP),
+            ("hips",   (0.0, 0.14, -0.06),  (0.0, -0.06, -0.05), "root",   FWD),
+            ("chest",  (0.0, -0.06, -0.05), (0.0, -0.22, -0.02), "hips",   FWD),
+            ("neck",   (0.0, -0.22, -0.02), (0.0, -0.26, 0.12),  "chest",  FWD),
+            ("head",   (0.0, -0.26, 0.12),  (0.0, -0.27, 0.40),  "neck",   UP),
+            ("ear.L",  (0.14, -0.22, 0.24), (0.26, -0.20, 0.21), "head",   UP),
+            ("ear.R",  (-0.14, -0.22, 0.24), (-0.26, -0.20, 0.21), "head", UP),
+            ("horn.L", (0.10, -0.18, 0.42), (0.30, -0.10, 0.28), "head",   UP),   # rigid: no clip keys it
+            ("horn.R", (-0.10, -0.18, 0.42), (-0.30, -0.10, 0.28), "head", UP),
+            ("tail.0", (0.0, 0.18, 0.00),   (0.0, 0.24, -0.02),  "hips",   FWD),
+            ("tail.1", (0.0, 0.24, -0.02),  (0.0, 0.30, -0.05),  "tail.0", FWD),
+            ("tail.2", (0.0, 0.30, -0.05),  (0.0, 0.35, -0.08),  "tail.1", FWD),
+            ("tail.3", (0.0, 0.35, -0.08),  (0.0, 0.39, -0.11),  "tail.2", FWD),
+            ("tail.4", (0.0, 0.39, -0.11),  (0.0, 0.42, -0.13),  "tail.3", FWD),
+        ],
+    },
+    "rocco_l2": {   # Meshy, four-view turnaround, normalised to 1.0; plain harness, blue eyes (rig as rocco_l1)
+        "src": "rocco_l2_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.31, -0.12),
+        "eyes": {"R": (-0.072, 0.2), "L": (0.072, 0.2), "r": 0.036, "show": 0.22,
+                 "shape": {"width": 1.05, "open": 40}},
+        "mouth": {"x": 0.0, "tip": (-0.41, 0.115), "corner": (-0.34, 0.125), "half": 0.05,
+                  "hinge": (0.0, -0.29, 0.13)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["horn.L", "horn.R"],
+        "radii": {"ear.L": 0.025, "ear.R": 0.025, "horn.L": 0.07, "horn.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.05, -0.5), (0.0, -0.05, -0.38), None, UP),
+            ("hips", (0.0, 0.14, -0.06), (0.0, -0.06, -0.05), 'root', FWD),
+            ("chest", (0.0, -0.06, -0.05), (0.0, -0.22, 0.0), 'hips', FWD),
+            ("neck", (0.0, -0.22, 0.0), (0.0, -0.26, 0.11), 'chest', FWD),
+            ("head", (0.0, -0.26, 0.11), (0.0, -0.27, 0.38), 'neck', UP),
+            ("ear.L", (0.12, -0.22, 0.27), (0.24, -0.2, 0.25), 'head', UP),
+            ("ear.R", (-0.12, -0.22, 0.27), (-0.24, -0.2, 0.25), 'head', UP),
+            ("horn.L", (0.08, -0.2, 0.42), (0.26, -0.07, 0.3), 'head', UP),
+            ("horn.R", (-0.08, -0.2, 0.42), (-0.26, -0.07, 0.3), 'head', UP),
+            ("tail.0", (0.0, 0.22, -0.03), (0.0, 0.26, -0.03), 'hips', FWD),
+            ("tail.1", (0.0, 0.26, -0.03), (0.0, 0.3, -0.04), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.3, -0.04), (0.0, 0.34, -0.05), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.34, -0.05), (0.0, 0.38, -0.06), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.38, -0.06), (0.0, 0.41, -0.07), 'tail.3', FWD),
+        ],
+    },
+    "rocco_l3": {   # Meshy, four-view turnaround, normalised to 1.0; harness and saddlebags (rig as rocco_l1)
+        "src": "rocco_l3_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.33, -0.04),
+        "eyes": {"R": (-0.065, 0.252), "L": (0.065, 0.252), "r": 0.034, "show": 0.22,
+                 "shape": {"width": 1.05, "open": 40}},
+        "mouth": {"x": 0.0, "tip": (-0.48, 0.158), "corner": (-0.4, 0.18), "half": 0.05,
+                  "hinge": (0.0, -0.37, 0.17)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["horn.L", "horn.R"],
+        "radii": {"ear.L": 0.025, "ear.R": 0.025, "horn.L": 0.07, "horn.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.05, -0.5), (0.0, -0.05, -0.38), None, UP),
+            ("hips", (0.0, 0.15, -0.02), (0.0, -0.08, -0.03), 'root', FWD),
+            ("chest", (0.0, -0.08, -0.03), (0.0, -0.28, 0.05), 'hips', FWD),
+            ("neck", (0.0, -0.28, 0.05), (0.0, -0.33, 0.18), 'chest', FWD),
+            ("head", (0.0, -0.33, 0.18), (0.0, -0.35, 0.46), 'neck', UP),
+            ("ear.L", (0.11, -0.28, 0.32), (0.22, -0.26, 0.32), 'head', UP),
+            ("ear.R", (-0.11, -0.28, 0.32), (-0.22, -0.26, 0.32), 'head', UP),
+            ("horn.L", (0.07, -0.32, 0.46), (0.26, -0.2, 0.34), 'head', UP),
+            ("horn.R", (-0.07, -0.32, 0.46), (-0.26, -0.2, 0.34), 'head', UP),
+            ("tail.0", (0.0, 0.2, 0.0), (0.0, 0.26, -0.02), 'hips', FWD),
+            ("tail.1", (0.0, 0.26, -0.02), (0.0, 0.32, -0.05), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.32, -0.05), (0.0, 0.38, -0.08), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.38, -0.08), (0.0, 0.43, -0.1), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.43, -0.1), (0.0, 0.48, -0.12), 'tail.3', FWD),
+        ],
+    },
+    "rocco_l4": {   # Meshy, four-view turnaround, normalised to 1.0; wool and blue scarf, amber eyes (rig as rocco_l1)
+        "src": "rocco_l4_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.4, -0.05),
+        "eyes": {"R": (-0.075, 0.243), "L": (0.072, 0.243), "r": 0.038, "show": 0.32, "sink": 0.3, "socket": "C9A27A",   # the R ball sat in a dark socket at r 0.034; show/sink bring it forward
+                 "shape": {"width": 1.05, "open": 40}},
+        "mouth": {"x": 0.0, "tip": (-0.48, 0.145), "corner": (-0.37, 0.18), "half": 0.05,
+                  "hinge": (0.0, -0.36, 0.16)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["horn.L", "horn.R"],
+        "radii": {"ear.L": 0.025, "ear.R": 0.025, "horn.L": 0.07, "horn.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.05, -0.5), (0.0, -0.05, -0.38), None, UP),
+            ("hips", (0.0, 0.15, -0.02), (0.0, -0.06, -0.02), 'root', FWD),
+            ("chest", (0.0, -0.06, -0.02), (0.0, -0.25, 0.05), 'hips', FWD),
+            ("neck", (0.0, -0.25, 0.05), (0.0, -0.32, 0.17), 'chest', FWD),
+            ("head", (0.0, -0.32, 0.17), (0.0, -0.33, 0.46), 'neck', UP),
+            ("ear.L", (0.12, -0.28, 0.29), (0.24, -0.26, 0.27), 'head', UP),
+            ("ear.R", (-0.12, -0.28, 0.29), (-0.24, -0.26, 0.27), 'head', UP),
+            ("horn.L", (0.08, -0.3, 0.44), (0.26, -0.18, 0.32), 'head', UP),
+            ("horn.R", (-0.08, -0.3, 0.44), (-0.26, -0.18, 0.32), 'head', UP),
+            ("tail.0", (0.0, 0.25, 0.0), (0.0, 0.3, 0.01), 'hips', FWD),
+            ("tail.1", (0.0, 0.3, 0.01), (0.0, 0.35, 0.02), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.35, 0.02), (0.0, 0.4, 0.03), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.4, 0.03), (0.0, 0.44, 0.03), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.44, 0.03), (0.0, 0.48, 0.03), 'tail.3', FWD),
+        ],
+    },
+    "rocco_l5": {   # Meshy, four-view turnaround, normalised to 1.0; grey armour harness, goatee (rig as rocco_l1)
+        "src": "rocco_l5_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.32, -0.07),
+        "eyes": {"R": (-0.065, 0.25), "L": (0.065, 0.25), "r": 0.034, "show": 0.22,
+                 "shape": {"width": 1.05, "open": 40}},
+        "mouth": {"x": 0.0, "tip": (-0.43, 0.135), "corner": (-0.36, 0.16), "half": 0.05,
+                  "hinge": (0.0, -0.32, 0.15)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["horn.L", "horn.R"],
+        "radii": {"ear.L": 0.025, "ear.R": 0.025, "horn.L": 0.07, "horn.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.05, -0.5), (0.0, -0.05, -0.38), None, UP),
+            ("hips", (0.0, 0.14, -0.04), (0.0, -0.06, -0.04), 'root', FWD),
+            ("chest", (0.0, -0.06, -0.04), (0.0, -0.22, 0.02), 'hips', FWD),
+            ("neck", (0.0, -0.22, 0.02), (0.0, -0.28, 0.14), 'chest', FWD),
+            ("head", (0.0, -0.28, 0.14), (0.0, -0.29, 0.44), 'neck', UP),
+            ("ear.L", (0.09, -0.24, 0.32), (0.19, -0.22, 0.3), 'head', UP),
+            ("ear.R", (-0.09, -0.24, 0.32), (-0.19, -0.22, 0.3), 'head', UP),
+            ("horn.L", (0.08, -0.24, 0.44), (0.26, -0.1, 0.32), 'head', UP),
+            ("horn.R", (-0.08, -0.24, 0.44), (-0.26, -0.1, 0.32), 'head', UP),
+            ("tail.0", (0.0, 0.25, 0.05), (0.0, 0.28, 0.06), 'hips', FWD),
+            ("tail.1", (0.0, 0.28, 0.06), (0.0, 0.32, 0.05), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.32, 0.05), (0.0, 0.36, 0.02), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.36, 0.02), (0.0, 0.39, -0.02), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.39, -0.02), (0.0, 0.41, -0.05), 'tail.3', FWD),
+        ],
+    },
+    "rocco_l6": {   # Meshy, four-view turnaround, normalised to 1.0; gold collar armour and blue cloth (rig as rocco_l1)
+        "src": "rocco_l6_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.33, -0.02),
+        "eyes": {"R": (-0.07, 0.28), "L": (0.07, 0.28), "r": 0.034, "show": 0.22,
+                 "shape": {"width": 1.05, "open": 40}},
+        "mouth": {"x": 0.0, "tip": (-0.42, 0.178), "corner": (-0.33, 0.195), "half": 0.05,
+                  "hinge": (0.0, -0.31, 0.19)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["horn.L", "horn.R"],
+        "radii": {"ear.L": 0.025, "ear.R": 0.025, "horn.L": 0.07, "horn.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.05, -0.5), (0.0, -0.05, -0.38), None, UP),
+            ("hips", (0.0, 0.14, -0.02), (0.0, -0.06, -0.02), 'root', FWD),
+            ("chest", (0.0, -0.06, -0.02), (0.0, -0.22, 0.04), 'hips', FWD),
+            ("neck", (0.0, -0.22, 0.04), (0.0, -0.27, 0.18), 'chest', FWD),
+            ("head", (0.0, -0.27, 0.18), (0.0, -0.28, 0.46), 'neck', UP),
+            ("ear.L", (0.09, -0.22, 0.31), (0.18, -0.2, 0.29), 'head', UP),
+            ("ear.R", (-0.09, -0.22, 0.31), (-0.18, -0.2, 0.29), 'head', UP),
+            ("horn.L", (0.08, -0.22, 0.46), (0.28, -0.08, 0.32), 'head', UP),
+            ("horn.R", (-0.08, -0.22, 0.46), (-0.28, -0.08, 0.32), 'head', UP),
+            ("tail.0", (0.0, 0.25, 0.05), (0.0, 0.28, 0.07), 'hips', FWD),
+            ("tail.1", (0.0, 0.28, 0.07), (0.0, 0.31, 0.09), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.31, 0.09), (0.0, 0.34, 0.1), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.34, 0.1), (0.0, 0.36, 0.1), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.36, 0.1), (0.0, 0.38, 0.08), 'tail.3', FWD),
+        ],
+    },
+    "rocco_l7": {   # Meshy, four-view turnaround, normalised to 1.0; full armour, long tail, cyan forehead mark (rig as rocco_l1)
+        "src": "rocco_l7_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.4, -0.02),
+        "eyes": {"R": (-0.065, 0.25), "L": (0.065, 0.25), "r": 0.03, "show": 0.22,
+                 "shape": {"width": 1.05, "open": 40}},
+        "mouth": {"x": 0.0, "tip": (-0.51, 0.15), "corner": (-0.45, 0.17), "half": 0.05,
+                  "hinge": (0.0, -0.42, 0.17)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["horn.L", "horn.R"],
+        "radii": {"ear.L": 0.025, "ear.R": 0.025, "horn.L": 0.07, "horn.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.05, -0.5), (0.0, -0.05, -0.38), None, UP),
+            ("hips", (0.0, 0.15, -0.02), (0.0, -0.08, -0.02), 'root', FWD),
+            ("chest", (0.0, -0.08, -0.02), (0.0, -0.3, 0.04), 'hips', FWD),
+            ("neck", (0.0, -0.3, 0.04), (0.0, -0.38, 0.16), 'chest', FWD),
+            ("head", (0.0, -0.38, 0.16), (0.0, -0.38, 0.44), 'neck', UP),
+            ("ear.L", (0.08, -0.33, 0.31), (0.15, -0.31, 0.3), 'head', UP),
+            ("ear.R", (-0.08, -0.33, 0.31), (-0.15, -0.31, 0.3), 'head', UP),
+            ("horn.L", (0.08, -0.34, 0.46), (0.28, -0.2, 0.32), 'head', UP),
+            ("horn.R", (-0.08, -0.34, 0.46), (-0.28, -0.2, 0.32), 'head', UP),
+            ("tail.0", (0.0, 0.25, 0.0), (0.0, 0.3, -0.03), 'hips', FWD),
+            ("tail.1", (0.0, 0.3, -0.03), (0.0, 0.35, -0.06), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.35, -0.06), (0.0, 0.4, -0.09), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.4, -0.09), (0.0, 0.44, -0.12), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.44, -0.12), (0.0, 0.48, -0.15), 'tail.3', FWD),
+        ],
+    },
     "bot_easy": {   # Meshy, four-view turnaround, normalised to 1.0; chibi robot, green
         # Bots (AVATAR_EVOLUTION §9): single level, a screen face (`screen`, no eyes / mouth),
         # the arms are named wing.* so the shared clips swing them, the antenna glows.
@@ -670,6 +874,13 @@ SIGNATURES = {
         "ear.L": [(1, (0, 0, 0)), (3, (20, 0, -10)), (5, (0, 0, 0)), (8, (16, 0, -8)), (11, (0, 0, 0)), (25, (0, 0, 0))],
         "ear.R": [(1, (0, 0, 0)), (6, (0, 0, 0)), (8, (8, 0, 6)), (11, (0, 0, 0)), (25, (0, 0, 0))],
         "tail.4": [(1, (0, 0, 0)), (9, (0, 0, 0)), (13, (0, 0, 14)), (18, (0, 0, -6)), (25, (0, 0, 0))],
+    }),
+    "rocco": (25, {  # the head-butt: rear back, a sharp butt down, a small rebound; ears flick back
+        "head": [(1, (0, 0, 0)), (5, (-8, 0, 0)), (9, (16, 0, 0)), (12, (11, 0, 0)), (17, (-2, 0, 0)), (25, (0, 0, 0))],
+        "chest": [(1, (0, 0, 0)), (5, (-2, 0, 0)), (9, (5, 0, 0)), (14, (1, 0, 0)), (25, (0, 0, 0))],
+        "ear.L": [(1, (0, 0, 0)), (9, (-12, 0, 0)), (16, (0, 0, 0)), (25, (0, 0, 0))],
+        "ear.R": [(1, (0, 0, 0)), (9, (-12, 0, 0)), (16, (0, 0, 0)), (25, (0, 0, 0))],
+        "tail.3": [(1, (0, 0, 0)), (10, (0, 0, 0)), (14, (0, 0, 12)), (19, (0, 0, -6)), (25, (0, 0, 0))],
     }),
     "bot": (26, {    # the antenna wobble: a quick springy flick with a little head bob
         "antenna": [(1, (0, 0, 0)), (4, (0, 0, 0)), (7, (14, 0, 10)), (10, (-10, 0, -8)), (13, (7, 0, 5)),
@@ -1275,11 +1486,22 @@ def hexc(hx):
     return to_srgb(lin(hx))
 
 
+# iris colour per character (centre, edge, rim); one colour at every level (AVATAR_EVOLUTION §3 rule 4)
+IRIS = {
+    "zapi": ("F7B53C", "B0580A", "4A2205"),    # amber
+    "bubo": ("FFE95A", "D8A818", "5A4205"),    # bright golden-yellow
+    "rocco": ("9DBAD6", "3F6488", "1A2A3C"),   # steel blue, greyer and darker than the cyan glow
+    "lumi": ("B79CF2", "5B3BB0", "24154A"),    # violet, as in all seven turnarounds (spec said dark brown)
+    "drako": ("FFC845", "C07A10", "4F2C04"),   # bright gold
+}
+
+
 def iris_fn(u, v):
+    mid, edge, rim = IRIS.get(KEY.split("_")[0], IRIS["zapi"])
     d = np.hypot(u - 0.5, v - 0.5)[..., None]
     t = np.clip(d / 0.33, 0, 1)
-    col = np.where(d < 0.33, hexc("F7B53C") * (1 - t) + hexc("B0580A") * t, hexc("F3ECE3"))
-    col = np.where((d > 0.30) & (d < 0.335), hexc("4A2205"), col)
+    col = np.where(d < 0.33, hexc(mid) * (1 - t) + hexc(edge) * t, hexc("F3ECE3"))
+    col = np.where((d > 0.30) & (d < 0.335), hexc(rim), col)
     col = np.where(d < 0.14, hexc("0A0503"), col)
     for gx, gy, gr in ((0.40, 0.62, 0.055), (0.60, 0.42, 0.022)):
         col = np.where(np.hypot(u - gx, v - gy)[..., None] < gr, np.float32(1.0), col)
