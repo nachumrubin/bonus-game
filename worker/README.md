@@ -116,3 +116,41 @@ firebase.auth().currentUser.getIdToken().then(console.log)
 classification rules (reminder/expiry hours, status checks, idempotency
 window), update **both**. The constants at the top of each file should
 stay identical.
+
+## Coin economy (`/economy/*`, October 2026)
+
+Only this worker changes coins and owned store items (D-coin-economy in
+`docs-md/DECISIONS.md`). Endpoints, all `POST` with `Authorization: Bearer <Firebase
+ID token>` and a JSON body with a `reqId` (8–64 chars of `A-Za-z0-9_-`):
+
+| Path | Body | Does |
+|---|---|---|
+| `/economy/claim-daily` | `{reqId}` | today's login reward (server date, Asia/Jerusalem) |
+| `/economy/achievement` | `{reqId, achievementId}` | an achievement's coins, once |
+| `/economy/buy` | `{reqId, item}` | a store item (`reaction:wink`, `boostie:<id>`) at the catalog price |
+| `/economy/claim-chain` | `{reqId}` | the next Boostie after one reaches level 7 |
+| `/economy/credit-play` | `{reqId, productId, purchaseToken}` | a Google Play coin pack (Phase 6b) |
+
+Guests (anonymous accounts) get 403. Uses the same `FIREBASE_SERVICE_ACCOUNT_JSON`
+secret as the cron sweep. The rules live in `../src/game/account/economy.js` and are
+bundled in by wrangler: redeploy the worker whenever that file changes.
+
+**Deploy the worker before the database rules reach `main`**, or the app's coin calls
+fail.
+
+### Play Billing (Phase 6b)
+
+- `PLAY_PACKAGE_NAME` is in `wrangler.toml`.
+- A Google Cloud service account linked in the Play Console (Users and permissions →
+  "View financial data" and "Manage orders and subscriptions"). Paste its JSON key:
+
+  ```bash
+  npx wrangler secret put PLAY_SERVICE_ACCOUNT_JSON
+  ```
+- The in-app products `coins_500`, `coins_1200`, `coins_3000` must exist in the Play
+  Console as consumable products (`COIN_PACKS` in `economy.js`).
+
+### Tests
+
+`worker/test/*.test.js` run with `npm run test:unit` from the repo root.
+

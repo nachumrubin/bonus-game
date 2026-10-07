@@ -466,15 +466,57 @@ showBrowserNotification(opts: {
 // Constants (tunable): STARTER_GRANT=150, DAILY_BASE=20, DAILY_STREAK_INCREMENT=10,
 // DAILY_STREAK_CAP=10, ACHIEVEMENT_COIN_REWARD={bronze:50,silver:100,gold:250,legend:750}.
 
+// Oct 2026 (D-coin-economy): the constants and pure helpers below moved to economy.js
+// and are re-exported here. bumpCoins / claimDailyReward / purchaseStoreItem are gone:
+// the coin worker changes coins (economyClient.js).
 normalizeProfileEconomy(profile): { coins, lastLoginDate, loginStreak }  // pure, safe defaults
-
-bumpCoins(db, uid, amount): Promise<number|null>          // atomic; floors at 0; emits PROFILE_EVT.CHANGED
-
 computeDailyReward(lastLoginDate, loginStreak, today):    // pure
   { coinsAwarded: number, newStreak: number, alreadyClaimedToday: boolean }
-claimDailyReward(db, uid, today?): Promise<same>          // idempotent per day (guard inside txn)
 ymd(date?): string            // local 'YYYY-MM-DD'
 isYesterday(prev, today): boolean
+```
+
+### economy.js — coin rules, shared by the app and the worker (pure, October 2026)
+```typescript
+STARTER_GRANT, DAILY_*, ACHIEVEMENT_COIN_REWARD, MAX_COIN_BALANCE, ECONOMY_TIME_ZONE='Asia/Jerusalem'
+COIN_PACKS = { coins_500, coins_1200, coins_3000 }   // Play product ids → { coins }; prices live in the Play Console
+RECENT_REQUESTS_MAX = 30
+clampCoins(v); normalizeProfileEconomy(p); ymd(d); ymdIn(tz, d); isYesterday(a, b)
+computeDailyReward(...); dailyCoinsForDay(n); dailyWeek(streak); isRequestId(id); orderKey(orderId)
+// apply*(profile, …) → { next?, result }: next is the whole new profile (absent = no write)
+applyDailyClaim(p, today)            // { ok, coinsAwarded, newStreak, alreadyClaimedToday, coins }
+applyAchievementClaim(p, achId, now) // { ok, reward, coins } | 'unknown-achievement'|'already-paid'|'not-complete'
+applyPurchase(p, item)               // { ok, item, coins } | 'unknown-item'|'already-owned'|'insufficient'
+applyChainClaim(p)                   // { ok, unlocked } | 'no-top-level'|'nothing-to-unlock'
+applyCoinCredit(p, {orderId, productId}, now)   // { ok, credited, coins } | { ok, already } | 'unknown-product'|'no-order'
+rememberRequest(next, reqId, result, now); coinDelta(before, after)
+```
+
+### achievements.js — achievement definitions (pure, October 2026)
+```typescript
+ACHIEVEMENTS; achievementSnapshot(profile); achievementMetric(ach, snap); isAchievementComplete(ach, snap)
+// moved out of avatarScreens.js (which re-exports them) so the worker can check completion
+```
+
+### economyClient.js — the app's side of the coin worker (October 2026)
+```typescript
+createEconomyClient({ baseUrl, getIdToken, fetchImpl?, newId?, retries = 1 }) → {
+  claimDaily(), claimAchievement(id), buy(item), claimChain(),
+  creditPlay({ productId, purchaseToken }),
+}   // each → the worker's JSON answer, or { ok:false, reason:'not-configured'|'signed-out'|'offline'|'http-N' }
+// POST ${baseUrl}/economy/<action> with Bearer <Firebase ID token> and a reqId; a network
+// retry reuses the reqId, so the worker answers it once. main.js: `economy` (cfg.pushWorkerUrl).
+```
+
+### worker/src/economy.js — coin endpoints (Cloudflare Worker, October 2026)
+```typescript
+// POST /economy/claim-daily | achievement | buy | claim-chain | credit-play, body { reqId, … }
+// 401 bad token, 403 guest (anonymous), 400 bad reqId, 404 unknown action; else 200 + result
+runOnProfile(env, uid, reqId, apply, { db, now })   // ETag compare-and-set on users/<uid>/profile, ≤ MAX_CAS_ATTEMPTS
+creditPlay(env, uid, reqId, { productId, purchaseToken }, { db, play, now })
+handleEconomy(request, env, cors, deps)
+// worker/src/playBilling.js: verifyPlayPurchase(env, {productId, purchaseToken}) → { ok, orderId, consumed } | reason
+//   'pending'|'cancelled'|'invalid'; consumePlayPurchase(env, …)
 ```
 
 ### boostieCatalog.js — Boosties, reactions, asset paths (pure, October 2026)
@@ -512,8 +554,8 @@ profileAvatarValue(profile): '<id>:<level>'
 DEFAULT_AVATAR = 'zapi'
 bumpBoostieXp(db, uid, equipped, result):        // transaction on profile/boosties
   Promise<{ ok, gained, levelUp, unlocked, boosties } | { ok: false, reason }>
-purchaseStoreItem(db, uid, 'boostie:<id>' | 'reaction:<id>'):   // whole-profile txn, catalog price
-  Promise<{ ok, reason?: 'no-uid'|'unknown-item'|'no-profile'|'already-owned'|'insufficient', coins }>
+// bumpBoostieXp no longer writes the L7 chain unlock: main.js asks the worker (economy.claimChain()).
+// purchaseStoreItem was removed (Oct 2026): store purchases go through economy.buy(item).
 PROFILE_EVT.BOOSTIE_LEVEL_UP  // { levelUp, unlocked } after a game's XP lands
 ```
 

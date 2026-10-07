@@ -55,8 +55,16 @@
   sides play the clip; the opponent glances at the one reacting).
 - [ ] Phase 5 follow-up: Firebase rules still accept any `liveReaction` payload from a
   player (the client validates on receive). Add a `.validate` on type/id if it matters.
-- [ ] Phase 6a: move the coin economy into the Cloudflare Worker (claim-daily,
-  achievement, buy, ledger); lock `coins`, owned Boosties and `ownedReactions` in the rules.
+- [x] Phase 6a: coin economy in the Cloudflare Worker (`/economy/*`: claim-daily,
+  achievement, buy, claim-chain, credit-play), ledger at `coinLedger/`, rules lock
+  `coins`, new Boosties, `ownedReactions` and the payout records (D-coin-economy).
+- [ ] **Before merging 6a:** `cd worker && npx wrangler deploy` (the app calls
+  `/economy/*` as soon as the new rules are live). `FIREBASE_SERVICE_ACCOUNT_JSON` must
+  be set (it already is for the cron).
+- [ ] Achievement stats are still client-written, so achievement coins are bounded
+  (once each) but not cheat-proof. Server-side stats would close it.
+- [ ] Old client payouts left no `achievementsPaid` record; an achievement that
+  completes again after 6a ships pays once more (not in production, so accepted).
 - [ ] Phase 6b: buy coins with real money (Play Billing in the Android app, Stripe on
   web). Needs the user's merchant accounts and coin-pack prices.
 - [x] No migration script (not in production): Bubo became a starter, so every profile
@@ -1041,10 +1049,8 @@ Five issues reported from one async online game. Status:
 - [x] Render-helper integration so equipped store avatars show everywhere (incl. opponent cards) — `avatarEmoji`
   pass-through + `avatarIconSrc` store-id resolution
 - [x] Anonymous users gated to the account-upgrade prompt; PNGs excluded from sw.js precache
-- [ ] **Hardening (not v1):** make purchases server-authoritative (Cloudflare Worker / Cloud Function) so coins
-  can't be self-granted client-side
-- [ ] **Hardening (not v1):** record `claimedAchievements[]` checked inside the transaction so achievement coin
-  rewards are fully idempotent across devices/tabs
+- [x] **Hardening:** purchases server-authoritative (coin worker, Oct 2026, D-coin-economy)
+- [x] **Hardening:** achievement rewards idempotent (`profile.achievementsPaid`, Oct 2026)
 - [ ] Optional: surface a coin badge in the bottom nav (coins already flow through `MENU_REFRESH`)
 
 ## In-game UI bug fixes — June 2026

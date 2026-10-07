@@ -1,6 +1,7 @@
-// Push broker for the bonus-game app.
+// Push broker and coin economy for the bonus-game app. /economy/* → economy.js; every
+// other POST is a push (below).
 //
-// Flow:
+// Push flow:
 //   1. Verify caller's Firebase ID token (Bearer header)
 //   2. Accept the OneSignal body the client built, but extract only the
 //      intent fields (kind, recipients, ctx) — discard client-supplied
@@ -13,6 +14,7 @@
 import { verifyFirebaseToken } from './verifyFirebaseToken.js';
 import { buildPushBody, KIND } from './pushPayloadBuilder.js';
 import { runCronSweep } from './cronSweep.js';
+import { handleEconomy } from './economy.js';
 
 const ALLOWED_KINDS = new Set(Object.values(KIND));
 const MAX_RECIPIENTS = 4;        // games have 2 players; small headroom
@@ -95,6 +97,11 @@ export default {
 
     if (request.method !== 'POST') {
       return jsonResponse(405, { error: 'method_not_allowed' }, origin);
+    }
+
+    // ─── Coin economy (economy.js) ────────────────────────────────────
+    if (url.pathname.startsWith('/economy/')) {
+      return handleEconomy(request, env, corsHeaders(origin));
     }
 
     // 1. AuthN

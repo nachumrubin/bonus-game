@@ -10,7 +10,7 @@
 import * as bus from '../../events/bus.js';
 import { BDEFS, BONUS_TYPES } from '../boosts/data.js';
 import { applyGameXp, normalizeBoosties } from './boostieXp.js';
-import { DEFAULT_BOOSTIE, parseStoreItem } from './boostieCatalog.js';
+import { DEFAULT_BOOSTIE } from './boostieCatalog.js';
 
 export const PATH = Object.freeze({
   users:     'users',
@@ -32,32 +32,15 @@ export const PROFILE_EVT = Object.freeze({
 export const DEFAULT_AVATAR = DEFAULT_BOOSTIE;
 export const RATING_START   = 800;
 
-// ── Avatar-store economy (coins) ──────────────────────────────────────────
-// All tunable. "Grindy / prestige" tuning — a legendary avatar is a long-haul
-// goal. Coins are earned three ways: a one-time starter grant on sign-up, a
-// daily login + consecutive-day streak bonus, and achievement completions.
-// Spent in the store (src/ui/screens/avatarStoreScreen.js). These live at the
-// profile root (siblings of `rating`/`stats`), never inside `stats`.
-export const STARTER_GRANT          = 150;
-export const DAILY_BASE             = 20;
-export const DAILY_STREAK_INCREMENT = 10;
-export const DAILY_STREAK_CAP       = 10; // streak-day after which the daily bonus stops growing
-export const ACHIEVEMENT_COIN_REWARD = Object.freeze({
-  bronze: 50, silver: 100, gold: 250, legend: 750,
-});
-
-// Hard ceiling on a coin balance. Buying the ENTIRE avatar catalog costs ~22k,
-// and a daily-active player accrues at most ~110/day, so no legitimate balance
-// comes anywhere near this. The cap is a safety net: it stops a buggy or
-// out-of-band write from ballooning a balance to absurd values (e.g. a manual
-// DB edit), and `clampCoinsBalance` self-heals any account that's already over
-// the cap the next time it loads. Tunable.
-export const MAX_COIN_BALANCE = 100_000;
-
-// Pure: coerce any value to a valid, in-range coin balance (integer, 0..MAX).
-export function clampCoins(value) {
-  return Math.min(MAX_COIN_BALANCE, Math.max(0, Math.floor(Number(value) || 0)));
-}
+// ── Coin economy ──────────────────────────────────────────────────────────
+// Constants and pure rules live in economy.js (shared with the coin worker). Coins and
+// owned items change only through the worker (economyClient.js); see D-coin-economy.
+export {
+  STARTER_GRANT, DAILY_BASE, DAILY_STREAK_INCREMENT, DAILY_STREAK_CAP, ACHIEVEMENT_COIN_REWARD,
+  MAX_COIN_BALANCE, clampCoins, normalizeProfileEconomy, ymd, isYesterday, computeDailyReward,
+  dailyCoinsForDay, dailyWeek,
+} from './economy.js';
+import { STARTER_GRANT } from './economy.js';
 
 export const EMPTY_STATS = Object.freeze({
   gamesPlayed: 0, gamesWon: 0, gamesLost: 0, gamesDraw: 0,
@@ -97,16 +80,6 @@ export function buildInitialProfile({ displayName, userId, avatar = DEFAULT_AVAT
     boosties: normalizeBoosties(null),
     ownedReactions: [],
     createdAt: Date.now(),
-  };
-}
-
-// Pure: safe-read the economy fields from a (possibly legacy) profile that may
-// predate this feature. Use this everywhere economy state is consumed.
-export function normalizeProfileEconomy(profile) {
-  return {
-    coins: clampCoins(profile?.coins),
-    lastLoginDate: typeof profile?.lastLoginDate === 'string' ? profile.lastLoginDate : null,
-    loginStreak: Math.max(0, Math.floor(Number(profile?.loginStreak) || 0)),
   };
 }
 
@@ -215,180 +188,26 @@ export async function bumpStats(db, uid, delta) {
   return result?.snapshot?.val?.() ?? null;
 }
 
-// ── Avatar-store economy I/O ──────────────────────────────────────────────
-
-// uids whose coins transaction is mid-apply. A transaction's optimistic local
-// write synchronously re-fires profile watchers, which can call bumpCoins again
-// for the same uid → unbounded recursion (RangeError). We block only that
-// *synchronous* re-entry: the flag is held just around the transaction call, not
-// across the await, so legitimate back-to-back payouts (e.g. several
-// achievements completing at once) still go through.
-const coinTxInFlight = new Set();
-
-// Add (or subtract, for spends) coins atomically. Floors at zero. Emits
-// PROFILE_EVT.CHANGED. Returns the new balance, or null on no-op.
-export async function bumpCoins(db, uid, amount) {
-  if (!uid || !amount) return null;
-  if (coinTxInFlight.has(uid)) {
-    console.warn('[profileService.bumpCoins] re-entrant call suppressed for', uid);
-    return null;
-  }
-  const ref = db.ref(`${PATH.users}/${uid}/profile/coins`);
-  let txPromise;
-  coinTxInFlight.add(uid);
-  try {
-    // The synchronous optimistic apply + watcher re-fire happen during this call.
-    txPromise = ref.transaction((current) => clampCoins((current ?? 0) + amount));
-  } finally {
-    coinTxInFlight.delete(uid);
-  }
-  const result = await txPromise;
-  if (result?.committed) {
-    bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: result.snapshot?.val?.() ?? null } });
-  }
-  return result?.snapshot?.val?.() ?? null;
-}
-
-// Self-heal a corrupted (out-of-band-inflated) balance: if the stored coins
-// exceed MAX_COIN_BALANCE, pull them down to the cap; otherwise no-op (the
-// transaction aborts). Safe to call on every boot — runs as the signed-in user
-// (DB rules allow writing your own profile). Returns the resulting balance.
-export async function clampCoinsBalance(db, uid) {
-  if (!uid) return null;
-  const ref = db.ref(`${PATH.users}/${uid}/profile/coins`);
-  const result = await ref.transaction((current) =>
-    Number(current) > MAX_COIN_BALANCE ? MAX_COIN_BALANCE : undefined);
-  if (!result?.committed) return null; // already in range — nothing healed
-  bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: result.snapshot?.val?.() ?? null } });
-  return result.snapshot?.val?.() ?? null;
-}
-
-// Buy a store item ('boostie:bubo' | 'reaction:wink') with coins, in one transaction
-// on the profile node: check the price from the catalog (never from the caller) and
-// the balance, deduct, grant. A Boostie arrives at level 1 (profile.boosties), a
-// reaction joins profile.ownedReactions. Returns { ok, reason?, coins }.
-// (Phase 6a moves this into the Cloudflare Worker once coins can be bought.)
-export async function purchaseStoreItem(db, uid, item) {
-  if (!uid) return { ok: false, reason: 'no-uid' };
-  const it = parseStoreItem(item);
-  if (!it) return { ok: false, reason: 'unknown-item' };
-  let reason = null;
-  const result = await profileRef(db, uid).transaction((p) => {
-    if (!p) { reason = 'no-profile'; return; }
-    const coins = Number(p.coins) || 0;
-    const boosties = normalizeBoosties(p.boosties);
-    const reactions = Array.isArray(p.ownedReactions) ? p.ownedReactions : [];
-    const owned = it.kind === 'boostie' ? !!boosties[it.id] : reactions.includes(it.id);
-    if (owned) { reason = 'already-owned'; return; }
-    if (coins < it.price) { reason = 'insufficient'; return; }
-    const next = { ...p, coins: coins - it.price };
-    if (it.kind === 'boostie') next.boosties = { ...boosties, [it.id]: { xp: 0, level: 1 } };
-    else next.ownedReactions = [...reactions, it.id];
-    return next;
-  });
-  const v = result?.snapshot?.val?.() ?? null;
-  if (result?.committed) {
-    bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { coins: v?.coins, boosties: v?.boosties, ownedReactions: v?.ownedReactions } });
-    return { ok: true, coins: Number(v?.coins) || 0 };
-  }
-  return { ok: false, reason: reason ?? 'aborted', coins: Number(v?.coins) || 0 };
-}
-
 // Add one finished game's XP to the equipped Boostie (boostieXp.applyGameXp), atomically
 // on profile/boosties. XP counts games, not the rating. `result` is 'win' | 'loss' |
 // 'draw'; anything else gives nothing. Reaching the top level unlocks the next Boostie
-// in the chain. Returns { ok, gained, levelUp, unlocked, boosties }.
+// in the chain: `unlocked` names it, and the caller asks the coin worker to grant it
+// (economyClient.claimChain). Returns { ok, gained, levelUp, unlocked, boosties }.
 export async function bumpBoostieXp(db, uid, equipped, result) {
   if (!uid) return { ok: false, reason: 'no-uid' };
   let outcome = null;
   const tx = await db.ref(`${PATH.users}/${uid}/profile/boosties`).transaction((current) => {
     outcome = applyGameXp(current, equipped, result);
     if (!outcome.gained) return;   // abort: nothing to add
-    return outcome.boosties;
+    // A chain unlock is granted by the coin worker (economyClient.claimChain); the
+    // rules refuse a client-created Boostie that isn't a starter.
+    const { [outcome.unlocked]: _unlocked, ...boosties } = outcome.boosties;
+    return outcome.unlocked ? boosties : outcome.boosties;
   });
   if (!tx?.committed || !outcome) return { ok: false, reason: 'aborted', gained: 0, levelUp: null, unlocked: null };
   const boosties = normalizeBoosties(tx.snapshot?.val?.() ?? outcome.boosties);
   bus.emit(PROFILE_EVT.CHANGED, { uid, patch: { boosties } });
   return { ok: true, gained: outcome.gained, levelUp: outcome.levelUp, unlocked: outcome.unlocked, boosties };
-}
-
-// Pure: format a Date as a local 'YYYY-MM-DD' string (the daily-reward key).
-export function ymd(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-// Pure: is `prev` ('YYYY-MM-DD') exactly one calendar day before `today`?
-export function isYesterday(prev, today) {
-  if (!prev || !today) return false;
-  const p = new Date(`${prev}T00:00:00`);
-  const t = new Date(`${today}T00:00:00`);
-  if (Number.isNaN(p.getTime()) || Number.isNaN(t.getTime())) return false;
-  return Math.round((t - p) / 86400000) === 1;
-}
-
-// Pure: given the last claim date + current streak, what daily reward (if any)
-// is owed today? Consecutive day → streak+1; any gap or first-ever → 1; same
-// day → no-op. The streak keeps growing for display, but the coin bonus is
-// capped at DAILY_STREAK_CAP days.
-export function computeDailyReward(lastLoginDate, loginStreak, today) {
-  const streak = Math.max(0, Math.floor(Number(loginStreak) || 0));
-  if (lastLoginDate === today) {
-    return { coinsAwarded: 0, newStreak: streak, alreadyClaimedToday: true };
-  }
-  const newStreak = isYesterday(lastLoginDate, today) ? streak + 1 : 1;
-  const cappedDay = Math.min(newStreak, DAILY_STREAK_CAP);
-  const coinsAwarded = DAILY_BASE + DAILY_STREAK_INCREMENT * (cappedDay - 1);
-  return { coinsAwarded, newStreak, alreadyClaimedToday: false };
-}
-
-// Pure: coins owed for the Nth consecutive login day (same curve as
-// computeDailyReward — capped at DAILY_STREAK_CAP days).
-export function dailyCoinsForDay(day) {
-  const d = Math.min(Math.max(1, Math.floor(Number(day) || 1)), DAILY_STREAK_CAP);
-  return DAILY_BASE + DAILY_STREAK_INCREMENT * (d - 1);
-}
-
-// Pure: the 7-day strip shown in the daily-reward popup. The week window
-// rolls with the streak (days 1-7, then 8-14, …); each entry is
-// { n, coins, state: 'got' | 'today' | 'next' } relative to `streak`.
-export function dailyWeek(streak) {
-  const s = Math.max(1, Math.floor(Number(streak) || 1));
-  const start = s - ((s - 1) % 7);
-  return Array.from({ length: 7 }, (_, i) => {
-    const n = start + i;
-    return { n, coins: dailyCoinsForDay(n), state: n < s ? 'got' : n === s ? 'today' : 'next' };
-  });
-}
-
-// Claim today's daily login reward. Idempotent within a day via the
-// same-day guard INSIDE the transaction (two boots can't double-grant).
-// Returns { coinsAwarded, newStreak, alreadyClaimedToday }.
-export async function claimDailyReward(db, uid, today = ymd()) {
-  if (!uid) return { coinsAwarded: 0, newStreak: 0, alreadyClaimedToday: false };
-  let outcome = { coinsAwarded: 0, newStreak: 0, alreadyClaimedToday: false };
-  const result = await profileRef(db, uid).transaction((p) => {
-    if (!p) return; // no profile yet — nothing to claim
-    const res = computeDailyReward(p.lastLoginDate ?? null, p.loginStreak ?? 0, today);
-    outcome = res;
-    if (res.alreadyClaimedToday) return; // abort — no write
-    return {
-      ...p,
-      coins: clampCoins((Number(p.coins) || 0) + res.coinsAwarded),
-      lastLoginDate: today,
-      loginStreak: res.newStreak,
-    };
-  });
-  if (result?.committed) {
-    const v = result.snapshot?.val?.() ?? null;
-    bus.emit(PROFILE_EVT.CHANGED, {
-      uid,
-      patch: { coins: v?.coins, lastLoginDate: v?.lastLoginDate, loginStreak: v?.loginStreak },
-    });
-  }
-  return outcome;
 }
 
 // Pure: derive the result label ('win'/'loss'/'draw') from a finished

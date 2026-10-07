@@ -11,6 +11,7 @@ ALLOWED_ORIGIN = "*"    # tighten to "https://your-app-domain" once known
 # Comma-separated Firebase UIDs allowed to invoke /cron-debug. Leave empty
 # to disable manual sweep triggering.
 CRON_ADMIN_UIDS = ""
+PLAY_PACKAGE_NAME = "app.boost8ef11.twa"   # the Android app id (coin packs, playBilling.js)
 
 # Scheduled handler — runs runCronSweep() on this cadence. Free tier allows
 # unlimited cron triggers. Every 4 hours = 6 sweeps/day, giving ~4h reminder

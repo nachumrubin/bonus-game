@@ -2,6 +2,27 @@
 
 ---
 
+## Coins move server-side (Phase 6a, October 2026)
+
+Coins will be sold for real money, so the client can no longer write them
+(D-coin-economy).
+
+- New coin endpoints in the Cloudflare Worker (`worker/src/economy.js`): `claim-daily`,
+  `achievement`, `buy`, `claim-chain`, and `credit-play` for Play coin packs
+  (`worker/src/playBilling.js`, ready for 6b). Compare-and-set writes, idempotent by
+  request id, audit log in `coinLedger/`.
+- Shared pure rules in `src/game/account/economy.js`; achievement definitions moved to
+  `src/game/account/achievements.js` so the worker can check completion.
+- `src/game/account/economyClient.js` replaces `bumpCoins`, `claimDailyReward` and
+  `purchaseStoreItem` in `main.js`. A failed purchase shows a retry banner.
+- Rules: `coins`, `loginStreak`, `lastLoginDate`, `ownedReactions`, the payout records
+  and new non-starter Boosties are worker-only. New emulator tests in
+  `tests/emulator/coin-rules.test.mjs`.
+- `npm run test:unit` also runs `worker/test/*.test.js`.
+- Fix: `avatarScreens.js` used `achievementSnapshot` without importing it after the move.
+
+---
+
 ## Profile avatar alive (October 2026)
 
 The big avatar on the profile screen (`#sprofile`, the ring around

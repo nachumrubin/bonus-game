@@ -577,3 +577,39 @@ output must not ship.
 - Any new path in the room that must stay version-guarded must keep relying on the `$roomId` rule.
 - The timeout watchdog still uses a transaction, because claims are rare.
 - Unit tests rely on the mock mirroring the version check for `rooms/<id>` updates.
+
+---
+
+## D-coin-economy: Coins are changed only by the Cloudflare Worker (October 2026)
+
+**Decision:** every coin change (daily reward, achievement reward, store purchase, the
+L7 chain unlock, and Play coin packs) is a POST to the existing worker
+(`/economy/*`, `worker/src/economy.js`). The worker verifies the Firebase ID token and
+writes `users/<uid>/profile` with the service account. The database rules refuse
+client writes to `coins`, `loginStreak`, `lastLoginDate`, `ownedReactions`,
+`achievementsPaid`, `econRecent`, `coinOrders` and to new non-starter Boosties, except
+creating the starter values on a new profile.
+
+**Why:** coins are about to be sold for real money (Phase 6b). With client-written
+coins anyone could grant themselves coins or items.
+
+**How:**
+- The rules are pure functions in `src/game/account/economy.js`, imported by both the
+  app and the worker (wrangler bundles `../src`), so they can't drift.
+- Compare-and-set over RTDB REST: read with `X-Firebase-ETag`, write with `if-match`,
+  retry on 412. Concurrent client writes to other profile fields (rating, stats) are
+  never overwritten.
+- Each request carries a `reqId`; the answer is remembered in `profile.econRecent`, so
+  a retry never pays twice. Achievements are paid once (`achievementsPaid`). A Play order
+  is claimed globally in `coinOrders/<orderKey>` before it is credited, so a purchase
+  token can't pay two accounts.
+- Every change is logged to `coinLedger/<uid>/<reqId>`.
+- The daily reward uses the server's date in Asia/Jerusalem, not the device's clock.
+- Guests (anonymous sign-in) get 403: no coins without an account.
+
+**Consequences:**
+- The worker must be deployed before the rules (which deploy on push to `main`).
+- Achievement completion still reads client-written stats: bounded, not cheat-proof.
+- 6b (Play Billing) needs only the client purchase flow; the worker side
+  (`credit-play`, `playBilling.js`) is in place and tested.
+

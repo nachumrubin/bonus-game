@@ -38,12 +38,13 @@ function pemToBinary(pem) {
   return out.buffer;
 }
 
-async function signJwt(serviceAccount) {
+// Exported for other Google APIs (playBilling.js signs with its own scope).
+export async function signJwt(serviceAccount, scope = RTDB_SCOPES) {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT', kid: serviceAccount.private_key_id };
   const payload = {
     iss: serviceAccount.client_email,
-    scope: RTDB_SCOPES,
+    scope,
     aud: TOKEN_URL,
     exp: now + 3600,
     iat: now,
@@ -120,6 +121,41 @@ export async function rtdbPatch(env, path, data) {
     body: JSON.stringify(data),
   });
   if (!r.ok) throw new Error(`RTDB PATCH ${path} failed: ${r.status}`);
+  return r.json();
+}
+
+// Compare-and-set (the coin worker, economy.js): read a node with its ETag, then write
+// it back only if nobody changed it in between (HTTP 412 otherwise).
+export async function rtdbGetWithEtag(env, path) {
+  const token = await getAccessToken(env);
+  const r = await fetch(`${dbBase(env)}/${path}.json`, {
+    headers: { Authorization: `Bearer ${token}`, 'X-Firebase-ETag': 'true' },
+  });
+  if (!r.ok) throw new Error(`RTDB GET ${path} failed: ${r.status}`);
+  return { value: await r.json(), etag: r.headers.get('ETag') };
+}
+
+// → { ok: true } or { ok: false, conflict: true } when the ETag no longer matches.
+export async function rtdbPutIfMatch(env, path, data, etag) {
+  const token = await getAccessToken(env);
+  const r = await fetch(`${dbBase(env)}/${path}.json`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'if-match': etag },
+    body: JSON.stringify(data),
+  });
+  if (r.status === 412) return { ok: false, conflict: true };
+  if (!r.ok) throw new Error(`RTDB PUT ${path} failed: ${r.status}`);
+  return { ok: true };
+}
+
+export async function rtdbPut(env, path, data) {
+  const token = await getAccessToken(env);
+  const r = await fetch(`${dbBase(env)}/${path}.json`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`RTDB PUT ${path} failed: ${r.status}`);
   return r.json();
 }
 
