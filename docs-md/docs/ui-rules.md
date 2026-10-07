@@ -567,6 +567,7 @@ the 3D clip **or** their existing CSS cue in the same frame (never both), after 
 | `#ov-vs-intro` | `vsEnterStart` / `vsEnterEnd` | CSS slide fallback (`.vs-3d-me/.vs-3d-opp` mark 3D sides) |
 | `#av-unlock-ic` | `unlockReveal` (`unlockRevealGrand` for legend_owner) | `.is-pending` ≤450 ms, then `.is-3d` or CSS pop; `.is-grand`; flourish layer `.ach-fx--*` |
 | `#end-av0/1` | `win` / `loss` | + `.end-ach-progress` strip on `AV_PROGRESS_BUMP` (`.end-ach-row`, bump clip on icons) |
+| `#profile-avatar-display` (live 3D Boostie, Oct 2026) | lively 3D + a gesture every 5–9 s | canvas in the `.g-avr` ring while `#sprofile` shows (`mountProfileAvatarLive`); still underneath |
 | `#profile-avatar-display`, `#ps-my-avatar` | `idle` (+ `glance`/`headTilt` every 6–10 s) | legendary uses `idleLegendary` |
 | store tile / `.store-confirm-img` | `select` | legendary uses `legendEntrance` |
 
@@ -809,7 +810,7 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#btn-resume-home`: hidden if `!hasSavedGame`
 - `#btn-share-game`: hidden if `!isAuthed`; on first reveal: plays `menuBtnIn` animation
 - `#home-user-label`: shows `displayName`
-- `#home-avatar-ic`: shows the equipped avatar still; its `.em-avatar-wrap` gets a live 3D canvas (`.b3d-cv`, `.b3d-on` hides the still) while `#sh` shows (homeAvatarLive.js)
+- `#home-avatar-ic`: shows the equipped avatar still; its `.em-avatar-wrap` gets a live 3D canvas (`.b3d-cv`, `.b3d-on` hides the still) while `#sh` shows (homeAvatarLive.js); lively mode (eyes and head move) and a gesture every 5–9 s. The profile ring does the same while `#sprofile` shows
 - `#home-elo-label`: hidden if `!isAuthed`. When visible it is its own hit target (`role="button"`, `aria-label="טבלת דירוגים"`): click/Enter/Space emits `CHAMPS_OPEN` and stops propagation so `#btn-profile-home` does not also open. Avatar and `#home-user-label` still open profile/auth. This is the only home-screen entry to `#ov-champs`.
 - `#home-elo-value`: shows `rating` formatted as locale number
 - `#home-elo-bolt`: tier emoji (🪙/🥈/🥇/💎); set by `ratingTierEmoji()` in `menuScreen.js`

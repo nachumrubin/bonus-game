@@ -1,10 +1,12 @@
-// homeAvatarLive — the player's Boostie, alive in the home screen's top-bar avatar
-// (.em-avatar-wrap around #home-avatar-ic). Same live 3D as the scoreboard (one slot of
+// homeAvatarLive — the player's Boostie, alive on a screen: the home top-bar avatar
+// (.em-avatar-wrap around #home-avatar-ic) and the profile picture (.g-avr around
+// #profile-avatar-display). Same live 3D as the scoreboard (one slot of
 // scoreboardLive), in lively mode: the eyes keep looking around and the head follows,
 // and every few seconds it does a gesture (yawn, stare, its signature move…). The 3D
-// runs only while the home screen (#sh) is showing, and is torn down (WebGL freed) as
+// runs only while its screen (#sh, #sprofile) is showing, and is torn down (WebGL freed) as
 // soon as it hides; the still <img> underneath is the fallback and what every other
-// screen shows.
+// screen shows. The host is the wrapper, not the element the screen re-renders, so the
+// canvas survives re-renders.
 //
 // The avatar is only 34px here, so the gestures are frequent on purpose. They are idle
 // moves on the player's own avatar on their own screen, not reactions sent to anyone
@@ -12,13 +14,16 @@
 
 import { createScoreboardLive, canUseLive3d } from './scoreboardLive.js';
 
-const GESTURE_FIRST_MS = 1200;                // a hello soon after the home screen shows
+const GESTURE_FIRST_MS = 1200;                // a hello soon after the screen shows
 const GESTURE_EVERY_MS = [5000, 9000];         // then every few seconds (random in range)
 // Clips every Boostie has; a model without one is skipped (play() returns false).
 export const HOME_GESTURES = Object.freeze(['yawn', 'signature', 'stare', 'wow', 'wink', 'laugh']);
 const LOOK = { lively: true, yaw: 0.3 };       // nearly facing the viewer, so the eyes read
 
-export function mountHomeAvatarLive({
+// One screen's live avatar. screenId: the screen whose `hidden` class gates it; iconId: the
+// element the screen fills with the still; hostSelector: its wrapper that gets the canvas.
+export function mountAvatarLive({
+  screenId, iconId, hostSelector,
   doc = globalThis.document,
   getAvatar = () => null,                     // the equipped avatar value ('zapi:4' …) or null
   prefersReducedMotion = () => false,
@@ -26,9 +31,9 @@ export function mountHomeAvatarLive({
   createLive = (opts) => createScoreboardLive(opts),
   random = Math.random,
 } = {}) {
-  const screen = doc?.getElementById?.('sh');
-  const icon = doc?.getElementById?.('home-avatar-ic');
-  const host = icon?.closest?.('.em-avatar-wrap') ?? null;
+  const screen = doc?.getElementById?.(screenId);
+  const icon = doc?.getElementById?.(iconId);
+  const host = icon?.closest?.(hostSelector) ?? null;
   if (!enabled || !screen || !host) return { refresh() {}, unmount() {} };
 
   let live = null;
@@ -75,7 +80,7 @@ export function mountHomeAvatarLive({
     if (fresh) scheduleGesture(GESTURE_FIRST_MS);
   }
 
-  // The home screen shows / hides by its `hidden` class; the menu rewrites the icon when
+  // The screen shows / hides by its `hidden` class; the screen rewrites the icon when
   // the avatar changes (equip, sign-in, sign-out).
   const Observer = win.MutationObserver;
   const observers = [];
@@ -98,3 +103,9 @@ export function mountHomeAvatarLive({
     },
   };
 }
+
+export const mountHomeAvatarLive = (opts = {}) =>
+  mountAvatarLive({ screenId: 'sh', iconId: 'home-avatar-ic', hostSelector: '.em-avatar-wrap', ...opts });
+
+export const mountProfileAvatarLive = (opts = {}) =>
+  mountAvatarLive({ screenId: 'sprofile', iconId: 'profile-avatar-display', hostSelector: '.g-avr', ...opts });

@@ -2,6 +2,17 @@
 
 ---
 
+## Profile avatar alive (October 2026)
+
+The big avatar on the profile screen (`#sprofile`, the ring around
+`#profile-avatar-display`) is now the same live 3D as the home top bar: lively mode and
+a gesture every 5–9 s, only while the profile screen shows. `homeAvatarLive.js` now has
+`mountAvatarLive({ screenId, iconId, hostSelector, … })`, with `mountHomeAvatarLive` and
+`mountProfileAvatarLive` as presets. The canvas sits in the `.g-avr` ring, not in the
+element `profileScreen.js` re-renders. CSS in `screens-glass.css`.
+
+---
+
 ## Home avatar: bigger, clearer gestures (October 2026)
 
 At 34px the home avatar looked frozen: the scoreboard's live code sleeps between rare

@@ -48,6 +48,7 @@
   setup difficulty buttons back to the original bot heads. Oct 2026.
 - [x] Home avatar gestures made obvious: lively mode (eyes look around, head follows,
   sway) and a gesture every 5–9 s (yawn, signature, stare, wow, wink, laugh). Oct 2026.
+- [x] Profile screen avatar is live 3D too (`mountProfileAvatarLive`). Oct 2026.
 - [ ] Home avatar follow-up: check it on a real phone (an extra WebGL context on home,
   drawn every frame in lively mode: battery and heat).
 - [ ] Phase 5 follow-up: try the reactions in a real online game between two phones (both

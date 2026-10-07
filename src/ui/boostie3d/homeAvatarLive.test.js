@@ -62,3 +62,21 @@ test('home avatar: a gesture the model lacks is skipped for the next one', () =>
   doc.timers.at(-1).fn();
   assert.deepEqual(played, ['signature']);
 });
+
+test('profile avatar: the same live 3D on #sprofile, in the ring around #profile-avatar-display', async () => {
+  const { mountProfileAvatarLive } = await import('./homeAvatarLive.js');
+  const ring = { id: 'ring' };
+  const asked = [];
+  const doc = {
+    hidden: false,
+    getElementById: (id) => { asked.push(id); return { sprofile: { classList: { contains: () => false } },
+      'profile-avatar-display': { closest: (sel) => (sel === '.g-avr' ? ring : null) } }[id] ?? null; },
+    addEventListener() {}, removeEventListener() {},
+    defaultView: { setTimeout: () => 1, clearTimeout() {} },
+  };
+  let host = null;
+  mountProfileAvatarLive({ doc, enabled: true, getAvatar: () => 'bubo:5',
+    createLive: ({ hosts }) => { host = hosts()[0]; return { sync() {}, dispose() {}, play: () => true }; } }).unmount();
+  assert.deepEqual(asked, ['sprofile', 'profile-avatar-display']);
+  assert.equal(host, ring);
+});
