@@ -96,10 +96,18 @@ function alignEyes(eyes, root) {
     p.e.rest = pq.clone().invert().multiply(turn).multiply(pq).multiply(p.e.rest);
   });
 }
+// Both eyes look along the SAME direction (from the middle between them to the target), not
+// each at the target: with eyes set wide apart on the sides of the head (the ram, the
+// axolotl) and the camera close, aiming each eye at the camera made them converge hard and
+// look cross-eyed.
 function aimEyes(eyes, tgt) {
+  const mid = new THREE.Vector3();
+  eyes.forEach((eye) => mid.add(eye.bone.getWorldPosition(new THREE.Vector3())));
+  mid.multiplyScalar(1 / eyes.length);
+  const gaze = tgt.clone().sub(mid).normalize();
   const qs = eyes.map((eye) => {
     const inv = eye.bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
-    const dir = tgt.clone().sub(eye.bone.getWorldPosition(new THREE.Vector3())).normalize().applyQuaternion(inv);
+    const dir = gaze.clone().applyQuaternion(inv);
     return new THREE.Quaternion().setFromUnitVectors(Y_AXIS.clone().applyQuaternion(eye.rest), dir);
   });
   const most = Math.max(...qs.map((q) => 2 * Math.acos(Math.min(1, Math.abs(q.w)))));
