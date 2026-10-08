@@ -112,9 +112,9 @@ export function avatarMarkup(value, { fallback = '👤', className = 'av-img' } 
 
 // Same, but writes into an existing element (img via innerHTML, else emoji
 // via textContent).
-export function setAvatarEl(el, value, { fallback = '👤', className = 'av-img' } = {}) {
+export function setAvatarEl(el, value, { fallback = '👤', className = 'av-img', kind = 'bust' } = {}) {
   if (!el) return;
-  const src = avatarIconSrc(value)
+  const src = avatarIconSrc(value, { kind })
     ?? (avatarText(value, fallback) === '👤' ? ANON_AVATAR_SRC : null);
   if (src) {
     // Callers re-render every frame of state (e.g. gameScreen.renderPlayerIdentity).

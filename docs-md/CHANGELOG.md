@@ -2,6 +2,19 @@
 
 ---
 
+## Game scoreboard: whole Boostie, still bots with reactions (October 2026)
+
+- The scoreboard avatars show the whole figure (legs, tail) instead of the bust: the
+  `full` stills, and live 3D framed on the whole body (`createScoreboard3d({ full })`,
+  `look: { full: true }` from `gameScreen.js`). `setAvatarEl` takes a `kind`. The slot is
+  wider (`--av-w` 84 px, 72 px on narrow phones). Home, profile and store keep the bust.
+- Bots no longer load their 3D models on the game screen (they had no animation). They stay
+  stills, and the your-turn / good-move / boost cues play on the still through
+  `avatarMotion/stillMotion.js` (hop, squash and a bright jolt via Web Animations), after
+  the live 3D and pose-atlas paths. Skipped under reduced motion.
+
+---
+
 ## Profile first paint lost (October 2026)
 
 - Stats, name and coins only appeared after an avatar switch. The profile watch now starts

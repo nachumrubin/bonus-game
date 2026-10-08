@@ -27,6 +27,7 @@
 import { $, on, setText, setClass, bonusOverlayOpen, flashAnimation } from '../domHelpers.js';
 import { setAvatarEl, isBotAvatar, BOT_AVATAR_BY_LEVEL } from './avatarScreens.js';
 import { playOnHost, canPlayNowOnHost, preloadFor } from '../avatarMotion/spritePlayer.js';
+import { playStillReaction } from '../avatarMotion/stillMotion.js';
 import { tierFromPath } from '../avatarMotion/poseClips.js';
 import { createScoreboardLive } from '../boostie3d/scoreboardLive.js';
 import { wireGameMenu } from './gameMenu.js';
@@ -93,6 +94,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   const live3d = createScoreboardLive({
     hosts: () => [lookup(root, 'is-av1'), lookup(root, 'is-av2')],
     prefersReducedMotion,
+    look: { full: true },      // the whole Boostie, legs included, not the bust
   });
   // Last word|points|validity shown by the live word-points pill (renderStatus).
   let lastPreviewKey = '';
@@ -944,8 +946,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     // actual computer opponent.
     const rawP1Avatar = avatarFor(p1);
     const p1Avatar = isBotAvatar(rawP1Avatar) && p1?.displayName !== COMPUTER_NAME_HE ? null : rawP1Avatar;
-    setAvatarEl($('#is-av1', root), avatarFor(p0) ?? null, { fallback: '👑' });
-    setAvatarEl($('#is-av2', root), p1Avatar ?? null, { fallback: '👤' });
+    setAvatarEl($('#is-av1', root), avatarFor(p0) ?? null, { fallback: '👑', kind: 'full' });
+    setAvatarEl($('#is-av2', root), p1Avatar ?? null, { fallback: '👤', kind: 'full' });
     // Warm the pose atlases so event cues (your turn, boost) can animate the
     // avatar in the same frame they fire. No-op once cached.
     for (const id of ['#is-av1', '#is-av2']) {
@@ -953,7 +955,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       if (src) preloadFor(src).catch(() => {});
     }
     renderIdentityTags([p0, p1], [avatarFor(p0), p1Avatar]);
-    live3d.sync([avatarFor(p0) ?? null, p1Avatar ?? null]);
+    // Bots stay stills: their 3D models have no animation, the still reactions look better.
+    const liveAvatar = (v) => (isBotAvatar(v) ? null : v ?? null);
+    live3d.sync([liveAvatar(avatarFor(p0)), liveAvatar(p1Avatar)]);
   }
 
   // Scoreboard tags, drawn by CSS from data attributes so they survive the
@@ -1651,7 +1655,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         boostSquareCues.get(bonusIdx)?.clear();
         boostSquareCues.set(bonusIdx, { slot, clear: flashBonusSquare(root, bonusIdx, { electric: !reducedMotion }) });
       },
-      yourTurnCue:        ({ slot }) => emphasizeYourTurn(root, slot, live3d),
+      yourTurnCue:        ({ slot }) => emphasizeYourTurn(root, slot, live3d, prefersReducedMotion),
       // Event-driven avatar reactions: the live 3D clip, else the pose atlas;
       // silently skipped when the avatar can't animate — they are secondary to
       // the board/score cues.
@@ -1659,12 +1663,14 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         if (live3d.play(slot, 'boost')) return;
         const host = lookup(root, `is-av${slot + 1}`);
         if (canPlayNowOnHost(host, 'boostReact')) playOnHost(host, 'boostReact');
+        else if (!prefersReducedMotion()) playStillReaction(host, 'boost');
       },
       avatarGoodMove:     ({ slot, delayMs = 0 }) => {
         setTimeout(() => {
           if (disposed || live3d.play(slot, 'good')) return;
           const host = lookup(root, `is-av${slot + 1}`);
           if (canPlayNowOnHost(host, 'goodMove')) playOnHost(host, 'goodMove');
+          else if (!prefersReducedMotion()) playStillReaction(host, 'good');
         }, delayMs);
       },
       playerGlowPulse: () => {
@@ -2562,11 +2568,13 @@ function flashBonusSquare(root, bonusIdx, { electric = true } = {}) {
 // can play its turn clip (live 3D Boostie, else the pose atlas), that IS the cue
 // and the card only gets a steady outline; otherwise (reduced motion, stills
 // only) the card's pulse + halo run as before.
-function emphasizeYourTurn(root, slot, live3d) {
+function emphasizeYourTurn(root, slot, live3d, prefersReducedMotion = () => false) {
   const avHost = lookup(root, `is-av${slot + 1}`);
   let avatarLeads = !!live3d?.play(slot, 'turn');
   if (!avatarLeads && canPlayNowOnHost(avHost, 'yourTurn')) {
     playOnHost(avHost, 'yourTurn');
+    avatarLeads = true;
+  } else if (!avatarLeads && !prefersReducedMotion() && playStillReaction(avHost, 'turn')) {
     avatarLeads = true;
   }
   for (const id of [`sb${slot + 1}`, `is-sb${slot + 1}`]) {
