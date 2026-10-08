@@ -2,6 +2,15 @@
 
 ---
 
+## Profile first paint lost (October 2026)
+
+- Stats, name and coins only appeared after an avatar switch. The profile watch now starts
+  before the screens subscribe to `PROFILE_RENDER` / `MENU_REFRESH` etc., so the first
+  snapshot's events were dropped, and only the next write re-fired the watch. The emits are one
+  function, `emitProfileRenders`, replayed via `__spine.replayProfile()` once all screens are mounted.
+
+---
+
 ## Profile data never rendered: `economy` shadowing (October 2026)
 
 - The profile watch callback in `main.js` declared `const economy` (the wallet) below
