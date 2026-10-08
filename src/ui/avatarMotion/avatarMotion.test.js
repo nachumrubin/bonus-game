@@ -162,3 +162,16 @@ test('progressBumps lists moved, unfinished achievements closest-to-done first',
   assert.ok(!bumps.some(b => b.achievement.id === 'winner'), 'completed achievements go to the unlock overlay');
   assert.deepEqual(progressBumps(next, next), []);
 });
+
+import { playStillReaction, STILL_CLIPS } from './stillMotion.js';
+
+test('playStillReaction animates the host img, false without one or for an unknown clip', () => {
+  const calls = [];
+  const img = { animate: (keys, opts) => { calls.push({ keys, opts }); return {}; }, getAnimations: () => [] };
+  const host = { querySelector: () => img };
+  assert.equal(playStillReaction(host, 'good'), true);
+  assert.equal(calls[0].opts.duration, STILL_CLIPS.good.duration);
+  assert.equal(playStillReaction(host, 'nope'), false);
+  assert.equal(playStillReaction({ querySelector: () => null }, 'turn'), false);
+  assert.equal(playStillReaction({ querySelector: () => ({}) }, 'turn'), false);
+});

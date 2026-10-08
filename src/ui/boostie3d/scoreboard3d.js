@@ -28,8 +28,9 @@ function finderBone(root, name) {
 // hosts: the slot elements (the scoreboard's two, or the store preview's one). onFallback(reason) when 3D gives up for this game.
 // slowFrameMs: median frame time above which it gives up (Infinity turns the check off).
 // lively: keep the eyes and head moving between clips (boostieLive LIVELY; the home top
-// bar). yaw: how far the avatar turns from the viewer (radians).
-export function createScoreboard3d({ hosts, onFallback = () => {}, slowFrameMs = SLOW_FRAME_MS, lively = false, yaw = YAW }) {
+// bar). yaw: how far the avatar turns from the viewer (radians). full: frame the whole
+// body (the game screen) instead of the head-and-chest bust.
+export function createScoreboard3d({ hosts, onFallback = () => {}, slowFrameMs = SLOW_FRAME_MS, lively = false, yaw = YAW, full = false }) {
   const doc = hosts[0].ownerDocument;
   const win = doc.defaultView;
   const glCanvas = doc.createElement('canvas');
@@ -96,7 +97,12 @@ export function createScoreboard3d({ hosts, onFallback = () => {}, slowFrameMs =
 
   function frameBust(av) {
     let { target, frame } = av.bust ?? {};
-    if (!target) {                        // no head bone: a fixed share of the height
+    if (full) {                           // the whole figure, legs and tail included
+      const size = av.box.getSize(new THREE.Vector3());
+      const across = size.x * Math.cos(yaw) + size.z * Math.sin(yaw);
+      target = av.box.getCenter(new THREE.Vector3());
+      frame = Math.max(size.y, across) * 1.1;
+    } else if (!target) {                        // no head bone: a fixed share of the height
       const size = av.box.getSize(new THREE.Vector3());
       const biped = size.y > size.z;
       target = new THREE.Vector3(0, av.box.min.y + size.y * (biped ? 0.72 : 0.68), biped ? 0 : av.box.max.z * 0.5);
