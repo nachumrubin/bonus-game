@@ -8,10 +8,18 @@
   `full` stills, and live 3D framed on the whole body (`createScoreboard3d({ full })`,
   `look: { full: true }` from `gameScreen.js`). `setAvatarEl` takes a `kind`. The slot is
   wider (`--av-w` 84 px, 72 px on narrow phones). Home, profile and store keep the bust.
-- Bots no longer load their 3D models on the game screen (they had no animation). They stay
-  stills, and the your-turn / good-move / boost cues play on the still through
-  `avatarMotion/stillMotion.js` (hop, squash and a bright jolt via Web Animations), after
-  the live 3D and pose-atlas paths. Skipped under reduced motion.
+- Bots are now the new ChatGPT turnaround art (front view of each sheet, kept in
+  `Blender designs/boosties/sources/bot_<lvl>_sheet.png`), cut out and saved by
+  `scripts/build-bot-stills.py` as `bot_<lvl>_{full,bust,blank}.webp`. `_blank` is the whole
+  bot with the screen face removed. The old 3D-render stills are replaced everywhere
+  (VS screen, lists), the `.glb` models stay but the game screen no longer loads them.
+- On the game scoreboard a bot shows the blank still and `ui/boostie3d/botFace.js` draws its
+  face over the screen as an SVG: eight expressions (rest, blink, happy, laugh, wow, stare,
+  yawn, wink), each bot keeping its personality at rest (Easy happy arcs + grin, Medium round
+  eyes + small smile, Hard angry eyes + frown; Hard never goes soft). Your-turn blinks, a good
+  move smiles, a boost goes wide-eyed; an idle blink every few seconds (not under reduced motion).
+  Only the face changes, the body stays still. `stillMotion.js` (body hop) remains only as the
+  fallback for other avatars with no 3D and no pose atlas.
 
 ---
 

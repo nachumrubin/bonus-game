@@ -3562,6 +3562,19 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
   filter: drop-shadow(0 4px 6px rgba(0,0,0,.55));
 }
 #sg .info-strip .is-pcav.b3d-on .av-img { visibility: hidden; }
+/* A bot's screen face (src/ui/boostie3d/botFace.js): drawn over the blank-screen still,
+   same box as the still; the glass rectangle is placed by inline percentages. */
+#sg .info-strip .is-pcav .bot-face {
+  position: absolute; left: 50%; bottom: 4px;
+  width: var(--av-w); height: var(--av-w);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+#sg .info-strip .is-pcav .bot-face-screen {
+  position: absolute; display: block;
+  filter: drop-shadow(0 0 2px currentColor);
+}
+#sg .info-strip .is-pcav .bot-face-screen svg { display: block; width: 100%; height: 100%; }
 #sg .info-strip .is-pcard.act-cell .is-pcav .b3d-cv {
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c) 55%, transparent)) drop-shadow(0 4px 6px rgba(0,0,0,.5));
 }

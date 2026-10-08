@@ -61,7 +61,8 @@ const BOT_LEVEL_SRC = Object.freeze({
   bot_hard: 'assets/avatars/bots/bot_hard_{kind}.webp',
 });
 export function botStillSrc(id, kind = 'bust') {
-  return BOT_LEVEL_SRC[id].replace('{kind}', kind === 'full' ? 'full' : 'bust');
+  // 'blank' = the whole bot with an empty screen (the game scoreboard draws the face, botFace.js)
+  return BOT_LEVEL_SRC[id].replace('{kind}', kind === 'full' || kind === 'blank' ? kind : 'bust');
 }
 export function botModelSrc(id) {   // the 3D model (Phase 3); the generic 'bot' has none
   return id !== 'bot' && Object.hasOwn(BOT_LEVEL_SRC, id) ? `assets/boosties/${id}.glb` : null;
