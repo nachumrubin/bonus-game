@@ -101,10 +101,22 @@
     "users": {
       "$uid": {
         ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid",
         "profile": {
+          "coins": {
+            ".write": "$uid === auth.uid && !data.exists() && newData.val() === 150"
+          },
+          "loginStreak": {
+            ".write": "$uid === auth.uid && !data.exists() && newData.val() === 0"
+          },
+          "lastLoginDate": { ".write": "$uid === auth.uid && !data.exists() && !newData.exists()" },
+          "ownedReactions": { ".write": "$uid === auth.uid && !data.exists() && !newData.exists()" },
+          "achievementsPaid": { ".write": false },
+          "econRecent": { ".write": false },
+          "coinOrders": { ".write": false },
           "boosties": {
+            ".write": "$uid === auth.uid",
             "$boostieId": {
+              ".validate": "data.exists() || $boostieId === 'zapi' || $boostieId === 'bubo' || $boostieId === 'rocco' || $boostieId === 'lumi'",
               "xp": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && ((!data.exists() && newData.val() <= 20) || (data.exists() && newData.val() >= data.val() && newData.val() <= data.val() + 20))"
               },
@@ -116,17 +128,32 @@
           "stats": {
             ".read": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true)",
             ".write": "auth != null && ($uid === auth.uid || root.child('admins').child(auth.uid).val() === true)"
+          },
+          "$other": {
+            ".write": "$uid === auth.uid"
           }
         },
         "activeRoom": {
           ".write": "$uid === auth.uid || (newData.exists() && (auth.uid === root.child('rooms').child(newData.val()).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child(newData.val()).child('players').child('1').child('uid').val()) && ($uid === root.child('rooms').child(newData.val()).child('players').child('0').child('uid').val() || $uid === root.child('rooms').child(newData.val()).child('players').child('1').child('uid').val()))"
         },
         "asyncRooms": {
+          ".write": "$uid === auth.uid",
           "$roomId": {
             ".write": "auth != null && ((!newData.exists() && (auth.uid === $uid || auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())) || (newData.exists() && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val()) && ($uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || $uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())))"
           }
+        },
+        "$other": {
+          ".write": "$uid === auth.uid"
         }
       }
+    },
+    "coinLedger": {
+      "$uid": {
+        ".read": "$uid === auth.uid"
+      }
+    },
+    "coinOrders": {
+      ".read": false
     },
     "userIds": {
       ".read": true,

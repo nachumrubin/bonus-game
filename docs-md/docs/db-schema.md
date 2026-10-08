@@ -242,21 +242,25 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
   // equippedAvatar, rating, stats, createdAt, and the economy fields below).
   displayName?: string,
   avatar?: string,           // legacy; equippedAvatar is the current field
-  equippedAvatar?: string,   // Boostie id ('zapi', 'bubo'); older ids (store/emoji) render as 'zapi'
-  boosties?: {              // owned Boosties (D-boostie-xp); every starter (zapi, bubo) is always owned
+  equippedAvatar?: string,   // Boostie id ('zapi', 'bubo', 'rocco', 'lumi', 'drako'); older ids (store/emoji) render as 'zapi'
+  boosties?: {              // owned Boosties (D-boostie-xp); every starter (zapi, bubo, rocco, lumi) is always owned; drako is bought (worker)
     [boostieId: string]: { xp: number, level: number },  // rules: xp only grows (≤ +20/write), level 1–7 only grows
   },
-  ownedReactions?: string[], // bought reaction ids ('wink', 'yawn'); the free set is implicit
+  ownedReactions?: string[], // bought reaction ids ('wink', 'yawn'); the free set is implicit. Worker-only (D-coin-economy)
   stats?: {
     gamesPlayed: number,
     gamesWon: number,
     // other stats fields: Unknown / needs verification
   },
-  // Avatar-store economy (added June 2026; see profileService.js). Profile
-  // ROOT fields, NOT under stats. Client-authoritative for v1.
+  // Coin economy (economy.js). Profile ROOT fields, NOT under stats. Since Oct 2026
+  // (D-coin-economy) only the coin worker writes them; the rules let a client create
+  // coins = 150 and loginStreak = 0 on a new profile and nothing else.
   coins?: number,            // spendable balance (starter grant seeds 150)
-  lastLoginDate?: string,    // 'YYYY-MM-DD' of last claimed daily reward
+  lastLoginDate?: string,    // 'YYYY-MM-DD' (Asia/Jerusalem, server time) of the last daily reward
   loginStreak?: number,      // consecutive-day login streak
+  achievementsPaid?: { [achievementId: string]: number },  // ts the coin reward was paid (once each)
+  econRecent?: { [reqId: string]: { result: object, ts: number } },  // last 30 worker requests (idempotency)
+  coinOrders?: { [orderKey: string]: { productId: string, coins: number, ts: number } },  // credited Play orders
   activeRoom?: string,       // roomId of current live game (or null)
   asyncRooms?: {             // per-user index of async games
     [roomId: string]: {
@@ -267,6 +271,23 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
   }
 }
 ```
+
+---
+
+## `/coinLedger/{uid}/{reqId}`
+
+Audit log of every coin change, written by the coin worker (service account) after
+the profile write: `{ delta: number, coins: number, ts: number, why: string }` (`why` is
+the action, e.g. `claim-daily`, `buy`, `play:coins_500`). Owner read only, no client
+writes. Best effort: a failed ledger write doesn't undo the coin change.
+
+---
+
+## `/coinOrders/{orderKey}`
+
+`{ uid, productId, ts }`: which account a Google Play order was credited to. Created
+once by the worker before crediting, so one purchase token can never pay two accounts.
+No client read or write. `orderKey` is the Play order id with `.#$/[]` replaced by `_`.
 
 ---
 

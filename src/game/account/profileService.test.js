@@ -10,9 +10,9 @@ import {
   lookupUidByUsername, lookupUidByUserId,
   bumpStats, EMPTY_STATS, RATING_START, DEFAULT_AVATAR,
   STARTER_GRANT, DAILY_BASE, DAILY_STREAK_INCREMENT, DAILY_STREAK_CAP,
-  normalizeProfileEconomy, bumpCoins,
-  computeDailyReward, dailyCoinsForDay, dailyWeek, claimDailyReward, isYesterday, ymd,
-  MAX_COIN_BALANCE, clampCoins, clampCoinsBalance, bumpBoostieXp, purchaseStoreItem,
+  normalizeProfileEconomy,
+  computeDailyReward, dailyCoinsForDay, dailyWeek, isYesterday, ymd,
+  MAX_COIN_BALANCE, clampCoins, bumpBoostieXp,
 } from './profileService.js';
 import { xpForGame, LEVEL_XP } from './boostieXp.js';
 
@@ -342,47 +342,6 @@ test('normalizeProfileEconomy: safe defaults for a legacy profile', () => {
   assert.equal(normalizeProfileEconomy({ coins: -5 }).coins, 0);
 });
 
-test('bumpCoins: adds and subtracts atomically, flooring at zero', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: 100 });
-  assert.equal(await bumpCoins(db, 'u1', 50), 150);
-  assert.equal(await bumpCoins(db, 'u1', -40), 110);
-  assert.equal(await bumpCoins(db, 'u1', -999), 0); // floor
-});
-
-test('bumpCoins: clamps the balance at MAX_COIN_BALANCE', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: MAX_COIN_BALANCE - 100 });
-  assert.equal(await bumpCoins(db, 'u1', 5000), MAX_COIN_BALANCE); // capped, not 104,900
-});
-
-test('bumpCoins: suppresses synchronous re-entry but allows sequential payouts', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: 0 });
-  // A db whose transaction synchronously re-invokes bumpCoins for the same uid
-  // (mimicking a watcher re-fire). The re-entrant call must be a no-op; without
-  // the guard this recurses until the stack overflows.
-  let reentered = 0;
-  const realRef = db.ref.bind(db);
-  db.ref = (path) => {
-    const ref = realRef(path);
-    if (path === 'users/u1/profile/coins') {
-      const realTx = ref.transaction.bind(ref);
-      ref.transaction = (fn) => {
-        if (reentered < 1) { reentered++; bumpCoins(db, 'u1', 5); } // synchronous re-entry
-        return realTx(fn);
-      };
-    }
-    return ref;
-  };
-  const balance = await bumpCoins(db, 'u1', 10);
-  assert.equal(reentered, 1, 'the inner call was attempted');
-  assert.equal(balance, 10, 'only the outer +10 applied; re-entrant +5 suppressed');
-  // Guard is released after the transaction, so a later payout still works.
-  db.ref = realRef;
-  assert.equal(await bumpCoins(db, 'u1', 7), 17);
-});
-
 test('clampCoins: coerces to an in-range integer balance', () => {
   assert.equal(clampCoins(1185490), MAX_COIN_BALANCE);
   assert.equal(clampCoins(-5), 0);
@@ -393,17 +352,6 @@ test('clampCoins: coerces to an in-range integer balance', () => {
 
 test('normalizeProfileEconomy: clamps a corrupted (over-cap) balance', () => {
   assert.equal(normalizeProfileEconomy({ coins: 1185490 }).coins, MAX_COIN_BALANCE);
-});
-
-test('clampCoinsBalance: pulls an over-cap balance down to the cap; no-op otherwise', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: 1185490 });
-  assert.equal(await clampCoinsBalance(db, 'u1'), MAX_COIN_BALANCE);
-  assert.equal((await readProfile(db, 'u1')).coins, MAX_COIN_BALANCE);
-  // Already at/under cap → transaction aborts, balance untouched.
-  await updateProfile(db, 'u2', { coins: 500 });
-  assert.equal(await clampCoinsBalance(db, 'u2'), null); // not committed
-  assert.equal((await readProfile(db, 'u2')).coins, 500);
 });
 
 test('computeDailyReward: first claim, consecutive growth, cap, gap reset, same-day no-op', () => {
@@ -435,29 +383,6 @@ test('ymd: zero-pads month and day', () => {
   assert.equal(ymd(new Date(2026, 0, 5)), '2026-01-05');
 });
 
-test('claimDailyReward: grants once per day, idempotent on a repeat boot', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: 0, lastLoginDate: null, loginStreak: 0 });
-  const first = await claimDailyReward(db, 'u1', '2026-06-22');
-  assert.equal(first.coinsAwarded, DAILY_BASE);
-  assert.equal(first.newStreak, 1);
-  let p = await readProfile(db, 'u1');
-  assert.equal(p.coins, DAILY_BASE);
-  assert.equal(p.lastLoginDate, '2026-06-22');
-
-  // Second call same day must not double-grant.
-  const again = await claimDailyReward(db, 'u1', '2026-06-22');
-  assert.equal(again.alreadyClaimedToday, true);
-  assert.equal(again.coinsAwarded, 0);
-  p = await readProfile(db, 'u1');
-  assert.equal(p.coins, DAILY_BASE); // unchanged
-
-  // Next day → streak 2, larger reward.
-  const day2 = await claimDailyReward(db, 'u1', '2026-06-23');
-  assert.equal(day2.newStreak, 2);
-  assert.equal(day2.coinsAwarded, DAILY_BASE + DAILY_STREAK_INCREMENT);
-});
-
 test('dailyCoinsForDay: same curve as computeDailyReward, capped', () => {
   assert.equal(dailyCoinsForDay(1), DAILY_BASE);
   assert.equal(dailyCoinsForDay(4), DAILY_BASE + DAILY_STREAK_INCREMENT * 3);
@@ -485,7 +410,7 @@ test('dailyWeek: the window rolls after day 7', () => {
 
 test('buildInitialProfile: owns every starter Boostie at level 1, no reactions bought', () => {
   const p = buildInitialProfile({ displayName: 'x', userId: '1' });
-  assert.deepEqual(p.boosties, { zapi: { xp: 0, level: 1 }, bubo: { xp: 0, level: 1 } });
+  assert.deepEqual(p.boosties, { zapi: { xp: 0, level: 1 }, bubo: { xp: 0, level: 1 }, rocco: { xp: 0, level: 1 }, lumi: { xp: 0, level: 1 } });
   assert.deepEqual(p.ownedReactions, []);
 });
 
@@ -528,28 +453,3 @@ test('DEFAULT_AVATAR is the starter Boostie', () => {
   assert.equal(DEFAULT_AVATAR, 'zapi');
 });
 
-test('purchaseStoreItem: buys reactions, price from the catalog', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: 600, boosties: { zapi: { xp: 60, level: 2 } } });
-  const r = await purchaseStoreItem(db, 'u1', 'reaction:wink');
-  assert.equal(r.ok, true);
-  assert.equal(r.coins, 350);
-  const r2 = await purchaseStoreItem(db, 'u1', 'reaction:yawn');
-  assert.equal(r2.ok, true);
-  assert.equal(r2.coins, 100);
-  const p = await readProfile(db, 'u1');
-  assert.deepEqual(p.boosties.zapi, { xp: 60, level: 2 });
-  assert.deepEqual(p.ownedReactions, ['wink', 'yawn']);
-});
-
-test('purchaseStoreItem: refuses owned, unaffordable, free and unknown items without charging', async () => {
-  const db = makeMockDb();
-  await updateProfile(db, 'u1', { coins: 100, ownedReactions: ['yawn'] });
-  assert.equal((await purchaseStoreItem(db, 'u1', 'reaction:yawn')).reason, 'already-owned');
-  assert.equal((await purchaseStoreItem(db, 'u1', 'reaction:wink')).reason, 'insufficient');
-  assert.equal((await purchaseStoreItem(db, 'u1', 'boostie:zapi')).reason, 'unknown-item'); // starters aren't sold
-  assert.equal((await purchaseStoreItem(db, 'u1', 'boostie:bubo')).reason, 'unknown-item');
-  assert.equal((await purchaseStoreItem(db, 'u1', 'reaction:laugh')).reason, 'unknown-item');
-  assert.equal((await purchaseStoreItem(db, 'u1', 'rare_3')).reason, 'unknown-item');
-  assert.equal((await readProfile(db, 'u1')).coins, 100);
-});

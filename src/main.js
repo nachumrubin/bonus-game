@@ -48,6 +48,7 @@ import * as sessionPersistence from './game/online/sessionPersistence.js';
 import { loadLocalGame, clearLocalGame, hasLocalSavedGame } from './game/sessions/localSaveService.js';
 import { createTimeoutWatchdog } from './game/online/timeoutWatchdog.js';
 import * as profileService from './game/account/profileService.js';
+import { createEconomyClient } from './game/account/economyClient.js';
 import { profileAvatarValue, normalizeBoosties } from './game/account/boostieXp.js';
 import { isBoostieId, parseStoreItem, boostieName, boostieAvatarValue, DEFAULT_BOOSTIE } from './game/account/boostieCatalog.js';
 import * as friendsService from './game/account/friendsService.js';
@@ -334,6 +335,7 @@ let botWordsLoadPromise = null;
 let evolutionScreen = null;   // ui/boostie3d/evolutionScreen.js, mounted with the screens
 let homeAvatarLive = null;    // ui/boostie3d/homeAvatarLive.js — the live Boostie in the home top bar
 let profileAvatarLive = null; // … and on the profile screen
+let economy = null;           // game/account/economyClient.js — the coin worker
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCE-Im2HzYhJVlRd07uIHqcsCGTQQhYgDo',
   authDomain: 'boost-8ef11.firebaseapp.com',
@@ -422,6 +424,11 @@ async function boot() {
   // Notification service boot is idempotent.
   const cfg = globalThis.APP_CONFIG ?? {};
   firebaseClient.configure({ firebaseConfig: cfg.firebaseConfig ?? DEFAULT_FIREBASE_CONFIG });
+  // Coins and owned items change only through the coin worker (same worker as push).
+  economy = createEconomyClient({
+    baseUrl: cfg.pushWorkerUrl,
+    getIdToken: async () => { try { return await activeFbCurrentUser?.getIdToken?.(); } catch { return null; } },
+  });
   if (cfg.onesignalAppId) {
     notificationService.configure({
       appId: cfg.onesignalAppId,
@@ -652,6 +659,10 @@ async function boot() {
   async function bootCrossCuttingFor(uid) {
     if (!uid) return;
     const db = activeFbDb;
+    // The profile watch first: the push setup below loads the OneSignal SDK and the
+    // presence start waits for the server, which held the profile screen's stats,
+    // name and coins back for seconds on every launch.
+    try { globalThis.__spine.bootAccount?.(uid); } catch (e) { console.warn('[spine] account boot', e); }
     try {
       // Respect the user's signup-time notifications preference. Missing field
       // (legacy / guest profiles) defaults to opted-in.
@@ -690,7 +701,8 @@ async function boot() {
 
     try { globalThis.__spine.bootInviteListeners?.(uid); } catch (e) { console.warn('[spine] invite boot', e); }
     try { globalThis.__spine.bootAsyncSessions?.(uid); } catch (e) { console.warn('[spine] async boot', e); }
-    try { globalThis.__spine.bootAccount?.(uid); } catch (e) { console.warn('[spine] account boot', e); }
+    // In case the account section wasn't wired yet when the early call above ran.
+    try { globalThis.__spine.bootAccountIfNeeded?.(uid); } catch (e) { console.warn('[spine] account boot', e); }
 
     // Toggle the settings overlay's "הגדרות מתקדמות" button visibility from
     // /admins/{uid}. Read once per auth event; non-admins never see the
@@ -2961,6 +2973,7 @@ async function boot() {
 
   // Account/profile/friends/rating flows are spine-owned.
     let activeProfileWatch = null;
+    let activeProfileUid = null;   // whose profile activeProfileWatch follows
     let activeRequestsWatch = null;
     let activeFriendsWatch = null;
     let activePresenceUnsubs = new Map();
@@ -2996,11 +3009,10 @@ async function boot() {
     function bootProfileFor(uid) {
       const fbDb = activeFbDb;
       if (!fbDb || !uid) return;
-      // Daily login reward is claimed once per boot, the first time the profile
-      // resolves (so the profile node exists for the transaction). The
-      // same-day guard inside claimDailyReward makes a repeat boot a no-op.
+      // Daily login reward is claimed from the coin worker once per boot, the first
+      // time the profile resolves (so the profile exists). The worker's same-day
+      // guard makes a repeat boot a no-op.
       let dailyRewardChecked = false;
-      let coinsClampChecked = false;
       try { activeProfileWatch?.();  } catch {}
       try { activeRequestsWatch?.(); } catch {}
       try { activeFriendsWatch?.();  } catch {}
@@ -3009,15 +3021,13 @@ async function boot() {
       presenceCache.clear();
       ratingCache.clear();
 
+      activeProfileUid = uid;
       activeProfileWatch = profileService.watchProfile(fbDb, uid, (profile) => {
         const prev = lastProfile;
-        // Advance lastProfile/currentProfile BEFORE the achievement payout below.
-        // bumpCoins() runs a coins transaction whose optimistic local write
-        // synchronously re-fires this watcher; if prev were still stale at that
-        // point, the same false→true achievement transition would be detected
-        // again and pay forever (RangeError: Maximum call stack size exceeded).
-        // Advancing first makes the re-entrant fire diff profile-against-itself
-        // (snapshot unchanged → empty), so the payout runs exactly once.
+        // Advance lastProfile/currentProfile BEFORE the achievement payout below,
+        // so a re-fire of this watcher diffs the profile against itself (empty).
+        // The payout itself is the coin worker's and pays each achievement once
+        // (profile.achievementsPaid), so a repeated claim is harmless anyway.
         lastProfile = profile;
         globalThis.__spine.currentProfile = profile;
         // Boostie levels this device hasn't celebrated yet → the evolution scene.
@@ -3036,8 +3046,9 @@ async function boot() {
             achievementSnapshot(profile),
           );
           for (const ach of newly) {
+            // The worker checks it's complete and pays it once (economy.js).
             const reward = profileService.ACHIEVEMENT_COIN_REWARD[ach.tier] ?? 0;
-            if (reward) profileService.bumpCoins(fbDb, uid, reward).catch(() => {});
+            if (reward && !activeFbCurrentUser?.isAnonymous) economy?.claimAchievement(ach.id).catch(() => {});
             bus.emit(AV_UNLOCK_OPEN, { achievement: ach, coins: reward });
           }
           // Unfinished achievements that moved (e.g. streak 3/5 -> 4/5): the
@@ -3054,17 +3065,9 @@ async function boot() {
         // Daily login reward — once per boot, gated to signed-in users.
         if (profile && !dailyRewardChecked && !activeFbCurrentUser?.isAnonymous) {
           dailyRewardChecked = true;
-          profileService.claimDailyReward(fbDb, uid)
-            .then((r) => { if (r?.coinsAwarded > 0) bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak, days: profileService.dailyWeek(r.newStreak) }); })
+          economy?.claimDaily()
+            .then((r) => { if (r?.ok && r.coinsAwarded > 0) bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak, days: profileService.dailyWeek(r.newStreak) }); })
             .catch((e) => console.warn('[spine] daily reward', e));
-        }
-        // Self-heal a corrupted (out-of-band-inflated) coin balance down to the
-        // cap — once per boot, the first time we see an over-cap value. Runs as
-        // the signed-in user, so DB rules permit the self-write.
-        if (profile && !coinsClampChecked && Number(profile.coins) > profileService.MAX_COIN_BALANCE) {
-          coinsClampChecked = true;
-          profileService.clampCoinsBalance(fbDb, uid)
-            .catch((e) => console.warn('[spine] coin clamp', e));
         }
         loadingTipsService.cacheGamesPlayed(profile?.stats?.gamesPlayed ?? 0);
         const fbUser = activeFbCurrentUser;
@@ -3167,6 +3170,9 @@ async function boot() {
       });
     }
     globalThis.__spine.bootAccount = bootProfileFor;
+    globalThis.__spine.bootAccountIfNeeded = (uid) => {
+      if (!activeProfileWatch || activeProfileUid !== uid) bootProfileFor(uid);
+    };
     if (activeFbCurrentUser?.uid) bootProfileFor(activeFbCurrentUser.uid);
 
     // ── Profile intents ──
@@ -3277,7 +3283,7 @@ async function boot() {
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !id) return;
       // id = 'boostie:bubo' | 'reaction:wink'; the price comes from the catalog.
-      const r = await profileService.purchaseStoreItem(fbDb, fbUser.uid, id);
+      const r = await economy?.buy(id) ?? { ok: false, reason: 'not-configured' };
       const item = parseStoreItem(id);
       if (r?.ok && item?.kind === 'boostie') {
         // Auto-equip the freshly bought Boostie; the profile watch repaints the store.
@@ -3288,6 +3294,9 @@ async function boot() {
         bus.emit(NOTIF_BANNER_SHOW, { text: 'התגובה נרכשה! 🎉', avatar: profileAvatarValue(lastProfile), sound: 'store.purchase' });
       } else if (r?.reason === 'insufficient') {
         bus.emit(NOTIF_BANNER_SHOW, { text: 'אין מספיק מטבעות', avatar: '🪙', sound: 'store.fail' });
+      } else if (r?.reason !== 'already-owned') {
+        // Offline, worker unreachable or busy: nothing was charged.
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'הרכישה לא הושלמה, נסו שוב', avatar: '🪙', sound: 'store.fail' });
       }
     });
 
@@ -3841,6 +3850,8 @@ async function boot() {
               if (r?.ok && (r.levelUp || r.unlocked)) {
                 bus.emit(profileService.PROFILE_EVT.BOOSTIE_LEVEL_UP, { levelUp: r.levelUp, unlocked: r.unlocked });
               }
+              // The next Boostie in the chain is granted by the coin worker.
+              if (r?.ok && r.unlocked) economy?.claimChain().catch(() => {});
             })
             .catch(() => {});
         }
@@ -3929,7 +3940,7 @@ async function boot() {
       try { await activeFbAuth?.signOut?.(); } catch {}
       lastProfile = null; lastFriends = []; lastRequests = [];
       lastInviteCount = 0; lastFriendRequestCount = 0; lastSupportReplyCount = 0;
-      try { activeProfileWatch?.();  activeProfileWatch  = null; } catch {}
+      try { activeProfileWatch?.();  activeProfileWatch  = null; activeProfileUid = null; } catch {}
       try { activeRequestsWatch?.(); activeRequestsWatch = null; } catch {}
       try { activeFriendsWatch?.();  activeFriendsWatch  = null; } catch {}
       try { activeInviteListener?.(); activeInviteListener = null; } catch {}

@@ -55,7 +55,7 @@ export function makeLights(mirror) {
   const g = new THREE.Group();
   g.add(new THREE.HemisphereLight(0xd6ecff, 0x3a2418, 0.7));
   const key = new THREE.DirectionalLight(0xfff0dc, 2.6); key.position.set(1.6 * s, 2.6, 3); g.add(key);
-  const rim = new THREE.DirectionalLight(0xcfeaff, 3.4); rim.position.set(-2.2 * s, 2.2, -3); g.add(rim);
+  const rim = new THREE.DirectionalLight(0xcfeaff, 1.8); rim.position.set(-2.2 * s, 2.2, -3); g.add(rim);
   const fill = new THREE.DirectionalLight(0xffcfa8, 0.6); fill.position.set(-2 * s, 0.4, 2); g.add(fill);
   return g;
 }
@@ -72,6 +72,40 @@ function finder(root) {
 // Lively mode (the home top bar, where the avatar is tiny and has nothing else to do):
 // the eyes keep looking around and the head follows them, with a slow sway.
 const LIVELY = { lookEvery: [0.8, 2.4], gazeX: 1.8, gazeY: [-0.6, 0.9], center: 0.3, headYaw: 18, headPitch: 10, swayRoll: 4, follow: 3 };
+
+// Eyes. The build aims each eyeball along its own face normal, so the two rest directions
+// splay 15-47 degrees apart and not symmetrically. Aimed at the viewer, one eye then hit
+// its turning limit before the other and the eyes looked different ways. So at load both
+// rests are re-aimed to one shared forward, splayed EYE_SPLAY outward and mirrored, and
+// both eyes then turn by the same share of the way to the target.
+const EYE_SPLAY = 0.08, GAZE_MAX = 0.45;   // radians
+function alignEyes(eyes, root) {
+  if (eyes.length !== 2) return;
+  root.updateMatrixWorld(true);
+  const parts = eyes.map((e) => {
+    const wq = e.bone.getWorldQuaternion(new THREE.Quaternion());
+    return { e, wq, fwd: Y_AXIS.clone().applyQuaternion(wq), pos: e.bone.getWorldPosition(new THREE.Vector3()) };
+  });
+  const mean = parts[0].fwd.clone().add(parts[1].fwd).normalize();
+  const side = parts[0].pos.clone().sub(parts[1].pos);
+  side.addScaledVector(mean, -side.dot(mean)).normalize();     // eye 1 -> eye 0, across the face
+  parts.forEach((p, i) => {
+    const want = mean.clone().addScaledVector(side, (i ? -1 : 1) * Math.tan(EYE_SPLAY)).normalize();
+    const pq = p.e.bone.parent.getWorldQuaternion(new THREE.Quaternion());
+    const turn = new THREE.Quaternion().setFromUnitVectors(p.fwd, want);
+    p.e.rest = pq.clone().invert().multiply(turn).multiply(pq).multiply(p.e.rest);
+  });
+}
+function aimEyes(eyes, tgt) {
+  const qs = eyes.map((eye) => {
+    const inv = eye.bone.parent.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const dir = tgt.clone().sub(eye.bone.getWorldPosition(new THREE.Vector3())).normalize().applyQuaternion(inv);
+    return new THREE.Quaternion().setFromUnitVectors(Y_AXIS.clone().applyQuaternion(eye.rest), dir);
+  });
+  const most = Math.max(...qs.map((q) => 2 * Math.acos(Math.min(1, Math.abs(q.w)))));
+  const t = most > GAZE_MAX ? GAZE_MAX / most : 1;           // the same share for both eyes
+  eyes.forEach((eye, i) => eye.bone.quaternion.copy(qs[i].slerp(new THREE.Quaternion(), 1 - t)).multiply(eye.rest));
+}
 
 // av: { root, box, clipNames }. Adds av.live and av.rim.
 // lively: keep moving between clips (see LIVELY); the scoreboard leaves it off.
@@ -90,6 +124,7 @@ export function setupLive(av, now, { lively = false } = {}) {
     if (lid) L.lids.push({ bone: lid, rest: lid.quaternion.clone(), side: s });
     if (low) L.lows.push({ bone: low, rest: low.quaternion.clone() });
   }
+  alignEyes(L.eyes, av.root);
   const faces = SCREEN_FACES.map((f) => [f, get('face' + f)]).filter(([, b]) => b);
   if (faces.length) L.faces = Object.fromEntries(faces);
   if (!L.lids.length && !L.faces?.blink) L.blinkAt = Infinity;   // nothing to blink with
@@ -132,7 +167,7 @@ export function setupLive(av, now, { lively = false } = {}) {
         sh.fragmentShader = 'uniform float rimStrength;\nuniform vec3 rimColor;\nuniform float flash;\nuniform vec3 flashColor;\n' + sh.fragmentShader
           .replace('#include <emissivemap_fragment>',
             '#include <emissivemap_fragment>\n{ float rimF = 1.0 - saturate(dot(normalize(normal), normalize(vViewPosition)));\n' +
-            '  totalEmissiveRadiance += rimColor * pow(rimF, 2.5) * rimStrength; }')
+            '  totalEmissiveRadiance += rimColor * diffuseColor.rgb * pow(rimF, 3.0) * rimStrength; }')
           .replace('#include <dithering_fragment>', '#include <dithering_fragment>\ngl_FragColor.rgb = mix(gl_FragColor.rgb, flashColor, flash);');
       };
       m.customProgramCacheKey = () => 'boostie-rim';
@@ -292,15 +327,7 @@ export function updateLive(av, dt, now, play) {
     const tgt = V().copy(cam.position)
       .addScaledVector(V().setFromMatrixColumn(cam.matrixWorld, 0), L.gaze.x * S)
       .addScaledVector(V().setFromMatrixColumn(cam.matrixWorld, 1), L.gaze.y * S);
-    for (const eye of L.eyes) {
-      const wp = eye.bone.getWorldPosition(V());
-      const dir = tgt.clone().sub(wp).normalize().applyQuaternion(eye.bone.parent.getWorldQuaternion(_q).invert());
-      const fwd = Y_AXIS.clone().applyQuaternion(eye.rest);
-      const q = new THREE.Quaternion().setFromUnitVectors(fwd, dir);
-      const ang = 2 * Math.acos(Math.min(1, Math.abs(q.w)));
-      if (ang > 0.4) q.slerp(new THREE.Quaternion(), 1 - 0.4 / ang);
-      eye.bone.quaternion.copy(q).multiply(eye.rest);
-    }
+    aimEyes(L.eyes, tgt);
   }
   return busy;
 }

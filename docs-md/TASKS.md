@@ -12,6 +12,29 @@
   `boostie-evolution` skill.
 - [x] Bubo (owl): all 7 levels final, sheets in `assets/avatars/evolution/bubo/`
   (`AVATAR_EVOLUTION.md` §6).
+- [ ] Rocco (ram), Lumi (axolotl), Drako (dragon): character blocks in AVATAR_EVOLUTION §10,
+  sheet prompts `image-prompts/16–21`. Sheets A and B accepted (Oct 2026, sheet B on
+  the fourth try). Turnaround prompts `image-prompts/22–42` written; next the seven
+  turnarounds each and the 3D builds. Rig needs: Drako four wings, Lumi many frond
+  springs. Rocco: seven four-legged turnarounds accepted as generated (user's call, they
+  don't match the sheets; see the review log). Rocco's 3D models L1–7 built (`rocco_l1`–`l7`
+  in `build_boostie.py`, head-butt signature) and on the test page. First phone check done
+  (eye colour, eye sync, rim, framing, L1/L4 eyes fixed). Next for Rocco: second phone
+  check, then ship them (`optimize-boosties.mjs`, stills, `boostieCatalog.js`). Lumi: seven upright turnarounds accepted as generated (no DJ
+  theme, violet eyes; see the review log). Lumi's 3D models L1–7 built (`lumi_l1`–`l7`,
+  frills on ear.L/R, happy-wiggle signature) and on the test page. Next: phone check, then ship.
+  Drako: seven four-legged, two-winged turnarounds accepted as generated (gold eyes kept;
+  see the review log). Drako's 3D models L1–7 built (`drako_l1`–`l7`, wing bones,
+  wing-flare signature) and on the test page. First phone check: eyes fixed (centred on the
+  painted whites, skin-coloured sockets). Next: second phone check, then ship.
+- [x] Rocco, Lumi and Drako shipped to the app (Oct 2026): models in `assets/boosties/`,
+  stills in `assets/avatars/boosties/`, catalog entries. Rocco and Lumi are starters; Drako
+  is store-only for 1500 coins.
+- [ ] Deploy the coin worker (`cd worker && npx wrangler deploy`) so it knows Drako's price
+  (the catalog is bundled in), and deploy the database rules (Rocco and Lumi starters).
+- [ ] Phone check of the VS screen frame and of the profile load time after the boot-order fix.
+- [ ] Check the evolution scene's charge-up on a phone: the rim is now tinted by the surface
+  colour, so the build-up glow on dark fur may need a higher `rimStrength` in `evolutionScene.js`.
 - [ ] Cut each level out of the Zapi and Bubo sheets as its own transparent PNG
   (7 files each). For Bubo, centre the L3 core while doing this.
 - [ ] Fill in the character block and generate sheets for Pipo (dragon) with the
@@ -55,8 +78,16 @@
   sides play the clip; the opponent glances at the one reacting).
 - [ ] Phase 5 follow-up: Firebase rules still accept any `liveReaction` payload from a
   player (the client validates on receive). Add a `.validate` on type/id if it matters.
-- [ ] Phase 6a: move the coin economy into the Cloudflare Worker (claim-daily,
-  achievement, buy, ledger); lock `coins`, owned Boosties and `ownedReactions` in the rules.
+- [x] Phase 6a: coin economy in the Cloudflare Worker (`/economy/*`: claim-daily,
+  achievement, buy, claim-chain, credit-play), ledger at `coinLedger/`, rules lock
+  `coins`, new Boosties, `ownedReactions` and the payout records (D-coin-economy).
+- [ ] **Before merging 6a:** `cd worker && npx wrangler deploy` (the app calls
+  `/economy/*` as soon as the new rules are live). `FIREBASE_SERVICE_ACCOUNT_JSON` must
+  be set (it already is for the cron).
+- [ ] Achievement stats are still client-written, so achievement coins are bounded
+  (once each) but not cheat-proof. Server-side stats would close it.
+- [ ] Old client payouts left no `achievementsPaid` record; an achievement that
+  completes again after 6a ships pays once more (not in production, so accepted).
 - [ ] Phase 6b: buy coins with real money (Play Billing in the Android app, Stripe on
   web). Needs the user's merchant accounts and coin-pack prices.
 - [x] No migration script (not in production): Bubo became a starter, so every profile
@@ -112,10 +143,11 @@
   see it), the tray UI on the real scoreboard, the cooldown, and a mute option for the
   receiver.
 - [x] Reaction sounds prototype: A/B/C voice options per reaction on the test page (v13).
-- [ ] Reaction sounds in the app: once picks are made, add them to `scripts/build-sfx.py`,
-  `sfxCatalog` (e.g. `reaction.laugh`) and `docs/sound_inventory.md`. Play them on send
-  and receive, respecting the sound setting and the receiver's mute. Later, give each
-  Boostie its own voice, and unique sounds for paid reactions.
+- [x] Reaction sounds in the app: the test page's default picks (laugh A, wow A, stare A,
+  wink A, yawn B) are `rx_*` in `assets/sfx/`, cues `reaction.<id>`, played on send and
+  receive.
+- [ ] Reaction voices: try the other A/B/C options on a phone; later give each Boostie its
+  own voice, and unique sounds for paid reactions.
 - [ ] Shop: the reaction catalogue (which are free, which are paid, prices), ownership
   in the player profile, and preview-before-buy. More paid ideas: cheer, facepalm,
   shrug, a victory dance, the character's own signature on demand.
@@ -1041,10 +1073,8 @@ Five issues reported from one async online game. Status:
 - [x] Render-helper integration so equipped store avatars show everywhere (incl. opponent cards) — `avatarEmoji`
   pass-through + `avatarIconSrc` store-id resolution
 - [x] Anonymous users gated to the account-upgrade prompt; PNGs excluded from sw.js precache
-- [ ] **Hardening (not v1):** make purchases server-authoritative (Cloudflare Worker / Cloud Function) so coins
-  can't be self-granted client-side
-- [ ] **Hardening (not v1):** record `claimedAchievements[]` checked inside the transaction so achievement coin
-  rewards are fully idempotent across devices/tabs
+- [x] **Hardening:** purchases server-authoritative (coin worker, Oct 2026, D-coin-economy)
+- [x] **Hardening:** achievement rewards idempotent (`profile.achievementsPaid`, Oct 2026)
 - [ ] Optional: surface a coin badge in the bottom nav (coins already flow through `MENU_REFRESH`)
 
 ## In-game UI bug fixes — June 2026

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateReactionPayload, getReactionDisplay, getBoostieClip } from './reactionsConfig.js';
+import { validateReactionPayload, getReactionDisplay, getBoostieClip, reactionVoiceCue } from './reactionsConfig.js';
+import { getCue } from '../ui/sfx/sfxCatalog.js';
 import { mountReactionController } from './reactionController.js';
 import { EV } from '../events/eventTypes.js';
 import { BOOSTIE_REACTIONS } from '../game/account/boostieCatalog.js';
@@ -14,6 +15,16 @@ test('reactionsConfig: Boostie reactions validate against the catalog and show t
   assert.equal(validateReactionPayload({ type: 'boostie', id: 'dance' }), false);
   assert.equal(getBoostieClip({ type: 'emoji', id: 'laugh' }), null, 'the emoji "laugh" is a bubble, not a clip');
   assert.equal(getReactionDisplay({ type: 'emoji', id: 'laugh' }), '😂');
+});
+
+test('reactionsConfig: every Boostie reaction has its own voice cue; emojis keep the pop', () => {
+  for (const r of BOOSTIE_REACTIONS) {
+    const cue = reactionVoiceCue({ type: 'boostie', id: r.id });
+    assert.equal(cue, `reaction.${r.id}`);
+    assert.ok(getCue(cue)?.file, `${cue} has a sound file`);
+  }
+  assert.equal(reactionVoiceCue({ type: 'emoji', id: 'laugh' }), null);
+  assert.equal(reactionVoiceCue({ type: 'boostie', id: 'dance' }), null);
 });
 
 // ---------- the controller on a tiny fake DOM ----------

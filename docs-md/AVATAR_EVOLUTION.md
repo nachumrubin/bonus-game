@@ -87,6 +87,9 @@ strap or clasp may cross or touch it, or it reads as a pendant.
 
 1. **One headline change per level, visible in the silhouette, plus one smaller
    detail.** If you can't name the headline change, the level isn't distinct enough.
+   Getting bigger is not a change: levels 5–7 must differ even at the same size. Level 6
+   **doubles the signature feature into something countable** (four horns, four wings,
+   twice the frills) and level 7 **transforms its shape** (a crown of horns, a fan crest).
 2. **Changes must read from the chest up.** The scoreboard shows a ~76px bust, so
    boots and leg armour are invisible there. Put changes on the head, ears, shoulders,
    chest core and the tail or wings behind the body.
@@ -185,24 +188,36 @@ noticeably taller than the previous one, and level 5 is taller than the level-4
 reference. The signature feature stays the same body part, in the same place, as in
 the reference (<e.g. the energy tail grows from the base of the spine, stays low
 behind the hips and is never wing-shaped>). Once it is fully energy, it replaces the
-ordinary <tail / wings> instead of appearing next to it. Gems, clasps and trim are
+ordinary <tail / wings> completely: no trace of the old part remains next to or under
+it. The energy version keeps the exact shape of the real body part (<e.g. solid spiral
+ram horns>): solid, with a crisp hard outline, like polished glowing cyan crystal, never
+flames, smoke, mist or hair. <If bipedal from level 4: All three levels stand upright on
+two legs like level 4 in the reference, never on four legs, never hunched.> Anatomy at
+every level: exactly two legs and two arms, each arm ending in one hand; no extra legs, no
+extra arms, never a four-legged body with arms on top. Both hands are empty: every prop is
+strapped to the back or tucked into the belt, with straight, unbroken handles. Keep the
+friendly, stylized face and proportions of the reference. The three levels must look
+clearly different even at the same size: the change is in the shape, not only the scale.
+The outfit is a few large
+readable pieces, not busy armour: no bells or dangling ornaments. Gems, clasps and trim are
 gold, bronze or a non-cyan colour and never glow. No chain, strap or clasp crosses
 or touches the core: it is embedded in the chest, never a pendant. Three levels:
 
 Level 5 (adult): full adult size and proportions, strong <PERSONALITY> expression,
-first <ACCESSORY THEME> outfit pieces (<items>). The signature feature is fully
-made of cyan energy. Chest core: a star-shaped cyan burst with sharp rays from a
-bright centre.
+a light outfit with only a few <ACCESSORY THEME> pieces (<items>). The signature feature
+is fully made of cyan energy. A relaxed standing pose. Chest core: a star-shaped cyan burst with sharp rays from a
+bright centre, no lines or crackles around it yet.
 
-Level 6 (champion): more presence and mass (<mane / cape / larger wings>), a
-commanding pose, the full <ACCESSORY THEME> outfit. The signature feature doubles
-or spreads. Chest core: a cyan burst with clearly visible energy lines radiating
+Level 6 (champion): the headline change is the signature feature doubling into
+something you can count (<a second pair of horns / wings, twice the frills>). More
+presence and mass (<mane / pauldrons>), a wide power stance with fists clenched. Chest core: a cyan burst with clearly visible energy lines radiating
 outward from it through the chest <fur / feathers / scales> and reaching the
 shoulders.
 
-Level 7 (legend): regal and legendary, an ornate <ACCESSORY THEME> headpiece
-(<crown / hood circlet / horned helm>), the most refined outfit. The signature
-feature at its maximum. Chest core: a radiant star-shaped cyan burst with long
+Level 7 (legend): the headline change is the signature feature transforming its shape
+(<a crown of horns / a fan crest / wings rising above the head>). Regal and legendary,
+an ornate <ACCESSORY THEME> headpiece (<crown / hood circlet / horned helm>), a heroic
+pose with the chest out and the chin up, different from level 6. Chest core: a radiant star-shaped cyan burst with long
 sharp rays, bigger and brighter than level 6 and never a round orb, with a large,
 obvious halo ring floating just above it, and a visible soft cyan glow outlining
 the whole body. It should look
@@ -383,6 +398,9 @@ Signature movements (one per character, small, under 1 s):
 |---|---|
 | Zapi | Double ear twitch, left ear leading, the tail tip answering |
 | Bubo | The owl head swivel: a quick turn and a curious sideways tilt, tufts perking |
+| Rocco | The head-butt: rears back, butts down sharply, a small rebound; ears flick back, tail tip wags |
+| Lumi | The happy wiggle: the body sways side to side, the frills flap out of step, the tail flicks |
+| Drako | The wing flare: the chest puffs up, both wings snap wide and beat twice, the tail lashes |
 
 Shared clips (every Boostie, `CLIPS` in `build_boostie.py`): idle, turn, good, boost,
 laugh, wow, stare, yawn and **wink**. Wink is the only clip that keys the lids
@@ -440,3 +458,268 @@ turn / good / boost from the game directives, and snaps bot screen faces to one 
 time (the exported scale keys are LINEAR, so blends would sink a face behind the glass).
 The wink clip's lid tracks pass through the live lid controller.
 
+
+---
+
+## 10. Next three Boosties: Rocco, Lumi, Drako (planned October 2026)
+
+Picked to cover what Zapi (cunning) and Bubo (wise) don't: a brave one, a cute one and
+a proud one, each with a different palette and a signature feature in a different
+place on the bust (horns on top, frills at the sides, wings behind). Sheet prompts:
+`docs-md/image-prompts/16–21_*_sheet_{a,b}.md`.
+
+### Rocco the ram
+
+```
+NAME:            Rocco
+SPECIES:         mountain ram
+PALETTE:         slate-grey curly wool, cream face and muzzle, charcoal hooves, warm brown leather
+PERSONALITY:     brave
+SIGNATURE CYAN:  the two curled horns: brown nubs at 1, cyan tips at 2, half-turn curl with cyan streaks at 3, half energy at 4, crystal horns growing from short brown roots at 5, a second smaller pair at 6 (four horns), all four huge at 7, forming a crown of horns; always from the top of the head curling back and down beside the ears, never covered by a helmet
+ACCESSORY THEME: Viking blacksmith: leather bracers, tool belt with a small hammer, fur shoulder mantle, iron pauldrons, rune hammer
+BODY TYPE:       quadruped at levels 1–3, becomes bipedal at level 4
+CONSTANT MARKS:  cream blaze from forehead to muzzle, curly grey wool fringe between the horns, dark-grey nose, steel-blue eyes (round pupils; changed from amber in Oct 2026 so he doesn't share Zapi's eye colour)
+```
+
+Choices: the L7 headpiece is a rune circlet below the horns, not a horned helm, so the
+horns stay visible. No blacksmith apron: it would cover the core. Round pupils, not a
+real goat's horizontal ones, which read as creepy at bust size. Signature movement: a
+head-butt nod with a snort.
+
+### Lumi the axolotl
+
+```
+NAME:            Lumi
+SPECIES:         axolotl
+PALETTE:         soft peach-pink skin, cream belly, rosy cheeks, gold and magenta accents
+PERSONALITY:     cheerful
+SIGNATURE CYAN:  the six gill frills (three each side): pink stubs at 1, cyan tips at 2, longer with cyan edges at 3, half energy at 4, full crystal frills at 5 that replace the pink frills, doubled to six long streamers a side at 6, one big fan crest behind the head at 7; always beside the head behind the cheeks, never covered by headphones or a hat
+ACCESSORY THEME: party DJ: pink star headband (on the forehead), headphones around the neck, open gold sequin jacket, sequin cape, DJ crown
+BODY TYPE:       round and chubby on four little legs at 1–3, stands upright on the hind legs from level 4 (stays chubby, keeps the tail)
+CONSTANT MARKS:  big glossy dark-brown eyes with white highlights, darker pink spots on back and legs, wide happy smile, two rosy cheek spots, cream belly, long pink tail
+```
+
+Choices: the stars (asked for as sunglasses, drawn as a star headband) always sit on the forehead, because the 3D build adds
+real eyes and anything over them would break blinks and gaze. Headphones sit around the
+neck so they never cover the frills. The jacket is open at the front so the core shows.
+Signature movement: a happy wiggle with the frills rippling.
+
+### Drako the dragon
+
+```
+NAME:            Drako
+SPECIES:         dragon
+PALETTE:         deep royal-purple scales, gold belly plates, cream horns and claws, crimson and gold accents
+PERSONALITY:     proud
+SIGNATURE CYAN:  the wing membranes: purple nubs at 1, small wings with faint cyan membranes at 2, bigger at 3, half energy at 4, solid cyan crystal membranes at 5, a second smaller pair at 6 (four wings), all four spread with the tips above the head at 7; the wing bones always stay purple, the wings grow from the shoulder blades and are never a cape
+ACCESSORY THEME: royal: crimson waist sash, gold arm bands, gold pauldrons, short scepter, crown
+BODY TYPE:       quadruped at levels 1–3, becomes bipedal at level 4
+CONSTANT MARKS:  two short cream horns curving back, a row of cream back spikes, gold belly plates, bright gold eyes (round pupils)
+```
+
+Choices: no royal cape, because it would hide the wings. The sash is tied at the waist,
+never across the chest, so it never crosses the core. Wings need extra bones in the 3D
+rig (like Bubo's), so Drako is the most rigging work of the three. Candidate for the
+coin-price store Boostie. Signature movement: a wing flare with a proud chest puff.
+
+### Review log: sheet A (October 2026)
+
+All three sheet A's were **accepted as generated** on the first pass: core ladder, one
+cyan feature each, height progression and the level-4 stand-up all correct. The spec
+was updated to match the sheets (sheet B keeps what was drawn):
+
+- Rocco's horns came out brown, not grey. The block and sheet B now say brown.
+- Lumi's eyes are dark brown, not black, and the star sunglasses are a star headband
+  (still off the eyes, which is what matters for the 3D eyes). She also has darker pink
+  spots, now a constant mark.
+- Off-centre cores: Drako L4, Lumi L3 and L4. Centre them in the turnaround prompts.
+
+Sheets: `assets/avatars/evolution/{rocco,lumi,drako}/<name>_sheet_a_levels_1-4.png`.
+
+### Review log: Rocco sheet B, first two attempts (October 2026)
+
+Both **rejected**, and the fixes are now in the §4d template:
+
+- **Broken anatomy** (missed in the first review, caught by the user): level 5 drawn as a
+  centaur, with four legs plus two arms; a third leg behind the hammer on level 7. Fix:
+  "exactly two legs and two arms … never a four-legged body with arms on top".
+- **Held props drawn wrong**: the hammer handle a stub vanishing into the head, gripped
+  at odd angles (L6, L7). Fix: hands stay empty, props are strapped to the back or belt.
+  This also helps the 3D build, where a prop fused to a hand can't be rigged. Drako's
+  scepter moved to the sash for the same reason.
+- "Fully cyan energy" drawn as fluffy flames or blue hair instead of horns, with the old
+  brown horns still underneath. Fix: the energy part keeps the real part's exact shape,
+  "like polished glowing cyan crystal, never flames, smoke, mist or hair", and no trace of
+  the old part remains.
+- One attempt put level 5 back on four legs. Fix: "all three levels stand upright on two
+  legs like level 4".
+- Busy armour with dangling gold bells, and levels 6 and 7 in nearly the same pose. Fix:
+  "a few large readable pieces, no bells"; level 7 gets "a different, prouder pose".
+
+### Review log: sheet B, third attempt (October 2026)
+
+With the anatomy, empty-hands and crystal-energy lines in §4d, all three sheet B's were
+**accepted as generated**: two legs and two arms on every level, props worn (hammer on
+the back, scepter in the sash), signature parts solid cyan crystal with no trace of the
+old part, the core ladder right, the headpieces placed as specified. Notes for the
+turnarounds:
+
+- Rocco L5–6: the dark knob below the left fist is the hammer's handle end, not a hand.
+  Say so in the turnaround prompt so Meshy doesn't model a third hand. The horns grow at
+  6–7 but don't reach a double curl (accepted).
+- Drako L5 and L7 cores sit off-centre, and L5 already shows lightning lines. Centre the
+  core and drop the L5 lines in the turnarounds.
+- Lumi L7's halo is faint; make it clearer in the turnaround.
+
+Sheets: `assets/avatars/evolution/{rocco,lumi,drako}/<name>_sheet_b_levels_5-7.png`.
+
+### Third sheet B superseded: levels 5–7 too alike (October 2026)
+
+The user's review: the accepted sheet B's levels 5–7 look almost the same, only bigger
+(and with more outfit). The template's "the signature feature doubles or spreads" was too
+vague, so the generator just scaled it. Now (§3 rule 1, §4d): level 5 has a light outfit,
+level 6 **doubles** the signature into something countable, level 7 **transforms** its
+shape, with a different pose per level and "clearly different even at the same size".
+
+| | L5 | L6 | L7 |
+|---|---|---|---|
+| Rocco | one pair of crystal horns, strap and belt only | **four horns**, fur mantle, shoulders twice as wide | four huge horns forming a **crown of horns**, circlet, crimson cape |
+| Lumi | three short fronds a side, open jacket | **six long streamers a side**, sequin cape | one **fan crest** behind the head, crown, taller |
+| Drako | two wings, sash and arm bands only | **four wings**, pauldrons, scepter in the sash | four wings fully spread, tips above the head, long swept horns, crown |
+
+The level 5–7 turnaround prompts were removed; they get rewritten from the new sheets.
+Four horns and four wings need extra bones in the 3D rig.
+
+### Review log: sheet B, fourth attempt (October 2026)
+
+With the doubling / transforming ladder, all three were **accepted as generated** and pass
+the same-size test: Rocco 2 → 4 horns → crown of horns; Lumi short fronds → wide
+streamers → tall fan crest; Drako 2 → 4 wings → 4 wings spread above the head with long
+horns. Two legs and two arms at every level, hands empty, props worn. Accepted deviations
+and turnaround notes:
+
+- Rocco keeps short brown horn roots under the crystal horns at 5–7 (a nice link to
+  level 4). L7 shows a thin gold chain near the core; the turnaround says no chain.
+- Lumi's fronds keep a little pink at the base, about four fronds a side at L5. Her L7
+  halo floats to one side; the turnaround puts it directly above the core.
+- Drako's core is off-centre on all three; the turnarounds centre it.
+
+The level 5–7 turnaround prompts were rewritten from these sheets
+(`image-prompts/26–28, 33–35, 40–42`).
+
+### Review log: Rocco turnarounds (October 2026)
+
+The generator ignored most of the turnaround prompts and returned seven **four-legged**
+rams, each with its own outfit. The user liked how different every level looks and chose
+to **use them as they are**, so Rocco stays a quadruped at every level (§3 rule 6) and his
+3D models no longer match sheets A and B. Known deviations, accepted:
+
+- Not one consistent ram: amber or blue eyes, slate, tan or red-brown fur, a goatee at L5.
+- No baby stage: every level is the same size with full curled horns.
+- Cyan beyond the core and horns (ankle bands, harness gems, L7 body lines and forehead mark).
+- Cores don't follow the §2 ladder.
+
+The images came unordered; they were ranked by outfit (simplest first) and youth of the
+face: L1 collar and ankle bands, L2 plain harness, L3 harness and saddlebags, L4 wool and
+blue scarf, L5 grey armour harness, L6 gold collar armour and blue cloth, L7 full gold
+armour. Saved as `Blender designs/boosties/sources/rocco_l<N>_turnaround.png`.
+
+### Rocco 3D models (October 2026)
+
+All seven turnarounds went through Meshy (`meshy_generate.py --split 4`) and
+`build_boostie.py` (`rocco_l1`–`rocco_l7`). The rig is a quadruped like Zapi's, plus
+rigid `horn.L` / `horn.R` bones; `glow_bones` is just the two horns, so only the horn
+stripes and the core glow. Ankle bands, harness gems and armour stay plain. Every level
+gets the same steel-blue iris, so the turnarounds' mixed eye colours don't show.
+Eye fixes after the first phone check: L1 had a black ring round each eye (the default
+dark socket plus Meshy's painted liner), fixed with a cream-tan `socket` and `reach` 1.5.
+L4's right eye sat too deep; a bigger ball (`r` 0.038), a tan socket and `show` 0.32 /
+`sink` 0.3 bring it level with the left. All seven are on the scoreboard test page.
+
+### Eye colour, gaze and rim (October 2026)
+
+- **One iris colour per character**, the same at every level (§3 rule 4). It lives in the
+  `IRIS` table in `build_boostie.py`: Zapi amber, Bubo bright golden-yellow, Rocco steel
+  blue, Lumi violet, Drako bright gold. Before this every build used Zapi's amber.
+  Bubo's models and stills were updated by swapping the iris texture (no rebuild).
+- **Eyes stay in sync.** The build aims each eyeball half along the face normal, so the two
+  eyes splayed 15–47° apart and some looked different ways. `boostieLive.js` now evens
+  them out at load (`alignEyes`, 8° outward each) and turns both eyes by the same amount
+  when they follow a target (`aimEyes`, at most 26°).
+- **Softer rim.** The rim light was a pale, near-white edge on every model, which looked like
+  plastic or carved wood. It is now tinted by the surface colour, tighter (power 3) and the
+  rim light is about half as strong.
+- **Bust framing** in `scoreboard3d.js` and `render_stills.py` uses the head's width as well
+  as its height, so wide heads (Rocco's horns) fit the scoreboard frame.
+
+### Review log: Lumi turnarounds (October 2026)
+
+As with Rocco, the generator ignored most of the prompts. The user chose to **use the
+seven as they are**, because every level looks clearly different. Known deviations, accepted:
+
+- Upright on two legs at every level (the spec has four legs at 1–3).
+- No DJ theme: no star headband, headphones, sequin jacket, cape or crown. Each level
+  wears its own gold-and-purple harness or collar instead.
+- Skin drifts from pink (L1–2) through lavender to deep purple galaxy (L7). Every level
+  keeps a different set of spots.
+- Blue-violet eyes, not dark brown. The 3D build follows the images: Lumi's iris is
+  **violet** (`IRIS` in `build_boostie.py`).
+- Cyan beyond the core and frills: forehead marks, bracer gems, tail glow.
+- Every level is the same size, and the frills don't follow the fronds → streamers → fan
+  crest ladder.
+
+The images came unordered; they were ranked by outfit and how far the skin has moved
+from pink to purple: L1 no outfit, L2 harness with a silver star core, L3 purple straps
+and bracers, L4 purple-and-gold collar with ankle bands, L5 gold collar with purple gloves
+and feet, L6 moon mark and galaxy core, L7 leaf shoulder armour and crystal crest. Saved as
+`Blender designs/boosties/sources/lumi_l<N>_turnaround.png`.
+
+### Lumi 3D models (October 2026)
+
+All seven turnarounds went through Meshy (`meshy_generate.py --split 4`) and
+`build_boostie.py` (`lumi_l1`–`lumi_l7`). The rig is upright like Bubo's: a spine, a
+five-bone tail, and each side's frill cluster on `ear.L` / `ear.R` (radius 0.07). The frills
+then spring like ears in the app with no new code. `glow_bones` is the two frill bones, so only
+the blue frill tips and the core glow; forehead marks, bracer gems and the tail stay plain.
+The irises are violet. The eye sockets are painted in each level's skin colour, so there's no
+dark ring (Rocco L1's problem). Signature: the happy wiggle, a side-to-side sway of the
+body with the frills flapping out of step and a tail flick. All seven are on the scoreboard
+test page.
+
+### Review log: Drako turnarounds (October 2026)
+
+Like Rocco and Lumi, the generator ignored most of the prompts. The user chose to **use
+the seven as they are**, because every level looks clearly different. Known deviations,
+accepted:
+
+- On four legs at every level (the spec has him upright from level 4).
+- Two wings at every level (the spec has four from level 6).
+- No royal theme: no sash, scepter or crown. Each level wears its own collar, harness or
+  armour instead.
+- Cyan beyond the core and wings: horns, spikes, claws, tail tip and body marks.
+- Cyan-teal eyes in the images. The 3D build keeps the spec's **bright gold** iris
+  (`IRIS` in `build_boostie.py`), so the eyes stand out from all the cyan.
+
+The images came unordered; they were ranked by outfit and how young the face looks:
+L1 chubby baby with a blue collar and gem, L2 no outfit with crystal body marks, L3 silver
+collar and ankle bands, L4 dark harness with a silver frame, L5 no armour with glowing
+wing membranes, L6 gold-and-purple chest armour with gem bracers, L7 gold chest plate and
+long dark-to-cyan horns. Saved as `Blender designs/boosties/sources/drako_l<N>_turnaround.png`.
+
+### Drako 3D models (October 2026)
+
+All seven turnarounds went through Meshy (`meshy_generate.py --split 4`) and
+`build_boostie.py` (`drako_l1`–`drako_l7`). The rig is four-legged like Rocco's (hips,
+chest, neck, head, five tail bones) with no ear bones. The tail bones follow the tail's
+sideways curl at L1–3 and L6–7. Each wing has one bone, `wing.L` / `wing.R`, from the
+shoulder out to the middle of the membrane (radius 0.06); a rotation about the bone's
+local Z raises the wing, so the shared clips' wing keys (written for Bubo) flap Drako's
+wings with no new code. `glow_bones` is the two wings, so only the cyan membranes and the
+core glow; horns, spikes, claws and the tail tip stay plain. The irises are bright gold. Drako's painted pupils look sideways, so the
+balls are centred on the painted eye whites, not the pupils, and sized to cover them (first
+phone check: placed on the pupils, the whites showed beside the ball and he looked
+cross-eyed). The sockets use `"socket": "skin"`: the build paints them in the median skin
+colour just around each eye, and also repaints cyan specks of the old iris at the socket's
+edge. L2 and L4 use `show 0.32` so the face doesn't hide the nose side of the ball. Signature: the wing flare, a proud
+chest puff with both wings snapping wide and beating twice. All seven are on the scoreboard
+test page.

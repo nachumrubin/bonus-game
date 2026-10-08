@@ -32,6 +32,15 @@ def jingle(name):
     return glob.glob(os.path.join(K, 'music-jingles', '**', f'{name}.ogg'), recursive=True)[0]
 
 
+# Reaction voices, picked by ear on the 3D test page (tools/3d-spike/sfx, already trimmed
+# from their Freesound sources; see SOURCES.md there). Committed, so no download needed.
+SPIKE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tools', '3d-spike', 'sfx')
+
+
+def spike(name):
+    return os.path.join(SPIKE, f'{name}.mp3')
+
+
 # name, source, start s, length s, mode ('pk' = peak −3 dBFS, 'ln' = −16 LUFS),
 # fade-out fraction of the length.
 SPEC = [
@@ -70,6 +79,11 @@ SPEC = [
     ('achievement', jingle('jingles_STEEL02'), 0, 1.45, 'ln', 0.25),
     ('mg_success', jingle('jingles_PIZZI15'), 0, 0.85, 'ln', 0.25),
     ('mg_fail', jingle('jingles_PIZZI05'), 0, 0.60, 'ln', 0.25),
+    ('rx_laugh', spike('laugh_a'), 0, 0.77, 'ln', 0.2),
+    ('rx_wow', spike('wow_a'), 0, 1.27, 'ln', 0.2),
+    ('rx_stare', spike('stare_a'), 0, 0.75, 'ln', 0.2),
+    ('rx_wink', spike('wink_a'), 0, 0.49, 'ln', 0.2),
+    ('rx_yawn', spike('yawn_b'), 0, 2.00, 'ln', 0.2),
 ]
 
 

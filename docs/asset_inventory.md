@@ -33,8 +33,8 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 In-app Boostie assets (paths built by `src/game/account/boostieCatalog.js`):
 
 * assets/boosties/<id>_l<N>.glb — rigged 3D model per level, meshopt-compressed by
-  `scripts/optimize-boosties.mjs` from `Blender designs/boosties/out/`. 14 files
-  (zapi, bubo × L1–7), ~0.8–1.0 MB each. Used by the live scoreboard (Phase 3).
+  `scripts/optimize-boosties.mjs` from `Blender designs/boosties/out/`. 35 files
+  (zapi, bubo, rocco, lumi, drako × L1–7), ~0.6–1.0 MB each. Used by the live scoreboard (Phase 3).
   Clips: idle, turn, good, boost, signature, laugh, wow, stare, yawn, wink.
 * assets/boosties/bot_{easy,medium,hard}.glb — the bots' 3D models (~0.65 MB each,
   single level, screen face with 8 expressions; AVATAR_EVOLUTION §9).
@@ -67,6 +67,13 @@ transparent PNG before it can become an avatar or pose atlas.
 
 * assets/avatars/evolution/bubo/bubo_sheet_a_levels_1-4.png — Bubo (owl), levels 1–4, final
 * assets/avatars/evolution/bubo/bubo_sheet_b_levels_5-7.png — Bubo (owl), levels 5–7, final (inpainted)
+
+* assets/avatars/evolution/rocco/rocco_sheet_a_levels_1-4.png — Rocco (ram), levels 1–4, final
+* assets/avatars/evolution/rocco/rocco_sheet_b_levels_5-7.png — Rocco (ram), levels 5–7, final
+* assets/avatars/evolution/lumi/lumi_sheet_a_levels_1-4.png — Lumi (axolotl), levels 1–4, final
+* assets/avatars/evolution/lumi/lumi_sheet_b_levels_5-7.png — Lumi (axolotl), levels 5–7, final
+* assets/avatars/evolution/drako/drako_sheet_a_levels_1-4.png — Drako (dragon), levels 1–4, final
+* assets/avatars/evolution/drako/drako_sheet_b_levels_5-7.png — Drako (dragon), levels 5–7, final
 
 Missing: per-level transparent cut-outs of Zapi and Bubo (7 PNGs each); sheets
 for Pipo (dragon).

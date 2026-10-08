@@ -2,6 +2,94 @@
 
 ---
 
+## Rocco, Lumi and Drako in the app; reaction voices; VS frame; faster profile (October 2026)
+
+- Rocco, Lumi and Drako ship: 21 meshopt models (590–890 KB) and their bust/full stills,
+  catalog entries and evolution card lines. Rocco and Lumi are starters (the database rules
+  accept them as new entries); Drako is `unlock: 'store'` at 1500 coins, bought through the
+  coin worker. A starter added to the catalog no longer shows a "new Boostie unlocked" card
+  when another Boostie reaches level 7 (`diffEvolutions` skips starters).
+- Boostie reactions have voices: `rx_laugh`, `rx_wow`, `rx_stare`, `rx_wink`, `rx_yawn`
+  (the test page's default picks, built by `scripts/build-sfx.py`), cues `reaction.<id>`,
+  played on send and receive. Emoji and text reactions keep the pop.
+- VS screen: the avatar circle now clips the picture, and the bust sits on its bottom edge,
+  so ear tufts, horns and bot feet no longer stick out of the ring.
+- The profile watch starts first on sign-in, before the push setup (OneSignal SDK) and the
+  presence start, which were holding the profile's name, stats and coins back for seconds.
+
+## Three new Boosties planned: Rocco, Lumi, Drako (October 2026)
+
+- Character blocks for Rocco the ram (brave, cyan horns), Lumi the axolotl (cheerful,
+  cyan gill frills) and Drako the dragon (proud, cyan wing membranes) in
+  `AVATAR_EVOLUTION.md` §10.
+- Evolution sheet prompts `docs-md/image-prompts/16–21_*_sheet_{a,b}.md`, listed in the
+  prompts README. Docs only, no code.
+- All six evolution sheets accepted and saved in `assets/avatars/evolution/{rocco,lumi,drako}/`.
+  The sheet B template (§4d) gained anatomy, empty-hands and "energy keeps the real
+  shape, like crystal" lines after two rejected Rocco attempts; the `boostie-evolution`
+  skill's review now opens sheets at full size and counts limbs.
+- Sheet B redone: levels 5–7 looked the same, only bigger. Level 6 now doubles the
+  signature (four horns, four wings, twice the frills) and level 7 transforms it (crown of
+  horns, fan crest, wings above the head). The new sheets were accepted on the fourth
+  try, and all 21 turnaround prompts (`image-prompts/22–42`) are written.
+- Rocco's seven turnarounds came back four-legged and off-spec, but each level looks
+  clearly different, so they were accepted as they are; Rocco stays a quadruped.
+- Rocco's seven 3D models are built (Meshy, then `build_boostie.py` entries `rocco_l1`–`l7`).
+  The signature clip is a head-butt, and only the horn stripes and the core glow. All seven are
+  on the scoreboard test page. They are not in the app yet.
+
+## Boostie eyes, rim and framing fixes (October 2026)
+
+- Each Boostie has its own eye colour (`IRIS` in `build_boostie.py`): Zapi amber, Bubo
+  golden-yellow, Rocco steel blue, Lumi dark brown, Drako gold. Bubo's shipped models and
+  stills were updated.
+- Both eyes now look the same way: `boostieLive.js` evens out the built eyes' splay at load
+  and turns both eyes together when they follow a target.
+- The whitish rim edge (a "plastic or carved wood" look on every model) is softer: tinted by
+  the surface colour, tighter, and the rim light is half as strong.
+- Scoreboard heads were too big and cut off for wide heads; the bust framing now uses the
+  head's width too (`scoreboard3d.js`, `render_stills.py`).
+- Rocco L1 lost the black ring round its eyes, and Rocco L4's right eye no longer sits too deep.
+- Lumi's seven turnarounds were accepted as generated: upright at every level, no DJ outfit,
+  violet eyes (her `IRIS` entry changed from dark brown to violet to match).
+- Lumi's seven 3D models are built (`lumi_l1`–`l7` in `build_boostie.py`): the frills spring
+  on the ear bones and glow at the tips, and the signature is a happy wiggle. All seven are
+  on the scoreboard test page, not in the app yet.
+- Drako's seven turnarounds were accepted as generated: four legs and two wings at every
+  level, no royal outfit. His 3D eyes stay bright gold as in the spec, not the images' cyan.
+- Drako's seven 3D models are built (`drako_l1`–`l7` in `build_boostie.py`): one bone per
+  wing, so the shared clips flap them, the cyan membranes glow, and the signature is a
+  wing flare. All seven are on the scoreboard test page, not in the app yet.
+- Drako's eyes fixed after the phone check: the balls now sit on the painted eye whites
+  (his pupils look sideways, so centring on them made him look cross-eyed), and a new
+  `"socket": "skin"` option in `build_boostie.py` paints the sockets in the surrounding skin
+  colour and clears leftover cyan iris specks.
+- The 3D test page downloads models with `cache: 'no-cache'`, so a phone picks up rebuilt
+  models instead of showing the copy it cached earlier.
+
+---
+
+## Coins move server-side (Phase 6a, October 2026)
+
+Coins will be sold for real money, so the client can no longer write them
+(D-coin-economy).
+
+- New coin endpoints in the Cloudflare Worker (`worker/src/economy.js`): `claim-daily`,
+  `achievement`, `buy`, `claim-chain`, and `credit-play` for Play coin packs
+  (`worker/src/playBilling.js`, ready for 6b). Compare-and-set writes, idempotent by
+  request id, audit log in `coinLedger/`.
+- Shared pure rules in `src/game/account/economy.js`; achievement definitions moved to
+  `src/game/account/achievements.js` so the worker can check completion.
+- `src/game/account/economyClient.js` replaces `bumpCoins`, `claimDailyReward` and
+  `purchaseStoreItem` in `main.js`. A failed purchase shows a retry banner.
+- Rules: `coins`, `loginStreak`, `lastLoginDate`, `ownedReactions`, the payout records
+  and new non-starter Boosties are worker-only. New emulator tests in
+  `tests/emulator/coin-rules.test.mjs`.
+- `npm run test:unit` also runs `worker/test/*.test.js`.
+- Fix: `avatarScreens.js` used `achievementSnapshot` without importing it after the move.
+
+---
+
 ## Profile avatar alive (October 2026)
 
 The big avatar on the profile screen (`#sprofile`, the ring around

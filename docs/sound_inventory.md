@@ -52,6 +52,11 @@ says how to get the sources (Freesound HQ previews by id, plus the Kenney zips).
 | `doorbell` | invite.received | Freesound #442280 "DoorBell Shortened" by jwheeler91 | CC0 | 1.9 s, −16 LUFS |
 | `cash_register` | store.purchase | Freesound #184438 "Cash Register Fake" by CapsLok | CC0 | 1.4 s, peak −3 dB |
 | `pop` | reaction.send, reaction.receive | Freesound #447910 "Plop!" by Breviceps | CC0 | 0.2 s, peak −3 dB |
+| `rx_laugh` | reaction.laugh | Freesound #513983 "Very Cute Cartoon Laughter" by NicknameLarry | CC0 | 0.77 s, −16 LUFS |
+| `rx_wow` | reaction.wow | Freesound #242607 "gasp OOOH!.wav" by Reitanna | CC0 | 1.27 s, −16 LUFS |
+| `rx_stare` | reaction.stare | Freesound #242606 "gasp HOH!.wav" by Reitanna | CC0 | 0.75 s, −16 LUFS |
+| `rx_wink` | reaction.wink | Freesound #511485 "cartoon_wink_magic_sparkle.wav" by MLaudio | CC0 | 0.49 s, −16 LUFS |
+| `rx_yawn` | reaction.yawn | Freesound #252239 "long yawn2.wav" by Reitanna | CC0 | 2.0 s, −16 LUFS |
 | `whoosh` | turn.extra, turn.skip, boost.intro | Freesound #701104 "Whoosh stereo light (transition)" by xkeril | CC0 | 0.10–0.90 s, −16 LUFS |
 | `chime_turn` | turn.yours | Freesound #773403 "Atonal Crystal Chime Transition Short x20" by newlocknew (one chime at 34.49 s) | CC0 | 0.9 s, peak −3 dB |
 | `move_accepted` | move.accepted, mg.good | Kenney *Interface Sounds* `glass_001` | CC0 | 0.40 s, peak −3 dB |

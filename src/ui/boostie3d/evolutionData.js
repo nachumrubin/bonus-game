@@ -2,9 +2,9 @@
 // no three.js, so it is unit-tested directly.
 //
 // What the card says comes from AVATAR_EVOLUTION.md: §1 (the level names) and the
-// character sections (§5 Zapi, §6 Bubo) for what each new form adds.
+// character sections (§5 Zapi, §6 Bubo, §10 Rocco, Lumi, Drako) for what each new form adds.
 
-import { BOOSTIE_LEVELS, isBoostieId, boostieName } from '../../game/account/boostieCatalog.js';
+import { BOOSTIE_LEVELS, isBoostieId, boostieName, STARTER_BOOSTIES } from '../../game/account/boostieCatalog.js';
 import { normalizeBoosties } from '../../game/account/boostieXp.js';
 
 // Bus events. EVO_SHOW { id, from, to } replays a level-up (the store's watch button);
@@ -33,6 +33,30 @@ export const CHANGE_LINES = Object.freeze({
     'ציציות ארוכות ומסתעפות',
     'נזר זהב והילה',
   ]),
+  rocco: Object.freeze([null, null,
+    'רתמה ראשונה',
+    'רתמה ותיקי אוכף',
+    'צמר עבה וצעיף כחול',
+    'שריון אפור וזקנקן',
+    'שריון צווארון זהב ובד כחול',
+    'שריון זהב מלא וסימן אנרגיה במצח',
+  ]),
+  lumi: Object.freeze([null, null,
+    'רתמה וליבת כוכב כסופה',
+    'רצועות סגולות ומגינים',
+    'צווארון סגול-זהב',
+    'צווארון זהב וכפפות סגולות',
+    'סימן ירח וליבת גלקסיה',
+    'שריון עלים וכתר קריסטל',
+  ]),
+  drako: Object.freeze([null, null,
+    'סימני קריסטל על הגוף',
+    'צווארון כסוף',
+    'רתמה כהה',
+    'כנפיים זוהרות',
+    'שריון חזה זהב-סגול',
+    'שריון זהב וקרניים ארוכות',
+  ]),
 });
 
 export function levelName(level) {
@@ -57,7 +81,8 @@ export const SEEN_KEY_PREFIX = 'boost.boostieSeen.';
 //   { kind: 'level', id, from, to }   one per Boostie that went up (from = last seen)
 //   { kind: 'unlock', id }            a Boostie that arrived in the same update as a
 //                                      top-level level-up (the chain); a store purchase
-//                                      alone does not count.
+//                                      alone does not count, nor a starter (a starter added
+//                                      to the catalog appears on every profile at once).
 export function diffEvolutions(seen, boostiesRaw) {
   const now = normalizeBoosties(boostiesRaw);
   const next = Object.fromEntries(Object.entries(now).map(([id, b]) => [id, b.level]));
@@ -71,7 +96,7 @@ export function diffEvolutions(seen, boostiesRaw) {
     if (level >= BOOSTIE_LEVELS) reachedTop = true;
   }
   if (reachedTop) {
-    for (const id of Object.keys(next)) if (!(id in seen) && isBoostieId(id)) events.push({ kind: 'unlock', id });
+    for (const id of Object.keys(next)) if (!(id in seen) && isBoostieId(id) && !STARTER_BOOSTIES.includes(id)) events.push({ kind: 'unlock', id });
   }
   // Never forget a higher level (a stale snapshot must not re-arm a celebration).
   for (const [id, lv] of Object.entries(seen)) if (Number(lv) > (next[id] ?? 0)) next[id] = Number(lv);
