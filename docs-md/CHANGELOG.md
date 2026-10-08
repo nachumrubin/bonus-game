@@ -2,6 +2,18 @@
 
 ---
 
+## Bot art with transparent backgrounds (October 2026)
+
+- The VS screen cut the three bots at different heights. `build-bot-stills.py` now frames each
+  bust from its screen (antenna top to 0.9 screen-heights under it, centred on the screen), the
+  Hard bot's framing, so all three match.
+- The grey backdrop between the bots' legs is gone: the bots are now rebuilt from transparent-background
+  sheets (full bodies) and head images (the VS-screen busts) supplied as ChatGPT output, so the cutout
+  step and its backdrop heuristics were dropped from `build-bot-stills.py`. Face-screen rectangles in
+  `botFace.js` updated to the new art.
+
+---
+
 ## Game scoreboard: whole Boostie, still bots with reactions (October 2026)
 
 - The scoreboard avatars show the whole figure (legs, tail) instead of the bust: the
