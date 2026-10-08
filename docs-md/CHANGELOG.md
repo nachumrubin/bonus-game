@@ -2,6 +2,17 @@
 
 ---
 
+## Profile data never rendered: `economy` shadowing (October 2026)
+
+- The profile watch callback in `main.js` declared `const economy` (the wallet) below
+  `economy?.claimDaily()` / `claimAchievement()`, which meant the coin-worker client. The calls hit the
+  local const in its temporal dead zone and threw a ReferenceError on every snapshot for a
+  signed-in user, before `PROFILE_RENDER` / `MENU_REFRESH`. Home stayed on "sign in" and
+  the profile showed zeros. Introduced with the coin-worker commit (3bc24b7d). The local is now `wallet`.
+  The earlier "start the profile watch first" change was not the cause.
+
+---
+
 ## Rocco, Lumi and Drako in the app; reaction voices; VS frame; faster profile (October 2026)
 
 - Rocco, Lumi and Drako ship: 21 meshopt models (590–890 KB) and their bust/full stills,

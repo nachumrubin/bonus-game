@@ -3078,20 +3078,21 @@ async function boot() {
           isAnonymous: !!fbUser?.isAnonymous,
           email: fbUser?.email ?? '',
         });
-        const economy = profileService.normalizeProfileEconomy(profile);
+        // Not named `economy`: that is the coin-worker client used earlier in this callback.
+        const wallet = profileService.normalizeProfileEconomy(profile);
         bus.emit(MENU_REFRESH, {
           isAuthed: !!fbUser?.uid && !fbUser?.isAnonymous,
           displayName: profile?.displayName ?? fbUser?.displayName ?? '',
           rating: profile?.rating ?? null,
           avatar: profile ? profileAvatarValue(profile) : null,
-          coins: economy.coins,
+          coins: wallet.coins,
         });
         bus.emit(AV_RENDER, {
           ...achievementSnapshot(profile),
           coinRewardByTier: profileService.ACHIEVEMENT_COIN_REWARD,
         });
         bus.emit(STORE_RENDER, {
-          coins: economy.coins,
+          coins: wallet.coins,
           boosties: profile?.boosties ?? null,
           equippedAvatar: profile?.equippedAvatar ?? null,
           ownedReactions: profile?.ownedReactions ?? [],
