@@ -34,8 +34,43 @@ def cutout(rgb):
         sizes = ndi.sum(fg, lab, range(1, n + 1))
         keep = [i + 1 for i, sz in enumerate(sizes) if sz > 0.05 * sizes.max()]
         fg = np.isin(lab, keep)
-    fg = ndi.binary_closing(fg, iterations=3)
-    fg = ndi.binary_fill_holes(fg)
+    # Two backdrop bits the border flood cannot reach, because the floor shadow (darker than the
+    # backdrop) walls them off: the shadow itself, and the gap between the legs. The shadow is the
+    # unsaturated mid-grey in the last rows under the soles; the gap is the same grey between the
+    # two coloured soles, from the hips down.
+    hsv = cv2.cvtColor(blur, cv2.COLOR_RGB2HSV)
+    greyish = (hsv[..., 1] < 34) & (hsv[..., 2] >= 105) & (hsv[..., 2] <= 206)
+    ys_ = np.where(fg.any(axis=1))[0]
+    top_, bot_ = ys_.min(), ys_.max()
+    floor = np.zeros_like(fg)
+    floor[int(top_ + 0.9 * (bot_ - top_)):] = True
+    fg &= ~(floor & greyish & (hsv[..., 2] <= 190))
+    bot_ = np.where(fg.any(axis=1))[0].max()
+    sole = (hsv[..., 1] > 90) & fg
+    cols = sole[bot_ - 22:bot_ - 4].any(axis=0)
+    runs, start = [], None
+    for x_, on in enumerate(np.append(cols, False)):
+        if on and start is None: start = x_
+        if not on and start is not None: runs.append((start, x_)); start = None
+    runs = sorted(sorted(runs, key=lambda r: r[1] - r[0])[-2:])
+    if len(runs) == 2:
+        gx0, gx1 = runs[0][1], runs[1][0]
+        # the gap starts at the top of the dark thigh joints (below the belly) and runs to the soles
+        dark_joint = (hsv[..., 2] < 105) & (hsv[..., 1] < 70) & fg
+        rows = np.where(dark_joint[int(top_ + 0.5 * (bot_ - top_)):].sum(axis=1) > 6)[0]
+        gy0 = int(top_ + 0.5 * (bot_ - top_)) + (rows.min() if len(rows) else int(0.2 * (bot_ - top_)))
+        gy0 += int(0.03 * (bot_ - top_))
+        pale = (hsv[..., 1] < 28) & (hsv[..., 2] >= 105) & (hsv[..., 2] <= 226)   # backdrop, lit by the boots
+        box = np.zeros_like(fg)
+        box[gy0:bot_ + 1, gx0:gx1] = True
+        fg &= ~ndi.binary_dilation(box & pale, iterations=1)
+    fg = ndi.binary_closing(fg, iterations=2)
+    # fill only small pinholes; a big enclosed hole is backdrop, not part of the bot
+    holes = ndi.binary_fill_holes(fg) & ~fg
+    hl, hn = ndi.label(holes)
+    for i in range(1, hn + 1):
+        if (hl == i).sum() < 150:
+            fg |= hl == i
     fg = ndi.binary_erosion(fg, iterations=1)
     a = cv2.GaussianBlur(fg.astype(np.float32), (0, 0), 0.9)
     return np.clip(a * 255, 0, 255).astype(np.uint8), fg
@@ -84,11 +119,14 @@ for lvl in ('easy', 'medium', 'hard'):
     blankim, _, _ = place(blank)
     full.save(os.path.join(OUT, f'bot_{lvl}_full.webp'), quality=92, method=6)
     blankim.save(os.path.join(OUT, f'bot_{lvl}_blank.webp'), quality=92, method=6)
-    # bust: the head and chest, as a square from the top of the antenna
-    side = int(FIT_H * 0.56)
-    cx = CANVAS // 2
-    crop = full.crop((cx - side // 2, oy, cx + side // 2, oy + side)).resize((256, 256), Image.LANCZOS)
-    crop.save(os.path.join(OUT, f'bot_{lvl}_bust.webp'), quality=92, method=6)
     sy, sx = np.where(scr)
     r = [(sx.min() - x0) * scale + ox, (sy.min() - y0) * scale + oy, (sx.max() + 1 - x0) * scale + ox, (sy.max() + 1 - y0) * scale + oy]
+    # bust: framed from the screen so all three bots read alike (the Hard bot's framing): from the
+    # top of the antenna to just under the chest-top, centred on the screen
+    top = oy
+    bottom = r[3] + 0.9 * (r[3] - r[1])
+    side = int(bottom - top)
+    cx = int((r[0] + r[2]) / 2)
+    crop = full.crop((cx - side // 2, top, cx - side // 2 + side, top + side)).resize((256, 256), Image.LANCZOS)
+    crop.save(os.path.join(OUT, f'bot_{lvl}_bust.webp'), quality=92, method=6)
     print(lvl, json.dumps({'screen': [round(v / CANVAS, 4) for v in r], 'glass': [int(c) for c in glass]}))

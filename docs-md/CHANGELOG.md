@@ -2,6 +2,17 @@
 
 ---
 
+## Bot busts framed alike (October 2026)
+
+- The VS screen cut the three bots at different heights. `build-bot-stills.py` now frames each
+  bust from its screen (antenna top to 0.9 screen-heights under it, centred on the screen), the
+  Hard bot's framing, so all three match.
+- Open: the grey backdrop between the bots' legs is still in the `_full` / `_blank` images (it is
+  walled off from the cutout by the floor shadow). Needs source art with a transparent background;
+  the script holds an unfinished attempt at removing it automatically.
+
+---
+
 ## Game scoreboard: whole Boostie, still bots with reactions (October 2026)
 
 - The scoreboard avatars show the whole figure (legs, tail) instead of the bust: the
