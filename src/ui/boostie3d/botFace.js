@@ -9,9 +9,9 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // Screen rectangle as fractions of the 512 px still [x0, y0, x1, y1] (printed by the build
 // script), the glow colour, and the face at rest — each bot keeps its personality.
 export const BOT_FACES = Object.freeze({
-  bot_easy:   { rect: [0.3049, 0.2782, 0.7084, 0.5346], color: '#b6f23a', rest: ['arc', 'grin'] },
-  bot_medium: { rect: [0.3341, 0.2437, 0.6720, 0.4537], color: '#ffd21f', rest: ['round', 'smallsmile'] },
-  bot_hard:   { rect: [0.3564, 0.2245, 0.6596, 0.4049], color: '#ff7a4d', rest: ['angry', 'frown'] },
+  bot_easy:   { rect: [0.3023, 0.2863, 0.7035, 0.5424], color: '#b6f23a', rest: ['arc', 'grin'] },
+  bot_medium: { rect: [0.3347, 0.2516, 0.6663, 0.4604], color: '#ffd21f', rest: ['round', 'smallsmile'] },
+  bot_hard:   { rect: [0.3493, 0.2281, 0.6542, 0.4120], color: '#ff7a4d', rest: ['angry', 'frown'] },
 });
 
 export const EXPRESSIONS = Object.freeze(['rest', 'blink', 'happy', 'laugh', 'wow', 'stare', 'yawn', 'wink']);
