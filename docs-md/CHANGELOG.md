@@ -2,6 +2,15 @@
 
 ---
 
+## Cross-eyed Boosties fixed (October 2026)
+
+- The live 3D eyes (`boostieLive.js`, `aimEyes`) were each aimed at the camera from their own
+  position. With eyes set wide on the sides of the head (Rocco the ram, Lumi the axolotl) and the
+  camera close, the two lines of sight converged hard and the eyes looked crossed. Both eyes now
+  look along one shared direction (from the middle between them), still capped at `GAZE_MAX`.
+
+---
+
 ## Bot art with transparent backgrounds (October 2026)
 
 - The VS screen cut the three bots at different heights. `build-bot-stills.py` now frames each
