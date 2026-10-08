@@ -14,7 +14,7 @@
 
 import { EV } from '../events/eventTypes.js';
 import { SETTINGS_CHANGED } from '../ui/screens/settingsScreen.js';
-import { REACTIONS, getReactionDisplay, getBoostieClip } from './reactionsConfig.js';
+import { REACTIONS, getReactionDisplay, getBoostieClip, reactionVoiceCue } from './reactionsConfig.js';
 import { BOOSTIE_REACTIONS, ownsReaction } from '../game/account/boostieCatalog.js';
 import { cue as cueSfx } from '../ui/feedbackService.js';
 import {
@@ -151,7 +151,7 @@ export function mountReactionController({
     const id   = item.dataset.rxnId;
     if (!canSendReaction()) return;
     closeReactionPanel();
-    cueSfx('reaction.send');
+    cueSfx(reactionVoiceCue({ type, id }) ?? 'reaction.send');
     const now = Date.now();
     recordReactionSent(now);
     startCooldownUI();
@@ -209,7 +209,7 @@ export function mountReactionController({
     if (messagesDisabled()) return;
     if (!getReactionDisplay(reaction)) return;
     present(Number(reaction.senderSlot), reaction);
-    cueSfx('reaction.receive');
+    cueSfx(reactionVoiceCue(reaction) ?? 'reaction.receive');
   });
   cleanups.push(unsubReaction);
 

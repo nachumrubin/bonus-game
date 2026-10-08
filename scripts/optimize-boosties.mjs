@@ -21,7 +21,7 @@ import { MeshoptEncoder, MeshoptDecoder } from 'meshoptimizer';
 
 const SRC = 'Blender designs/boosties/out';
 const DST = 'assets/boosties';
-const KEY = /^(zapi|bubo|bot_[a-z]+)(_l\d)?$/;   // shipped models only; test builds (e.g. *_trellis) are skipped
+const KEY = /^(zapi|bubo|rocco|lumi|drako|bot_[a-z]+)(_l\d)?$/;   // shipped models only; test builds (e.g. *_trellis) are skipped
 
 await MeshoptEncoder.ready;
 await MeshoptDecoder.ready;

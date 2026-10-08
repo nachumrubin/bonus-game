@@ -270,6 +270,27 @@ export const SFX = Object.freeze({
     tier: 'event', file: 'pop', vol: 0.42, rate: 0.85, haptic: [20], throttleMs: 300,
     synth: tone(500, 50, 'sine', 0.08, 750),
   },
+  // Boostie reactions: a short voice per reaction, on both phones (picked on the 3D test page).
+  'reaction.laugh': {
+    tier: 'event', file: 'rx_laugh', vol: 0.55, haptic: [20], throttleMs: 300,
+    synth: [tone(660, 70, 'triangle', 0.08, 880), tone(660, 70, 'triangle', 0.08, 880, 110)],
+  },
+  'reaction.wow': {
+    tier: 'event', file: 'rx_wow', vol: 0.55, haptic: [20], throttleMs: 300,
+    synth: tone(400, 260, 'sine', 0.09, 700),
+  },
+  'reaction.stare': {
+    tier: 'event', file: 'rx_stare', vol: 0.55, haptic: [20], throttleMs: 300,
+    synth: tone(900, 90, 'sine', 0.07, 1300),
+  },
+  'reaction.wink': {
+    tier: 'event', file: 'rx_wink', vol: 0.5, haptic: [20], throttleMs: 300,
+    synth: tone(1400, 60, 'sine', 0.06, 2000),
+  },
+  'reaction.yawn': {
+    tier: 'event', file: 'rx_yawn', vol: 0.5, haptic: [20], throttleMs: 300,
+    synth: tone(500, 600, 'sine', 0.07, 250),
+  },
 
   // ── General UI (very quiet) ──────────────────────────────
   'ui.tap': {

@@ -399,6 +399,8 @@ Signature movements (one per character, small, under 1 s):
 | Zapi | Double ear twitch, left ear leading, the tail tip answering |
 | Bubo | The owl head swivel: a quick turn and a curious sideways tilt, tufts perking |
 | Rocco | The head-butt: rears back, butts down sharply, a small rebound; ears flick back, tail tip wags |
+| Lumi | The happy wiggle: the body sways side to side, the frills flap out of step, the tail flicks |
+| Drako | The wing flare: the chest puffs up, both wings snap wide and beat twice, the tail lashes |
 
 Shared clips (every Boostie, `CLIPS` in `build_boostie.py`): idle, turn, good, boost,
 laugh, wow, stare, yawn and **wink**. Wink is the only clip that keys the lids
@@ -671,3 +673,53 @@ from pink to purple: L1 no outfit, L2 harness with a silver star core, L3 purple
 and bracers, L4 purple-and-gold collar with ankle bands, L5 gold collar with purple gloves
 and feet, L6 moon mark and galaxy core, L7 leaf shoulder armour and crystal crest. Saved as
 `Blender designs/boosties/sources/lumi_l<N>_turnaround.png`.
+
+### Lumi 3D models (October 2026)
+
+All seven turnarounds went through Meshy (`meshy_generate.py --split 4`) and
+`build_boostie.py` (`lumi_l1`–`lumi_l7`). The rig is upright like Bubo's: a spine, a
+five-bone tail, and each side's frill cluster on `ear.L` / `ear.R` (radius 0.07). The frills
+then spring like ears in the app with no new code. `glow_bones` is the two frill bones, so only
+the blue frill tips and the core glow; forehead marks, bracer gems and the tail stay plain.
+The irises are violet. The eye sockets are painted in each level's skin colour, so there's no
+dark ring (Rocco L1's problem). Signature: the happy wiggle, a side-to-side sway of the
+body with the frills flapping out of step and a tail flick. All seven are on the scoreboard
+test page.
+
+### Review log: Drako turnarounds (October 2026)
+
+Like Rocco and Lumi, the generator ignored most of the prompts. The user chose to **use
+the seven as they are**, because every level looks clearly different. Known deviations,
+accepted:
+
+- On four legs at every level (the spec has him upright from level 4).
+- Two wings at every level (the spec has four from level 6).
+- No royal theme: no sash, scepter or crown. Each level wears its own collar, harness or
+  armour instead.
+- Cyan beyond the core and wings: horns, spikes, claws, tail tip and body marks.
+- Cyan-teal eyes in the images. The 3D build keeps the spec's **bright gold** iris
+  (`IRIS` in `build_boostie.py`), so the eyes stand out from all the cyan.
+
+The images came unordered; they were ranked by outfit and how young the face looks:
+L1 chubby baby with a blue collar and gem, L2 no outfit with crystal body marks, L3 silver
+collar and ankle bands, L4 dark harness with a silver frame, L5 no armour with glowing
+wing membranes, L6 gold-and-purple chest armour with gem bracers, L7 gold chest plate and
+long dark-to-cyan horns. Saved as `Blender designs/boosties/sources/drako_l<N>_turnaround.png`.
+
+### Drako 3D models (October 2026)
+
+All seven turnarounds went through Meshy (`meshy_generate.py --split 4`) and
+`build_boostie.py` (`drako_l1`–`drako_l7`). The rig is four-legged like Rocco's (hips,
+chest, neck, head, five tail bones) with no ear bones. The tail bones follow the tail's
+sideways curl at L1–3 and L6–7. Each wing has one bone, `wing.L` / `wing.R`, from the
+shoulder out to the middle of the membrane (radius 0.06); a rotation about the bone's
+local Z raises the wing, so the shared clips' wing keys (written for Bubo) flap Drako's
+wings with no new code. `glow_bones` is the two wings, so only the cyan membranes and the
+core glow; horns, spikes, claws and the tail tip stay plain. The irises are bright gold. Drako's painted pupils look sideways, so the
+balls are centred on the painted eye whites, not the pupils, and sized to cover them (first
+phone check: placed on the pupils, the whites showed beside the ball and he looked
+cross-eyed). The sockets use `"socket": "skin"`: the build paints them in the median skin
+colour just around each eye, and also repaints cyan specks of the old iris at the socket's
+edge. L2 and L4 use `show 0.32` so the face doesn't hide the nose side of the ball. Signature: the wing flare, a proud
+chest puff with both wings snapping wide and beating twice. All seven are on the scoreboard
+test page.

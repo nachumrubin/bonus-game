@@ -33,8 +33,8 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 In-app Boostie assets (paths built by `src/game/account/boostieCatalog.js`):
 
 * assets/boosties/<id>_l<N>.glb — rigged 3D model per level, meshopt-compressed by
-  `scripts/optimize-boosties.mjs` from `Blender designs/boosties/out/`. 14 files
-  (zapi, bubo × L1–7), ~0.8–1.0 MB each. Used by the live scoreboard (Phase 3).
+  `scripts/optimize-boosties.mjs` from `Blender designs/boosties/out/`. 35 files
+  (zapi, bubo, rocco, lumi, drako × L1–7), ~0.6–1.0 MB each. Used by the live scoreboard (Phase 3).
   Clips: idle, turn, good, boost, signature, laugh, wow, stare, yawn, wink.
 * assets/boosties/bot_{easy,medium,hard}.glb — the bots' 3D models (~0.65 MB each,
   single level, screen face with 8 expressions; AVATAR_EVOLUTION §9).

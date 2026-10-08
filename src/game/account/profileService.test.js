@@ -410,7 +410,7 @@ test('dailyWeek: the window rolls after day 7', () => {
 
 test('buildInitialProfile: owns every starter Boostie at level 1, no reactions bought', () => {
   const p = buildInitialProfile({ displayName: 'x', userId: '1' });
-  assert.deepEqual(p.boosties, { zapi: { xp: 0, level: 1 }, bubo: { xp: 0, level: 1 } });
+  assert.deepEqual(p.boosties, { zapi: { xp: 0, level: 1 }, bubo: { xp: 0, level: 1 }, rocco: { xp: 0, level: 1 }, lumi: { xp: 0, level: 1 } });
   assert.deepEqual(p.ownedReactions, []);
 });
 

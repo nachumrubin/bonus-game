@@ -12,8 +12,8 @@
 // How a Boostie is unlocked:
 //   'starter' — every player owns it from the start (the plan: 4–5 starters)
 //   'chain'   — free when another Boostie reaches the top level (CHAIN_ORDER), or bought
-// `price` is the coin price in the store (0 = not for sale). Locked Boosties (2–3) come
-// with the next characters; today every Boostie is a starter.
+//   'store'   — only bought with coins
+// `price` is the coin price in the store (0 = not for sale).
 
 export const BOOSTIE_LEVELS = 7;
 export const DEFAULT_BOOSTIE = 'zapi';
@@ -21,6 +21,9 @@ export const DEFAULT_BOOSTIE = 'zapi';
 export const BOOSTIES = Object.freeze({
   zapi: Object.freeze({ id: 'zapi', name: 'זאפי', species: 'fox', unlock: 'starter', price: 0 }),
   bubo: Object.freeze({ id: 'bubo', name: 'בובו', species: 'owl', unlock: 'starter', price: 0 }),
+  rocco: Object.freeze({ id: 'rocco', name: 'רוקו', species: 'ram', unlock: 'starter', price: 0 }),
+  lumi: Object.freeze({ id: 'lumi', name: 'לומי', species: 'axolotl', unlock: 'starter', price: 0 }),
+  drako: Object.freeze({ id: 'drako', name: 'דרקו', species: 'dragon', unlock: 'store', price: 1500 }),
 });
 
 // Every player owns these from the start.

@@ -9,7 +9,7 @@ import {
 import {
   BOOSTIES, BOOSTIE_LEVELS, DEFAULT_BOOSTIE, CHAIN_ORDER, STARTER_BOOSTIES,
   isBoostieId, clampLevel, boostieStillSrc, boostieModelSrc, nextChainBoostie, boostieName,
-  boostieAvatarValue, parseBoostieAvatar,
+  boostieAvatarValue, parseBoostieAvatar, parseStoreItem,
 } from './boostieCatalog.js';
 
 // ── XP per game ──────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ test('normalizeBoosties: drops unknown ids, recomputes levels, adds every starte
   assert.deepEqual(n.bubo, { xp: LEVEL_XP[2], level: 3 });
   assert.equal(n.rare_3, undefined);
   assert.deepEqual(n[DEFAULT_BOOSTIE], { xp: 0, level: 1 });
-  assert.deepEqual(normalizeBoosties(null), { zapi: { xp: 0, level: 1 }, bubo: { xp: 0, level: 1 } });
+  assert.deepEqual(normalizeBoosties(null), { zapi: { xp: 0, level: 1 }, bubo: { xp: 0, level: 1 }, rocco: { xp: 0, level: 1 }, lumi: { xp: 0, level: 1 } });
 });
 
 test('applyGameXp: adds XP to the equipped Boostie only', () => {
@@ -149,13 +149,23 @@ test('catalog: ids, starter and chain', () => {
   assert.ok(!isBoostieId('common_17'));
   assert.ok(!isBoostieId('toString'));
   assert.equal(BOOSTIES[DEFAULT_BOOSTIE].unlock, 'starter');
-  assert.deepEqual([...STARTER_BOOSTIES], ['zapi', 'bubo']);
+  assert.deepEqual([...STARTER_BOOSTIES], ['zapi', 'bubo', 'rocco', 'lumi']);
   for (const id of CHAIN_ORDER) assert.equal(BOOSTIES[id].unlock, 'chain');
   assert.equal(nextChainBoostie(['zapi']), null); // nothing locked yet
   // With a chain: the first id not owned, from an array or a { id: … } map.
   assert.equal(nextChainBoostie(['zapi', 'nova'], ['nova', 'rex']), 'rex');
   assert.equal(nextChainBoostie({ nova: {}, rex: {} }, ['nova', 'rex']), null);
   assert.equal(boostieName('nope'), BOOSTIES[DEFAULT_BOOSTIE].name);
+});
+
+test('catalog: Drako is sold in the store only, the other new Boosties are starters', () => {
+  assert.equal(BOOSTIES.drako.unlock, 'store');
+  assert.ok(!STARTER_BOOSTIES.includes('drako'));
+  assert.ok(!CHAIN_ORDER.includes('drako'));
+  assert.deepEqual(parseStoreItem('boostie:drako'), { kind: 'boostie', id: 'drako', price: BOOSTIES.drako.price });
+  assert.ok(BOOSTIES.drako.price > 0);
+  assert.equal(parseStoreItem('boostie:rocco'), null); // starters aren't for sale
+  assert.equal(boostieModelSrc('lumi', 3), 'assets/boosties/lumi_l3.glb');
 });
 
 test('catalog: asset paths clamp the level and fall back to the starter', () => {

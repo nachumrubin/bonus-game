@@ -671,6 +671,391 @@ LEVELS = {
             ("tail.4", (0.0, 0.44, -0.12), (0.0, 0.48, -0.15), 'tail.3', FWD),
         ],
     },
+    "lumi_l1": {   # Meshy, four-view turnaround, normalised to 1.0; plain pink, no outfit; the frills hang on ear.L / ear.R
+        "src": "lumi_l1_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.13),
+        "core": (0.0, -0.264, -0.11),
+        "eyes": {"R": (-0.117, 0.155), "L": (0.117, 0.155), "r": 0.055, "show": 0.22, "reach": 1.2, "socket": "E8A9B6",
+                 "shape": {"width": 1.0, "open": 45}},   # big round eyes
+        "mouth": {"x": 0.0, "tip": (-0.368, 0.06), "corner": (-0.328, 0.075), "half": 0.07,
+                  "hinge": (0.0, -0.258, 0.105)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["ear.L", "ear.R"],   # the blue frill tips
+        "radii": {"ear.L": 0.07, "ear.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.13, -0.5), (0.0, -0.13, -0.38), None, UP),
+            ("hips", (0.0, -0.13, -0.33), (0.0, -0.13, -0.12), 'root', UP),
+            ("chest", (0.0, -0.13, -0.12), (0.0, -0.14, 0.02), 'hips', UP),
+            ("neck", (0.0, -0.14, 0.02), (0.0, -0.144, 0.055), 'chest', UP),
+            ("head", (0.0, -0.144, 0.055), (0.0, -0.144, 0.405), 'neck', UP),
+            ("ear.L", (0.17, -0.144, 0.205), (0.33, -0.114, 0.355), 'head', UP),
+            ("ear.R", (-0.17, -0.144, 0.205), (-0.33, -0.114, 0.355), 'head', UP),
+            ("tail.0", (0.0, -0.01, -0.25), (0.0, 0.076, -0.28), 'hips', FWD),
+            ("tail.1", (0.0, 0.076, -0.28), (0.0, 0.162, -0.31), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.162, -0.31), (0.0, 0.248, -0.34), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.248, -0.34), (0.0, 0.334, -0.37), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.334, -0.37), (0.0, 0.42, -0.4), 'tail.3', FWD),
+        ],
+    },
+    "lumi_l2": {   # Meshy, four-view turnaround, normalised to 1.0; pink, purple harness, silver star core; the frills hang on ear.L / ear.R
+        "src": "lumi_l2_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.15),
+        "core": (0.0, -0.351, -0.12),
+        "eyes": {"R": (-0.125, 0.2), "L": (0.125, 0.2), "r": 0.055, "show": 0.22, "reach": 1.2, "socket": "E9A5B0",
+                 "shape": {"width": 1.0, "open": 45}},   # big round eyes
+        "mouth": {"x": 0.0, "tip": (-0.402, 0.102), "corner": (-0.362, 0.12), "half": 0.07,
+                  "hinge": (0.0, -0.292, 0.15)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["ear.L", "ear.R"],   # the blue frill tips
+        "radii": {"ear.L": 0.07, "ear.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.15, -0.5), (0.0, -0.15, -0.38), None, UP),
+            ("hips", (0.0, -0.15, -0.33), (0.0, -0.15, -0.12), 'root', UP),
+            ("chest", (0.0, -0.15, -0.12), (0.0, -0.16, 0.02), 'hips', UP),
+            ("neck", (0.0, -0.16, 0.02), (0.0, -0.208, 0.1), 'chest', UP),
+            ("head", (0.0, -0.208, 0.1), (0.0, -0.208, 0.45), 'neck', UP),
+            ("ear.L", (0.17, -0.208, 0.25), (0.33, -0.178, 0.4), 'head', UP),
+            ("ear.R", (-0.17, -0.208, 0.25), (-0.33, -0.178, 0.4), 'head', UP),
+            ("tail.0", (0.0, -0.03, -0.25), (0.0, 0.06, -0.28), 'hips', FWD),
+            ("tail.1", (0.0, 0.06, -0.28), (0.0, 0.15, -0.31), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.15, -0.31), (0.0, 0.24, -0.34), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.24, -0.34), (0.0, 0.33, -0.37), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.33, -0.37), (0.0, 0.42, -0.4), 'tail.3', FWD),
+        ],
+    },
+    "lumi_l3": {   # Meshy, four-view turnaround, normalised to 1.0; lavender, spotted, purple straps; the frills hang on ear.L / ear.R
+        "src": "lumi_l3_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.19),
+        "core": (0.0, -0.373, -0.084),
+        "eyes": {"R": (-0.113, 0.195), "L": (0.113, 0.195), "r": 0.047, "show": 0.22, "reach": 1.2, "socket": "CDB6E0",
+                 "shape": {"width": 1.0, "open": 45}},   # big round eyes
+        "mouth": {"x": 0.0, "tip": (-0.433, 0.095), "corner": (-0.393, 0.115), "half": 0.07,
+                  "hinge": (0.0, -0.323, 0.145)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["ear.L", "ear.R"],   # the blue frill tips
+        "radii": {"ear.L": 0.07, "ear.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.19, -0.5), (0.0, -0.19, -0.38), None, UP),
+            ("hips", (0.0, -0.19, -0.33), (0.0, -0.19, -0.12), 'root', UP),
+            ("chest", (0.0, -0.19, -0.12), (0.0, -0.2, 0.02), 'hips', UP),
+            ("neck", (0.0, -0.2, 0.02), (0.0, -0.234, 0.095), 'chest', UP),
+            ("head", (0.0, -0.234, 0.095), (0.0, -0.234, 0.445), 'neck', UP),
+            ("ear.L", (0.17, -0.234, 0.245), (0.33, -0.204, 0.395), 'head', UP),
+            ("ear.R", (-0.17, -0.234, 0.245), (-0.33, -0.204, 0.395), 'head', UP),
+            ("tail.0", (0.0, -0.07, -0.25), (0.0, 0.028, -0.28), 'hips', FWD),
+            ("tail.1", (0.0, 0.028, -0.28), (0.0, 0.126, -0.31), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.126, -0.31), (0.0, 0.224, -0.34), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.224, -0.34), (0.0, 0.322, -0.37), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.322, -0.37), (0.0, 0.42, -0.4), 'tail.3', FWD),
+        ],
+    },
+    "lumi_l4": {   # Meshy, four-view turnaround, normalised to 1.0; pearl pink, purple-and-gold collar; the frills hang on ear.L / ear.R
+        "src": "lumi_l4_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.025, -0.155),
+        "core": (0.025, -0.324, -0.089),
+        "eyes": {"R": (-0.09, 0.2), "L": (0.14, 0.2), "r": 0.046, "show": 0.22, "reach": 1.2, "socket": "DCCBE6",
+                 "shape": {"width": 1.0, "open": 45}},   # big round eyes
+        "mouth": {"x": 0.025, "tip": (-0.365, 0.122), "corner": (-0.325, 0.135), "half": 0.07,
+                  "hinge": (0.025, -0.255, 0.165)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["ear.L", "ear.R"],   # the blue frill tips
+        "radii": {"ear.L": 0.07, "ear.R": 0.07},
+        "bones": [
+            ("root", (0.025, -0.155, -0.5), (0.025, -0.155, -0.38), None, UP),
+            ("hips", (0.025, -0.155, -0.33), (0.025, -0.155, -0.12), 'root', UP),
+            ("chest", (0.025, -0.155, -0.12), (0.025, -0.165, 0.02), 'hips', UP),
+            ("neck", (0.025, -0.165, 0.02), (0.025, -0.151, 0.1), 'chest', UP),
+            ("head", (0.025, -0.151, 0.1), (0.025, -0.151, 0.45), 'neck', UP),
+            ("ear.L", (0.195, -0.151, 0.25), (0.355, -0.121, 0.4), 'head', UP),
+            ("ear.R", (-0.145, -0.151, 0.25), (-0.305, -0.121, 0.4), 'head', UP),
+            ("tail.0", (0.025, -0.035, -0.25), (0.025, 0.056, -0.28), 'hips', FWD),
+            ("tail.1", (0.025, 0.056, -0.28), (0.025, 0.147, -0.31), 'tail.0', FWD),
+            ("tail.2", (0.025, 0.147, -0.31), (0.025, 0.238, -0.34), 'tail.1', FWD),
+            ("tail.3", (0.025, 0.238, -0.34), (0.025, 0.329, -0.37), 'tail.2', FWD),
+            ("tail.4", (0.025, 0.329, -0.37), (0.025, 0.42, -0.4), 'tail.3', FWD),
+        ],
+    },
+    "lumi_l5": {   # Meshy, four-view turnaround, normalised to 1.0; white with blue spots, purple gloves; the frills hang on ear.L / ear.R
+        "src": "lumi_l5_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.16),
+        "core": (0.0, -0.329, -0.089),
+        "eyes": {"R": (-0.122, 0.2), "L": (0.12, 0.2), "r": 0.055, "show": 0.22, "reach": 1.2, "socket": "E4BCD8",
+                 "shape": {"width": 1.0, "open": 45}},   # big round eyes
+        "mouth": {"x": 0.0, "tip": (-0.385, 0.125), "corner": (-0.345, 0.135), "half": 0.07,
+                  "hinge": (0.0, -0.275, 0.165)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["ear.L", "ear.R"],   # the blue frill tips
+        "radii": {"ear.L": 0.07, "ear.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.16, -0.5), (0.0, -0.16, -0.38), None, UP),
+            ("hips", (0.0, -0.16, -0.33), (0.0, -0.16, -0.12), 'root', UP),
+            ("chest", (0.0, -0.16, -0.12), (0.0, -0.17, 0.02), 'hips', UP),
+            ("neck", (0.0, -0.17, 0.02), (0.0, -0.187, 0.1), 'chest', UP),
+            ("head", (0.0, -0.187, 0.1), (0.0, -0.187, 0.45), 'neck', UP),
+            ("ear.L", (0.17, -0.187, 0.25), (0.33, -0.157, 0.4), 'head', UP),
+            ("ear.R", (-0.17, -0.187, 0.25), (-0.33, -0.157, 0.4), 'head', UP),
+            ("tail.0", (0.0, -0.04, -0.25), (0.0, 0.052, -0.28), 'hips', FWD),
+            ("tail.1", (0.0, 0.052, -0.28), (0.0, 0.144, -0.31), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.144, -0.31), (0.0, 0.236, -0.34), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.236, -0.34), (0.0, 0.328, -0.37), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.328, -0.37), (0.0, 0.42, -0.4), 'tail.3', FWD),
+        ],
+    },
+    "lumi_l6": {   # Meshy, four-view turnaround, normalised to 1.0; lavender, moon mark, galaxy core; the frills hang on ear.L / ear.R
+        "src": "lumi_l6_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.2),
+        "core": (0.0, -0.391, -0.096),
+        "eyes": {"R": (-0.117, 0.163), "L": (0.11, 0.163), "r": 0.05, "show": 0.22, "reach": 1.2, "socket": "C8BAE8",
+                 "shape": {"width": 1.0, "open": 45}},   # big round eyes
+        "mouth": {"x": 0.0, "tip": (-0.395, 0.065), "corner": (-0.355, 0.08), "half": 0.07,
+                  "hinge": (0.0, -0.285, 0.11)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["ear.L", "ear.R"],   # the blue frill tips
+        "radii": {"ear.L": 0.07, "ear.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.2, -0.5), (0.0, -0.2, -0.38), None, UP),
+            ("hips", (0.0, -0.2, -0.33), (0.0, -0.2, -0.12), 'root', UP),
+            ("chest", (0.0, -0.2, -0.12), (0.0, -0.21, 0.02), 'hips', UP),
+            ("neck", (0.0, -0.21, 0.02), (0.0, -0.205, 0.062), 'chest', UP),
+            ("head", (0.0, -0.205, 0.062), (0.0, -0.205, 0.412), 'neck', UP),
+            ("ear.L", (0.17, -0.205, 0.213), (0.33, -0.175, 0.363), 'head', UP),
+            ("ear.R", (-0.17, -0.205, 0.213), (-0.33, -0.175, 0.363), 'head', UP),
+            ("tail.0", (0.0, -0.08, -0.25), (0.0, 0.02, -0.28), 'hips', FWD),
+            ("tail.1", (0.0, 0.02, -0.28), (0.0, 0.12, -0.31), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.12, -0.31), (0.0, 0.22, -0.34), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.22, -0.34), (0.0, 0.32, -0.37), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.32, -0.37), (0.0, 0.42, -0.4), 'tail.3', FWD),
+        ],
+    },
+    "lumi_l7": {   # Meshy, four-view turnaround, normalised to 1.0; deep purple galaxy, leaf armour, crystal crest; the frills hang on ear.L / ear.R
+        "src": "lumi_l7_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.24),
+        "core": (0.0, -0.419, -0.108),
+        "eyes": {"R": (-0.1, 0.17), "L": (0.1, 0.17), "r": 0.05, "show": 0.22, "reach": 1.2, "socket": "9488CC",
+                 "shape": {"width": 1.0, "open": 45}},   # big round eyes
+        "mouth": {"x": 0.0, "tip": (-0.461, 0.077), "corner": (-0.42, 0.09), "half": 0.07,
+                  "hinge": (0.0, -0.351, 0.12)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["ear.L", "ear.R"],   # the blue frill tips
+        "radii": {"ear.L": 0.07, "ear.R": 0.07},
+        "bones": [
+            ("root", (0.0, -0.24, -0.5), (0.0, -0.24, -0.38), None, UP),
+            ("hips", (0.0, -0.24, -0.33), (0.0, -0.24, -0.12), 'root', UP),
+            ("chest", (0.0, -0.24, -0.12), (0.0, -0.25, 0.02), 'hips', UP),
+            ("neck", (0.0, -0.25, 0.02), (0.0, -0.256, 0.07), 'chest', UP),
+            ("head", (0.0, -0.256, 0.07), (0.0, -0.256, 0.42), 'neck', UP),
+            ("ear.L", (0.17, -0.256, 0.22), (0.33, -0.226, 0.37), 'head', UP),
+            ("ear.R", (-0.17, -0.256, 0.22), (-0.33, -0.226, 0.37), 'head', UP),
+            ("tail.0", (0.0, -0.12, -0.25), (0.0, -0.012, -0.28), 'hips', FWD),
+            ("tail.1", (0.0, -0.012, -0.28), (0.0, 0.096, -0.31), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.096, -0.31), (0.0, 0.204, -0.34), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.204, -0.34), (0.0, 0.312, -0.37), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.312, -0.37), (0.0, 0.42, -0.4), 'tail.3', FWD),
+        ],
+    },
+    "drako_l1": {   # Meshy, four-view turnaround, normalised to 1.0; chubby baby, blue collar and gem (four legs, wings on the shoulders)
+        "src": "drako_l1_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.407, -0.17),
+        "eyes": {"R": (-0.0925, 0.1515), "L": (0.0925, 0.1515), "r": 0.046, "show": 0.22,
+                 "reach": 1.5, "socket": "skin",   # balls centred on the painted eye whites (the pupils look sideways); the socket is painted in the skin around it
+                 "shape": {"width": 1.0, "open": 45}},
+        "mouth": {"x": 0.0, "tip": (-0.485, 0.042), "corner": (-0.44, 0.069), "half": 0.05,
+                  "hinge": (0.0, -0.385, 0.099)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["wing.L", "wing.R"],   # the cyan wing membranes; horns, spikes and claws stay plain
+        "radii": {"head": 0.15, "wing.L": 0.06, "wing.R": 0.06},
+        "bones": [
+            ("root", (0.0, -0.05, -0.5), (0.0, -0.05, -0.38), None, UP),
+            ("hips", (0.0, 0.05, -0.25), (0.0, -0.12, -0.22), 'root', FWD),
+            ("chest", (0.0, -0.12, -0.22), (0.0, -0.26, -0.12), 'hips', FWD),
+            ("neck", (0.0, -0.26, -0.12), (0.0, -0.31, 0.02), 'chest', FWD),
+            ("head", (0.0, -0.31, 0.02), (0.0, -0.32, 0.342), 'neck', UP),
+            ("wing.L", (0.11, -0.1, -0.03), (0.3, -0.03, -0.12), 'chest', UP),
+            ("wing.R", (-0.11, -0.1, -0.03), (-0.3, -0.03, -0.12), 'chest', UP),
+            ("tail.0", (0.0, 0.04, -0.28), (0.0, 0.14, -0.31), 'hips', FWD),
+            ("tail.1", (0.0, 0.14, -0.31), (-0.01, 0.23, -0.33), 'tail.0', FWD),
+            ("tail.2", (-0.01, 0.23, -0.33), (-0.05, 0.31, -0.35), 'tail.1', FWD),
+            ("tail.3", (-0.05, 0.31, -0.35), (-0.13, 0.4, -0.36), 'tail.2', FWD),
+            ("tail.4", (-0.13, 0.4, -0.36), (-0.27, 0.49, -0.37), 'tail.3', FWD),
+        ],
+    },
+    "drako_l2": {   # Meshy, four-view turnaround, normalised to 1.0; no outfit, crystal body marks (four legs, wings on the shoulders)
+        "src": "drako_l2_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.381, -0.1),
+        "eyes": {"R": (-0.0645, 0.1445), "L": (0.0645, 0.1445), "r": 0.037, "show": 0.32,
+                 "reach": 1.5, "socket": "skin",   # balls centred on the painted eye whites (the pupils look sideways); the socket is painted in the skin around it
+                 "shape": {"width": 1.0, "open": 42}},
+        "mouth": {"x": 0.0, "tip": (-0.48, 0.063), "corner": (-0.434, 0.078), "half": 0.05,
+                  "hinge": (0.0, -0.38, 0.108)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["wing.L", "wing.R"],   # the cyan wing membranes; horns, spikes and claws stay plain
+        "radii": {"head": 0.15, "wing.L": 0.06, "wing.R": 0.06},
+        "bones": [
+            ("root", (0.0, -0.05, -0.389), (0.0, -0.05, -0.269), None, UP),
+            ("hips", (0.0, 0.05, -0.15), (0.0, -0.12, -0.12), 'root', FWD),
+            ("chest", (0.0, -0.12, -0.12), (0.0, -0.26, -0.05), 'hips', FWD),
+            ("neck", (0.0, -0.26, -0.05), (0.0, -0.31, 0.04), 'chest', FWD),
+            ("head", (0.0, -0.31, 0.04), (0.0, -0.32, 0.363), 'neck', UP),
+            ("wing.L", (0.11, -0.09, 0.04), (0.29, 0.0, 0.0), 'chest', UP),
+            ("wing.R", (-0.11, -0.09, 0.04), (-0.29, 0.0, 0.0), 'chest', UP),
+            ("tail.0", (0.0, 0.04, -0.17), (0.0, 0.13, -0.22), 'hips', FWD),
+            ("tail.1", (0.0, 0.13, -0.22), (-0.01, 0.22, -0.27), 'tail.0', FWD),
+            ("tail.2", (-0.01, 0.22, -0.27), (-0.04, 0.31, -0.29), 'tail.1', FWD),
+            ("tail.3", (-0.04, 0.31, -0.29), (-0.12, 0.4, -0.29), 'tail.2', FWD),
+            ("tail.4", (-0.12, 0.4, -0.29), (-0.27, 0.49, -0.28), 'tail.3', FWD),
+        ],
+    },
+    "drako_l3": {   # Meshy, four-view turnaround, normalised to 1.0; silver collar and ankle bands, crystal crown (four legs, wings on the shoulders)
+        "src": "drako_l3_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.409, -0.1),
+        "eyes": {"R": (-0.0715, 0.229), "L": (0.0725, 0.229), "r": 0.047, "show": 0.22,
+                 "reach": 1.5, "socket": "skin",   # balls centred on the painted eye whites (the pupils look sideways); the socket is painted in the skin around it
+                 "shape": {"width": 1.0, "open": 42}},
+        "mouth": {"x": 0.0, "tip": (-0.47, 0.135), "corner": (-0.416, 0.158), "half": 0.05,
+                  "hinge": (0.0, -0.37, 0.188)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["wing.L", "wing.R"],   # the cyan wing membranes; horns, spikes and claws stay plain
+        "radii": {"head": 0.15, "wing.L": 0.06, "wing.R": 0.06},
+        "bones": [
+            ("root", (0.0, -0.05, -0.485), (0.0, -0.05, -0.365), None, UP),
+            ("hips", (0.0, 0.05, -0.22), (0.0, -0.12, -0.17), 'root', FWD),
+            ("chest", (0.0, -0.12, -0.17), (0.0, -0.26, -0.08), 'hips', FWD),
+            ("neck", (0.0, -0.26, -0.08), (0.0, -0.31, 0.11), 'chest', FWD),
+            ("head", (0.0, -0.31, 0.11), (0.0, -0.32, 0.435), 'neck', UP),
+            ("wing.L", (0.11, 0.0, 0.03), (0.27, 0.15, -0.1), 'chest', UP),
+            ("wing.R", (-0.11, 0.0, 0.03), (-0.27, 0.15, -0.1), 'chest', UP),
+            ("tail.0", (0.0, 0.04, -0.3), (-0.01, 0.13, -0.35), 'hips', FWD),
+            ("tail.1", (-0.01, 0.13, -0.35), (-0.05, 0.22, -0.37), 'tail.0', FWD),
+            ("tail.2", (-0.05, 0.22, -0.37), (-0.1, 0.31, -0.37), 'tail.1', FWD),
+            ("tail.3", (-0.1, 0.31, -0.37), (-0.17, 0.4, -0.35), 'tail.2', FWD),
+            ("tail.4", (-0.17, 0.4, -0.35), (-0.26, 0.49, -0.32), 'tail.3', FWD),
+        ],
+    },
+    "drako_l4": {   # Meshy, four-view turnaround, normalised to 1.0; dark harness with a silver frame (four legs, wings on the shoulders)
+        "src": "drako_l4_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.435, -0.084),
+        "eyes": {"R": (-0.06, 0.149), "L": (0.06, 0.149), "r": 0.036, "show": 0.32,
+                 "reach": 1.5, "socket": "skin",   # balls centred on the painted eye whites (the pupils look sideways); the socket is painted in the skin around it
+                 "shape": {"width": 1.0, "open": 36}},
+        "mouth": {"x": 0.0, "tip": (-0.485, 0.091), "corner": (-0.44, 0.1), "half": 0.05,
+                  "hinge": (0.0, -0.385, 0.13)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["wing.L", "wing.R"],   # the cyan wing membranes; horns, spikes and claws stay plain
+        "radii": {"head": 0.15, "wing.L": 0.06, "wing.R": 0.06},
+        "bones": [
+            ("root", (0.0, -0.05, -0.401), (0.0, -0.05, -0.281), None, UP),
+            ("hips", (0.0, 0.05, -0.23), (0.0, -0.1, -0.17), 'root', FWD),
+            ("chest", (0.0, -0.1, -0.17), (0.0, -0.24, -0.08), 'hips', FWD),
+            ("neck", (0.0, -0.24, -0.08), (0.0, -0.31, 0.07), 'chest', FWD),
+            ("head", (0.0, -0.31, 0.07), (0.0, -0.32, 0.391), 'neck', UP),
+            ("wing.L", (0.11, -0.1, -0.03), (0.27, -0.04, -0.08), 'chest', UP),
+            ("wing.R", (-0.11, -0.1, -0.03), (-0.27, -0.04, -0.08), 'chest', UP),
+            ("tail.0", (0.0, 0.04, -0.25), (0.0, 0.13, -0.27), 'hips', FWD),
+            ("tail.1", (0.0, 0.13, -0.27), (0.0, 0.22, -0.27), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.22, -0.27), (0.0, 0.31, -0.27), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.31, -0.27), (0.0, 0.4, -0.25), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.4, -0.25), (0.0, 0.49, -0.22), 'tail.3', FWD),
+        ],
+    },
+    "drako_l5": {   # Meshy, four-view turnaround, normalised to 1.0; glowing wing membranes, crystal-tipped horns (four legs, wings on the shoulders)
+        "src": "drako_l5_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.403, -0.096),
+        "eyes": {"R": (-0.0565, 0.1075), "L": (0.056, 0.1075), "r": 0.029, "show": 0.22,
+                 "reach": 1.5, "socket": "skin",   # balls centred on the painted eye whites (the pupils look sideways); the socket is painted in the skin around it
+                 "shape": {"width": 1.0, "open": 36}},
+        "mouth": {"x": 0.0, "tip": (-0.488, 0.043), "corner": (-0.428, 0.07), "half": 0.05,
+                  "hinge": (0.0, -0.388, 0.1)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["wing.L", "wing.R"],   # the cyan wing membranes; horns, spikes and claws stay plain
+        "radii": {"head": 0.15, "wing.L": 0.06, "wing.R": 0.06},
+        "bones": [
+            ("root", (0.0, -0.05, -0.354), (0.0, -0.05, -0.234), None, UP),
+            ("hips", (0.0, 0.05, -0.21), (0.0, -0.1, -0.15), 'root', FWD),
+            ("chest", (0.0, -0.1, -0.15), (0.0, -0.24, -0.06), 'hips', FWD),
+            ("neck", (0.0, -0.24, -0.06), (0.0, -0.31, 0.03), 'chest', FWD),
+            ("head", (0.0, -0.31, 0.03), (0.0, -0.32, 0.343), 'neck', UP),
+            ("wing.L", (0.11, -0.09, 0.0), (0.25, -0.02, -0.05), 'chest', UP),
+            ("wing.R", (-0.11, -0.09, 0.0), (-0.25, -0.02, -0.05), 'chest', UP),
+            ("tail.0", (0.0, 0.04, -0.21), (0.0, 0.13, -0.25), 'hips', FWD),
+            ("tail.1", (0.0, 0.13, -0.25), (0.0, 0.22, -0.27), 'tail.0', FWD),
+            ("tail.2", (0.0, 0.22, -0.27), (0.0, 0.31, -0.24), 'tail.1', FWD),
+            ("tail.3", (0.0, 0.31, -0.24), (0.0, 0.4, -0.22), 'tail.2', FWD),
+            ("tail.4", (0.0, 0.4, -0.22), (0.0, 0.49, -0.22), 'tail.3', FWD),
+        ],
+    },
+    "drako_l6": {   # Meshy, four-view turnaround, normalised to 1.0; gold-and-purple chest armour, gem bracers (four legs, wings on the shoulders)
+        "src": "drako_l6_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.419, -0.11),
+        "eyes": {"R": (-0.0615, 0.1875), "L": (0.0635, 0.1875), "r": 0.035, "show": 0.22,
+                 "reach": 1.5, "socket": "skin",   # balls centred on the painted eye whites (the pupils look sideways); the socket is painted in the skin around it
+                 "shape": {"width": 1.0, "open": 36}},
+        "mouth": {"x": 0.0, "tip": (-0.47, 0.102), "corner": (-0.398, 0.126), "half": 0.05,
+                  "hinge": (0.0, -0.37, 0.156)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["wing.L", "wing.R"],   # the cyan wing membranes; horns, spikes and claws stay plain
+        "radii": {"head": 0.15, "wing.L": 0.06, "wing.R": 0.06},
+        "bones": [
+            ("root", (0.0, -0.05, -0.46), (0.0, -0.05, -0.34), None, UP),
+            ("hips", (0.0, 0.05, -0.24), (0.0, -0.1, -0.18), 'root', FWD),
+            ("chest", (0.0, -0.1, -0.18), (0.0, -0.24, -0.08), 'hips', FWD),
+            ("neck", (0.0, -0.24, -0.08), (0.0, -0.31, 0.08), 'chest', FWD),
+            ("head", (0.0, -0.31, 0.08), (0.0, -0.32, 0.402), 'neck', UP),
+            ("wing.L", (0.11, -0.02, 0.04), (0.33, 0.07, 0.02), 'chest', UP),
+            ("wing.R", (-0.11, -0.02, 0.04), (-0.33, 0.07, 0.02), 'chest', UP),
+            ("tail.0", (0.0, 0.04, -0.27), (0.0, 0.13, -0.31), 'hips', FWD),
+            ("tail.1", (0.0, 0.13, -0.31), (-0.03, 0.22, -0.33), 'tail.0', FWD),
+            ("tail.2", (-0.03, 0.22, -0.33), (-0.09, 0.31, -0.32), 'tail.1', FWD),
+            ("tail.3", (-0.09, 0.31, -0.32), (-0.19, 0.4, -0.28), 'tail.2', FWD),
+            ("tail.4", (-0.19, 0.4, -0.28), (-0.32, 0.48, -0.22), 'tail.3', FWD),
+        ],
+    },
+    "drako_l7": {   # Meshy, four-view turnaround, normalised to 1.0; gold chest plate, long dark-to-cyan horns (four legs, wings on the shoulders)
+        "src": "drako_l7_meshy.glb",
+        "smooth": {"enabled": False},
+        "center": (0.0, -0.05),
+        "core": (0.0, -0.435, -0.06),
+        "eyes": {"R": (-0.0565, 0.229), "L": (0.0575, 0.229), "r": 0.032, "show": 0.22,
+                 "reach": 1.5, "socket": "skin",   # balls centred on the painted eye whites (the pupils look sideways); the socket is painted in the skin around it
+                 "shape": {"width": 1.0, "open": 36}},
+        "mouth": {"x": 0.0, "tip": (-0.458, 0.154), "corner": (-0.374, 0.184), "half": 0.05,
+                  "hinge": (0.0, -0.358, 0.214)},
+        "glow": {"sat_min": 0.28, "val_min": 0.05},
+        "glow_bones": ["wing.L", "wing.R"],   # the cyan wing membranes; horns, spikes and claws stay plain
+        "radii": {"head": 0.15, "wing.L": 0.06, "wing.R": 0.06},
+        "bones": [
+            ("root", (0.0, -0.05, -0.501), (0.0, -0.05, -0.381), None, UP),
+            ("hips", (0.0, 0.05, -0.26), (0.0, -0.1, -0.2), 'root', FWD),
+            ("chest", (0.0, -0.1, -0.2), (0.0, -0.24, -0.08), 'hips', FWD),
+            ("neck", (0.0, -0.24, -0.08), (0.0, -0.3, 0.13), 'chest', FWD),
+            ("head", (0.0, -0.3, 0.13), (0.0, -0.31, 0.454), 'neck', UP),
+            ("wing.L", (0.11, -0.05, 0.04), (0.33, 0.0, 0.01), 'chest', UP),
+            ("wing.R", (-0.11, -0.05, 0.04), (-0.33, 0.0, 0.01), 'chest', UP),
+            ("tail.0", (0.0, 0.04, -0.27), (0.0, 0.13, -0.32), 'hips', FWD),
+            ("tail.1", (0.0, 0.13, -0.32), (-0.02, 0.22, -0.37), 'tail.0', FWD),
+            ("tail.2", (-0.02, 0.22, -0.37), (-0.07, 0.31, -0.39), 'tail.1', FWD),
+            ("tail.3", (-0.07, 0.31, -0.39), (-0.17, 0.39, -0.39), 'tail.2', FWD),
+            ("tail.4", (-0.17, 0.39, -0.39), (-0.34, 0.47, -0.38), 'tail.3', FWD),
+        ],
+    },
     "bot_easy": {   # Meshy, four-view turnaround, normalised to 1.0; chibi robot, green
         # Bots (AVATAR_EVOLUTION §9): single level, a screen face (`screen`, no eyes / mouth),
         # the arms are named wing.* so the shared clips swing them, the antenna glows.
@@ -881,6 +1266,20 @@ SIGNATURES = {
         "ear.L": [(1, (0, 0, 0)), (9, (-12, 0, 0)), (16, (0, 0, 0)), (25, (0, 0, 0))],
         "ear.R": [(1, (0, 0, 0)), (9, (-12, 0, 0)), (16, (0, 0, 0)), (25, (0, 0, 0))],
         "tail.3": [(1, (0, 0, 0)), (10, (0, 0, 0)), (14, (0, 0, 12)), (19, (0, 0, -6)), (25, (0, 0, 0))],
+    }),
+    "lumi": (26, {   # the happy wiggle: the body sways side to side, the frills ripple out of step
+        "chest": [(1, (0, 0, 0)), (5, (0, 0, 7)), (9, (0, 0, -7)), (13, (0, 0, 6)), (17, (0, 0, -4)), (21, (0, 0, 2)), (26, (0, 0, 0))],
+        "head": [(1, (0, 0, 0)), (5, (0, 0, -5)), (9, (0, 0, 5)), (13, (0, 0, -4)), (17, (0, 0, 3)), (26, (0, 0, 0))],
+        "ear.L": [(1, (0, 0, 0)), (4, (12, 0, 0)), (7, (-8, 0, 0)), (10, (12, 0, 0)), (13, (-6, 0, 0)), (17, (5, 0, 0)), (26, (0, 0, 0))],
+        "ear.R": [(1, (0, 0, 0)), (6, (12, 0, 0)), (9, (-8, 0, 0)), (12, (12, 0, 0)), (15, (-6, 0, 0)), (19, (5, 0, 0)), (26, (0, 0, 0))],
+        "tail.3": [(1, (0, 0, 0)), (6, (0, 0, 10)), (11, (0, 0, -10)), (16, (0, 0, 6)), (26, (0, 0, 0))],
+    }),
+    "drako": (28, {  # the wing flare: chest puffs up, both wings snap wide and beat twice, tail lashes
+        "chest": [(1, (0, 0, 0)), (5, (-6, 0, 0)), (20, (-5, 0, 0)), (28, (0, 0, 0))],
+        "head": [(1, (0, 0, 0)), (5, (-8, 0, 0)), (12, (-6, 0, 0)), (20, (-7, 0, 0)), (28, (0, 0, 0))],
+        "wing.L": [(1, (0, 0, 0)), (5, (0, 0, 32)), (9, (0, 0, 10)), (13, (0, 0, 30)), (17, (0, 0, 8)), (21, (0, 0, 16)), (28, (0, 0, 0))],
+        "wing.R": [(1, (0, 0, 0)), (5, (0, 0, -32)), (9, (0, 0, -10)), (13, (0, 0, -30)), (17, (0, 0, -8)), (21, (0, 0, -16)), (28, (0, 0, 0))],
+        "tail.3": [(1, (0, 0, 0)), (8, (0, 0, 12)), (14, (0, 0, -10)), (20, (0, 0, 5)), (28, (0, 0, 0))],
     }),
     "bot": (26, {    # the antenna wobble: a quick springy flick with a little head bob
         "antenna": [(1, (0, 0, 0)), (4, (0, 0, 0)), (7, (14, 0, 10)), (10, (-10, 0, -8)), (13, (7, 0, 5)),
@@ -1166,6 +1565,7 @@ if "eyes" in CFG:
     bvh = BVHTree.FromObject(BODY, bpy.context.evaluated_depsgraph_get())
     er = CFG["eyes"]["r"]
     socket = np.zeros((H, W), bool)
+    SOCKET_SKIN = []
     for side in ("L", "R"):
         ex, ez = CFG["eyes"][side]
         hit, nrm, fi, _ = bvh.ray_cast(Vector((ex, -3, ez + GROUND)), Vector((0, 1, 0)))
@@ -1209,8 +1609,23 @@ if "eyes" in CFG:
         # little wider for stretched eyes, where Meshy's painted eye white reaches the corners
         ew = CFG["eyes"].get("shape", {}).get("width", 1.0)
         reach = er * CFG["eyes"].get("reach", 1.1 if ew == 1.0 else 1.25)
-        socket |= raster([pp for pp in polys if Vector(((pp.center - hit).x / ew, (pp.center - hit).y,
-                                                         (pp.center - hit).z / (1.0 if ew == 1.0 else 0.75))).length < reach])
+        def dist(pp):
+            d_ = pp.center - hit
+            return Vector((d_.x / ew, d_.y, d_.z / (1.0 if ew == 1.0 else 0.75))).length
+        here = raster([pp for pp in polys if dist(pp) < reach])
+        socket |= here
+        if CFG["eyes"].get("socket") == "skin":
+            # paint the socket in the skin just outside it (median, so brows and lashes don't count)
+            ring = raster([pp for pp in polys if reach < dist(pp) < reach * 1.4]) & ~here
+            skin = np.median(rgb[ring], axis=0)
+            # bits of the old painted iris just outside the socket (cyan-ish) take the skin too
+            near = raster([pp for pp in polys if reach <= dist(pp) < reach * 1.2]) & ~here
+            edge = here.copy()   # and texels just past the socket's UV edges, where filtering reads them
+            for dy in range(-3, 4):
+                for dx in range(-3, 4):
+                    edge |= np.roll(np.roll(here, dy, 0), dx, 1)
+            cy = (near | edge) & (rgb[..., 1] > rgb[..., 0] * 1.15) & (rgb[..., 2] > rgb[..., 0] * 1.15)
+            SOCKET_SKIN.append((here | cy, skin))
     SOCKET = socket
 mask = np.maximum(mask, (outer_tail & (mx < 0.22))[..., None].astype(np.float32))
 print("glow texels:", int((mask > 0.5).sum()), "of", W * H)
@@ -1404,7 +1819,11 @@ lum = (0.35 + 0.65 * np.clip(mx / 0.8, 0, 1))[..., None]
 albedo = rgb * (1 - mask) + to_srgb(lin("8FF2FF")) * lum * mask
 if EYES:
     # a deep face disc (Bubo) pokes through under the ball: paint it the disc colour, not a dark hole
-    albedo[SOCKET] = to_srgb(lin(CFG["eyes"].get("socket", "2E1810")))
+    if CFG["eyes"].get("socket") == "skin":
+        for region, col in SOCKET_SKIN:
+            albedo[region] = col
+    else:
+        albedo[SOCKET] = to_srgb(lin(CFG["eyes"].get("socket", "2E1810")))
 emit = to_srgb(lin("3FE3FF")) * mask * lum
 
 

@@ -659,6 +659,10 @@ async function boot() {
   async function bootCrossCuttingFor(uid) {
     if (!uid) return;
     const db = activeFbDb;
+    // The profile watch first: the push setup below loads the OneSignal SDK and the
+    // presence start waits for the server, which held the profile screen's stats,
+    // name and coins back for seconds on every launch.
+    try { globalThis.__spine.bootAccount?.(uid); } catch (e) { console.warn('[spine] account boot', e); }
     try {
       // Respect the user's signup-time notifications preference. Missing field
       // (legacy / guest profiles) defaults to opted-in.
@@ -697,7 +701,8 @@ async function boot() {
 
     try { globalThis.__spine.bootInviteListeners?.(uid); } catch (e) { console.warn('[spine] invite boot', e); }
     try { globalThis.__spine.bootAsyncSessions?.(uid); } catch (e) { console.warn('[spine] async boot', e); }
-    try { globalThis.__spine.bootAccount?.(uid); } catch (e) { console.warn('[spine] account boot', e); }
+    // In case the account section wasn't wired yet when the early call above ran.
+    try { globalThis.__spine.bootAccountIfNeeded?.(uid); } catch (e) { console.warn('[spine] account boot', e); }
 
     // Toggle the settings overlay's "הגדרות מתקדמות" button visibility from
     // /admins/{uid}. Read once per auth event; non-admins never see the
@@ -2968,6 +2973,7 @@ async function boot() {
 
   // Account/profile/friends/rating flows are spine-owned.
     let activeProfileWatch = null;
+    let activeProfileUid = null;   // whose profile activeProfileWatch follows
     let activeRequestsWatch = null;
     let activeFriendsWatch = null;
     let activePresenceUnsubs = new Map();
@@ -3015,6 +3021,7 @@ async function boot() {
       presenceCache.clear();
       ratingCache.clear();
 
+      activeProfileUid = uid;
       activeProfileWatch = profileService.watchProfile(fbDb, uid, (profile) => {
         const prev = lastProfile;
         // Advance lastProfile/currentProfile BEFORE the achievement payout below,
@@ -3163,6 +3170,9 @@ async function boot() {
       });
     }
     globalThis.__spine.bootAccount = bootProfileFor;
+    globalThis.__spine.bootAccountIfNeeded = (uid) => {
+      if (!activeProfileWatch || activeProfileUid !== uid) bootProfileFor(uid);
+    };
     if (activeFbCurrentUser?.uid) bootProfileFor(activeFbCurrentUser.uid);
 
     // ── Profile intents ──
@@ -3930,7 +3940,7 @@ async function boot() {
       try { await activeFbAuth?.signOut?.(); } catch {}
       lastProfile = null; lastFriends = []; lastRequests = [];
       lastInviteCount = 0; lastFriendRequestCount = 0; lastSupportReplyCount = 0;
-      try { activeProfileWatch?.();  activeProfileWatch  = null; } catch {}
+      try { activeProfileWatch?.();  activeProfileWatch  = null; activeProfileUid = null; } catch {}
       try { activeRequestsWatch?.(); activeRequestsWatch = null; } catch {}
       try { activeFriendsWatch?.();  activeFriendsWatch  = null; } catch {}
       try { activeInviteListener?.(); activeInviteListener = null; } catch {}

@@ -84,3 +84,16 @@ export function getBoostieClip(payload) {
   if (payload?.type !== 'boostie' || !validateReactionPayload(payload)) return null;
   return BOOSTIE_REACTIONS.find(r => r.id === payload.id)?.clip ?? null;
 }
+
+/**
+ * The sound cue of a Boostie reaction's voice ('reaction.<id>', in sfxCatalog), or null
+ * for any other payload (those keep the plain send/receive pop).
+ */
+const VOICE_CUES = Object.freeze({
+  laugh: 'reaction.laugh', wow: 'reaction.wow', stare: 'reaction.stare',
+  wink: 'reaction.wink', yawn: 'reaction.yawn',
+});
+
+export function reactionVoiceCue(payload) {
+  return getBoostieClip(payload) ? (VOICE_CUES[payload.id] ?? null) : null;
+}

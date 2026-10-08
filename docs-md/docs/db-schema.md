@@ -242,8 +242,8 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
   // equippedAvatar, rating, stats, createdAt, and the economy fields below).
   displayName?: string,
   avatar?: string,           // legacy; equippedAvatar is the current field
-  equippedAvatar?: string,   // Boostie id ('zapi', 'bubo'); older ids (store/emoji) render as 'zapi'
-  boosties?: {              // owned Boosties (D-boostie-xp); every starter (zapi, bubo) is always owned
+  equippedAvatar?: string,   // Boostie id ('zapi', 'bubo', 'rocco', 'lumi', 'drako'); older ids (store/emoji) render as 'zapi'
+  boosties?: {              // owned Boosties (D-boostie-xp); every starter (zapi, bubo, rocco, lumi) is always owned; drako is bought (worker)
     [boostieId: string]: { xp: number, level: number },  // rules: xp only grows (≤ +20/write), level 1–7 only grows
   },
   ownedReactions?: string[], // bought reaction ids ('wink', 'yawn'); the free set is implicit. Worker-only (D-coin-economy)

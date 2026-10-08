@@ -29,13 +29,14 @@ test('diffEvolutions: a stale snapshot never lowers what was seen', () => {
 });
 
 test('diffEvolutions: a new Boostie counts as a chain unlock only next to a top-level level-up', () => {
-  // Pretend a chain Boostie exists by using an id the catalog knows: bubo absent from `seen`.
-  const top = diffEvolutions({ zapi: BOOSTIE_LEVELS - 1 }, { zapi: { xp: xpFor(BOOSTIE_LEVELS) }, bubo: { xp: 0 } });
+  // Pretend a chain Boostie exists by using a non-starter id the catalog knows: drako
+  // absent from `seen`. Starters missing from `seen` (new in the catalog) never count.
+  const top = diffEvolutions({ zapi: BOOSTIE_LEVELS - 1 }, { zapi: { xp: xpFor(BOOSTIE_LEVELS) }, drako: { xp: 0 } });
   assert.deepEqual(top.events, [
     { kind: 'level', id: 'zapi', from: BOOSTIE_LEVELS - 1, to: BOOSTIE_LEVELS },
-    { kind: 'unlock', id: 'bubo' },
+    { kind: 'unlock', id: 'drako' },
   ]);
-  const bought = diffEvolutions({ zapi: 2 }, { zapi: { xp: xpFor(2) }, bubo: { xp: 0 } });
+  const bought = diffEvolutions({ zapi: 2 }, { zapi: { xp: xpFor(2) }, drako: { xp: 0 } });
   assert.deepEqual(bought.events, [], 'a purchase alone is not an evolution');
 });
 
@@ -123,16 +124,16 @@ test('evolution screen: replays from EVO_SHOW and the unlock card offers to equi
   const bus2 = fakeBus();
   const doc = fakeDoc();
   const storage2 = memStorage();
-  // Seen before bubo was owned (stands in for a chain Boostie; every Boostie is a starter today).
+  // Seen before drako was owned (stands in for a chain Boostie; there is none today).
   storage2.setItem(SEEN_KEY_PREFIX + 'u2', JSON.stringify({ zapi: BOOSTIE_LEVELS - 1 }));
   const scr2 = mountEvolutionScreen({ bus: bus2, doc, storage: storage2, canUse3d: () => false });
-  scr2.noteProfile('u2', { zapi: { xp: xpFor(BOOSTIE_LEVELS) }, bubo: { xp: 0 } });
+  scr2.noteProfile('u2', { zapi: { xp: xpFor(BOOSTIE_LEVELS) }, drako: { xp: 0 } });
   scr2._close();                                              // the level-up card
   return new Promise((r) => setTimeout(r, 400)).then(() => {
-    assert.deepEqual(scr2._state().showing, { kind: 'unlock', id: 'bubo' });
+    assert.deepEqual(scr2._state().showing, { kind: 'unlock', id: 'drako' });
     const el = doc.body.kids[0];
     el.onclickFn({ target: { closest: () => ({ classList: { contains: () => false }, getAttribute: () => 'equip' }) } });
-    assert.deepEqual(bus2.emitted.find(([t]) => t === STORE_INTENT.EQUIP)?.[1], { id: 'bubo' });
+    assert.deepEqual(bus2.emitted.find(([t]) => t === STORE_INTENT.EQUIP)?.[1], { id: 'drako' });
     assert.equal(scr2._state().showing, null);
     scr2.unmount();
   });

@@ -116,7 +116,7 @@
           "boosties": {
             ".write": "$uid === auth.uid",
             "$boostieId": {
-              ".validate": "data.exists() || $boostieId === 'zapi' || $boostieId === 'bubo'",
+              ".validate": "data.exists() || $boostieId === 'zapi' || $boostieId === 'bubo' || $boostieId === 'rocco' || $boostieId === 'lumi'",
               "xp": {
                 ".validate": "newData.isNumber() && newData.val() >= 0 && ((!data.exists() && newData.val() <= 20) || (data.exists() && newData.val() >= data.val() && newData.val() <= data.val() + 20))"
               },

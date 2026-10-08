@@ -2,6 +2,21 @@
 
 ---
 
+## Rocco, Lumi and Drako in the app; reaction voices; VS frame; faster profile (October 2026)
+
+- Rocco, Lumi and Drako ship: 21 meshopt models (590–890 KB) and their bust/full stills,
+  catalog entries and evolution card lines. Rocco and Lumi are starters (the database rules
+  accept them as new entries); Drako is `unlock: 'store'` at 1500 coins, bought through the
+  coin worker. A starter added to the catalog no longer shows a "new Boostie unlocked" card
+  when another Boostie reaches level 7 (`diffEvolutions` skips starters).
+- Boostie reactions have voices: `rx_laugh`, `rx_wow`, `rx_stare`, `rx_wink`, `rx_yawn`
+  (the test page's default picks, built by `scripts/build-sfx.py`), cues `reaction.<id>`,
+  played on send and receive. Emoji and text reactions keep the pop.
+- VS screen: the avatar circle now clips the picture, and the bust sits on its bottom edge,
+  so ear tufts, horns and bot feet no longer stick out of the ring.
+- The profile watch starts first on sign-in, before the push setup (OneSignal SDK) and the
+  presence start, which were holding the profile's name, stats and coins back for seconds.
+
 ## Three new Boosties planned: Rocco, Lumi, Drako (October 2026)
 
 - Character blocks for Rocco the ram (brave, cyan horns), Lumi the axolotl (cheerful,
@@ -37,6 +52,20 @@
 - Rocco L1 lost the black ring round its eyes, and Rocco L4's right eye no longer sits too deep.
 - Lumi's seven turnarounds were accepted as generated: upright at every level, no DJ outfit,
   violet eyes (her `IRIS` entry changed from dark brown to violet to match).
+- Lumi's seven 3D models are built (`lumi_l1`–`l7` in `build_boostie.py`): the frills spring
+  on the ear bones and glow at the tips, and the signature is a happy wiggle. All seven are
+  on the scoreboard test page, not in the app yet.
+- Drako's seven turnarounds were accepted as generated: four legs and two wings at every
+  level, no royal outfit. His 3D eyes stay bright gold as in the spec, not the images' cyan.
+- Drako's seven 3D models are built (`drako_l1`–`l7` in `build_boostie.py`): one bone per
+  wing, so the shared clips flap them, the cyan membranes glow, and the signature is a
+  wing flare. All seven are on the scoreboard test page, not in the app yet.
+- Drako's eyes fixed after the phone check: the balls now sit on the painted eye whites
+  (his pupils look sideways, so centring on them made him look cross-eyed), and a new
+  `"socket": "skin"` option in `build_boostie.py` paints the sockets in the surrounding skin
+  colour and clears leftover cyan iris specks.
+- The 3D test page downloads models with `cache: 'no-cache'`, so a phone picks up rebuilt
+  models instead of showing the copy it cached earlier.
 
 ---
 

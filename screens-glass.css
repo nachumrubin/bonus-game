@@ -1110,7 +1110,9 @@ svg.gi.em-help-dropdown-ic { color: var(--sg-p1); width: 18px; height: 18px; }
 #ov-vs-intro.vs-intro { background: linear-gradient(180deg, #07123d, #040a22 55%, #030817) !important; backdrop-filter: none !important; }
 #ov-vs-intro .vs-side--me { background: radial-gradient(ellipse at 50% 55%, rgba(40,212,255,.35), transparent 65%); }
 #ov-vs-intro .vs-side--opp { background: radial-gradient(ellipse at 50% 45%, rgba(255,201,61,.3), transparent 65%); }
-#ov-vs-intro .vs-av { border-radius: 50%; filter: none; }
+#ov-vs-intro .vs-av { border-radius: 50%; filter: none; overflow: hidden; align-items: flex-end; background: radial-gradient(circle at 50% 40%, #12286a, #060d2c 75%); }
+/* The circle frames the picture: a bust rises from its bottom edge with room above the head (tufts, horns, antennas). */
+#ov-vs-intro .vs-av .av-img { width: 88%; height: 88%; object-fit: contain; object-position: 50% 100%; }
 #ov-vs-intro .vs-side--me .vs-av { box-shadow: 0 0 0 2px var(--sg-p1), 0 0 0 6px rgba(40,212,255,.25), 0 0 30px rgba(40,212,255,.6); }
 #ov-vs-intro .vs-side--opp .vs-av { box-shadow: 0 0 0 2px var(--sg-p2), 0 0 0 6px rgba(255,201,61,.25), 0 0 30px rgba(255,201,61,.6); }
 #ov-vs-intro .vs-nm { font-size: 22px; }

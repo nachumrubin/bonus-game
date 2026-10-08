@@ -45,13 +45,13 @@ three bots (no evolution sheet: attach the bot's current portrait instead).
 | 33 | [Lumi level 5](33_lumi_l5_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | ✅ |
 | 34 | [Lumi level 6](34_lumi_l6_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | ✅ |
 | 35 | [Lumi level 7](35_lumi_l7_turnaround.md) | `lumi_sheet_b_levels_5-7.png` | ✅ |
-| 36 | [Drako level 1](36_drako_l1_turnaround.md) | `drako_sheet_a_levels_1-4.png` | |
-| 37 | [Drako level 2](37_drako_l2_turnaround.md) | `drako_sheet_a_levels_1-4.png` | |
-| 38 | [Drako level 3](38_drako_l3_turnaround.md) | `drako_sheet_a_levels_1-4.png` | |
-| 39 | [Drako level 4](39_drako_l4_turnaround.md) | `drako_sheet_a_levels_1-4.png` | |
-| 40 | [Drako level 5](40_drako_l5_turnaround.md) | `drako_sheet_b_levels_5-7.png` | |
-| 41 | [Drako level 6](41_drako_l6_turnaround.md) | `drako_sheet_b_levels_5-7.png` | |
-| 42 | [Drako level 7](42_drako_l7_turnaround.md) | `drako_sheet_b_levels_5-7.png` | |
+| 36 | [Drako level 1](36_drako_l1_turnaround.md) | `drako_sheet_a_levels_1-4.png` | ✅ |
+| 37 | [Drako level 2](37_drako_l2_turnaround.md) | `drako_sheet_a_levels_1-4.png` | ✅ |
+| 38 | [Drako level 3](38_drako_l3_turnaround.md) | `drako_sheet_a_levels_1-4.png` | ✅ |
+| 39 | [Drako level 4](39_drako_l4_turnaround.md) | `drako_sheet_a_levels_1-4.png` | ✅ |
+| 40 | [Drako level 5](40_drako_l5_turnaround.md) | `drako_sheet_b_levels_5-7.png` | ✅ |
+| 41 | [Drako level 6](41_drako_l6_turnaround.md) | `drako_sheet_b_levels_5-7.png` | ✅ |
+| 42 | [Drako level 7](42_drako_l7_turnaround.md) | `drako_sheet_b_levels_5-7.png` | ✅ |
 
 Already done: the Zapi level 3 and level 4 turnarounds (`Blender designs/boosties/sources/`).
 
