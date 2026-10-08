@@ -3006,6 +3006,45 @@ async function boot() {
       friendsService.syncSelfToFriends(fbDb, { uid, friendUids, avatar, name }).catch(() => {});
     }
 
+    // Paints every screen that shows profile data. Also replayed once all screens are
+    // mounted (replayProfile): the watch starts before they subscribe, so the first
+    // snapshot's events would otherwise be lost.
+    function emitProfileRenders(profile) {
+      loadingTipsService.cacheGamesPlayed(profile?.stats?.gamesPlayed ?? 0);
+      const fbUser = activeFbCurrentUser;
+      const _dn = profile?.displayName ?? fbUser?.displayName;
+      if (_dn) settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: _dn });
+      bus.emit(PROFILE_RENDER, {
+        profile,
+        isAnonymous: !!fbUser?.isAnonymous,
+        email: fbUser?.email ?? '',
+      });
+      // Not named `economy`: that is the coin-worker client (shadowing broke the watch once).
+      const wallet = profileService.normalizeProfileEconomy(profile);
+      bus.emit(MENU_REFRESH, {
+        isAuthed: !!fbUser?.uid && !fbUser?.isAnonymous,
+        displayName: profile?.displayName ?? fbUser?.displayName ?? '',
+        rating: profile?.rating ?? null,
+        avatar: profile ? profileAvatarValue(profile) : null,
+        coins: wallet.coins,
+      });
+      bus.emit(AV_RENDER, {
+        ...achievementSnapshot(profile),
+        coinRewardByTier: profileService.ACHIEVEMENT_COIN_REWARD,
+      });
+      bus.emit(STORE_RENDER, {
+        coins: wallet.coins,
+        boosties: profile?.boosties ?? null,
+        equippedAvatar: profile?.equippedAvatar ?? null,
+        ownedReactions: profile?.ownedReactions ?? [],
+      });
+      bus.emit(FRIENDS_RENDER, {
+        myUserId: profile?.userId ?? '------',
+        invitesSent: profile?.stats?.invitesSent ?? 0,
+      });
+    }
+    globalThis.__spine.replayProfile = () => { if (lastProfile) emitProfileRenders(lastProfile); };
+
     function bootProfileFor(uid) {
       const fbDb = activeFbDb;
       if (!fbDb || !uid) return;
@@ -3069,37 +3108,7 @@ async function boot() {
             .then((r) => { if (r?.ok && r.coinsAwarded > 0) bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak, days: profileService.dailyWeek(r.newStreak) }); })
             .catch((e) => console.warn('[spine] daily reward', e));
         }
-        loadingTipsService.cacheGamesPlayed(profile?.stats?.gamesPlayed ?? 0);
-        const fbUser = activeFbCurrentUser;
-        const _dn = profile?.displayName ?? fbUser?.displayName;
-        if (_dn) settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: _dn });
-        bus.emit(PROFILE_RENDER, {
-          profile,
-          isAnonymous: !!fbUser?.isAnonymous,
-          email: fbUser?.email ?? '',
-        });
-        const economy = profileService.normalizeProfileEconomy(profile);
-        bus.emit(MENU_REFRESH, {
-          isAuthed: !!fbUser?.uid && !fbUser?.isAnonymous,
-          displayName: profile?.displayName ?? fbUser?.displayName ?? '',
-          rating: profile?.rating ?? null,
-          avatar: profile ? profileAvatarValue(profile) : null,
-          coins: economy.coins,
-        });
-        bus.emit(AV_RENDER, {
-          ...achievementSnapshot(profile),
-          coinRewardByTier: profileService.ACHIEVEMENT_COIN_REWARD,
-        });
-        bus.emit(STORE_RENDER, {
-          coins: economy.coins,
-          boosties: profile?.boosties ?? null,
-          equippedAvatar: profile?.equippedAvatar ?? null,
-          ownedReactions: profile?.ownedReactions ?? [],
-        });
-        bus.emit(FRIENDS_RENDER, {
-          myUserId: profile?.userId ?? '------',
-          invitesSent: profile?.stats?.invitesSent ?? 0,
-        });
+        emitProfileRenders(profile);
         if (profile) {
           ratingService.upsertRatingLeaderboardEntry(fbDb, {
             uid,
@@ -4997,6 +5006,8 @@ async function boot() {
     bus,
     activeGameRef: () => globalThis.__spine?.activeGame ?? null,
   });
+  // Every screen is subscribed now: repaint them from a profile that arrived earlier.
+  try { globalThis.__spine.replayProfile?.(); } catch (e) { console.warn('[spine] profile replay', e); }
   globalThis.__spine.menu = menu;
   globalThis.__spine.setup = setup;
   globalThis.__spine.onlineLobby = onlineLobby;
