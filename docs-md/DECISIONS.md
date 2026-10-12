@@ -5,6 +5,24 @@
 
 ---
 
+## D-lock-owner-expiry: a lock comes off only on its owner's turn — October 2026
+
+**Decision:** Locks still count down once per turn (every player's turn, lock-only turns
+included — the lock placed that turn is exempt), but a lock is removed only when its
+**owner's** turn starts. If the countdown runs out on the way into the opponent's turn it
+is held at 1 for that turn. Reported as a bug: locks were opening on the opponent's turn,
+handing them the square the owner paid 10 points to deny.
+
+**Why:** two things broke the odd-duration rhythm that normally lands expiry on the owner's
+turn: a lock-only turn froze every lock's timer (`applyLock` skipped the tick), and extra /
+skipped turns break strict alternation. Ticking on lock-only turns fixes the common case;
+the hold (`tickLocks(state, upcomingSlot)` + `restoreExpiredLocks`) guarantees the rule.
+A lock can run one turn longer than its number after an extra or skipped turn — never
+shorter, never open for the opponent early. No schema change: held locks are ordinary
+`remainingTurns: 1` entries.
+
+---
+
 ## D-boostie-xp: Boosties level up from games played, not from the rating — October 2026
 
 **Decision:** Boosties replace every older avatar (store portraits, achievement emojis).

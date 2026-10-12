@@ -3220,22 +3220,32 @@
 #sg .is-rail .is-rail-1 { background: var(--p1); }
 #sg .is-rail .is-rail-2 { background: var(--p2); }
 
-/* ── Status pill (replaces the full-width hint strip) ── */
+/* ── Status pill (replaces the full-width hint strip) ──
+   Lives inside #info-strip and floats over the lead rail, straddling the
+   header's bottom edge. Absolutely positioned, so it takes NO row of its own:
+   the ~50px it used to reserve between the header and the board now goes to
+   the board (computeBasicSizes sizes the board from .board-center's height). */
 #sg .sbar {
-  align-self: center;
+  position: absolute !important;
+  /* Straddles the header's bottom edge, over the rail; ends inside the 16px
+     gap below the header (see the last `#sg .info-strip` margin), clear of
+     the board's top row of boost squares. */
+  left: 0; right: 0; bottom: -15px;
+  z-index: 6;
   width: fit-content !important; max-width: calc(100% - 32px);
-  margin: 18px auto 6px !important;
+  margin: 0 auto !important;
   min-height: 26px !important;
   padding: 4px 14px !important;
   border-radius: 999px !important;
-  background: rgba(40,212,255,.10) !important;
+  /* Tints over an opaque base: the pill floats over the rail and board edge. */
+  background: linear-gradient(rgba(40,212,255,.10), rgba(40,212,255,.10)), #061336 !important;
   border: 1px solid rgba(40,212,255,.35) !important;
-  box-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.45) !important;
   font: 800 12px/1.3 'Heebo', sans-serif !important;
   text-align: center;
 }
-#sg .sbar.err { background: rgba(255,90,90,.12) !important; border-color: rgba(255,110,110,.45) !important; }
-#sg .sbar.ok  { background: rgba(46,229,157,.12) !important; border-color: rgba(46,229,157,.45) !important; }
+#sg .sbar.err { background: linear-gradient(rgba(255,90,90,.12), rgba(255,90,90,.12)), #061336 !important; border-color: rgba(255,110,110,.45) !important; }
+#sg .sbar.ok  { background: linear-gradient(rgba(46,229,157,.12), rgba(46,229,157,.12)), #061336 !important; border-color: rgba(46,229,157,.45) !important; }
 /* Idle: no hint text — keep the row's height so the board doesn't jump. */
 #sg .sbar.is-empty { visibility: hidden; }
 /* Live word-points counter: ✓ word +N (mockup "status" pill) */
@@ -3253,7 +3263,7 @@
 #sg .sbar .sbar-pts { font-weight: 900; font-size: 14px; color: #28d4ff; text-shadow: 0 0 8px rgba(40,212,255,.55); font-variant-numeric: tabular-nums; }
 /* The opponent's last boost: 🎯 היריב קיבל: תור נוסף / ⚡ היריב קיבל: אנגרמה +15.
    Gold = boost; the icon is an emoji, so its disc is dropped. */
-#sg .sbar.sbar--boost { background: rgba(255,215,94,.10) !important; border-color: rgba(255,215,94,.45) !important; }
+#sg .sbar.sbar--boost { background: linear-gradient(rgba(255,215,94,.10), rgba(255,215,94,.10)), #061336 !important; border-color: rgba(255,215,94,.45) !important; }
 #sg .sbar.sbar--boost .sbar-ic { width: auto; height: auto; background: none; box-shadow: none; font-size: 15px; }
 #sg .sbar.sbar--boost .sbar-pts { color: #ffd75e; text-shadow: 0 0 8px rgba(255,210,80,.55); }
 #sg .sbar.sbar--bump { animation: sbarBump .28s cubic-bezier(.34,1.56,.64,1); }
@@ -3473,7 +3483,9 @@ body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation: gsSocket
   --score-fs: 40px;
   --locks-h: 26px;
   grid-template-columns: 1fr 40px 1fr !important;
-  margin: 10px 6px 0 !important;
+  /* 16px below: room for the lead rail and the floating status pill (#sbar),
+     which no longer reserves its own row above the board. */
+  margin: 10px 6px 16px !important;
   min-height: 0;
 }
 #sg .info-strip .is-pcard {

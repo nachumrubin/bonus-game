@@ -88,7 +88,7 @@ export function nextSlot(slot) {
 // (May 2026) so a player can't stall indefinitely with bad-word attempts.
 export function applyPass(state) {
   state.passCount += 1;
-  advanceTurn(state);
+  return advanceTurn(state);
 }
 
 // Exchange tiles from the rack back into the bag, draw replacements.
@@ -102,7 +102,7 @@ export function applyPass(state) {
 export function applyExchange(state, letters) {
   exchangeTilesInPlace(state, letters);
   state.passCount += 1;
-  advanceTurn(state);
+  return advanceTurn(state);
 }
 
 // Free-swap variant used by the B13 wheel's free_tile_swap boost. Same rack/
@@ -152,7 +152,8 @@ export function applyResign(state, slot) {
 // refills rack, advances turn.
 //
 // `placed` is the list of placements; `score` is the integer awarded.
-// Returns nothing — mutates state.
+// Mutates state. Returns the locks that expired in the advance (see
+// advanceTurn), or [] when `advance` is false.
 export function applyMove(state, placed, score, { commitScore = true, advance = true } = {}) {
   const slot = state.currentTurnSlot;
   for (const p of placed) {
@@ -168,20 +169,21 @@ export function applyMove(state, placed, score, { commitScore = true, advance = 
   state.passCount = 0;
   state.firstMove = false;
   state.moveCount = (state.moveCount ?? 0) + 1;
-  if (advance) advanceTurn(state);
+  return advance ? advanceTurn(state) : [];
 }
 
 // Spend one lock of `duration` from the slot's inventory and put it on the
-// board. Does NOT advance the turn — callers decide, because the two lock
-// paths differ in when the tick happens relative to this call:
+// board. Does NOT advance the turn — callers decide. Both lock paths tick the
+// existing locks FIRST and place the new one after, so the fresh lock keeps its
+// full duration while every other lock still counts down:
 //
-//   lock-only turn (applyLock)  — createLock, then advance with tickLocks:false
-//   word + lock (CONFIRM_MOVE)  — applyMove advances and ticks FIRST, then
-//                                 createLock, so the fresh lock keeps its full
-//                                 duration while existing locks still count down
+//   lock-only turn (applyLock)  — tickLocks, createLock, then advance with
+//                                 tickLocks:false
+//   word + lock (CONFIRM_MOVE)  — applyMove advances and ticks, then createLock
 //
-// In both cases the lock being placed is exempt from that turn's tick, which is
-// the point: a 3-turn lock should last 3 more turns, not 2.
+// A 3-turn lock lasts 3 more turns, not 2. (Before Oct 2026 a lock-only turn
+// skipped the tick for EVERY lock, which shifted other locks' expiry onto the
+// wrong player's turn — see tickLocks.)
 export function createLock(state, { r, c, duration, slot = state.currentTurnSlot } = {}) {
   ensureLockState(state);
   const inventory = state.lockInventory?.[slot] ?? [];
@@ -202,8 +204,13 @@ export function createLock(state, { r, c, duration, slot = state.currentTurnSlot
 }
 
 export function applyLock(state, { r, c, duration, slot = state.currentTurnSlot } = {}) {
+  // Validate (and spend) before ticking, so a bad request mutates nothing.
+  ensureLockState(state);
+  if (!(state.lockInventory?.[slot] ?? []).includes(duration)) throw new Error('lock: duration not available');
+  const expired = tickLocks(state, nextSlot(state.currentTurnSlot));
   createLock(state, { r, c, duration, slot });
   advanceTurn(state, { tickLocks: false });
+  return expired;
 }
 
 export function isCellLocked(state, r, c) {
@@ -236,15 +243,50 @@ export function ensureLockState(state) {
     );
 }
 
-export function tickLocks(state) {
+// Count every lock down by one turn. A lock only ever comes OFF the board at
+// the start of its owner's turn: the owner locked the square to keep it from
+// the opponent, so it must not open up on the opponent's turn. When a lock's
+// countdown runs out while `upcomingSlot` (the player about to move) is not its
+// owner, it is held at 1 — still locked — and expires on the next tick, which
+// lands on the owner's turn. With strict alternation and the odd inventory
+// durations ([3, 3, 5]) this never triggers; it is what keeps expiry on the
+// owner's turn when the rhythm breaks (extra turn, skipped turn).
+//
+// Returns the locks that expired, so a caller that then hands the turn back to
+// the other player (extra turn / skip — see restoreExpiredLocks) can undo it.
+export function tickLocks(state, upcomingSlot = null) {
   ensureLockState(state);
-  state.lockedCells = state.lockedCells
-    .map(lock => ({ ...lock, remainingTurns: lock.remainingTurns - 1 }))
-    .filter(lock => lock.remainingTurns > 0);
+  const kept = [];
+  const expired = [];
+  for (const lock of state.lockedCells) {
+    const remainingTurns = lock.remainingTurns - 1;
+    if (remainingTurns > 0) kept.push({ ...lock, remainingTurns });
+    else if ((upcomingSlot === 0 || upcomingSlot === 1) && lock.ownerSlot !== upcomingSlot) {
+      kept.push({ ...lock, remainingTurns: 1 });
+    } else expired.push(lock);
+  }
+  state.lockedCells = kept;
+  return expired;
 }
 
+// Undo the expiry of locks whose owner turned out NOT to be the one moving:
+// tickLocks expired them for the slot that was due next, but an extra turn
+// (the other player goes again) or a skip (the due player loses the turn)
+// handed the turn to their opponent instead. They come back held at 1.
+export function restoreExpiredLocks(state, expired = []) {
+  ensureLockState(state);
+  for (const lock of expired ?? []) {
+    if (lock.ownerSlot === state.currentTurnSlot) continue;
+    if (state.lockedCells.some(l => l.r === lock.r && l.c === lock.c)) continue;
+    state.lockedCells.push({ ...lock, remainingTurns: 1 });
+  }
+}
+
+// Returns the locks that expired in this advance (see tickLocks).
 export function advanceTurn(state, { tickLocks: shouldTickLocks = true } = {}) {
-  if (shouldTickLocks) tickLocks(state);
+  const upcomingSlot = nextSlot(state.currentTurnSlot);
+  const expired = shouldTickLocks ? tickLocks(state, upcomingSlot) : [];
   state.turnNumber += 1;
-  state.currentTurnSlot = nextSlot(state.currentTurnSlot);
+  state.currentTurnSlot = upcomingSlot;
+  return expired;
 }

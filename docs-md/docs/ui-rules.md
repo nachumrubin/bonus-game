@@ -123,7 +123,7 @@ Critical element IDs referenced by game logic (must not be renamed):
 #sn1, #sn2             — player name labels (desktop)
 #is-sv1, #is-sv2       — player score values (mobile inline)
 #is-sn1, #is-sn2       — player name labels (mobile inline)
-#sbar                  — status pill: errors / game-over / live word-points ("✓ word · cross +N", computeLiveWordPreview). One .sbar-wd chip per formed word; invalid ones get .sbar-w--bad; .sbar--many when there are 3 or more; .is-empty hides it (Oct 2026)
+#sbar                  — status pill: errors / game-over / live word-points ("✓ word · cross +N", computeLiveWordPreview). One .sbar-wd chip per formed word; invalid ones get .sbar-w--bad; .sbar--many when there are 3 or more; .is-empty hides it (Oct 2026). Lives INSIDE #info-strip, absolutely positioned over the lead rail (straddling the header's bottom edge) so it takes no layout row and the board keeps that height — do not move it back into the .gr column flow
 #bag-count-text        — remaining tile count
 #turn-name             — whose turn label
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
@@ -719,7 +719,7 @@ previously the turn just silently failed to arrive.
 
 ### Opponent Boost Notice (`#sbar.sbar--boost`)
 
-The status pill above the board shows the opponent's last boost (bot or online):
+The status pill (floating on the score header's bottom edge, above the board) shows the opponent's last boost (bot or online):
 `🎯 היריב קיבל: תור נוסף`, `⚡ היריב קיבל: אנגרמה +15`.
 - **Source:** `view.opponentBoost` (gameController), set from the opponent's
   `MOVE_SCORE_COMMITTED.boost`. It is never set in a shared-screen game

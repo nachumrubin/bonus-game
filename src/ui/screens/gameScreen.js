@@ -44,7 +44,7 @@ import { computeLiveWordPreview } from '../liveWordPreview.js';
 import { BOOST_BOLT_ICON_HTML } from '../boostIcon.js';
 import { EV } from '../../events/eventTypes.js';
 import { BOOST_IGNITION_DURATION_MS, BOOST_RESULT_READY } from '../boostPresentation.js';
-import { describeBoost, describeBoostSummary } from '../boostSummary.js';
+import { describeBoost, describeBoostSummary, BOOST_ART_URLS } from '../boostSummary.js';
 import {
   WORD_MERGE_STAGGER_MS as SCORE_MERGE_WORD_STAGGER_MS,
   WORD_MERGE_FLIGHT_MS  as SCORE_MERGE_WORD_FLIGHT_MS,
@@ -90,6 +90,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
+  preloadBoostArt(root);
   // Live 3D Boosties in the scoreboard slots (Phase 3). Stills stay underneath and are
   // all you see under reduced motion, without WebGL 2, or on a phone too slow for 3D.
   const live3d = createScoreboardLive({
@@ -2504,13 +2505,16 @@ function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bo
   // broken <img> for the text fallback rather than showing a broken-image box.
   const boostImg = card.querySelector?.('[data-boost-img]');
   if (boostImg && (info.bigEmoji || info.bigText)) {
-    boostImg.addEventListener?.('error', () => {
+    const useFallback = () => {
       const fallback = doc.createElement('div');
       fallback.className = 'ovd';
       fallback.style.cssText = info.bigEmoji ? BIG_EMOJI_CSS : BIG_TEXT_CSS;
       fallback.textContent = info.bigEmoji ?? info.bigText;
       boostImg.replaceWith?.(fallback);
-    });
+    };
+    // A cached failure can settle before the listener is attached.
+    if (boostImg.complete && boostImg.naturalWidth === 0 && boostImg.getAttribute?.('src')) useFallback();
+    else boostImg.addEventListener?.('error', useFallback, { once: true });
   }
   requestAnimationFrameSafe(() => {
     positioner.style.opacity = '1';
@@ -2536,6 +2540,19 @@ function showBonusAwardOverlay(root, bus, controller, { slot, extra, boostId, bo
     }, 320);
   }
   okBtn?.addEventListener?.('click', close);
+}
+
+// Warm the cache with the award card's artwork (see BOOST_ART_URLS). Once per
+// page; a no-op where there is no Image constructor (stub-DOM tests).
+let boostArtPreloaded = false;
+function preloadBoostArt(root) {
+  if (boostArtPreloaded) return;
+  const ImageCtor = ownerDocumentOf(root)?.defaultView?.Image ?? globalThis.Image;
+  if (typeof ImageCtor !== 'function') return;
+  boostArtPreloaded = true;
+  for (const src of BOOST_ART_URLS) {
+    try { const img = new ImageCtor(); img.decoding = 'async'; img.src = src; } catch { /* best effort */ }
+  }
 }
 
 function escapeForOverlay(s) {

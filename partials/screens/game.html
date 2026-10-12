@@ -93,6 +93,11 @@
       <!-- Lead rail: share of the total score per player (widths set by gameScreen.renderScores) -->
       <div class="is-rail" id="is-rail" aria-hidden="true"><i class="is-rail-1"></i><i class="is-rail-2"></i></div>
 
+      <!-- Status pill (errors / live word-points counter "✓ האור +8" / the
+           opponent's last boost). Floats over the lead rail, out of the layout
+           flow, so it never takes height away from the board. -->
+      <div class="sbar is-empty" id="sbar" aria-live="polite"></div>
+
     </div><!-- /#info-strip -->
 
     <!-- Reaction overlay (backdrop + panel, filled by reactionController) -->
@@ -100,8 +105,7 @@
       <div id="rxn-panel" class="rxn-panel" dir="rtl" role="dialog" aria-modal="true"></div>
     </div>
 
-    <!-- Status pill (errors / live word-points counter "✓ האור +8") + hidden turn banner -->
-    <div class="sbar is-empty" id="sbar" aria-live="polite"></div>
+    <!-- Hidden turn banner (the status pill now floats inside #info-strip) -->
     <div id="turn-banner" style="display:none;text-align:center;font-size:13px;font-weight:900;padding:3px 8px;flex-shrink:0;letter-spacing:.5px;"></div>
 
     <!-- main game area -->

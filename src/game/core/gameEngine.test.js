@@ -607,6 +607,68 @@ test('locked cells reject tile placement until countdown expires', () => {
   assert.equal(state.lockedCells.length, 0);
 });
 
+// A lock only ever comes off the board when its OWNER's turn starts — it was
+// placed to keep the square from the opponent, so it must never open up on the
+// opponent's turn (Oct 2026 bug report).
+function lockAt(state, r, c) { return state.lockedCells.find(l => l.r === r && l.c === c) ?? null; }
+
+test('locks: an opponent\'s lock-only turn still ticks my lock, so it expires on MY turn', () => {
+  const { state, eng } = freshEngine();
+  state.scores[0] = 50; state.scores[1] = 50;
+  state.currentTurnSlot = 0;
+  eng.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 4, c: 4, duration: 3 } }); // P0 locks
+  eng.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 6, c: 6, duration: 3 } }); // P1 lock-only turn
+  assert.equal(lockAt(state, 4, 4)?.remainingTurns, 2, 'P1\'s lock turn counted down P0\'s lock');
+  assert.equal(lockAt(state, 6, 6)?.remainingTurns, 3, 'the lock placed this turn keeps its full duration');
+
+  // Before the fix P0's lock survived P1's lock turn untouched and came off at
+  // the start of P1's turn. Play passes and record who is on turn when it goes.
+  let removedOnSlot = null;
+  for (let i = 0; i < 6 && removedOnSlot == null; i++) {
+    eng.dispatch({ type: CMD.PASS_TURN });
+    if (!lockAt(state, 4, 4)) removedOnSlot = state.currentTurnSlot;
+  }
+  assert.equal(removedOnSlot, 0, 'P0\'s lock unlocked on P0\'s own turn');
+  assert.ok(lockAt(state, 6, 6), 'P1\'s lock is still up');
+});
+
+test('locks: when the opponent takes an extra turn my expiring lock is held, not opened', () => {
+  resetBoostRegistry();
+  seedDict(['אב']);
+  const { state, eng } = freshEngine();
+  state.racks[1] = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח'];
+  state.currentTurnSlot = 1;
+  state.lockedCells = [{ id: 'p0', r: 9, c: 9, ownerSlot: 0, remainingTurns: 1 }];
+  state.activeBoosts = [{ slot: 1, boostId: 'extra_turn', payload: {}, turnNumber: 1 }];
+
+  eng.dispatch({
+    type: CMD.CONFIRM_MOVE,
+    payload: { placed: [{ r: 4, c: 4, letter: 'א', val: 1 }, { r: 4, c: 5, letter: 'ב', val: 3 }] },
+  });
+
+  assert.equal(state.currentTurnSlot, 1, 'P1 plays again');
+  assert.equal(lockAt(state, 9, 9)?.remainingTurns, 1, 'P0\'s lock is still up for P1\'s extra turn');
+  eng.dispatch({ type: CMD.PASS_TURN });
+  assert.equal(state.currentTurnSlot, 0);
+  assert.equal(lockAt(state, 9, 9), null, 'and comes off when P0\'s turn starts');
+});
+
+test('locks: a skipped owner\'s expiring lock is held through the opponent\'s turn', () => {
+  resetBoostRegistry();
+  const { state, eng } = freshEngine();
+  state.currentTurnSlot = 0;
+  state.lockedCells = [{ id: 'p1', r: 9, c: 9, ownerSlot: 1, remainingTurns: 1 }];
+  state.activeBoosts = [{ slot: 0, boostId: 'skip_opponent_turn', payload: {}, turnNumber: 1 }];
+
+  eng.dispatch({ type: CMD.PASS_TURN }); // P0 ends; P1 is due but skipped
+
+  assert.equal(state.currentTurnSlot, 0, 'P1 was skipped, P0 is on turn');
+  assert.equal(lockAt(state, 9, 9)?.remainingTurns, 1, 'P1\'s lock did not open on P0\'s turn');
+  eng.dispatch({ type: CMD.PASS_TURN });
+  assert.equal(state.currentTurnSlot, 1);
+  assert.equal(lockAt(state, 9, 9), null, 'it comes off when P1\'s turn starts');
+});
+
 test('CONFIRM_MOVE with extra_turn boost banked keeps the same player on turn', () => {
   resetBoostRegistry();
   seedDict(['אב']);

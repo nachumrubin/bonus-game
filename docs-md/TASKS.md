@@ -761,12 +761,14 @@ Five issues reported from one async online game. Status:
 - [x] **Word + lock in the same turn.** Done via optional `payload.lock` on
   `CMD.CONFIRM_MOVE` (one command = one Firebase commit = atomic turn). See
   CHANGELOG and the "Locks: the two paths" table in CHARACTERIZATION.md.
-- [ ] Follow-up from the above: a lock-only turn freezes *all* lock timers
+- [x] Follow-up from the above: a lock-only turn freezes *all* lock timers
   (`applyLock` → `advanceTurn({ tickLocks: false })`). That looks like a side
   effect of protecting the fresh lock rather than an intended rule — the new
   combined path places the lock after the tick instead, which needs no such
   exemption. Consider giving `applyLock` the same treatment so a lock-only turn
   ticks existing locks normally. **Gameplay change — needs a product call.**
+  Done Oct 2026 as part of the "lock unlocks on the opponent's turn" bug fix
+  (product call: the owner's turn is where a lock comes off). See CHANGELOG.
 - [ ] Follow-up: `pendingScoreCommit` (now carrying `.lock`) is engine-local and
   never serialized. If a client dies mid-mini-game the lock is dropped along
   with the deferred score. Pre-existing exposure, now slightly wider.

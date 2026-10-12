@@ -20,7 +20,9 @@ export function describeBoost(boostId, payload, extra) {
         sub:   'הנקודות יתווספו עם אישור',
       };
     case 'extra_turn':
-      return { title: 'תור נוסף!', image: 'assets/rewards/extra turn.png', sub: 'תקבל תור נוסף ברצף' };
+      // bigEmoji is the fallback if the artwork fails to load — without one the
+      // card was left showing a broken-image box (see showBonusAwardOverlay).
+      return { title: 'תור נוסף!', image: 'assets/rewards/extra turn.png', bigEmoji: '🎯', sub: 'תקבל תור נוסף ברצף' };
     case 'multiply_next_turns': {
       const mult  = Number(p.multiplier ?? 2);
       const turns = Number(p.turnsRemaining ?? 1);
@@ -64,6 +66,18 @@ export function describeBoost(boostId, payload, extra) {
       return { title: 'בוסט הופעל', bigEmoji: '⚡', sub: '' };
   }
 }
+
+// Every artwork URL the award card can show. The card only creates its <img>
+// when it pops, so the art was fetched at that moment — slow on a cold cache
+// (the PNG masters are ~1.5 MB when the service worker isn't serving WebP yet)
+// and the card opened with an empty or broken icon. gameScreen preloads these
+// on mount so they are already cached by the first award.
+export const BOOST_ART_URLS = Object.freeze([...new Set(
+  ['auto_extra_score', 'extra_turn', 'multiply_next_turns', 'timer_bonus',
+    'free_tile_swap', 'skip_opponent_turn', 'cancel_next_opponent_bonus']
+    .map(id => describeBoost(id, {}, 0).image)
+    .filter(Boolean),
+)]);
 
 // Inline glyph per effect, for the one-line chip (the modal uses artwork).
 const EFFECT_ICON = {

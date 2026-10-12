@@ -2,6 +2,31 @@
 
 ---
 
+## Bigger board, extra-turn icon, locks open on the owner's turn (October 2026)
+
+- **Board size.** The status pill (`#sbar` — live word counter, errors, the opponent's boost)
+  reserved its own ~50px row between the score header and the board, even when empty. The
+  board is sized from `.board-center`'s height on most phones, so tiles shrank by that much.
+  `#sbar` now lives inside `#info-strip` and floats over the lead rail, straddling the
+  header's bottom edge (absolute, opaque pill), so it takes no row. The header got a 16px
+  bottom margin for the rail. Measured: 412×760 board 358 → 394px (full width), 393×700
+  298 → 334px, 375×667 274 → 310px.
+- **Extra-turn icon.** The award card's extra-turn artwork was the only boost image with no
+  fallback, so a failed or slow load left a broken-image box. It now falls back to 🎯,
+  the card swaps an image that already failed before its listener was attached, and
+  `gameScreen` preloads every award image (`BOOST_ART_URLS` in `boostSummary.js`) on mount
+  so the art is cached before the first award instead of fetched when the card pops.
+- **Locks opened on the opponent's turn.** A lock-only turn froze every lock's countdown,
+  which moved other locks' expiry onto the opponent's turn; extra / skipped turns could do
+  the same. Lock-only turns now tick existing locks (the new lock stays exempt), and a lock
+  only comes off when its owner's turn starts — held at 1 otherwise (`tickLocks(state,
+  upcomingSlot)`, `restoreExpiredLocks`, `applyTurnStartEffects(state, expiredLocks)`).
+  Pass and exchange emit `LOCKS_CHANGED` after the turn-start effects; a non-free exchange
+  resolves them before `TILES_EXCHANGED`. See `D-lock-owner-expiry` in DECISIONS.md.
+  Tests: `gameEngine.test.js` "locks: …", `boostSummary.test.js`.
+
+---
+
 ## Cross-eyed Boosties fixed (October 2026)
 
 - The live 3D eyes (`boostieLive.js`, `aimEyes`) were each aimed at the camera from their own

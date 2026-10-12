@@ -102,22 +102,32 @@ Source: `gameEngine.js` → `handleConfirmMove()`
 | | Lock alone | Word + lock |
 |---|---|---|
 | Command | `CMD.PLACE_LOCK` | `CMD.CONFIRM_MOVE` with `payload.lock` |
-| Existing locks tick? | **No** — `applyLock` advances with `tickLocks:false` | **Yes** — a move turn ticks |
+| Existing locks tick? | **Yes** — `applyLock` ticks, then places, then advances with `tickLocks:false` | **Yes** — a move turn ticks |
 | New lock ticks? | No | No |
 | Emits | `LOCK_PLACED` + `LOCKS_CHANGED` | `MOVE_CONFIRMED` + `LOCKS_CHANGED` |
 
 In both paths the lock being placed is exempt from that turn's tick — a 3-turn
-lock lasts 3 more turns. The combined path achieves this by placing the lock
-*after* `applyMove` has already advanced/ticked (and, on the deferred-score
-path, after `FINALIZE_BOOST_AWARD`'s `advanceTurn`).
+lock lasts 3 more turns. Both achieve this by placing the lock *after* the tick
+(`applyLock` ticks first; the combined path places after `applyMove` has
+advanced/ticked, or on the deferred-score path after `FINALIZE_BOOST_AWARD`'s
+`advanceTurn`).
 
 **The combined path must not emit `EV.LOCK_PLACED`** — `onlineGameSession`
 commits to Firebase on that event, and `MOVE_CONFIRMED` already commits the
 same turn. Emitting both would push the turn twice.
 
-Note the asymmetry in the "existing locks tick?" row: a lock-only turn freezes
-*everyone's* lock timers. That's a side effect of `applyLock`'s `tickLocks:false`
-(which exists to protect the fresh lock), not a deliberate rule — see TASKS.md.
+**A lock only comes off the board when its owner's turn starts (Oct 2026).**
+`tickLocks(state, upcomingSlot)` counts every lock down on every turn end; a lock
+whose countdown runs out while the player about to move is *not* its owner is
+held at `remainingTurns: 1` (still locked) and expires on the next tick, on the
+owner's turn. `advanceTurn` returns the locks it expired; if an extra turn
+(`repeatTurn`) or a skip then hands the turn to the owner's opponent instead,
+`applyTurnStartEffects(state, expiredLocks)` puts them back via
+`restoreExpiredLocks`. Before this, a lock-only turn froze *everyone's* lock
+timers (`applyLock` skipped the tick entirely), which shifted other locks'
+expiry onto the opponent's turn — the reported bug. Pass and exchange now emit
+`LOCKS_CHANGED` after the turn-start effects, and a non-free exchange resolves
+them before `TILES_EXCHANGED` (the online commit event), like the other paths.
 
 ---
 
