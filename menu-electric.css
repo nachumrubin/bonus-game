@@ -3220,55 +3220,101 @@
 #sg .is-rail .is-rail-1 { background: var(--p1); }
 #sg .is-rail .is-rail-2 { background: var(--p2); }
 
-/* ── Status pill (replaces the full-width hint strip) ──
-   Lives inside #info-strip and floats over the lead rail, straddling the
-   header's bottom edge. Absolutely positioned, so it takes NO row of its own:
-   the ~50px it used to reserve between the header and the board now goes to
-   the board (computeBasicSizes sizes the board from .board-center's height). */
+/* ── Status toast (#sbar) ──
+   Errors, game over, swap hints and setS() toasts. Floats on the board's top
+   edge inside .board-center (position:relative) and fades out on its own, so it
+   never takes a layout row from the board. The live word preview is NOT here —
+   it rides on the שבץ button (#btn-play-x); the opponent's last boost is a tag
+   on their score card (#is-boost-N). */
 #sg .sbar {
   position: absolute !important;
-  /* Straddles the header's bottom edge, over the rail; ends inside the 16px
-     gap below the header (see the last `#sg .info-strip` margin), clear of
-     the board's top row of boost squares. */
-  left: 0; right: 0; bottom: -15px;
-  z-index: 6;
-  width: fit-content !important; max-width: calc(100% - 32px);
+  top: 6px; left: 0; right: 0;
+  z-index: 8;
+  width: fit-content !important; max-width: calc(100% - 24px);
   margin: 0 auto !important;
-  min-height: 26px !important;
-  padding: 4px 14px !important;
+  min-height: 0 !important;
+  padding: 6px 14px !important;
   border-radius: 999px !important;
-  /* Tints over an opaque base: the pill floats over the rail and board edge. */
-  background: linear-gradient(rgba(40,212,255,.10), rgba(40,212,255,.10)), #061336 !important;
-  border: 1px solid rgba(40,212,255,.35) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,.45) !important;
-  font: 800 12px/1.3 'Heebo', sans-serif !important;
+  background: linear-gradient(rgba(40,212,255,.12), rgba(40,212,255,.12)), #061336 !important;
+  border: 1px solid rgba(40,212,255,.4) !important;
+  box-shadow: 0 6px 16px rgba(0,0,0,.5) !important;
+  font: 800 12px/1.35 'Heebo', sans-serif !important;
   text-align: center;
+  pointer-events: none;
 }
-#sg .sbar.err { background: linear-gradient(rgba(255,90,90,.12), rgba(255,90,90,.12)), #061336 !important; border-color: rgba(255,110,110,.45) !important; }
-#sg .sbar.ok  { background: linear-gradient(rgba(46,229,157,.12), rgba(46,229,157,.12)), #061336 !important; border-color: rgba(46,229,157,.45) !important; }
-/* Idle: no hint text — keep the row's height so the board doesn't jump. */
-#sg .sbar.is-empty { visibility: hidden; }
-/* Live word-points counter: ✓ word +N (mockup "status" pill) */
-#sg .sbar.sbar--preview { display: inline-flex !important; align-items: center; justify-content: center; gap: 8px; color: var(--sg-ink, #e9f3ff) !important; font-size: 13px !important; }
-#sg .sbar .sbar-ic { width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center; flex: none;
-  font: 900 10px/1 'Heebo', sans-serif; color: #032; background: #2ee59d; box-shadow: 0 0 8px rgba(46,229,157,.55); }
-#sg .sbar.err .sbar-ic { background: #ff6b7d; color: #2a0008; box-shadow: 0 0 8px rgba(255,90,110,.5); }
-#sg .sbar .sbar-w { font-weight: 900; letter-spacing: .02em; }
-/* One chip per formed word (main + cross words), dot-separated. Only the
-   words not in the dictionary are struck through. */
-#sg .sbar .sbar-w { display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 0; row-gap: 2px; }
-#sg .sbar .sbar-wd + .sbar-wd::before { content: '·'; margin: 0 6px; color: rgba(233,243,255,.45); text-decoration: none; display: inline-block; }
-#sg .sbar .sbar-w--bad { color: #ffb3bd; text-decoration: line-through; text-decoration-color: rgba(255,110,125,.8); text-decoration-thickness: 2px; }
-#sg .sbar.sbar--many { font-size: 12px !important; gap: 6px; }
-#sg .sbar .sbar-pts { font-weight: 900; font-size: 14px; color: #28d4ff; text-shadow: 0 0 8px rgba(40,212,255,.55); font-variant-numeric: tabular-nums; }
-/* The opponent's last boost: 🎯 היריב קיבל: תור נוסף / ⚡ היריב קיבל: אנגרמה +15.
-   Gold = boost; the icon is an emoji, so its disc is dropped. */
-#sg .sbar.sbar--boost { background: linear-gradient(rgba(255,215,94,.10), rgba(255,215,94,.10)), #061336 !important; border-color: rgba(255,215,94,.45) !important; }
-#sg .sbar.sbar--boost .sbar-ic { width: auto; height: auto; background: none; box-shadow: none; font-size: 15px; }
-#sg .sbar.sbar--boost .sbar-pts { color: #ffd75e; text-shadow: 0 0 8px rgba(255,210,80,.55); }
-#sg .sbar.sbar--bump { animation: sbarBump .28s cubic-bezier(.34,1.56,.64,1); }
-@keyframes sbarBump { 0% { transform: scale(.9); } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { #sg .sbar.sbar--bump { animation: none; } }
+#sg .sbar.err { background: linear-gradient(rgba(255,90,90,.16), rgba(255,90,90,.16)), #061336 !important; border-color: rgba(255,110,110,.5) !important; }
+#sg .sbar.ok  { background: linear-gradient(rgba(46,229,157,.14), rgba(46,229,157,.14)), #061336 !important; border-color: rgba(46,229,157,.5) !important; }
+#sg .sbar.is-empty { display: none !important; }
+#sg .sbar.sbar--toast { animation: sbarToast 3.2s ease forwards; }
+@keyframes sbarToast {
+  0%   { opacity: 0; transform: translateY(-6px); }
+  8%   { opacity: 1; transform: none; }
+  85%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: none; visibility: hidden; }
+}
+@keyframes sbarToastStill { 0%, 85% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { #sg .sbar.sbar--toast { animation: sbarToastStill 3.2s steps(1, end) forwards; } }
+
+/* ── Live word preview on the שבץ button ──
+   Valid: "שבץ ✓  +14". Any invalid word: the button turns red and shows the
+   invalid word(s) struck through instead of the points. */
+#sg .bot-acts #btn-play {
+  display: inline-flex !important; flex-direction: row !important;
+  align-items: center; justify-content: center;
+  gap: 10px; overflow: hidden; min-width: 0;
+}
+#sg #btn-play .bplay-l { flex: none; white-space: nowrap; }
+#sg #btn-play .bplay-x {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+#sg #btn-play .bplay-x:empty { display: none; }
+#sg #btn-play.is-ready .bplay-x {
+  font: 900 18px/1 'Heebo', sans-serif;
+  padding: 3px 9px; border-radius: 999px;
+  background: rgba(2,32,56,.16);
+}
+#sg .bot-acts #btn-play.is-invalid {
+  background: linear-gradient(180deg, #ff7a8a, #d93a50) !important;
+  border-color: rgba(255,255,255,.3) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 18px rgba(255,80,100,.35), inset 0 1px 0 rgba(255,255,255,.45) !important;
+}
+#sg #btn-play.is-invalid .bplay-x { font: 800 15px/1.1 'Heebo', sans-serif; }
+#sg #btn-play .bplay-bad {
+  text-decoration: line-through; text-decoration-thickness: 2px;
+  text-decoration-color: rgba(255,255,255,.9);
+}
+#sg #btn-play .bplay-bad + .bplay-bad::before {
+  content: '·'; display: inline-block; margin: 0 6px; text-decoration: none; opacity: .7;
+}
+#sg #btn-play.bplay--bump .bplay-x { animation: sbarBump .28s cubic-bezier(.34,1.56,.64,1); }
+@keyframes sbarBump { 0% { transform: scale(.85); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { #sg #btn-play.bplay--bump .bplay-x { animation: none; } }
+
+/* ── Opponent's last boost: gold tag on THEIR score card ──
+   Same corner as the red −10 lock-cost tag (.is-pending-cost). Stays until the
+   local player starts placing (gameController clears view.opponentBoost). */
+#sg .info-strip .is-opp-boost {
+  /* Top corner over the avatar (inline-start is the avatar side on both
+     cards), clear of the name, score and the card's lock row. */
+  position: absolute; top: 5px; inset-inline-start: 5px;
+  z-index: 3;
+  display: none;
+  width: fit-content; max-width: calc(100% - 10px);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(rgba(255,215,94,.16), rgba(255,215,94,.16)), #0a1640;
+  border: 1px solid rgba(255,215,94,.55);
+  color: #ffd75e;
+  font: 800 11px/1.3 'Heebo', sans-serif;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 0 10px rgba(255,210,80,.25);
+  pointer-events: none;
+}
+#sg .info-strip .is-opp-boost.is-visible { display: block; animation: sbarBump .28s cubic-bezier(.34,1.56,.64,1); }
+#sg .info-strip .is-opp-boost .opp-boost-pts { direction: ltr; unicode-bidi: isolate; font-weight: 900; }
+@media (prefers-reduced-motion: reduce) { #sg .info-strip .is-opp-boost.is-visible { animation: none; } }
 
 /* ── Board tray ── */
 #sg .board-center::before { display: none; }

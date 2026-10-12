@@ -7,10 +7,15 @@
 - **Board size.** The status pill (`#sbar` — live word counter, errors, the opponent's boost)
   reserved its own ~50px row between the score header and the board, even when empty. The
   board is sized from `.board-center`'s height on most phones, so tiles shrank by that much.
-  `#sbar` now lives inside `#info-strip` and floats over the lead rail, straddling the
-  header's bottom edge (absolute, opaque pill), so it takes no row. The header got a 16px
-  bottom margin for the rail. Measured: 412×760 board 358 → 394px (full width), 393×700
-  298 → 334px, 375×667 274 → 310px.
+  The row is gone (measured 412×760 board 358 → 394px, full width; 393×700 298 → 334px):
+  - the live word preview rides on the שבץ button (`#btn-play-x`, `renderPlayPreview`):
+    `שבץ ✓ +14` when every word is valid; red with only the invalid word(s) struck through
+    otherwise;
+  - the opponent's last boost is a gold tag on their score card (`#is-boost-N`,
+    `renderOpponentBoost`);
+  - `#sbar` is a transient toast on the board's top edge (errors, game over, swap hints,
+    `setS()`), fading after ~3s.
+  A first attempt floated the pill over the header's lead rail; rejected as poor UI.
 - **Extra-turn icon.** The award card's extra-turn artwork was the only boost image with no
   fallback, so a failed or slow load left a broken-image box. It now falls back to 🎯,
   the card swaps an image that already failed before its listener was attached, and

@@ -89,11 +89,17 @@ scoreboard portrait (declined for now).
 
 ---
 
-## D-opponent-boost-pill: the opponent's boost is shown in the status pill — October 2026
+## D-opponent-boost-pill: the opponent's boost is shown on their score card — October 2026
 
-**Decision:** the opponent's boost (bot or online) is reported in the status pill
-above the board (`#sbar`), with no time limit, until the local player starts placing
-tiles. It is not shown in a modal or a timed chip.
+**Decision:** the opponent's boost (bot or online) is reported as a gold tag on the
+opponent's score card (`#is-boost-N`; originally the status pill above the board), with
+no time limit, until the local player starts placing tiles. It is not shown in a modal
+or a timed chip.
+- **Amended Oct 2026:** the status row above the board was removed so the board can use
+  that height. The live word preview moved onto the שבץ button (`+N`, or red with the
+  invalid word struck through); this notice moved to the opponent's card; `#sbar` became
+  a fading toast on the board for errors and hints. A pill floating over the header's
+  lead rail was tried first and rejected as poor UI.
 - Bot boosts no longer open the award card. `main.js` auto-finalizes and acks in its
   place.
 - The engine records a serializable `boost` summary on the move-history entry, so it

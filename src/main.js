@@ -5136,7 +5136,11 @@ function installCutoverGlobals() {
     const e = globalThis.document?.getElementById?.('sbar');
     if (!e) return;
     e.textContent = msg;
-    e.className = `sbar ${cls}${msg ? '' : ' is-empty'}`.trim();
+    // #sbar is a transient toast on the board: reflow between the class writes
+    // so a repeated message restarts the fade (.sbar--toast, menu-electric.css).
+    e.className = 'sbar';
+    void e.offsetWidth;
+    e.className = `sbar ${cls}${msg ? ' sbar--toast' : ' is-empty'}`.trim();
   };
   globalThis.ovClose = globalThis.ovClose ?? function ovClose(id) {
     globalThis.document?.getElementById?.(id)?.classList?.add('hidden');

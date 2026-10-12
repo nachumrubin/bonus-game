@@ -123,7 +123,9 @@ Critical element IDs referenced by game logic (must not be renamed):
 #sn1, #sn2             — player name labels (desktop)
 #is-sv1, #is-sv2       — player score values (mobile inline)
 #is-sn1, #is-sn2       — player name labels (mobile inline)
-#sbar                  — status pill: errors / game-over / live word-points ("✓ word · cross +N", computeLiveWordPreview). One .sbar-wd chip per formed word; invalid ones get .sbar-w--bad; .sbar--many when there are 3 or more; .is-empty hides it (Oct 2026). Lives INSIDE #info-strip, absolutely positioned over the lead rail (straddling the header's bottom edge) so it takes no layout row and the board keeps that height — do not move it back into the .gr column flow
+#sbar                  — transient status toast (Oct 2026): errors / game over / swap hints / setS() toasts. Absolute on the top edge of .board-center, fades out (.sbar--toast, ~3s); .is-empty = display:none. Takes no layout row — do not put it back in the .gr column flow
+#btn-play-x            — live word preview INSIDE the שבץ button (renderPlayPreview, computeLiveWordPreview): "+N" (.is-ready) when every formed word is valid; .is-invalid (red button) with only the invalid word(s) as <s class="bplay-bad"> otherwise. The label is the inner .bplay-l span (data-gm/data-gf) so the gender swap never wipes the preview
+#is-boost-1 / #is-boost-2 — the opponent's last boost, gold tag in the top avatar-side corner of THEIR score card (renderOpponentBoost)
 #bag-count-text        — remaining tile count
 #turn-name             — whose turn label
 #elo-delta-1, #elo-delta-2 — end-game Elo delta lines (set by endGameScreen on RATING_EVT.CHANGED)
@@ -717,10 +719,11 @@ previously the turn just silently failed to arrive.
   a ~320ms fade-out.
 - Tones: `.tone-warn` (something was taken from you), `.tone-good`, `.tone-info`.
 
-### Opponent Boost Notice (`#sbar.sbar--boost`)
+### Opponent Boost Notice (`#is-boost-1` / `#is-boost-2`)
 
-The status pill (floating on the score header's bottom edge, above the board) shows the opponent's last boost (bot or online):
-`🎯 היריב קיבל: תור נוסף`, `⚡ היריב קיבל: אנגרמה +15`.
+A gold tag on the OPPONENT's score card (top corner, avatar side) shows their last boost
+(bot or online): `🎯 תור נוסף`, `⚡ אנגרמה +15`; the full text (`היריב קיבל: …`) is its
+`title` / `aria-label`. Until Oct 2026 this was in the status pill above the board.
 - **Source:** `view.opponentBoost` (gameController), set from the opponent's
   `MOVE_SCORE_COMMITTED.boost`. It is never set in a shared-screen game
   (`mySlot === null`), and never for the local player's own boost, which has its award
@@ -731,10 +734,10 @@ The status pill (floating on the score header's bottom edge, above the board) sh
   - the local turn ending without a placement (pass, exchange, lock, timeout).
 
   On an opponent extra turn it stays until their next move.
-- **Priority in `renderStatus`:** invalid-move error > game over > live word preview >
-  opponent boost.
+- Rendered by `renderOpponentBoost`, independent of the status toast and the שבץ-button
+  preview.
 - Copy comes from the pure `describeBoostSummary(boost)` (`src/ui/boostSummary.js`).
-- Bot boosts no longer open the modal award card; this pill replaces it.
+- Bot boosts no longer open the modal award card; this tag replaces it.
 
 ### Score Count-Up Gating
 - Active-slot glow holds until count-up finishes

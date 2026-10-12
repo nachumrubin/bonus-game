@@ -15,7 +15,9 @@
 //   #sn1, #sn2          player name labels
 //   #is-sv1, #is-sv2    mobile info-strip duplicates
 //   #is-sn1, #is-sn2    mobile player-name duplicates
-//   #sbar               status bar text
+//   #sbar               transient status toast on the board (errors, game over, hints)
+//   #btn-play-x         live word preview on the שבץ button (+N / struck invalid words)
+//   #is-boost-1/2       opponent's last boost tag on their score card
 //   #bag-count-text     remaining-tiles count
 //   #turn-name          right-panel "whose turn" label
 //   #sb1, #sb2          score box containers (`act` class marks active)
@@ -102,6 +104,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   const botFaces = createBotFaces({ hostOf: (slot) => lookup(root, `is-av${slot + 1}`), prefersReducedMotion });
   // Last word|points|validity shown by the live word-points pill (renderStatus).
   let lastPreviewKey = '';
+  // Last status-toast text (renderStatus) and opponent-boost tag (renderOpponentBoost).
+  let lastStatusText = null;
+  let lastOppBoostKey = '';
   const boostSquareCues = new Map();
   const boostSquareKey = b => `${b.slot}:${b.bonusIdx}`;
   const revealedBoostSquares = new Set((controller.view.activeBoosts ?? []).map(boostSquareKey));
@@ -379,7 +384,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       openExchangeOverlay({ freeSwap });
     }));
     cleanups.push(bus.on(SETTINGS_CHANGED, (changes = {}) => {
-      if ('gender' in changes) renderStatus(controller.view);
+      if ('gender' in changes) renderPlayPreview(controller.view);
     }));
     // Highlight the freshly-drawn tiles after an exchange so the user can
     // see which ones are new. tileBag.drawInto appends to the end of the
@@ -693,7 +698,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   function openExchangeOverlay({ freeSwap = false } = {}) {
     if (!exchangeOverlay || !exchangeRack) return;
     if (controller.view.placed?.length) {
-      setText($('#sbar', root), g('cancelBeforeSwap'));
+      lastStatusText = null;
+      showStatusToast(g('cancelBeforeSwap'), 'err');
       return;
     }
     // If the local player has a banked free_tile_swap (won on the B13 wheel),
@@ -757,7 +763,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       e.preventDefault?.();
       const letters = [...selected].sort((a, b) => a - b).map(i => rack[i]).filter(Boolean);
       if (!letters.length) {
-        setText($('#sbar', root), g('chooseToSwap'));
+        lastStatusText = null;
+        showStatusToast(g('chooseToSwap'));
         return;
       }
       controller.exchangeTiles(letters, { freeSwap: exchangeIsFreeSwap });
@@ -797,6 +804,8 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     emitLivePreview(v);
     renderScores(v);
     renderStatus(v);
+    renderPlayPreview(v);
+    renderOpponentBoost(v);
     renderTopBars(v);
     renderMultiplierBanner(v);
     renderBoard(v);
@@ -1097,83 +1106,111 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     try { renderAll(controller.view); } catch { /* swallow */ }
   }
 
-  // Status pill: errors, game-over, the live word-points counter
-  // ("✓ האור +8") while tiles are placed, and otherwise the opponent's last
-  // boost ("🎯 היריב קיבל: תור נוסף", "⚡ היריב קיבל: אנגרמה +15") — it stays
-  // until the player starts placing (gameController clears view.opponentBoost).
-  // The idle "choose a letter…" hint
-  // is gone — an empty pill is hidden (`.is-empty`, space kept so the board
-  // doesn't jump). Transient setS() toasts still write here and show.
-  function renderStatus(v) {
+  // Status toast (#sbar): errors, game over, swap hints. It floats on the
+  // board's top edge and fades on its own (`.sbar--toast`, CSS), so it takes no
+  // layout row away from the board. The DOM is only touched when the text
+  // changes — re-rendering the same state must not restart the fade, and must
+  // not wipe a setS() toast main.js wrote in between.
+  function showStatusToast(text, tone = '') {
     const sbar = $('#sbar', root);
     if (!sbar) return;
+    sbar.classList?.remove?.('ok', 'err', 'bon', 'is-empty', 'sbar--toast');
+    setText(sbar, text);
+    if (!text) { sbar.classList?.add?.('is-empty'); return; }
+    if (tone) sbar.classList?.add?.(tone);
+    void sbar.offsetWidth; // restart the fade animation
+    sbar.classList?.add?.('sbar--toast');
+  }
+  function renderStatus(v) {
     let text = '';
     let tone = '';
-    let preview = null;
-    let boostInfo = null;
     if (v.lastInvalidReason) {
       text = invalidReasonText(v.lastInvalidReason);
       tone = 'err';
     } else if (v.status === 'completed' || v.status === 'abandoned') {
       const winner = v.scores[0] > v.scores[1] ? 0 : v.scores[1] > v.scores[0] ? 1 : null;
       text = winner == null ? 'תיקו!' : `שחקן ${winner + 1} ניצח!`;
-    } else if (v.placed?.length || v.swappedTiles?.length) {
-      preview = computeLiveWordPreview({
+    }
+    const key = `${tone}|${text}`;
+    if (key === lastStatusText) return;
+    lastStatusText = key;
+    showStatusToast(text, tone);
+  }
+
+  // Live word preview on the שבץ button (#btn-play-x). Every word valid (or
+  // the dictionary not loaded yet): "+N" after the label. Any formed word
+  // (main or cross) not in the dictionary: the button turns red and shows the
+  // invalid word(s) struck through instead of the points. The button stays
+  // clickable — the engine's illegal-word rule decides, as before.
+  function renderPlayPreview(v) {
+    if (!btnPlay) return;
+    const x = $('#btn-play-x', root);
+    const busy = v.lastInvalidReason || v.status === 'completed' || v.status === 'abandoned';
+    const preview = !busy && (v.placed?.length || v.swappedTiles?.length)
+      ? computeLiveWordPreview({
         board: v._board, bonusBoard: v._bonusBoard, firstMove: v._firstMove,
         placed: v.placed, swappedTiles: v.swappedTiles,
         isWordValid: dictReady ? isWordValid : null,
-      });
-    } else if (v.opponentBoost) {
-      boostInfo = describeBoostSummary(v.opponentBoost.boost);
-    }
-    sbar.classList?.remove?.('ok', 'err', 'bon', 'is-empty', 'sbar--preview', 'sbar--boost', 'sbar--many');
-    if (boostInfo) {
-      sbar.classList?.add?.('sbar--preview', 'sbar--boost');
-      sbar.innerHTML = `<span class="sbar-ic" aria-hidden="true">${escapeForOverlay(boostInfo.icon)}</span>`
-        + `<span class="sbar-w">היריב קיבל: ${escapeForOverlay(boostInfo.name)}</span>`
-        + (boostInfo.showPoints ? `<span class="sbar-pts" dir="ltr">+${boostInfo.extra}</span>` : '');
-      const label = `היריב קיבל בוסט: ${boostInfo.name}${boostInfo.showPoints ? `, ${boostInfo.extra} נקודות` : ''}`;
-      sbar.setAttribute?.('aria-label', label);
-      const key = `boost|${label}`;
-      if (key !== lastPreviewKey) {
-        sbar.classList?.remove?.('sbar--bump');
-        void sbar.offsetWidth;
-        sbar.classList?.add?.('sbar--bump');
-      }
-      lastPreviewKey = key;
+      })
+      : null;
+    btnPlay.classList?.remove?.('is-ready', 'is-invalid');
+    if (!preview) {
+      if (x) { x.innerHTML = ''; }
+      btnPlay.removeAttribute?.('aria-label');
+      lastPreviewKey = '';
       return;
     }
-    if (preview) {
-      const bad = preview.valid === false;
-      // Every formed word (main + cross words) gets a chip; the ones not in the
-      // dictionary are struck through so the player sees which word broke it.
-      const items = preview.items ?? [{ text: preview.word, valid: preview.valid }];
-      sbar.classList?.add?.('sbar--preview', bad ? 'err' : 'ok');
-      if (items.length >= 3) sbar.classList?.add?.('sbar--many');
-      else sbar.classList?.remove?.('sbar--many');
-      sbar.innerHTML = `<span class="sbar-ic" aria-hidden="true">${bad ? '✕' : '✓'}</span>`
-        + `<span class="sbar-w">${items.map(i =>
-          `<span class="sbar-wd${i.valid === false ? ' sbar-w--bad' : ''}">${escapeForOverlay(i.text)}</span>`).join('')}</span>`
-        + (bad ? '' : `<span class="sbar-pts" dir="ltr">+${preview.score}</span>`);
-      const badWords = items.filter(i => i.valid === false).map(i => i.text);
-      sbar.setAttribute?.('aria-label', bad
-        ? `${badWords.join(', ')} — לא במילון`
-        : `${items.map(i => i.text).join(', ')} — ${preview.score} נקודות`);
-      const key = `${items.map(i => `${i.text}:${i.valid}`).join(',')}|${preview.score}|${bad}`;
-      if (key !== lastPreviewKey) {
-        // Re-trigger the pop on every change of word / points.
-        sbar.classList?.remove?.('sbar--bump');
-        void sbar.offsetWidth;
-        sbar.classList?.add?.('sbar--bump');
-      }
-      lastPreviewKey = key;
-      return;
+    const items = preview.items ?? [{ text: preview.word, valid: preview.valid }];
+    const bad = preview.valid === false;
+    const badWords = items.filter(i => i.valid === false).map(i => i.text);
+    const label = g('confirmBtn');
+    if (bad) {
+      btnPlay.classList?.add?.('is-invalid');
+      if (x) x.innerHTML = badWords.map(w => `<s class="bplay-bad">${escapeForOverlay(w)}</s>`).join('');
+      btnPlay.setAttribute?.('aria-label', `${label} — ${badWords.join(', ')} לא במילון`);
+    } else {
+      btnPlay.classList?.add?.('is-ready');
+      if (x) x.innerHTML = `<span dir="ltr">+${preview.score}</span>`;
+      btnPlay.setAttribute?.('aria-label', `${label} — ${items.map(i => i.text).join(', ')} — ${preview.score} נקודות`);
     }
-    lastPreviewKey = '';
-    sbar.removeAttribute?.('aria-label');
-    setText(sbar, text);
-    if (tone) sbar.classList?.add?.(tone);
-    if (!text) sbar.classList?.add?.('is-empty');
+    const key = `${items.map(i => `${i.text}:${i.valid}`).join(',')}|${preview.score}|${bad}`;
+    if (key !== lastPreviewKey) {
+      // Re-trigger the pop on every change of word / points.
+      btnPlay.classList?.remove?.('bplay--bump');
+      void btnPlay.offsetWidth;
+      btnPlay.classList?.add?.('bplay--bump');
+    }
+    lastPreviewKey = key;
+  }
+
+  // The opponent's last boost ("🎯 תור נוסף", "⚡ אנגרמה +15") as a gold tag
+  // on THEIR score card (#is-boost-1 / #is-boost-2). Stays until the local
+  // player starts placing (gameController clears view.opponentBoost).
+  function renderOpponentBoost(v) {
+    const ob = v.opponentBoost;
+    const info = ob ? describeBoostSummary(ob.boost) : null;
+    const slot = info && (ob.slot === 0 || ob.slot === 1) ? ob.slot : null;
+    for (const s of [0, 1]) {
+      const el = $(`#is-boost-${s + 1}`, root);
+      if (!el) continue;
+      if (s !== slot) {
+        el.innerHTML = '';
+        el.classList?.remove?.('is-visible');
+        el.removeAttribute?.('title');
+        el.removeAttribute?.('aria-label');
+        continue;
+      }
+      const key = `${s}|${info.text}`;
+      if (key === lastOppBoostKey && el.classList?.contains?.('is-visible')) continue;
+      lastOppBoostKey = key;
+      el.innerHTML = `${escapeForOverlay(info.icon)} ${escapeForOverlay(info.name)}`
+        + (info.showPoints ? ` <span class="opp-boost-pts">+${info.extra}</span>` : '');
+      const full = `היריב קיבל: ${info.name}${info.showPoints ? ` +${info.extra}` : ''}`;
+      el.setAttribute?.('title', full);
+      el.setAttribute?.('aria-label', full);
+      el.classList?.add?.('is-visible');
+    }
+    if (slot == null) lastOppBoostKey = '';
   }
 
   function renderTopBars(v) {
@@ -1554,7 +1591,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         renderRack(controller.view);
         renderLockInventory(controller.view);
         renderBoard(controller.view);
-        renderStatus(controller.view);
+        renderPlayPreview(controller.view);
       }));
       box.appendChild?.(btn);
     });

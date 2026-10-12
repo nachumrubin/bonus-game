@@ -90,7 +90,7 @@ function makeGameDom() {
     return el;
   }
   // Action buttons
-  reg('btn-play');
+  reg('btn-play'); reg('btn-play-x');
   reg('btn-recall');
   const btnExchange = reg('btn-exchange');
   btnExchange._attrs.onclick = 'doExchange()';
@@ -107,6 +107,7 @@ function makeGameDom() {
   // Misc
   reg('sbar'); reg('bag-count-text'); reg('turn-name'); reg('bag-display');
   reg('lock-inv-display'); reg('is-locks-1'); reg('is-locks-2');
+  reg('is-boost-1'); reg('is-boost-2');
   // Grid
   const grid = reg('game-grid');
   for (let r = 0; r < 10; r++) {
@@ -477,7 +478,10 @@ test('renderer reflects INVALID_MOVE_REJECTED reason in #sbar', () => {
   assert.equal(elements.get('sbar').textContent, 'המילה חייבת להיות לפחות 2 אותיות!');
 });
 
-test('live pill lists every formed word and strikes only the invalid one', () => {
+// The live word preview rides on the שבץ button (#btn-play-x): "+N" when every
+// formed word is valid; red with only the invalid word(s) struck through
+// otherwise. No layout row above the board.
+test('שבץ button: invalid word turns it red and shows only that word struck through', () => {
   const { session, controller } = fresh();
   const { root, elements } = makeGameDom();
   mountGameScreen({ controller, root });
@@ -491,13 +495,55 @@ test('live pill lists every formed word and strikes only the invalid one', () =>
   bus.emit(EV.SCORE_CHANGED, {});
   controller.placeTile({ r: 4, c: 6, letter: 'ג', val: 2 });
   controller.placeTile({ r: 5, c: 6, letter: 'ה', val: 1 });
-  const html = elements.get('sbar').innerHTML;
-  const chips = html.match(/<span class="sbar-wd[^"]*">[^<]*<\/span>/g) ?? [];
-  assert.equal(chips.length, 2, `two word chips, got: ${html}`);
-  assert.ok(chips.some(c => /sbar-w--bad">גה</.test(c)), 'invalid main word is struck through');
-  assert.ok(chips.some(c => /class="sbar-wd">אבג</.test(c)), 'valid cross word is shown plainly');
-  assert.ok(elements.get('sbar').classList.contains('err'));
-  assert.match(elements.get('sbar').getAttribute('aria-label'), /גה — לא במילון/);
+  const btn = elements.get('btn-play');
+  const html = elements.get('btn-play-x').innerHTML;
+  assert.ok(btn.classList.contains('is-invalid'), 'button turns red');
+  assert.ok(!btn.classList.contains('is-ready'));
+  assert.match(html, /<s class="bplay-bad">גה<\/s>/, 'invalid word struck through');
+  assert.doesNotMatch(html, /אבג/, 'valid cross word is not listed');
+  assert.doesNotMatch(html, /\+\d/, 'no points while a word is invalid');
+  assert.match(btn.getAttribute('aria-label'), /גה לא במילון/);
+});
+
+test('שבץ button: all words valid shows only +points, and recall clears it', () => {
+  const { controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+  controller.placeTile({ r: 4, c: 4, letter: 'א', val: 1 });
+  controller.placeTile({ r: 4, c: 5, letter: 'ב', val: 3 });
+  const btn = elements.get('btn-play');
+  const html = elements.get('btn-play-x').innerHTML;
+  assert.ok(btn.classList.contains('is-ready'));
+  assert.ok(!btn.classList.contains('is-invalid'));
+  assert.match(html, /^<span dir="ltr">\+\d+<\/span>$/, `points only, got: ${html}`);
+  assert.match(btn.getAttribute('aria-label'), /אב — \d+ נקודות/);
+
+  elements.get('btn-recall').fireClick();
+  assert.equal(elements.get('btn-play-x').innerHTML, '');
+  assert.ok(!btn.classList.contains('is-ready'));
+  assert.equal(btn.getAttribute('aria-label'), null);
+});
+
+test('opponent boost shows as a gold tag on the opponent\'s score card', () => {
+  const { controller } = fresh();
+  const { root, elements } = makeGameDom();
+  mountGameScreen({ controller, root });
+  controller.view.opponentBoost = {
+    slot: 1,
+    boost: { bonusType: 'B13', kind: 'wheel', extra: 0, effects: [{ boostId: 'extra_turn', payload: {} }] },
+  };
+  bus.emit(EV.SCORE_CHANGED, {});
+  const tag = elements.get('is-boost-2');
+  assert.ok(tag.classList.contains('is-visible'));
+  assert.match(tag.innerHTML, /🎯 תור נוסף/);
+  assert.match(tag.getAttribute('title'), /היריב קיבל: תור נוסף/);
+  assert.ok(!elements.get('is-boost-1').classList.contains('is-visible'), 'not on my own card');
+  assert.ok(elements.get('sbar').classList.contains('is-empty'), 'not in the status toast');
+
+  controller.view.opponentBoost = null;
+  bus.emit(EV.SCORE_CHANGED, {});
+  assert.ok(!tag.classList.contains('is-visible'));
+  assert.equal(tag.innerHTML, '');
 });
 
 test('lock inventory click then board click places a spine lock', () => {
