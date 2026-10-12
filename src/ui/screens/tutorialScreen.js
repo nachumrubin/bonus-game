@@ -125,12 +125,13 @@ export function mountTutorialScreen({ root = globalThis.document, bus } = {}) {
         return;
       }
 
-      const sbar = root.querySelector?.('#sbar') ?? root.querySelector?.('.sbar');
+      // Anchor below the score header (#sbar is now a transient toast on the
+      // board and usually hidden), otherwise below the grid top.
+      const header = root.querySelector?.('#info-strip') ?? root.querySelector?.('.info-strip');
       const grid = root.getElementById?.('game-grid') ?? root.querySelector?.('#game-grid');
-      if (!sbar && !grid) return;
+      if (!header && !grid) return;
 
-      // Anchor below the status bar if available, otherwise below the grid top.
-      const anchor = sbar ?? grid;
+      const anchor = header ?? grid;
       const anchorRect = anchor.getBoundingClientRect?.();
       if (!anchorRect || anchorRect.width === 0) return;
 

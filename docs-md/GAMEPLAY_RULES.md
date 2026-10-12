@@ -225,7 +225,12 @@ Source: `turnManager.js`, `gameEngine.js`
 - Each player starts with a lock inventory: `[3, 3, 5]` (three durations, from `LEGACY_LOCK_INVENTORY`)
 - Player can lock an empty cell by dispatching `CMD.PLACE_LOCK` with a duration from their inventory
 - Locked cell cannot be played on while `remainingTurns > 0`
-- Lock duration decrements each turn (`tickLocks` on `advanceTurn`)
+- Lock duration decrements each turn (`tickLocks` on `advanceTurn`, including
+  lock-only turns — the lock placed that turn is exempt)
+- **A lock unlocks only when its owner's turn starts (Oct 2026).** If its
+  countdown runs out on the way into the opponent's turn (possible after an
+  extra turn or a skipped turn), it stays locked at 1 through that turn. See
+  `CHARACTERIZATION.md` → "Locks: the two paths".
 - Lock ID: `"${turnNumber}:${slot}:${r}:${c}:${duration}"`
 - **Point cost (July 2026):** spending a lock charges the placing player
   `LOCK_POINT_COST = 10` points, clamped so a score never goes negative. The

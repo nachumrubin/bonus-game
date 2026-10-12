@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { describeBoostSummary } from './boostSummary.js';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { describeBoost, describeBoostSummary, BOOST_ART_URLS } from './boostSummary.js';
 
 const summary = (over) => describeBoostSummary({ bonusType: null, kind: null, extra: 0, effects: [], ...over });
 
@@ -49,4 +52,22 @@ test('describeBoostSummary: every future effect is named, without points', () =>
     assert.equal(s.text, text, boostId);
     assert.equal(s.showPoints, false, boostId);
   }
+});
+
+// The award card swaps a failed <img> for bigEmoji / bigText. extra_turn had
+// neither, so a failed load left a broken-image box on the card.
+test('describeBoost: every boost with artwork also has a text/emoji fallback', () => {
+  const ids = ['auto_extra_score', 'extra_turn', 'multiply_next_turns', 'timer_bonus',
+    'free_tile_swap', 'skip_opponent_turn', 'cancel_next_opponent_bonus'];
+  for (const id of ids) {
+    const info = describeBoost(id, {}, 0);
+    if (info.image) assert.ok(info.bigEmoji || info.bigText, `${id} needs a fallback`);
+  }
+  assert.equal(describeBoost('extra_turn', {}, 0).bigEmoji, '🎯');
+});
+
+test('BOOST_ART_URLS: lists the award artwork, and every file ships', () => {
+  assert.ok(BOOST_ART_URLS.includes('assets/rewards/extra turn.png'));
+  const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
+  for (const src of BOOST_ART_URLS) assert.ok(existsSync(repoRoot + src), `missing ${src}`);
 });
