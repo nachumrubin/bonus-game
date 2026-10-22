@@ -35,6 +35,7 @@ export const DEFAULT_WATCHDOG_GRACE_MS = 1000;
  *   now?: () => number,
  *   setIntervalFn?: typeof setInterval,
  *   clearIntervalFn?: typeof clearInterval,
+ *   onClaimed?: (room: object) => void, // after a claim THIS client committed
  * }} options
  */
 export function createTimeoutWatchdog({
@@ -47,6 +48,7 @@ export function createTimeoutWatchdog({
   now = () => Date.now(),
   setIntervalFn = (typeof setInterval !== 'undefined' ? setInterval : null),
   clearIntervalFn = (typeof clearInterval !== 'undefined' ? clearInterval : null),
+  onClaimed = null,
 } = {}) {
   if (!db) throw new Error('createTimeoutWatchdog: db is required');
   if (!roomId) throw new Error('createTimeoutWatchdog: roomId is required');
@@ -157,7 +159,18 @@ export function createTimeoutWatchdog({
       const patch = computeExpiredOnlineTurnState(state, now(), Number(limitMs || 0));
       if (!patch) return;
       return applyPatchToRoom(current, patch);
-    });
+      // applyLocally=false: the first run sees our local cache, which can be
+      // a move behind (the opponent's last-second move not yet delivered).
+      // Raised locally, that doomed claim reached our own session as the next
+      // version and the opponent's real move at that version was then
+      // dropped as already applied (soak agents, Oct 2026: g16).
+    }, undefined, false);
+    // The claiming client's own session sometimes never applied its claim
+    // (soak agents, Oct 2026: the claimer stayed a turn behind, or on a live
+    // board after its claim forfeited the game). Let the owner re-read.
+    if (result?.committed && typeof onClaimed === 'function') {
+      try { onClaimed(result.snapshot?.val ? result.snapshot.val() : null); } catch { /* swallow */ }
+    }
     return result;
   }
 

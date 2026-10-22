@@ -5,6 +5,23 @@
 
 ---
 
+## D-terminal-by-server-read: conflicting game-over statuses are settled by reading the room — October 2026
+
+**Decision:** once a client holds a terminal status, a snapshot carrying a *different*
+terminal status never overwrites it directly. The session calls
+`forceResync('terminal-conflict')` and adopts what the server returns. The watchdog's
+claim transaction runs with `applyLocally = false`.
+
+**Why:** the rules keep the first terminal status. But the Firebase SDK raises our own
+writes (and a transaction's first run on a stale cache) on our listener before the
+server rules on them, so snapshots can carry statuses the server has refused. Trusting
+the latest snapshot let a client end on the refused status (soak g21). Reading the room
+is the only signal that isn't affected by our own pending writes once they settle.
+Game over is rare, so the extra read costs nothing. A non-optimistic claim means a
+doomed claim never shows up as a version on the claimer.
+
+---
+
 ## D-lock-owner-expiry: a lock comes off only on its owner's turn — October 2026
 
 **Decision:** Locks still count down once per turn (every player's turn, lock-only turns

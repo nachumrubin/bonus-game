@@ -1,5 +1,37 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Full regression run — October 2026
+
+- [x] Soak agents, 40 parallel online games (seed `regress-1022`): 8 sync bugs fixed with
+  tests (GAP_REPORT -6, CHANGELOG "Full regression run").
+- [x] Parallel offline bot-vs-bot browser suite (`tests/e2e/bot-vs-bot-regression.spec.js`).
+- [x] Guest save-progress overlay "not now" fixed; menu-routing / non-menu-buttons specs
+  rewritten for the current UI.
+- [x] Verification soak (soak3: 36/40 clean). Findings:
+  - g9/g37: a late snapshot older than our acked write rolled the client back. Fixed, test
+    `online-stale-snapshot-after-ack.test.js`.
+  - g24: the latency wrapper reordered writes. Harness fixed, test in `soak-agents.test.js`.
+  - g10: the agent didn't re-plan after a refused write. Agent fixed.
+- [x] soak4 (39/40 clean): g25, a game-ending exchange lost to the status write. Fixed,
+  test `online-game-ending-exchange.test.js`.
+- [x] soak5, after all fixes: 40/40 clean, 0 violations.
+- [ ] soak5 still logs 12 refused room `update`s (`permission_denied`). All 12 games
+  recovered, so these are probably lost races handled by rollback and resync. To confirm,
+  write `stats.writeErrors` to every game's summary, not just failure bundles
+  (GAP_REPORT -6).
+- [ ] Re-run the soak on the same seed after deploy and confirm zero violations.
+- [ ] Forfeit race (harmless): the forfeiting client's status write can beat its watchdog
+  transaction, so the final `missedTurns` bump is missing (GAP_REPORT -6).
+- [x] Remaining failing Playwright specs: all 12 also failed on the base commit (stale, not
+  regressions). Updated for the current design: `your-turn-timing` (turn cue is now the
+  `chime_turn` sample — spec blocks it + service workers to count the synth fallback),
+  `signature-gameplay-motion` (cue waits for `TURN_PRESENTATION_READY`; avatar may carry
+  it), `boost-electric-border` (bot boost is the `#is-boost-2` card tag, not a modal;
+  lead-in checked by lit duration, not frame count). The two `capture-*` scripts only
+  time out under full-suite load and pass alone.
+- [ ] `boost-electric-border` / `capture-*` stay load-sensitive in a fully parallel
+  `npm run test:e2e`; consider tagging them serial.
+
 ## Boostie avatar evolution — October 2026
 
 - [x] 7-level system, core-shape ladder and prompt template (`docs-md/AVATAR_EVOLUTION.md`).

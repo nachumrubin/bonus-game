@@ -90,7 +90,8 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
     goLogin:  makeBtn({ onclick: "showSc('sauth-login')" }),
     goSignup: makeBtn({ onclick: "showSc('sauth-signup')" }),
     guest:    makeBtn({ onclick: 'continueAsGuest()' }),
-    upgradeOverlay: { classList: { add(){}, remove(){}, contains: () => false } },
+    upgradeOverlay: (() => { const c = new Set(); return { _cls: c, classList: { add: x => c.add(x), remove: x => c.delete(x), contains: x => c.has(x) } }; })(),
+    upgradeDismiss: makeBtn({ onclick: "ovClose('ov-guest-upgrade')" }),
     liGoogle: makeBtn(),
     suGoogle: makeBtn(),
     ovguGoogle: makeBtn(),
@@ -128,6 +129,7 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
     },
     querySelectorAll(sel) {
       if (sel === 'button[onclick="continueAsGuest()"]') return [els.guest];
+      if (sel === '#ov-guest-upgrade button[onclick*="ovClose"]') return [els.upgradeDismiss];
       return [];
     },
   };
@@ -289,4 +291,16 @@ test('validatePickNameForm / suggestNameFromDisplayName / isSilentAuthCancel', (
   assert.equal(isSilentAuthCancel({ code: 'auth/popup-closed-by-user' }), true);
   assert.equal(isSilentAuthCancel({ code: 'auth/popup-blocked' }), false);
   assert.notEqual(firebaseAuthErrorHe({ code: 'auth/popup-blocked' }), 'אירעה שגיאה. נסו שוב');
+});
+
+test('guest-upgrade "not now" closes the overlay (its inline ovClose is stripped)', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  let dismissed = 0;
+  bus.on(AUTH_INTENT.DISMISS_UPGRADE, () => { dismissed++; });
+  mountAuthScreens({ root, bus });
+  els.upgradeOverlay.classList.remove('hidden');
+  els.upgradeDismiss.fireClick();
+  assert.equal(els.upgradeOverlay.classList.contains('hidden'), true);
+  assert.equal(dismissed, 1);
 });

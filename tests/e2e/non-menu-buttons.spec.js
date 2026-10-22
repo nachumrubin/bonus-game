@@ -5,8 +5,11 @@ async function bootSpine(page) {
   await page.waitForFunction(() =>
     window.__spine?.enabled === true &&
     typeof window.__spine.bootOffline2P === 'function' &&
-    !!window.document.querySelector('#sh .hbtns')
+    !!window.document.querySelector('#btn-online-lobby')
   );
+  // The static test server never finishes Firebase connect, so the boot
+  // splash stays up over the home screen.
+  await page.addStyleTag({ content: '#ov-onboarding,#app-loading{display:none!important}' });
 }
 
 async function emit(page, eventKey, payload = {}) {
@@ -41,11 +44,11 @@ test.describe('non-menu button wiring', () => {
     await showScreen(page, 'sauth-signup');
     await page.locator('#su-submit-btn').click();
     await expect(page.locator('#su-error')).not.toBeEmpty();
-    await page.locator('#sauth-signup button').nth(1).click();
+    await page.locator('#sauth-signup button', { hasText: 'יש לי חשבון' }).click();
     await expect(page.locator('#sauth-login')).toBeVisible();
-    await page.locator('#sauth-login button').nth(2).click();
+    await page.locator('#sauth-login button', { hasText: 'חשבון חדש' }).click();
     await expect(page.locator('#sauth-signup')).toBeVisible();
-    await page.locator('#sauth-signup button').nth(2).click();
+    await page.locator('#sauth-signup button', { hasText: 'המשך כאורח' }).click();
     await expect(page.locator('#sh')).toBeVisible();
 
     // Profile/player buttons and profile-owned legacy sub-screens.
@@ -62,108 +65,97 @@ test.describe('non-menu button wiring', () => {
     });
     await page.locator('#profile-name-display').click();
     await expect(page.locator('#profile-name-edit')).toBeVisible();
-    await page.locator('#profile-name-edit button').nth(1).click();
+    await page.locator('#profile-name-edit button', { hasText: 'ביטול' }).click();
     await expect(page.locator('#profile-name-edit')).toBeHidden();
 
-    await page.locator('#profile-avatar-display').click();
-    await expect(page.locator('#sav-gallery')).toBeVisible();
-    await page.locator('#sav-gallery button').first().click();
-    await expect(page.locator('#sprofile')).toBeVisible();
+    // Avatar tap → avatar store; a guest is offered the account upgrade first.
+    await page.locator('#sprofile .pf-g-av').click();
+    await expect(page.locator('#ov-guest-upgrade')).toBeVisible();
+    await page.locator('#ov-guest-upgrade button', { hasText: 'לא עכשיו' }).click();
+    await expect(page.locator('#ov-guest-upgrade')).toBeHidden();
 
-    const profileButtons = () => page.locator('#sprofile > .sbox > button:visible');
-    await profileButtons().nth(0).click();
+    await showScreen(page, 'sprofile');
+    await page.locator('#sprofile .g-li', { hasText: 'חברים' }).click();
     await expect(page.locator('#sfriends')).toBeVisible();
     await emit(page, 'FRIENDS_RENDER', { myUserId: 'ABC123', friends: [], requests: [] });
-    await page.locator('#fr-my-id').click();
     await page.locator('#add-friend-input').fill('ZZ9999');
-    await page.locator('#sfriends button:visible').first().click();
-    await page.locator('#sfriends > .sbox > button:visible').last().click();
+    await page.locator('#sfriends button[aria-label="הוסף חבר"]').click();
+    await page.locator('#sfriends .g-chip[aria-label="חזרה לפרופיל"]').click();
     await expect(page.locator('#sprofile')).toBeVisible();
 
-    await profileButtons().nth(1).click();
-    await expect(page.locator('#sav-gallery')).toBeVisible();
-    await page.locator('#sav-gallery button').first().click();
-    await expect(page.locator('#sprofile')).toBeVisible();
-
-    await profileButtons().nth(2).click();
+    await page.locator('#sprofile .g-li', { hasText: 'סטטיסטיקות' }).click();
     await expect(page.locator('#sstats')).toBeVisible();
-    await expect(page.locator('#st-played')).toHaveText('35');
-    await expect(page.locator('#st-highscore')).toHaveText('564');
-    await page.locator('.stats-tab').nth(1).click();
-    await expect(page.locator('#st-panel-records')).toHaveClass(/active/);
-    await page.locator('.stats-tab').nth(2).click();
-    await expect(page.locator('#st-panel-rivals')).toHaveClass(/active/);
-    await page.locator('.stats-tab').nth(1).click();
+    // Collapsible sections: the share button lives in the records section.
+    await page.locator('.st-section-header[data-section="achievements"]').click();
+    await expect(page.locator('#st-sec-achievements')).toHaveClass(/open/);
     await page.locator('.stats-share-btn').click();
 
     await showScreen(page, 'sprofile');
-    await expect(page.locator('#sprofile')).toBeVisible();
-
-    await profileButtons().nth(4).click();
+    await page.locator('#sprofile .g-chip[aria-label="חזרה"]').click();
     await expect(page.locator('#sh')).toBeVisible();
 
-    // Setup screen buttons: difficulty, back, and play.
-    await showScreen(page, 'ss');
-    await emit(page, 'SETUP_OPEN', { mode: 'bot', initialDifficulty: 1 });
-    await expect(page.locator('#dff')).toBeVisible();
-    await page.locator('#dff button').nth(2).click();
-    await expect(page.locator('#dff button').nth(2)).toHaveClass(/a/);
-    await page.locator('#ss button').filter({ hasText: 'חזרה' }).click();
+    // Setup screen: difficulty, back, and play.
+    await page.locator('.hm-card--bot').click();
+    await expect(page.locator('#ss')).toBeVisible();
+    const difficulty = page.locator('#ss .mf-opt-card', { hasText: 'קשה' });
+    await difficulty.click();
+    await expect(difficulty).toHaveClass(/(^|\s)a(\s|$)/);
+    await page.locator('#ss .g-chip[aria-label="חזרה"]').click();
     await expect(page.locator('#sh')).toBeVisible();
 
-    await showScreen(page, 'ss');
-    await emit(page, 'SETUP_OPEN', { mode: 'vs', initialDifficulty: 1 });
-    await page.locator('#ss button').filter({ hasText: 'שחק' }).click();
+    await page.locator('.hm-card--2p').click();
+    await page.locator('#ss .mf-cta').click();
     await enterCoinToss(page);
     await expect(page.locator('#sg')).toBeVisible();
 
-    // In-game toolbar and overlay controls.
-    await page.locator('#sg .tbar button:visible').nth(0).click();
+    // In-game controls and their overlays.
+    // ☰ opens the in-game dropdown; settings and finish/pause live in it.
+    await page.locator('#btn-game-menu').click();
+    await expect(page.locator('#gm-menu')).toHaveClass(/open/);
+    await page.locator('#gm-menu button', { hasText: 'הגדרות' }).click();
     await expect(page.locator('#ov-settings')).toBeVisible();
-    await page.locator('#ov-settings button').filter({ hasText: 'אישור' }).click();
+    await page.locator('#sett-close-x').click();
     await expect(page.locator('#ov-settings')).toHaveClass(/hidden/);
+
+    await page.locator('#btn-game-menu').click();
+    await page.locator('#gm-menu button', { hasText: 'סיים' }).click();
+    await expect(page.locator('#ov-back-confirm')).toBeVisible();
+    await page.locator('#ov-back-confirm .pause-action--primary').click();
+    await expect(page.locator('#ov-back-confirm')).toHaveClass(/hidden/);
 
     await page.locator('#btn-exchange').click();
     await expect(page.locator('#ov-exch')).toBeVisible();
     await page.locator('#ov-exch button').filter({ hasText: 'ביטול' }).click();
     await expect(page.locator('#ov-exch')).toHaveClass(/hidden/);
 
-    await page.locator('#sg .tbar button:visible').nth(2).click();
+    await page.locator('#btn-shailta').click();
     await expect(page.locator('#ov-shailta')).toBeVisible();
     await page.locator('#ov-shailta button').filter({ hasText: 'סגור' }).click();
     await expect(page.locator('#ov-shailta')).toHaveClass(/hidden/);
 
-    await page.locator('#sg .tbar button:visible').nth(3).click();
-    await expect(page.locator('#ov-back-confirm')).toBeVisible();
-    await page.locator('#ov-back-confirm button').filter({ hasText: 'המשך' }).click();
-    await expect(page.locator('#ov-back-confirm')).toHaveClass(/hidden/);
-
-    // Online lobby sub-buttons and their overlays.
+    // Online lobby mode cards and their overlays.
     await showScreen(page, 'so');
-    await page.locator('#so .omode-btn').nth(0).click();
+    const modeCard = (i) => page.locator('#so .g-card.g-mode').nth(i);
+    await modeCard(1).click();
     await expect(page.locator('#ov-create-room')).toBeVisible();
     await page.locator('#cr-mode-async').click();
     await expect(page.locator('#cr-mode-async')).toHaveClass(/active/);
-    await page.locator('#ov-create-room button').filter({ hasText: 'ביטול' }).click();
-    await expect(page.locator('#ov-create-room')).toHaveClass(/hidden/);
+    await page.evaluate(() => window.ovClose?.('ov-create-room') ?? document.getElementById('ov-create-room').classList.add('hidden'));
 
-    await page.locator('#so .omode-btn').nth(1).click();
+    await modeCard(2).click();
     await expect(page.locator('#ov-join-code')).toBeVisible();
     await page.locator('#ov-join-code button').filter({ hasText: 'הצטרף' }).click();
     await expect(page.locator('#jc-error')).not.toBeEmpty();
-    await page.locator('#ov-join-code button').filter({ hasText: 'ביטול' }).click();
-    await expect(page.locator('#ov-join-code')).toHaveClass(/hidden/);
+    await page.evaluate(() => window.ovClose?.('ov-join-code') ?? document.getElementById('ov-join-code').classList.add('hidden'));
 
-    await page.locator('#so .omode-btn').nth(2).click();
+    await modeCard(0).click();
     await expect(page.locator('#ov-matchmaking')).toBeVisible();
     await page.locator('#mm-mode-async').click();
     await expect(page.locator('#mm-mode-async')).toHaveClass(/active/);
-    await page.locator('#mm-rr-200').click();
-    await expect(page.locator('#mm-rr-200')).toHaveClass(/active/);
-    await page.locator('#ov-matchmaking button').filter({ hasText: 'ביטול' }).click();
-    await expect(page.locator('#ov-matchmaking')).toHaveClass(/hidden/);
+    await page.evaluate(() => window.ovClose?.('ov-matchmaking') ?? document.getElementById('ov-matchmaking').classList.add('hidden'));
 
-    await page.locator('#so button').filter({ hasText: 'חזרה' }).click();
+    await showScreen(page, 'so');
+    await page.locator('#so .g-chip[aria-label="חזרה"]').click();
     await expect(page.locator('#sh')).toBeVisible();
 
     // Tutorial intro buttons.

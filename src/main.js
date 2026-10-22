@@ -4628,6 +4628,7 @@ async function boot() {
           // The deadline we are judging was stamped by the OPPONENT's client.
           // Compare it on the shared server clock, not ours. See serverClock.js.
           now: serverNow,
+          onClaimed: () => { session.resync?.('watchdog-claim'); },
         });
       }
     }

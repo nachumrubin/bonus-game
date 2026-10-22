@@ -286,3 +286,47 @@ test('latency: writes and listener deliveries are delayed, FIFO, and off() detac
   assert.ok(!seen.includes(3), 'listener detached');
   assert.equal(db.ref('.info/serverTimeOffset')._path, '.info/serverTimeOffset', '.info passes through unwrapped');
 });
+
+// Soak3 g24/g9: items due at the same instant were delivered out of order
+// (Node doesn't order timers of different durations that expire together), so
+// a liveBonus clear overtook the progress write sent before it.
+test('latency: writes and deliveries due at the same instant keep their order', async () => {
+  const { withLatency } = await import('../../scripts/simulator/net/latency.mjs');
+  // Each sample takes two rng() calls (spike roll, then position). Decreasing
+  // delays clamp every later item to the first one's due time.
+  const seq = [];
+  for (let i = 0; i < 12; i++) seq.push(0.5, 1 - i / 12);
+  let k = 0;
+  const rng = () => seq[k++ % seq.length];
+  const order = [];
+  let listener = null;
+  const raw = { ref: () => ({
+    set: (v) => { order.push(`up:${v}`); return Promise.resolve(); },
+    on: (_ev, h) => { listener = h; },
+  }) };
+  const db = withLatency(raw, { profile: 'wifi', rng });
+  // Node's timer clock is read once per loop turn while Date.now() keeps
+  // moving, so a later item computed a shorter timeout for the same due time.
+  const spin = () => { const t = Date.now() + 2; while (Date.now() < t) { /* wait */ } };
+  const writes = [];
+  for (let i = 0; i < 6; i++) { writes.push(db.ref('rooms/r1/liveBonus').set(i)); spin(); }
+  await new Promise(r => setImmediate(r));
+  db.ref('rooms/r1').on('value', (snap) => order.push(`down:${snap}`));
+  for (let i = 0; i < 6; i++) { listener(i); spin(); }
+  await Promise.all(writes);
+  await new Promise(r => setTimeout(r, 200));
+  assert.deepEqual(order.filter(x => x.startsWith('up:')), [0, 1, 2, 3, 4, 5].map(i => `up:${i}`));
+  assert.deepEqual(order.filter(x => x.startsWith('down:')), [0, 1, 2, 3, 4, 5].map(i => `down:${i}`));
+});
+
+test('latency: a refused write keeps its path and error code for the failure bundle', async () => {
+  const { withLatency } = await import('../../scripts/simulator/net/latency.mjs');
+  const denied = Object.assign(new Error('PERMISSION_DENIED'), { code: 'PERMISSION_DENIED' });
+  const raw = { ref: () => ({ update: () => Promise.reject(denied), set: () => Promise.resolve() }) };
+  const stats = {};
+  const db = withLatency(raw, { profile: 'wifi', rng: () => 0, stats });
+  await assert.rejects(db.ref('rooms/r1').update({ version: 30 }), /PERMISSION_DENIED/);
+  await db.ref('rooms/r1/livePreview').set(null);
+  assert.equal(stats.writeErrors.length, 1);
+  assert.deepEqual({ ...stats.writeErrors[0], at: 0 }, { at: 0, op: 'update', path: 'rooms/r1', code: 'PERMISSION_DENIED' });
+});

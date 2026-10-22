@@ -43,25 +43,48 @@ export function withLatency(db, { profile, rng, stats = null }) {
   // FIFO channels: never deliver before the previous item in that direction.
   let upAt = 0;
   let downAt = 0;
+  // Each item waits for the previous one in its direction before its own
+  // timer resolves. Two timers due at the same instant are NOT guaranteed to
+  // fire in scheduling order (Node keeps one list per duration), so a
+  // timestamp-only FIFO let a later write overtake an earlier one — a
+  // liveBonus clear landed before the progress write sent ahead of it (soak3
+  // g24), and a newer room snapshot was delivered before an older one (g9).
+  let upChain = Promise.resolve();
+  let downChain = Promise.resolve();
+  const inOrder = (chain, at) => chain.then(() => new Promise(r => setTimeout(r, Math.max(0, at - Date.now()))));
   const up = () => {
     const at = Math.max(Date.now() + sampleDelay(profile, rng), upAt);
     upAt = at;
     if (stats) { stats.upN = (stats.upN ?? 0) + 1; stats.upMs = (stats.upMs ?? 0) + (at - Date.now()); }
-    return new Promise(r => setTimeout(r, at - Date.now()));
+    upChain = inOrder(upChain, at);
+    return upChain;
   };
   // Writes issued but not yet acknowledged (incl. the ack's trip back). The
   // oracle treats an agent with writes in flight as not yet quiescent.
   // Only TRANSACTIONS change compared game state (room commits); previews,
   // reactions and liveBonus writes don't, so they must not hold the oracle's
   // agreement check hostage on a slow network.
-  const track = async (fn, counted = true) => {
+  const track = async (fn, counted = true, path = '', op = '') => {
     if (stats && counted) stats.inflight = (stats.inflight ?? 0) + 1;
-    try { return await fn(); } finally { if (stats && counted) stats.inflight -= 1; }
+    try {
+      return await fn();
+    } catch (err) {
+      // Keep the cause of a refused write: the session only reports
+      // 'stale-version', which can't tell a lost race from a rule denial.
+      if (stats) {
+        stats.writeErrors ??= [];
+        if (stats.writeErrors.length < 50) {
+          stats.writeErrors.push({ at: Date.now(), op, path, code: String(err?.code ?? err?.message ?? err) });
+        }
+      }
+      throw err;
+    } finally { if (stats && counted) stats.inflight -= 1; }
   };
-  const downDelayMs = () => {
+  const down = () => {
     const at = Math.max(Date.now() + sampleDelay(profile, rng), downAt);
     downAt = at;
-    return at - Date.now();
+    downChain = inOrder(downChain, at);
+    return downChain;
   };
 
   // original handler → wrapped, per path. Shared across ref objects because
@@ -84,30 +107,30 @@ export function withLatency(db, { profile, rng, stats = null }) {
         }
         return w;
       },
-      set: (v) => track(async () => { await up(); return ref.set(v); }, false),
-      update: (v) => track(async () => { await up(); return ref.update(v); }, false),
-      remove: () => track(async () => { await up(); return ref.remove(); }, false),
+      set: (v) => track(async () => { await up(); return ref.set(v); }, false, path, 'set'),
+      update: (v) => track(async () => { await up(); return ref.update(v); }, false, path, 'update'),
+      remove: () => track(async () => { await up(); return ref.remove(); }, false, path, 'remove'),
       transaction: (fn, onComplete, applyLocally) => track(async () => {
         await up();
         const res = await ref.transaction(fn, onComplete, applyLocally);
-        await new Promise(r => setTimeout(r, downDelayMs())); // the ack travels back
+        await down(); // the ack travels back
         return res;
-      }),
+      }, true, path, 'transaction'),
       get: async () => {
         await up();
         const snap = await ref.get();
-        await new Promise(r => setTimeout(r, downDelayMs()));
+        await down();
         return snap;
       },
       once: async (eventType = 'value') => {
         await up();
         const snap = await ref.once(eventType);
-        await new Promise(r => setTimeout(r, downDelayMs()));
+        await down();
         return snap;
       },
       on: (eventType, handler, ...rest) => {
         const delayed = (snap, prev) => {
-          setTimeout(() => { try { handler(snap, prev); } catch (e) { console.error('[latency] handler', e); } }, downDelayMs());
+          down().then(() => { try { handler(snap, prev); } catch (e) { console.error('[latency] handler', e); } });
         };
         let m = handlerMap.get(keyOf(path, eventType));
         if (!m) { m = new Map(); handlerMap.set(keyOf(path, eventType), m); }

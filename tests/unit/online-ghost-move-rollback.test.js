@@ -215,8 +215,9 @@ test('synchronous rollback: ghost tiles wiped before forceResync\'s readRoom rou
 
   // Drain the microtask queue so the MOVE_CONFIRMED async handler\'s `await
   // commitCurrentState(...)` resolves and the synchronous rollback runs.
-  // Only Promise.resolve() ticks — no setTimeout, no readRoom wait.
-  for (let i = 0; i < 5; i++) await Promise.resolve();
+  // Only Promise.resolve() ticks — no setTimeout, no readRoom wait. (10, not
+  // 5: own commits now pass through a serializing queue — a few more hops.)
+  for (let i = 0; i < 10; i++) await Promise.resolve();
 
   assert.equal(sess.state.board[4][4], null,
     'synchronous rollback must wipe ghost tile (4,4) WITHOUT waiting for readRoom');
