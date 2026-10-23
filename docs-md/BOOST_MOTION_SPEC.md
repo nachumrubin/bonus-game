@@ -531,8 +531,8 @@ for now; per-tile flight waits on per-tile renders (`docs/asset_inventory.md`).
 **Board build — new games only** (≈2.1s): the board panel opens from the top-right corner
 (Hebrew reading start) while the cells unfold in a diagonal cascade from that corner →
 boost squares pop in one after the other, clockwise from the top-right corner, each
-glowing → one glow wave runs round all of them (a glow, not the electric boost effect,
-which keeps its meaning) → score strip and cards build from their sides → the rack panel
+glowing as it lands — the sweep is the wave; there is no second glow pass (it read as
+repetitive), and no electric effect (that keeps meaning "a boost fired") → score strip and cards build from their sides → the rack panel
 rises and the tiles float onto it → buttons. Resumes (moves already played, local save,
 a room this device already built) get a 300ms settle; the tutorial gets nothing.
 
@@ -549,4 +549,8 @@ a room this device already built) get a 300ms settle; the tutorial gets nothing.
   `BOARD_BUILD_LEAD_MS` added (`roomService.markReadyAndMaybeStart`). The bot holds its
   first move. The live-3D scoreboard waits (`scoreboardLive.hold`) so its WebGL setup
   doesn't stall the animation.
+- **Heavy work waits for the entrance:** a screen carrying `glide-in` or `hb-building`
+  (`boostGlide.ENTERING_CLASSES`) is still arriving. The live-3D top-bar / profile avatar
+  (`homeAvatarLive`) starts only after those classes are gone; starting it mid-glide put
+  a ~0.6s frozen frame into every return to home.
 

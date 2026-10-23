@@ -42,6 +42,17 @@ export const REVEAL = Object.freeze({
 // navigation must finish its visual sequence inside this window (≈400ms).
 export const MAX_TOTAL_ENTRANCE = 420;
 
+// Classes a screen carries while it is still arriving (BOOST GLIDE's incoming
+// glide, the home build). Heavy per-screen work — e.g. starting a live-3D
+// Boostie, whose WebGL setup is one long frame — waits until they are gone so
+// it never freezes the entrance. Removing them is a class mutation, so a
+// MutationObserver on the screen sees the moment it settles.
+export const ENTERING_CLASSES = Object.freeze(['glide-in', 'hb-building']);
+
+export function isScreenEntering(el) {
+  return ENTERING_CLASSES.some((c) => el?.classList?.contains?.(c));
+}
+
 // The root of the navigation tree. Navigating here is always "back".
 export const HOME_SCREEN = 'sh';
 

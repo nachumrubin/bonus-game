@@ -17,8 +17,9 @@ tap is not swallowed.
 **Why:** these are moments the player already waits through, so a short build adds
 character without slowing anything that matters. An online deadline is shared state, so it
 can only be shifted where it is created, not per client. Not swallowing the tap keeps the
-game responsive (and keeps automated players and e2e specs working). Boost squares get a
-glow wave, not the electric effect, so electricity keeps meaning "a boost fired".
+game responsive (and keeps automated players and e2e specs working). Boost squares glow as
+they land in the sweep, without a second glow pass (repetitive) and without the electric
+effect, so electricity keeps meaning "a boost fired".
 
 ---
 

@@ -80,3 +80,18 @@ test('profile avatar: the same live 3D on #sprofile, in the ring around #profile
   assert.deepEqual(asked, ['sprofile', 'profile-avatar-display']);
   assert.equal(host, ring);
 });
+
+test('home avatar: waits for the return glide / home build to settle before starting 3D', () => {
+  for (const entering of ['glide-in', 'hb-building']) {
+    const doc = fakeDoc();
+    let created = 0;
+    doc.cls.add(entering);                                  // home is still arriving
+    const home = mountHomeAvatarLive({ doc, enabled: true, getAvatar: () => 'zapi:3',
+      createLive: () => { created++; return { sync() {}, play: () => true, dispose() {} }; } });
+    assert.equal(created, 0, `no WebGL setup during ${entering}`);
+    doc.cls.delete(entering);                               // the class change the observer sees
+    home.refresh();
+    assert.equal(created, 1, 'starts once home has settled');
+    home.unmount();
+  }
+});

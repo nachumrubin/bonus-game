@@ -137,10 +137,10 @@ test('home build: cards → nav glow → top icons → profile → logo, in that
   assert.ok(total >= 1500 && total <= 2200, `home build ≈2 s (${total})`);
 });
 
-test('board build: unfold → boosts → wave → cards → rack/tiles, total ≈2 s', () => {
+test('board build: unfold → boost sweep → cards → rack/tiles, total ≈2 s', () => {
   const b = BOARD_BUILD;
   assert.ok(b.boardBg.start <= b.cells.start && b.cells.start < b.boosts.start);
-  assert.ok(b.boosts.start + 11 * b.boosts.stagger <= b.wave.start, 'wave starts once all boosts are in');
+  assert.equal(b.wave, undefined, 'no second glow pass over the boost squares');
   assert.ok(b.cards.start < b.rack.start && b.rack.start < b.tiles.start && b.tiles.start <= b.buttons.start);
   const total = boardBuildTotal();
   assert.ok(total >= 1500 && total <= 2300, `board build ≈2 s (${total})`);
@@ -234,7 +234,7 @@ test('home build: skipped under reduced motion or when home is not showing', () 
 });
 
 // ── Board runner ──────────────────────────────────────────────────────────
-test('board build (full): unfold, boost sweep, wave, cards, rack — and the intro events', () => {
+test('board build (full): unfold, boost sweep, cards, rack — and the intro events', () => {
   const b = boardDoc();
   const t = fakeTimers();
   const bus = fakeBus();
@@ -252,7 +252,7 @@ test('board build (full): unfold, boost sweep, wave, cards, rack — and the int
   const boostDelays = b.boosts.map(x => ms(x)).sort((m, n) => m - n);
   assert.equal(boostDelays[0], BOARD_BUILD.boosts.start);
   assert.equal(boostDelays[1] - boostDelays[0], BOARD_BUILD.boosts.stagger);
-  assert.ok(b.boosts.every(x => ms(x, '--b-wave-delay') >= BOARD_BUILD.wave.start));
+  assert.ok(b.boosts.every(x => x.prop('--b-wave-delay') === undefined), 'no glow wave');
   assert.ok(b.parts.sb1.has('bb-card') && b.parts.sb2.has('bb-card') && b.parts.strip.has('bb-rise'));
   assert.ok(b.parts.rack.has('bb-tiles') && b.parts.bot.has('bb-rise') && b.parts.play.has('bb-rise'));
   assert.ok(b.parts.panel.has('bb-panel'));
@@ -261,7 +261,8 @@ test('board build (full): unfold, boost sweep, wave, cards, rack — and the int
   assert.equal(bus.events.at(-1)[0], BOARD_INTRO_FINISHED);
   assert.ok(!b.cells[5].has('bb-unfold') && !b.parts.rack.has('bb-tiles'));
   assert.equal(isBoardBuilding(), false);
-  for (const id of ['build.glow', 'build.wave', 'build.card', 'build.tile']) assert.ok(cues.includes(id), `${id} played`);
+  for (const id of ['build.glow', 'build.card', 'build.tile']) assert.ok(cues.includes(id), `${id} played`);
+  assert.ok(!cues.includes('build.wave'), 'no wave sound on the board');
 });
 
 test('board build: a tap finishes it and releases the clock immediately', () => {

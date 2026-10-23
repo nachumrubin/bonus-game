@@ -1953,8 +1953,6 @@ html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) 
   55%  { opacity: 1; transform: scale(1.18); filter: brightness(1.8) drop-shadow(0 0 16px rgba(40,212,255,.95)); }
   100% { opacity: 1; transform: scale(1); filter: none; }
 }
-@keyframes bbBoostWave {
-  45% { transform: scale(1.08); filter: brightness(1.7) drop-shadow(0 0 14px rgba(40,212,255,.95)); }
 }
 @keyframes bbCard {
   from { opacity: 0; transform: translate3d(calc(var(--b-side, 0) * 40px), 0, 0) scale(.9); }
@@ -1972,13 +1970,8 @@ html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) 
 #sg .bb-reveal,
 #sg .board-center-inner.bb-panel::before { animation: bbReveal var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
 #sg .bb-unfold { transform-origin: 100% 0; animation: bbUnfold var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
-/* Pop (hidden until its turn) then one glow wave (fill none: it only exists
-   while running, so it never masks the pop). */
-#sg .bsq.bb-boost {
-  animation:
-    bbBoostPop  var(--b-dur)      ease-out var(--b-delay)      backwards,
-    bbBoostWave var(--b-wave-dur) ease-in-out var(--b-wave-delay) none;
-}
+/* Pop in, glowing, then settle (hidden until its turn in the sweep). */
+#sg .bsq.bb-boost { animation: bbBoostPop var(--b-dur) ease-out var(--b-delay) backwards; }
 #sg .bb-card { animation: bbCard var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
 /* The player cards carry their own `animation … !important` (active-turn
    pulse, menu-electric.css); this outranks it only while the build runs. */
