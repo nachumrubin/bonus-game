@@ -24,16 +24,28 @@ test('signature motion is distinct, repeatable, bounded, and reduced-motion safe
 
     // Opening sync does not cue; opponent -> local does. Re-emitting the same
     // turn signature must not restart it.
+    // The cue waits for EV.TURN_PRESENTATION_READY (score count + clock
+    // settle first; your-turn-timing.spec covers that ordering).
+    const card = () => document.getElementById('sb1');
+    const ready = new Promise(resolve => {
+      const off = bus.on(EV.TURN_PRESENTATION_READY, p => { if (p.currentTurnSlot === 0) { off(); resolve(); } });
+    });
     turn(0, 1);
     turn(1, 2);
     turn(0, 3);
+    await Promise.race([ready, sleep(5000)]);
+    out.cueAt0 = card().classList.contains('your-turn-cue');
+    // When the avatar carries the cue the card keeps a steady outline only.
+    out.avatarLeads = card().classList.contains('your-turn-cue--avatar');
     out.turnAt0 = animation('sb1');
-    out.turnHaloAt0 = getComputedStyle(document.getElementById('sb1'), '::after').animationName;
+    out.turnHaloAt0 = getComputedStyle(card(), '::after').animationName;
     await sleep(120);
     turn(0, 3);
+    out.cueAt120 = card().classList.contains('your-turn-cue');
     out.turnAt120 = animation('sb1');
-    await sleep(520);
-    out.turnAt640 = animation('sb1');
+    await sleep(620);
+    out.cueAt740 = card().classList.contains('your-turn-cue');
+    out.turnAt740 = animation('sb1');
 
     const wordTiles = [[0,1,2,3,4,5,6,7].map(c => ({ r: 4, c, letter: 'א', val: 1 }))];
     bus.emit(EV.MOVE_CONFIRMED, { slot: 0, placed: wordTiles[0], words: ['אא'], wordTiles, score: 8 });
@@ -65,10 +77,15 @@ test('signature motion is distinct, repeatable, bounded, and reduced-motion safe
     return out;
   });
 
-  expect(trace.turnAt0).toContain('yourTurnCue');
-  expect(trace.turnHaloAt0).toContain('yourTurnHaloExpand');
-  expect(trace.turnAt120).toContain('yourTurnCue');
-  expect(trace.turnAt640).not.toContain('yourTurnCue');
+  expect(trace.cueAt0).toBe(true);
+  expect(trace.cueAt120).toBe(true); // a duplicate turn signature doesn't restart it
+  expect(trace.cueAt740).toBe(false);
+  if (!trace.avatarLeads) {
+    expect(trace.turnAt0).toContain('yourTurnCue');
+    expect(trace.turnHaloAt0).toContain('yourTurnHaloExpand');
+    expect(trace.turnAt120).toContain('yourTurnCue');
+  }
+  expect(trace.turnAt740).not.toContain('yourTurnCue');
   expect(trace.acceptNames.every(name => name.includes('acceptedWordSweep'))).toBeTruthy();
   expect(new Set(trace.acceptDelays).size).toBeGreaterThan(1);
   expect(Math.max(...trace.acceptDelays.map(parseFloat))).toBeGreaterThanOrEqual(0.3);

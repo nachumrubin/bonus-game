@@ -17,6 +17,31 @@
 
 ## Critical Gaps
 
+### -6. Online session drift under latency: watchdog claims, finalize failures, racing terminal statuses *(Confirmed gaps)* — ✅ RESOLVED (October 2026)
+
+**Evidence:** soak runs 2026-10-22T18-31-19 and 2026-10-22T19-42-14 (seed `regress-1022`, 40 games each, chaos 0.5). Signatures:
+- `end-status-mismatch` (g4, g8, g14, g21)
+- `stuck-turn` (g9, g26, g28)
+- `desync-currentTurnSlot` (g16, g19, g36)
+- `end-no-game-completed` (g14)
+- `end-desync-status` (g21)
+
+**Root causes and fixes** (details in CHANGELOG, October 2026):
+- A stale read revived a finished game. Terminal status is now sticky.
+- Overlapping commits. Commits are now serialized.
+- A failed finalize was never re-sent. It is now retried, at most 3 times.
+- `lastSeenMoveTs` drifted, so a watchdog claim keeping our own `lastMove` was dropped as our echo. The marker is now realigned in `forceResync` and in `advanceVersionCursor`.
+- The watchdog claim was raised locally from a stale cache. It now uses `applyLocally = false`.
+- Two terminal statuses flip-flopped. The conflict is now settled by a server read.
+- A late snapshot, older than a write the server had already acknowledged, was taken for a reverted write. It rolled the client back a turn (soak3 g9) or dropped a pending bonus move (g37). Anything below `ackedVersion` is now ignored. The soak harness's latency wrapper, which caused the reordering, is now strictly FIFO.
+- The game-over status write overtook the game-ending exchange commit, so the rules refused the exchange (soak4 g25). The status write now waits for the commit chain.
+
+There is a unit test for each fix.
+
+**Still open (harmless):** in a forfeit, the forfeiting client's own status write can land before its watchdog transaction. The room then ends `abandoned` without the final `missedTurns` bump.
+
+**Likely explained (harness):** soak3 g10 (run 2026-10-22T20-42-51). The server refused a deferred bonus-square `update` with `permission_denied` even though the client targeted the right version (v29). The same move replayed alone on the emulator was accepted. The client rolled back correctly. Before the agent fix, the soak agent then never re-planned, which is why the turn stuck. Six such refusals appeared in that run, and the other games recovered. The likely cause is the latency wrapper's write reordering, fixed in the same pass: a later room write overtook the deferred update, so the update arrived at a stale version. The wrapper also now logs each refused write's path and code (`stats.writeErrors`). soak5, run after all fixes, had no stuck games (40/40 clean). It still logged 12 refused room updates, and every one of those games recovered. They are probably ordinary lost races, but that isn't proven yet (TASKS).
+
 ### -5. Forfeits with a reason were silently rejected; a terminal status could be overwritten *(Confirmed gaps — rules)* — ✅ RESOLVED (October 2026, not yet deployed)
 
 **Evidence:**

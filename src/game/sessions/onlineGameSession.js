@@ -76,6 +76,10 @@ export async function createOnlineGameSession({
 
   // Track the last applied room version so we can detect echo / staleness.
   let lastAppliedVersion = room.version;
+  // Highest version the server has ACKNOWLEDGED for one of our own writes.
+  // The server never goes back below it, so a snapshot or read older than
+  // this is a late delivery on a slow link — not a reverted optimistic write.
+  let ackedVersion = Number(room.version ?? 0);
   // Latest copy of the server room we have seen (watcher snapshot, our own
   // committed write, or a forced re-read). commitPatch diffs against it so a
   // commit only sends what changed; on a version mismatch it falls back to a
@@ -138,6 +142,13 @@ export async function createOnlineGameSession({
   // Commits issued by this session that have not resolved yet (see
   // forceResync: never re-read the room while our own write is pending).
   let inflightCommits = 0;
+  // Tail of the own-commit queue (see commitCurrentState).
+  let commitChain = Promise.resolve();
+  // The last FINALIZE_BOOST_AWARD this client dispatched, kept so a finalize
+  // commit that fails can be re-sent (see retryFinalizeIfStillPending).
+  let lastFinalizeCmd = null;
+  let finalizeRetries = 0;
+  const MAX_FINALIZE_RETRIES = 3;
 
   // The post-commit cursor advance must NEVER go past the server's actual
   // room.version. The naive `expectedVersion += 1` races with the watchRoom
@@ -151,9 +162,18 @@ export async function createOnlineGameSession({
     const newVersion = Number(result?.room?.version ?? (expectedVersion + 1));
     if (newVersion > expectedVersion) expectedVersion = newVersion;
     if (newVersion > lastAppliedVersion) lastAppliedVersion = newVersion;
+    if (newVersion > ackedVersion) ackedVersion = newVersion;
     // Our write is now the newest server state we know of (unless the
     // watcher already saw something later) — the next commit diffs against it.
     if (result?.room && newVersion >= Number(lastServerRoom?.version ?? -1)) lastServerRoom = result.room;
+    // Our own move is now the last one we've seen. The echo usually arrives
+    // after this cursor advance and bails on the version check before it can
+    // record the move — and a later snapshot that merely preserves it (a
+    // watchdog claim) then looked like a NEW own move and was skipped as our
+    // echo, cursor and all, so the opponent's real move at that version was
+    // dropped (soak agents, Oct 2026: desync-currentTurnSlot, random-live g16).
+    const committedLast = result?.room?.lastMove;
+    if (committedLast?.ts != null && newVersion >= lastAppliedVersion) lastSeenMoveTs = committedLast.ts;
   }
 
   // Re-read the authoritative room and rebuild local state. Called on
@@ -199,10 +219,21 @@ export async function createOnlineGameSession({
     let incoming = null;
     try { incoming = await readRoom(db, room.roomId); } catch { /* swallow */ }
     if (!incoming) return;
+    // Older than a write of ours the server already acknowledged: the read
+    // is stale (see ackedVersion) — copying it back rolled the client a turn
+    // behind the server (soak agents, Oct 2026: desync-currentTurnSlot g9).
+    if (Number(incoming.version) < ackedVersion) return;
     // The watcher applied a NEWER snapshot while our read was in flight:
     // state is already ahead of `incoming` — don't roll it (or the cursor)
     // back to the older read.
     if (watcherApplySeq !== applySeqAtStart && lastAppliedVersion > Number(incoming.version)) return;
+    // The game ends with a status-only write that does NOT bump the version,
+    // so a read issued just before it can resolve after the watcher already
+    // applied it — same version, still 'playing'. Copying that back revived a
+    // finished game (soak agents, Oct 2026: end-status-mismatch). The server
+    // never goes from terminal back to playing, so such a read is stale.
+    if (isTerminalStatus(lastServerRoom?.status) && !isTerminalStatus(incoming.status)
+        && Number(incoming.version) <= Number(lastServerRoom.version)) return;
     const previousStatus = state.status;
     // Replace engine state with the freshly-read authoritative state. We
     // use engineStateFromRoom so every field is rebuilt — board, racks,
@@ -226,7 +257,8 @@ export async function createOnlineGameSession({
     state.turnNumber = fresh.turnNumber;
     state.firstMove = fresh.firstMove;
     state.passCount = fresh.passCount;
-    state.status = fresh.status;
+    // Terminal is final (see the watcher's status apply).
+    if (isTerminalStatus(fresh.status) || !isTerminalStatus(state.status)) state.status = fresh.status;
     state.turnDeadlineMs = fresh.turnDeadlineMs;
     state.missedTurns = fresh.missedTurns;
     reconcilePendingScore(incoming, `resync:${reason ?? 'sync-rejected'}`);
@@ -237,6 +269,14 @@ export async function createOnlineGameSession({
     const v = Number(incoming.version);
     lastAppliedVersion = v;
     expectedVersion = v;
+    // The move marker follows the room too. The watcher's "version went
+    // backwards" branch resets it to the OLDER snapshot's move; left there,
+    // a later snapshot that merely preserves our own last move (a watchdog
+    // claim) looked like a new own move and was skipped as our echo — the
+    // claimer stayed a turn behind, or on a live board after a forfeit
+    // (soak agents, Oct 2026: desync-currentTurnSlot / end-status-mismatch).
+    const readLast = incoming.lastMove ?? incoming.moveHistory?.[incoming.moveHistory.length - 1];
+    lastSeenMoveTs = readLast?.ts ?? null;
     bus.emit(EV.TURN_CHANGED, {
       currentTurnSlot: state.currentTurnSlot,
       turnNumber: state.turnNumber,
@@ -261,6 +301,28 @@ export async function createOnlineGameSession({
         abandonReason: state.abandonReason,
       });
     }
+    return incoming;
+  }
+
+  // A finalize commit that failed (lost race, transient permission_denied, a
+  // dropped write) was never re-sent: the award card had already been
+  // acknowledged, so nothing dispatched FINALIZE_BOOST_AWARD again. When the
+  // server still holds that deferred move on our turn, the game sat there
+  // forever — untimed games have no watchdog to move it on (soak agents,
+  // Oct 2026: stuck-turn). Re-dispatch the same finalize, a bounded number of
+  // times; the commit's own finalizeOfTs guard still refuses a stale one.
+  function retryFinalizeIfStillPending(incoming, ts, cmd) {
+    if (!incoming || !cmd || ts == null) return;
+    const last = incoming.lastMove;
+    const stillPending = last?.ts === ts
+      && last.scoringDeferred === true
+      && Number(last.slot) === Number(mySlot)
+      && Number(incoming.currentTurnSlot) === Number(mySlot);
+    if (!stillPending || !state.pendingScoreCommit || isTerminalStatus(state.status)) return;
+    if (finalizeRetries >= MAX_FINALIZE_RETRIES) return;
+    finalizeRetries++;
+    deferredCommitPending = true;
+    dispatch(cmd);
   }
 
   // ─── Outbound: when the engine confirms a local move, push it to Firebase.
@@ -348,9 +410,11 @@ export async function createOnlineGameSession({
     if (!deferredCommitPending) return;
     deferredCommitPending = false;
     const finalLast = state.moveHistory[state.moveHistory.length - 1] ?? null;
+    const finalizeCmd = lastFinalizeCmd;
     const result = await commitCurrentState({ lastMove: finalLast, finalizeOfTs: finalLast?.ts ?? null });
     if (result.committed) {
       advanceVersionCursor(result);
+      finalizeRetries = 0;
     } else {
       // Synchronous rollback, mirroring the CONFIRM_MOVE / LOCK_PLACED paths.
       // Previously this branch relied solely on forceResync, so when that read
@@ -366,7 +430,9 @@ export async function createOnlineGameSession({
         bus.emit(EV.SCORE_CHANGED, { slot, score: state.scores[slot] });
       }
       bus.emit('evt/SYNC_REJECTED', { reason: 'stale-version', expected: expectedVersion });
-      forceResync('stale-version').catch(() => { /* swallow */ });
+      forceResync('stale-version')
+        .then((incoming) => retryFinalizeIfStillPending(incoming, finalLast?.ts ?? null, finalizeCmd))
+        .catch(() => { /* swallow */ });
     }
   }));
 
@@ -462,6 +528,17 @@ export async function createOnlineGameSession({
     // Game-over status is also handled via direct write so it survives
     // a transaction abort. roomService.setStatus skips the version check and
     // clears async indexes for terminal async rooms.
+    // A status the server already holds (adopted from a snapshot or a
+    // resync) is not ours to write: re-sending it is rejected by the rules
+    // but still raised locally first, which fed the terminal flip-flop below.
+    if (lastServerRoom?.status === state.status) return;
+    // The turn that ended the game (a move, or the 4th scoreless exchange)
+    // was queued on the commit chain in this same tick. Let it land first:
+    // once the status is terminal the rules refuse it, and the finished room
+    // kept the pre-exchange rack and bag (soak agents, Oct 2026:
+    // end-desync-ownRack, friend-async g25).
+    await commitChain.catch(() => { /* its own handler reports it */ });
+    if (lastServerRoom?.status === state.status) return;
     try {
       const extras = {};
       if (state.abandonedBy === 0 || state.abandonedBy === 1) {
@@ -478,6 +555,11 @@ export async function createOnlineGameSession({
   // newer AND whose last move came from the OPPONENT, replay it into the engine.
   const unwatch = watchRoom(db, room.roomId, (incoming) => {
     if (!incoming) return;
+    // A late delivery older than our acknowledged write (slow downlink) is not
+    // a revert — the server can't go below an acked version. Taking it as one
+    // moved the cursor back and resynced the client onto the previous turn
+    // (soak agents, Oct 2026: desync-currentTurnSlot, random-async g9).
+    if (Number(incoming.version) < ackedVersion) return;
     lastServerRoom = incoming;
     const previewSig = JSON.stringify(incoming.livePreview ?? null);
     if (previewSig !== lastLivePreviewSig) {
@@ -615,7 +697,23 @@ export async function createOnlineGameSession({
     // and this resync are the two missing sites.
     state.passCount = incoming._passCount ?? state.passCount ?? 0;
     state.firstMove = state.moveHistory.length === 0;
-    state.status = incoming.status;
+    // A finished game stays finished. When this client's own engine ended it
+    // (e.g. its turn timer ran out on the 4th scoreless turn) it also wrote
+    // the terminal status directly, which the rules accept from either player
+    // and never allow to change afterwards — but a newer snapshot written
+    // before that status landed (the opponent's watchdog committing the same
+    // timeout) still says 'playing'. Copying it revived the finished game on
+    // this client (soak agents, Oct 2026: end-status-mismatch).
+    //
+    // Two DIFFERENT terminal statuses (our engine said 'completed', the
+    // opponent's watchdog forfeit said 'abandoned') are settled by reading
+    // the server, never by the snapshot: our own losing write is raised
+    // locally before the rules reject it, so snapshots can alternate between
+    // the two and the client flipped back to the status the server refused
+    // (soak agents, Oct 2026: end-status-mismatch / end-desync-status).
+    let terminalConflict = false;
+    if (!isTerminalStatus(state.status)) state.status = incoming.status;
+    else if (isTerminalStatus(incoming.status) && incoming.status !== state.status) terminalConflict = true;
 
     if (last) {
       if (last.type === 'lock') {
@@ -698,11 +796,18 @@ export async function createOnlineGameSession({
         abandonReason: state.abandonReason,
       });
     }
+    if (terminalConflict) forceResync('terminal-conflict').catch(() => { /* swallow */ });
   });
   subs.push(unwatch);
 
   function applyTerminalStatusIfNeeded(incoming) {
     if (!isTerminalStatus(incoming?.status) || incoming.status === state.status) return;
+    // Already finished with a different status: ask the server which one
+    // stuck (see the watcher's status apply).
+    if (isTerminalStatus(state.status)) {
+      forceResync('terminal-conflict').catch(() => { /* swallow */ });
+      return;
+    }
     state.status = incoming.status;
     state.abandonedBy = incoming.abandonedBy ?? state.abandonedBy ?? null;
     state.abandonReason = incoming.abandonReason ?? state.abandonReason ?? null;
@@ -753,6 +858,7 @@ export async function createOnlineGameSession({
       // rotated turn sitting in local state forever. Snapshot BEFORE the engine
       // applies the award so restoring undoes both.
       pendingCommitRollback = snapshotForRollback();
+      lastFinalizeCmd = cmd;
     }
     if (cmd?.type === CMD.PLACE_LOCK) {
       // Same synchronous-rollback safety as CONFIRM_MOVE. applyLock spends a
@@ -838,6 +944,8 @@ export async function createOnlineGameSession({
     roomId: room.roomId,
     mySlot,
     start, dispatch, dispose, markReady,
+    // Re-read the room and rebuild local state from it (see forceResync).
+    resync: (reason = 'external') => forceResync(reason).catch(() => null),
   };
 
   // Wrapper around commitTransaction that converts thrown rejections (e.g.
@@ -847,15 +955,29 @@ export async function createOnlineGameSession({
   // SYNC_REJECTED + forceResync recovery path instead of leaking an
   // unhandled rejection out of the bus subscriber. Surfaced by the
   // simulator's e2e forced-deadline-loss scenario.
-  async function commitCurrentState({ lastMove = null, deferred = false, finalizeOfTs = null } = {}) {
+  // Own commits run one at a time. Each one targets expectedVersion + 1, so a
+  // commit started while the previous one is still travelling (a bonus-square
+  // finalize right after its deferred commit, a move right after a free swap)
+  // would claim the same version and be rejected. On a slow link the deferred
+  // commit's finalize was lost that way and the untimed game stuck on the
+  // pending bonus forever (soak agents, Oct 2026: stuck-turn). The cursor is
+  // advanced here, before the next queued commit reads it.
+  function commitCurrentState(opts = {}) {
     inflightCommits++;
-    try {
-      return await rawCommitCurrentState({ lastMove, deferred, finalizeOfTs });
-    } catch (err) {
-      return { committed: false, room: null, error: err };
-    } finally {
-      inflightCommits--;
-    }
+    const run = async () => {
+      try {
+        const result = await rawCommitCurrentState(opts);
+        if (result?.committed) advanceVersionCursor(result);
+        return result;
+      } catch (err) {
+        return { committed: false, room: null, error: err };
+      } finally {
+        inflightCommits--;
+      }
+    };
+    const p = commitChain.then(run, run);
+    commitChain = p;
+    return p;
   }
   // `deferred` = the first of the two writes for a bonus-square move: the tiles
   // land, but the turn does not rotate and no score is awarded yet.

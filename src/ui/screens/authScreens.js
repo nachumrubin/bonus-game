@@ -232,7 +232,13 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
     : [];
   for (const btn of upgradeDismissBtns) {
     btn.removeAttribute?.('onclick');
-    cleanups.push(on(btn, 'click', () => bus.emit(AUTH_INTENT.DISMISS_UPGRADE, {})));
+    // The inline ovClose() was just stripped and nothing handles the intent,
+    // so close the overlay here — "not now" used to leave it on screen
+    // (full regression run, Oct 2026).
+    cleanups.push(on(btn, 'click', () => {
+      upgradeOverlay?.classList?.add?.('hidden');
+      bus.emit(AUTH_INTENT.DISMISS_UPGRADE, {});
+    }));
   }
 
   // ── Google sign-in buttons ──

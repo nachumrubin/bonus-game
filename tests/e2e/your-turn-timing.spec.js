@@ -1,7 +1,16 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
 
-test.use({ viewport: { width: 430, height: 932 }, video: 'on' });
+// Service workers are blocked so page.route sees the sfx fetches (sw.js
+// would otherwise serve them).
+test.use({ viewport: { width: 430, height: 932 }, video: 'on', serviceWorkers: 'block' });
+
+// turn.yours now plays the recorded chime_turn sample. Block it so the cue
+// falls back to its synth tone (523 Hz triangle), which the oscillator spy
+// below can count; the cue's timing is identical either way.
+test.beforeEach(async ({ page }) => {
+  await page.route('**/assets/sfx/chime_turn*', route => route.abort());
+});
 
 for (const reducedMotion of [false, true]) {
   test(`opponent score finishes before full clock + Your Turn cue (reduced=${reducedMotion})`, async ({ page }, testInfo) => {

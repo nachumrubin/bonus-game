@@ -442,15 +442,21 @@ test('online session: a deferred bonus phase-2 commit that loses the race rolls 
   const turnChanges = [];
   bus.on(EV.TURN_CHANGED, p => turnChanges.push(p));
 
-  // Now lose the race on the SECOND commit.
+  // Now lose the race on the SECOND commit: the opponent's watchdog claimed
+  // the turn. (If the server still held our deferred move on our turn, the
+  // session would re-send the finalize — see online-finalize-retry.test.js.)
   db._data.rooms['online-room'].version += 5;
+  db._data.rooms['online-room'].currentTurnSlot = 1;
   sessA.dispatch({ type: CMD.FINALIZE_BOOST_AWARD, payload: { slot: 0, bonusIdx: 0, extra: 20 } });
   await new Promise(r => setTimeout(r, 0));
 
   assert.ok(turnChanges.some(t => t.reason === 'commit-rollback'),
     'the phase-2 rollback ran synchronously');
   assert.equal(sessA.state.scores[0], 0, 'neither the base score nor the bonus was kept');
-  assert.equal(sessA.state.currentTurnSlot, 0, 'the optimistic turn rotation was undone');
+
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(db._data.rooms['online-room'].scores[0], 0, 'no finalize retry once the turn moved on');
+  assert.equal(sessA.state.currentTurnSlot, 1, 'resynced onto the server turn');
 
   await sessA.dispose();
 });

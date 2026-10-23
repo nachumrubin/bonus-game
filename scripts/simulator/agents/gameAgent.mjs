@@ -78,6 +78,8 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
     deadline: [], // { phase, edge, plannedOffset, actualOffset, kind, outcome }
     liveBonusWrites: 0, disconnectOpens: 0,
     timeoutsClaimedByMe: 0,
+    // Failed writes with their Firebase error code (net/latency.mjs).
+    writeErrors: client.netStats ? (client.netStats.writeErrors ??= []) : [],
   };
   const chosenExtras = []; // { turnNumber, idx, kind, extra, outcomeId? } — oracle cross-check
 
@@ -93,6 +95,7 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
   const subs = [];
   let disposed = false;
   let plannedTurnKey = null;
+  let lastPlannedKey = null;
   // Turn generation: bumped whenever the observed turn key changes. A plan's
   // pending steps only run in the generation they were planned in, so a turn
   // that is rolled back (e.g. a phantom optimistic state) and later re-reached
@@ -109,8 +112,10 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
     return turnGen;
   }
   let replansThisTurn = 0;
+  let syncReplans = 0;
   let inFlight = 0;
   let bonusFlowBusy = false;
+  let awardGen = 0;
   let lastReactionAt = 0;
   let pendingOutcome = null; // deadline record awaiting its outcome
   let lastPreviewSig = null;
@@ -200,7 +205,11 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
     if (!isAsync && r.settings?.timelimit) {
       const seconds = Number(r.settings.botTime || r.settings.turnSeconds || 0);
       if (seconds > 0) {
-        watchdog = createTimeoutWatchdog({ db, roomId: r.roomId, mySlot, limitMs: seconds * 1000, now: serverNow });
+        watchdog = createTimeoutWatchdog({
+          db, roomId: r.roomId, mySlot, limitMs: seconds * 1000, now: serverNow,
+          // Same wiring as main.js.
+          onClaimed: () => { stats.timeoutsClaimedByMe++; session?.resync?.('watchdog-claim'); },
+        });
       }
     }
     if (opts.presence !== false) {
@@ -249,6 +258,16 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
       stats.syncRejected++;
       if (inFlight > 0) inFlight--;
       note('agent/sync-rejected', p ?? {});
+      // The move bounced back to the rack; a person simply plays again. A
+      // rejected bonus-square move does not change the turn key, so without
+      // this the turn is never re-planned and the game stalls (soak g10).
+      if (syncReplans >= MAX_REPLANS_PER_TURN) return;
+      syncReplans++;
+      stats.replans++;
+      plannedTurnKey = null;
+      turnGen++;
+      // forceResync's TURN_CHANGED re-triggers planning; this is the fallback.
+      after(1500, () => maybePlanTurn('sync-rejected'));
     }));
   }
 
@@ -263,6 +282,8 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
     if (!myTurn(s) || bonusFlowBusy) return;
     const key = turnKey(s);
     if (key === plannedTurnKey) return;
+    if (key !== lastPlannedKey) syncReplans = 0;
+    lastPlannedKey = key;
     plannedTurnKey = key;
     replansThisTurn = 0;
     stats.turns++;
@@ -471,8 +492,18 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
       stats.bonus.award++;
       bonusFlowBusy = true;
       const extra = boostId === 'auto_extra_score' ? (Number(payload?.extra) || 0) : 0;
-      chosenExtras.push({ turnNumber: state()?.turnNumber, idx: bonusIdx, kind: 'award', boostId, extra });
+      const choice = { turnNumber: state()?.turnNumber, idx: bonusIdx, kind: 'award', boostId, extra };
+      chosenExtras.push(choice);
+      const gen = awardGen;
       after(600 + rng() * 2400, () => {
+        // The move was rolled back meanwhile (bonus/aborted): the app's
+        // activation controller drops the card without finalizing; so do we.
+        if (gen !== awardGen) {
+          chosenExtras.splice(chosenExtras.indexOf(choice), 1);
+          bonusFlowBusy = false;
+          after(0, () => maybePlanTurn('award-aborted'));
+          return;
+        }
         controller.finalizeBoostAward({ slot, extra, bonusIdx });
         after(AWARD_CLOSE_ANIM_MS, () => {
           bus.emit(BONUS_AWARD_ACK, { slot, boostId, extra });
@@ -482,6 +513,7 @@ export function createGameAgent({ name, client, persona, rng, wordList, isWordVa
       });
     }));
     subs.push(bus.on(EV.BONUS_VETOED, ({ slot } = {}) => { if (slot === mySlot) stats.bonus.vetoed++; }));
+    subs.push(bus.on('bonus/aborted', ({ slot } = {}) => { if (slot === mySlot) awardGen++; }));
   }
 
   // Copy of main.js attachBonusFlow's online liveBonus block: broadcast the

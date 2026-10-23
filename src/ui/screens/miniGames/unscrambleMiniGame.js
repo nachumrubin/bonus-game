@@ -352,7 +352,7 @@ export function mountUnscrambleMiniGame({
     const oldBtn = host.querySelector('[data-uns="submit"]');
     if (!oldBtn) return;
     const cont = oldBtn.cloneNode(false); // drop the submit listener
-    cont.removeAttribute('data-uns');
+    cont.setAttribute('data-uns', 'continue');
     cont.className = 'bz-btn';
     cont.textContent = g('continueMiniGame', getGender());
     cont.addEventListener('click', () => { try { host.remove(); } catch { /* swallow */ } emitClosed(); });

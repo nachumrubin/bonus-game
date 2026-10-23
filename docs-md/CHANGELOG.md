@@ -2,6 +2,118 @@
 
 ---
 
+## Full regression run: online sync fixes, guest overlay, bot-vs-bot E2E (October 2026)
+
+A pre-release regression pass. It used the soak agents (40 parallel online games per run on
+the emulators, chaos 0.5, all four online modes, seed `regress-1022`), a new parallel
+bot-vs-bot browser suite, and the full Playwright suite. Each bug below has a test that
+fails without its fix.
+
+**Online sync (`onlineGameSession.js`, `timeoutWatchdog.js`)**
+- **Finished game revived by a stale read** (soak `end-status-mismatch`). A `forceResync`
+  read issued just before the status-only game-over write resolved after it and copied
+  `playing` back. A terminal status is now sticky in the watcher and in `forceResync`, and
+  such a read is dropped. Test: `online-resync-terminal-status.test.js`.
+- **Overlapping commits** reused the same expected version. `commitCurrentState` is now
+  serialized on a promise chain. Test: `online-commit-serialization.test.js`.
+- **Game stuck after a failed finalize** (soak `stuck-turn`, untimed async games). When the
+  second write of a bonus-square move failed, nothing re-sent it: the award card had
+  already been acknowledged. The session now re-dispatches the same finalize (at most 3
+  times) while the server still holds that deferred move on our turn. Test:
+  `online-finalize-retry.test.js`.
+- **Watchdog claimer skipped its own claim** (soak `desync-currentTurnSlot`,
+  `end-no-game-completed`). A claim keeps the claimer's own `lastMove`. Whenever
+  `lastSeenMoveTs` had drifted, the claim looked like a new own move and was dropped as
+  our echo, cursor and all, so the opponent's real move at that version was lost.
+  Two places left it stale:
+  - the "version went backwards" branch, which `forceResync` now realigns;
+  - our own commit, whose echo bails on the version check before recording the move.
+    `advanceVersionCursor` now records it.
+
+  The watchdog also calls `onClaimed`, and both main.js and the soak agent resync on it.
+  Tests: `online-watchdog-claim-resync.test.js` (5).
+- **Watchdog claim raised locally before the server decided** (soak g16). The claim ran on
+  a cache that could be one move behind, and the SDK showed the doomed claim to our own
+  listener as the next version. It now runs with `applyLocally = false`.
+- **Two terminal statuses flip-flopping** (soak `end-status-mismatch` /
+  `end-desync-status`). Our engine ended the game `completed` at the same moment the
+  opponent's watchdog forfeit landed `abandoned`. The rules keep the first terminal status,
+  but our refused write is raised locally first, so snapshots alternated between the two
+  and the client ended on the refused one. A conflict between two different terminal
+  statuses is now settled by a server read (`forceResync('terminal-conflict')`). The
+  GAME_COMPLETED handler no longer re-writes a status the server already holds. Test:
+  `online-terminal-status-conflict.test.js`.
+- **Client rolled back a turn after its own write was acknowledged** (soak3 g9
+  `desync-currentTurnSlot`, g37 `stuck-turn`). A snapshot of our earlier write (v10)
+  reached the watcher after the server had acknowledged our finalize (v11). The "version
+  went backwards" branch took it for a reverted optimistic write, moved the cursor back
+  and resynced. A stale resync read could then put the player back on the previous turn
+  (g9), or drop a bonus-square move the server still held as pending, so nobody
+  finalized it (g37). The late snapshot came from the harness's reordering (see below),
+  but a stale resync read is possible in the app too. The session now tracks
+  `ackedVersion`, the highest version the server acknowledged for our own writes, and
+  ignores watcher snapshots and resync reads older than it. A version the server
+  acknowledged can never be reverted. Test: `online-stale-snapshot-after-ack.test.js`.
+- **A game-ending exchange was lost** (soak4 g25, `end-desync-ownRack`, friend-async). An
+  exchange is a scoreless turn, so the 4th in a row ends the game. The engine emits
+  TILES_EXCHANGED and then GAME_COMPLETED in the same tick. The exchange commit waits on
+  the commit chain, but the status write went out at once, so the room turned
+  `completed` first and the rules refused the exchange. The finished room kept the
+  pre-exchange rack and bag, which disagreed with the player's screen. The GAME_COMPLETED
+  handler now waits for the commit chain, so a game-ending move or exchange always lands
+  before the status. Test: `online-game-ending-exchange.test.js`.
+
+**Soak agents (`scripts/simulator/`)**
+- **The latency wrapper could reorder messages** (soak3 g24
+  `invariant-live-bonus-gate-violation`, and the late snapshot in g9/g37). FIFO was
+  enforced only by due time, but Node doesn't fire timers of different durations due at
+  the same instant in scheduling order. A liveBonus clear overtook the progress write
+  sent before it, which left `liveBonus.active` stuck on after the move was finalized.
+  Each direction is now a promise chain. The real SDK keeps write order, so this was a
+  harness bug, not an app bug. Test: `soak-agents.test.js` (fails on the old wrapper).
+- After a `SYNC_REJECTED`, the agent re-plans its turn (bounded by the per-turn re-plan
+  cap). It used to wait forever when a write was refused and no new snapshot followed
+  (soak3 g10).
+- The agent honours `bonus/aborted`: an award flow whose deferred move was dropped by a
+  resync no longer finalizes a ghost move.
+- The latency wrapper records each refused write's path, operation and error code in
+  `stats.writeErrors`, so failure bundles show why a write failed. Test:
+  `soak-agents.test.js`.
+
+**UI**
+- **"Not now" on the guest save-progress overlay did nothing** (`#ov-guest-upgrade`).
+  `authScreens` stripped the inline `ovClose()` and emitted `DISMISS_UPGRADE`, which
+  nothing handles, so the overlay stayed up. The click now hides it. Test:
+  `authScreens.test.js`.
+- The anagram mini-game's time-up continue button now carries `data-uns="continue"`, like
+  the success screen's.
+
+**Tests**
+- New `tests/e2e/bot-vs-bot-regression.spec.js` plays 4 seeded offline bot-vs-bot games
+  to the end in parallel in the real app, with 3D on. A driver taps the award cards and
+  mini-game screens, and long timers run 5× faster. A fake `page.clock` crashes the page
+  here. Each game checks:
+  - a terminal status;
+  - no page errors;
+  - tile conservation, with off-grid bonus tiles counted;
+  - sane scores;
+  - no turn stuck for 60 s.
+- `menu-routing.spec.js` and `non-menu-buttons.spec.js` were rewritten for the current home
+  (three mode cards, top-bar help dropdown and gear, in-game ☰ dropdown, collapsible stats
+  sections). They had targeted the old 7-button `.hbtns` menu.
+- Three more specs, which also failed on the base commit, were updated to match current
+  design. No app bug was involved.
+  - `your-turn-timing`: the turn cue now plays the recorded `chime_turn` sample. The spec
+    blocks that sample and the service worker so it can count the synth fallback.
+  - `signature-gameplay-motion`: the cue now waits for `TURN_PRESENTATION_READY`.
+  - `boost-electric-border`: a bot's boost now shows as the `#is-boost-2` card tag instead
+    of a modal. The lead-in is now checked by how long the square stays lit, not by a
+    frame count.
+- Results: final soak (soak5, same seed) 40/40 clean with no violations; unit 1688/1688; emulator 78/78; and the full Playwright suite passes apart from
+  load-sensitive flakes. Those flaky specs pass when run alone.
+
+---
+
 ## Bigger board, extra-turn icon, locks open on the owner's turn (October 2026)
 
 - **Board size.** The status pill (`#sbar` — live word counter, errors, the opponent's boost)
