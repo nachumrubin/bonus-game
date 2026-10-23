@@ -76,7 +76,9 @@ import { createTutorialController } from './ui/controllers/tutorialController.js
 import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/controllers/onboardingController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
-import { showScreen as spineShowScreen, revealCurrentScreen, SCREEN_IDS } from './ui/screens/screenTransitions.js';
+import { showScreen as spineShowScreen, revealCurrentScreen, settleEntrance, SCREEN_IDS } from './ui/screens/screenTransitions.js';
+import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt } from './ui/buildSequences.js';
+import { boardBuildKind, BOARD_BUILD_LEAD_MS } from './ui/buildTimeline.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './ui/screens/menuScreen.js';
 import { mountHelpDropdown } from './ui/screens/helpDropdown.js';
 import { mountGuideScreen } from './ui/screens/guideScreen.js';
@@ -316,9 +318,16 @@ function wireAppLoading() {
     // Remove after the fade transition so it can't intercept clicks
     // even if `pointer-events:none` fails.
     setTimeout(() => el.remove?.(), 600);
-    // Cold launch: the first showScreen('sh') ran under the loader, so play
-    // the main-menu Cascading Reveal now, as the loader fades away.
-    try { revealCurrentScreen({ doc, reducedMotion: () => getMotionPreference().isReduced() }); } catch { /* swallow */ }
+    // Cold launch: the first showScreen('sh') ran under the loader, so the
+    // main menu builds itself now, as the loader fades away (home build,
+    // buildSequences.js). Any other first screen gets its plain reveal.
+    try {
+      const reducedMotion = () => getMotionPreference().isReduced();
+      settleEntrance();
+      if (!playHomeBuild({ doc, cue: feedbackService.cue, reducedMotion })) {
+        revealCurrentScreen({ doc, reducedMotion });
+      }
+    } catch { /* swallow */ }
     if (off) { try { off(); } catch {} off = null; }
   }
   off = bus.on(MENU_REFRESH, (payload = {}) => {
@@ -3978,6 +3987,22 @@ async function boot() {
   let _scBack  = false;   // true while showLegacyScreen is being called from
                            // the popstate handler to avoid a re-push
 
+  // Game-board build (buildSequences.js). Runs right after session.start() so
+  // GAME_STARTED has already reset the turn clock and armed the bot; the full
+  // build then holds both via game/intro-started → game/intro-finished.
+  function startBoardBuild(kind, roomId = null) {
+    try {
+      const res = playBoardBuild({
+        doc: globalThis.document,
+        bus,
+        kind,
+        cue: feedbackService.cue,
+        reducedMotion: () => getMotionPreference().isReduced(),
+      });
+      if (res.kind === 'full' && roomId) rememberBoardBuilt(globalThis.localStorage, roomId);
+    } catch (e) { console.warn('[spine] board build failed', e); }
+  }
+
   function showLegacyScreen(id) {
     if (!_scBack) {
       if (id === 'sh') {
@@ -4557,7 +4582,7 @@ async function boot() {
           });
         };
         unwatch = roomService.watchRoom(db, room.roomId, maybeEnter);
-        roomService.markReadyAndMaybeStart(db, room.roomId, mySlot).then(maybeEnter).catch((e) => {
+        roomService.markReadyAndMaybeStart(db, room.roomId, mySlot, undefined, { leadInMs: BOARD_BUILD_LEAD_MS }).then(maybeEnter).catch((e) => {
           console.error('[spine] online ready handshake failed', e);
         });
       };
@@ -4655,6 +4680,7 @@ async function boot() {
       preGameTotalPlayers: 0,
       preGameMyPosition: null,
       end() {
+        finishBuilds();
         screen.unmount();
         animationController.dispose();
         controller.dispose();
@@ -4676,6 +4702,12 @@ async function boot() {
     globalThis.__spine.turnTimerController?.sync?.();
     scheduleGameLayoutRefresh();
     session.start();
+    startBoardBuild(boardBuildKind({
+      mode: room.mode,
+      moveCount: Array.isArray(room.moveHistory) ? room.moveHistory.length : 0,
+      turnNumber: room.turnNumber ?? 1,
+      alreadyBuilt: wasBoardBuilt(globalThis.localStorage, room.roomId),
+    }), room.roomId);
     if (_myUidForRating && _oppUidForRating) {
       Promise.all([
         ratingService.readRating(db, _myUidForRating).catch(() => null),
@@ -4824,6 +4856,7 @@ async function boot() {
       mode: session.mode, bot, difficulty,
       resumedFromLocalSave: !!resumedFromLocalSave,
       end() {
+        finishBuilds();
         screen.unmount();
         animationController.dispose();
         controller.dispose();
@@ -4836,6 +4869,12 @@ async function boot() {
     globalThis.__spine.turnTimerController?.sync?.();
     scheduleGameLayoutRefresh();
     session.start();
+    startBoardBuild(boardBuildKind({
+      mode,
+      resumed: !!resumedFromLocalSave || !!restoredState,
+      moveCount: session.state?.moveHistory?.length ?? 0,
+      turnNumber: session.state?.turnNumber ?? 1,
+    }));
     console.info('[spine] game session started; state:', session.state);
     return session;
   }

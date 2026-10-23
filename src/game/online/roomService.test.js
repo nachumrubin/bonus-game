@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { makeMockDb } from './mockFirebase.js';
 import {
   createRoom, readRoom, watchRoom, commitTransaction, engineStateFromRoom, setReady,
-  markReadyAndMaybeStart, leaveRoom, setPlayerSubscriptionId, setSettings, setLivePreview,
+  markReadyAndMaybeStart, initialTurnDeadlineMs, leaveRoom, setPlayerSubscriptionId, setSettings, setLivePreview,
   computeExpiredOnlineTurnState, MISSED_TURNS_FORFEIT_THRESHOLD,
 } from './roomService.js';
 import { createInitialState } from '../core/gameEngine.js';
@@ -154,6 +154,20 @@ test('markReadyAndMaybeStart starts live room and creates first deadline only af
   assert.equal(room.turnDeadlineMs, 23_000);
   assert.equal(room.ready[0], true);
   assert.equal(room.ready[1], true);
+});
+
+test('markReadyAndMaybeStart adds the board-build lead-in to the FIRST deadline only', async () => {
+  const db = makeMockDb();
+  await createRoom(db, {
+    roomId: 'r-lead', mode: 'friend-live', players: PLAYERS,
+    settings: { timelimit: true, botTime: 20 }, engineState: fakeEngineState(), serverTimestamp: 1000,
+  });
+  await markReadyAndMaybeStart(db, 'r-lead', 0, 2000, { leadInMs: 2100 });
+  await markReadyAndMaybeStart(db, 'r-lead', 1, 3000, { leadInMs: 2100 });
+  const room = await readRoom(db, 'r-lead');
+  assert.equal(room.turnDeadlineMs, 25_100, '3000 + 20 s + 2.1 s build');
+  assert.equal(initialTurnDeadlineMs('friend-live', { timelimit: true, botTime: 20 }, 1), 20_001, 'no lead-in by default');
+  assert.equal(initialTurnDeadlineMs('friend-async', { timelimit: true, botTime: 20 }, 1, { leadInMs: 2000 }), null, 'async: no shared timer');
 });
 
 test('leaveRoom clears users/{uid}/activeRoom', async () => {

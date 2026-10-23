@@ -24,7 +24,7 @@ The primary game document. Created by `roomService.createRoom()` / `inviteServic
 
   currentTurnSlot: 0 | 1,
   turnNumber: number,
-  turnDeadlineMs: number | null,   // epoch ms, null if no timer
+  turnDeadlineMs: number | null,   // epoch ms, null if no timer; the FIRST deadline includes the board-build lead-in (BOARD_BUILD_LEAD_MS)
   missedTurns: { "0": number, "1": number },
 
   scores: { "0": number, "1": number },

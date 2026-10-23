@@ -128,6 +128,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     }));
     cleanups.push(bus.on(EV.GAME_COMPLETED, () => clearBoostSquareCues()));
     cleanups.push(bus.on(EV.GAME_STARTED, () => clearBoostSquareCues()));
+    // Game-board build (buildSequences.js): keep the live-3D setup (WebGL
+    // shader compile) out of the build animation; stills show until it ends.
+    cleanups.push(bus.on('game/intro-started', () => live3d.hold(true)));
+    cleanups.push(bus.on('game/intro-finished', () => live3d.hold(false)));
   }
   // uid → current avatar (null = looked up, none found). Populated lazily by
   // requestLiveAvatar; a cached null stops us re-fetching a missing profile.

@@ -5,6 +5,23 @@
 
 ---
 
+## D-build-sequences: two signature builds; the clock is shifted, never eaten — October 2026
+
+**Decision:** the main menu builds itself on cold launch and the game board builds itself
+at the start of a new game (BOOST_MOTION_SPEC §16). The board build shifts the turn clock
+by its length: offline the timer freezes and moves the deadline on finish; online the
+first room deadline is written with `BOARD_BUILD_LEAD_MS` added, so both clients agree
+without an extra write. Any tap, and any gameplay event, finishes a build immediately; the
+tap is not swallowed.
+
+**Why:** these are moments the player already waits through, so a short build adds
+character without slowing anything that matters. An online deadline is shared state, so it
+can only be shifted where it is created, not per client. Not swallowing the tap keeps the
+game responsive (and keeps automated players and e2e specs working). Boost squares get a
+glow wave, not the electric effect, so electricity keeps meaning "a boost fired".
+
+---
+
 ## D-boost-glide: one navigation motion system, mirrored for RTL — October 2026
 
 **Decision:** every full-screen navigation goes through `showScreen()` and uses BOOST GLIDE

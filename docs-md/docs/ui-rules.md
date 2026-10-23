@@ -809,6 +809,16 @@ Classes added by `showScreen()` and removed by one cleanup timer (or the next na
 | `screen-transitioning` | incoming `.screen` | 380ms pointer block (legacy double-tap guard) |
 
 The home topbar stays `display:''` while it glides out and is hidden when the glide settles.
+
+**Build sequences** (`src/ui/buildSequences.js`, BOOST_MOTION_SPEC §16) add `hb-*` classes
+on home (`hb-rise`, `hb-glow`, `hb-slide`, `hb-pop`, `hb-logo`, `hb-logo-glow`) and `bb-*`
+classes on the game screen (`bb-panel` on `.board-center-inner`, `bb-unfold` on grid cells,
+`bb-boost` on `.bsq`, `bb-card` on `#is-sb1/#is-sb2/.gm-vs-center`, `bb-rise`, `bb-tiles` on
+`#brack`, `bb-quick` on `.gr`), each with `--b-delay` / `--b-dur`. Load-bearing selectors:
+`#home-turn-strip`, `.hm-cards`, `#home-lb-row`, `#home-bottom-nav .em-nav-item`,
+`.em-topbar-icons > .em-icon-btn`, `.em-profile-btn` (`.em-avatar-wrap`, `.em-player-name`,
+`.em-elo-badge`), `.hlogo`, `#game-grid`, `.bsq`, `#info-strip`, `.gm-topbar`, `#is-rail`,
+`.bot`, `#brack > .bt2`, `#btn-recall`, `#btn-exchange`, `#btn-play`.
 `revealCurrentScreen()` replays the main-menu reveal when the boot loader lifts.
 Selectors used by `REVEAL_PLANS` (e.g. `.hlogo`, `.hm-cards`, `.g-hdr`, `.g-scroll`,
 `#home-bottom-nav`, `#mg-tabs`, `.stats-feed`, `.ach-g-summary`) are load-bearing: renaming

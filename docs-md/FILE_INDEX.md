@@ -158,6 +158,8 @@ See `/partials/screens/` for corresponding HTML templates.
 | `feedbackService.js` | Haptic/visual feedback. |
 | `bootLoadingState.js` | Boot-loader progress vs offline/fail copy. Used by `wireAppLoading()` in `main.js`. |
 | `domHelpers.js` | DOM utility functions. Includes `flashAnimation()` (shared reflow-restart primitive) and `bonusOverlayOpen()` (shared bonus-overlay predicate). |
+| `buildTimeline.js` | Home cold-launch build + game-board build timelines, ordering helpers (diagonal, clockwise), `boardBuildKind`, `BOARD_BUILD_LEAD_MS`. Pure. |
+| `buildSequences.js` | DOM runner for both builds: tags elements, schedules `build.*` sounds, tap/gameplay-event finish, `game/intro-*` events, built-room memory. |
 | `boostGlide.js` | BOOST GLIDE config (glide/reveal timings, offsets, easing), navigation direction rules and per-screen reveal plans. Pure; DOM wiring in `screens/screenTransitions.js`. |
 | `motionTokens.js` | Canonical motion vocabulary — duration/easing/press-scale constants, mirrored as `:root` CSS custom properties. |
 | `motionPreference.js` | Single source of truth for the effective reduced-motion preference (explicit tri-state → legacy flag → OS → normal); stamps `data-reduced-motion` on the root. |

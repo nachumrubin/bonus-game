@@ -258,6 +258,12 @@ export function revealCurrentScreen({
   return true;
 }
 
+// Flush any running glide/reveal at once (a build sequence is about to take
+// over the same elements).
+export function settleEntrance({ clearTimeoutFn = clearTimeout } = {}) {
+  settleGlide(clearTimeoutFn);
+}
+
 // Test/diagnostic view of the direction bookkeeping.
 export function _getTransitionState() {
   return {

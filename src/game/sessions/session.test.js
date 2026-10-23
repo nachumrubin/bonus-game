@@ -222,3 +222,25 @@ test('localGameSession.dispose removes bot subscriptions', () => {
 });
 
 console.log = _origLog;
+
+test('attachBotPlayer: holds its first move while the board builds', () => {
+  bus._reset();
+  DICT.clear();
+  addWordsFromText('אב\n');
+  const session = createLocalGameSession({ bus, mode: 'offline-solo', tileBagSeed: 'bot-intro', players, startingSlot: 1 });
+  session.state.racks[1] = ['א','ב','ג','ד','ה','ו','ז','ח'];
+  const queued = [];
+  attachBotPlayer(session, {
+    slot: 1, wordList: ['אב'], isWordValid: () => true, thinkingMs: 0,
+    scheduler: (fn) => { queued.push(fn); return queued.length; },
+  });
+  let moves = 0;
+  bus.on(EV.MOVE_CONFIRMED, () => { moves++; });
+  session.start();
+  bus.emit('game/intro-started', {});
+  queued.shift()();                       // think timer fires mid-build
+  assert.equal(moves, 0, 'bot waits for the build');
+  bus.emit('game/intro-finished', {});
+  queued.shift()();
+  assert.equal(moves, 1, 'bot plays once the board is built');
+});

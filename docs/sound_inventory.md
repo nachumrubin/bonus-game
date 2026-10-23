@@ -36,8 +36,8 @@ says how to get the sources (Freesound HQ previews by id, plus the Kenney zips).
 
 | File | Cues | Source | License | Edits |
 |---|---|---|---|---|
-| `tile_place_1..3` | tile.pick, tile.place, tile.return, opponent.tile, mg.tap, spinner.tick, spinner.stop | Freesound #131229 "scrabble.wav" by moxobna — three tile placements from a real game (63.64 s, 60.96 s, 67.26 s) | CC0 | 0.22 s each, peak −3 dB; cues vary rate/vol + ±3–4 % jitter |
-| `tile_shuffle` | tile.recallAll, tile.cascade, exchange.done | Freesound #329100 "Domino pieces 2" by Macif | CC0 | 0.60–1.15 s, peak −3 dB |
+| `tile_place_1..3` | tile.pick, tile.place, tile.return, opponent.tile, mg.tap, spinner.tick, spinner.stop, build.tile, build.land | Freesound #131229 "scrabble.wav" by moxobna — three tile placements from a real game (63.64 s, 60.96 s, 67.26 s) | CC0 | 0.22 s each, peak −3 dB; cues vary rate/vol + ±3–4 % jitter |
+| `tile_shuffle` | tile.recallAll, tile.cascade, exchange.done, build.unfold | Freesound #329100 "Domino pieces 2" by Macif | CC0 | 0.60–1.15 s, peak −3 dB |
 | `bag_rustle` | exchange.open | Freesound #554561 "fabric rubbing / pulling" by dynamique | CC0 | 6.66–7.16 s, −16 LUFS |
 | `lock_click` | lock.place | Freesound #662385 "padlock.wav" by elvish_paisley | CC0 | 1.83–2.18 s, peak −3 dB |
 | `coin_single` | score.chip, mg.count | Freesound #847341 "coin-011" by ilyaShevelev | CC0 | 0.25 s, peak −3 dB |
@@ -45,25 +45,25 @@ says how to get the sources (Freesound HQ previews by id, plus the Kenney zips).
 | `coins_pile` | boost.points, coins.gain | Freesound #684167 "Coins Falling Into Pile" by AKkingStudio | CC0 | 0.75 s, peak −3 dB |
 | `clock_tick` | timer.warn, timer.tick, mg.tick, invite.expiring | Freesound #450509 "ClockTickSound_01" by abyeditsound | CC0 | one tick at 2.15 s, 0.25 s, peak −3 dB |
 | `boost_activate` | boost.activate, score.multiplier, evolve.burst | Freesound #136542 "ELECTRIC_ZAP_001" by JoelAudio | CC0 | 0.8 s, 10 ms fade-in, −16 LUFS |
-| `power_up` | boost.charge, evolve.charge | Freesound #351430 "Neon Lamp, Switch On, Hum" by Kinoton | CC0 | 0.30–1.20 s, −16 LUFS |
+| `power_up` | boost.charge, evolve.charge, build.wave | Freesound #351430 "Neon Lamp, Switch On, Hum" by Kinoton | CC0 | 0.30–1.20 s, −16 LUFS |
 | `short_circuit` | boost.vetoed | Freesound #205879 "Amp short circuit 1" by unreadpages | CC0 | 3.90–4.60 s, −16 LUFS |
 | `wheel_click` | wheel.click | Freesound #752284 "Spin the wheel clicks" by leocb | CC0 | single click at 8.578 s, 70 ms, peak −3 dB |
 | `coin_flip` | coin.flip | Freesound #181189 "coin flip.wav" by Raventhornn | CC0 | 0.07–1.47 s, peak −3 dB |
 | `doorbell` | invite.received | Freesound #442280 "DoorBell Shortened" by jwheeler91 | CC0 | 1.9 s, −16 LUFS |
 | `cash_register` | store.purchase | Freesound #184438 "Cash Register Fake" by CapsLok | CC0 | 1.4 s, peak −3 dB |
-| `pop` | reaction.send, reaction.receive | Freesound #447910 "Plop!" by Breviceps | CC0 | 0.2 s, peak −3 dB |
+| `pop` | reaction.send, reaction.receive, build.glow, build.pop | Freesound #447910 "Plop!" by Breviceps | CC0 | 0.2 s, peak −3 dB |
 | `rx_laugh` | reaction.laugh | Freesound #513983 "Very Cute Cartoon Laughter" by NicknameLarry | CC0 | 0.77 s, −16 LUFS |
 | `rx_wow` | reaction.wow | Freesound #242607 "gasp OOOH!.wav" by Reitanna | CC0 | 1.27 s, −16 LUFS |
 | `rx_stare` | reaction.stare | Freesound #242606 "gasp HOH!.wav" by Reitanna | CC0 | 0.75 s, −16 LUFS |
 | `rx_wink` | reaction.wink | Freesound #511485 "cartoon_wink_magic_sparkle.wav" by MLaudio | CC0 | 0.49 s, −16 LUFS |
 | `rx_yawn` | reaction.yawn | Freesound #252239 "long yawn2.wav" by Reitanna | CC0 | 2.0 s, −16 LUFS |
-| `whoosh` | turn.extra, turn.skip, boost.intro | Freesound #701104 "Whoosh stereo light (transition)" by xkeril | CC0 | 0.10–0.90 s, −16 LUFS |
+| `whoosh` | turn.extra, turn.skip, boost.intro, build.card, build.whoosh | Freesound #701104 "Whoosh stereo light (transition)" by xkeril | CC0 | 0.10–0.90 s, −16 LUFS |
 | `chime_turn` | turn.yours | Freesound #773403 "Atonal Crystal Chime Transition Short x20" by newlocknew (one chime at 34.49 s) | CC0 | 0.9 s, peak −3 dB |
 | `move_accepted` | move.accepted, mg.good | Kenney *Interface Sounds* `glass_001` | CC0 | 0.40 s, peak −3 dB |
 | `move_invalid` | move.invalid, timer.timeout, mg.bad, store.fail | Kenney *Interface Sounds* `error_006` (soft, low) | CC0 | 0.5 s, peak −3 dB |
 | `match_found` | match.found | Kenney *Interface Sounds* `confirmation_002` | CC0 | peak −3 dB |
 | `elo_up` / `elo_down` | elo.up / elo.down, invite.declined | Kenney *Interface Sounds* `maximize_006` / `minimize_006` | CC0 | peak −3 dB |
-| `ui_tap` / `ui_toggle` | ui.tap / ui.toggle | Kenney *Interface Sounds* `click_001` / `switch_002` | CC0 | peak −3 dB |
+| `ui_tap` / `ui_toggle` | ui.tap, build.tick / ui.toggle | Kenney *Interface Sounds* `click_001` / `switch_002` | CC0 | peak −3 dB |
 | `vs_clash` | vs.intro | Kenney *Impact Sounds* `impactBell_heavy_000` | CC0 | 1.2 s, peak −3 dB |
 | `game_win` | game.win | Kenney *Music Jingles* `jingles_STEEL07` | CC0 | 1.55 s, −16 LUFS |
 | `game_lose` | game.lose | Kenney *Music Jingles* `jingles_STEEL05` (−5 semitones, falling) | CC0 | −16 LUFS |
