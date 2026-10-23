@@ -27,13 +27,12 @@ export const HOME_BUILD = Object.freeze({
 // ── Game board, new games only ─────────────────────────────────────────
 // The board unfolds from the top-right corner (Hebrew reading start) as a
 // diagonal cascade → boost squares pop in one after the other around the
-// board, glowing → one glow wave runs round all of them → the score cards
-// build → the rack and its buttons, led by the tiles floating onto the rack.
+// board, each glowing as it lands (the sweep itself is the wave — no second
+// glow pass) → the score cards build → the rack and its buttons, led by the tiles floating onto the rack.
 export const BOARD_BUILD = Object.freeze({
   boardBg:  Object.freeze({ start: 0,    dur: 460 }),
   cells:    Object.freeze({ start: 40,   spread: 300, dur: 300 }),
   boosts:   Object.freeze({ start: 520,  stagger: 38, dur: 300 }),
-  wave:     Object.freeze({ start: 1180, stagger: 22, dur: 380 }),
   cards:    Object.freeze({ start: 1180, stagger: 90, dur: 340 }),
   rack:     Object.freeze({ start: 1320, dur: 280 }),
   tiles:    Object.freeze({ start: 1380, stagger: 50, dur: 340 }),
@@ -71,7 +70,6 @@ export function boardBuildTotal({ boosts = 12, tiles = RACK_SLOTS, buttons = 3 }
     b.boardBg.start + b.boardBg.dur,
     b.cells.start + b.cells.spread + b.cells.dur,
     end(b.boosts, boosts),
-    end(b.wave, boosts),
     end(b.cards, 3),
     b.rack.start + b.rack.dur,
     end(b.tiles, tiles),

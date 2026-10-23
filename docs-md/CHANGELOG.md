@@ -11,8 +11,15 @@ Two signature entrances on top of BOOST GLIDE. Spec: `BOOST_MOTION_SPEC.md` §16
   profile (avatar, name, ELO) → logo flies in, glows, settles (single image for now).
   Replaces the launch Cascading Reveal on home only.
 - **Board (new game):** corner reveal + diagonal unfold from the top right → boost squares
-  pop clockwise with a glow → glow wave → score strip/cards → rack panel, tiles float
-  in → buttons (≈2.1s). Resume: 300ms settle. Tutorial: none.
+  pop clockwise, each glowing as it lands → score strip/cards → rack panel, tiles float
+  in → buttons (≈2.1s). Resume: 300ms settle. Tutorial: none. (A second glow wave over
+  all boost squares was tried and removed: the sweep already reads as the wave.)
+- **Return-to-home smoothness:** the live-3D top-bar avatar restarted (WebGL setup, a
+  ~0.6s frame in headless Chromium) the moment `#sh` lost `hidden`, i.e. in the middle
+  of the return glide. `homeAvatarLive` now waits until home has settled
+  (`boostGlide.isScreenEntering`: no `glide-in` / `hb-building`); the still shows during
+  the glide. Measured: return glide max frame 667ms → 17ms. Test in
+  `homeAvatarLive.test.js`.
 - **Sounds:** nine `build.*` cues, all reusing existing recordings (no new files);
   `docs/sound_inventory.md` updated.
 - **Clock / bot:** `game/intro-started` / `game/intro-finished`. Turn timer freezes and

@@ -114,6 +114,9 @@ export function playHomeBuild({
   const H = HOME_BUILD;
   const run = createRun({ doc, cue, setTimeoutFn, clearTimeoutFn, onFinish: () => { runs.home = null; } });
   runs.home = run;
+  // Marks home as still arriving (boostGlide.ENTERING_CLASSES): the live-3D
+  // top-bar avatar waits for the build to finish before its WebGL setup.
+  run.tag(sh, 'hb-building');
   const q = (sel, root = sh) => root.querySelector?.(sel) ?? null;
   const qa = (sel, root = sh) => Array.from(root.querySelectorAll?.(sel) ?? []);
 
@@ -247,19 +250,16 @@ export function playBoardBuild({
   });
 
   // 2. Boost squares pop in one after the other, clockwise from the top
-  //    right, each glowing — then 3. one glow wave runs round all of them.
+  //    right, each glowing as it lands. (No second glow pass: the sweep is the wave.)
   const order = clockwiseOrder(boosts.map(b => b.p));
   order.forEach((idx, i) => {
     const at = B.boosts.start + i * B.boosts.stagger;
     run.tag(boosts[idx].el, 'bb-boost', {
       '--b-delay': at,
       '--b-dur': B.boosts.dur,
-      '--b-wave-delay': B.wave.start + i * B.wave.stagger,
-      '--b-wave-dur': B.wave.dur,
     });
     run.sound('build.glow', at, { rate: 1 + i * 0.05 });
   });
-  if (boosts.length) run.sound('build.wave', B.wave.start);
 
   // 4. Score cards slide in from their own sides; top bar + VS badge with them.
   const cards = [q('#is-sb1'), q('.gm-vs-center'), q('#is-sb2')].filter(Boolean);

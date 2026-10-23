@@ -5,7 +5,7 @@
 // and every few seconds it does a gesture (yawn, stare, its signature move…). The 3D
 // runs only while its screen (#sh, #sprofile) is showing, and is torn down (WebGL freed) as
 // soon as it hides; the still <img> underneath is the fallback and what every other
-// screen shows. The host is the wrapper, not the element the screen re-renders, so the
+// screen shows. It starts only once the screen has settled (no glide / build running). The host is the wrapper, not the element the screen re-renders, so the
 // canvas survives re-renders.
 //
 // The avatar is only 34px here, so the gestures are frequent on purpose. They are idle
@@ -13,6 +13,7 @@
 // (D-boostie-reactions still holds for the game).
 
 import { createScoreboardLive, canUseLive3d } from './scoreboardLive.js';
+import { isScreenEntering } from '../boostGlide.js';
 
 const GESTURE_FIRST_MS = 1200;                // a hello soon after the screen shows
 const GESTURE_EVERY_MS = [5000, 9000];         // then every few seconds (random in range)
@@ -74,6 +75,10 @@ export function mountAvatarLive({
   function refresh() {
     const value = getAvatar();
     if (!value || !homeShowing() || prefersReducedMotion()) { stop(); return; }
+    // Still gliding in / building: keep the still. Starting the 3D here put its
+    // WebGL setup (one ~0.5 s frame on phones) in the middle of the return-home
+    // glide. The class change when the screen settles calls refresh() again.
+    if (!live && isScreenEntering(screen)) return;
     const fresh = !live;
     live ??= createLive({ hosts: () => [host], prefersReducedMotion, look: LOOK });
     live.sync([value]);
