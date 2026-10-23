@@ -37,6 +37,10 @@ developer/art-director split, missing-asset workflow, and required
 (multi-angle reference sheets, TRELLIS, `Blender designs/boosties/build_boostie.py`
 with its mandatory upgrades).
 
+**For agent E2E testing / full regression runs:** use the project skill
+`.claude/skills/agent-e2e-regression/SKILL.md`. It covers the parallel soak games,
+failure-bundle triage, the fix-plus-regression-test loop and which docs to update.
+
 ---
 
 ## Hard Rules (Non-Negotiable)
