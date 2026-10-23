@@ -23,6 +23,14 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
   badge uses. `assets/ui/lock.png` can't be used at 11px because its background
   is baked in. Optional: per-duration variants if lock tiers are ever introduced.
 
+* assets/ui/logo_tiles/ — the home logo as separate layers for the cold-launch
+  build (tiles flying in from off-screen like the promo clip): `tile_bet.png`,
+  `tile_vav.png`, `tile_samekh.png`, `tile_tet.png`, `bolt.png`, each a transparent
+  PNG rendered from the logo's Blender scene with the SAME camera and canvas as
+  `assets/ui/boost-logo.webp` so they line up when they settle. Interim: the whole
+  single-image logo flies in (`HOME_BUILD.logo`, `src/ui/buildTimeline.js`). The
+  Blender scene (`Blender designs/promo/render_app_logo.py`) is not in this repo.
+
 * (stats-letter-icon.png was proposed for the favorite-letter card, but that card
   renders the actual Hebrew letter dynamically — no static icon needed.)
 

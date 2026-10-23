@@ -292,6 +292,46 @@ export const SFX = Object.freeze({
     synth: tone(500, 600, 'sine', 0.07, 250),
   },
 
+  // ── Build sequences (home cold launch, game-board build) ──
+  // Played by src/ui/buildSequences.js. Reuse existing recordings, kept quiet:
+  // these accompany motion, they are not events of their own.
+  'build.unfold': {
+    tier: 'event', file: 'tile_shuffle', vol: 0.38, rate: 0.85, haptic: null, throttleMs: 300,
+    synth: tone(180, 120, 'triangle', 0.05, 260),
+  },
+  'build.card': {
+    tier: 'ui', file: 'whoosh', vol: 0.22, rate: 1.25, haptic: null, throttleMs: 200,
+    synth: tone(500, 80, 'sine', 0.03, 900),
+  },
+  'build.glow': {
+    tier: 'ui', file: 'pop', vol: 0.16, pitchJitter: 0.02, haptic: null, throttleMs: 20,
+    synth: tone(880, 40, 'sine', 0.03, 1100),
+  },
+  'build.wave': {
+    tier: 'event', file: 'power_up', vol: 0.28, rate: 1.2, haptic: null, throttleMs: 300,
+    synth: tone(440, 220, 'sine', 0.04, 880),
+  },
+  'build.tile': {
+    tier: 'micro', file: 'tile_place', variants: 3, vol: 0.3, pitchJitter: 0.04, haptic: null, throttleMs: 30,
+    synth: tone(220, 30, 'triangle', 0.04, 180),
+  },
+  'build.tick': {
+    tier: 'ui', file: 'ui_tap', vol: 0.12, haptic: null, throttleMs: 30,
+    synth: tone(1200, 15, 'sine', 0.02),
+  },
+  'build.pop': {
+    tier: 'ui', file: 'pop', vol: 0.3, rate: 0.85, haptic: null, throttleMs: 150,
+    synth: tone(600, 60, 'sine', 0.04, 800),
+  },
+  'build.whoosh': {
+    tier: 'event', file: 'whoosh', vol: 0.32, haptic: null, throttleMs: 300,
+    synth: tone(300, 200, 'sine', 0.04, 700),
+  },
+  'build.land': {
+    tier: 'event', file: 'tile_place', variants: 3, vol: 0.55, rate: 0.85, haptic: null, throttleMs: 150,
+    synth: tone(180, 50, 'triangle', 0.07, 140),
+  },
+
   // ── General UI (very quiet) ──────────────────────────────
   'ui.tap': {
     tier: 'ui', file: 'ui_tap', vol: 0.16, haptic: null, throttleMs: 60,

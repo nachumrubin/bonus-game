@@ -1901,6 +1901,103 @@ html .reveal-item {
   animation: boostReveal var(--reveal-duration) var(--glide-ease) var(--reveal-delay, 0ms) both;
 }
 
+/* ── 1c. Build sequences (home cold launch + game-board build) ──
+   Driven by src/ui/buildSequences.js; every delay/duration arrives as a
+   custom property (--b-delay, --b-dur, …) from src/ui/buildTimeline.js, so no
+   timing lives here. Entrances use fill `backwards` (hidden before their
+   delay, back to the element's own styles after); the build classes are all
+   removed by one cleanup timer. Reduced motion never starts a build. */
+@keyframes bRise {
+  from { opacity: 0; transform: translate3d(0, 18px, 0) scale(.97); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes hbGlow {
+  0%   { filter: none; }
+  35%  { filter: brightness(1.7) drop-shadow(0 0 10px rgba(40,212,255,.95)); }
+  100% { filter: none; }
+}
+@keyframes hbSlide {
+  from { opacity: 0; transform: translate3d(-48px, 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes hbPop {
+  0%   { opacity: 0; transform: scale(.3); }
+  60%  { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes hbLogoFly {
+  0%   { opacity: 0; transform: translate3d(0, -70vh, 0) scale(1.35) rotate(-6deg); }
+  70%  { opacity: 1; transform: translate3d(0, 6px, 0) scale(.98) rotate(0deg); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+}
+@keyframes hbLogoGlow {
+  from { filter: brightness(1.5) drop-shadow(0 0 22px rgba(40,212,255,.95)); }
+}
+html .hb-rise  { animation: bRise   var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
+html .hb-glow  { animation: hbGlow  var(--b-dur) ease-out          var(--b-delay) none; }
+html .hb-slide { animation: hbSlide var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
+html .hb-pop   { animation: hbPop   var(--b-dur) ease-out          var(--b-delay) backwards; }
+html .hb-logo  { animation: hbLogoFly var(--b-dur) cubic-bezier(.2,.7,.2,1) var(--b-delay) backwards; }
+html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) none; }
+
+@keyframes bbReveal {
+  from { clip-path: circle(0% at 100% 0%); }
+  to   { clip-path: circle(150% at 100% 0%); }
+}
+@keyframes bbUnfold {
+  from { opacity: 0; transform: perspective(240px) rotateX(-70deg) rotateY(-50deg) scale(.6); }
+  to   { opacity: 1; transform: perspective(240px) rotateX(0deg) rotateY(0deg) scale(1); }
+}
+@keyframes bbBoostPop {
+  0%   { opacity: 0; transform: scale(.2); filter: brightness(2.2) drop-shadow(0 0 14px rgba(40,212,255,1)); }
+  55%  { opacity: 1; transform: scale(1.18); filter: brightness(1.8) drop-shadow(0 0 16px rgba(40,212,255,.95)); }
+  100% { opacity: 1; transform: scale(1); filter: none; }
+}
+@keyframes bbBoostWave {
+  45% { transform: scale(1.08); filter: brightness(1.7) drop-shadow(0 0 14px rgba(40,212,255,.95)); }
+}
+@keyframes bbCard {
+  from { opacity: 0; transform: translate3d(calc(var(--b-side, 0) * 40px), 0, 0) scale(.9); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes bbTileFloat {
+  0%   { opacity: 0; transform: translate3d(0, -46px, 0) rotate(-8deg) scale(1.08); }
+  70%  { opacity: 1; transform: translate3d(0, 3px, 0) rotate(1deg) scale(1); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+}
+@keyframes bbQuick {
+  from { opacity: 0; transform: scale(.985); }
+  to   { opacity: 1; transform: scale(1); }
+}
+#sg .bb-reveal,
+#sg .board-center-inner.bb-panel::before { animation: bbReveal var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
+#sg .bb-unfold { transform-origin: 100% 0; animation: bbUnfold var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
+/* Pop (hidden until its turn) then one glow wave (fill none: it only exists
+   while running, so it never masks the pop). */
+#sg .bsq.bb-boost {
+  animation:
+    bbBoostPop  var(--b-dur)      ease-out var(--b-delay)      backwards,
+    bbBoostWave var(--b-wave-dur) ease-in-out var(--b-wave-delay) none;
+}
+#sg .bb-card { animation: bbCard var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
+/* The player cards carry their own `animation … !important` (active-turn
+   pulse, menu-electric.css); this outranks it only while the build runs. */
+#sg #info-strip .is-pcard.bb-card { animation: bbCard var(--b-dur) var(--glide-ease) var(--b-delay) backwards !important; }
+#sg .bb-rise { animation: bRise  var(--b-dur) var(--glide-ease) var(--b-delay) backwards; }
+#sg .bb-quick { animation: bbQuick var(--b-dur) var(--glide-ease) 0ms backwards; }
+/* Rack tiles are re-rendered with innerHTML: per-slot delay from nth-child. */
+#sg #brack.bb-tiles > .bt2 {
+  animation: bbTileFloat var(--b-tiles-dur) cubic-bezier(.2,.8,.2,1)
+    calc(var(--b-tiles-start) + var(--b-slot, 0) * var(--b-tiles-stagger)) backwards;
+}
+#sg #brack.bb-tiles > .bt2:nth-child(2) { --b-slot: 1; }
+#sg #brack.bb-tiles > .bt2:nth-child(3) { --b-slot: 2; }
+#sg #brack.bb-tiles > .bt2:nth-child(4) { --b-slot: 3; }
+#sg #brack.bb-tiles > .bt2:nth-child(5) { --b-slot: 4; }
+#sg #brack.bb-tiles > .bt2:nth-child(6) { --b-slot: 5; }
+#sg #brack.bb-tiles > .bt2:nth-child(7) { --b-slot: 6; }
+#sg #brack.bb-tiles > .bt2:nth-child(8) { --b-slot: 7; }
+
 /* ── 3. Tile placement pop ── */
 @keyframes tilePlaceIn {
   0%   { opacity: 0.5; transform: scale(1.22); }

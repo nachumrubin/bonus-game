@@ -2,6 +2,35 @@
 
 ---
 
+## Build sequences — home cold launch + game-board build (October 2026)
+
+Two signature entrances on top of BOOST GLIDE. Spec: `BOOST_MOTION_SPEC.md` §16; decision
+`D-build-sequences`.
+
+- **Home (cold launch):** cards → nav rise + glow sweep → top-bar icons from the left →
+  profile (avatar, name, ELO) → logo flies in, glows, settles (single image for now).
+  Replaces the launch Cascading Reveal on home only.
+- **Board (new game):** corner reveal + diagonal unfold from the top right → boost squares
+  pop clockwise with a glow → glow wave → score strip/cards → rack panel, tiles float
+  in → buttons (≈2.1s). Resume: 300ms settle. Tutorial: none.
+- **Sounds:** nine `build.*` cues, all reusing existing recordings (no new files);
+  `docs/sound_inventory.md` updated.
+- **Clock / bot:** `game/intro-started` / `game/intro-finished`. Turn timer freezes and
+  shifts the offline deadline by the build's real length; online first deadline gets
+  `BOARD_BUILD_LEAD_MS` (`roomService.initialTurnDeadlineMs` / `markReadyAndMaybeStart`,
+  new `leadInMs` option). The bot holds its first move.
+- **Perf:** `scoreboardLive.hold()` keeps the live-3D scoreboard's WebGL setup (≈750ms
+  in headless Chromium) out of the build; stills show until it ends.
+- **Robustness:** any tap finishes a build without swallowing the tap; any gameplay event
+  finishes the board build (found by `signature-gameplay-motion.spec.js`: a confirmed
+  move was masked by the cells' unfold). Player-card build rule outranks the active-card
+  pulse's `!important`.
+- **Tests:** `buildSequences.test.js` (timeline order and budgets, diagonal/clockwise
+  ordering, build kinds, runners, tap/gameplay finish, reduced motion, intro events),
+  plus timer, bot, room lead-in and scoreboard-hold tests.
+
+---
+
 ## BOOST GLIDE — screen transition system (October 2026)
 
 Navigation between full screens now glides instead of hard-cutting, and screen content

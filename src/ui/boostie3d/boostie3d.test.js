@@ -142,3 +142,23 @@ test('scoreboardLive: one host (the store preview) and ready() once the model is
   off.sync(['zapi:2']);
   assert.equal(await off.ready(0), false);
 });
+
+test('scoreboardLive: hold() defers the WebGL setup until released (board build)', async () => {
+  const fake = fakeBoard();
+  const live = createScoreboardLive({ hosts: HOSTS, enabled: true, importer: async () => fake });
+  live.sync(['zapi:1', 'bubo:1']);
+  live.hold(true);
+  await flush();
+  assert.equal(fake.calls.length, 0, 'no board created while held');
+  live.sync(['zapi:2', 'bubo:1']);
+  live.hold(false);
+  await flush();
+  assert.deepEqual(fake.calls.filter((c) => c[0] === 'set').slice(0, 2),
+    [['set', 0, 'assets/boosties/zapi_l2.glb'], ['set', 1, 'assets/boosties/bubo_l1.glb']], 'latest avatars applied on release');
+  const before = fake.calls.length;
+  live.hold(true);
+  live.sync(['zapi:3', 'bubo:1']);
+  assert.equal(fake.calls.length, before, 'existing board not touched while held');
+  live.hold(false);
+  assert.deepEqual(fake.calls.at(-2), ['set', 0, 'assets/boosties/zapi_l3.glb']);
+});

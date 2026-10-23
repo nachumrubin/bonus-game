@@ -386,3 +386,69 @@ test('offline turn change resets the deadline (no leftover from previous turn)',
   assert.equal(session.state.turnDeadlineMs, 25_000);
   ctl.dispose();
 });
+
+test('board build: offline clock holds during the build and the deadline shifts by its real length', () => {
+  bus._reset();
+  let nowMs = 1_000;
+  const session = {
+    state: {
+      mode: 'offline-solo', status: 'playing', currentTurnSlot: 0, turnNumber: 1,
+      settings: { timelimit: true, botTime: 20 }, turnDeadlineMs: 0,
+    },
+    dispatched: [],
+    dispatch(cmd) { this.dispatched.push(cmd); },
+  };
+  const timerEl = makeEl();
+  const ctl = createTurnTimerController({
+    bus, root: makeRoot(timerEl, makeEl()), sessionRef: () => session,
+    now: () => nowMs, setIntervalFn: () => 1, clearIntervalFn: () => {},
+  });
+  bus.emit(EV.GAME_STARTED, {});
+  assert.equal(session.state.turnDeadlineMs, 21_000);
+  bus.emit('game/intro-started', { totalMs: 2000 });
+  nowMs = 3_100;                       // the build ran 2.1 s
+  ctl.sync();
+  assert.equal(timerEl.textContent, '20', 'full allowance shown while the board builds');
+  assert.equal(session.dispatched.length, 0);
+  bus.emit('game/intro-finished', {});
+  assert.equal(session.state.turnDeadlineMs, 23_100, 'deadline shifted by exactly the build length');
+  assert.equal(timerEl.textContent, '20');
+  ctl.dispose();
+});
+
+test('board build: online deadline is left to the room (it already carries the lead-in)', () => {
+  bus._reset();
+  let nowMs = 1_000;
+  const session = makeSession(nowMs);
+  session.state.turnNumber = 1;
+  session.state.turnDeadlineMs = nowMs + 22_000;   // 20 s + 2 s lead-in from roomService
+  const timerEl = makeEl();
+  const ctl = createTurnTimerController({
+    bus, root: makeRoot(timerEl, makeEl()), sessionRef: () => session,
+    now: () => nowMs, setIntervalFn: () => 1, clearIntervalFn: () => {},
+  });
+  bus.emit('game/intro-started', {});
+  nowMs = 3_000;
+  ctl.sync();
+  assert.equal(timerEl.textContent, '20', 'frozen at the allowance during the build');
+  bus.emit('game/intro-finished', {});
+  assert.equal(session.state.turnDeadlineMs, 23_000, 'shared deadline untouched');
+  assert.equal(timerEl.textContent, '20', 'lead-in absorbed: full clock when play begins');
+  ctl.dispose();
+});
+
+test('board build: a new GAME_STARTED clears a build that never finished', () => {
+  bus._reset();
+  let nowMs = 1_000;
+  const session = makeSession(nowMs);
+  const timerEl = makeEl();
+  const ctl = createTurnTimerController({
+    bus, root: makeRoot(timerEl, makeEl()), sessionRef: () => session,
+    now: () => nowMs, setIntervalFn: () => 1, clearIntervalFn: () => {},
+  });
+  bus.emit('game/intro-started', {});
+  bus.emit(EV.GAME_STARTED, {});
+  ctl.sync();
+  assert.equal(timerEl.textContent, '10', 'live clock again');
+  ctl.dispose();
+});

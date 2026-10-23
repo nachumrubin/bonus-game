@@ -514,3 +514,39 @@ keeps its own animation (glide only).
 double-tap guard); the outgoing screen is `.hidden` (pointer-events none) from the first
 frame. A new navigation flushes the running entrance immediately.
 
+---
+
+## 16. Build sequences — signature entrances
+
+Two deliberate exceptions to the §15 entrance budget. Timeline: `src/ui/buildTimeline.js`
+(single source of truth; CSS receives every delay/duration as a custom property). Runner:
+`src/ui/buildSequences.js`. Keyframes: `styles.css` §1c.
+
+**Home build — cold launch only** (≈1.9s, starts as the boot loader lifts): game-mode cards
+→ bottom nav rises and each item glows in a sweep → top-bar icons slide in from the left,
+one by one → profile (avatar pop, name, ELO) → the logo flies in from above the screen,
+glows and settles. Every later arrival at home is a §15 back glide. The logo is one image
+for now; per-tile flight waits on per-tile renders (`docs/asset_inventory.md`).
+
+**Board build — new games only** (≈2.1s): the board panel opens from the top-right corner
+(Hebrew reading start) while the cells unfold in a diagonal cascade from that corner →
+boost squares pop in one after the other, clockwise from the top-right corner, each
+glowing → one glow wave runs round all of them (a glow, not the electric boost effect,
+which keeps its meaning) → score strip and cards build from their sides → the rack panel
+rises and the tiles float onto it → buttons. Resumes (moves already played, local save,
+a room this device already built) get a 300ms settle; the tutorial gets nothing.
+
+**Rules both follow**
+- Any pointerdown finishes the build at once and is NOT swallowed: the tap still acts.
+- The board build also finishes on any gameplay event (move, opponent move, turn change,
+  exchange, lock, boost, game over, live preview). Gameplay is never masked.
+- Reduced motion: no build at all.
+- Sounds reuse existing recordings (`build.*` cues), quiet. Pre-gesture audio is blocked
+  by browsers, so a true cold-launch home build is usually silent.
+- **Clock:** the full board build emits `game/intro-started` / `game/intro-finished`.
+  The turn timer shows the full allowance meanwhile and, offline, shifts the deadline by
+  the build's real length; online, the room's first deadline is written with
+  `BOARD_BUILD_LEAD_MS` added (`roomService.markReadyAndMaybeStart`). The bot holds its
+  first move. The live-3D scoreboard waits (`scoreboardLive.hold`) so its WebGL setup
+  doesn't stall the animation.
+

@@ -50,6 +50,13 @@ export function createTurnTimerController({
   // duration of the pause so remaining time is preserved.
   let menuPauseActive = false;
   let menuPauseRemainingMs = 0;
+  // Game-board build (src/ui/buildSequences.js): the clock holds for exactly
+  // as long as the build runs. Offline the locally-built first deadline is
+  // shifted by the build's real length when it finishes; online the room's
+  // first deadline already carries BOARD_BUILD_LEAD_MS (roomService), so the
+  // shared value is left untouched.
+  let introActive = false;
+  let introStartedAt = 0;
 
   // Clear any stale menu-pause state before the per-event sync runs. The
   // controller is created once at app boot and lives for the whole app
@@ -61,6 +68,7 @@ export function createTurnTimerController({
   cleanups.push(bus.on(EV.GAME_STARTED, () => {
     menuPauseActive = false;
     menuPauseRemainingMs = 0;
+    introActive = false;
     if (scoreFreezeTimer != null) clearTimeoutFn?.(scoreFreezeTimer);
     scoreFreezeTimer = null;
     scoreGraceMs = 0;
@@ -91,6 +99,23 @@ export function createTurnTimerController({
   // or auto-bonus overlay → award-acknowledged).
   cleanups.push(bus.on('bonus/pending', pauseForBonus));
   cleanups.push(bus.on('bonus/resolved', resumeFromBonus));
+
+  cleanups.push(bus.on('game/intro-started', () => {
+    if (introActive) return;
+    introActive = true;
+    introStartedAt = now();
+    sync();
+  }));
+  cleanups.push(bus.on('game/intro-finished', () => {
+    if (!introActive) return;
+    introActive = false;
+    const state = sessionRef()?.state;
+    const desc = modeDescriptor(state?.mode);
+    if (state && desc.hasTurnTimer !== true && Number(state.turnDeadlineMs) > 0) {
+      state.turnDeadlineMs = Number(state.turnDeadlineMs) + Math.max(0, now() - introStartedAt);
+    }
+    sync();
+  }));
 
   // Menu pause/resume. Preserves remaining time across the pause.
   cleanups.push(bus.on('game/paused',  freezeForMenuPause));
@@ -298,7 +323,7 @@ export function createTurnTimerController({
     // skip the auto-pass dispatch. We do NOT call ensureDeadline here so
     // state.turnDeadlineMs isn't repeatedly rebuilt while paused; the next
     // resume() will clear it and the next sync will compute a fresh value.
-    if (bonusPauseCount > 0 || scoreGraceMs > 0 || scorePresentations.size > 0) {
+    if (bonusPauseCount > 0 || scoreGraceMs > 0 || scorePresentations.size > 0 || introActive) {
       // Honour the same enabled-check ensureDeadline applies — otherwise a
       // game played without a time-limit would briefly flash the timer
       // (e.g., the per-turn allowance) when this pause activates during a

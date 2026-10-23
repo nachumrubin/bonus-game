@@ -131,6 +131,10 @@ export function attachBotPlayer(session, {
   // bot move while the human is in the "המשחק מושהה" overlay.
   const offGamePaused    = bus.on('game/paused',                  pause);
   const offGameResumed   = bus.on('game/resumed',                 resume);
+  // Game-board build (ui/buildSequences.js): hold the bot's first move until
+  // the board has finished building in front of the player.
+  const offIntroStarted  = bus.on('game/intro-started',           pause);
+  const offIntroFinished = bus.on('game/intro-finished',          resume);
   const offBoostActivated = bus.on(EV.BOOST_ACTIVATED, (payload) => {
     // Every fresh bonus-square activation pops the modal award overlay;
     // pause the bot until the player clicks אישור. `consumed: true` events
@@ -150,6 +154,7 @@ export function attachBotPlayer(session, {
     offTurn(); offGameStarted();
     offBonusPending(); offBonusResolved();
     offGamePaused(); offGameResumed();
+    offIntroStarted(); offIntroFinished();
     offBoostActivated(); offBoostAck();
   }
   // Push the full detach (not just the bus unsubscribes) so session.dispose()

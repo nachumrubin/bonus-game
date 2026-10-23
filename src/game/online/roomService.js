@@ -48,9 +48,14 @@ export function shouldUseSharedTurnTimer(mode, settings = {}) {
 // Deadlines are absolute epoch stamps read by BOTH clients, so they must be
 // written on the shared server clock rather than whichever device happened to
 // commit. See serverClock.js.
-export function initialTurnDeadlineMs(mode, settings = {}, nowMs = serverNow()) {
+//
+// `leadInMs` pushes the FIRST deadline out by the length of the game-board
+// build both clients play at game start (BOARD_BUILD_LEAD_MS), so the opening
+// player doesn't lose that time. Later turns never get a lead-in.
+export function initialTurnDeadlineMs(mode, settings = {}, nowMs = serverNow(), { leadInMs = 0 } = {}) {
   if (!shouldUseSharedTurnTimer(mode, settings)) return null;
-  return Number(nowMs || serverNow()) + turnLimitMsFromSettings(settings);
+  const lead = Math.max(0, Number(leadInMs) || 0);
+  return Number(nowMs || serverNow()) + turnLimitMsFromSettings(settings) + lead;
 }
 
 // Create a new room from an engine state. Used after invite-accept and after
@@ -268,7 +273,7 @@ export async function setReady(db, roomId, slot, ready = true) {
   await db.ref(`${PATH.rooms}/${roomId}/${FIELD.ready}/${slot}`).set(!!ready);
 }
 
-export async function markReadyAndMaybeStart(db, roomId, slot, nowMs = Date.now()) {
+export async function markReadyAndMaybeStart(db, roomId, slot, nowMs = Date.now(), { leadInMs = 0 } = {}) {
   if (!db) throw new Error('markReadyAndMaybeStart: db required');
   if (!roomId) throw new Error('markReadyAndMaybeStart: roomId required');
   if (slot !== 0 && slot !== 1) throw new Error('markReadyAndMaybeStart: bad slot');
@@ -284,7 +289,7 @@ export async function markReadyAndMaybeStart(db, roomId, slot, nowMs = Date.now(
   if (ready[0] && ready[1] && room.status !== STATUS.PLAYING) {
     await roomRef(db, roomId).update({
       status: STATUS.PLAYING,
-      turnDeadlineMs: initialTurnDeadlineMs(room.mode, room.settings ?? {}, nowMs),
+      turnDeadlineMs: initialTurnDeadlineMs(room.mode, room.settings ?? {}, nowMs, { leadInMs }),
       updatedAt: nowMs,
     });
     return readRoom(db, roomId);

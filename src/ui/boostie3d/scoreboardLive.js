@@ -25,13 +25,21 @@ export function createScoreboardLive({
   let board = null, loading = null, off = !enabled, disposed = false;
   let wanted = [];
   let pending = [];          // per slot: the setAvatar promise (ready())
+  // hold(true) defers the heavy part (creating the WebGL board, compiling and
+  // drawing the models) — e.g. while the game-board build animates, so shader
+  // compilation doesn't stall it. Stills show meanwhile; hold(false) applies
+  // the latest wanted avatars.
+  let held = false;
+  let releaseWaiters = [];
+  const whenReleased = () => (held ? new Promise((r) => releaseWaiters.push(r)) : null);
 
   function ensure() {
     if (board || loading || off || disposed) return loading;
     const els = hosts();
     if (!els.length || els.some((el) => !el)) return null;
     loading = importer()
-      .then(({ createScoreboard3d }) => {
+      .then(async ({ createScoreboard3d }) => {
+        await whenReleased();
         if (disposed) return;
         board = createScoreboard3d({ ...look, hosts: els, onFallback: () => { off = true; board = null; } });
         pending = wanted.map((src, i) => board.setAvatar(i, src));
@@ -50,8 +58,16 @@ export function createScoreboardLive({
       if (off || disposed) return;
       if (prefersReducedMotion()) return;
       wanted = (values ?? []).map((v) => modelSrcForAvatar(v));
-      if (board) pending = wanted.map((src, i) => board.setAvatar(i, src));
+      if (board) { if (!held) pending = wanted.map((src, i) => board.setAvatar(i, src)); }
       else if (wanted.some(Boolean)) ensure();
+    },
+    hold(on) {
+      const was = held;
+      held = !!on;
+      if (was && !held) {
+        for (const r of releaseWaiters.splice(0)) r();
+        if (board && !off && !disposed) pending = wanted.map((src, i) => board.setAvatar(i, src));
+      }
     },
     // Resolves once the slot's model has loaded (or failed): true when play() can run.
     async ready(slot) {
@@ -66,6 +82,7 @@ export function createScoreboardLive({
     canPlay(slot) { return !off && !disposed && !!board?.canPlay(slot) && !prefersReducedMotion(); },
     dispose() {
       disposed = true;
+      for (const r of releaseWaiters.splice(0)) r();
       board?.dispose();
       board = null;
     },
