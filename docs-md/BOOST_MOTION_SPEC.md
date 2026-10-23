@@ -476,3 +476,41 @@ Historical investigation, rejected alternatives, completed runtime verification,
 - commit history
 
 Do not copy them back into this contract.
+
+---
+
+## 15. Screen navigation — BOOST GLIDE
+
+Full-screen navigation uses one motion system, BOOST GLIDE. Config: `src/ui/boostGlide.js`
+(mirrored as `--glide-*` / `--reveal-*` on `:root` in `styles.css`; `boostGlide.test.js`
+fails if they drift). DOM wiring: `src/ui/screens/screenTransitions.js` `showScreen()`, the
+single choke point behind `showSc` / `showLegacyScreen` / `goHome`.
+
+**Glide & Settle** (screen ↔ screen): incoming screen starts 34px to one side at opacity 0
+and settles; outgoing screen stays layered underneath (`.hidden.glide-out`) and drifts 22px
+the other way while fading. 270ms, `cubic-bezier(0.2, 0, 0, 1)` (no overshoot). Not a
+full-width slide.
+
+**Direction:** back = target is home, already in the visited history, or shallower in
+`SCREEN_DEPTH`; native back (popstate) is always back; everything else is forward. In RTL
+(`<html dir="rtl">`) forward enters from the LEFT and back from the right — the mirror of
+the LTR convention, matching the right-hand back chip and the left-pointing card chevrons.
+`BOOST_GLIDE.mirrorInRtl = false` switches to the physical LTR convention.
+
+**Cascading Reveal** (content entrance): groups listed in `REVEAL_PLANS` rise 10px and fade
+in, 210ms each, 50ms stagger. Plays only on launch (main menu, replayed when the boot loader
+lifts) and forward entries; forward reveals start 40ms into the glide so they overlap it.
+Never on back navigation, re-shows of the visible screen, Firebase refreshes or tab
+switches. Lists are revealed as one container, never row by row. Every entrance finishes
+inside `MAX_TOTAL_ENTRANCE` (420ms).
+
+**Not glided:** overlays/modals (`.ov` — settings, help/guide, results, matchmaking…) keep
+their own motion; the game screen glides but its content is never staggered; the coin toss
+keeps its own animation (glide only).
+
+**Reduced motion:** no glide classes, no reveal, no entrance timer — an immediate swap.
+
+**Input:** the incoming screen is pointer-blocked for 380ms (`screen-transitioning`,
+double-tap guard); the outgoing screen is `.hidden` (pointer-events none) from the first
+frame. A new navigation flushes the running entrance immediately.
+

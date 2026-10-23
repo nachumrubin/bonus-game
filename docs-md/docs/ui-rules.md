@@ -796,9 +796,23 @@ State transitions:
 
 ## Screen Transitions
 
-Source: `src/ui/screenTransitions.js`
+Source: `src/ui/screens/screenTransitions.js` (DOM wiring) + `src/ui/boostGlide.js` (config,
+direction rules, reveal plans). Contract: `docs-md/BOOST_MOTION_SPEC.md` §15 (BOOST GLIDE).
 
-Unknown / needs verification — specific transition CSS classes and timing not analyzed. File exists at `src/ui/screenTransitions.js`.
+Classes added by `showScreen()` and removed by one cleanup timer (or the next navigation):
+
+| Class | On | Meaning |
+|-------|----|---------|
+| `glide-in` | incoming `.screen` (and `#global-topbar` when returning home) | slides/fades in; `--glide-dir` = ±1 |
+| `glide-out` | outgoing `.screen.hidden` (and `#global-topbar` when leaving home) | stays visible underneath for one glide |
+| `reveal-item` | content groups from `REVEAL_PLANS` | staggered rise-in; `--reveal-delay` |
+| `screen-transitioning` | incoming `.screen` | 380ms pointer block (legacy double-tap guard) |
+
+The home topbar stays `display:''` while it glides out and is hidden when the glide settles.
+`revealCurrentScreen()` replays the main-menu reveal when the boot loader lifts.
+Selectors used by `REVEAL_PLANS` (e.g. `.hlogo`, `.hm-cards`, `.g-hdr`, `.g-scroll`,
+`#home-bottom-nav`, `#mg-tabs`, `.stats-feed`, `.ach-g-summary`) are load-bearing: renaming
+one silently drops that group from the entrance.
 
 ---
 

@@ -1,5 +1,17 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## BOOST GLIDE screen transitions — October 2026
+
+- [x] Glide & Settle + Cascading Reveal for all full screens (`src/ui/boostGlide.js`,
+  `screenTransitions.js`), reduced-motion path, launch reveal after the boot loader.
+- [ ] Confirm the RTL direction on device (forward enters from the left, `mirrorInRtl`).
+  One flag to flip if the product wants the LTR convention.
+- [ ] Hand-test on a real Android device: system back gesture during a glide, low-end GPU
+  frame rate, and the PWA standalone shell.
+- [ ] `tests/e2e/reward-motion.spec.js` samples the ELO count-up at a fixed 460ms and flakes
+  under 4 parallel workers (~1 in 16, also on the base commit). Wait for the final value
+  instead.
+
 ## Full regression run — October 2026
 
 - [x] Soak agents, 40 parallel online games (seed `regress-1022`): 8 sync bugs fixed with

@@ -139,7 +139,7 @@ See `/partials/screens/` for corresponding HTML templates.
 **Gameplay:** `gameScreen.js`, `pauseScreen.js`, `resignConfirmScreen.js`, `backConfirmScreen.js`, `coinTossScreen.js`, `endGameScreen.js`, `disconnectScreen.js`, `bonusIntroScreen.js`, `bonusSpectatorScreen.js`, `boostVetoScreen.js`, `boostBadges.js`
 **User Management:** `authScreens.js`, `profileScreen.js`, `avatarScreens.js`, `friendsScreen.js`, `notificationsScreen.js`, `championsScreen.js`, `statsScreen.js`, `dictionaryScreen.js`, `settingsScreen.js`
 **Mini-Games:** `miniGames/bonusTimer.js`, `miniGames/unscrambleMiniGame.js`, `miniGames/fillMiddleMiniGame.js`, `miniGames/crosswordMiniGame.js`, `miniGames/crossingWordsMiniGame.js`, `miniGames/honeycombMiniGame.js`, `miniGames/wheelMiniGame.js`, `miniGames/hiddenWordMiniGame.js`, `miniGames/letterSpinnerMiniGame.js`
-**Utilities:** `screenTransitions.js`, `jokerPicker.js`
+**Utilities:** `screenTransitions.js` (BOOST GLIDE screen navigation: glide, reveal, pointer block), `jokerPicker.js`
 
 ### `src/notifications/`
 | File | Role |
@@ -158,6 +158,7 @@ See `/partials/screens/` for corresponding HTML templates.
 | `feedbackService.js` | Haptic/visual feedback. |
 | `bootLoadingState.js` | Boot-loader progress vs offline/fail copy. Used by `wireAppLoading()` in `main.js`. |
 | `domHelpers.js` | DOM utility functions. Includes `flashAnimation()` (shared reflow-restart primitive) and `bonusOverlayOpen()` (shared bonus-overlay predicate). |
+| `boostGlide.js` | BOOST GLIDE config (glide/reveal timings, offsets, easing), navigation direction rules and per-screen reveal plans. Pure; DOM wiring in `screens/screenTransitions.js`. |
 | `motionTokens.js` | Canonical motion vocabulary — duration/easing/press-scale constants, mirrored as `:root` CSS custom properties. |
 | `motionPreference.js` | Single source of truth for the effective reduced-motion preference (explicit tri-state → legacy flag → OS → normal); stamps `data-reduced-motion` on the root. |
 | `scoreAnimationTimings.js` | Shared score-sequence timing: `mergeSequenceTiming()` choreography + `scoreInteractionGateMs`/`scoreClockGraceMs` (visual-gate vs clock-fairness, with reduced-motion floors). |
