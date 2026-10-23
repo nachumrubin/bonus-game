@@ -17,6 +17,13 @@
   --ease-bounce:cubic-bezier(0.34,1.56,0.64,1);
   --press-scale-control:0.96; --press-scale-tile:0.92;
 }
+/* BOOST GLIDE tokens — mirror of src/ui/boostGlide.js (boostGlide.test.js
+   fails if these drift from the JS config). */
+:root{
+  --glide-duration:270ms; --glide-in-offset:34px; --glide-out-offset:22px;
+  --glide-ease:cubic-bezier(0.2, 0, 0, 1);
+  --reveal-offset:10px; --reveal-duration:210ms; --reveal-initial-opacity:0;
+}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 *{scrollbar-width:none!important;-ms-overflow-style:none!important;}
 *::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}
@@ -1840,34 +1847,59 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   transition-duration: 0.01ms !important;
 }
 
-/* ── 1. Screen transition ── */
-@keyframes screenIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ── 1. Screen transition — BOOST GLIDE ──
+   Glide & Settle (horizontal navigation) + Cascading Reveal (staggered
+   content entrance). Classes are added/removed by
+   src/ui/screens/screenTransitions.js; values come from the --glide-* /
+   --reveal-* tokens on :root (mirror of src/ui/boostGlide.js).
+   --glide-dir is set per element by JS: +1 = incoming starts to the right,
+   -1 = to the left (already accounts for back navigation and RTL). The
+   incoming screen sits on top and fades up; the outgoing one stays visible
+   underneath for one glide (overriding .hidden's visibility) and drifts the
+   opposite way while fading, so there is never an empty frame. */
+@keyframes boostGlideIn {
+  from { opacity: 0; transform: translate3d(calc(var(--glide-in-offset) * var(--glide-dir, 1)), 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
-.screen-enter { animation: screenIn 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+@keyframes boostGlideOutMove {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(calc(var(--glide-out-offset) * var(--glide-dir, 1) * -1), 0, 0); }
+}
+@keyframes boostGlideOutFade {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.screen.glide-in {
+  z-index: 2;
+  animation: boostGlideIn var(--glide-duration) var(--glide-ease) both;
+  will-change: transform, opacity;
+}
+.screen.hidden.glide-out {
+  visibility: visible;
+  transition: none;
+  animation:
+    boostGlideOutMove var(--glide-duration) var(--glide-ease) both,
+    boostGlideOutFade var(--glide-duration) linear both;
+  will-change: transform, opacity;
+}
+/* The home topbar (outside #sh) travels with the home screen. */
+#global-topbar.glide-in  { animation: boostGlideIn var(--glide-duration) var(--glide-ease) both; }
+#global-topbar.glide-out {
+  pointer-events: none;
+  animation:
+    boostGlideOutMove var(--glide-duration) var(--glide-ease) both,
+    boostGlideOutFade var(--glide-duration) linear both;
+}
+#global-topbar.glide-out * { pointer-events: none; }
 
-/* ── 2. Menu entrance ── */
-@keyframes menuLogoIn {
-  from { opacity: 0; transform: translateY(-20px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ── 2. Cascading Reveal ── */
+@keyframes boostReveal {
+  from { opacity: var(--reveal-initial-opacity); transform: translate3d(0, var(--reveal-offset), 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
-.menu-logo-enter { animation: menuLogoIn 0.5s cubic-bezier(0.22,1,0.36,1) both; }
-
-@keyframes menuBtnIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+html .reveal-item {
+  animation: boostReveal var(--reveal-duration) var(--glide-ease) var(--reveal-delay, 0ms) both;
 }
-.hbtns.menu-enter .bd              { animation: menuBtnIn 0.4s cubic-bezier(0.22,1,0.36,1) both; pointer-events: none; }
-.hbtns.menu-enter .bd:nth-child(1) { animation-delay: 0.08s; }
-.hbtns.menu-enter .bd:nth-child(2) { animation-delay: 0.14s; }
-.hbtns.menu-enter .bd:nth-child(3) { animation-delay: 0.20s; }
-.hbtns.menu-enter .bd:nth-child(4) { animation-delay: 0.26s; }
-.hbtns.menu-enter .bd:nth-child(5) { animation-delay: 0.32s; }
-.hbtns.menu-enter .bd:nth-child(6) { animation-delay: 0.38s; }
-.hbtns.menu-enter .bd:nth-child(7) { animation-delay: 0.44s; }
-.hbtns.menu-enter .bd:nth-child(8) { animation-delay: 0.50s; }
-.hbtns.menu-enter .bd:nth-child(9) { animation-delay: 0.56s; }
 
 /* ── 3. Tile placement pop ── */
 @keyframes tilePlaceIn {
@@ -4531,7 +4563,6 @@ button[aria-disabled="true"] {
 .section-title-bar::before,.section-title-bar::after{content:'';flex:1;height:1px;background:rgba(0,180,255,.35);}
 
 /* ── Profile Screen ─────────────────────────────────────────────────── */
-@keyframes pf-enter{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 #sprofile{
   justify-content:flex-start;
   padding-bottom:max(10px,env(safe-area-inset-bottom));
@@ -4643,16 +4674,7 @@ button[aria-disabled="true"] {
 .pf-btn-dark{background:linear-gradient(180deg,#223f5a,#122433);border:1.5px solid rgba(0,160,255,.22);color:rgba(255,255,255,.88);box-shadow:0 4px 0 #0a1820,0 6px 18px rgba(0,0,0,.4);}
 .pf-btn-red{background:linear-gradient(180deg,#d05050,#8a2020);border:1.5px solid rgba(255,100,100,.28);color:#fff;box-shadow:0 4px 0 #4a0e0e,0 8px 28px rgba(180,30,30,.32);}
 .pf-btn-gold{background:linear-gradient(180deg,#daa030,#a07018);border:1.5px solid rgba(255,210,80,.35);color:#1a0e00;box-shadow:0 4px 0 #6a4a0a;}
-/* Stagger entrance animation */
-#sprofile:not(.hidden) .pf-av-section  {animation:pf-enter .32s ease both .04s}
-#sprofile:not(.hidden) .pf-name-section{animation:pf-enter .32s ease both .10s}
-#sprofile:not(.hidden) .pf-stats       {animation:pf-enter .32s ease both .16s}
-#sprofile:not(.hidden) .pf-email       {animation:pf-enter .32s ease both .20s}
-#sprofile:not(.hidden) .pf-btns>:nth-child(1){animation:pf-enter .30s ease both .22s}
-#sprofile:not(.hidden) .pf-btns>:nth-child(2){animation:pf-enter .30s ease both .28s}
-#sprofile:not(.hidden) .pf-btns>:nth-child(3){animation:pf-enter .30s ease both .34s}
-#sprofile:not(.hidden) .pf-btns>:nth-child(4){animation:pf-enter .30s ease both .40s}
-#sprofile:not(.hidden) .pf-btns>:nth-child(5){animation:pf-enter .30s ease both .46s}
+/* (Legacy per-screen stagger removed — screen entrances are owned by BOOST GLIDE, src/ui/boostGlide.js.) */
 
 /* ── Admin Screen (#sadmin) ────────────────────────────────────────────────── */
 .adm-topbar-icon{font-size:18px;line-height:1;display:block;}

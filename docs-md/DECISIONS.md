@@ -5,6 +5,24 @@
 
 ---
 
+## D-boost-glide: one navigation motion system, mirrored for RTL — October 2026
+
+**Decision:** every full-screen navigation goes through `showScreen()` and uses BOOST GLIDE
+(small 34/22px glide + cross-fade, 270ms; staggered content reveal on launch/forward
+entries only). Config lives in `src/ui/boostGlide.js`. In RTL forward enters from the left.
+The old per-screen entrances (`screenIn`, `menuLogoIn`/`menuBtnIn`, `hm-card-enter`,
+`#sfriends`/`#sprofile` `:not(.hidden)` staggers) were removed.
+
+**Why:** the old entrances replayed on every show (including back and re-renders), used
+different curves per screen and staggered list rows. The direction is mirrored because the
+UI already encodes RTL navigation: the back chip sits on the right pointing right and the
+home cards' chevrons point left. The brief described the LTR convention; flipping
+`BOOST_GLIDE.mirrorInRtl` restores it with no other change. Direction is inferred inside the
+transition module (visited history + `SCREEN_DEPTH`) because inline `goHome()` / back chips
+call `showSc` directly and bypass `main.js`'s `_scStack`.
+
+---
+
 ## D-terminal-by-server-read: conflicting game-over statuses are settled by reading the room — October 2026
 
 **Decision:** once a client holds a terminal status, a snapshot carrying a *different*

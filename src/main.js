@@ -76,7 +76,7 @@ import { createTutorialController } from './ui/controllers/tutorialController.js
 import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/controllers/onboardingController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
-import { showScreen as spineShowScreen, SCREEN_IDS } from './ui/screens/screenTransitions.js';
+import { showScreen as spineShowScreen, revealCurrentScreen, SCREEN_IDS } from './ui/screens/screenTransitions.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './ui/screens/menuScreen.js';
 import { mountHelpDropdown } from './ui/screens/helpDropdown.js';
 import { mountGuideScreen } from './ui/screens/guideScreen.js';
@@ -316,6 +316,9 @@ function wireAppLoading() {
     // Remove after the fade transition so it can't intercept clicks
     // even if `pointer-events:none` fails.
     setTimeout(() => el.remove?.(), 600);
+    // Cold launch: the first showScreen('sh') ran under the loader, so play
+    // the main-menu Cascading Reveal now, as the loader fades away.
+    try { revealCurrentScreen({ doc, reducedMotion: () => getMotionPreference().isReduced() }); } catch { /* swallow */ }
     if (off) { try { off(); } catch {} off = null; }
   }
   off = bus.on(MENU_REFRESH, (payload = {}) => {
@@ -3987,7 +3990,9 @@ async function boot() {
     bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: id });
     const showSc = globalThis.showSc;
     if (typeof showSc === 'function') {
-      try { showSc(id); return; } catch { /* swallow */ }
+      // Native back (popstate) is always a backward glide, whatever the
+      // transition module would infer from its own history.
+      try { showSc(id, _scBack ? { direction: 'back' } : undefined); return; } catch { /* swallow */ }
     }
     const screens = SCREEN_IDS;
     for (const s of screens) {
@@ -5065,11 +5070,11 @@ async function boot() {
   if (demo === 'offline2p') globalThis.__spine.bootOffline2P();
   else if (demo === 'bot') globalThis.__spine.bootOfflineBot();
   else {
-    // First-paint entrance animation. The home screen partial starts visible
-    // without `.menu-enter` / `.menu-logo-enter`, so the slide-in only fires
-    // when something later calls showScreen('sh'). Trigger it once here so
-    // the buttons cascade in on initial load too.
-    spineShowScreen('sh', { doc: globalThis.document });
+    // Put the home screen on stage. This is BOOST GLIDE's 'launch' entrance
+    // (no outgoing screen → Cascading Reveal only); because the boot loader
+    // still covers it, wireAppLoading's hide() replays the reveal via
+    // revealCurrentScreen() as the loader fades out.
+    spineShowScreen('sh', { doc: globalThis.document, reducedMotion: () => getMotionPreference().isReduced() });
     if (params.get('open') === 'notifications') {
       bus.emit(MENU_INTENT.OPEN_NOTIFICATIONS);
       params.delete('open');
@@ -5165,8 +5170,12 @@ function installCutoverGlobals() {
     globalThis.document?.getElementById?.('ov-bonus')?.classList?.add('hidden');
     try { bus.emit(MINIGAME_CLOSED, {}); } catch { /* swallow */ }
   };
-  globalThis.showSc = globalThis.showSc ?? function showSc(id) {
-    spineShowScreen(id, { doc: globalThis.document });
+  globalThis.showSc = globalThis.showSc ?? function showSc(id, opts = {}) {
+    spineShowScreen(id, {
+      doc: globalThis.document,
+      direction: opts?.direction,
+      reducedMotion: () => getMotionPreference().isReduced(),
+    });
     scheduleBasicLayoutRefresh();
   };
   globalThis.goHome = globalThis.goHome ?? function goHome() {

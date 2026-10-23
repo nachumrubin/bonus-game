@@ -2,6 +2,33 @@
 
 ---
 
+## BOOST GLIDE — screen transition system (October 2026)
+
+Navigation between full screens now glides instead of hard-cutting, and screen content
+enters in a short stagger. Spec: `BOOST_MOTION_SPEC.md` §15; decision `D-boost-glide`.
+
+- **New `src/ui/boostGlide.js`**: config (270ms, 34px in / 22px out,
+  `cubic-bezier(0.2,0,0,1)`; reveal 10px / 210ms / 50ms stagger; 420ms max entrance),
+  direction rules (`resolveDirection`, `nextHistory`, `glideSign`) and `REVEAL_PLANS` for
+  home, online lobby, setup, friends, my games, stats, achievements, profile,
+  notifications, avatar store and auth.
+- **`screenTransitions.showScreen()`** adds `glide-in` / `glide-out` / `reveal-item` and
+  removes them with one cleanup timer; a new navigation flushes the running one. Re-showing
+  the visible screen is a no-op (no replay on re-render). The home topbar glides with `#sh`
+  instead of vanishing. New `revealCurrentScreen()`, called when the boot loader lifts, so
+  the cold-launch menu reveal is actually seen. The 380ms pointer block is unchanged.
+- **`main.js`**: `showSc(id, { direction })`; popstate passes `direction: 'back'`; the
+  reduced-motion predicate comes from `motionPreference` (reduced → immediate swap).
+- **CSS**: `--glide-*` / `--reveal-*` tokens and the glide/reveal keyframes replace
+  `screenIn`, `menuLogoIn`, `menuBtnIn` (`styles.css`). Removed the conflicting old
+  entrances: `.hm-card` `hm-card-enter`, `#sfriends` `fr-enter`, `#sprofile` `pf-enter`.
+- **Tests**: `boostGlide.test.js` (config envelope, CSS/JS token parity, plans inside the
+  budget, direction rules) and a rewritten `screenTransitions.test.js` (lifecycle,
+  RTL/LTR direction, back without replay, interruption, reduced motion, game screen, launch
+  replay).
+
+---
+
 ## Full regression run: online sync fixes, guest overlay, bot-vs-bot E2E (October 2026)
 
 A pre-release regression pass. It used the soak agents (40 parallel online games per run on

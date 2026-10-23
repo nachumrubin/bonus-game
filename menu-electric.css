@@ -776,8 +776,6 @@
   position: relative;
   overflow: hidden;
   transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.18s ease;
-  opacity: 0;
-  animation: hm-card-enter 0.28s ease forwards;
   text-align: right;
   box-sizing: border-box;
 }
@@ -942,14 +940,7 @@
 }
 
 /* Entrance animation — staggered fade-up per card */
-@keyframes hm-card-enter {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hm-card { animation: none; opacity: 1; }
-}
+/* Card entrance is owned by BOOST GLIDE's Cascading Reveal (src/ui/boostGlide.js). */
 
 /* Short-display (≤ 620 px height): hide subtitles, tighten gaps */
 @media (max-height: 620px) {
@@ -1519,19 +1510,7 @@
 }
 .fr-back-btn:hover { color: rgba(255,255,255,.55); }
 
-/* ── Entrance animations ── */
-@keyframes fr-enter {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-#sfriends:not(.hidden) .fr-screen-header { animation: fr-enter .24s ease both .04s; }
-#sfriends:not(.hidden) .fr-code-card     { animation: fr-enter .28s ease both .10s; }
-#sfriends:not(.hidden) .fr-add-section   { animation: fr-enter .28s ease both .16s; }
-#sfriends:not(.hidden) .fr-invite-card   { animation: fr-enter .28s ease both .22s; }
-#sfriends:not(.hidden) .fr-friends-list > .fr-friend-card:nth-child(1) { animation: fr-enter .24s ease both .22s; }
-#sfriends:not(.hidden) .fr-friends-list > .fr-friend-card:nth-child(2) { animation: fr-enter .24s ease both .27s; }
-#sfriends:not(.hidden) .fr-friends-list > .fr-friend-card:nth-child(3) { animation: fr-enter .24s ease both .32s; }
-#sfriends:not(.hidden) .fr-friends-list > .fr-friend-card:nth-child(4) { animation: fr-enter .24s ease both .37s; }
+/* ── Entrance animations: owned by BOOST GLIDE (src/ui/boostGlide.js) ── */
 
 /* ── Friend Detail Overlay — Premium Redesign ───────────────────── */
 
