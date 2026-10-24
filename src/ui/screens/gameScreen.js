@@ -1736,7 +1736,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         flashClass($(`#sb${winnerSlot + 1}`, root), 'score-panel-arrive', 540);
         flashClass($(`#is-sb${winnerSlot + 1}`, root), 'score-panel-arrive', 540);
       },
-      overlayCardIn:      () => {/* CSS auto-runs `.ov:not(.hidden) > .ovc`; overlay show handled by endGameScreen */},
+      overlayCardIn:      () => {/* shared overlay motion is pure CSS (styles.css §10); overlay show handled by endGameScreen */},
       bagBounce:          () => flashClass($('#bag-display', root), 'bag-bounce', 600),
       tileCascadeIn:      () => {
         animateNextRackRender = true;

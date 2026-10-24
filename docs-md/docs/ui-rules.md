@@ -542,7 +542,7 @@ The renderer (in `gameScreen.js`) implements each directive as a DOM operation.
 | `turnEffectBanner` | Turn-flow notice ("you lost your turn" / "opponent plays again") |
 | `playerGlowPulse` | Active player glow |
 | `scorePanelArrive` | Score panel entrance animation |
-| `overlayCardIn` | Overlay card entrance |
+| `overlayCardIn` | Overlay card entrance (no-op: the shared overlay motion is pure CSS, styles.css §10) |
 | `bagBounce` | Tile bag bounce |
 | `avatarBoostReact` | Booster's avatar: small push + edge glow (secondary to the board ignition) |
 | `avatarGoodMove` | Mover's avatar nods when a ≥ `GOOD_MOVE_SCORE` (40) sum lands (`delayMs` = panel landing) |

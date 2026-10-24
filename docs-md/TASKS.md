@@ -10,6 +10,11 @@
   over. Layers in `assets/ui/logo_tiles/` from `Blender designs/logo/render_logo_tiles.py`.
 - [x] Home logo: tap replays the lightning strike; idle crack pulse every ≈30s.
 - [x] Game-mode cards grow into their screens (card morph) and shrink back on return.
+- [x] One shared entrance + exit for every overlay (dialog / sheet / panel shapes).
+- [ ] Phone check of the overlay exit: content that a controller clears right after
+  `ovClose` (if any) would be visible for 180ms during the exit. Fix per overlay if seen.
+- [ ] Pre-existing e2e failure: `spine-boot.spec.js:71` clicks `#ss button` with text
+  'שחק', which matches 2 buttons (strict-mode violation). Fails on main too.
 - [ ] Phone check of the card morph: clip-path animation smoothness on a cheap Android,
   and the iOS swipe-back gesture during the shrink. Candidate next step: the same morph
   for the home "your turn" strip → My Games.

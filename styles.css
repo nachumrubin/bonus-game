@@ -23,6 +23,10 @@
   --glide-duration:270ms; --glide-in-offset:34px; --glide-out-offset:22px;
   --glide-ease:cubic-bezier(0.2, 0, 0, 1);
   --reveal-offset:10px; --reveal-duration:210ms; --reveal-initial-opacity:0;
+  /* overlay motion (OVERLAY_MOTION) */
+  --ov-in:280ms; --ov-out:180ms;
+  --ov-ease-in:cubic-bezier(0.2, 0, 0, 1); --ov-ease-out:cubic-bezier(0.4, 0, 1, 1);
+  --ov-dialog-scale:0.94; --ov-dialog-offset:10px; --ov-sheet-offset:48px; --ov-panel-offset:24px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 *{scrollbar-width:none!important;-ms-overflow-style:none!important;}
@@ -590,7 +594,7 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 
 /* ── OVERLAYS ── */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity .2s,visibility 0s;}
-.ov.hidden{opacity:0;pointer-events:none;visibility:hidden;transition:opacity .2s,visibility 0s linear .2s;}
+.ov.hidden{opacity:0;pointer-events:none;visibility:hidden;transition:opacity var(--ov-out) linear,visibility 0s linear var(--ov-out);}
 #lb-info.hidden,#lb-boosts-wrap.hidden,#lb-boost-desc.hidden{display:none;}
 .ovc{background:rgba(6,19,61,.94);border:2px solid rgba(255,255,255,.18);border-radius:16px;padding:15px 14px 18px;width:90%;max-width:460px;max-height:90vh;overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 20px 50px rgba(0,0,0,.5);}
 
@@ -2545,13 +2549,27 @@ html .hlogo .hl-tiles .hl-layer > img {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ── 10. Overlay card entrance ── */
-@keyframes overlayCardIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: none; }
+/* ── 10. Overlay motion — one entrance + exit for every .ov (OVERLAY_MOTION) ──
+   Transitions, not keyframes: the card rests at its "away" pose while the
+   overlay is .hidden and transitions to/from it, so a close mid-open simply
+   reverses. The timing comes from the state being entered (open: --ov-in,
+   decelerate; close: --ov-out, accelerate, done before the overlay turns
+   visibility:hidden). On close the backdrop's (linear) fade carries the
+   card's fade too, so the card itself only moves and drops its opacity at the
+   end — fading both would hide the card before it had visibly moved. Shape: dialog (default) scales up from just below,
+   .g-sheet rises, .g-full rises a little. A signature entrance (results,
+   achievement unlock) may still animate the card; it is dropped on close so
+   every overlay leaves the same way. Reduced motion: the global blanket. */
+.ov > .ovc {
+  --ov-away: translateY(var(--ov-dialog-offset)) scale(var(--ov-dialog-scale));
+  transition: opacity var(--ov-in) var(--ov-ease-in), transform var(--ov-in) var(--ov-ease-in);
 }
-.ov:not(.hidden) > .ovc {
-  animation: overlayCardIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
+.ov > .ovc.g-sheet { --ov-away: translateY(var(--ov-sheet-offset)); }
+.ov > .ovc.g-full  { --ov-away: translateY(var(--ov-panel-offset)); }
+.ov.hidden > .ovc {
+  opacity: 0; transform: var(--ov-away);
+  transition: transform var(--ov-out) var(--ov-ease-out), opacity 0s linear var(--ov-out);
+  animation-name: none !important;
 }
 
 /* ── Screen-transitioning: blocks ALL pointer events on screen + descendants

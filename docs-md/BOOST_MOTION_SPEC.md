@@ -514,8 +514,20 @@ card fades back in where it is). Only once per opening: any other way out of tha
 drops the way back. No staggered reveal on a morph (it brings its content in itself).
 Reduced motion: plain swap.
 
-**Not glided:** overlays/modals (`.ov` — settings, help/guide, results, matchmaking…) keep
-their own motion; the game screen glides but its content is never staggered; the coin toss
+**Overlay motion** (`OVERLAY_MOTION` in `boostGlide.js`, `--ov-*` tokens, styles.css §10):
+overlays/modals (`.ov` — settings, help/guide, results, matchmaking…) are not glided; they all
+share one entrance and one exit, in CSS alone (transitions keyed off `.hidden`, so `ovOpen` /
+`ovClose` and every `classList` toggle get it for free, and a close mid-open just reverses).
+Open, 280ms with the glide's deceleration: the backdrop fades in and the card arrives by
+shape: a dialog (`.ovc`) scales .94→1 from 10px below, a sheet (`.g-sheet`) rises 48px, a
+full panel (`.g-full`) rises 24px. Close, 180ms, accelerating: the card goes back to that
+pose while the backdrop fades linearly (it carries the card's fade too); it ends exactly when
+the overlay turns `visibility:hidden`. Signature entrances (results `#ov-end`, achievement
+unlock) still play on open but are dropped on close, so every overlay leaves the same way.
+No overlay may add its own `:not(.hidden) > .ovc` keyframe entrance (boostGlide.test.js).
+Reduced motion: the global blanket (instant).
+
+**Not glided:** the game screen glides but its content is never staggered; the coin toss
 keeps its own animation (glide only).
 
 **Reduced motion:** no glide classes, no reveal, no entrance timer — an immediate swap.

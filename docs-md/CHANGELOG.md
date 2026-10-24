@@ -2,6 +2,22 @@
 
 ---
 
+## One entrance and exit for every overlay (October 2026)
+
+- Overlays used to come in four different ways (dialog scale-in 300ms, sheets slide-up
+  320ms, bonus/exchange pop-up 250–280ms) and had no exit: the card vanished with the
+  backdrop fade. Now every `.ov` overlay shares one motion: open 280ms (dialog scales up
+  from just below, `.g-sheet` rises 48px, `.g-full` rises 24px), close 180ms back to that
+  pose while the backdrop fades. A close mid-open reverses smoothly.
+- Pure CSS transitions keyed off `.hidden` (styles.css §10), so every `ovOpen`/`ovClose` and
+  `classList` toggle gets it without JS changes. Values: `OVERLAY_MOTION` (boostGlide.js),
+  mirrored as `--ov-*` tokens; the backdrop's `visibility:hidden` delay is `--ov-out`.
+  Removed the per-overlay entrances (`overlayCardIn`, `gSheetUp` list, `bzPopupIn` on
+  `#ov-bonus`/`#ov-bonus-intro`/`#ov-exch`). Results and achievement-unlock keep their
+  signature entrance; it is dropped on close so they leave like the rest.
+- Test: `boostGlide.test.js` checks the tokens, the hide delay, and that no overlay adds a
+  private `:not(.hidden) > .ovc` keyframe entrance again.
+
 ## Game-mode cards grow into their screens (October 2026)
 
 - Tapping a home game-mode card (online / vs bot / two players) no longer glides to the

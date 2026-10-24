@@ -57,6 +57,25 @@ export const CARD_MORPH = Object.freeze({
 // navigation must finish its visual sequence inside this window (≈400ms).
 export const MAX_TOTAL_ENTRANCE = 420;
 
+// ── Overlay motion — one entrance and one exit for every `.ov` overlay ──
+// CSS only (no JS hook): the overlay's backdrop fades and its card (`.ovc`)
+// moves in from a resting offset that depends on its shape — a dialog scales
+// up from just below, a bottom sheet (`.g-sheet`) rises, a full panel
+// (`.g-full`) rises a little. Closing reverses it, faster, and ends before the
+// overlay turns `visibility:hidden` (`outDuration`). Mirrored as --ov-* tokens
+// in styles.css; signature overlays (results, achievement unlock) keep their
+// own entrance but share the exit.
+export const OVERLAY_MOTION = Object.freeze({
+  inDuration: 280,
+  outDuration: 180,
+  inEasing: 'cubic-bezier(0.2, 0, 0, 1)',   // the glide's deceleration
+  outEasing: 'cubic-bezier(0.4, 0, 1, 1)',  // accelerate away
+  dialogScale: 0.94,
+  dialogOffset: 10,  // px
+  sheetOffset: 48,   // px
+  panelOffset: 24,   // px
+});
+
 // Classes a screen carries while it is still arriving (BOOST GLIDE's incoming
 // glide, the home build). Heavy per-screen work — e.g. starting a live-3D
 // Boostie, whose WebGL setup is one long frame — waits until they are gone so
