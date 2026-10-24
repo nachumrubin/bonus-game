@@ -815,7 +815,8 @@ Classes added by `showScreen()` and removed by one cleanup timer (or the next na
 The home topbar stays `display:''` while it glides out and is hidden when the glide settles.
 
 **Build sequences** (`src/ui/buildSequences.js`, BOOST_MOTION_SPEC §16) add `hb-*` classes
-on home (`hb-rise`, `hb-glow`, `hb-slide`, `hb-pop`, `hb-logo`, `hb-logo-glow`; the tile-built
+for the card morph (`morph-in`, `morph-out`, `morph-close`, `morph-under`, `.ct-ghost`, set and
+cleared by `screenTransitions.js`; the home `.hm-card` buttons arm it), on home (`hb-rise`, `hb-glow`, `hb-slide`, `hb-pop`, `hb-logo`, `hb-logo-glow`; the tile-built
 logo adds `hb-logo-tiles` on `.hlogo` plus a transient `.hl-tiles` stack of `.hl-layer`s laid
 over `img.hl-img`, removed when the build ends; the same stack serves the tap replay, and
 the idle crack pulse uses `hb-logo-over` + `.hl-tiles.is-overlay` with one `.hb-crack-idle`

@@ -9,6 +9,10 @@
   from the same sides to build the logo, lightning splits the ס, and the single image takes
   over. Layers in `assets/ui/logo_tiles/` from `Blender designs/logo/render_logo_tiles.py`.
 - [x] Home logo: tap replays the lightning strike; idle crack pulse every ≈30s.
+- [x] Game-mode cards grow into their screens (card morph) and shrink back on return.
+- [ ] Phone check of the card morph: clip-path animation smoothness on a cheap Android,
+  and the iOS swipe-back gesture during the shrink. Candidate next step: the same morph
+  for the home "your turn" strip → My Games.
 - [ ] Phone check of the logo tap replay (does a cheap Android keep up with the layer
   stack mid-scroll?) and whether the idle pulse every ≈30s feels alive or nagging.
 - [ ] Hand-check the loader exit + logo build on a real phone (smoothness of the 4 flying

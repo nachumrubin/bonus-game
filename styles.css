@@ -1892,6 +1892,49 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 }
 #global-topbar.glide-out * { pointer-events: none; }
 
+/* ── 1b. Card morph — a home game-mode card becomes its screen ──
+   src/ui/screens/screenTransitions.js (CARD_MORPH in boostGlide.js). --ct-clip
+   is the card's outline on the screen; --ct-dur / --ct-ease the timing. The
+   growing screen carries a glass skin (::after, the card's own surface) that
+   fades as its content fades in; .ct-ghost is a copy of the card. */
+@keyframes ctGrow   { from { clip-path: var(--ct-clip); } to { clip-path: inset(0 round 0px); } }
+@keyframes ctShrink { from { clip-path: inset(0 round 0px); } to { clip-path: var(--ct-clip); } }
+@keyframes ctContentIn  { 0%, 18% { opacity: 0; transform: translate3d(0, 10px, 0); } 75%, 100% { opacity: 1; transform: none; } }
+@keyframes ctContentOut { 0% { opacity: 1; } 45%, 100% { opacity: 0; } }
+@keyframes ctSkinOut { 0%, 15% { opacity: 1; } 60%, 100% { opacity: 0; } }
+@keyframes ctSkinIn  { 0%, 35% { opacity: 0; } 80%, 100% { opacity: 1; } }
+@keyframes ctGhostOut { 0% { opacity: 1; transform: none; } 35%, 100% { opacity: 0; transform: scale(1.04); } }
+@keyframes ctGhostIn  { 0%, 50% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes ctRecede { to   { transform: scale(.95); filter: brightness(.55); } }
+@keyframes ctReturn { from { transform: scale(.95); filter: brightness(.55); } }
+.screen.morph-in, .screen.hidden.morph-close {
+  z-index: 2; visibility: visible; opacity: 1; transition: none;
+  animation: ctGrow var(--ct-dur) var(--ct-ease) both; will-change: clip-path;
+}
+.screen.hidden.morph-close { animation-name: ctShrink; pointer-events: none; }
+.screen.morph-in::after, .screen.morph-close::after {
+  content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%), var(--sg-glass, rgba(255,255,255,.06));
+  animation: ctSkinOut var(--ct-dur) linear both;
+}
+.screen.morph-close::after { animation-name: ctSkinIn; }
+.screen.morph-in > :not(.ct-ghost)    { animation: ctContentIn var(--ct-dur) var(--ct-ease) both; }
+.screen.morph-close > :not(.ct-ghost) { animation: ctContentOut var(--ct-dur) linear both; }
+.screen .ct-ghost { z-index: 5; pointer-events: none; animation: ctGhostOut var(--ct-dur) var(--ct-ease) both; }
+.screen.morph-close .ct-ghost { animation-name: ctGhostIn; animation-timing-function: linear; }
+.screen.hidden.morph-out {
+  visibility: visible; opacity: 1; transition: none; transform-origin: 50% 50%;
+  animation: ctRecede var(--ct-dur) var(--ct-ease) both;
+}
+.screen.morph-under { transform-origin: 50% 50%; animation: ctReturn var(--ct-dur) var(--ct-ease) both; }
+/* The home topbar sits above every screen, so it gets out of the growing
+   screen's way early and comes back only once the screen is nearly the card. */
+@keyframes ctTopbarOut { 0% { opacity: 1; } 35%, 100% { opacity: 0; } }
+@keyframes ctTopbarIn  { 0%, 60% { opacity: 0; } 100% { opacity: 1; } }
+#global-topbar.morph-out   { pointer-events: none; animation: ctTopbarOut var(--ct-dur) linear both; }
+#global-topbar.morph-out * { pointer-events: none; }
+#global-topbar.morph-under { animation: ctTopbarIn var(--ct-dur) linear both; }
+
 /* ── 2. Cascading Reveal ── */
 @keyframes boostReveal {
   from { opacity: var(--reveal-initial-opacity); transform: translate3d(0, var(--reveal-offset), 0); }

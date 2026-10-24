@@ -2,6 +2,19 @@
 
 ---
 
+## Game-mode cards grow into their screens (October 2026)
+
+- Tapping a home game-mode card (online / vs bot / two players) no longer glides to the
+  next screen: the screen grows out of the card itself (a container transform). Its
+  clip-path starts as the card's outline and opens to full screen in 380ms; a copy of the card
+  fades out, the content fades in, home recedes and its top bar fades away. Going back to
+  home from that screen shrinks it into the card again (340ms).
+- `CARD_MORPH` (boostGlide.js); `armCardMorph` + the morph branch of `showScreen`
+  (screenTransitions.js); the cards arm it in `menuScreen.js`. A tap is good for 600ms and
+  one navigation; the way back holds only while the card's screen is showing. Interrupts
+  flush it like a glide; reduced motion is a plain swap. Keyframes: styles.css §1b.
+- Tests: 5 new in `screenTransitions.test.js`.
+
 ## The home logo answers a tap and sparks now and then (October 2026)
 
 - **Tap the logo:** the split ס closes up into one piece, then lightning strikes and splits

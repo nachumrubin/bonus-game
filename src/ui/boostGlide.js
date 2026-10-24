@@ -38,6 +38,21 @@ export const REVEAL = Object.freeze({
   glideLead: 40,
 });
 
+// ── Card morph — a home game-mode card becomes the screen it opens ───────
+// Instead of the Glide, the screen grows out of the tapped card's box (its
+// clip starts as the card's outline) while the card fades away and home
+// recedes; going back to home from that screen shrinks it into the card
+// again. Durations stay inside MAX_TOTAL_ENTRANCE. `armWindow`: how long a
+// card tap stays good for the navigation it triggers. Wiring:
+// screenTransitions.js (armCardMorph + showScreen); keyframes: styles.css.
+export const CARD_MORPH = Object.freeze({
+  openDuration: 380,
+  closeDuration: 340,
+  openEasing: 'cubic-bezier(0.3, 0, 0, 1)',
+  closeEasing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  armWindow: 600,
+});
+
 // Upper bound for a full entrance (glide + every reveal group). Ordinary
 // navigation must finish its visual sequence inside this window (≈400ms).
 export const MAX_TOTAL_ENTRANCE = 420;
@@ -47,7 +62,7 @@ export const MAX_TOTAL_ENTRANCE = 420;
 // Boostie, whose WebGL setup is one long frame — waits until they are gone so
 // it never freezes the entrance. Removing them is a class mutation, so a
 // MutationObserver on the screen sees the moment it settles.
-export const ENTERING_CLASSES = Object.freeze(['glide-in', 'hb-building']);
+export const ENTERING_CLASSES = Object.freeze(['glide-in', 'morph-in', 'hb-building']);
 
 export function isScreenEntering(el) {
   return ENTERING_CLASSES.some((c) => el?.classList?.contains?.(c));

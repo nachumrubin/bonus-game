@@ -13,10 +13,19 @@
 // Timing/offset values and the per-screen reveal plans live in
 // src/ui/boostGlide.js; the keyframes live in styles.css (§1 Screen transition).
 //
+// Card morph (CARD_MORPH): a tapped home game-mode card arms the next forward
+// navigation, which then grows the new screen out of the card instead of
+// gliding; back to home from that screen shrinks it into the card again.
+//
+//   growing / shrinking screen  .morph-in / .morph-close (+ --ct-clip, --ct-dur, --ct-ease)
+//   screen underneath           .morph-out / .morph-under
+//   .ct-ghost                   a copy of the card, fading out / back in
+//
 // Modals/overlays (.ov) never come through here, so they keep their own motion.
 
 import {
   HOME_SCREEN, resolveDirection, nextHistory, glideSign, revealSchedule, entranceTotal,
+  CARD_MORPH,
 } from '../boostGlide.js';
 
 export const SCREEN_IDS = Object.freeze([
@@ -26,7 +35,8 @@ export const SCREEN_IDS = Object.freeze([
   'smygames', 'sadmin',
 ]);
 
-const GLIDE_CLASSES = ['glide-in', 'glide-out'];
+const GLIDE_CLASSES = ['glide-in', 'glide-out', 'morph-in', 'morph-out', 'morph-close', 'morph-under'];
+const GLIDE_PROPS = ['--glide-dir', '--ct-clip', '--ct-dur', '--ct-ease'];
 const REVEAL_CLASS = 'reveal-item';
 
 // State held across calls so a stale timer from a previous navigation can be
@@ -37,6 +47,9 @@ const state = {
   glideTimer: null,
   glideEls: [],      // screens (and the home topbar) carrying glide-* classes
   revealEls: [],     // elements carrying reveal-item
+  ghosts: [],        // .ct-ghost card copies, removed on settle
+  armed: null,       // { el, at } — a home card just tapped (armCardMorph)
+  morph: null,       // { screen, card } — the screen a card opened, while it is showing
   hideTopbarOnSettle: false,
   topbar: null,
   history: [],       // visited screens, root first — used for direction only
@@ -72,8 +85,10 @@ function settleGlide(clearTimeoutFn = clearTimeout) {
   }
   for (const el of state.glideEls) {
     el.classList?.remove?.(...GLIDE_CLASSES);
-    el.style?.removeProperty?.('--glide-dir');
+    for (const k of GLIDE_PROPS) el.style?.removeProperty?.(k);
   }
+  for (const g of state.ghosts) { try { g.remove?.(); } catch { /* swallow */ } }
+  state.ghosts = [];
   for (const el of state.revealEls) {
     el.classList?.remove?.(REVEAL_CLASS);
     el.style?.removeProperty?.('--reveal-delay');
@@ -100,6 +115,47 @@ function applyReveal(doc, screenEl, schedule) {
   return out;
 }
 
+const clock = () => globalThis.performance?.now?.() ?? Date.now();
+
+// A home game-mode card was tapped: the navigation it triggers (within
+// CARD_MORPH.armWindow) grows its screen out of this card.
+export function armCardMorph(el, { now = clock } = {}) {
+  state.armed = el ? { el, at: now() } : null;
+}
+
+function isLaidOut(el) {
+  const r = el?.getBoundingClientRect?.();
+  return !!r && r.width > 0 && r.height > 0 && el.isConnected !== false;
+}
+
+// The card's outline as a clip-path on the (full-viewport) screen.
+function cardClip(doc, card, screen) {
+  const r = card.getBoundingClientRect();
+  const s = screen.getBoundingClientRect?.() ?? { top: 0, left: 0, right: r.right, bottom: r.bottom };
+  const radius = doc?.defaultView?.getComputedStyle?.(card)?.borderRadius || '0px';
+  const px = (v) => `${Math.max(0, Math.round(v * 100) / 100)}px`;
+  return {
+    rect: r,
+    clip: `inset(${px(r.top - s.top)} ${px(s.right - r.right)} ${px(s.bottom - r.bottom)} ${px(r.left - s.left)} round ${radius})`,
+  };
+}
+
+// A non-interactive copy of the card at its place on screen, inside `host`.
+function cardGhost(doc, card, rect, host) {
+  const g = card.cloneNode?.(true);
+  if (!g) return null;
+  g.removeAttribute?.('id');
+  g.removeAttribute?.('onclick');
+  for (const el of Array.from(g.querySelectorAll?.('[id]') ?? [])) el.removeAttribute('id');
+  g.setAttribute?.('aria-hidden', 'true');
+  g.setAttribute?.('tabindex', '-1');
+  g.classList?.add('ct-ghost');
+  g.style.cssText += `;position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;margin:0;box-sizing:border-box`;
+  host.appendChild?.(g);
+  state.ghosts.push(g);
+  return g;
+}
+
 export function showScreen(id, {
   doc = globalThis.document,
   setTimeoutFn = setTimeout,
@@ -107,6 +163,7 @@ export function showScreen(id, {
   direction: requested,
   reducedMotion,
   rtl,
+  now = clock,
 } = {}) {
   if (!doc) return null;
 
@@ -137,6 +194,12 @@ export function showScreen(id, {
 
   // Interrupt whatever entrance is still running so this one starts clean.
   settleGlide(clearTimeoutFn);
+  // A card tap is good for this navigation only; a card's screen keeps its
+  // way back into the card only while it is the one showing.
+  const armed = state.armed;
+  const opened = state.morph;
+  state.armed = null;
+  state.morph = null;
 
   for (const s of SCREEN_IDS) {
     const el = doc.getElementById?.(s);
@@ -167,14 +230,48 @@ export function showScreen(id, {
 
   const animate = !reduced && direction !== 'none';
   const glides = animate && (direction === 'forward' || direction === 'back') && !!outgoing;
-  const schedule = animate ? revealSchedule(id, direction) : [];
+  let morph = null;
+  if (glides && direction === 'forward' && armed && now() - armed.at <= CARD_MORPH.armWindow
+      && outgoing.contains?.(armed.el) && isLaidOut(armed.el)) {
+    morph = { open: true, card: armed.el };
+  } else if (glides && direction === 'back' && id === HOME_SCREEN && opened?.screen === outgoing.id && isLaidOut(opened.card)) {
+    morph = { open: false, card: opened.card };
+  }
+  // A morphing screen brings its content in itself (no staggered reveal).
+  const schedule = animate && !morph ? revealSchedule(id, direction) : [];
 
   if (glides || schedule.length) {
     // One reflow so re-adding a class restarts its animation.
     void target.offsetWidth;
   }
 
-  if (glides) {
+  if (morph) {
+    // open: `target` grows out of the card over home; close: `outgoing`
+    // shrinks into the card over home.
+    const surface = morph.open ? target : outgoing;
+    const under = morph.open ? outgoing : target;
+    const { rect, clip } = cardClip(doc, morph.card, surface);
+    const dur = morph.open ? CARD_MORPH.openDuration : CARD_MORPH.closeDuration;
+    const ease = morph.open ? CARD_MORPH.openEasing : CARD_MORPH.closeEasing;
+    const mark = (el, cls) => {
+      el.style?.setProperty?.('--ct-clip', clip);
+      el.style?.setProperty?.('--ct-dur', `${dur}ms`);
+      el.style?.setProperty?.('--ct-ease', ease);
+      el.classList?.add(cls);
+      state.glideEls.push(el);
+    };
+    mark(surface, morph.open ? 'morph-in' : 'morph-close');
+    mark(under, morph.open ? 'morph-out' : 'morph-under');
+    cardGhost(doc, morph.card, rect, surface);
+    if (topbar && leavingHome) {
+      setTopbarVisible(topbar, true);
+      state.hideTopbarOnSettle = true;
+      mark(topbar, 'morph-out');
+    } else if (topbar && id === HOME_SCREEN) {
+      mark(topbar, 'morph-under');
+    }
+    if (morph.open) state.morph = { screen: id, card: morph.card };
+  } else if (glides) {
     const sign = glideSign(direction, { rtl: rtl ?? isRtlDefault(doc) });
     const mark = (el) => {
       el.style?.setProperty?.('--glide-dir', String(sign));
@@ -221,7 +318,9 @@ export function showScreen(id, {
   // One cleanup for the whole entrance: strips glide/reveal classes so no
   // transform/opacity animation lingers and a later re-render can't replay it.
   if (glides || state.revealEls.length) {
-    const total = entranceTotal(glides ? direction : 'launch', schedule);
+    const total = morph
+      ? (morph.open ? CARD_MORPH.openDuration : CARD_MORPH.closeDuration)
+      : entranceTotal(glides ? direction : 'launch', schedule);
     state.glideTimer = setTimeoutFn(() => {
       state.glideTimer = null;
       settleGlide(clearTimeoutFn);
@@ -282,6 +381,8 @@ export function _resetTransitionState() {
     state.transitionTarget = null;
   }
   settleGlide(clearTimeout);
+  state.armed = null;
+  state.morph = null;
   state.topbar = null;
   state.history = [];
   state.current = null;
