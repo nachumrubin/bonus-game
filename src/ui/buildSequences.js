@@ -11,7 +11,7 @@
 import {
   HOME_BUILD, BOARD_BUILD, RACK_SLOTS, homeBuildTotal, boardBuildTotal,
   diagonalRank, clockwiseOrder, leftToRightOrder,
-  LOGO_TILE_EXITS, LOADING_EXIT, logoTilesTimes,
+  LOGO_TILE_EXITS, LOADING_EXIT, LOGO_REPLAY, LOGO_IDLE, logoTilesTimes, logoReplayTimes,
 } from './buildTimeline.js';
 import { LOGO_TILE_LAYERS } from './logoTilesLayout.js';
 import { EV } from '../events/eventTypes.js';
@@ -88,7 +88,7 @@ export function flyOutLoadingTiles({ doc = globalThis.document, root, reducedMot
 export const BOARD_INTRO_STARTED = 'game/intro-started';
 export const BOARD_INTRO_FINISHED = 'game/intro-finished';
 
-const runs = { home: null, board: null };
+const runs = { home: null, board: null, logo: null };
 
 // Gameplay always wins over the build: any of these finishes it at once, so a
 // move (an online opponent's, a scripted one, a fresh GAME_STARTED) is never
@@ -186,7 +186,7 @@ export function playHomeBuild({
   runs.home?.finish();
 
   const H = HOME_BUILD;
-  const run = createRun({ doc, cue, setTimeoutFn, clearTimeoutFn, onFinish: () => { runs.home = null; } });
+  const run = createRun({ doc, cue, setTimeoutFn, clearTimeoutFn, onFinish: () => { runs.home = null; homeFinishedAt = clock(); } });
   runs.home = run;
   // Marks home as still arriving (boostGlide.ENTERING_CLASSES): the live-3D
   // top-bar avatar waits for the build to finish before its WebGL setup.
@@ -257,18 +257,141 @@ export function playHomeBuild({
 // stack is removed and the image — identical to the settled stack — is back.
 // Timing: HOME_BUILD.logoTiles / logoTilesTimes(). Keyframes: styles.css.
 function buildLogoTiles(run, doc, logo) {
-  const img = logo.querySelector?.('img.hl-img');
-  if (!img?.offsetWidth || typeof doc.createElement !== 'function') return false;
   const L = HOME_BUILD.logoTiles;
   const T = logoTilesTimes(L);
-  const px = (v) => `${Math.round(v)}ms`;
+  const s = logoStack(run, doc, logo, { T, L });
+  if (!s) return false;
 
-  // Makes .hlogo the positioned parent (so the offsets below are relative to
-  // it) and hides the image until the hand-off, where the stack fades out over
-  // it (the two match to the pixel bar anti-aliasing, so the swap is unseen).
-  run.tag(logo, 'hb-logo-tiles', { '--b-handoff': T.handoff, '--b-handoff-dur': L.handoffDur });
+  // Each tile flies in from far off-screen on the side it left the loader by.
+  L.order.forEach((key, i) => {
+    const v = unitExit(key);
+    const t = s.layer(key, 'hb-tile-in');
+    t.style.setProperty('--b-delay', ms(L.start + i * L.stagger));
+    t.style.setProperty('--b-dur', ms(L.flyDur));
+    t.style.setProperty('--b-fx', `${(v.x * OFFSCREEN_VMAX).toFixed(1)}vmax`);
+    t.style.setProperty('--b-fy', `${(v.y * OFFSCREEN_VMAX).toFixed(1)}vmax`);
+    t.style.setProperty('--b-spin', `${v.spin * 3}deg`);
+    if (LOGO_SHADED.includes(key)) {
+      s.pic(t, `logo_${key}_bare.webp`);
+      s.pic(t, `logo_${key}.webp`, 'hb-tile-shade').style.setProperty('--b-shade', ms(T.allLanded));
+    } else {
+      intactSam(s, t, T, L);
+    }
+    run.sound(key === 'sam' ? 'build.land' : 'build.tile', T.land[key]);
+  });
+  addStrike(run, doc, s, T, L);
+  run.sound('build.whoosh', L.start);
+  return true;
+}
+
+// Tap on the settled home logo: the split ס closes up into the whole ס, and is
+// struck and split again (LOGO_REPLAY / logoReplayTimes). Returns true when it
+// started. Not during the home build, not for the tap that skipped it, not
+// under reduced motion. Another tap restarts it (the tap finishes the running
+// one first, like every build run).
+export function playLogoStrike({
+  doc = globalThis.document,
+  cue = null,
+  reducedMotion,
+  setTimeoutFn = setTimeout,
+  clearTimeoutFn = clearTimeout,
+  now = clock,
+} = {}) {
+  const logo = idleHomeLogo(doc);
+  if (!logo || now() - homeFinishedAt < SKIP_TAP_MS || reducedFrom(reducedMotion, doc)) return false;
+  runs.logo?.finish();
+  const L = HOME_BUILD.logoTiles;
+  const R = LOGO_REPLAY;
+  const T = logoReplayTimes(L, R);
+  const run = createRun({ doc, cue, setTimeoutFn, clearTimeoutFn, onFinish: () => { if (runs.logo === run) runs.logo = null; } });
+  const s = logoStack(run, doc, logo, { T, L });
+  if (!s) { run.finish(); return false; }
+  runs.logo = run;
+
+  for (const key of LOGO_SHADED) s.pic(s.layer(key, ''), `logo_${key}.webp`);
+  // The halves draw together and fade as the whole ס fades in over them.
+  for (const half of ['samL', 'samR']) {
+    const h = s.layer(half, `hb-tile-mend ${half === 'samL' ? 'is-left' : 'is-right'}`);
+    h.style.setProperty('--b-dur', ms(R.heal));
+    s.pic(h, `logo_${half}.webp`);
+  }
+  const whole = intactSam(s, s.layer('sam', ''), T, L);
+  whole.classList.add('is-healing');
+  whole.style.setProperty('--b-heal', ms(R.heal));
+  addStrike(run, doc, s, T, L);
+  run.sound('build.tick', 0);
+  run.start(T.end);
+  return true;
+}
+
+// A pulse of current runs down the ס's crack (LOGO_IDLE.dur), over the
+// image, which stays. Only on an idle, visible home. Returns true when shown.
+export function flickerLogoCrack({
+  doc = globalThis.document,
+  reducedMotion,
+  setTimeoutFn = setTimeout,
+  clearTimeoutFn = clearTimeout,
+} = {}) {
+  const logo = idleHomeLogo(doc);
+  if (!logo || doc.hidden || runs.logo || reducedFrom(reducedMotion, doc)) return false;
+  const run = createRun({ doc, setTimeoutFn, clearTimeoutFn, onFinish: () => { if (runs.logo === run) runs.logo = null; } });
+  const s = logoStack(run, doc, logo, { overlay: true });
+  if (!s) { run.finish(); return false; }
+  runs.logo = run;
+  // The bolt render is the layer's mask (styles.css), not an <img>.
+  s.layer('bolt', 'hb-crack-idle').style.setProperty('--b-dur', ms(LOGO_IDLE.dur));
+  run.start(LOGO_IDLE.dur);
+  return true;
+}
+
+// Schedules flickerLogoCrack every LOGO_IDLE.every ± jitter/2 for the life of
+// the app (each one checks for itself whether home is idle). Returns stop().
+export function startLogoIdle({
+  doc = globalThis.document,
+  reducedMotion,
+  setTimeoutFn = setTimeout,
+  clearTimeoutFn = clearTimeout,
+  random = Math.random,
+} = {}) {
+  const I = LOGO_IDLE;
+  let timer = null;
+  let stopped = false;
+  const next = () => { if (!stopped) timer = setTimeoutFn(tick, I.every - I.jitter / 2 + random() * I.jitter); };
+  function tick() {
+    try { flickerLogoCrack({ doc, reducedMotion, setTimeoutFn, clearTimeoutFn }); } catch { /* swallow */ }
+    next();
+  }
+  next();
+  return () => { stopped = true; if (timer != null) clearTimeoutFn(timer); };
+}
+
+const ms = (v) => `${Math.round(v)}ms`;
+const clock = () => globalThis.performance?.now?.() ?? Date.now();
+// A tap that skips the home build must not also start a logo replay.
+const SKIP_TAP_MS = 500;
+let homeFinishedAt = -Infinity;
+
+// The home logo when home is showing and not building.
+function idleHomeLogo(doc) {
+  const sh = doc?.getElementById?.('sh');
+  if (!sh || sh.classList?.contains?.('hidden') || runs.home) return null;
+  return sh.querySelector?.('.hlogo') ?? null;
+}
+
+// Lays an empty layer stack (.hl-tiles) exactly over the logo <img> and
+// returns { stack, layer, pic }, or null when it can't (logo not laid out, no
+// DOM factory). Covering (the build, the replay): the image hides until
+// T.handoff, where the stack fades out over it — the two match to the pixel
+// bar anti-aliasing, so the swap is unseen. overlay: the image stays and the
+// stack just sits on top of it.
+function logoStack(run, doc, logo, { T = null, L = null, overlay = false }) {
+  const img = logo.querySelector?.('img.hl-img');
+  if (!img?.offsetWidth || typeof doc.createElement !== 'function') return null;
+  // Both classes make .hlogo the positioned parent of the offsets below.
+  if (overlay) run.tag(logo, 'hb-logo-over');
+  else run.tag(logo, 'hb-logo-tiles', { '--b-handoff': T.handoff, '--b-handoff-dur': L.handoffDur });
   const stack = run.adopt(doc.createElement('div'));
-  stack.className = 'hl-tiles';
+  stack.className = overlay ? 'hl-tiles is-overlay' : 'hl-tiles';
   stack.setAttribute('aria-hidden', 'true');
   // Fractional box (offset* round to whole px, which would shift the layers
   // against the image by up to a pixel and make the hand-off visible).
@@ -276,11 +399,11 @@ function buildLogoTiles(run, doc, logo) {
   const lr = logo.getBoundingClientRect?.() ?? { left: 0, top: 0 };
   const f = (v) => `${Math.round(v * 100) / 100}px`;
   stack.style.cssText = `left:${f(ir.left - lr.left - (logo.clientLeft || 0))};top:${f(ir.top - lr.top - (logo.clientTop || 0))};width:${f(ir.width)};height:${f(ir.height)};`
-    + `--b-strike:${px(T.strike)};--b-split:${px(T.split)};--b-glow:${px(T.glow)};--b-glow-dur:${px(L.glowDur)}`;
+    + (overlay ? '' : `--b-strike:${ms(T.strike)};--b-split:${ms(T.split)};--b-glow:${ms(T.glow)};--b-glow-dur:${ms(L.glowDur)}`);
   const layer = (key, cls) => {
     const [x, y, w, h] = LOGO_TILE_LAYERS[key];
     const d = doc.createElement('div');
-    d.className = `hl-layer ${cls}`;
+    d.className = `hl-layer ${cls}`.trim();
     d.style.cssText = `left:${x}%;top:${y}%;width:${w}%;height:${h}%;z-index:${LOGO_TILE_Z[key]}`;
     stack.appendChild(d);
     return d;
@@ -293,54 +416,41 @@ function buildLogoTiles(run, doc, logo) {
     parent.appendChild(im);
     return im;
   };
+  logo.appendChild(stack);
+  return { stack, layer, pic };
+}
 
-  // Each tile flies in from far off-screen on the side it left the loader by.
-  L.order.forEach((key, i) => {
-    const v = unitExit(key);
-    const t = layer(key, 'hb-tile-in');
-    t.style.setProperty('--b-delay', px(L.start + i * L.stagger));
-    t.style.setProperty('--b-dur', px(L.flyDur));
-    t.style.setProperty('--b-fx', `${(v.x * OFFSCREEN_VMAX).toFixed(1)}vmax`);
-    t.style.setProperty('--b-fy', `${(v.y * OFFSCREEN_VMAX).toFixed(1)}vmax`);
-    t.style.setProperty('--b-spin', `${v.spin * 3}deg`);
-    if (LOGO_SHADED.includes(key)) {
-      pic(t, `logo_${key}_bare.webp`);
-      pic(t, `logo_${key}.webp`, 'hb-tile-shade').style.setProperty('--b-shade', px(T.allLanded));
-    } else {
-      // The intact ס charges up, takes the lightning whole (white-hot), and
-      // is gone the instant it splits.
-      const whole = pic(t, `logo_${key}.webp`, 'hb-tile-charge');
-      whole.style.setProperty('--b-charge', px(T.charge));
-      whole.style.setProperty('--b-charge-dur', px(L.chargeDur));
-    }
-    run.sound(key === 'sam' ? 'build.land' : 'build.tile', T.land[key]);
-  });
+// The intact ס charges up, takes the lightning whole (white-hot), and is gone
+// the instant it splits.
+function intactSam(s, parent, T, L) {
+  const whole = s.pic(parent, 'logo_sam.webp', 'hb-tile-charge');
+  whole.style.setProperty('--b-charge', ms(T.charge));
+  whole.style.setProperty('--b-charge-dur', ms(L.chargeDur));
+  return whole;
+}
 
-  // The strike: a channel from the sky onto the top of the intact ס; after the
-  // impact the bolt-shaped crack flashes and the two halves kick apart.
+// The strike: a channel from the sky onto the top of the intact ס; after the
+// impact the bolt-shaped crack flashes and the two halves kick apart.
+function addStrike(run, doc, s, T, L) {
   for (const half of ['samL', 'samR']) {
-    const h = layer(half, `hb-tile-split ${half === 'samL' ? 'is-left' : 'is-right'}`);
-    h.style.setProperty('--b-dur', px(L.splitDur));
-    pic(h, `logo_${half}.webp`);
+    const h = s.layer(half, `hb-tile-split ${half === 'samL' ? 'is-left' : 'is-right'}`);
+    h.style.setProperty('--b-dur', ms(L.splitDur));
+    s.pic(h, `logo_${half}.webp`);
   }
-  pic(layer('bolt', 'hb-tile-bolt'), 'logo_bolt.webp').style.setProperty('--b-dur', px(L.splitDur));
+  s.pic(s.layer('bolt', 'hb-tile-bolt'), 'logo_bolt.webp').style.setProperty('--b-dur', ms(L.splitDur));
   const [bx, by, bw] = LOGO_TILE_LAYERS.bolt;
   const sky = doc.createElement('div');
   sky.className = 'hl-sky';
   // The leader comes down for leaderDur and lands at the strike; the channel
   // then flickers through the impact and fades as the ס splits (.hl-sky).
   sky.style.cssText = `left:${(bx + bw * 0.65).toFixed(2)}%;bottom:${(100 - by).toFixed(2)}%;`
-    + `--b-leader:${px(L.leaderDur)};--b-dur:${px(L.impactDur + 120)}`;
+    + `--b-leader:${ms(L.leaderDur)};--b-dur:${ms(L.impactDur + 120)}`;
   sky.innerHTML = '<svg viewBox="0 0 40 1000" preserveAspectRatio="none"><polyline points="'
     + '22,0 14,90 26,170 10,260 24,330 12,420 28,500 15,580 25,660 9,740 23,820 14,900 20,1000" /></svg>';
-  stack.appendChild(sky);
-
-  logo.appendChild(stack);
-  run.sound('build.whoosh', L.start);
+  s.stack.appendChild(sky);
   run.sound('build.charge', T.charge);
   run.sound('build.strike', T.strike);
   run.sound('build.wave', T.glow);
-  return true;
 }
 
 // ── Board build ────────────────────────────────────────────────────────
@@ -474,6 +584,7 @@ export function playBoardBuild({
 // Finish whatever build is running (game torn down mid-build, tests).
 export function finishBuilds() {
   runs.home?.finish();
+  runs.logo?.finish();
   runs.board?.finish();
 }
 

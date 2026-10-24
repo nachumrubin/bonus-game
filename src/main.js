@@ -77,7 +77,7 @@ import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/control
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
 import { showScreen as spineShowScreen, revealCurrentScreen, settleEntrance, SCREEN_IDS } from './ui/screens/screenTransitions.js';
-import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt, flyOutLoadingTiles, preloadLogoTiles } from './ui/buildSequences.js';
+import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt, flyOutLoadingTiles, preloadLogoTiles, playLogoStrike, startLogoIdle } from './ui/buildSequences.js';
 import { boardBuildKind, BOARD_BUILD_LEAD_MS } from './ui/buildTimeline.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './ui/screens/menuScreen.js';
 import { mountHelpDropdown } from './ui/screens/helpDropdown.js';
@@ -166,6 +166,17 @@ const tipsPreload = loadingTipsService.loadTipsStatus();
 // exists). Running it here — rather than inside boot() — means the tips
 // carousel appears at the START of the intro animation, not after boot()'s
 // long async init chain completes.
+// The settled home logo: a tap replays its lightning strike, and while home
+// sits idle a faint current flickers along the ס's crack (buildSequences.js).
+function wireHomeLogo(doc, reducedMotion) {
+  if (!doc) return;
+  doc.addEventListener?.('click', (e) => {
+    if (!e.target?.closest?.('#sh .hlogo')) return;
+    try { playLogoStrike({ doc, cue: feedbackService.cue, reducedMotion }); } catch { /* swallow */ }
+  });
+  try { startLogoIdle({ doc, reducedMotion }); } catch { /* swallow */ }
+}
+
 function wireAppLoading() {
   const doc = globalThis.document;
   const el = doc?.getElementById?.('app-loading');
@@ -338,6 +349,7 @@ function wireAppLoading() {
           revealCurrentScreen({ doc, reducedMotion });
         }
       } catch { /* swallow */ }
+      wireHomeLogo(doc, reducedMotion);
     }
   }
   off = bus.on(MENU_REFRESH, (payload = {}) => {

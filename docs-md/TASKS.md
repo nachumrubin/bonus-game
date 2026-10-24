@@ -8,6 +8,9 @@
   upright, intact ס) fly off the screen when loading ends; home's build brings them back
   from the same sides to build the logo, lightning splits the ס, and the single image takes
   over. Layers in `assets/ui/logo_tiles/` from `Blender designs/logo/render_logo_tiles.py`.
+- [x] Home logo: tap replays the lightning strike; idle crack pulse every ≈30s.
+- [ ] Phone check of the logo tap replay (does a cheap Android keep up with the layer
+  stack mid-scroll?) and whether the idle pulse every ≈30s feels alive or nagging.
 - [ ] Hand-check the loader exit + logo build on a real phone (smoothness of the 4 flying
   layers + bolt on a low-end device; whether `build.strike` is too loud when audio is
   already unlocked, e.g. after a reload).

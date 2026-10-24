@@ -817,7 +817,9 @@ The home topbar stays `display:''` while it glides out and is hidden when the gl
 **Build sequences** (`src/ui/buildSequences.js`, BOOST_MOTION_SPEC §16) add `hb-*` classes
 on home (`hb-rise`, `hb-glow`, `hb-slide`, `hb-pop`, `hb-logo`, `hb-logo-glow`; the tile-built
 logo adds `hb-logo-tiles` on `.hlogo` plus a transient `.hl-tiles` stack of `.hl-layer`s laid
-over `img.hl-img`, removed when the build ends) and `bb-*`
+over `img.hl-img`, removed when the build ends; the same stack serves the tap replay, and
+the idle crack pulse uses `hb-logo-over` + `.hl-tiles.is-overlay` with one `.hb-crack-idle`
+layer, image left visible) and `bb-*`
 classes on the game screen (`bb-panel` on `.board-center-inner`, `bb-unfold` on grid cells,
 `bb-boost` on `.bsq`, `bb-card` on `#is-sb1/#is-sb2/.gm-vs-center`, `bb-rise`, `bb-tiles` on
 `#brack`, `bb-quick` on `.gr`), each with `--b-delay` / `--b-dur`. Load-bearing selectors:

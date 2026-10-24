@@ -1966,6 +1966,22 @@ html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) 
   100% { transform: none; filter: brightness(2.4) drop-shadow(0 0 16px #28d4ff); }
 }
 @keyframes hbTileGone { to { opacity: 0; } }
+/* Replay (tap on the logo): the split halves draw together and fade while the
+   whole ס fades in over them. */
+@keyframes hbTileMend {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translate3d(calc(var(--b-kick) * -3%), 0, 0); }
+}
+@keyframes hbTileHeal { from { opacity: 0; } }
+/* Idle: a pulse of current runs down the ס's crack (a bright band moving
+   through the bolt-shaped mask), flickering as it goes. */
+@keyframes hbCrackRun {
+  0%   { background-position: 0 100%; opacity: 0; }
+  12%  { opacity: .9; }
+  40%  { opacity: .5; }
+  52%  { opacity: .95; }
+  100% { background-position: 0 0; opacity: 0; }
+}
 @keyframes hbTileSplit {
   0%   { opacity: 0; }
   1%   { opacity: 1; transform: none; }
@@ -1995,7 +2011,8 @@ html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) 
   15%  { filter: brightness(1.9) drop-shadow(0 0 18px rgba(40,212,255,1)); }
   100% { filter: none; }
 }
-html .hlogo.hb-logo-tiles { position: relative; }
+html .hlogo.hb-logo-tiles, html .hlogo.hb-logo-over { position: relative; }
+html .hlogo .hl-img { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 @keyframes hbHidden { from, to { visibility: hidden; } }
 @keyframes hbTilesOut { to { opacity: 0; } }
 html .hlogo.hb-logo-tiles > img.hl-img { animation: hbHidden 1ms linear var(--b-handoff) backwards; }
@@ -2004,6 +2021,7 @@ html .hlogo.hb-logo-tiles > img.hl-img { animation: hbHidden 1ms linear var(--b-
   animation: hbLogoFlash 300ms ease-out var(--b-strike) none, hbLogoGlow var(--b-glow-dur) ease-out var(--b-glow) none,
     hbTilesOut var(--b-handoff-dur) linear var(--b-handoff) forwards;
 }
+.hl-tiles.is-overlay { animation: none; }
 .hl-layer { position: absolute; }
 html .hlogo .hl-tiles .hl-layer > img {
   position: absolute; inset: 0; display: block;
@@ -2011,14 +2029,28 @@ html .hlogo .hl-tiles .hl-layer > img {
 }
 .hb-tile-in { animation: hbTileIn var(--b-dur) cubic-bezier(.2,.75,.25,1) var(--b-delay) backwards; }
 .hb-tile-in > .hb-tile-shade { animation: hbTileShade 220ms ease-out var(--b-shade) backwards; }
-.hb-tile-in > .hb-tile-charge {
+.hl-layer > .hb-tile-charge {
   animation: hbTileCharge var(--b-charge-dur) ease-in var(--b-charge) both,
     hbTileHit calc(var(--b-split) - var(--b-strike)) ease-out var(--b-strike) forwards,
     hbTileGone 1ms linear var(--b-split) forwards;
 }
+.hl-layer > .hb-tile-charge.is-healing {
+  animation: hbTileHeal var(--b-heal) ease-out backwards,
+    hbTileCharge var(--b-charge-dur) ease-in var(--b-charge) both,
+    hbTileHit calc(var(--b-split) - var(--b-strike)) ease-out var(--b-strike) forwards,
+    hbTileGone 1ms linear var(--b-split) forwards;
+}
+.hb-tile-mend { animation: hbTileMend var(--b-dur) cubic-bezier(.5,0,.75,0) both; }
+.hb-crack-idle {
+  -webkit-mask: url(assets/ui/logo_tiles/logo_bolt.webp) 0 0 / 100% 100% no-repeat;
+  mask: url(assets/ui/logo_tiles/logo_bolt.webp) 0 0 / 100% 100% no-repeat;
+  background: linear-gradient(180deg, transparent 38%, rgba(40,212,255,.75) 46%, #effdff 50%, rgba(40,212,255,.75) 54%, transparent 62%) 0 0 / 100% 300% no-repeat;
+  mix-blend-mode: screen;
+  animation: hbCrackRun var(--b-dur) cubic-bezier(.4,0,.6,1) both;
+}
 .hb-tile-split { animation: hbTileSplit var(--b-dur) cubic-bezier(.2,.8,.3,1) var(--b-split) backwards; }
-.hb-tile-split.is-left  { --b-kick: -1; }
-.hb-tile-split.is-right { --b-kick: 1; }
+.hl-layer.is-left  { --b-kick: -1; }
+.hl-layer.is-right { --b-kick: 1; }
 .hb-tile-bolt > img { animation: hbTileBolt var(--b-dur) ease-out var(--b-split) both; }
 .hl-sky {
   position: absolute; z-index: 6; width: 34px; height: 120vh; transform: translateX(-50%); pointer-events: none;

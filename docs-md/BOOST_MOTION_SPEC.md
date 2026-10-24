@@ -536,6 +536,14 @@ image (pixel-matched, so the hand-off is invisible). `HOME_BUILD.logoTiles`,
 `logoTilesTimes()`. Without the layers (logo not laid out) the single image drops in from
 above as before. Every later arrival at home is a §15 back glide.
 
+**The settled logo** (outside the build). *Tap:* the split ס closes up into the whole ס
+(≈0.2s), then the same charge → strike → impact → split → glow as the build, ≈1.3s
+(`LOGO_REPLAY`, `logoReplayTimes()`, `playLogoStrike`); never during the home build or from
+the tap that skipped it; another tap restarts it. *Idle:* every 26–34s a silent pulse of
+current runs down the ס's crack (0.9s; `LOGO_IDLE`, `startLogoIdle` →
+`flickerLogoCrack`), only on a visible, idle home with the tab in front. Neither runs
+under reduced motion.
+
 **Board build — new games only** (≈2.1s): the board panel opens from the top-right corner
 (Hebrew reading start) while the cells unfold in a diagonal cascade from that corner →
 boost squares pop in one after the other, clockwise from the top-right corner, each

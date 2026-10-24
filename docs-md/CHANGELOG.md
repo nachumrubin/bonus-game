@@ -2,6 +2,22 @@
 
 ---
 
+## The home logo answers a tap and sparks now and then (October 2026)
+
+- **Tap the logo:** the split ס closes up into one piece, then lightning strikes and splits
+  it again: the build's own strike, ≈1.3s (`playLogoStrike`, `LOGO_REPLAY`,
+  `logoReplayTimes()`). Not during the home build, nor from the tap that skipped it
+  (500ms guard); another tap restarts it. Sounds: `build.tick` on the tap, then the
+  build's charge / strike / wave cues.
+- **Idle:** every 26–34s a silent pulse of current runs down the ס's crack: a bright band
+  moving through a mask cut from `logo_bolt.webp`, 0.9s (`startLogoIdle` →
+  `flickerLogoCrack`, `LOGO_IDLE`). Only on a visible, idle home with the tab in front.
+- Neither runs under reduced motion. The build, replay and pulse share one layer-stack
+  builder (`logoStack` / `intactSam` / `addStrike` in `buildSequences.js`);
+  `finishBuilds()` also ends a running replay or pulse. Wired in `main.js`
+  (`wireHomeLogo`, once the loader lifts).
+- **Tests:** 6 new in `buildSequences.test.js`.
+
 ## Logo built from the loader's tiles (October 2026)
 
 The boot loader and the home logo now use the same tiles, and the cold launch hands them
