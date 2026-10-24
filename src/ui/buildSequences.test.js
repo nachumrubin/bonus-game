@@ -361,7 +361,7 @@ function tiledHomeDoc() {
   return { ...h, img };
 }
 
-test('logo tiles: land in order, then charge → strike → hand-off; the build grows < 1 s', () => {
+test('logo tiles: land in order, then charge → strike → split → hand-off; the build grows < 1 s', () => {
   const L = HOME_BUILD.logoTiles;
   const T = logoTilesTimes();
   assert.deepEqual([...L.order], ['bet', 'vav', 'tet', 'sam'], 'the ס lands last — it is the one struck');
@@ -369,6 +369,9 @@ test('logo tiles: land in order, then charge → strike → hand-off; the build 
   assert.deepEqual(lands, [...lands].sort((a, b) => a - b));
   assert.equal(T.allLanded, T.land.sam);
   assert.ok(T.allLanded < T.charge && T.charge < T.strike && T.strike < T.handoff && T.handoff < T.end);
+  // The lightning hits the whole ס first; only then does it split.
+  assert.ok(T.split - T.strike >= 150, `impact ${T.split - T.strike} ms before the split`);
+  assert.ok(T.split < T.glow && T.split + HOME_BUILD.logoTiles.splitDur <= T.end);
   const P = HOME_BUILD.profile;
   assert.ok(T.land.bet > P.start + P.dur, 'tiles start off-screen; the first lands after the profile — still the last to arrive');
   assert.equal(homeBuildTotal({ logoTiles: true }), T.end);

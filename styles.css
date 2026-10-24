@@ -1958,6 +1958,13 @@ html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) 
   80%  { transform: translate3d(-1.5px, 0, 0); }
   100% { transform: none; filter: brightness(1.5) drop-shadow(0 0 10px rgba(40,212,255,.95)); }
 }
+/* The whole ס takes the lightning: white-hot, jolted, still in one piece. */
+@keyframes hbTileHit {
+  0%   { transform: translate3d(0, 2%, 0); filter: brightness(3) drop-shadow(0 0 16px #fff) drop-shadow(0 0 22px #28d4ff); }
+  30%  { transform: translate3d(-1.5px, 0, 0); filter: brightness(2.2) drop-shadow(0 0 14px #28d4ff); }
+  55%  { transform: translate3d(1.5px, 0, 0); filter: brightness(2.8) drop-shadow(0 0 18px #fff); }
+  100% { transform: none; filter: brightness(2.4) drop-shadow(0 0 16px #28d4ff); }
+}
 @keyframes hbTileGone { to { opacity: 0; } }
 @keyframes hbTileSplit {
   0%   { opacity: 0; }
@@ -1971,12 +1978,17 @@ html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) 
   35%  { opacity: 1; }
   100% { opacity: 0; filter: none; }
 }
+@keyframes hbSkyDown {
+  from { clip-path: inset(0 0 100% 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
 @keyframes hbSky {
-  0%   { opacity: 1; clip-path: inset(0 0 100% 0); }
-  35%  { opacity: 1; clip-path: inset(0 0 0 0); }
-  50%  { opacity: .25; }
-  62%  { opacity: 1; }
-  100% { opacity: 0; clip-path: inset(0 0 0 0); }
+  0%   { opacity: 1; }
+  25%  { opacity: .3; }
+  40%  { opacity: 1; }
+  60%  { opacity: .5; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 @keyframes hbLogoFlash {
   0%   { filter: none; }
@@ -2000,15 +2012,18 @@ html .hlogo .hl-tiles .hl-layer > img {
 .hb-tile-in { animation: hbTileIn var(--b-dur) cubic-bezier(.2,.75,.25,1) var(--b-delay) backwards; }
 .hb-tile-in > .hb-tile-shade { animation: hbTileShade 220ms ease-out var(--b-shade) backwards; }
 .hb-tile-in > .hb-tile-charge {
-  animation: hbTileCharge var(--b-charge-dur) ease-in var(--b-charge) both, hbTileGone 1ms linear var(--b-strike) forwards;
+  animation: hbTileCharge var(--b-charge-dur) ease-in var(--b-charge) both,
+    hbTileHit calc(var(--b-split) - var(--b-strike)) ease-out var(--b-strike) forwards,
+    hbTileGone 1ms linear var(--b-split) forwards;
 }
-.hb-tile-split { animation: hbTileSplit var(--b-dur) cubic-bezier(.2,.8,.3,1) var(--b-strike) backwards; }
+.hb-tile-split { animation: hbTileSplit var(--b-dur) cubic-bezier(.2,.8,.3,1) var(--b-split) backwards; }
 .hb-tile-split.is-left  { --b-kick: -1; }
 .hb-tile-split.is-right { --b-kick: 1; }
-.hb-tile-bolt > img { animation: hbTileBolt var(--b-dur) ease-out var(--b-strike) both; }
+.hb-tile-bolt > img { animation: hbTileBolt var(--b-dur) ease-out var(--b-split) both; }
 .hl-sky {
   position: absolute; z-index: 6; width: 34px; height: 120vh; transform: translateX(-50%); pointer-events: none;
-  animation: hbSky var(--b-dur) linear calc(var(--b-strike) - 70ms) both;
+  animation: hbSkyDown var(--b-leader) linear calc(var(--b-strike) - var(--b-leader)) both,
+    hbSky var(--b-dur) linear var(--b-strike) forwards;
 }
 .hl-sky svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .hl-sky polyline {

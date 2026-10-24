@@ -25,11 +25,11 @@ export const HOME_BUILD = Object.freeze({
   // With the per-tile layers (assets/ui/logo_tiles/, the normal case) the logo
   // is built instead of dropped: the four tiles that flew off the loading
   // screen fly back in, each from the side it left by (LOGO_TILE_EXITS), in
-  // `order` → the ס charges → lightning strikes it and it splits → the logo
-  // glows. Then the single image (boost-logo.webp) takes over invisibly.
+  // `order` → the ס charges → lightning strikes the whole ס (it flashes
+  // white-hot for `impactDur`) → only then does it split → the logo glows. Then the single image (boost-logo.webp) takes over invisibly.
   logoTiles: Object.freeze({
     start: 900, order: Object.freeze(['bet', 'vav', 'tet', 'sam']), stagger: 90, flyDur: 480,
-    hold: 80, chargeDur: 260, strikeDur: 160, splitDur: 340, glowDelay: 120, glowDur: 420, handoffDur: 220,
+    hold: 80, chargeDur: 260, leaderDur: 80, impactDur: 200, splitDur: 340, glowDelay: 120, glowDur: 420, handoffDur: 220,
   }),
 });
 
@@ -53,11 +53,14 @@ export function logoTilesTimes(L = HOME_BUILD.logoTiles) {
   L.order.forEach((k, i) => { land[k] = L.start + i * L.stagger + L.flyDur; });
   const allLanded = L.start + (L.order.length - 1) * L.stagger + L.flyDur;
   const charge = allLanded + L.hold;
+  // strike: the lightning reaches the intact ס (its leader set off
+  // `leaderDur` earlier); split: the ס cracks into its halves.
   const strike = charge + L.chargeDur;
-  const glow = strike + L.glowDelay;
-  const end = Math.max(strike + L.splitDur, glow + L.glowDur);
+  const split = strike + L.impactDur;
+  const glow = split + L.glowDelay;
+  const end = Math.max(split + L.splitDur, glow + L.glowDur);
   // The last `handoffDur` crossfades the layer stack into the single image.
-  return { land, allLanded, charge, strike, split: strike, glow, handoff: end - L.handoffDur, end };
+  return { land, allLanded, charge, strike, split, glow, handoff: end - L.handoffDur, end };
 }
 
 // ── Game board, new games only ─────────────────────────────────────────

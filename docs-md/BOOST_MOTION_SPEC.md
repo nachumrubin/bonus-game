@@ -525,12 +525,13 @@ Two deliberate exceptions to the §15 entrance budget. Timeline: `src/ui/buildTi
 **Boot loader exit → home build — cold launch only.** When loading ends the loader's tile
 loop stops and its four tiles (the logo's own Blender tiles, upright, ס intact) fly off the
 screen, each in its own direction with a spin (`LOGO_TILE_EXITS`, `LOADING_EXIT`, ≈0.5s);
-then the loader fades and home builds (≈2.5s): game-mode cards → bottom nav rises and each
+then the loader fades and home builds (≈2.7s): game-mode cards → bottom nav rises and each
 item glows in a sweep → top-bar icons slide in from the left, one by one → profile (avatar
 pop, name, ELO) → the logo is built: the same tiles fly back in, each from the side it
 left by (ב, ו, ט, then ס), each glowing as it lands → the ס charges and trembles →
-lightning comes down onto it, the bolt-shaped crack flashes white-hot and the two halves
-kick apart and settle → the logo glows → the layer stack crossfades into the single
+lightning comes down onto the whole ס, which takes the hit in one piece (white-hot, jolted,
+≈0.2s) → only then does it crack: the bolt-shaped gap flashes and the two halves kick apart
+and settle → the logo glows → the layer stack crossfades into the single
 image (pixel-matched, so the hand-off is invisible). `HOME_BUILD.logoTiles`,
 `logoTilesTimes()`. Without the layers (logo not laid out) the single image drops in from
 above as before. Every later arrival at home is a §15 back glide.

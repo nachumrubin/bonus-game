@@ -20,10 +20,11 @@ from one to the other.
   `wireAppLoading().hide()` → `lift()`). Tile layers are preloaded while the loader is up.
 - **Home build:** instead of the single image dropping in, `buildLogoTiles` lays a layer
   stack over the logo image: the tiles fly back from the sides they left by, the shadows
-  they cast fade in once all have landed, the ס charges → lightning (sky channel + bolt
-  flash) → the halves kick apart and settle → glow → crossfade to the image. Any tap
+  they cast fade in once all have landed, the ס charges → lightning strikes the whole ס,
+  which flashes white-hot in one piece for 200ms (`impactDur`) → only then does it split:
+  the bolt-shaped crack flashes and the halves kick apart and settle → glow → crossfade to the image. Any tap
   removes the stack at once. Fractional positioning (getBoundingClientRect) keeps the
-  stack on the image to sub-pixel accuracy. The home build grows ≈0.6s (1.94s → 2.53s).
+  stack on the image to sub-pixel accuracy. The home build grows ≈0.8s (1.94s → 2.73s).
 - **Sounds:** `build.charge` (power_up) and `build.strike` (boost_activate — the real zap).
 - **Tests:** 6 new in `buildSequences.test.js` (timeline order, stack layout and exit
   sides, tap-to-finish, fallback, loader exit and its reduced-motion/no-WAAPI no-op).

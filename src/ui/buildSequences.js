@@ -276,7 +276,7 @@ function buildLogoTiles(run, doc, logo) {
   const lr = logo.getBoundingClientRect?.() ?? { left: 0, top: 0 };
   const f = (v) => `${Math.round(v * 100) / 100}px`;
   stack.style.cssText = `left:${f(ir.left - lr.left - (logo.clientLeft || 0))};top:${f(ir.top - lr.top - (logo.clientTop || 0))};width:${f(ir.width)};height:${f(ir.height)};`
-    + `--b-strike:${px(T.strike)};--b-glow:${px(T.glow)};--b-glow-dur:${px(L.glowDur)}`;
+    + `--b-strike:${px(T.strike)};--b-split:${px(T.split)};--b-glow:${px(T.glow)};--b-glow-dur:${px(L.glowDur)}`;
   const layer = (key, cls) => {
     const [x, y, w, h] = LOGO_TILE_LAYERS[key];
     const d = doc.createElement('div');
@@ -307,7 +307,8 @@ function buildLogoTiles(run, doc, logo) {
       pic(t, `logo_${key}_bare.webp`);
       pic(t, `logo_${key}.webp`, 'hb-tile-shade').style.setProperty('--b-shade', px(T.allLanded));
     } else {
-      // The intact ס charges up, then is gone the instant lightning strikes.
+      // The intact ס charges up, takes the lightning whole (white-hot), and
+      // is gone the instant it splits.
       const whole = pic(t, `logo_${key}.webp`, 'hb-tile-charge');
       whole.style.setProperty('--b-charge', px(T.charge));
       whole.style.setProperty('--b-charge-dur', px(L.chargeDur));
@@ -315,8 +316,8 @@ function buildLogoTiles(run, doc, logo) {
     run.sound(key === 'sam' ? 'build.land' : 'build.tile', T.land[key]);
   });
 
-  // The strike: a channel from the sky onto the top of the ס, the bolt-shaped
-  // gap flashing white-hot, and the two halves kicking apart and settling.
+  // The strike: a channel from the sky onto the top of the intact ס; after the
+  // impact the bolt-shaped crack flashes and the two halves kick apart.
   for (const half of ['samL', 'samR']) {
     const h = layer(half, `hb-tile-split ${half === 'samL' ? 'is-left' : 'is-right'}`);
     h.style.setProperty('--b-dur', px(L.splitDur));
@@ -326,8 +327,10 @@ function buildLogoTiles(run, doc, logo) {
   const [bx, by, bw] = LOGO_TILE_LAYERS.bolt;
   const sky = doc.createElement('div');
   sky.className = 'hl-sky';
-  // Starts 70ms before the strike (the leader coming down), see .hl-sky.
-  sky.style.cssText = `left:${(bx + bw * 0.65).toFixed(2)}%;bottom:${(100 - by).toFixed(2)}%;--b-dur:${px(L.strikeDur + 70)}`;
+  // The leader comes down for leaderDur and lands at the strike; the channel
+  // then flickers through the impact and fades as the ס splits (.hl-sky).
+  sky.style.cssText = `left:${(bx + bw * 0.65).toFixed(2)}%;bottom:${(100 - by).toFixed(2)}%;`
+    + `--b-leader:${px(L.leaderDur)};--b-dur:${px(L.impactDur + 120)}`;
   sky.innerHTML = '<svg viewBox="0 0 40 1000" preserveAspectRatio="none"><polyline points="'
     + '22,0 14,90 26,170 10,260 24,330 12,420 28,500 15,580 25,660 9,740 23,820 14,900 20,1000" /></svg>';
   stack.appendChild(sky);
