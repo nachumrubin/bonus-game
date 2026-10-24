@@ -2745,17 +2745,8 @@
 /* Minimal status bar — board starts right underneath */
 #sg .info-strip .spine-multiplier-banner {
   position: static !important;
-  display: block !important;
-  width: 100% !important;
-  left: auto !important;
-  right: auto !important;
-  top: auto !important;
-  margin: 3px 0 0 !important;
-  padding: 2px 5px !important;
-  font-size: 9px !important;
-  line-height: 1.1 !important;
-  border-radius: 5px !important;
-  white-space: nowrap !important;
+  justify-self: center;
+  margin: 3px auto 0 !important;
 }
 
 #sg .sbar {

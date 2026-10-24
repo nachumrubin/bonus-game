@@ -1275,13 +1275,19 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           banner.id = `spine-multiplier-banner-${suffix}`;
           host.appendChild(banner);
         }
-        banner.className = `spine-multiplier-banner mult-${multiplier >= 4 ? 4 : 2}`;
         // While it's the opponent's turn the boost is still queued, just
-        // not consumed yet — copy reflects that.
+        // not consumed yet — copy reflects that, and the pill is lit only
+        // on the turn it applies to.
         const isMyTurn = v.currentTurnSlot === slot;
-        banner.textContent = multiplier >= 4
-          ? (isMyTurn ? '🔥 ×4 בתור הזה' : '🔥 ×4 בתור הבא')
-          : (isMyTurn ? '×2 בתור הזה' : '×2 בתור הבא');
+        const tier = multiplier >= 4 ? 4 : 2;
+        banner.className = `spine-multiplier-banner mult-${tier}${isMyTurn ? ' is-now' : ''}`;
+        const x = `×${tier}`;
+        const tx = isMyTurn ? 'בתור הזה' : 'בתור הבא';
+        // ×N in its own LTR-isolated token: in the RTL card a bare "×4"
+        // flipped to "4×".
+        if (banner.textContent !== x + tx) {
+          banner.innerHTML = `<b class="mult-x" dir="ltr">${x}</b><span class="mult-tx">${tx}</span>`;
+        }
       }
     }
   }

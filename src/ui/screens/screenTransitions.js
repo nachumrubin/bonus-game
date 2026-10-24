@@ -21,11 +21,14 @@
 //   screen underneath           .morph-out / .morph-under
 //   .ct-ghost                   a copy of the card, fading out / back in
 //
+// Game exit (GAME_EXIT): leaving the game screen, `sg` takes .game-exit
+// instead of .glide-out — the board folds back into its top-right corner.
+//
 // Modals/overlays (.ov) never come through here, so they keep their own motion.
 
 import {
   HOME_SCREEN, resolveDirection, nextHistory, glideSign, revealSchedule, entranceTotal,
-  CARD_MORPH,
+  CARD_MORPH, GAME_EXIT,
 } from '../boostGlide.js';
 
 export const SCREEN_IDS = Object.freeze([
@@ -36,8 +39,9 @@ export const SCREEN_IDS = Object.freeze([
 ]);
 
 const MORPH_CLASSES = ['morph-in', 'morph-out', 'morph-close', 'morph-under'];
-const GLIDE_CLASSES = ['glide-in', 'glide-out', ...MORPH_CLASSES];
-const GLIDE_PROPS = ['--glide-dir', '--ct-clip', '--ct-dur', '--ct-ease'];
+const GLIDE_CLASSES = ['glide-in', 'glide-out', 'game-exit', ...MORPH_CLASSES];
+const GAME_SCREEN = 'sg';
+const GLIDE_PROPS = ['--glide-dir', '--glide-delay', '--ct-clip', '--ct-dur', '--ct-ease'];
 const REVEAL_CLASS = 'reveal-item';
 
 // State held across calls so a stale timer from a previous navigation can be
@@ -315,15 +319,20 @@ export function showScreen(id, {
     }
     if (morph.open) state.morph = { screen: id, card: morph.card };
   } else if (glides) {
+    const gameExit = outgoing.id === GAME_SCREEN;
     const sign = glideSign(direction, { rtl: rtl ?? isRtlDefault(doc) });
     const mark = (el) => {
       el.style?.setProperty?.('--glide-dir', String(sign));
       state.glideEls.push(el);
     };
+    const markIn = (el) => {
+      mark(el);
+      if (gameExit) el.style?.setProperty?.('--glide-delay', `${GAME_EXIT.lead}ms`);
+      el.classList?.add('glide-in');
+    };
     mark(outgoing);
-    outgoing.classList?.add('glide-out');
-    mark(target);
-    target.classList?.add('glide-in');
+    outgoing.classList?.add(gameExit ? 'game-exit' : 'glide-out');
+    markIn(target);
     // The topbar is part of the home screen visually: it leaves and returns
     // with it instead of popping out/in.
     if (topbar && leavingHome) {
@@ -332,8 +341,7 @@ export function showScreen(id, {
       mark(topbar);
       topbar.classList?.add('glide-out');
     } else if (topbar && id === HOME_SCREEN) {
-      mark(topbar);
-      topbar.classList?.add('glide-in');
+      markIn(topbar);
     }
   }
 
@@ -364,10 +372,12 @@ export function showScreen(id, {
     const total = morph
       ? (morph.open ? CARD_MORPH.openDuration : CARD_MORPH.closeDuration)
       : entranceTotal(glides ? direction : 'launch', schedule);
+    const exitTotal = glides && !morph && outgoing.id === GAME_SCREEN
+      ? Math.max(GAME_EXIT.duration, GAME_EXIT.lead + total) : 0;
     state.glideTimer = setTimeoutFn(() => {
       state.glideTimer = null;
       settleGlide(clearTimeoutFn);
-    }, total + 20);
+    }, Math.max(total, exitTotal) + 20);
   }
 
   return target;

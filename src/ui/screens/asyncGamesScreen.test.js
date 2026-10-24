@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountAsyncGamesScreen, buildListHtml, buildRowHtml, timeAgoLabel,
-  canPoke, splitByTurn, MG_INTENT, MG_RENDER,
+  canPoke, splitByTurn, turnCues, MG_INTENT, MG_RENDER, MG_CUE,
 } from './asyncGamesScreen.js';
 import { MENU_INTENT } from './menuScreen.js';
+import { ONBOARDING_SCREEN_ENTER } from '../controllers/onboardingController.js';
 
 const HOUR = 3_600_000;
 
@@ -450,5 +451,82 @@ test('tabs: hidden together with the list when there are no games', () => {
   bus.emit(MG_RENDER, { sessions: [] });
   assert.equal(tabs.style.display, 'none');
   assert.equal(empty.style.display, '');
+  ui.unmount();
+});
+
+// ── Turn cues: glint on open, nudge on a flip, never a loop ──────────────
+const turn = (roomId, isMyTurn, extra = {}) => ({
+  roomId, opponentName: roomId, isMyTurn, isExpired: false, myScore: 0, opponentScore: 0, lastUpdated: 0, ...extra,
+});
+const cueOf = (html, roomId) => {
+  const m = html.match(new RegExp(`data-mg-row="${roomId}" class="([^"]*)"`));
+  return m ? m[1].split(' ').find(c => c === MG_CUE.GLINT || c === MG_CUE.NUDGE) ?? null : undefined;
+};
+
+test('turnCues: entering glints every live my-turn game; later only a flip to my turn nudges', () => {
+  const a = [turn('m', true), turn('t', false), turn('x', true, { isExpired: true })];
+  const first = turnCues(a, { entering: true });
+  assert.deepEqual([...first.cues], [['m', MG_CUE.GLINT]]);
+  const same = turnCues(a, { seen: first.seen });
+  assert.equal(same.cues.size, 0, 'no replay on an unchanged render');
+  const flipped = turnCues([turn('m', true), turn('t', true), turn('n', true)], { seen: same.seen });
+  assert.deepEqual([...flipped.cues], [['t', MG_CUE.NUDGE]], 'a game never seen before does not nudge');
+});
+
+test('buildListHtml: cue classes are staggered and only on the cued rows', () => {
+  const cues = new Map([['a', MG_CUE.GLINT], ['c', MG_CUE.GLINT]]);
+  const html = buildListHtml([turn('a', true), turn('b', true), turn('c', true)], { now: 0, cues });
+  assert.equal(cueOf(html, 'a'), MG_CUE.GLINT);
+  assert.equal(cueOf(html, 'b'), null);
+  assert.match(html, /data-mg-row="a" class="[^"]*" style="--mg-cue-delay:0ms"/);
+  assert.match(html, /data-mg-row="c" class="[^"]*" style="--mg-cue-delay:70ms"/);
+  assert.doesNotMatch(buildListHtml([turn('a', true)], { now: 0 }), /mg-glint|mg-nudge|--mg-cue-delay/);
+});
+
+test('mount: my-turn cards glint once on open; a game turning to me nudges; re-entry glints again', () => {
+  bus._reset();
+  const { list, root, screen } = makeRoot();
+  const cls = new Set();
+  screen.classList = { contains: (c) => cls.has(c) };
+  const ui = mountAsyncGamesScreen({ root, bus, now: () => 0 });
+  // A render while the screen is hidden (badge refresh) cues nothing and
+  // does not use up the entrance.
+  cls.add('hidden');
+  bus.emit(MG_RENDER, { sessions: [turn('a', true), turn('b', false)] });
+  assert.equal(cueOf(list.innerHTML, 'a'), null);
+  cls.delete('hidden');
+  bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: 'smygames' });
+  bus.emit(MG_RENDER, { sessions: [turn('a', true), turn('b', false)] });
+  assert.equal(cueOf(list.innerHTML, 'a'), MG_CUE.GLINT);
+  assert.equal(cueOf(list.innerHTML, 'b'), null);
+  bus.emit(MG_RENDER, { sessions: [turn('a', true), turn('b', false)] });
+  assert.equal(cueOf(list.innerHTML, 'a'), null, 'one-time: the next render does not replay it');
+  bus.emit(MG_RENDER, { sessions: [turn('a', true), turn('b', true)] });
+  assert.equal(cueOf(list.innerHTML, 'b'), MG_CUE.NUDGE);
+  assert.equal(cueOf(list.innerHTML, 'a'), null);
+  // Leave and come back: a fresh glint.
+  bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: 'sh' });
+  bus.emit(ONBOARDING_SCREEN_ENTER, { screenId: 'smygames' });
+  bus.emit(MG_RENDER, { sessions: [turn('a', true), turn('b', true)] });
+  assert.equal(cueOf(list.innerHTML, 'a'), MG_CUE.GLINT);
+  assert.equal(cueOf(list.innerHTML, 'b'), MG_CUE.GLINT);
+  ui.unmount();
+});
+
+test('tabs: a game turning to me under "their turn" nudges the "your turn" tab; a tab switch replays nothing', () => {
+  bus._reset();
+  const { list, tabs, btns, root } = makeTabsRoot();
+  for (const b of btns) {
+    const toggle = b.classList.toggle;
+    b.classList = { toggle, add: (c) => b._cls.add(c), remove: (c) => b._cls.delete(c) };
+  }
+  tabs.querySelector = (sel) => btns.find(b => sel === `[data-mg-tab="${b._which}"]`) ?? null;
+  const ui = mountAsyncGamesScreen({ root, bus, now: () => 0 });
+  bus.emit(MG_RENDER, { sessions: SESSIONS.slice(1) });          // opens on "their turn"
+  assert.ok(!btns[0]._cls.has(MG_CUE.NUDGE));
+  bus.emit(MG_RENDER, { sessions: [SESSIONS[1], { ...SESSIONS[2], isMyTurn: true }] });
+  assert.ok(btns[0]._cls.has(MG_CUE.NUDGE));
+  tabs.click('mine');
+  assert.equal(cueOf(list.innerHTML, 't2'), null);
   ui.unmount();
 });

@@ -13,7 +13,7 @@
 // lives in main.js, which handles those intents directly.
 
 import { $, on } from '../domHelpers.js';
-import { registerOnboardingContent } from '../controllers/onboardingController.js';
+import { registerOnboardingContent, ONBOARDING_SCREEN_ENTER } from '../controllers/onboardingController.js';
 import { avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
 import { MENU_INTENT } from './menuScreen.js';
 
@@ -71,7 +71,15 @@ export function timeAgoLabel(ts, now) {
   return `לפני ${days} ימים`;
 }
 
-export function buildRowHtml(s, { now = Date.now() } = {}) {
+// One-time attention cues (BOOST_MOTION_SPEC §15): `mg-glint` sweeps once
+// across a card that waits on the player when the screen opens; `mg-nudge`
+// shakes once a card that turned to the player while the screen is showing.
+// Nothing loops — after the cue the static "your turn" styling carries it.
+export const MG_CUE = Object.freeze({ GLINT: 'mg-glint', NUDGE: 'mg-nudge' });
+const CUE_STAGGER_MS = 70;
+const CUE_STAGGER_MAX = 4;
+
+export function buildRowHtml(s, { now = Date.now(), cue = null, cueIndex = 0 } = {}) {
   const ago = timeAgoLabel(s.lastUpdated, now);
   const myScore = Number(s.myScore ?? 0);
   const opScore = Number(s.opponentScore ?? 0);
@@ -80,7 +88,11 @@ export function buildRowHtml(s, { now = Date.now() } = {}) {
     s.isExpired ? 'is-expired' : '',
     s.isLocal   ? 'is-local'   : '',
     !s.isExpired && !s.isMyTurn ? 'is-waiting' : '',
+    cue ?? '',
   ].filter(Boolean).join(' ');
+  const cueStyle = cue
+    ? ` style="--mg-cue-delay:${Math.min(cueIndex, CUE_STAGGER_MAX) * CUE_STAGGER_MS}ms"`
+    : '';
   // Expired games get the trash icon (only delete path on this screen).
   // Live games get a שחק button — enabled iff isMyTurn. The disabled state
   // is what tells the user "waiting on the opponent"; we no longer carry a
@@ -108,7 +120,7 @@ export function buildRowHtml(s, { now = Date.now() } = {}) {
   const myPct = total > 0 ? Math.round((myScore / total) * 100) : 50;
   const avSrc = avatarIconSrc(s.opponentAvatar) || ANON_AVATAR_SRC;
   return ''
-    + `<div data-mg-row="${escapeHtml(s.roomId)}" class="${cardCls}">`
+    + `<div data-mg-row="${escapeHtml(s.roomId)}" class="${cardCls}"${cueStyle}>`
     +   `<span class="mg-av"><img src="${escapeHtml(avSrc)}" alt=""></span>`
     +   '<div class="mg-card-identity">'
     +     `<div class="mg-name">${escapeHtml(s.opponentName ?? '?')}</div>`
@@ -124,8 +136,29 @@ export function buildRowHtml(s, { now = Date.now() } = {}) {
     + '</div>';
 }
 
-export function buildListHtml(sessions = [], { now = Date.now() } = {}) {
-  return sessions.map(s => buildRowHtml(s, { now })).join('');
+export function buildListHtml(sessions = [], { now = Date.now(), cues = null } = {}) {
+  let n = 0;
+  return sessions.map((s) => {
+    const cue = cues?.get?.(s.roomId) ?? null;
+    return buildRowHtml(s, { now, cue, cueIndex: cue ? n++ : 0 });
+  }).join('');
+}
+
+// Which cards get a cue on this render. `entering`: the first render since
+// the screen opened — every card waiting on the player glints. Otherwise a
+// card nudges only when it flipped to the player since the last render
+// (`seen`: roomId → isMyTurn then). Returns the cues and the new `seen`.
+export function turnCues(sessions = [], { seen = new Map(), entering = false } = {}) {
+  const cues = new Map();
+  const next = new Map();
+  for (const s of sessions) {
+    const mine = !!s.isMyTurn && !s.isExpired;
+    next.set(s.roomId, mine);
+    if (!mine) continue;
+    if (entering) cues.set(s.roomId, MG_CUE.GLINT);
+    else if (seen.get(s.roomId) === false) cues.set(s.roomId, MG_CUE.NUDGE);
+  }
+  return { cues, seen: next };
 }
 
 export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = () => Date.now() } = {}) {
@@ -144,6 +177,10 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
   // null until the user picks a tab — then we auto-pick the first render:
   // "your turn" if anything waits on the player, else "their turn".
   let activeTab = null;
+  // Turn cues: true until the first render the player actually sees after
+  // opening the screen; `turnSeen` remembers each game's turn at that time.
+  let entering = true;
+  let turnSeen = new Map();
 
   function paintTabs(mine, theirs) {
     if (!tabs) return;
@@ -156,8 +193,25 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
     }
   }
 
-  function render(sessions = lastSessions) {
+  function nudgeTab(which) {
+    const btn = tabs?.querySelector?.(`[data-mg-tab="${which}"]`);
+    if (!btn) return;
+    btn.classList?.remove(MG_CUE.NUDGE);
+    void btn.offsetWidth;   // restart the one-shot animation
+    btn.classList?.add(MG_CUE.NUDGE);
+  }
+
+  // `fresh`: new data from MG_RENDER (a tab switch re-renders the same data
+  // and never replays a cue).
+  function render(sessions = lastSessions, { fresh = false } = {}) {
     lastSessions = sessions;
+    let cues = null;
+    if (fresh) {
+      const showing = !screen.classList?.contains?.('hidden');
+      const r = turnCues(sessions, { seen: turnSeen, entering: entering && showing });
+      turnSeen = r.seen;
+      if (showing) { cues = r.cues; entering = false; }
+    }
     if (!sessions.length) {
       list.innerHTML = '';
       if (tabs) tabs.style.display = 'none';
@@ -166,15 +220,18 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
     }
     if (empty) empty.style.display = 'none';
     if (!tabs) {
-      list.innerHTML = buildListHtml(sessions, { now: now() });
+      list.innerHTML = buildListHtml(sessions, { now: now(), cues });
       return;
     }
     const { mine, theirs } = splitByTurn(sessions);
     if (activeTab === null) activeTab = mine.length ? 'mine' : 'theirs';
     paintTabs(mine, theirs);
     const shown = activeTab === 'mine' ? mine : theirs;
+    // A game that turned to the player under the other tab: nudge the
+    // "your turn" tab instead (its count just went up).
+    if (cues?.size && shown !== mine) nudgeTab('mine');
     list.innerHTML = shown.length
-      ? buildListHtml(shown, { now: now() })
+      ? buildListHtml(shown, { now: now(), cues })
       : `<div class="mg-tab-empty">${activeTab === 'mine' ? 'אין משחקים שממתינים לך' : 'אין משחקים שממתינים ליריב'}</div>`;
   }
 
@@ -245,7 +302,10 @@ export function mountAsyncGamesScreen({ root = globalThis.document, bus, now = (
     }
   }));
 
-  cleanups.push(bus.on(MG_RENDER, ({ sessions } = {}) => render(sessions ?? [])));
+  cleanups.push(bus.on(MG_RENDER, ({ sessions } = {}) => render(sessions ?? [], { fresh: true })));
+  cleanups.push(bus.on(ONBOARDING_SCREEN_ENTER, ({ screenId } = {}) => {
+    if (screenId === 'smygames') entering = true;
+  }));
 
   // Empty until someone publishes MG_RENDER.
   render([]);

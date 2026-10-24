@@ -2,7 +2,7 @@ import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
 import { END_INTENT } from '../screens/endGameScreen.js';
 import { PAUSE_INTENT, PAUSE_OPEN } from '../screens/pauseScreen.js';
-import { BACK_INTENT, BACK_OPEN } from '../screens/backConfirmScreen.js';
+import { BACK_INTENT, BACK_OPEN, BACK_PRESSED } from '../screens/backConfirmScreen.js';
 import { COIN_INTENT } from '../screens/coinTossScreen.js';
 import { SETTINGS_OPEN, SETTINGS_CHANGED } from '../screens/settingsScreen.js';
 import { RESIGN_INTENT, RESIGN_OPEN } from '../screens/resignConfirmScreen.js';
@@ -43,6 +43,7 @@ export function createGameFlowController({
   const endMenuBtn = root?.querySelector?.('button[onclick="openEndMenu()"]') ?? null;
   const endMenuTx  = endMenuBtn?.querySelector?.('.tb-tx') ?? endMenuBtn;
   wireButtons('button[onclick="openEndMenu()"]', () => bus.emit(BACK_OPEN, { isLive: isLiveGame() }));
+  cleanups.push(bus.on(BACK_PRESSED, () => bus.emit(BACK_OPEN, { isLive: isLiveGame() })));
 
   // Offline modes can pause-and-save from the back-confirm overlay, so the
   // top-bar end button reads "סיים / שמור" to advertise the save path.

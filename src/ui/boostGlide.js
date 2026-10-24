@@ -53,6 +53,22 @@ export const CARD_MORPH = Object.freeze({
   armWindow: 600,
 });
 
+// ── Game exit — leaving the game screen folds it back up ──
+// The board build opens the board out of its top-right corner (the Hebrew
+// reading start, buildTimeline.js); leaving the game is its mirror: the board
+// folds back into that corner, the rack drops away and the header lifts,
+// while the next screen glides in on top as usual. Short (not a ceremony) and
+// never blocks input — the incoming screen keeps the normal pointer block.
+// Mirrored as --gx-* tokens in styles.css.
+export const GAME_EXIT = Object.freeze({
+  duration: 320,
+  lead: 90,        // ms the next screen waits so the fold reads first
+  easing: 'cubic-bezier(0.4, 0, 1, 1)', // accelerate away
+  boardScale: 0.6,
+  rackDrop: 28,    // px
+  headerLift: 16,  // px
+});
+
 // Upper bound for a full entrance (glide + every reveal group). Ordinary
 // navigation must finish its visual sequence inside this window (≈400ms).
 export const MAX_TOTAL_ENTRANCE = 420;

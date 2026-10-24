@@ -12,7 +12,7 @@ import {
   showScreen, revealCurrentScreen, SCREEN_IDS, _resetTransitionState, _getTransitionState,
   armCardMorph,
 } from './screenTransitions.js';
-import { REVEAL, BOOST_GLIDE, MAX_TOTAL_ENTRANCE, CARD_MORPH } from '../boostGlide.js';
+import { REVEAL, BOOST_GLIDE, MAX_TOTAL_ENTRANCE, CARD_MORPH, GAME_EXIT } from '../boostGlide.js';
 
 // ── Minimal DOM fake ─────────────────────────────────────────────────────
 function makeEl({ id = '', classes = [] } = {}) {
@@ -297,6 +297,50 @@ test('setup → gameplay glides but never staggers gameplay content', () => {
   showScreen('sg', { doc, ...t });
   assert.ok(has(elements.get('sg'), 'glide-in'));
   assert.equal(_getTransitionState().revealing, false);
+});
+
+test('leaving the game folds it (game-exit, not glide-out) while the next screen glides in', () => {
+  const { doc, elements } = makeDoc();
+  const t = fakeTimers();
+  showScreen('sh', { doc, ...t });
+  showScreen('ss', { doc, ...t });
+  showScreen('sg', { doc, ...t });
+  t.runAll();
+  showScreen('sh', { doc, ...t });
+  const sg = elements.get('sg');
+  assert.ok(has(sg, 'game-exit') && has(sg, 'hidden') && !has(sg, 'glide-out'));
+  assert.ok(has(elements.get('sh'), 'glide-in'), 'the incoming screen still arrives');
+  assert.equal(elements.get('sh').style.getPropertyValue('--glide-delay'), `${GAME_EXIT.lead}ms`, '…just after the fold starts');
+  assert.ok(GAME_EXIT.duration < 400, 'not a ceremony');
+  const cleanup = Math.max(...t.timers.filter(x => x.alive).map(x => x.ms));
+  assert.ok(cleanup >= GAME_EXIT.duration + 20, 'cleanup waits for the fold');
+  t.runAll();
+  assert.ok(!has(sg, 'game-exit'));
+  assert.equal(elements.get('sh').style.getPropertyValue('--glide-delay'), '');
+  // Forward out of the game (e.g. to My Games) folds too.
+  showScreen('sg', { doc, ...t }); t.runAll();
+  showScreen('smygames', { doc, ...t });
+  assert.ok(has(sg, 'game-exit'));
+  // Other screens keep the plain glide.
+  t.runAll();
+  showScreen('sstats', { doc, ...t });
+  assert.ok(has(elements.get('smygames'), 'glide-out') && !has(elements.get('smygames'), 'game-exit'));
+  assert.equal(elements.get('sstats').style.getPropertyValue('--glide-delay'), '', 'no lead elsewhere');
+});
+
+test('game exit: reduced motion is a plain swap; an interrupting navigation flushes it', () => {
+  const r = makeDoc({ reduced: true });
+  const t = fakeTimers();
+  showScreen('sg', { doc: r.doc, ...t });
+  showScreen('sh', { doc: r.doc, ...t });
+  assert.ok(!has(r.elements.get('sg'), 'game-exit'));
+  _resetTransitionState();
+  const { doc, elements } = makeDoc();
+  showScreen('ss', { doc, ...t });
+  showScreen('sg', { doc, ...t }); t.runAll();
+  showScreen('sh', { doc, ...t });
+  showScreen('sstats', { doc, ...t });
+  assert.ok(!has(elements.get('sg'), 'game-exit'));
 });
 
 // ── Cold launch replay ───────────────────────────────────────────────────
