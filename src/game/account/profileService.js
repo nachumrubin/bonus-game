@@ -313,6 +313,9 @@ export function computeLiveGameStatsDelta({
   const highScore = Number(currentStats.highScore) || 0;
   const prevHighestMoveScore = Number(currentStats.highestMoveScore) || 0;
   const bestMoveScore = myMoves.reduce((max, m) => Math.max(max, Number(m?.score) || 0), 0);
+  const bestMove = bestMoveScore > prevHighestMoveScore
+    ? bestMoveRecord(myMoves, bestMoveScore, opponentFor(state, room, mySlot)?.displayName ?? null, now)
+    : null;
   const newStreak = result === 'win' ? currentStreak + 1 : 0;
   const gameDurationMs = gameDurationFromMoves(moves);
   // fastestWinMs is wall-clock: an async game's turns can be days apart, so its
@@ -335,6 +338,7 @@ export function computeLiveGameStatsDelta({
     totalTilesPlayed: tileCount,
     totalMoveTimeMs: 0,
     comebackWins: isComebackWin(result, moves, mySlot) ? 1 : 0,
+    ...(result === 'win' && maxDeficit(moves, mySlot) > 0 ? { biggestComeback: { max: maxDeficit(moves, mySlot) } } : {}),
     lastMoveWins: isLastMoveWin(result, moves, mySlot) ? 1 : 0,
     closeWins: result === 'win' && Math.abs(myScore - oppScore) <= 10 ? 1 : 0,
     boostImpactWins: result === 'win' && bonusCount > 0 ? 1 : 0,
@@ -342,6 +346,7 @@ export function computeLiveGameStatsDelta({
     longestStreak: { max: Math.max(longestStreak, newStreak) },
     highScore: { max: Math.max(highScore, myScore) },
     highestMoveScore: { max: Math.max(prevHighestMoveScore, bestMoveScore) },
+    ...(bestMove ? { bestMove: { set: bestMove } } : {}),
     fastestWinMs: { set: fastestWinMs },
     longestWord: { set: wordStats.longestWord },
     longestWordLength: { set: wordStats.longestWordLength },
@@ -410,6 +415,27 @@ function mergeWordStats(currentStats = {}, words = []) {
   };
 }
 
+// The record move behind highestMoveScore, for the stats screen's wooden-tile
+// showcase: its main word (the one holding the most newly placed tiles,
+// longest on a tie) with each letter's face value, plus when and against whom.
+function bestMoveRecord(moves, score, opponentName, ts) {
+  const move = moves.find(m => (Number(m?.score) || 0) === score);
+  if (!move) return null;
+  const words = Array.isArray(move.wordTiles) && move.wordTiles.length
+    ? move.wordTiles
+    : (move.words ?? []).map(w => [...String(w)].map(letter => ({ letter })));
+  const fresh = (w) => w.filter(t => !t?.ex).length;
+  const main = [...words].sort((a, b) => fresh(b) - fresh(a) || b.length - a.length)[0] ?? [];
+  if (!main.length) return null;
+  return {
+    word: main.map(t => t.letter).join(''),
+    tiles: main.map(t => ({ letter: t.letter, val: Number(t.val) || 0 })),
+    score,
+    ts,
+    opponentName,
+  };
+}
+
 function appendRecentGame(current = [], game) {
   return [game, ...(Array.isArray(current) ? current : [])].slice(0, 20);
 }
@@ -447,6 +473,22 @@ function mergeWeekdayStats(current = {}, now, result, score) {
 
 function opponentFor(state, room, mySlot) {
   return room?.players?.[1 - mySlot] ?? state?.players?.[1 - mySlot] ?? null;
+}
+
+// The widest gap the player trailed by at any point in the game (0 if never
+// behind). On a win it is the comeback the stats screen's record shelf shows.
+function maxDeficit(moves, mySlot) {
+  let mine = 0;
+  let opp = 0;
+  let worst = 0;
+  for (const move of moves) {
+    if (!Array.isArray(move?.tiles)) continue;
+    const score = Number(move.score) || 0;
+    if (move.slot === mySlot) mine += score;
+    else if (move.slot === 1 - mySlot) opp += score;
+    worst = Math.max(worst, opp - mine);
+  }
+  return worst;
 }
 
 function isComebackWin(result, moves, mySlot) {

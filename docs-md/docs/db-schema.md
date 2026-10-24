@@ -250,6 +250,10 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
   stats?: {
     gamesPlayed: number,
     gamesWon: number,
+    bestMove?: {             // the highest-scoring move, replaced only on a new highestMoveScore (Oct 2026)
+      word: string, tiles: { letter: string, val: number }[], score: number, ts: number, opponentName: string | null,
+    },
+    biggestComeback?: number, // widest deficit (points) the player came back from to win; {max} delta
     // other stats fields: Unknown / needs verification
   },
   // Coin economy (economy.js). Profile ROOT fields, NOT under stats. Since Oct 2026

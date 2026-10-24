@@ -87,14 +87,39 @@ test('computeLiveGameStatsDelta: derives live aggregate and rich stats', () => {
   assert.equal(d.totalTilesPlayed, 3);
   assert.equal(d.bonusesTriggered, 1);
   assert.equal(d.comebackWins, 1);
+  assert.deepEqual(d.biggestComeback, { max: 30 });
   assert.equal(d.lastMoveWins, 1);
   assert.deepEqual(d.currentStreak, { set: 3 });
   assert.deepEqual(d.highScore, { max: 70 });
   assert.deepEqual(d.highestMoveScore, { max: 40 });
+  assert.deepEqual(d.bestMove.set, {
+    word: 'שלום', tiles: [...'שלום'].map(letter => ({ letter, val: 0 })), score: 40, ts: 10_000, opponentName: 'Rival',
+  });
   assert.equal(d.longestWord.set, 'שלום');
   assert.equal(d.boostUsage.set.B9, 1);
   assert.equal(d.recentGames.set.length, 1);
   assert.equal(d.rivalStats.set.u2.won, 1);
+});
+
+test('computeLiveGameStatsDelta: bestMove keeps the main word and letter values, only on a new record', () => {
+  const state = {
+    mode: 'friend-live',
+    scores: { 0: 90, 1: 20 },
+    players: { 0: { uid: 'u1' }, 1: { uid: 'u2', displayName: 'Dana' } },
+    moveHistory: [{
+      slot: 0, tiles: [{ letter: 'ב' }, { letter: 'ת' }], words: ['אב', 'בית'], score: 62, ts: 1,
+      wordTiles: [
+        [{ letter: 'א', val: 1, ex: true }, { letter: 'ב', val: 3, ex: false }],
+        [{ letter: 'ב', val: 3, ex: false }, { letter: 'י', val: 1, ex: true }, { letter: 'ת', val: 4, ex: false }],
+      ],
+    }],
+  };
+  const args = { state, room: { mode: 'friend-live', players: state.players }, mySlot: 0, now: 5 };
+  const d = computeLiveGameStatsDelta({ ...args, currentStats: { highestMoveScore: 40 } });
+  assert.equal(d.bestMove.set.word, 'בית');
+  assert.deepEqual(d.bestMove.set.tiles.map(t => t.val), [3, 1, 4]);
+  assert.equal(d.bestMove.set.opponentName, 'Dana');
+  assert.equal(computeLiveGameStatsDelta({ ...args, currentStats: { highestMoveScore: 62 } }).bestMove, undefined);
 });
 
 test('computeLiveGameStatsDelta: excludes offline/bot modes only (async now counts)', () => {

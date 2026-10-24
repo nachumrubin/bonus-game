@@ -1,211 +1,133 @@
-<!-- STATS SCREEN -->
+<!-- STATS SCREEN — hero card, sticky tabs, one flat glass panel per tab
+     (Oct 2026 redesign; mock-up: tools/screens-mockup/stats-redesign.html).
+     statsScreen.js owns the markup inside the #st-* / #ins-* containers. -->
 <div id="sstats" class="screen hidden g-screen" dir="rtl">
   <div class="g-page">
     <div class="g-hdr">
       <button class="g-chip ic" onclick="goHome()" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
       <div class="g-ttl stitle"><svg class="gi"><use href="#gi-chart"/></svg>הסטטיסטיקות שלי</div>
-      <span></span>
+      <div class="g-end"><button class="g-chip ic stats-share-btn" aria-label="שיתוף"><svg class="gi"><use href="#gi-share"/></svg></button></div>
     </div>
-  <div class="g-scroll stats-wrap">
+  <div class="g-scroll sx-scroll">
 
-    <!-- ACT 1: IDENTITY — hero band + archetype card, always visible -->
-    <div class="stats-hero glass-panel" style="margin-top:0;flex-direction:column;align-items:stretch;gap:7px;">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span class="boost-pulse" id="st-hero-av" style="font-size:26px;line-height:1;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(0,194,255,.4));">🏆</span>
-        <div class="stats-hero-name" id="st-hero-name" style="margin-bottom:0;flex:1 1 auto;min-width:0;">שחקן בוסט</div>
-        <div id="st-hero-tier" class="stats-tier gold" style="margin:0;flex-shrink:0;">⚡ זהב</div>
-      </div>
-      <!-- Three hero KPIs: ELO · Win Rate · Streak -->
-      <div class="stats-hero-kpis">
-        <div class="stats-kpi">
-          <div class="stats-kpi-val" id="st-rating">0</div>
-          <div class="stats-kpi-lbl">דירוג ELO</div>
-        </div>
-        <div class="stats-kpi">
-          <div class="stats-kpi-val" id="st-hero-wr">0%</div>
-          <div class="stats-kpi-lbl">אחוז ניצחון</div>
-        </div>
-        <div class="stats-kpi">
-          <div class="stats-kpi-val" id="st-hero-streak">0 🔥</div>
-          <div class="stats-kpi-lbl">רצף נוכחי</div>
+    <!-- Hero: who you are + ELO ring toward the next tier -->
+    <div class="sx-hero">
+      <div class="sx-who">
+        <div class="sx-av" id="st-hero-av"></div>
+        <div class="sx-id">
+          <div class="sx-name" id="st-hero-name">שחקן בוסט</div>
+          <div class="sx-tier" id="st-hero-tier-pill"><svg class="gi"><use href="#gi-crown"/></svg><span id="st-hero-tier">ארד</span></div>
         </div>
       </div>
-      <div class="stats-hero-insight" id="st-hero-insight" style="margin-top:0;text-align:center;"></div>
-    </div>
-
-    <!-- Archetype identity card -->
-    <div class="st-archetype-card">
-      <div class="st-archetype-icon" id="ins-arch-icon">🆕</div>
-      <div class="st-archetype-body">
-        <div class="st-archetype-tag">הסגנון שלך</div>
-        <div class="st-archetype-name" id="ins-arch-label">חוקר</div>
-        <div class="st-archetype-blurb" id="ins-arch-blurb">התחל לשחק כדי לפתוח את הסגנון שלך</div>
+      <div class="sx-ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="sx-ring-track" cx="60" cy="60" r="50"/>
+          <circle class="sx-ring-fill" id="st-ring-fill" cx="60" cy="60" r="50"/>
+        </svg>
+        <div class="sx-ring-ctr"><div class="sx-elo" id="st-rating">0</div><div class="sx-elo-l">ELO</div></div>
+      </div>
+      <div class="sx-next" id="st-hero-next"></div>
+      <div class="sx-pills">
+        <div class="sx-pill is-wr"><svg class="gi"><use href="#gi-trophy"/></svg><b id="st-hero-wr">0%</b><small>ניצחונות</small></div>
+        <div class="sx-pill is-streak"><svg class="gi"><use href="#gi-fire"/></svg><b id="st-hero-streak">0</b><small>ברצף</small></div>
+        <div class="sx-pill is-played"><svg class="gi"><use href="#gi-games"/></svg><b id="st-hero-played">0</b><small>משחקים</small></div>
       </div>
     </div>
 
-    <!-- Story feed: Acts 2–5 -->
-    <div class="stats-feed">
+    <div class="sx-tabs" role="tablist">
+      <button class="sx-tab on" data-tab="overview" role="tab">סקירה</button>
+      <button class="sx-tab" data-tab="records" role="tab">שיאים</button>
+      <button class="sx-tab" data-tab="style" role="tab">סגנון</button>
+      <button class="sx-tab" data-tab="rivals" role="tab">יריבים</button>
+    </div>
 
-      <!-- ACT 2: FORM — open by default -->
-      <div class="st-section-card open" id="st-sec-form">
-        <div class="st-section-header" data-section="form">
-          <img class="st-section-hd-icon" src="assets/icons/stats-performance-icon.png" alt="">
-          <span class="st-section-hd-title">הביצועים שלי</span>
-          <span class="st-section-hd-teaser" id="st-form-teaser"></span>
-          <span class="st-section-chevron">▾</span>
+    <div class="sx-panels">
+
+      <!-- סקירה -->
+      <div class="sx-panel on" id="st-panel-overview" role="tabpanel">
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>השבוע שלך</h3><span>7 הימים האחרונים</span></div>
+          <div id="ins-week"></div>
         </div>
-        <div class="st-section-body">
-
-          <div class="section-title-bar">השבוע שלך</div>
-          <div class="ins-week" id="ins-week"></div>
-
-          <div class="stats-trend-chart">
-            <div class="stats-trend-chart-title">10 משחקים אחרונים</div>
-            <div class="stats-sparkline" id="st-sparkline"></div>
-            <div style="display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,.3);margin-top:4px;direction:ltr;">
-              <span>ישן</span><span>עדכני</span>
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>משחקים אחרונים</h3><span>הפרש נקודות</span></div>
+          <div class="sx-recent" id="st-recent"></div>
+          <div class="sx-axis"><span>עכשיו</span><span>לפני כן</span></div>
+          <div class="sx-pick" id="st-recent-pick"></div>
+        </div>
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>מאזן כולל</h3><span id="st-balance-n"></span></div>
+          <div class="sx-balance">
+            <div class="sx-donut" id="st-donut"></div>
+            <div class="sx-legend">
+              <div class="sx-lg"><i class="is-w"></i>ניצחונות<b id="st-won">0</b></div>
+              <div class="sx-lg"><i class="is-l"></i>הפסדים<b id="st-lost">0</b></div>
+              <div class="sx-lg"><i class="is-d"></i>תיקו<b id="st-draw">0</b></div>
             </div>
           </div>
-
-          <div class="stats-trend-chart" style="margin-top:10px;">
-            <div class="stats-trend-chart-title">ניצחונות / הפסדים</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:10px;">
-              <div><div style="font-size:9px;color:rgba(255,255,255,.5)">ניצחונות</div><div id="st-won" style="font-size:22px;font-weight:900;color:#5dfc8c">0</div></div>
-              <div><div style="font-size:9px;color:rgba(255,255,255,.5)">הפסדים</div><div id="st-lost" style="font-size:22px;font-weight:900;color:#ff6b6b">0</div></div>
-              <div><div style="font-size:9px;color:rgba(255,255,255,.5)">תיקו</div><div id="st-draw" style="font-size:22px;font-weight:900;color:rgba(255,255,255,.5)">0</div></div>
-            </div>
-            <div style="height:10px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,.08);display:flex;">
-              <div id="st-bar-w" style="background:linear-gradient(90deg,#5dfc8c,#00c85a);height:100%;transition:width .6s ease;width:0%"></div>
-              <div id="st-bar-l" style="background:linear-gradient(90deg,#ff6b6b,#cc2222);height:100%;transition:width .6s ease;width:0%"></div>
-              <div id="st-bar-d" style="background:rgba(255,255,255,.25);height:100%;transition:width .6s ease;width:0%"></div>
-            </div>
-          </div>
-
-          <div class="section-title-bar" style="margin-top:14px;">מגמות</div>
-          <div class="ins-trends" id="ins-trends"></div>
-
+        </div>
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>מגמות</h3><span>מחצית אחרונה מול קודמת</span></div>
+          <div class="sx-chips" id="ins-trends"></div>
         </div>
       </div>
 
-      <!-- ACT 3: ACHIEVEMENTS — closed by default -->
-      <div class="st-section-card" id="st-sec-achievements">
-        <div class="st-section-header" data-section="achievements">
-          <img class="st-section-hd-icon" src="assets/icons/stats-records-icon.png" alt="">
-          <span class="st-section-hd-title">השיאים שלי</span>
-          <span class="st-section-hd-teaser" id="st-ach-teaser"></span>
-          <span class="st-section-chevron">▾</span>
+      <!-- שיאים -->
+      <div class="sx-panel" id="st-panel-records" role="tabpanel">
+        <div class="sx-sec">
+          <div class="sx-best" id="st-bestmove"></div>
         </div>
-        <div class="st-section-body">
-
-          <div class="fun-card">
-            <div class="fun-card-icon">🏆</div>
-            <div class="fun-card-info">
-              <div class="fun-card-lbl">שיא ניקוד למשחק</div>
-              <div class="fun-card-val" id="st-highscore">0</div>
-            </div>
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>מדף השיאים</h3></div>
+          <div class="sx-shelf">
+            <div class="sx-rc"><img src="assets/icons/stats-records-icon.png" alt=""><div class="v" id="st-highscore">0</div><div class="l">ניקוד שיא</div><div class="d">במשחק אחד</div></div>
+            <div class="sx-rc"><img src="assets/icons/stats-streak-icon.png" alt=""><div class="v" id="st-fun-streak">0</div><div class="l">רצף ניצחונות</div><div class="d">הארוך ביותר</div></div>
+            <div class="sx-rc"><img src="assets/icons/stats-wins-icon.png" alt=""><div class="v" id="st-fun-comeback">—</div><div class="l">קאמבק גדול</div><div class="d">נקודות מפיגור</div></div>
+            <div class="sx-rc"><img src="assets/icons/stats-average-icon.png" alt=""><div class="v" id="st-fun-longest-len">—</div><div class="l">המילה הארוכה</div><div class="d" id="st-fun-longest">—</div></div>
           </div>
-          <div class="fun-card">
-            <div class="fun-card-icon">💯</div>
-            <div class="fun-card-info">
-              <div class="fun-card-lbl">הכי הרבה נקודות במהלך אחד</div>
-              <div class="fun-card-val" id="st-fun-bestmove">0</div>
-            </div>
+        </div>
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>קלאץ׳</h3><span>רגעים מכריעים</span></div>
+          <div class="sx-row3">
+            <div><div class="v" id="st-comeback">0</div><div class="l">קאמבקים</div></div>
+            <div><div class="v" id="st-lastmove">0</div><div class="l">ניצחון במהלך אחרון</div></div>
+            <div><div class="v" id="st-closewins">0</div><div class="l">ניצחונות צמודים</div></div>
           </div>
-          <div class="fun-card">
-            <div class="fun-card-icon">📏</div>
-            <div class="fun-card-info">
-              <div class="fun-card-lbl">המילה הארוכה ביותר</div>
-              <div class="fun-card-val" id="st-fun-longest">—</div>
-            </div>
-          </div>
-          <div class="fun-card">
-            <div class="fun-card-icon">🔥</div>
-            <div class="fun-card-info">
-              <div class="fun-card-lbl">רצף ניצחונות שיא</div>
-              <div class="fun-card-val" id="st-fun-streak">0</div>
-            </div>
-          </div>
-          <div class="fun-card">
-            <div class="fun-card-icon">🚀</div>
-            <div class="fun-card-info">
-              <div class="fun-card-lbl">הקאמבק הכי גדול</div>
-              <div class="fun-card-val" id="st-fun-comeback">—</div>
-            </div>
-          </div>
-
-          <div class="section-title-bar" style="margin-top:6px;">קלאץ׳ / קאמבק</div>
-          <div class="stats-grid cols3">
-            <div class="stat-card">
-              <div class="stat-card-icon">💪</div>
-              <div class="stat-card-val" id="st-comeback">0</div>
-              <div class="stat-card-lbl">ניצחונות בקאמבק</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon">🎯</div>
-              <div class="stat-card-val" id="st-lastmove">0</div>
-              <div class="stat-card-lbl">ניצחונות במהלך אחרון</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-card-icon">🤝</div>
-              <div class="stat-card-val" id="st-closewins">0</div>
-              <div class="stat-card-lbl">משחקים צמודים שניצחת</div>
-            </div>
-          </div>
-
-          <button class="stats-share-btn">📤 שתף את הסטטיסטיקות שלי</button>
-
         </div>
       </div>
 
-      <!-- ACT 4: STYLE — closed by default -->
-      <div class="st-section-card" id="st-sec-style">
-        <div class="st-section-header" data-section="style">
-          <img class="st-section-hd-icon" src="assets/icons/stats-style-icon.png" alt="">
-          <span class="st-section-hd-title">סגנון המשחק שלי</span>
-          <span class="st-section-hd-teaser" id="st-style-teaser"></span>
-          <span class="st-section-chevron">▾</span>
-        </div>
-        <div class="st-section-body">
-
-          <div class="section-title-bar">סגנון משחק</div>
-          <div class="ins-style" id="ins-style"></div>
-
-          <div class="section-title-bar">האות המועדפת</div>
-          <div class="boost-fav-card">
-            <div class="boost-fav-icon boost-pulse" id="st-boost-fav-icon">🔤</div>
-            <div class="boost-fav-info">
-              <div class="boost-fav-name" id="st-boost-fav-name">—</div>
-              <div class="boost-fav-pct" id="st-boost-fav-pct">טרם נמדד</div>
-              <div class="boost-fav-desc">האות שממנה יצרת הכי הרבה מילים</div>
+      <!-- סגנון -->
+      <div class="sx-panel" id="st-panel-style" role="tabpanel">
+        <div class="sx-sec">
+          <div class="sx-arch">
+            <div class="sx-wood sx-arch-ic" id="ins-arch-icon">?</div>
+            <div class="sx-arch-body">
+              <div class="sx-arch-t">הסגנון שלך</div>
+              <div class="sx-arch-n" id="ins-arch-label">חוקר</div>
+              <div class="sx-arch-b" id="ins-arch-blurb">התחל לשחק כדי לפתוח את הסגנון שלך</div>
             </div>
           </div>
-
-          <div class="section-title-bar" style="margin-top:14px;">ניתוח מילים</div>
-          <div class="ins-words" id="ins-words"></div>
-
+          <svg class="sx-radar" id="st-radar" viewBox="-150 -118 300 236" aria-hidden="true"></svg>
+        </div>
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>המועדפים שלך</h3></div>
+          <div class="sx-favs" id="st-favs"></div>
+        </div>
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>ניתוח מילים</h3></div>
+          <div class="sx-chips" id="ins-words"></div>
         </div>
       </div>
 
-      <!-- ACT 5: RIVALRIES — closed by default -->
-      <div class="st-section-card" id="st-sec-rivals">
-        <div class="st-section-header" data-section="rivals">
-          <img class="st-section-hd-icon" src="assets/icons/stats-rivals-icon.png" alt="">
-          <span class="st-section-hd-title">היריבים שלי</span>
-          <span class="st-section-hd-teaser" id="st-rivals-teaser"></span>
-          <span class="st-section-chevron">▾</span>
-        </div>
-        <div class="st-section-body">
+      <!-- יריבים -->
+      <div class="sx-panel" id="st-panel-rivals" role="tabpanel">
+        <div class="sx-sec">
+          <div class="sx-sh"><h3>ראש בראש</h3><span>לפי מספר משחקים</span></div>
           <div id="st-rivals-content"></div>
         </div>
       </div>
 
-    </div><!-- /stats-feed -->
-
-    <!-- Legacy compat nodes: JS writes to these but they have no visual output -->
-    <span id="st-streak" style="display:none">0</span>
-    <span id="st-words" style="display:none">0</span>
-    <svg style="display:none"><circle id="stats-donut-arc"/><text id="stats-wr-pct"/></svg>
-
-  </div><!-- /stats-wrap -->
+    </div>
+  </div>
   </div>
 </div>
