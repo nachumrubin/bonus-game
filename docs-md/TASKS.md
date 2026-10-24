@@ -4,10 +4,13 @@
 
 - [x] Home cold-launch build, game-board build (new games), 300ms resume settle,
   `build.*` sounds, clock shift (offline) + first-deadline lead-in (online), bot hold.
-- [ ] **Logo tile animation:** fly the logo in as separate tiles (ב, ו, ס, ט + bolt) from
-  outside the screen like the Blender promo clip, each glowing and settling into place.
-  Needs per-tile renders (see `docs/asset_inventory.md` → `assets/ui/logo_tiles/`); then
-  give each layer its own `hb-logo` delay/origin in `HOME_BUILD.logo`.
+- [x] **Logo tile animation:** the boot loader's tiles (the logo's own Blender tiles,
+  upright, intact ס) fly off the screen when loading ends; home's build brings them back
+  from the same sides to build the logo, lightning splits the ס, and the single image takes
+  over. Layers in `assets/ui/logo_tiles/` from `Blender designs/logo/render_logo_tiles.py`.
+- [ ] Hand-check the loader exit + logo build on a real phone (smoothness of the 4 flying
+  layers + bolt on a low-end device; whether `build.strike` is too loud when audio is
+  already unlocked, e.g. after a reload).
 - [ ] Hand-check on a real phone: build smoothness on a low-end device, and that the
   3D-scoreboard setup after the build doesn't hitch the first move.
 - [ ] Online: `BOARD_BUILD_LEAD_MS` is added when the second player marks ready; if a

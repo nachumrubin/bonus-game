@@ -1940,6 +1940,82 @@ html .hb-pop   { animation: hbPop   var(--b-dur) ease-out          var(--b-delay
 html .hb-logo  { animation: hbLogoFly var(--b-dur) cubic-bezier(.2,.7,.2,1) var(--b-delay) backwards; }
 html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) none; }
 
+/* Tile-built logo (buildLogoTiles): a stack of per-tile layers laid exactly
+   over the logo image, which hides until the run removes the stack. Times
+   arrive as --b-* properties (HOME_BUILD.logoTiles); --b-strike / --b-glow sit
+   on the stack and are inherited by every layer. */
+@keyframes hbTileIn {
+  0%   { transform: translate3d(var(--b-fx), var(--b-fy), 0) rotate(var(--b-spin)) scale(1.1); filter: none; }
+  80%  { transform: translate3d(0, 0, 0) rotate(0deg) scale(.97); filter: brightness(1.3) drop-shadow(0 0 10px rgba(40,212,255,.8)); }
+  100% { transform: none; filter: none; }
+}
+@keyframes hbTileShade { from { opacity: 0; } }
+@keyframes hbTileCharge {
+  0%   { transform: none; filter: none; }
+  20%  { transform: translate3d(1px, 0, 0); }
+  40%  { transform: translate3d(-1px, 1px, 0); }
+  60%  { transform: translate3d(1.5px, -1px, 0); }
+  80%  { transform: translate3d(-1.5px, 0, 0); }
+  100% { transform: none; filter: brightness(1.5) drop-shadow(0 0 10px rgba(40,212,255,.95)); }
+}
+@keyframes hbTileGone { to { opacity: 0; } }
+@keyframes hbTileSplit {
+  0%   { opacity: 0; }
+  1%   { opacity: 1; transform: none; }
+  28%  { transform: translate3d(calc(var(--b-kick) * 9%), -2%, 0) rotate(calc(var(--b-kick) * 5deg)); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes hbTileBolt {
+  0%   { opacity: 0; }
+  4%   { opacity: 1; filter: brightness(1.6) drop-shadow(0 0 14px #28d4ff); }
+  35%  { opacity: 1; }
+  100% { opacity: 0; filter: none; }
+}
+@keyframes hbSky {
+  0%   { opacity: 1; clip-path: inset(0 0 100% 0); }
+  35%  { opacity: 1; clip-path: inset(0 0 0 0); }
+  50%  { opacity: .25; }
+  62%  { opacity: 1; }
+  100% { opacity: 0; clip-path: inset(0 0 0 0); }
+}
+@keyframes hbLogoFlash {
+  0%   { filter: none; }
+  15%  { filter: brightness(1.9) drop-shadow(0 0 18px rgba(40,212,255,1)); }
+  100% { filter: none; }
+}
+html .hlogo.hb-logo-tiles { position: relative; }
+@keyframes hbHidden { from, to { visibility: hidden; } }
+@keyframes hbTilesOut { to { opacity: 0; } }
+html .hlogo.hb-logo-tiles > img.hl-img { animation: hbHidden 1ms linear var(--b-handoff) backwards; }
+.hl-tiles {
+  position: absolute; pointer-events: none;
+  animation: hbLogoFlash 300ms ease-out var(--b-strike) none, hbLogoGlow var(--b-glow-dur) ease-out var(--b-glow) none,
+    hbTilesOut var(--b-handoff-dur) linear var(--b-handoff) forwards;
+}
+.hl-layer { position: absolute; }
+html .hlogo .hl-tiles .hl-layer > img {
+  position: absolute; inset: 0; display: block;
+  width: 100% !important; height: 100% !important; max-width: none !important; min-width: 0 !important;
+}
+.hb-tile-in { animation: hbTileIn var(--b-dur) cubic-bezier(.2,.75,.25,1) var(--b-delay) backwards; }
+.hb-tile-in > .hb-tile-shade { animation: hbTileShade 220ms ease-out var(--b-shade) backwards; }
+.hb-tile-in > .hb-tile-charge {
+  animation: hbTileCharge var(--b-charge-dur) ease-in var(--b-charge) both, hbTileGone 1ms linear var(--b-strike) forwards;
+}
+.hb-tile-split { animation: hbTileSplit var(--b-dur) cubic-bezier(.2,.8,.3,1) var(--b-strike) backwards; }
+.hb-tile-split.is-left  { --b-kick: -1; }
+.hb-tile-split.is-right { --b-kick: 1; }
+.hb-tile-bolt > img { animation: hbTileBolt var(--b-dur) ease-out var(--b-strike) both; }
+.hl-sky {
+  position: absolute; z-index: 6; width: 34px; height: 120vh; transform: translateX(-50%); pointer-events: none;
+  animation: hbSky var(--b-dur) linear calc(var(--b-strike) - 70ms) both;
+}
+.hl-sky svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hl-sky polyline {
+  fill: none; stroke: #fff; stroke-width: 3; stroke-linejoin: round; vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 4px #28d4ff) drop-shadow(0 0 12px rgba(40,212,255,.9));
+}
+
 @keyframes bbReveal {
   from { clip-path: circle(0% at 100% 0%); }
   to   { clip-path: circle(150% at 100% 0%); }
@@ -4308,27 +4384,17 @@ button[aria-disabled="true"] {
   padding: 6px 26px;
 }
 
-/* Per-tile golden Scrabble-style square. The drop+bounce animation
-   makes this opacity:0 → 1 visible only inside its own keyframes. */
+/* Per-tile image: the logo's own Blender tile, upright
+   (assets/ui/logo_tiles/row_*.webp). The drop+bounce animation makes this
+   opacity:0 → 1 visible only inside its own keyframes. */
 .app-loading-tile {
   position: relative;
-  width: 58px;
-  height: 64px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Heebo', sans-serif;
-  font-weight: 900;
-  color: #1a1a3e;
-  font-size: 36px;
-  line-height: 1;
-  background:
-    linear-gradient(160deg, #ffe17a 0%, #e8c840 45%, #c8a225 100%);
-  border: 1px solid rgba(184, 154, 32, 0.85);
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  display: block;
+  height: 66px;
+  width: auto;
+  aspect-ratio: 205 / 220;
+  user-select: none;
+  -webkit-user-drag: none;
   opacity: 0;
   /* Shared keyframes: fall → bounce → settled → lightning flash →
      fade upward → reset. Stagger via animation-delay below so the
@@ -4340,20 +4406,12 @@ button[aria-disabled="true"] {
 .app-loading-tile:nth-child(3) { animation-delay: 360ms; }
 .app-loading-tile:nth-child(4) { animation-delay: 540ms; }
 
-.app-loading-tile .t-letter {
-  position: relative;
-  z-index: 2;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-.app-loading-tile .t-val {
-  position: absolute;
-  bottom: 4px;
-  right: 6px;
-  font-size: 11px;
-  font-weight: 800;
-  color: #2a2a55;
-  opacity: 0.85;
-}
+/* Loading finished: the loop stops and flyOutLoadingTiles (buildSequences.js)
+   sends each tile off the screen; the text and tips get out of the way. */
+.app-loading.is-exiting .app-loading-tile { animation: none !important; opacity: 1; }
+.app-loading.is-exiting .app-loading-bolt { display: none; }
+.app-loading.is-exiting .app-loading-text,
+.app-loading.is-exiting .app-loading-tips { opacity: 0; transition: opacity 0.2s ease; }
 
 /* Drop from above → bounce → hold → lightning flash → fade upward.
    Percentages map to 2800ms total. The "drop" sits in the first ~14%
@@ -4438,13 +4496,12 @@ button[aria-disabled="true"] {
 
 /* Short phones / small viewports: shrink tiles + gap rather than crop. */
 @media (max-height: 640px) {
-  .app-loading-tile { width: 50px; height: 56px; font-size: 30px; }
-  .app-loading-tiles { gap: 6px; padding: 6px 20px; }
+  .app-loading-tile { height: 58px; }
+  .app-loading-tiles { gap: 2px; padding: 6px 20px; }
   .app-loading-stage { gap: 22px; }
 }
 @media (max-width: 360px) {
-  .app-loading-tile { width: 48px; height: 54px; font-size: 28px; }
-  .app-loading-tile .t-val { font-size: 10px; bottom: 3px; right: 5px; }
+  .app-loading-tile { height: 58px; }
 }
 
 /* ── LOADING TIPS CARD ── */

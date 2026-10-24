@@ -522,11 +522,18 @@ Two deliberate exceptions to the §15 entrance budget. Timeline: `src/ui/buildTi
 (single source of truth; CSS receives every delay/duration as a custom property). Runner:
 `src/ui/buildSequences.js`. Keyframes: `styles.css` §1c.
 
-**Home build — cold launch only** (≈1.9s, starts as the boot loader lifts): game-mode cards
-→ bottom nav rises and each item glows in a sweep → top-bar icons slide in from the left,
-one by one → profile (avatar pop, name, ELO) → the logo flies in from above the screen,
-glows and settles. Every later arrival at home is a §15 back glide. The logo is one image
-for now; per-tile flight waits on per-tile renders (`docs/asset_inventory.md`).
+**Boot loader exit → home build — cold launch only.** When loading ends the loader's tile
+loop stops and its four tiles (the logo's own Blender tiles, upright, ס intact) fly off the
+screen, each in its own direction with a spin (`LOGO_TILE_EXITS`, `LOADING_EXIT`, ≈0.5s);
+then the loader fades and home builds (≈2.5s): game-mode cards → bottom nav rises and each
+item glows in a sweep → top-bar icons slide in from the left, one by one → profile (avatar
+pop, name, ELO) → the logo is built: the same tiles fly back in, each from the side it
+left by (ב, ו, ט, then ס), each glowing as it lands → the ס charges and trembles →
+lightning comes down onto it, the bolt-shaped crack flashes white-hot and the two halves
+kick apart and settle → the logo glows → the layer stack crossfades into the single
+image (pixel-matched, so the hand-off is invisible). `HOME_BUILD.logoTiles`,
+`logoTilesTimes()`. Without the layers (logo not laid out) the single image drops in from
+above as before. Every later arrival at home is a §15 back glide.
 
 **Board build — new games only** (≈2.1s): the board panel opens from the top-right corner
 (Hebrew reading start) while the cells unfold in a diagonal cascade from that corner →

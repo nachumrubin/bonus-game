@@ -23,14 +23,6 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
   badge uses. `assets/ui/lock.png` can't be used at 11px because its background
   is baked in. Optional: per-duration variants if lock tiers are ever introduced.
 
-* assets/ui/logo_tiles/ — the home logo as separate layers for the cold-launch
-  build (tiles flying in from off-screen like the promo clip): `tile_bet.png`,
-  `tile_vav.png`, `tile_samekh.png`, `tile_tet.png`, `bolt.png`, each a transparent
-  PNG rendered from the logo's Blender scene with the SAME camera and canvas as
-  `assets/ui/boost-logo.webp` so they line up when they settle. Interim: the whole
-  single-image logo flies in (`HOME_BUILD.logo`, `src/ui/buildTimeline.js`). The
-  Blender scene (`Blender designs/promo/render_app_logo.py`) is not in this repo.
-
 * (stats-letter-icon.png was proposed for the favorite-letter card, but that card
   renders the actual Hebrew letter dynamically — no static icon needed.)
 
@@ -98,6 +90,15 @@ Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_invento
   as the end of the 40s promo). Rebuilt by `Blender designs/promo/render_app_logo.py`.
   Deliberately **WebP-only** (no PNG sibling) so `build-web-images.py` never replaces
   it with a 512px copy. Replaces the CSS-built `.hl-tile` logo.
+* assets/ui/logo_tiles/ — the same logo as separate layers, rendered from the same shot
+  (frame 168, same camera/canvas) by `Blender designs/logo/render_logo_tiles.py` (render,
+  then `--pack`, which also writes `src/ui/logoTilesLayout.js` — layer boxes in % of
+  boost-logo.webp). `logo_{bet,vav,tet}.webp` carry the shadows their neighbours cast,
+  `logo_*_bare.webp` don't (in flight); `logo_sam.webp` = the intact ס; `logo_samL/samR`
+  = the halves; `logo_bolt.webp` = the bolt-shaped gap (intact ס minus halves) as a
+  white-hot/cyan glow. Composite of the shadowed layers vs the full render: 0.003 % of
+  pixels differ by > 40/255. `row_{bet,vav,sam,tet}.webp` — each tile upright (same
+  backward tilt, no lean) for the boot loader's straight row. ≈250 KB in total.
 
 ### Web-sized WebP derivatives (September 2026)
 

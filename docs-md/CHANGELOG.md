@@ -2,6 +2,32 @@
 
 ---
 
+## Logo built from the loader's tiles (October 2026)
+
+The boot loader and the home logo now use the same tiles, and the cold launch hands them
+from one to the other.
+
+- **Assets:** `assets/ui/logo_tiles/` rendered from the logo's own Blender shot
+  (`boost_reveal_v9_H.blend`, frame 168) by the new tracked script
+  `Blender designs/logo/render_logo_tiles.py` (render + `--pack`). Per-tile logo layers
+  (shadowed + bare), intact ס, split halves, the bolt glow (derived from the gap), and
+  upright row tiles for the loader. Generated `src/ui/logoTilesLayout.js` places the layers
+  over `boost-logo.webp` in %.
+- **Loader:** the CSS letter tiles are replaced by the upright renders, still a straight
+  row with the same drop/flash loop and cyan sweep. On hide: `.is-exiting` stops the loop,
+  `flyOutLoadingTiles` (WAAPI) snaps each tile to rest and flies it off in its own
+  direction; only then does the loader fade and the home build start (`main.js`
+  `wireAppLoading().hide()` → `lift()`). Tile layers are preloaded while the loader is up.
+- **Home build:** instead of the single image dropping in, `buildLogoTiles` lays a layer
+  stack over the logo image: the tiles fly back from the sides they left by, the shadows
+  they cast fade in once all have landed, the ס charges → lightning (sky channel + bolt
+  flash) → the halves kick apart and settle → glow → crossfade to the image. Any tap
+  removes the stack at once. Fractional positioning (getBoundingClientRect) keeps the
+  stack on the image to sub-pixel accuracy. The home build grows ≈0.6s (1.94s → 2.53s).
+- **Sounds:** `build.charge` (power_up) and `build.strike` (boost_activate — the real zap).
+- **Tests:** 6 new in `buildSequences.test.js` (timeline order, stack layout and exit
+  sides, tap-to-finish, fallback, loader exit and its reduced-motion/no-WAAPI no-op).
+
 ## Build sequences — home cold launch + game-board build (October 2026)
 
 Two signature entrances on top of BOOST GLIDE. Spec: `BOOST_MOTION_SPEC.md` §16; decision

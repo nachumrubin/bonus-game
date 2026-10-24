@@ -54,6 +54,10 @@ android/.idea/
 /Blender designs/boosties/*
 !/Blender designs/boosties/*.py
 !/Blender designs/boosties/*.md
+# Logo tile layers (assets/ui/logo_tiles/): the render/pack script is tracked, renders stay local.
+!/Blender designs/logo/
+/Blender designs/logo/*
+!/Blender designs/logo/*.py
 /tools/3d-spike/models/
 
 # Generated test reports.

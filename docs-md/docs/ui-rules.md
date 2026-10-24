@@ -211,7 +211,11 @@ Help dropdown / Guide / FAQ (top-bar `?` button):
 .guide-section         — accordion section (used inside both #ov-guide and #ov-faq)
 
 App boot loader tip carousel (inside #app-loading, wired by wireAppLoading() in main.js):
-#app-loading           — full-screen boot overlay; removed from DOM 600 ms after .is-hidden is added
+#app-loading           — full-screen boot overlay; removed from DOM 600 ms after .is-hidden is added.
+                         On hide it first gets .is-exiting (tile loop stops) and its
+                         `.app-loading-tile[data-tile=bet|vav|sam|tet]` <img>s fly off
+                         (flyOutLoadingTiles, ≈500 ms) before .is-hidden; `data-tile` is
+                         load-bearing (LOGO_TILE_EXITS keys).
 #app-loading-text      — rotating Hebrew status line (מתחבר… → כמעט מוכן…). On tip-load failure or offline: לא הצלחנו להתחבר. בודקים שוב... Tips region then shows אפשר להמשיך כשהרשת חוזרת (.is-offline-hint) until the connection returns.
 #app-loading-tips      — tip carousel wrapper; display:none until loadingTipsService resolves
 #app-loading-tip-prev  — previous-tip nav button (❯, right-pointing, left side in LTR row)
@@ -811,7 +815,9 @@ Classes added by `showScreen()` and removed by one cleanup timer (or the next na
 The home topbar stays `display:''` while it glides out and is hidden when the glide settles.
 
 **Build sequences** (`src/ui/buildSequences.js`, BOOST_MOTION_SPEC §16) add `hb-*` classes
-on home (`hb-rise`, `hb-glow`, `hb-slide`, `hb-pop`, `hb-logo`, `hb-logo-glow`) and `bb-*`
+on home (`hb-rise`, `hb-glow`, `hb-slide`, `hb-pop`, `hb-logo`, `hb-logo-glow`; the tile-built
+logo adds `hb-logo-tiles` on `.hlogo` plus a transient `.hl-tiles` stack of `.hl-layer`s laid
+over `img.hl-img`, removed when the build ends) and `bb-*`
 classes on the game screen (`bb-panel` on `.board-center-inner`, `bb-unfold` on grid cells,
 `bb-boost` on `.bsq`, `bb-card` on `#is-sb1/#is-sb2/.gm-vs-center`, `bb-rise`, `bb-tiles` on
 `#brack`, `bb-quick` on `.gr`), each with `--b-delay` / `--b-dur`. Load-bearing selectors:

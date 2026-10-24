@@ -331,6 +331,15 @@ export const SFX = Object.freeze({
     tier: 'event', file: 'tile_place', variants: 3, vol: 0.55, rate: 0.85, haptic: null, throttleMs: 150,
     synth: tone(180, 50, 'triangle', 0.07, 140),
   },
+  // The home logo's ס charging and being struck by lightning: real electricity.
+  'build.charge': {
+    tier: 'event', file: 'power_up', vol: 0.3, rate: 1.15, haptic: null, throttleMs: 300,
+    synth: tone(220, 240, 'sawtooth', 0.04, 660),
+  },
+  'build.strike': {
+    tier: 'event', file: 'boost_activate', vol: 0.5, haptic: [40], throttleMs: 300,
+    synth: tone(880, 160, 'sawtooth', 0.08, 220),
+  },
 
   // ── General UI (very quiet) ──────────────────────────────
   'ui.tap': {
