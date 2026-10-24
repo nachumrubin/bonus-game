@@ -1930,7 +1930,8 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   visibility: visible; opacity: 1; transition: none; transform-origin: 50% 50%;
   animation: ctRecede var(--ct-dur) var(--ct-ease) both;
 }
-.screen.morph-under { transform-origin: 50% 50%; animation: ctReturn var(--ct-dur) var(--ct-ease) both; }
+/* home is already fully there under the shrinking screen (not fading in through .screen's own transition) */
+.screen.morph-under { opacity: 1; transition: none; transform-origin: 50% 50%; animation: ctReturn var(--ct-dur) var(--ct-ease) both; }
 /* The home topbar sits above every screen, so it gets out of the growing
    screen's way early and comes back only once the screen is nearly the card. */
 @keyframes ctTopbarOut { 0% { opacity: 1; } 35%, 100% { opacity: 0; } }
