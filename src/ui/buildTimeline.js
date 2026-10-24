@@ -25,11 +25,11 @@ export const HOME_BUILD = Object.freeze({
   // With the per-tile layers (assets/ui/logo_tiles/, the normal case) the logo
   // is built instead of dropped: the four tiles that flew off the loading
   // screen fly back in, each from the side it left by (LOGO_TILE_EXITS), in
-  // `order` → the ס charges → lightning strikes it and it splits → the logo
-  // glows. Then the single image (boost-logo.webp) takes over invisibly.
+  // `order` → the ס charges → lightning strikes the whole ס (it flashes
+  // white-hot for `impactDur`) → only then does it split → the logo glows. Then the single image (boost-logo.webp) takes over invisibly.
   logoTiles: Object.freeze({
     start: 900, order: Object.freeze(['bet', 'vav', 'tet', 'sam']), stagger: 90, flyDur: 480,
-    hold: 80, chargeDur: 260, strikeDur: 160, splitDur: 340, glowDelay: 120, glowDur: 420, handoffDur: 220,
+    hold: 80, chargeDur: 260, leaderDur: 80, impactDur: 200, splitDur: 340, glowDelay: 120, glowDur: 420, handoffDur: 220,
   }),
 });
 
@@ -47,17 +47,37 @@ export const LOGO_TILE_EXITS = Object.freeze({
 // back to rest before it flies.
 export const LOADING_EXIT = Object.freeze({ dur: 380, stagger: 40, settle: 0.22 });
 
+// Tapping the settled logo replays its strike: the ס's halves close up into
+// the whole ס (`heal`), then the same charge → strike → split → glow as the
+// build (HOME_BUILD.logoTiles durations).
+export const LOGO_REPLAY = Object.freeze({ heal: 220, hold: 60 });
+// While home sits idle a pulse of current runs down the ס's crack, every
+// `every` ± `jitter`/2 ms, for `dur` ms. Silent.
+export const LOGO_IDLE = Object.freeze({ every: 30000, jitter: 8000, dur: 900 });
+
+// The strike from the moment the ס starts charging. strike: the lightning
+// reaches the intact ס (its leader set off `leaderDur` earlier); split: the ס
+// cracks into its halves. The last `handoffDur` crossfades the layer stack
+// into the single image.
+function strikeFrom(charge, L) {
+  const strike = charge + L.chargeDur;
+  const split = strike + L.impactDur;
+  const glow = split + L.glowDelay;
+  const end = Math.max(split + L.splitDur, glow + L.glowDur);
+  return { charge, strike, split, glow, handoff: end - L.handoffDur, end };
+}
+
 // Moments of the tile-built logo, in ms from the start of the home build.
 export function logoTilesTimes(L = HOME_BUILD.logoTiles) {
   const land = {};
   L.order.forEach((k, i) => { land[k] = L.start + i * L.stagger + L.flyDur; });
   const allLanded = L.start + (L.order.length - 1) * L.stagger + L.flyDur;
-  const charge = allLanded + L.hold;
-  const strike = charge + L.chargeDur;
-  const glow = strike + L.glowDelay;
-  const end = Math.max(strike + L.splitDur, glow + L.glowDur);
-  // The last `handoffDur` crossfades the layer stack into the single image.
-  return { land, allLanded, charge, strike, split: strike, glow, handoff: end - L.handoffDur, end };
+  return { land, allLanded, ...strikeFrom(allLanded + L.hold, L) };
+}
+
+// Moments of the tap replay, in ms from the tap.
+export function logoReplayTimes(L = HOME_BUILD.logoTiles, R = LOGO_REPLAY) {
+  return { heal: R.heal, ...strikeFrom(R.heal + R.hold, L) };
 }
 
 // ── Game board, new games only ─────────────────────────────────────────

@@ -23,6 +23,10 @@
   --glide-duration:270ms; --glide-in-offset:34px; --glide-out-offset:22px;
   --glide-ease:cubic-bezier(0.2, 0, 0, 1);
   --reveal-offset:10px; --reveal-duration:210ms; --reveal-initial-opacity:0;
+  /* overlay motion (OVERLAY_MOTION) */
+  --ov-in:280ms; --ov-out:180ms;
+  --ov-ease-in:cubic-bezier(0.2, 0, 0, 1); --ov-ease-out:cubic-bezier(0.4, 0, 1, 1);
+  --ov-dialog-scale:0.94; --ov-dialog-offset:10px; --ov-sheet-offset:48px; --ov-panel-offset:24px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 *{scrollbar-width:none!important;-ms-overflow-style:none!important;}
@@ -590,7 +594,7 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 
 /* ── OVERLAYS ── */
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity .2s,visibility 0s;}
-.ov.hidden{opacity:0;pointer-events:none;visibility:hidden;transition:opacity .2s,visibility 0s linear .2s;}
+.ov.hidden{opacity:0;pointer-events:none;visibility:hidden;transition:opacity var(--ov-out) linear,visibility 0s linear var(--ov-out);}
 #lb-info.hidden,#lb-boosts-wrap.hidden,#lb-boost-desc.hidden{display:none;}
 .ovc{background:rgba(6,19,61,.94);border:2px solid rgba(255,255,255,.18);border-radius:16px;padding:15px 14px 18px;width:90%;max-width:460px;max-height:90vh;overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 20px 50px rgba(0,0,0,.5);}
 
@@ -1892,6 +1896,49 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 }
 #global-topbar.glide-out * { pointer-events: none; }
 
+/* ── 1b. Card morph — a home game-mode card becomes its screen ──
+   src/ui/screens/screenTransitions.js (CARD_MORPH in boostGlide.js). --ct-clip
+   is the card's outline on the screen; --ct-dur / --ct-ease the timing. The
+   growing screen carries a glass skin (::after, the card's own surface) that
+   fades as its content fades in; .ct-ghost is a copy of the card. */
+@keyframes ctGrow   { from { clip-path: var(--ct-clip); } to { clip-path: inset(0 round 0px); } }
+@keyframes ctShrink { from { clip-path: inset(0 round 0px); } to { clip-path: var(--ct-clip); } }
+@keyframes ctContentIn  { 0%, 18% { opacity: 0; transform: translate3d(0, 10px, 0); } 75%, 100% { opacity: 1; transform: none; } }
+@keyframes ctContentOut { 0% { opacity: 1; } 45%, 100% { opacity: 0; } }
+@keyframes ctSkinOut { 0%, 15% { opacity: 1; } 60%, 100% { opacity: 0; } }
+@keyframes ctSkinIn  { 0%, 35% { opacity: 0; } 80%, 100% { opacity: 1; } }
+@keyframes ctGhostOut { 0% { opacity: 1; transform: none; } 35%, 100% { opacity: 0; transform: scale(1.04); } }
+@keyframes ctGhostIn  { 0%, 50% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes ctRecede { to   { transform: scale(.95); filter: brightness(.55); } }
+@keyframes ctReturn { from { transform: scale(.95); filter: brightness(.55); } }
+.screen.morph-in, .screen.hidden.morph-close {
+  z-index: 2; visibility: visible; opacity: 1; transition: none;
+  animation: ctGrow var(--ct-dur) var(--ct-ease) both; will-change: clip-path;
+}
+.screen.hidden.morph-close { animation-name: ctShrink; pointer-events: none; }
+.screen.morph-in::after, .screen.morph-close::after {
+  content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%), var(--sg-glass, rgba(255,255,255,.06));
+  animation: ctSkinOut var(--ct-dur) linear both;
+}
+.screen.morph-close::after { animation-name: ctSkinIn; }
+.screen.morph-in > :not(.ct-ghost)    { animation: ctContentIn var(--ct-dur) var(--ct-ease) both; }
+.screen.morph-close > :not(.ct-ghost) { animation: ctContentOut var(--ct-dur) linear both; }
+.screen .ct-ghost { z-index: 5; pointer-events: none; animation: ctGhostOut var(--ct-dur) var(--ct-ease) both; }
+.screen.morph-close .ct-ghost { animation-name: ctGhostIn; animation-timing-function: linear; }
+.screen.hidden.morph-out {
+  visibility: visible; opacity: 1; transition: none; transform-origin: 50% 50%;
+  animation: ctRecede var(--ct-dur) var(--ct-ease) both;
+}
+.screen.morph-under { transform-origin: 50% 50%; animation: ctReturn var(--ct-dur) var(--ct-ease) both; }
+/* The home topbar sits above every screen, so it gets out of the growing
+   screen's way early and comes back only once the screen is nearly the card. */
+@keyframes ctTopbarOut { 0% { opacity: 1; } 35%, 100% { opacity: 0; } }
+@keyframes ctTopbarIn  { 0%, 60% { opacity: 0; } 100% { opacity: 1; } }
+#global-topbar.morph-out   { pointer-events: none; animation: ctTopbarOut var(--ct-dur) linear both; }
+#global-topbar.morph-out * { pointer-events: none; }
+#global-topbar.morph-under { animation: ctTopbarIn var(--ct-dur) linear both; }
+
 /* ── 2. Cascading Reveal ── */
 @keyframes boostReveal {
   from { opacity: var(--reveal-initial-opacity); transform: translate3d(0, var(--reveal-offset), 0); }
@@ -1958,7 +2005,30 @@ html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) 
   80%  { transform: translate3d(-1.5px, 0, 0); }
   100% { transform: none; filter: brightness(1.5) drop-shadow(0 0 10px rgba(40,212,255,.95)); }
 }
+/* The whole ס takes the lightning: white-hot, jolted, still in one piece. */
+@keyframes hbTileHit {
+  0%   { transform: translate3d(0, 2%, 0); filter: brightness(3) drop-shadow(0 0 16px #fff) drop-shadow(0 0 22px #28d4ff); }
+  30%  { transform: translate3d(-1.5px, 0, 0); filter: brightness(2.2) drop-shadow(0 0 14px #28d4ff); }
+  55%  { transform: translate3d(1.5px, 0, 0); filter: brightness(2.8) drop-shadow(0 0 18px #fff); }
+  100% { transform: none; filter: brightness(2.4) drop-shadow(0 0 16px #28d4ff); }
+}
 @keyframes hbTileGone { to { opacity: 0; } }
+/* Replay (tap on the logo): the split halves draw together and fade while the
+   whole ס fades in over them. */
+@keyframes hbTileMend {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translate3d(calc(var(--b-kick) * -3%), 0, 0); }
+}
+@keyframes hbTileHeal { from { opacity: 0; } }
+/* Idle: a pulse of current runs down the ס's crack (a bright band moving
+   through the bolt-shaped mask), flickering as it goes. */
+@keyframes hbCrackRun {
+  0%   { background-position: 0 100%; opacity: 0; }
+  12%  { opacity: .9; }
+  40%  { opacity: .5; }
+  52%  { opacity: .95; }
+  100% { background-position: 0 0; opacity: 0; }
+}
 @keyframes hbTileSplit {
   0%   { opacity: 0; }
   1%   { opacity: 1; transform: none; }
@@ -1971,19 +2041,25 @@ html .hb-logo-glow { animation: hbLogoGlow var(--b-dur) ease-out var(--b-delay) 
   35%  { opacity: 1; }
   100% { opacity: 0; filter: none; }
 }
+@keyframes hbSkyDown {
+  from { clip-path: inset(0 0 100% 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
 @keyframes hbSky {
-  0%   { opacity: 1; clip-path: inset(0 0 100% 0); }
-  35%  { opacity: 1; clip-path: inset(0 0 0 0); }
-  50%  { opacity: .25; }
-  62%  { opacity: 1; }
-  100% { opacity: 0; clip-path: inset(0 0 0 0); }
+  0%   { opacity: 1; }
+  25%  { opacity: .3; }
+  40%  { opacity: 1; }
+  60%  { opacity: .5; }
+  75%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 @keyframes hbLogoFlash {
   0%   { filter: none; }
   15%  { filter: brightness(1.9) drop-shadow(0 0 18px rgba(40,212,255,1)); }
   100% { filter: none; }
 }
-html .hlogo.hb-logo-tiles { position: relative; }
+html .hlogo.hb-logo-tiles, html .hlogo.hb-logo-over { position: relative; }
+html .hlogo .hl-img { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 @keyframes hbHidden { from, to { visibility: hidden; } }
 @keyframes hbTilesOut { to { opacity: 0; } }
 html .hlogo.hb-logo-tiles > img.hl-img { animation: hbHidden 1ms linear var(--b-handoff) backwards; }
@@ -1992,6 +2068,7 @@ html .hlogo.hb-logo-tiles > img.hl-img { animation: hbHidden 1ms linear var(--b-
   animation: hbLogoFlash 300ms ease-out var(--b-strike) none, hbLogoGlow var(--b-glow-dur) ease-out var(--b-glow) none,
     hbTilesOut var(--b-handoff-dur) linear var(--b-handoff) forwards;
 }
+.hl-tiles.is-overlay { animation: none; }
 .hl-layer { position: absolute; }
 html .hlogo .hl-tiles .hl-layer > img {
   position: absolute; inset: 0; display: block;
@@ -1999,16 +2076,33 @@ html .hlogo .hl-tiles .hl-layer > img {
 }
 .hb-tile-in { animation: hbTileIn var(--b-dur) cubic-bezier(.2,.75,.25,1) var(--b-delay) backwards; }
 .hb-tile-in > .hb-tile-shade { animation: hbTileShade 220ms ease-out var(--b-shade) backwards; }
-.hb-tile-in > .hb-tile-charge {
-  animation: hbTileCharge var(--b-charge-dur) ease-in var(--b-charge) both, hbTileGone 1ms linear var(--b-strike) forwards;
+.hl-layer > .hb-tile-charge {
+  animation: hbTileCharge var(--b-charge-dur) ease-in var(--b-charge) both,
+    hbTileHit calc(var(--b-split) - var(--b-strike)) ease-out var(--b-strike) forwards,
+    hbTileGone 1ms linear var(--b-split) forwards;
 }
-.hb-tile-split { animation: hbTileSplit var(--b-dur) cubic-bezier(.2,.8,.3,1) var(--b-strike) backwards; }
-.hb-tile-split.is-left  { --b-kick: -1; }
-.hb-tile-split.is-right { --b-kick: 1; }
-.hb-tile-bolt > img { animation: hbTileBolt var(--b-dur) ease-out var(--b-strike) both; }
+.hl-layer > .hb-tile-charge.is-healing {
+  animation: hbTileHeal var(--b-heal) ease-out backwards,
+    hbTileCharge var(--b-charge-dur) ease-in var(--b-charge) both,
+    hbTileHit calc(var(--b-split) - var(--b-strike)) ease-out var(--b-strike) forwards,
+    hbTileGone 1ms linear var(--b-split) forwards;
+}
+.hb-tile-mend { animation: hbTileMend var(--b-dur) cubic-bezier(.5,0,.75,0) both; }
+.hb-crack-idle {
+  -webkit-mask: url(assets/ui/logo_tiles/logo_bolt.webp) 0 0 / 100% 100% no-repeat;
+  mask: url(assets/ui/logo_tiles/logo_bolt.webp) 0 0 / 100% 100% no-repeat;
+  background: linear-gradient(180deg, transparent 38%, rgba(40,212,255,.75) 46%, #effdff 50%, rgba(40,212,255,.75) 54%, transparent 62%) 0 0 / 100% 300% no-repeat;
+  mix-blend-mode: screen;
+  animation: hbCrackRun var(--b-dur) cubic-bezier(.4,0,.6,1) both;
+}
+.hb-tile-split { animation: hbTileSplit var(--b-dur) cubic-bezier(.2,.8,.3,1) var(--b-split) backwards; }
+.hl-layer.is-left  { --b-kick: -1; }
+.hl-layer.is-right { --b-kick: 1; }
+.hb-tile-bolt > img { animation: hbTileBolt var(--b-dur) ease-out var(--b-split) both; }
 .hl-sky {
   position: absolute; z-index: 6; width: 34px; height: 120vh; transform: translateX(-50%); pointer-events: none;
-  animation: hbSky var(--b-dur) linear calc(var(--b-strike) - 70ms) both;
+  animation: hbSkyDown var(--b-leader) linear calc(var(--b-strike) - var(--b-leader)) both,
+    hbSky var(--b-dur) linear var(--b-strike) forwards;
 }
 .hl-sky svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .hl-sky polyline {
@@ -2455,13 +2549,27 @@ html .hlogo .hl-tiles .hl-layer > img {
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* ── 10. Overlay card entrance ── */
-@keyframes overlayCardIn {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: none; }
+/* ── 10. Overlay motion — one entrance + exit for every .ov (OVERLAY_MOTION) ──
+   Transitions, not keyframes: the card rests at its "away" pose while the
+   overlay is .hidden and transitions to/from it, so a close mid-open simply
+   reverses. The timing comes from the state being entered (open: --ov-in,
+   decelerate; close: --ov-out, accelerate, done before the overlay turns
+   visibility:hidden). On close the backdrop's (linear) fade carries the
+   card's fade too, so the card itself only moves and drops its opacity at the
+   end — fading both would hide the card before it had visibly moved. Shape: dialog (default) scales up from just below,
+   .g-sheet rises, .g-full rises a little. A signature entrance (results,
+   achievement unlock) may still animate the card; it is dropped on close so
+   every overlay leaves the same way. Reduced motion: the global blanket. */
+.ov > .ovc {
+  --ov-away: translateY(var(--ov-dialog-offset)) scale(var(--ov-dialog-scale));
+  transition: opacity var(--ov-in) var(--ov-ease-in), transform var(--ov-in) var(--ov-ease-in);
 }
-.ov:not(.hidden) > .ovc {
-  animation: overlayCardIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
+.ov > .ovc.g-sheet { --ov-away: translateY(var(--ov-sheet-offset)); }
+.ov > .ovc.g-full  { --ov-away: translateY(var(--ov-panel-offset)); }
+.ov.hidden > .ovc {
+  opacity: 0; transform: var(--ov-away);
+  transition: transform var(--ov-out) var(--ov-ease-out), opacity 0s linear var(--ov-out);
+  animation-name: none !important;
 }
 
 /* ── Screen-transitioning: blocks ALL pointer events on screen + descendants

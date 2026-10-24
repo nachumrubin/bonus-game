@@ -10,8 +10,9 @@ import assert from 'node:assert/strict';
 
 import {
   showScreen, revealCurrentScreen, SCREEN_IDS, _resetTransitionState, _getTransitionState,
+  armCardMorph,
 } from './screenTransitions.js';
-import { REVEAL, BOOST_GLIDE, MAX_TOTAL_ENTRANCE } from '../boostGlide.js';
+import { REVEAL, BOOST_GLIDE, MAX_TOTAL_ENTRANCE, CARD_MORPH } from '../boostGlide.js';
 
 // ── Minimal DOM fake ─────────────────────────────────────────────────────
 function makeEl({ id = '', classes = [] } = {}) {
@@ -37,6 +38,7 @@ function makeEl({ id = '', classes = [] } = {}) {
     },
     children,
     append(...c) { children.push(...c); return el; },
+    appendChild(c) { children.push(c); return c; },
     // Crude selector engine: comma lists of `.cls`, `#id` or `#id .cls`.
     querySelectorAll(sel) {
       const out = [];
@@ -309,4 +311,115 @@ test('revealCurrentScreen replays the home reveal once the loader lifts', () => 
   t.runAll();
   assert.ok(!has(parts.hlogo, 'reveal-item'));
   assert.equal(revealCurrentScreen({ doc, ...t, reducedMotion: () => true }), false);
+});
+
+// ── Card morph (home game-mode card → its screen, and back) ──────────────
+function morphDoc(opts) {
+  const d = makeDoc(opts);
+  const sh = d.elements.get('sh');
+  const card = makeEl({ id: 'btn-online-lobby', classes: ['hm-card'] });
+  card.getBoundingClientRect = () => ({ left: 16, top: 300, right: 396, bottom: 400, width: 380, height: 100 });
+  card.cloneNode = () => {
+    const g = makeEl({ id: 'btn-online-lobby', classes: ['hm-card'] });
+    g.style.cssText = '';
+    g.remove = () => { g.removed = true; };
+    return g;
+  };
+  sh.append(card);
+  sh.contains = (n) => sh.querySelectorAll('.hm-card').includes(n);
+  for (const el of d.elements.values()) {
+    el.getBoundingClientRect = () => ({ left: 0, top: 0, right: 412, bottom: 860, width: 412, height: 860 });
+  }
+  d.doc.defaultView = { getComputedStyle: () => ({ borderRadius: '18px' }) };
+  return { ...d, card, sh };
+}
+const ghostsOf = (el) => el.children.filter(c => c.classList.contains('ct-ghost') && !c.removed);
+
+test('card morph: a tapped card grows into the screen it opens (no glide, no stagger)', () => {
+  const { doc, elements, parts, card, sh } = morphDoc();
+  const t = fakeTimers();
+  showScreen('sh', { doc, ...t }); t.runAll();
+  armCardMorph(card, { now: () => 1000 });
+  showScreen('so', { doc, now: () => 1100, ...t });
+  const so = elements.get('so');
+  assert.ok(has(so, 'morph-in') && !has(so, 'glide-in'));
+  assert.ok(has(sh, 'morph-out') && !has(sh, 'glide-out'));
+  assert.ok(has(parts.topbar, 'morph-out'), 'topbar leaves with home');
+  assert.equal(so.style.getPropertyValue('--ct-clip'), 'inset(300px 16px 460px 16px round 18px)');
+  assert.equal(so.style.getPropertyValue('--ct-dur'), `${CARD_MORPH.openDuration}ms`);
+  const [ghost] = ghostsOf(so);
+  assert.ok(ghost, 'card copy on the growing screen');
+  assert.equal(ghost.attrs.id, undefined, 'no duplicate id');
+  assert.match(ghost.style.cssText, /left:16px;top:300px;width:380px;height:100px/);
+  assert.ok(!_getTransitionState().revealing, 'the morph brings the content in itself');
+  assert.ok(CARD_MORPH.openDuration <= MAX_TOTAL_ENTRANCE && CARD_MORPH.closeDuration <= MAX_TOTAL_ENTRANCE);
+  assert.equal(Math.max(...t.timers.filter(x => x.alive).map(x => x.ms)), CARD_MORPH.openDuration + 20);
+  t.runAll();
+  assert.ok(!has(so, 'morph-in') && !has(sh, 'morph-out'));
+  assert.equal(so.style.getPropertyValue('--ct-clip'), '');
+  assert.ok(ghost.removed);
+});
+
+test('card morph: back to home from that screen shrinks it into the card again', () => {
+  const { doc, elements, parts, card, sh } = morphDoc();
+  const t = fakeTimers();
+  showScreen('sh', { doc, ...t }); t.runAll();
+  armCardMorph(card, { now: () => 0 });
+  showScreen('so', { doc, now: () => 50, ...t }); t.runAll();
+  showScreen('sh', { doc, ...t });
+  const so = elements.get('so');
+  assert.ok(has(so, 'morph-close') && has(so, 'hidden'));
+  assert.ok(has(sh, 'morph-under') && !has(sh, 'glide-in'));
+  assert.ok(has(parts.topbar, 'morph-under'));
+  assert.equal(so.style.getPropertyValue('--ct-dur'), `${CARD_MORPH.closeDuration}ms`);
+  assert.equal(ghostsOf(so).length, 1, 'the card fades back in where it was');
+  t.runAll();
+  // Only once: the next trip to `so` from elsewhere glides.
+  showScreen('so', { doc, ...t });
+  showScreen('sh', { doc, ...t });
+  assert.ok(has(sh, 'glide-in') && !has(sh, 'morph-under'));
+});
+
+test('card morph: only for the navigation the tap triggered, forward, with motion', () => {
+  const { doc, elements, card } = morphDoc();
+  const t = fakeTimers();
+  showScreen('sh', { doc, ...t }); t.runAll();
+  // A stale tap (the card opened an overlay instead) does not hijack a later navigation.
+  armCardMorph(card, { now: () => 0 });
+  showScreen('sstats', { doc, now: () => CARD_MORPH.armWindow + 1, ...t });
+  assert.ok(has(elements.get('sstats'), 'glide-in'));
+  t.runAll();
+  showScreen('sh', { doc, ...t }); t.runAll();
+  // The arm is used up by the first navigation.
+  armCardMorph(card, { now: () => 0 });
+  showScreen('so', { doc, now: () => 10, ...t }); t.runAll();
+  showScreen('sstats', { doc, now: () => 20, ...t });
+  assert.ok(has(elements.get('sstats'), 'glide-in'));
+  t.runAll();
+  // Leaving the card's screen for another one drops the way back into the card.
+  showScreen('sh', { doc, ...t });
+  assert.ok(!has(elements.get('sh'), 'morph-under'));
+});
+
+test('card morph: reduced motion is a plain swap', () => {
+  const { doc, elements, card, sh } = morphDoc({ reduced: true });
+  const t = fakeTimers();
+  showScreen('sh', { doc, ...t }); t.runAll();
+  armCardMorph(card, { now: () => 0 });
+  showScreen('so', { doc, now: () => 1, ...t });
+  assert.ok(!has(elements.get('so'), 'morph-in') && !has(sh, 'morph-out'));
+  assert.equal(ghostsOf(elements.get('so')).length, 0);
+});
+
+test('card morph: interrupted by the next navigation, everything is flushed at once', () => {
+  const { doc, elements, card, sh } = morphDoc();
+  const t = fakeTimers();
+  showScreen('sh', { doc, ...t }); t.runAll();
+  armCardMorph(card, { now: () => 0 });
+  showScreen('so', { doc, now: () => 1, ...t });
+  const so = elements.get('so');
+  const [ghost] = ghostsOf(so);
+  showScreen('sstats', { doc, ...t });
+  assert.ok(!has(so, 'morph-in') && !has(sh, 'morph-out'));
+  assert.ok(ghost.removed);
 });

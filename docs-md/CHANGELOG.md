@@ -2,6 +2,51 @@
 
 ---
 
+## One entrance and exit for every overlay (October 2026)
+
+- Overlays used to come in four different ways (dialog scale-in 300ms, sheets slide-up
+  320ms, bonus/exchange pop-up 250–280ms) and had no exit: the card vanished with the
+  backdrop fade. Now every `.ov` overlay shares one motion: open 280ms (dialog scales up
+  from just below, `.g-sheet` rises 48px, `.g-full` rises 24px), close 180ms back to that
+  pose while the backdrop fades. A close mid-open reverses smoothly.
+- Pure CSS transitions keyed off `.hidden` (styles.css §10), so every `ovOpen`/`ovClose` and
+  `classList` toggle gets it without JS changes. Values: `OVERLAY_MOTION` (boostGlide.js),
+  mirrored as `--ov-*` tokens; the backdrop's `visibility:hidden` delay is `--ov-out`.
+  Removed the per-overlay entrances (`overlayCardIn`, `gSheetUp` list, `bzPopupIn` on
+  `#ov-bonus`/`#ov-bonus-intro`/`#ov-exch`). Results and achievement-unlock keep their
+  signature entrance; it is dropped on close so they leave like the rest.
+- Test: `boostGlide.test.js` checks the tokens, the hide delay, and that no overlay adds a
+  private `:not(.hidden) > .ovc` keyframe entrance again.
+
+## Game-mode cards grow into their screens (October 2026)
+
+- Tapping a home game-mode card (online / vs bot / two players) no longer glides to the
+  next screen: the screen grows out of the card itself (a container transform). Its
+  clip-path starts as the card's outline and opens to full screen in 380ms; a copy of the card
+  fades out, the content fades in, home recedes and its top bar fades away. Going back to
+  home from that screen shrinks it into the card again (340ms).
+- `CARD_MORPH` (boostGlide.js); `armCardMorph` + the morph branch of `showScreen`
+  (screenTransitions.js); the cards arm it in `menuScreen.js`. A tap is good for 600ms and
+  one navigation; the way back holds only while the card's screen is showing. Interrupts
+  flush it like a glide; reduced motion is a plain swap. Keyframes: styles.css §1b.
+- Tests: 5 new in `screenTransitions.test.js`.
+
+## The home logo answers a tap and sparks now and then (October 2026)
+
+- **Tap the logo:** the split ס closes up into one piece, then lightning strikes and splits
+  it again: the build's own strike, ≈1.3s (`playLogoStrike`, `LOGO_REPLAY`,
+  `logoReplayTimes()`). Not during the home build, nor from the tap that skipped it
+  (500ms guard); another tap restarts it. Sounds: `build.tick` on the tap, then the
+  build's charge / strike / wave cues.
+- **Idle:** every 26–34s a silent pulse of current runs down the ס's crack: a bright band
+  moving through a mask cut from `logo_bolt.webp`, 0.9s (`startLogoIdle` →
+  `flickerLogoCrack`, `LOGO_IDLE`). Only on a visible, idle home with the tab in front.
+- Neither runs under reduced motion. The build, replay and pulse share one layer-stack
+  builder (`logoStack` / `intactSam` / `addStrike` in `buildSequences.js`);
+  `finishBuilds()` also ends a running replay or pulse. Wired in `main.js`
+  (`wireHomeLogo`, once the loader lifts).
+- **Tests:** 6 new in `buildSequences.test.js`.
+
 ## Logo built from the loader's tiles (October 2026)
 
 The boot loader and the home logo now use the same tiles, and the cold launch hands them
@@ -20,10 +65,11 @@ from one to the other.
   `wireAppLoading().hide()` → `lift()`). Tile layers are preloaded while the loader is up.
 - **Home build:** instead of the single image dropping in, `buildLogoTiles` lays a layer
   stack over the logo image: the tiles fly back from the sides they left by, the shadows
-  they cast fade in once all have landed, the ס charges → lightning (sky channel + bolt
-  flash) → the halves kick apart and settle → glow → crossfade to the image. Any tap
+  they cast fade in once all have landed, the ס charges → lightning strikes the whole ס,
+  which flashes white-hot in one piece for 200ms (`impactDur`) → only then does it split:
+  the bolt-shaped crack flashes and the halves kick apart and settle → glow → crossfade to the image. Any tap
   removes the stack at once. Fractional positioning (getBoundingClientRect) keeps the
-  stack on the image to sub-pixel accuracy. The home build grows ≈0.6s (1.94s → 2.53s).
+  stack on the image to sub-pixel accuracy. The home build grows ≈0.8s (1.94s → 2.73s).
 - **Sounds:** `build.charge` (power_up) and `build.strike` (boost_activate — the real zap).
 - **Tests:** 6 new in `buildSequences.test.js` (timeline order, stack layout and exit
   sides, tap-to-finish, fallback, loader exit and its reduced-motion/no-WAAPI no-op).

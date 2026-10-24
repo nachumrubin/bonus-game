@@ -4,12 +4,12 @@ import assert from 'node:assert/strict';
 import {
   HOME_BUILD, BOARD_BUILD, RACK_SLOTS, homeBuildTotal, boardBuildTotal, BOARD_BUILD_LEAD_MS,
   diagonalRank, clockwiseOrder, leftToRightOrder, boardBuildKind,
-  LOGO_TILE_EXITS, LOADING_EXIT, logoTilesTimes,
+  LOGO_TILE_EXITS, LOADING_EXIT, logoTilesTimes, LOGO_REPLAY, LOGO_IDLE, logoReplayTimes,
 } from './buildTimeline.js';
 import {
   playHomeBuild, playBoardBuild, finishBuilds, isBoardBuilding,
   wasBoardBuilt, rememberBoardBuilt, BOARD_INTRO_STARTED, BOARD_INTRO_FINISHED,
-  flyOutLoadingTiles, logoTileFiles,
+  flyOutLoadingTiles, logoTileFiles, playLogoStrike, flickerLogoCrack, startLogoIdle,
 } from './buildSequences.js';
 import { LOGO_TILE_LAYERS } from './logoTilesLayout.js';
 
@@ -361,7 +361,7 @@ function tiledHomeDoc() {
   return { ...h, img };
 }
 
-test('logo tiles: land in order, then charge → strike → hand-off; the build grows < 1 s', () => {
+test('logo tiles: land in order, then charge → strike → split → hand-off; the build grows < 1 s', () => {
   const L = HOME_BUILD.logoTiles;
   const T = logoTilesTimes();
   assert.deepEqual([...L.order], ['bet', 'vav', 'tet', 'sam'], 'the ס lands last — it is the one struck');
@@ -369,6 +369,9 @@ test('logo tiles: land in order, then charge → strike → hand-off; the build 
   assert.deepEqual(lands, [...lands].sort((a, b) => a - b));
   assert.equal(T.allLanded, T.land.sam);
   assert.ok(T.allLanded < T.charge && T.charge < T.strike && T.strike < T.handoff && T.handoff < T.end);
+  // The lightning hits the whole ס first; only then does it split.
+  assert.ok(T.split - T.strike >= 150, `impact ${T.split - T.strike} ms before the split`);
+  assert.ok(T.split < T.glow && T.split + HOME_BUILD.logoTiles.splitDur <= T.end);
   const P = HOME_BUILD.profile;
   assert.ok(T.land.bet > P.start + P.dur, 'tiles start off-screen; the first lands after the profile — still the last to arrive');
   assert.equal(homeBuildTotal({ logoTiles: true }), T.end);
@@ -459,4 +462,102 @@ test('loader exit: nothing to do under reduced motion or without WAAPI', () => {
   b.tiles[0].animate = undefined;
   assert.equal(flyOutLoadingTiles({ doc: b.doc, root: b.root, reducedMotion: false }), 0);
   assert.equal(flyOutLoadingTiles({ doc: b.doc, root: null }), 0);
+});
+
+// ── Logo replay (tap) + idle crack flicker ───────────────────────────────
+const later = () => 1e12;   // well past the skip-tap window of any earlier home build
+
+test('logo replay: the halves close up, then the same charge → strike → split; ≈1.3 s', () => {
+  const T = logoReplayTimes();
+  const L = HOME_BUILD.logoTiles;
+  assert.equal(T.heal, LOGO_REPLAY.heal);
+  assert.ok(T.heal < T.charge && T.charge < T.strike && T.strike < T.split && T.split < T.handoff && T.handoff < T.end);
+  assert.equal(T.split - T.strike, L.impactDur, 'hit whole, then split — same as the build');
+  const B = logoTilesTimes();
+  assert.equal(T.end - T.charge, B.end - B.charge, 'the strike itself is the build’s');
+  assert.ok(T.end <= 1500, `replay lasts ${T.end} ms`);
+});
+
+test('logo replay: a tap on the settled logo lays the stack (no fly-in) and plays the strike', () => {
+  const h = tiledHomeDoc();
+  const t = fakeTimers();
+  const cues = [];
+  assert.equal(playLogoStrike({ doc: h.doc, cue: (id) => cues.push(id), reducedMotion: false, now: later, ...t }), true);
+  assert.ok(h.logo.has('hb-logo-tiles'), 'image hidden until the hand-off');
+  const stack = h.logo.kids[0];
+  const layers = stack.children;
+  assert.ok(!layers.some(c => c.classList.contains('hb-tile-in')), 'tiles already in place');
+  assert.equal(layers.filter(c => c.classList.contains('hb-tile-mend')).length, 2, 'both halves close up');
+  assert.ok(stack.all().some(c => c.classList.contains('is-healing')), 'the whole ס fades in over them');
+  assert.equal(layers.filter(c => c.classList.contains('hb-tile-split')).length, 2);
+  assert.match(stack.style.cssText, new RegExp(`--b-split:${logoReplayTimes().split}ms`));
+  assert.equal(Math.max(...t.timers.map(x => x.ms)), logoReplayTimes().end + 20);
+  t.runAll();
+  assert.equal(h.logo.kids.length, 0);
+  assert.ok(!h.logo.has('hb-logo-tiles'));
+  for (const id of ['build.tick', 'build.charge', 'build.strike', 'build.wave']) assert.ok(cues.includes(id), `${id} played`);
+  assert.ok(!cues.includes('build.whoosh'), 'nothing flies in');
+});
+
+test('logo replay: never during the home build, nor from the tap that skipped it, nor under reduced motion', () => {
+  const h = tiledHomeDoc();
+  playHomeBuild({ doc: h.doc, reducedMotion: false, ...fakeTimers() });
+  assert.equal(playLogoStrike({ doc: h.doc, reducedMotion: false, now: later, ...fakeTimers() }), false, 'home still building');
+  h.doc.tap();   // skips the build…
+  assert.equal(playLogoStrike({ doc: h.doc, reducedMotion: false, ...fakeTimers() }), false, '…and the same tap is not a replay');
+  assert.equal(playLogoStrike({ doc: h.doc, reducedMotion: true, now: later, ...fakeTimers() }), false);
+  h.sh.classList.add('hidden');
+  assert.equal(playLogoStrike({ doc: h.doc, reducedMotion: false, now: later, ...fakeTimers() }), false, 'home not showing');
+  h.sh.classList.remove('hidden');
+  assert.equal(playLogoStrike({ doc: h.doc, reducedMotion: false, now: later, ...fakeTimers() }), true);
+  finishBuilds();
+  assert.equal(h.logo.kids.length, 0, 'finishBuilds clears it too');
+});
+
+test('logo replay: tapping again restarts it with one stack', () => {
+  const h = tiledHomeDoc();
+  playLogoStrike({ doc: h.doc, reducedMotion: false, now: later, ...fakeTimers() });
+  h.doc.tap();
+  playLogoStrike({ doc: h.doc, reducedMotion: false, now: later, ...fakeTimers() });
+  assert.equal(h.logo.kids.length, 1);
+  finishBuilds();
+});
+
+test('idle crack: a faint bolt over the image (which stays), only on an idle visible home', () => {
+  const h = tiledHomeDoc();
+  const t = fakeTimers();
+  assert.equal(flickerLogoCrack({ doc: h.doc, reducedMotion: false, ...t }), true);
+  assert.ok(h.logo.has('hb-logo-over') && !h.logo.has('hb-logo-tiles'), 'image not hidden');
+  const stack = h.logo.kids[0];
+  assert.ok(stack.classList.contains('is-overlay'));
+  assert.equal(stack.children.length, 1);
+  assert.ok(stack.children[0].classList.contains('hb-crack-idle'));
+  assert.match(stack.children[0].style.cssText, new RegExp(`left:${LOGO_TILE_LAYERS.bolt[0]}%`), 'on the crack');
+  assert.equal(flickerLogoCrack({ doc: h.doc, reducedMotion: false, ...fakeTimers() }), false, 'one at a time');
+  t.runAll();
+  assert.equal(h.logo.kids.length, 0);
+  assert.ok(!h.logo.has('hb-logo-over'));
+
+  h.doc.hidden = true;
+  assert.equal(flickerLogoCrack({ doc: h.doc, reducedMotion: false, ...fakeTimers() }), false, 'tab in the background');
+  h.doc.hidden = false;
+  assert.equal(flickerLogoCrack({ doc: h.doc, reducedMotion: true, ...fakeTimers() }), false);
+  playLogoStrike({ doc: h.doc, reducedMotion: false, now: later, ...fakeTimers() });
+  assert.equal(flickerLogoCrack({ doc: h.doc, reducedMotion: false, ...fakeTimers() }), false, 'not over a replay');
+  finishBuilds();
+});
+
+test('idle crack: scheduled every ≈30 s with jitter, until stopped', () => {
+  const h = tiledHomeDoc();
+  const t = fakeTimers();
+  const stop = startLogoIdle({ doc: h.doc, reducedMotion: false, random: () => 0, ...t });
+  assert.equal(t.timers[0].ms, LOGO_IDLE.every - LOGO_IDLE.jitter / 2);
+  t.timers[0].alive = false;
+  t.timers[0].fn();
+  assert.equal(h.logo.kids.length, 1, 'flickered');
+  const again = t.timers.filter(x => x.alive && x.ms >= LOGO_IDLE.every - LOGO_IDLE.jitter / 2);
+  assert.equal(again.length, 1, 'next one scheduled');
+  stop();
+  assert.ok(!again[0].alive, 'stop() cancels it');
+  finishBuilds();
 });

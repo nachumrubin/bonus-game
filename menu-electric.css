@@ -2879,7 +2879,6 @@
     radial-gradient(circle at 86% 94%, rgba(120,40,220,.1), transparent 26%);
 }
 #ov-exch > .ovc > * { position: relative; z-index: 1; }
-#ov-exch:not(.hidden) > .ovc { animation: bzPopupIn .25s cubic-bezier(.22,1,.36,1) both; }
 
 /* Icon badge — glowing rounded square holding the 🔄 glyph */
 #ov-exch > .ovc > .ovic {

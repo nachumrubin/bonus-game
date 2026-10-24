@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  BOOST_GLIDE, REVEAL, MAX_TOTAL_ENTRANCE, REVEAL_PLANS,
+  BOOST_GLIDE, REVEAL, MAX_TOTAL_ENTRANCE, REVEAL_PLANS, OVERLAY_MOTION,
   resolveDirection, nextHistory, glideSign, revealSchedule, entranceTotal,
 } from './boostGlide.js';
 
@@ -38,6 +38,28 @@ test('styles.css :root tokens mirror the JS config', () => {
   assert.equal(v('--reveal-offset'), `${REVEAL.verticalOffset}px`);
   assert.equal(v('--reveal-duration'), `${REVEAL.elementDuration}ms`);
   assert.equal(v('--reveal-initial-opacity'), String(REVEAL.initialOpacity));
+});
+
+test('overlay motion: styles.css tokens mirror OVERLAY_MOTION; the exit ends before visibility:hidden', () => {
+  const css = readFileSync(join(here, '..', '..', 'styles.css'), 'utf8');
+  const v = (name) => css.match(new RegExp(`${name}:\s*([^;]+);`))?.[1].trim();
+  const M = OVERLAY_MOTION;
+  assert.equal(v('--ov-in'), `${M.inDuration}ms`);
+  assert.equal(v('--ov-out'), `${M.outDuration}ms`);
+  assert.equal(v('--ov-ease-in'), M.inEasing);
+  assert.equal(v('--ov-ease-out'), M.outEasing);
+  assert.equal(v('--ov-dialog-scale'), String(M.dialogScale));
+  assert.equal(v('--ov-dialog-offset'), `${M.dialogOffset}px`);
+  assert.equal(v('--ov-sheet-offset'), `${M.sheetOffset}px`);
+  assert.equal(v('--ov-panel-offset'), `${M.panelOffset}px`);
+  assert.ok(M.outDuration < M.inDuration && M.inDuration <= MAX_TOTAL_ENTRANCE);
+  // The backdrop hides (visibility) exactly when the card's exit ends.
+  assert.match(css, /\.ov\.hidden\{[^}]*visibility 0s linear var\(--ov-out\)/);
+  // No overlay keeps a private keyframe entrance on its card any more.
+  for (const f of ['styles.css', 'screens-glass.css', 'menu-electric.css']) {
+    const src = readFileSync(join(here, '..', '..', f), 'utf8');
+    assert.doesNotMatch(src, /:not\(\.hidden\)\s*>\s*\.ovc\s*\{[^}]*animation/, f);
+  }
 });
 
 test('every reveal plan finishes inside MAX_TOTAL_ENTRANCE (launch and forward)', () => {

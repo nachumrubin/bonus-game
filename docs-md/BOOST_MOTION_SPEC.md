@@ -504,8 +504,30 @@ Never on back navigation, re-shows of the visible screen, Firebase refreshes or 
 switches. Lists are revealed as one container, never row by row. Every entrance finishes
 inside `MAX_TOTAL_ENTRANCE` (420ms).
 
-**Not glided:** overlays/modals (`.ov` — settings, help/guide, results, matchmaking…) keep
-their own motion; the game screen glides but its content is never staggered; the coin toss
+**Card morph** (home game-mode cards only, `CARD_MORPH` in `boostGlide.js`): tapping a
+card (`armCardMorph`, from `menuScreen.js`) arms the navigation it triggers (within 600ms).
+Instead of the Glide, the new screen grows out of the card: its clip starts as the card's
+outline (rounded corners included) and opens to the full screen, 380ms; a copy of the card
+fades out as it grows, the content fades in, home recedes (scale .95, darker) and its top
+bar fades away. Back to home from that same screen reverses it into the card, 340ms (the
+card fades back in where it is). Only once per opening: any other way out of that screen
+drops the way back. No staggered reveal on a morph (it brings its content in itself).
+Reduced motion: plain swap.
+
+**Overlay motion** (`OVERLAY_MOTION` in `boostGlide.js`, `--ov-*` tokens, styles.css §10):
+overlays/modals (`.ov` — settings, help/guide, results, matchmaking…) are not glided; they all
+share one entrance and one exit, in CSS alone (transitions keyed off `.hidden`, so `ovOpen` /
+`ovClose` and every `classList` toggle get it for free, and a close mid-open just reverses).
+Open, 280ms with the glide's deceleration: the backdrop fades in and the card arrives by
+shape: a dialog (`.ovc`) scales .94→1 from 10px below, a sheet (`.g-sheet`) rises 48px, a
+full panel (`.g-full`) rises 24px. Close, 180ms, accelerating: the card goes back to that
+pose while the backdrop fades linearly (it carries the card's fade too); it ends exactly when
+the overlay turns `visibility:hidden`. Signature entrances (results `#ov-end`, achievement
+unlock) still play on open but are dropped on close, so every overlay leaves the same way.
+No overlay may add its own `:not(.hidden) > .ovc` keyframe entrance (boostGlide.test.js).
+Reduced motion: the global blanket (instant).
+
+**Not glided:** the game screen glides but its content is never staggered; the coin toss
 keeps its own animation (glide only).
 
 **Reduced motion:** no glide classes, no reveal, no entrance timer — an immediate swap.
@@ -525,15 +547,24 @@ Two deliberate exceptions to the §15 entrance budget. Timeline: `src/ui/buildTi
 **Boot loader exit → home build — cold launch only.** When loading ends the loader's tile
 loop stops and its four tiles (the logo's own Blender tiles, upright, ס intact) fly off the
 screen, each in its own direction with a spin (`LOGO_TILE_EXITS`, `LOADING_EXIT`, ≈0.5s);
-then the loader fades and home builds (≈2.5s): game-mode cards → bottom nav rises and each
+then the loader fades and home builds (≈2.7s): game-mode cards → bottom nav rises and each
 item glows in a sweep → top-bar icons slide in from the left, one by one → profile (avatar
 pop, name, ELO) → the logo is built: the same tiles fly back in, each from the side it
 left by (ב, ו, ט, then ס), each glowing as it lands → the ס charges and trembles →
-lightning comes down onto it, the bolt-shaped crack flashes white-hot and the two halves
-kick apart and settle → the logo glows → the layer stack crossfades into the single
+lightning comes down onto the whole ס, which takes the hit in one piece (white-hot, jolted,
+≈0.2s) → only then does it crack: the bolt-shaped gap flashes and the two halves kick apart
+and settle → the logo glows → the layer stack crossfades into the single
 image (pixel-matched, so the hand-off is invisible). `HOME_BUILD.logoTiles`,
 `logoTilesTimes()`. Without the layers (logo not laid out) the single image drops in from
 above as before. Every later arrival at home is a §15 back glide.
+
+**The settled logo** (outside the build). *Tap:* the split ס closes up into the whole ס
+(≈0.2s), then the same charge → strike → impact → split → glow as the build, ≈1.3s
+(`LOGO_REPLAY`, `logoReplayTimes()`, `playLogoStrike`); never during the home build or from
+the tap that skipped it; another tap restarts it. *Idle:* every 26–34s a silent pulse of
+current runs down the ס's crack (0.9s; `LOGO_IDLE`, `startLogoIdle` →
+`flickerLogoCrack`), only on a visible, idle home with the tab in front. Neither runs
+under reduced motion.
 
 **Board build — new games only** (≈2.1s): the board panel opens from the top-right corner
 (Hebrew reading start) while the cells unfold in a diagonal cascade from that corner →

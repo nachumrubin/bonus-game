@@ -38,16 +38,50 @@ export const REVEAL = Object.freeze({
   glideLead: 40,
 });
 
+// ── Card morph — a home game-mode card becomes the screen it opens ───────
+// Instead of the Glide, the screen grows out of the tapped card's box (its
+// clip starts as the card's outline) while the card fades away and home
+// recedes; going back to home from that screen shrinks it into the card
+// again. Durations stay inside MAX_TOTAL_ENTRANCE. `armWindow`: how long a
+// card tap stays good for the navigation it triggers. Wiring:
+// screenTransitions.js (armCardMorph + showScreen); keyframes: styles.css.
+export const CARD_MORPH = Object.freeze({
+  openDuration: 380,
+  closeDuration: 340,
+  openEasing: 'cubic-bezier(0.3, 0, 0, 1)',
+  closeEasing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+  armWindow: 600,
+});
+
 // Upper bound for a full entrance (glide + every reveal group). Ordinary
 // navigation must finish its visual sequence inside this window (≈400ms).
 export const MAX_TOTAL_ENTRANCE = 420;
+
+// ── Overlay motion — one entrance and one exit for every `.ov` overlay ──
+// CSS only (no JS hook): the overlay's backdrop fades and its card (`.ovc`)
+// moves in from a resting offset that depends on its shape — a dialog scales
+// up from just below, a bottom sheet (`.g-sheet`) rises, a full panel
+// (`.g-full`) rises a little. Closing reverses it, faster, and ends before the
+// overlay turns `visibility:hidden` (`outDuration`). Mirrored as --ov-* tokens
+// in styles.css; signature overlays (results, achievement unlock) keep their
+// own entrance but share the exit.
+export const OVERLAY_MOTION = Object.freeze({
+  inDuration: 280,
+  outDuration: 180,
+  inEasing: 'cubic-bezier(0.2, 0, 0, 1)',   // the glide's deceleration
+  outEasing: 'cubic-bezier(0.4, 0, 1, 1)',  // accelerate away
+  dialogScale: 0.94,
+  dialogOffset: 10,  // px
+  sheetOffset: 48,   // px
+  panelOffset: 24,   // px
+});
 
 // Classes a screen carries while it is still arriving (BOOST GLIDE's incoming
 // glide, the home build). Heavy per-screen work — e.g. starting a live-3D
 // Boostie, whose WebGL setup is one long frame — waits until they are gone so
 // it never freezes the entrance. Removing them is a class mutation, so a
 // MutationObserver on the screen sees the moment it settles.
-export const ENTERING_CLASSES = Object.freeze(['glide-in', 'hb-building']);
+export const ENTERING_CLASSES = Object.freeze(['glide-in', 'morph-in', 'hb-building']);
 
 export function isScreenEntering(el) {
   return ENTERING_CLASSES.some((c) => el?.classList?.contains?.(c));

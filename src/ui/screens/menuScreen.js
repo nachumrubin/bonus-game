@@ -9,6 +9,7 @@ import { $, on } from '../domHelpers.js';
 import { avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
 import { CHAMPS_OPEN } from './championsScreen.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
+import { armCardMorph } from './screenTransitions.js';
 
 export const MENU_INTENT = Object.freeze({
   OPEN_PROFILE:       'menu/openProfile',
@@ -122,8 +123,11 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     const btn = $(def.sel, menuRoot);
     if (!btn) continue;
     btn.removeAttribute('onclick');
+    // Game-mode cards grow into the screen they open (card morph).
+    const isCard = !!btn.classList?.contains?.('hm-card');
     cleanups.push(on(btn, 'click', (e) => {
       e.preventDefault();
+      if (isCard) armCardMorph(btn);
       bus.emit(def.intent, { source: 'menu', legacyArg: def.legacyArg });
     }));
   }

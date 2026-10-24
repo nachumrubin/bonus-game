@@ -333,14 +333,7 @@ textarea.ri { height: auto; min-height: 110px; padding: 12px 14px; }
   content: ""; display: block; width: 40px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.2); margin: -8px auto 12px;
 }
 
-/* sheets rise from the bottom instead of the generic card scale-in */
-@keyframes gSheetUp { from { opacity: 0; transform: translateY(48px); } to { opacity: 1; transform: none; } }
-#ov-create-room:not(.hidden) > .ovc, #ov-join-code:not(.hidden) > .ovc, #ov-matchmaking:not(.hidden) > .ovc, #ov-shailta:not(.hidden) > .ovc,
-#ov-exch:not(.hidden) > .ovc, #ov-joker:not(.hidden) > .ovc, #ov-pause:not(.hidden) > .ovc, #ov-back-confirm:not(.hidden) > .ovc,
-#ov-report:not(.hidden) > .ovc, #ov-champs:not(.hidden) > .ovc, #ov-friend-detail:not(.hidden) > .ovc {
-  animation: gSheetUp .32s cubic-bezier(.22,1,.36,1) both;
-}
-@media (prefers-reduced-motion: reduce) { #ov-join-code > .ovc, #ov-pause > .ovc { animation: none !important; } }
+/* sheets (.g-sheet) rise from the bottom: shared overlay motion, styles.css §10 */
 
 /* sheet content (mockup .sheet .sh) */
 .ovc.g-sheet { display: flex !important; flex-direction: column !important; gap: 12px; text-align: right !important; overflow-y: auto; }
@@ -1248,7 +1241,7 @@ input.g-tog-input { width: 46px !important; height: 28px !important; min-width: 
   box-shadow: 0 20px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.3) !important;
   overflow-x: hidden;
 }
-#ov-bonus:not(.hidden) > .ovc, #ov-bonus-intro:not(.hidden) > .ovc, .bz-card { animation: bzPopupIn .28s cubic-bezier(.22,1,.36,1) both; }
+.bz-card { animation: bzPopupIn .28s cubic-bezier(.22,1,.36,1) both; }  /* #ov-bonus/-intro cards: shared overlay motion */
 
 /* ── Play card (#ov-bonus / .bz-card): medal + title/description header ──
    A 2-column grid: the medal spans the two header rows on the right (RTL),
