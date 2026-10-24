@@ -2,6 +2,19 @@
 
 ---
 
+## Card morph: the card itself grows into the screen (October 2026)
+
+- The game-mode card transition looked like home splitting open with the new screen inside:
+  the cards are nearly full width, so the clip only opened up and down, and nothing grew
+  (the new screen's content was already in place; the card copy just faded).
+- Now the card grows: a `.ct-frame` layer over the screens holds the card's opaque surface,
+  its own border/glow (copied from the tapped card, so the online card keeps its cyan
+  glow) and a copy of its content. Surface and edge expand from the card to the full
+  screen (400ms, was 380); the card's content fades early, drifting with its centre; the
+  new screen stays covered until ~40%, then its content fades/scales in. Back is the
+  reverse (340ms). `cardGeometry` / `cardFrame` in `screenTransitions.js`, styles.css §1b.
+- Tests: morph tests now check the frame (geometry vars, fill, copied edge, content copy).
+
 ## Fix: glitch at the end of the card morph's return to home (October 2026)
 
 - Going back from a game-mode screen, the screen shrank into its card, then flashed back

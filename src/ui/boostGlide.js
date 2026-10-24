@@ -46,7 +46,7 @@ export const REVEAL = Object.freeze({
 // card tap stays good for the navigation it triggers. Wiring:
 // screenTransitions.js (armCardMorph + showScreen); keyframes: styles.css.
 export const CARD_MORPH = Object.freeze({
-  openDuration: 380,
+  openDuration: 400,
   closeDuration: 340,
   openEasing: 'cubic-bezier(0.3, 0, 0, 1)',
   closeEasing: 'cubic-bezier(0.4, 0, 0.2, 1)',
