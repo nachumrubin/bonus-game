@@ -11,6 +11,12 @@
 - [x] Home logo: tap replays the lightning strike; idle crack pulse every ≈30s.
 - [x] Game-mode cards grow into their screens (card morph) and shrink back on return.
 - [x] One shared entrance + exit for every overlay (dialog / sheet / panel shapes).
+- [x] Leaving a game folds the board into its corner (`game-exit`).
+- [x] My Games: one-time glint on your-turn cards, nudge when a game turns to you.
+- [ ] Phone check of the game exit fold (perspective transform on a cheap Android) and
+  of the My Games glint visibility in bright light (it is deliberately subtle).
+- [ ] Idea (#3, not started): boost lightning from the triggering square to the boost
+  result, reusing the logo's sky lightning (spec §7.8 cause and effect).
 - [ ] Phone check of the overlay exit: content that a controller clears right after
   `ovClose` (if any) would be visible for 180ms during the exit. Fix per overlay if seen.
 - [ ] Pre-existing e2e failure: `spine-boot.spec.js:71` clicks `#ss button` with text

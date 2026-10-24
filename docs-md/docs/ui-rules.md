@@ -816,7 +816,9 @@ The home topbar stays `display:''` while it glides out and is hidden when the gl
 
 **Build sequences** (`src/ui/buildSequences.js`, BOOST_MOTION_SPEC §16) add `hb-*` classes
 for the card morph (`morph-in`, `morph-out`, `morph-close`, `morph-under`, and the `.ct-frame` layer with `.ct-fill` / `.ct-edge` / `.ct-ghost`, set and
-cleared by `screenTransitions.js`; the home `.hm-card` buttons arm it), on home (`hb-rise`, `hb-glow`, `hb-slide`, `hb-pop`, `hb-logo`, `hb-logo-glow`; the tile-built
+cleared by `screenTransitions.js`; the home `.hm-card` buttons arm it), for the game exit (`game-exit` on `#sg`, plus
+`--glide-delay` on the incoming screen), for My Games turn cues (`mg-glint` / `mg-nudge` on `.mg-card`, `mg-nudge`
+on the `[data-mg-tab="mine"]` button; set by `asyncGamesScreen.js`), on home (`hb-rise`, `hb-glow`, `hb-slide`, `hb-pop`, `hb-logo`, `hb-logo-glow`; the tile-built
 logo adds `hb-logo-tiles` on `.hlogo` plus a transient `.hl-tiles` stack of `.hl-layer`s laid
 over `img.hl-img`, removed when the build ends; the same stack serves the tap replay, and
 the idle crack pulse uses `hb-logo-over` + `.hl-tiles.is-overlay` with one `.hb-crack-idle`

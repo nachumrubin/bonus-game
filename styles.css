@@ -27,6 +27,9 @@
   --ov-in:280ms; --ov-out:180ms;
   --ov-ease-in:cubic-bezier(0.2, 0, 0, 1); --ov-ease-out:cubic-bezier(0.4, 0, 1, 1);
   --ov-dialog-scale:0.94; --ov-dialog-offset:10px; --ov-sheet-offset:48px; --ov-panel-offset:24px;
+  /* game exit (GAME_EXIT) */
+  --gx-dur:320ms; --gx-lead:90ms; --gx-ease:cubic-bezier(0.4, 0, 1, 1);
+  --gx-board-scale:0.6; --gx-rack-drop:28px; --gx-header-lift:16px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 *{scrollbar-width:none!important;-ms-overflow-style:none!important;}
@@ -1875,7 +1878,7 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 }
 .screen.glide-in {
   z-index: 2;
-  animation: boostGlideIn var(--glide-duration) var(--glide-ease) both;
+  animation: boostGlideIn var(--glide-duration) var(--glide-ease) var(--glide-delay, 0ms) both;
   will-change: transform, opacity;
 }
 .screen.hidden.glide-out {
@@ -1887,7 +1890,7 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   will-change: transform, opacity;
 }
 /* The home topbar (outside #sh) travels with the home screen. */
-#global-topbar.glide-in  { animation: boostGlideIn var(--glide-duration) var(--glide-ease) both; }
+#global-topbar.glide-in  { animation: boostGlideIn var(--glide-duration) var(--glide-ease) var(--glide-delay, 0ms) both; }
 #global-topbar.glide-out {
   pointer-events: none;
   animation:
@@ -1895,6 +1898,32 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
     boostGlideOutFade var(--glide-duration) linear both;
 }
 #global-topbar.glide-out * { pointer-events: none; }
+
+/* Game exit (GAME_EXIT) — the board build in reverse: the board folds back
+   into its top-right corner (where bbUnfold opens it), the rack drops, the
+   header lifts; the screen itself fades out over the second half, under the
+   next screen gliding in (held back by --glide-delay = GAME_EXIT.lead, set by
+   JS, so the fold reads first). Replaces .glide-out on #sg only. */
+@keyframes gxFold {
+  to { opacity: 0; transform: perspective(240px) rotateX(-70deg) rotateY(-50deg) scale(var(--gx-board-scale)); }
+}
+@keyframes gxDrop { to { opacity: 0; transform: translate3d(0, var(--gx-rack-drop), 0); } }
+@keyframes gxLift { to { opacity: 0; transform: translate3d(0, calc(var(--gx-header-lift) * -1), 0); } }
+@keyframes gxFade { 0%, 45% { opacity: 1; } 100% { opacity: 0; } }
+.screen.hidden.game-exit {
+  visibility: visible;
+  transition: none;
+  animation: gxFade var(--gx-dur) linear both;
+}
+.screen.game-exit * { pointer-events: none; }
+#sg.game-exit .board-center-inner { transform-origin: 100% 0; animation: gxFold var(--gx-dur) var(--gx-ease) both; }
+#sg.game-exit .bot,
+#sg.game-exit #brack2-row { animation: gxDrop var(--gx-dur) var(--gx-ease) both; }
+#sg.game-exit .gm-topbar,
+#sg.game-exit #info-strip,
+#sg.game-exit #turn-banner { animation: gxLift var(--gx-dur) var(--gx-ease) both; }
+/* The player cards' own `animation … !important` (turn pulse) would pin them. */
+#sg.game-exit #info-strip .is-pcard { animation: none !important; }
 
 /* ── 1b. Card morph — a home game-mode card grows into its screen ──
    src/ui/screens/screenTransitions.js (CARD_MORPH in boostGlide.js). The card

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import {
-  BOOST_GLIDE, REVEAL, MAX_TOTAL_ENTRANCE, REVEAL_PLANS, OVERLAY_MOTION,
+  BOOST_GLIDE, REVEAL, MAX_TOTAL_ENTRANCE, REVEAL_PLANS, OVERLAY_MOTION, GAME_EXIT,
   resolveDirection, nextHistory, glideSign, revealSchedule, entranceTotal,
 } from './boostGlide.js';
 
@@ -60,6 +60,23 @@ test('overlay motion: styles.css tokens mirror OVERLAY_MOTION; the exit ends bef
     const src = readFileSync(join(here, '..', '..', f), 'utf8');
     assert.doesNotMatch(src, /:not\(\.hidden\)\s*>\s*\.ovc\s*\{[^}]*animation/, f);
   }
+});
+
+test('game exit: styles.css tokens mirror GAME_EXIT; short, accelerating, no overshoot', () => {
+  const css = readFileSync(join(here, '..', '..', 'styles.css'), 'utf8');
+  const v = (name) => css.match(new RegExp(`${name}:\s*([^;]+);`))?.[1].trim();
+  assert.equal(v('--gx-dur'), `${GAME_EXIT.duration}ms`);
+  assert.equal(v('--gx-ease'), GAME_EXIT.easing);
+  assert.equal(v('--gx-lead'), `${GAME_EXIT.lead}ms`);
+  assert.ok(GAME_EXIT.lead + BOOST_GLIDE.backwardDuration <= MAX_TOTAL_ENTRANCE, 'the next screen is still in on time');
+  assert.equal(v('--gx-board-scale'), String(GAME_EXIT.boardScale));
+  assert.equal(v('--gx-rack-drop'), `${GAME_EXIT.rackDrop}px`);
+  assert.equal(v('--gx-header-lift'), `${GAME_EXIT.headerLift}px`);
+  assert.ok(GAME_EXIT.duration < 400);
+  const ys = GAME_EXIT.easing.match(/[\d.]+/g).map(Number).filter((_, i) => i % 2);
+  assert.ok(ys.every(y => y >= 0 && y <= 1));
+  // The fold goes into the corner the board build opens from.
+  assert.match(css, /#sg\.game-exit \.board-center-inner\s*\{[^}]*transform-origin:\s*100% 0/);
 });
 
 test('every reveal plan finishes inside MAX_TOTAL_ENTRANCE (launch and forward)', () => {

@@ -762,6 +762,36 @@ svg.gi.g-chev { color: var(--sg-faint); width: 16px; height: 16px; }
   border: 1px solid var(--sg-line); box-shadow: 0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.10); }
 #smygames .mg-card:not(.is-waiting):not(.is-expired) { border-color: rgba(40,212,255,.7); box-shadow: 0 0 0 1px rgba(40,212,255,.25), 0 0 22px rgba(40,212,255,.22), inset 0 1px 0 rgba(255,255,255,.14); }
 #smygames .mg-card.is-local { border-color: rgba(255,201,61,.45); }
+/* Turn cues (asyncGamesScreen MG_CUE) — one-shot, never looping: a light
+   sweep across a card waiting on the player when the screen opens (after the
+   list has risen in), and a short shake + sweep when a game turns to the
+   player while the screen is showing. Reduced motion: the global blanket. */
+@keyframes mgGlint {
+  0%   { opacity: 0; background-position: 0% 0; }
+  20%  { opacity: 1; }
+  100% { opacity: 0; background-position: 100% 0; }
+}
+@keyframes mgNudge {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-6px, 0, 0); }
+  45% { transform: translate3d(5px, 0, 0); }
+  70% { transform: translate3d(-2px, 0, 0); }
+}
+@keyframes mgTabNudge {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+}
+#smygames .mg-card.mg-glint::after,
+#smygames .mg-card.mg-nudge::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%, rgba(160,235,255,.28) 50%, transparent 60%) no-repeat;
+  background-size: 300% 100%;
+  opacity: 0;
+  animation: mgGlint 700ms cubic-bezier(0.4, 0, 0.2, 1) calc(320ms + var(--mg-cue-delay, 0ms)) both;
+}
+#smygames .mg-card.mg-nudge { animation: mgNudge 420ms cubic-bezier(0.3, 0, 0.3, 1) both; }
+#smygames .mg-card.mg-nudge::after { animation-delay: 120ms; }
+#smygames .mg-tab.mg-nudge .n { display: inline-block; animation: mgTabNudge 360ms cubic-bezier(0.3, 0, 0.3, 1); }
 #smygames .mg-name { font-size: 15px; color: var(--sg-ink); }
 #smygames .mg-time { font-size: 11px; color: var(--sg-dim); }
 #smygames .mg-score { padding: 0; background: none; border: none; text-shadow: none; font-size: 20px; }

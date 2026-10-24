@@ -2,6 +2,25 @@
 
 ---
 
+## Leaving a game folds the board; My Games points at games waiting on you (October 2026)
+
+- Leaving the game screen used the generic glide, so it felt like any other page. Now
+  `#sg` takes `.game-exit` instead of `.glide-out`: the board folds back into its
+  top-right corner (the corner the board build opens from), the rack drops and the header
+  lifts, 320ms, accelerating. The next screen still glides in, held back 90ms
+  (`--glide-delay`) so the fold reads first (90 + 270 stays inside the 420ms entrance
+  budget). Input is never blocked beyond the normal entrance guard. Config: `GAME_EXIT` in
+  `boostGlide.js`, mirrored as `--gx-*` tokens (tested). Reduced motion: plain swap.
+- My Games: on opening the screen, every card where it is your turn glints once (a light
+  sweep, after the list has risen in, staggered 70ms). If a game turns to you while the
+  screen is open (live MG_RENDER from the room watchers), that card shakes once; if it is
+  under the "their turn" tab, the "your turn" tab count pops instead. One-shot only — no
+  loops; the static my-turn styling carries the state afterwards. `turnCues()` and
+  `MG_CUE` in `asyncGamesScreen.js`; renders while the screen is hidden (badge refresh)
+  never use up the entrance.
+
+---
+
 ## Card morph: the card itself grows into the screen (October 2026)
 
 - The game-mode card transition looked like home splitting open with the new screen inside:

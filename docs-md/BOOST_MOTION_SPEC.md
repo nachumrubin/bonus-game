@@ -535,6 +535,19 @@ unlock) still play on open but are dropped on close, so every overlay leaves the
 No overlay may add its own `:not(.hidden) > .ovc` keyframe entrance (boostGlide.test.js).
 Reduced motion: the global blanket (instant).
 
+**Game exit** (`GAME_EXIT` in `boostGlide.js`, `--gx-*` tokens): leaving `sg` replaces its
+`.glide-out` with `.game-exit` — the board build in reverse. The board folds back into its
+top-right corner (same perspective pose `bbUnfold` starts from), the rack (`.bot`,
+`#brack2-row`) drops 28px and the header (`.gm-topbar`, `#info-strip`, `#turn-banner`) lifts
+16px, 320ms accelerating; the screen fades over the second half. The next screen glides in
+as usual but 90ms late (`--glide-delay`), so the fold reads first. Cleanup waits for the
+longer of the two. Reduced motion: plain swap.
+
+**My Games turn cues** (`MG_CUE` in `asyncGamesScreen.js`): opening the screen, each
+your-turn card glints once (`mg-glint`, a sweep after the reveal, 70ms stagger); a game
+that turns to the player while the screen shows shakes once (`mg-nudge`), or pops the
+"your turn" tab count when it sits under the other tab. One-shot; never a loop.
+
 **Not glided:** the game screen glides but its content is never staggered; the coin toss
 keeps its own animation (glide only).
 
