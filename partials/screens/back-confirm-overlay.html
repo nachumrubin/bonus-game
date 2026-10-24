@@ -40,3 +40,18 @@
     </div>
   </div>
 </div>
+
+<!-- Exit question — the back button on the home screen (src/ui/backButton.js,
+     wired in main.js). While it is open a second back press closes the app;
+     "stay" closes it and re-arms the back interception. -->
+<div id="ov-exit-confirm" class="ov hidden">
+  <div class="ovc">
+    <div class="ovic"><svg class="gi"><use href="#gi-logout"/></svg></div>
+    <div class="ovt">לצאת מבוסט?</div>
+    <div class="ovd">תמיד אפשר לחזור — המשחקים שלך נשמרים.</div>
+    <div class="ovbtns">
+      <button class="ovb s danger" type="button" data-exit="leave">יציאה</button>
+      <button class="ovb p" type="button" data-exit="stay" data-gm="הישאר" data-gf="הישארי">הישאר</button>
+    </div>
+  </div>
+</div>

@@ -486,6 +486,28 @@ real-time game can't be saved. `gameFlowController` passes `isLive` in the
 `PAUSE_OPEN` / `BACK_OPEN` payloads; `pauseScreen` / `backConfirmScreen` toggle
 the save button's `style.display` accordingly. Offline and async games keep it.
 
+### Device back button (Android back / browser ←)
+
+`src/ui/backButton.js` decides, main.js (popstate) acts. The page's own history entry is
+tagged `spineBase` and a `spineBack` sentinel sits on top, so a press lands on the base
+entry instead of leaving the app. First match wins: exit question open → close it;
+`#ov-back-confirm` open → close it (`BACK_INTENT.STAY`, back to the game); any other open
+`.ov` → click its visible `[aria-label="סגור"]` button, or do nothing if it has none
+(mini-games, matchmaking, results are never interrupted); board review → `#board-review-back`;
+game screen → `BACK_PRESSED` → the end menu (same as the menu's סיים / שמור); coin toss →
+nothing; home → `#ov-exit-confirm` (no sentinel while it is open, so a second press closes
+the app; `[data-exit="stay"]` re-arms, `[data-exit="leave"]` tries `window.close()` then
+`history.back()`); other screens → the previous screen (`previousScreen`: never back past a
+game, home at the root). A new closeable overlay only needs a visible `aria-label="סגור"`
+close button to work with back.
+
+### Score-multiplier reminder
+
+`.spine-multiplier-banner` (`#spine-multiplier-banner-is-N` / `-sc-N`, built by
+`gameScreen.renderMultiplierBanner`) is a glass pill under the boosted player's card:
+`.mult-2` (violet) / `.mult-4` (orange) set `--mult`; `.is-now` lights it on the turn it
+applies to; children `b.mult-x` (×N, LTR-isolated) + `span.mult-tx` (בתור הזה / בתור הבא).
+
 > **Note:** `button[onclick="shareGame()"]` / `#btn-share-game` above is stale —
 > the home share button was removed from all partials. `MENU_INTENT.SHARE_GAME`
 > and its `main.js` handler are dead code pending cleanup.

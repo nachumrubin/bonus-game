@@ -131,7 +131,8 @@ import { mountTutorialScreen, TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_CLOSE, TU
 import { mountJokerPicker, JOKER_INTENT } from './ui/screens/jokerPicker.js';
 import { mountEndGameScreen,    END_INTENT,        END_OPEN }        from './ui/screens/endGameScreen.js';
 import { mountPauseScreen,      PAUSE_INTENT,      PAUSE_OPEN }      from './ui/screens/pauseScreen.js';
-import { mountBackConfirmScreen,BACK_INTENT,       BACK_OPEN }       from './ui/screens/backConfirmScreen.js';
+import { mountBackConfirmScreen,BACK_INTENT,       BACK_OPEN, BACK_PRESSED } from './ui/screens/backConfirmScreen.js';
+import { decideBack, backSnapshot, clickOverlayClose, BACK_ACTION, EXIT_OVERLAY } from './ui/backButton.js';
 import { mountCoinTossScreen,   COIN_INTENT,       COIN_OPEN, COIN_WAITING } from './ui/screens/coinTossScreen.js';
 import { mountSettingsScreen,   SETTINGS_INTENT,   SETTINGS_OPEN, SETTINGS_CHANGED } from './ui/screens/settingsScreen.js';
 import { mountDisconnectScreen, DISCONNECT_INTENT, DISCONNECT_OPEN, DISCONNECT_CLOSE } from './ui/screens/disconnectScreen.js';
@@ -5146,38 +5147,67 @@ async function boot() {
     }
   }
 
-  // Native back-button (browser ← / Android back gesture) interception.
+  // Native back-button (Android back / browser ←) interception.
   //
-  // Strategy: park a sentinel history entry on top of whatever the browser
-  // has so that the first back-press fires a `popstate` event rather than
-  // unloading the page.  Re-push the sentinel after each press so subsequent
-  // presses are caught too.
-  //
-  // Behaviour:
-  //   • Game screen ('sg'): intercept → show the quit overlay (same as סיום).
-  //   • Any other screen: pop the navigation stack and show the previous screen.
+  // The page's own history entry is tagged `spineBase` and a sentinel
+  // (`spineBack`) is parked on top of it, so a press pops the sentinel and
+  // lands on the base entry — a `popstate` we handle — instead of leaving the
+  // app. What a press does is decided by src/ui/backButton.js (end menu in a
+  // game, close the open overlay, previous screen, exit question on home).
+  // After handling, the sentinel goes back on top — except while the exit
+  // question is up: then the next press finds no sentinel and the app closes.
   if (globalThis.history?.pushState && !globalThis.__spineBackWired) {
     globalThis.__spineBackWired = true;
-    globalThis.history.pushState({ spineBack: true }, '');
+    const hist = globalThis.history;
+    const doc = globalThis.document;
+    hist.replaceState({ ...(hist.state ?? {}), spineBase: true }, '');
+    const pushSentinel = () => hist.pushState({ spineBack: true }, '');
+    pushSentinel();
+
+    const exitOv = doc?.getElementById?.(EXIT_OVERLAY);
+    const closeExit = () => {
+      if (exitOv?.classList?.contains('hidden')) return;
+      exitOv?.classList?.add('hidden');
+      pushSentinel();
+    };
+    for (const btn of exitOv?.querySelectorAll?.('[data-exit="stay"]') ?? []) {
+      btn.addEventListener('click', closeExit);
+    }
+    exitOv?.querySelector?.('[data-exit="leave"]')?.addEventListener('click', () => {
+      // A TWA closes on window.close(); a browser tab may refuse, so step
+      // back past the page instead (no sentinel is on top while asking).
+      try { globalThis.close?.(); } catch { /* swallow */ }
+      globalThis.setTimeout(() => { try { hist.back(); } catch { /* swallow */ } }, 150);
+    });
 
     globalThis.addEventListener('popstate', (e) => {
-      if (!e.state?.spineBack) return;
-      const currentScreen = _scStack[_scStack.length - 1] ?? 'sh';
-      if (currentScreen === 'sg') {
-        // Keep the sentinel in history so the next back-press is also caught.
-        globalThis.history.pushState({ spineBack: true }, '');
-        bus.emit(BACK_OPEN, {});
-      } else {
-        _scStack.pop();
-        const prev = _scStack[_scStack.length - 1] ?? 'sh';
-        // Re-push sentinel before navigating so it's always on top.
-        globalThis.history.pushState({ spineBack: true }, '');
-        _scBack = true;
-        try {
-          showLegacyScreen(prev);
-        } finally {
-          _scBack = false;
+      if (!e.state?.spineBase) return;
+      const snap = backSnapshot(doc, { screenIds: SCREEN_IDS, stack: _scStack });
+      const { action, overlay, screen } = decideBack(snap);
+      if (action === BACK_ACTION.ASK_EXIT) {
+        exitOv?.classList?.remove('hidden');
+        return;   // no sentinel: a second press leaves the app
+      }
+      pushSentinel();
+      switch (action) {
+        case BACK_ACTION.CLOSE_EXIT: exitOv?.classList?.add('hidden'); break;
+        case BACK_ACTION.CLOSE_GAME_MENU: bus.emit(BACK_INTENT.STAY); break;
+        case BACK_ACTION.CLOSE_OVERLAY: clickOverlayClose(doc, overlay); break;
+        case BACK_ACTION.END_REVIEW: doc?.getElementById?.('board-review-back')?.click?.(); break;
+        case BACK_ACTION.OPEN_GAME_MENU: bus.emit(BACK_PRESSED); break;
+        case BACK_ACTION.NAVIGATE: {
+          // Trim the stack to the target so later presses keep walking back.
+          const k = _scStack.lastIndexOf(screen);
+          _scStack = k >= 0 ? _scStack.slice(0, k + 1) : ['sh'];
+          _scBack = true;
+          try {
+            showLegacyScreen(screen);
+          } finally {
+            _scBack = false;
+          }
+          break;
         }
+        default: break;   // IGNORE
       }
     });
   }

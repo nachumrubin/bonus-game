@@ -13,6 +13,12 @@
 - [x] One shared entrance + exit for every overlay (dialog / sheet / panel shapes).
 - [x] Leaving a game folds the board into its corner (`game-exit`).
 - [x] My Games: one-time glint on your-turn cards, nudge when a game turns to you.
+- [x] Android back button: end menu in a game (press again to close), overlays close,
+  previous screen elsewhere, exit question on home.
+- [x] ×2 / ×4 multiplier reminder restyled to the new game design.
+- [ ] Phone check in the installed TWA: does `window.close()` from the exit question close
+  the app? (Fallback is `history.back()`; a second back press always exits.) Also check
+  the back gesture on Android 14+ predictive back.
 - [ ] Phone check of the game exit fold (perspective transform on a cheap Android) and
   of the My Games glint visibility in bright light (it is deliberately subtle).
 - [x] ~~Idea #3: boost lightning from the square to the result~~ — dropped: when the

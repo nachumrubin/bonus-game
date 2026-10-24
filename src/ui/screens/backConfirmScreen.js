@@ -12,6 +12,10 @@ export const BACK_INTENT = Object.freeze({
 });
 
 export const BACK_OPEN = 'overlay/back/open';
+// The device back button was pressed in a game (main.js popstate). The game
+// flow controller turns it into BACK_OPEN with the live/offline flag, exactly
+// like the menu's סיים / שמור button.
+export const BACK_PRESSED = 'overlay/back/pressed';
 
 export function mountBackConfirmScreen({ root = globalThis.document, bus } = {}) {
   if (!bus) throw new Error('mountBackConfirmScreen: bus required');
