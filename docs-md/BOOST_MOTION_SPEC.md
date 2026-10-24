@@ -506,11 +506,18 @@ inside `MAX_TOTAL_ENTRANCE` (420ms).
 
 **Card morph** (home game-mode cards only, `CARD_MORPH` in `boostGlide.js`): tapping a
 card (`armCardMorph`, from `menuScreen.js`) arms the navigation it triggers (within 600ms).
-Instead of the Glide, the new screen grows out of the card: its clip starts as the card's
-outline (rounded corners included) and opens to the full screen, 380ms; a copy of the card
-fades out as it grows, the content fades in, home recedes (scale .95, darker) and its top
-bar fades away. Back to home from that same screen reverses it into the card, 340ms (the
-card fades back in where it is). At the end, the screen that is now hidden snaps hidden (no
+Instead of the Glide, the card itself grows into the new screen, 400ms. A layer over the
+screens (`.ct-frame`) holds the card's surface (`.ct-fill`, opaque glass), its own border
+and glow (`.ct-edge`, copied from the tapped card's computed style) and a copy of its
+content (`.ct-ghost`). Fill and edge expand from the card's place to the full screen; the
+card's icon and text fade out in the first ~30%, drifting with its centre. The new screen
+is clipped to the same shape and stays covered by the fill until ~40%; then the fill
+clears and the screen's content fades and scales (.97→1) in; the edge fades at the end.
+Home recedes (scale .95, darker) and its top bar fades away. (The first version only
+clipped the screen open from the card's outline; with near full-width cards that read as
+home splitting open, not as the card growing.) Back to home from that same screen is the
+reverse, 340ms: the content fades, the card surface returns and shrinks into the card,
+whose content fades back in where it is. At the end, the screen that is now hidden snaps hidden (no
 `.screen.hidden` fade at full size). Only once per opening: any other way out of that screen
 drops the way back. No staggered reveal on a morph (it brings its content in itself).
 Reduced motion: plain swap.

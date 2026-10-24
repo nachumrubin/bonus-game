@@ -1896,19 +1896,38 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
 }
 #global-topbar.glide-out * { pointer-events: none; }
 
-/* ── 1b. Card morph — a home game-mode card becomes its screen ──
-   src/ui/screens/screenTransitions.js (CARD_MORPH in boostGlide.js). --ct-clip
-   is the card's outline on the screen; --ct-dur / --ct-ease the timing. The
-   growing screen carries a glass skin (::after, the card's own surface) that
-   fades as its content fades in; .ct-ghost is a copy of the card. */
+/* ── 1b. Card morph — a home game-mode card grows into its screen ──
+   src/ui/screens/screenTransitions.js (CARD_MORPH in boostGlide.js). The card
+   itself grows: a .ct-frame layer over the screens holds its surface
+   (.ct-fill, opaque), its border + glow (.ct-edge, copied from the card) and a
+   copy of its content (.ct-ghost). Fill and edge go from the card's insets
+   (--ct-top/right/bottom/left, --ct-radius) to the full screen; the content
+   fades early, drifting with the card's centre (--ct-dy). The new screen is
+   clipped to the same shape (--ct-clip) and stays covered by the fill until
+   ~40%, then the fill clears and its content fades/scales in. Close is the
+   reverse. --ct-dur / --ct-ease carry the timing. */
 @keyframes ctGrow   { from { clip-path: var(--ct-clip); } to { clip-path: inset(0 round 0px); } }
 @keyframes ctShrink { from { clip-path: inset(0 round 0px); } to { clip-path: var(--ct-clip); } }
-@keyframes ctContentIn  { 0%, 18% { opacity: 0; transform: translate3d(0, 10px, 0); } 75%, 100% { opacity: 1; transform: none; } }
-@keyframes ctContentOut { 0% { opacity: 1; } 45%, 100% { opacity: 0; } }
-@keyframes ctSkinOut { 0%, 15% { opacity: 1; } 60%, 100% { opacity: 0; } }
-@keyframes ctSkinIn  { 0%, 35% { opacity: 0; } 80%, 100% { opacity: 1; } }
-@keyframes ctGhostOut { 0% { opacity: 1; transform: none; } 35%, 100% { opacity: 0; transform: scale(1.04); } }
-@keyframes ctGhostIn  { 0%, 50% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes ctShapeGrow {
+  from { top: var(--ct-top); right: var(--ct-right); bottom: var(--ct-bottom); left: var(--ct-left); border-radius: var(--ct-radius); }
+  to   { top: 0; right: 0; bottom: 0; left: 0; border-radius: 0; }
+}
+@keyframes ctShapeShrink {
+  from { top: 0; right: 0; bottom: 0; left: 0; border-radius: 0; }
+  to   { top: var(--ct-top); right: var(--ct-right); bottom: var(--ct-bottom); left: var(--ct-left); border-radius: var(--ct-radius); }
+}
+@keyframes ctFillOut { 0%, 38% { opacity: 1; } 72%, 100% { opacity: 0; } }
+@keyframes ctFillIn  { 0% { opacity: 0; } 40%, 100% { opacity: 1; } }
+@keyframes ctEdgeOut { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ctEdgeIn  { 0% { opacity: 0; } 20%, 100% { opacity: 1; } }
+@keyframes ctGhostOut {
+  0%   { opacity: 1; transform: none; }
+  30%  { opacity: 0; transform: translate3d(0, calc(var(--ct-dy) * .5), 0) scale(1.04); }
+  100% { opacity: 0; transform: translate3d(0, var(--ct-dy), 0) scale(1.04); }
+}
+@keyframes ctGhostIn { 0%, 55% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes ctContentIn  { 0%, 38% { opacity: 0; transform: translate3d(0, 12px, 0) scale(.97); } 100% { opacity: 1; transform: none; } }
+@keyframes ctContentOut { 0% { opacity: 1; transform: none; } 35%, 100% { opacity: 0; transform: translate3d(0, 8px, 0) scale(.97); } }
 @keyframes ctRecede { to   { transform: scale(.95); filter: brightness(.55); } }
 @keyframes ctReturn { from { transform: scale(.95); filter: brightness(.55); } }
 .screen.morph-in, .screen.hidden.morph-close {
@@ -1916,16 +1935,24 @@ img.globe3d{width:1.6em;height:1.6em;object-fit:contain;border-radius:0;vertical
   animation: ctGrow var(--ct-dur) var(--ct-ease) both; will-change: clip-path;
 }
 .screen.hidden.morph-close { animation-name: ctShrink; pointer-events: none; }
-.screen.morph-in::after, .screen.morph-close::after {
-  content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%), var(--sg-glass, rgba(255,255,255,.06));
-  animation: ctSkinOut var(--ct-dur) linear both;
+.screen.morph-in > *    { animation: ctContentIn var(--ct-dur) cubic-bezier(0.2, 0, 0, 1) both; }
+.screen.morph-close > * { animation: ctContentOut var(--ct-dur) linear both; }
+.ct-frame { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+.ct-frame .ct-shape {
+  position: absolute; box-sizing: border-box; border-radius: var(--ct-radius);
+  top: var(--ct-top); right: var(--ct-right); bottom: var(--ct-bottom); left: var(--ct-left);
 }
-.screen.morph-close::after { animation-name: ctSkinIn; }
-.screen.morph-in > :not(.ct-ghost)    { animation: ctContentIn var(--ct-dur) var(--ct-ease) both; }
-.screen.morph-close > :not(.ct-ghost) { animation: ctContentOut var(--ct-dur) linear both; }
-.screen .ct-ghost { z-index: 5; pointer-events: none; animation: ctGhostOut var(--ct-dur) var(--ct-ease) both; }
-.screen.morph-close .ct-ghost { animation-name: ctGhostIn; animation-timing-function: linear; }
+.ct-frame .ct-fill {
+  /* the card's glass (--sg-glass over the app background), made opaque */
+  background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 160px), #09143e;
+}
+.ct-frame .ct-ghost { pointer-events: none; }
+.ct-frame.is-open .ct-fill   { animation: ctShapeGrow var(--ct-dur) var(--ct-ease) both, ctFillOut var(--ct-dur) linear both; }
+.ct-frame.is-open .ct-edge   { animation: ctShapeGrow var(--ct-dur) var(--ct-ease) both, ctEdgeOut var(--ct-dur) linear both; }
+.ct-frame.is-open .ct-ghost  { animation: ctGhostOut var(--ct-dur) linear both; }
+.ct-frame.is-close .ct-fill  { animation: ctShapeShrink var(--ct-dur) var(--ct-ease) both, ctFillIn var(--ct-dur) linear both; }
+.ct-frame.is-close .ct-edge  { animation: ctShapeShrink var(--ct-dur) var(--ct-ease) both, ctEdgeIn var(--ct-dur) linear both; }
+.ct-frame.is-close .ct-ghost { animation: ctGhostIn var(--ct-dur) linear both; }
 .screen.hidden.morph-out {
   visibility: visible; opacity: 1; transition: none; transform-origin: 50% 50%;
   animation: ctRecede var(--ct-dur) var(--ct-ease) both;

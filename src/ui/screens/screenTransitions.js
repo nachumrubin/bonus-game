@@ -48,7 +48,7 @@ const state = {
   glideTimer: null,
   glideEls: [],      // screens (and the home topbar) carrying glide-* classes
   revealEls: [],     // elements carrying reveal-item
-  ghosts: [],        // .ct-ghost card copies, removed on settle
+  ghosts: [],        // .ct-frame layers (the growing card), removed on settle
   armed: null,       // { el, at } — a home card just tapped (armCardMorph)
   morph: null,       // { screen, card } — the screen a card opened, while it is showing
   hideTopbarOnSettle: false,
@@ -140,31 +140,59 @@ function isLaidOut(el) {
 }
 
 // The card's outline as a clip-path on the (full-viewport) screen.
-function cardClip(doc, card, screen) {
+const px = (v) => `${Math.max(0, Math.round(v * 100) / 100)}px`;
+
+// The card's place on the (full-screen) screen: its insets, as a clip-path
+// and as the growing card's start geometry; how far its centre is from the
+// screen's (its content drifts that way as it grows); its border and glow.
+function cardGeometry(doc, card, screen) {
   const r = card.getBoundingClientRect();
   const s = screen.getBoundingClientRect?.() ?? { top: 0, left: 0, right: r.right, bottom: r.bottom };
-  const radius = doc?.defaultView?.getComputedStyle?.(card)?.borderRadius || '0px';
-  const px = (v) => `${Math.max(0, Math.round(v * 100) / 100)}px`;
+  const cs = doc?.defaultView?.getComputedStyle?.(card);
+  const radius = cs?.borderRadius || '0px';
+  const inset = [r.top - s.top, s.right - r.right, s.bottom - r.bottom, r.left - s.left].map(px);
   return {
     rect: r,
-    clip: `inset(${px(r.top - s.top)} ${px(s.right - r.right)} ${px(s.bottom - r.bottom)} ${px(r.left - s.left)} round ${radius})`,
+    inset,
+    radius,
+    clip: `inset(${inset.join(' ')} round ${radius})`,
+    dy: Math.round((s.top + s.bottom) / 2 - (r.top + r.bottom) / 2),
+    edge: cs ? `border:${cs.borderTopWidth || '1px'} solid ${cs.borderTopColor || 'transparent'};box-shadow:${cs.boxShadow || 'none'}` : '',
   };
 }
 
-// A non-interactive copy of the card at its place on screen, inside `host`.
-function cardGhost(doc, card, rect, host) {
+// The growing card: a layer over the screens with the card's surface (fill),
+// its border + glow (edge) and a non-interactive copy of its content (ghost).
+// The morph keyframes (styles.css §1b) take fill and edge from the card's
+// insets to the full screen. Removed on settle.
+function cardFrame(doc, card, geo, host, cls) {
+  const frame = doc.createElement?.('div');
+  if (!frame) return null;
+  frame.className = `ct-frame ${cls}`;
+  frame.setAttribute?.('aria-hidden', 'true');
+  const [t, r, b, l] = geo.inset;
+  frame.style.cssText = `--ct-top:${t};--ct-right:${r};--ct-bottom:${b};--ct-left:${l};--ct-radius:${geo.radius};--ct-dy:${geo.dy}px`;
+  const fill = doc.createElement('div');
+  fill.className = 'ct-shape ct-fill';
+  const edge = doc.createElement('div');
+  edge.className = 'ct-shape ct-edge';
+  if (geo.edge) edge.style.cssText = geo.edge;
+  frame.appendChild(fill);
+  frame.appendChild(edge);
   const g = card.cloneNode?.(true);
-  if (!g) return null;
-  g.removeAttribute?.('id');
-  g.removeAttribute?.('onclick');
-  for (const el of Array.from(g.querySelectorAll?.('[id]') ?? [])) el.removeAttribute('id');
-  g.setAttribute?.('aria-hidden', 'true');
-  g.setAttribute?.('tabindex', '-1');
-  g.classList?.add('ct-ghost');
-  g.style.cssText += `;position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;margin:0;box-sizing:border-box`;
-  host.appendChild?.(g);
-  state.ghosts.push(g);
-  return g;
+  if (g) {
+    g.removeAttribute?.('id');
+    g.removeAttribute?.('onclick');
+    for (const el of Array.from(g.querySelectorAll?.('[id]') ?? [])) el.removeAttribute('id');
+    g.setAttribute?.('tabindex', '-1');
+    g.classList?.add('ct-ghost');
+    const rect = geo.rect;
+    g.style.cssText += `;position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;margin:0;box-sizing:border-box`;
+    frame.appendChild(g);
+  }
+  host.appendChild?.(frame);
+  state.ghosts.push(frame);
+  return frame;
 }
 
 export function showScreen(id, {
@@ -261,19 +289,23 @@ export function showScreen(id, {
     // shrinks into the card over home.
     const surface = morph.open ? target : outgoing;
     const under = morph.open ? outgoing : target;
-    const { rect, clip } = cardClip(doc, morph.card, surface);
+    const geo = cardGeometry(doc, morph.card, surface);
     const dur = morph.open ? CARD_MORPH.openDuration : CARD_MORPH.closeDuration;
     const ease = morph.open ? CARD_MORPH.openEasing : CARD_MORPH.closeEasing;
-    const mark = (el, cls) => {
-      el.style?.setProperty?.('--ct-clip', clip);
+    const timing = (el) => {
       el.style?.setProperty?.('--ct-dur', `${dur}ms`);
       el.style?.setProperty?.('--ct-ease', ease);
+    };
+    const mark = (el, cls) => {
+      el.style?.setProperty?.('--ct-clip', geo.clip);
+      timing(el);
       el.classList?.add(cls);
       state.glideEls.push(el);
     };
     mark(surface, morph.open ? 'morph-in' : 'morph-close');
     mark(under, morph.open ? 'morph-out' : 'morph-under');
-    cardGhost(doc, morph.card, rect, surface);
+    const frame = cardFrame(doc, morph.card, geo, surface.parentNode ?? doc.body ?? surface, morph.open ? 'is-open' : 'is-close');
+    if (frame) timing(frame);
     if (topbar && leavingHome) {
       setTopbarVisible(topbar, true);
       state.hideTopbarOnSettle = true;
