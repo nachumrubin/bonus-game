@@ -88,15 +88,9 @@
     radial-gradient(ellipse 80% 40% at 50% 100%, rgba(40,212,255,.10), transparent 70%),
     linear-gradient(180deg, #07123d, #040a22 55%, #030817) !important;
 }
-.app-loading-tiles { gap: 10px !important; }
-.app-loading-tile {
-  width: 58px !important; height: 58px !important; border-radius: 12px !important; color: #8a5324 !important;
-  background: var(--sg-wood) !important; border: 2.7px solid #46dcf5 !important;
-  box-shadow: 0 0 0 1px rgba(0,60,90,.55), 0 0 6px rgba(40,212,255,.55), inset 0 0 0 1px rgba(255,255,255,.35), 0 3.5px 0 1px #7a5530 !important;
-  animation-name: g-loading-tile-cycle !important;
-}
-.app-loading-tile .t-letter { font-size: 35px; margin-top: -3px; text-shadow: 0 1px 0 rgba(255,245,220,.8), 0 -1px 0 rgba(70,35,10,.55) !important; }
-.app-loading-tile .t-val { right: auto !important; left: 6px; bottom: 2px !important; font-size: 15px !important; color: #8a5324 !important; }
+.app-loading-tiles { gap: 4px !important; }
+/* The tiles are the logo's Blender renders: only the loop's glow is restyled (cyan). */
+.app-loading-tile { animation-name: g-loading-tile-cycle !important; }
 @keyframes g-loading-tile-cycle {
   0%   { transform: translateY(-280px) rotate(-14deg); opacity: 0; }
   5%   { opacity: 1; }

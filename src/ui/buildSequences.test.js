@@ -4,11 +4,14 @@ import assert from 'node:assert/strict';
 import {
   HOME_BUILD, BOARD_BUILD, RACK_SLOTS, homeBuildTotal, boardBuildTotal, BOARD_BUILD_LEAD_MS,
   diagonalRank, clockwiseOrder, leftToRightOrder, boardBuildKind,
+  LOGO_TILE_EXITS, LOADING_EXIT, logoTilesTimes,
 } from './buildTimeline.js';
 import {
   playHomeBuild, playBoardBuild, finishBuilds, isBoardBuilding,
   wasBoardBuilt, rememberBoardBuilt, BOARD_INTRO_STARTED, BOARD_INTRO_FINISHED,
+  flyOutLoadingTiles, logoTileFiles,
 } from './buildSequences.js';
+import { LOGO_TILE_LAYERS } from './logoTilesLayout.js';
 
 // ── Fake DOM: elements answer querySelector(All) from a selector table ────
 function el(name, { hidden = false, children = [] } = {}) {
@@ -320,3 +323,140 @@ test('board build yields to gameplay: a confirmed move finishes it before animat
   assert.equal(bus.count(EV.MOVE_CONFIRMED), 0, 'listeners removed');
 });
 
+
+// ── Tile-built logo + boot loader exit ───────────────────────────────────
+// Elements made by doc.createElement: enough DOM to build the layer stack.
+function domNode(tag) {
+  const cls = new Set();
+  const props = new Map();
+  const node = {
+    tag, children: [], parent: null, attrs: {}, innerHTML: '', src: '',
+    style: {
+      cssText: '',
+      setProperty: (k, v) => props.set(k, v),
+      removeProperty: (k) => props.delete(k),
+    },
+    classList: { add: (...c) => c.forEach(x => cls.add(x)), remove: (...c) => c.forEach(x => cls.delete(x)), contains: (c) => cls.has(c) },
+    set className(v) { cls.clear(); String(v).split(/\s+/).filter(Boolean).forEach(c => cls.add(c)); },
+    get className() { return [...cls].join(' '); },
+    prop: (k) => props.get(k),
+    setAttribute(k, v) { node.attrs[k] = v; },
+    appendChild(c) { c.parent = node; node.children.push(c); return c; },
+    remove() { if (node.parent) node.parent.children = node.parent.children.filter(c => c !== node); node.parent = null; },
+    all() { return node.children.flatMap(c => [c, ...c.all()]); },
+  };
+  return node;
+}
+
+function tiledHomeDoc() {
+  const h = homeDoc();
+  h.doc.createElement = (tag) => domNode(tag);
+  const img = Object.assign(el('hl-img'), { offsetWidth: 300 });
+  img.getBoundingClientRect = () => ({ left: 56.5, top: 120.25, width: 299.5, height: 122.5 });
+  h.logo.on('img.hl-img', img);
+  h.logo.getBoundingClientRect = () => ({ left: 0, top: 100, width: 412, height: 140 });
+  const kids = [];
+  h.logo.kids = kids;
+  h.logo.appendChild = (c) => { c.parent = { get children() { return kids; }, set children(v) { kids.splice(0, kids.length, ...v); } }; kids.push(c); return c; };
+  return { ...h, img };
+}
+
+test('logo tiles: land in order, then charge → strike → hand-off; the build grows < 1 s', () => {
+  const L = HOME_BUILD.logoTiles;
+  const T = logoTilesTimes();
+  assert.deepEqual([...L.order], ['bet', 'vav', 'tet', 'sam'], 'the ס lands last — it is the one struck');
+  const lands = L.order.map(k => T.land[k]);
+  assert.deepEqual(lands, [...lands].sort((a, b) => a - b));
+  assert.equal(T.allLanded, T.land.sam);
+  assert.ok(T.allLanded < T.charge && T.charge < T.strike && T.strike < T.handoff && T.handoff < T.end);
+  const P = HOME_BUILD.profile;
+  assert.ok(T.land.bet > P.start + P.dur, 'tiles start off-screen; the first lands after the profile — still the last to arrive');
+  assert.equal(homeBuildTotal({ logoTiles: true }), T.end);
+  assert.ok(T.end - homeBuildTotal() < 1000, `tile logo adds ${T.end - homeBuildTotal()} ms`);
+  // Every tile has an exit, and every layer the build needs was rendered.
+  for (const k of ['bet', 'vav', 'sam', 'tet']) assert.ok(LOGO_TILE_EXITS[k], `${k} exit`);
+  for (const k of ['bet', 'vav', 'tet', 'sam', 'samL', 'samR', 'bolt']) assert.equal(LOGO_TILE_LAYERS[k]?.length, 4, `${k} layer box`);
+  assert.ok(logoTileFiles().includes('assets/ui/logo_tiles/logo_bet_bare.webp'));
+});
+
+test('home build with tile layers: the stack is laid over the image, each tile from its exit side', () => {
+  const h = tiledHomeDoc();
+  const t = fakeTimers();
+  const cues = [];
+  assert.equal(playHomeBuild({ doc: h.doc, cue: (id) => cues.push(id), reducedMotion: false, ...t }), true);
+  assert.ok(!h.logo.has('hb-logo'), 'no whole-image drop');
+  assert.ok(h.logo.has('hb-logo-tiles'));
+  const stack = h.logo.kids[0];
+  assert.ok(stack.classList.contains('hl-tiles'));
+  assert.match(stack.style.cssText, /left:56\.5px;top:20\.25px;width:299\.5px;height:122\.5px/, 'fractional box over the img');
+  const tiles = stack.children.filter(c => c.classList.contains('hb-tile-in'));
+  assert.equal(tiles.length, 4);
+  const bet = tiles[0];
+  assert.match(bet.style.cssText, new RegExp(`left:${LOGO_TILE_LAYERS.bet[0]}%`));
+  assert.ok(!bet.prop('--b-fx').startsWith('-'), 'ב comes back from the right, where it left');
+  assert.ok(tiles[3].prop('--b-fy').startsWith('-'), 'ס comes back from above');
+  assert.equal(bet.children.length, 2, 'bare render + shadowed render');
+  assert.ok(stack.children.some(c => c.classList.contains('hb-tile-split')));
+  assert.ok(stack.all().some(c => c.src.endsWith('logo_bolt.webp')));
+  assert.equal(h.logo.prop('--b-handoff'), `${logoTilesTimes().handoff}ms`);
+  const finishAt = Math.max(...t.timers.map(x => x.ms));
+  assert.equal(finishAt, logoTilesTimes().end + 20);
+  t.runAll();
+  assert.equal(h.logo.kids.length, 0, 'stack removed → the single image is back');
+  assert.ok(!h.logo.has('hb-logo-tiles'));
+  for (const id of ['build.tile', 'build.land', 'build.charge', 'build.strike', 'build.wave']) assert.ok(cues.includes(id), `${id} played`);
+});
+
+test('home build with tile layers: a tap removes the stack at once', () => {
+  const h = tiledHomeDoc();
+  playHomeBuild({ doc: h.doc, reducedMotion: false, ...fakeTimers() });
+  assert.equal(h.logo.kids.length, 1);
+  h.doc.tap();
+  assert.equal(h.logo.kids.length, 0);
+});
+
+test('home build: logo not laid out (no width) → the single image drops in as before', () => {
+  const h = tiledHomeDoc();
+  h.img.offsetWidth = 0;
+  playHomeBuild({ doc: h.doc, reducedMotion: false, ...fakeTimers() });
+  assert.ok(h.logo.has('hb-logo') && h.logo.kids.length === 0);
+});
+
+function loaderRoot(keys = ['bet', 'vav', 'sam', 'tet']) {
+  const calls = [];
+  const tiles = keys.map((k) => ({
+    dataset: { tile: k },
+    animate: (frames, opts) => { calls.push({ k, frames, opts }); },
+  }));
+  const root = el('app-loading').on('.app-loading-tile[data-tile]', tiles);
+  const doc = makeDoc();
+  doc.defaultView = {
+    innerWidth: 400, innerHeight: 800,
+    getComputedStyle: () => ({ transform: 'matrix(1, 0, 0, 1, 0, -40)', opacity: '0.4' }),
+  };
+  return { root, doc, tiles, calls };
+}
+
+test('loader exit: each tile snaps to rest from mid-loop, then flies off along its own exit', () => {
+  const { root, doc, calls } = loaderRoot();
+  const total = flyOutLoadingTiles({ doc, root, reducedMotion: false });
+  assert.equal(total, 3 * LOADING_EXIT.stagger + LOADING_EXIT.dur);
+  assert.ok(root.has('is-exiting'), 'loop stopped');
+  assert.equal(calls.length, 4);
+  const bet = calls.find(c => c.k === 'bet');
+  assert.equal(bet.frames[0].transform, 'matrix(1, 0, 0, 1, 0, -40)', 'starts where the loop was');
+  assert.equal(bet.frames[1].transform, 'none');
+  assert.match(bet.frames[2].transform, /^translate\(\d+px, -\d+px\)/, 'ב leaves up and to the right');
+  const tet = calls.find(c => c.k === 'tet');
+  assert.match(tet.frames[2].transform, /^translate\(-\d+px, \d+px\)/, 'ט leaves down and to the left');
+});
+
+test('loader exit: nothing to do under reduced motion or without WAAPI', () => {
+  const a = loaderRoot();
+  assert.equal(flyOutLoadingTiles({ doc: a.doc, root: a.root, reducedMotion: true }), 0);
+  assert.ok(!a.root.has('is-exiting'));
+  const b = loaderRoot();
+  b.tiles[0].animate = undefined;
+  assert.equal(flyOutLoadingTiles({ doc: b.doc, root: b.root, reducedMotion: false }), 0);
+  assert.equal(flyOutLoadingTiles({ doc: b.doc, root: null }), 0);
+});

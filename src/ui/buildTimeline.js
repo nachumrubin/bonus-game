@@ -22,7 +22,43 @@ export const HOME_BUILD = Object.freeze({
   topIcons: Object.freeze({ start: 640,  stagger: 70, dur: 320 }),
   profile:  Object.freeze({ start: 980,  dur: 360, textStagger: 90, textDur: 280 }),
   logo:     Object.freeze({ start: 1120, flyDur: 480, glowDur: 340 }),
+  // With the per-tile layers (assets/ui/logo_tiles/, the normal case) the logo
+  // is built instead of dropped: the four tiles that flew off the loading
+  // screen fly back in, each from the side it left by (LOGO_TILE_EXITS), in
+  // `order` → the ס charges → lightning strikes it and it splits → the logo
+  // glows. Then the single image (boost-logo.webp) takes over invisibly.
+  logoTiles: Object.freeze({
+    start: 900, order: Object.freeze(['bet', 'vav', 'tet', 'sam']), stagger: 90, flyDur: 480,
+    hold: 80, chargeDur: 260, strikeDur: 160, splitDur: 340, glowDelay: 120, glowDur: 420, handoffDur: 220,
+  }),
 });
+
+// The boot loader's tiles leave the screen before home builds: each one flies
+// off in its own direction (unit-ish vector, screen axes, y down) with a spin
+// in degrees, and comes back from the same side to build the home logo.
+export const LOGO_TILE_EXITS = Object.freeze({
+  bet: Object.freeze({ x: 1,     y: -0.55, spin: 26 }),
+  vav: Object.freeze({ x: 0.45,  y: 1,     spin: -20 }),
+  sam: Object.freeze({ x: -0.15, y: -1,    spin: 16 }),
+  tet: Object.freeze({ x: -1,    y: 0.4,   spin: -28 }),
+});
+// dur: one tile's exit; stagger: between tiles (DOM order ב, ו, ס, ט);
+// settle: share of a tile's exit spent snapping it from wherever its loop was
+// back to rest before it flies.
+export const LOADING_EXIT = Object.freeze({ dur: 380, stagger: 40, settle: 0.22 });
+
+// Moments of the tile-built logo, in ms from the start of the home build.
+export function logoTilesTimes(L = HOME_BUILD.logoTiles) {
+  const land = {};
+  L.order.forEach((k, i) => { land[k] = L.start + i * L.stagger + L.flyDur; });
+  const allLanded = L.start + (L.order.length - 1) * L.stagger + L.flyDur;
+  const charge = allLanded + L.hold;
+  const strike = charge + L.chargeDur;
+  const glow = strike + L.glowDelay;
+  const end = Math.max(strike + L.splitDur, glow + L.glowDur);
+  // The last `handoffDur` crossfades the layer stack into the single image.
+  return { land, allLanded, charge, strike, split: strike, glow, handoff: end - L.handoffDur, end };
+}
 
 // ── Game board, new games only ─────────────────────────────────────────
 // The board unfolds from the top-right corner (Hebrew reading start) as a
@@ -50,7 +86,8 @@ const end = (phase, count = 1) =>
   phase.start + Math.max(0, count - 1) * (phase.stagger ?? 0) + (phase.dur ?? 0);
 
 // Total length of the home build for the given number of items per group.
-export function homeBuildTotal({ cards = 3, navItems = 4, topIcons = 5 } = {}) {
+// logoTiles: the logo is built from the tile layers rather than dropped whole.
+export function homeBuildTotal({ cards = 3, navItems = 4, topIcons = 5, logoTiles = false } = {}) {
   const h = HOME_BUILD;
   return Math.max(
     end(h.cards, cards),
@@ -59,7 +96,7 @@ export function homeBuildTotal({ cards = 3, navItems = 4, topIcons = 5 } = {}) {
     end(h.topIcons, topIcons),
     h.profile.start + 2 * h.profile.textStagger + h.profile.textDur,
     h.profile.start + h.profile.dur,
-    h.logo.start + h.logo.flyDur + h.logo.glowDur,
+    logoTiles ? logoTilesTimes(h.logoTiles).end : h.logo.start + h.logo.flyDur + h.logo.glowDur,
   );
 }
 

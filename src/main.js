@@ -77,7 +77,7 @@ import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/control
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
 import { showScreen as spineShowScreen, revealCurrentScreen, settleEntrance, SCREEN_IDS } from './ui/screens/screenTransitions.js';
-import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt } from './ui/buildSequences.js';
+import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt, flyOutLoadingTiles, preloadLogoTiles } from './ui/buildSequences.js';
 import { boardBuildKind, BOARD_BUILD_LEAD_MS } from './ui/buildTimeline.js';
 import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './ui/screens/menuScreen.js';
 import { mountHelpDropdown } from './ui/screens/helpDropdown.js';
@@ -170,6 +170,7 @@ function wireAppLoading() {
   const doc = globalThis.document;
   const el = doc?.getElementById?.('app-loading');
   if (!el) return;
+  preloadLogoTiles();   // the home logo's tile layers, ready by the time it builds
   const textEl = doc.getElementById?.('app-loading-text');
   const status = createBootStatus();
   let sessionTips = [];
@@ -308,27 +309,36 @@ function wireAppLoading() {
   function hide() {
     if (hidden) return;
     hidden = true;
-    el.classList.add('is-hidden');
     clearInterval(textTimer);
     win?.removeEventListener?.('offline', onOffline);
     win?.removeEventListener?.('online', onOnline);
     if (sessionTips.length) {
       loadingTipsService.recordShownTips(sessionTips.map(t => t.id));
     }
-    // Remove after the fade transition so it can't intercept clicks
-    // even if `pointer-events:none` fails.
-    setTimeout(() => el.remove?.(), 600);
-    // Cold launch: the first showScreen('sh') ran under the loader, so the
-    // main menu builds itself now, as the loader fades away (home build,
-    // buildSequences.js). Any other first screen gets its plain reveal.
-    try {
-      const reducedMotion = () => getMotionPreference().isReduced();
-      settleEntrance();
-      if (!playHomeBuild({ doc, cue: feedbackService.cue, reducedMotion })) {
-        revealCurrentScreen({ doc, reducedMotion });
-      }
-    } catch { /* swallow */ }
     if (off) { try { off(); } catch {} off = null; }
+    // The loader's tiles fly off the screen first; home's logo build brings
+    // them back (buildSequences.js). Then the loader fades away.
+    const reducedMotion = () => getMotionPreference().isReduced();
+    let exitMs = 0;
+    try { exitMs = flyOutLoadingTiles({ doc, root: el, reducedMotion }); } catch { /* swallow */ }
+    if (exitMs > 0) setTimeout(lift, exitMs);
+    else lift();
+
+    function lift() {
+      el.classList.add('is-hidden');
+      // Remove after the fade transition so it can't intercept clicks
+      // even if `pointer-events:none` fails.
+      setTimeout(() => el.remove?.(), 600);
+      // Cold launch: the first showScreen('sh') ran under the loader, so the
+      // main menu builds itself now, as the loader fades away (home build,
+      // buildSequences.js). Any other first screen gets its plain reveal.
+      try {
+        settleEntrance();
+        if (!playHomeBuild({ doc, cue: feedbackService.cue, reducedMotion })) {
+          revealCurrentScreen({ doc, reducedMotion });
+        }
+      } catch { /* swallow */ }
+    }
   }
   off = bus.on(MENU_REFRESH, (payload = {}) => {
     if (typeof payload.isAuthed === 'boolean') hide();

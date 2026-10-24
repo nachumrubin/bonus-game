@@ -11,8 +11,79 @@
 import {
   HOME_BUILD, BOARD_BUILD, RACK_SLOTS, homeBuildTotal, boardBuildTotal,
   diagonalRank, clockwiseOrder, leftToRightOrder,
+  LOGO_TILE_EXITS, LOADING_EXIT, logoTilesTimes,
 } from './buildTimeline.js';
+import { LOGO_TILE_LAYERS } from './logoTilesLayout.js';
 import { EV } from '../events/eventTypes.js';
+
+// Per-tile logo layers rendered from the logo's Blender shot
+// ("Blender designs/logo/render_logo_tiles.py"); LOGO_TILE_LAYERS places them
+// over boost-logo.webp pixel-for-pixel.
+const LOGO_TILES_DIR = 'assets/ui/logo_tiles/';
+// Stacking front-to-back as in the Blender scene: ס, ו, ט, ב.
+const LOGO_TILE_Z = Object.freeze({ bet: 1, tet: 2, vav: 3, sam: 4, samL: 4, samR: 4, bolt: 5 });
+// Tiles whose final render carries a neighbour's shadow: they fly as `_bare`
+// and the shadowed render fades in once every tile has landed.
+const LOGO_SHADED = Object.freeze(['bet', 'vav', 'tet']);
+// How far off-screen a tile starts / ends (along its exit direction).
+const OFFSCREEN_VMAX = 95;
+
+export function logoTileFiles() {
+  return [
+    ...Object.keys(LOGO_TILE_LAYERS).map(k => `logo_${k}.webp`),
+    ...LOGO_SHADED.map(k => `logo_${k}_bare.webp`),
+  ].map(f => LOGO_TILES_DIR + f);
+}
+
+// Warm the cache while the boot loader is up, so the tiles are decoded by the
+// time home builds its logo.
+export function preloadLogoTiles({ ImageCtor = globalThis.Image } = {}) {
+  if (typeof ImageCtor !== 'function') return;
+  for (const src of logoTileFiles()) {
+    try { const im = new ImageCtor(); im.decoding = 'async'; im.src = src; } catch { /* swallow */ }
+  }
+}
+
+function unitExit(key) {
+  const v = LOGO_TILE_EXITS[key];
+  if (!v) return null;
+  const n = Math.hypot(v.x, v.y) || 1;
+  return { x: v.x / n, y: v.y / n, spin: v.spin };
+}
+
+// ── Boot loader exit ───────────────────────────────────────────────────
+// The loader's tiles (`.app-loading-tile[data-tile]`) fly off the screen, each
+// in its own direction (LOGO_TILE_EXITS); home's logo build brings them back
+// from the same sides. Returns how long the caller should wait before lifting
+// the loader (0 = no exit animation: reduced motion, no tiles, no WAAPI).
+export function flyOutLoadingTiles({ doc = globalThis.document, root, reducedMotion } = {}) {
+  if (!root || reducedFrom(reducedMotion, doc)) return 0;
+  const tiles = Array.from(root.querySelectorAll?.('.app-loading-tile[data-tile]') ?? []);
+  if (!tiles.length || tiles.some(t => typeof t.animate !== 'function')) return 0;
+  const win = doc?.defaultView ?? globalThis;
+  const reach = Math.hypot(win.innerWidth || 400, win.innerHeight || 800);
+  const E = LOADING_EXIT;
+  // Snapshot where each tile is in its loop before the loop is stopped, so a
+  // tile caught mid-drop or mid-fade snaps back to rest rather than jumping.
+  const from = tiles.map((t) => {
+    const cs = win.getComputedStyle?.(t);
+    return { transform: cs?.transform || 'none', opacity: cs?.opacity ?? '1' };
+  });
+  root.classList?.add?.('is-exiting');
+  let longest = 0;
+  tiles.forEach((t, i) => {
+    const v = unitExit(t.dataset?.tile);
+    if (!v) return;
+    const delay = i * E.stagger;
+    longest = Math.max(longest, delay + E.dur);
+    t.animate([
+      { transform: from[i].transform, opacity: from[i].opacity, easing: 'ease-out' },
+      { transform: 'none', opacity: 1, offset: E.settle, easing: 'cubic-bezier(.55,0,.8,.3)' },
+      { transform: `translate(${Math.round(v.x * reach)}px, ${Math.round(v.y * reach)}px) rotate(${v.spin * 3}deg)`, opacity: 1 },
+    ], { duration: E.dur, delay, fill: 'both' });
+  });
+  return longest;
+}
 
 export const BOARD_INTRO_STARTED = 'game/intro-started';
 export const BOARD_INTRO_FINISHED = 'game/intro-finished';
@@ -45,6 +116,7 @@ function createRun({ doc, cue, setTimeoutFn, clearTimeoutFn, onFinish }) {
   const tagged = [];
   const timers = [];
   const unsubs = [];
+  const adopted = [];   // nodes the run created; removed when it finishes
   let done = false;
   let listener = null;
 
@@ -68,6 +140,7 @@ function createRun({ doc, cue, setTimeoutFn, clearTimeoutFn, onFinish }) {
       el.classList?.remove?.(cls);
       for (const k of vars) el.style?.removeProperty?.(k);
     }
+    for (const node of adopted.splice(0)) { try { node.remove?.(); } catch { /* swallow */ } }
     if (listener) doc.removeEventListener?.('pointerdown', listener, true);
     listener = null;
     for (const off of unsubs.splice(0)) { try { off(); } catch { /* swallow */ } }
@@ -85,7 +158,8 @@ function createRun({ doc, cue, setTimeoutFn, clearTimeoutFn, onFinish }) {
       if (typeof off === 'function') unsubs.push(off);
     }
   }
-  return { tag, sound, start, finish, finishOn, get done() { return done; } };
+  function adopt(node) { if (node) adopted.push(node); return node; }
+  return { tag, sound, start, finish, finishOn, adopt, get done() { return done; } };
 }
 
 function reducedFrom(reducedMotion, doc) {
@@ -160,11 +234,13 @@ export function playHomeBuild({
     run.sound('build.pop', P.start);
   }
 
-  // 5. Logo flies in from above the screen, glows, settles. (Single image for
-  //    now; per-tile flight is a TODO waiting on per-tile renders.)
+  // 5. Logo: the loader's tiles fly back in and build it, the ס is struck by
+  //    lightning and splits (buildLogoTiles). Without the layers (no DOM
+  //    factory, logo not laid out) the single image flies in from above.
   const L = H.logo;
   const logo = q('.hlogo');
-  if (logo) {
+  const tilesBuilt = !!logo && buildLogoTiles(run, doc, logo);
+  if (logo && !tilesBuilt) {
     run.tag(logo, 'hb-logo', { '--b-delay': L.start, '--b-dur': L.flyDur });
     run.tag(q('img', logo), 'hb-logo-glow', { '--b-delay': L.start + L.flyDur, '--b-dur': L.glowDur });
     run.sound('build.whoosh', L.start);
@@ -172,7 +248,95 @@ export function playHomeBuild({
     run.sound('build.wave', L.start + L.flyDur);
   }
 
-  run.start(homeBuildTotal({ cards: cards.length, navItems: navItems.length, topIcons: icons.length }));
+  run.start(homeBuildTotal({ cards: cards.length, navItems: navItems.length, topIcons: icons.length, logoTiles: tilesBuilt }));
+  return true;
+}
+
+// The tile-built logo. A stack of layers (.hl-tiles) is laid exactly over the
+// logo <img>, which hides while the build runs; when the run finishes the
+// stack is removed and the image — identical to the settled stack — is back.
+// Timing: HOME_BUILD.logoTiles / logoTilesTimes(). Keyframes: styles.css.
+function buildLogoTiles(run, doc, logo) {
+  const img = logo.querySelector?.('img.hl-img');
+  if (!img?.offsetWidth || typeof doc.createElement !== 'function') return false;
+  const L = HOME_BUILD.logoTiles;
+  const T = logoTilesTimes(L);
+  const px = (v) => `${Math.round(v)}ms`;
+
+  // Makes .hlogo the positioned parent (so the offsets below are relative to
+  // it) and hides the image until the hand-off, where the stack fades out over
+  // it (the two match to the pixel bar anti-aliasing, so the swap is unseen).
+  run.tag(logo, 'hb-logo-tiles', { '--b-handoff': T.handoff, '--b-handoff-dur': L.handoffDur });
+  const stack = run.adopt(doc.createElement('div'));
+  stack.className = 'hl-tiles';
+  stack.setAttribute('aria-hidden', 'true');
+  // Fractional box (offset* round to whole px, which would shift the layers
+  // against the image by up to a pixel and make the hand-off visible).
+  const ir = img.getBoundingClientRect?.() ?? { left: img.offsetLeft, top: img.offsetTop, width: img.offsetWidth, height: img.offsetHeight };
+  const lr = logo.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+  const f = (v) => `${Math.round(v * 100) / 100}px`;
+  stack.style.cssText = `left:${f(ir.left - lr.left - (logo.clientLeft || 0))};top:${f(ir.top - lr.top - (logo.clientTop || 0))};width:${f(ir.width)};height:${f(ir.height)};`
+    + `--b-strike:${px(T.strike)};--b-glow:${px(T.glow)};--b-glow-dur:${px(L.glowDur)}`;
+  const layer = (key, cls) => {
+    const [x, y, w, h] = LOGO_TILE_LAYERS[key];
+    const d = doc.createElement('div');
+    d.className = `hl-layer ${cls}`;
+    d.style.cssText = `left:${x}%;top:${y}%;width:${w}%;height:${h}%;z-index:${LOGO_TILE_Z[key]}`;
+    stack.appendChild(d);
+    return d;
+  };
+  const pic = (parent, file, cls = '') => {
+    const im = doc.createElement('img');
+    im.src = LOGO_TILES_DIR + file;
+    im.alt = '';
+    if (cls) im.className = cls;
+    parent.appendChild(im);
+    return im;
+  };
+
+  // Each tile flies in from far off-screen on the side it left the loader by.
+  L.order.forEach((key, i) => {
+    const v = unitExit(key);
+    const t = layer(key, 'hb-tile-in');
+    t.style.setProperty('--b-delay', px(L.start + i * L.stagger));
+    t.style.setProperty('--b-dur', px(L.flyDur));
+    t.style.setProperty('--b-fx', `${(v.x * OFFSCREEN_VMAX).toFixed(1)}vmax`);
+    t.style.setProperty('--b-fy', `${(v.y * OFFSCREEN_VMAX).toFixed(1)}vmax`);
+    t.style.setProperty('--b-spin', `${v.spin * 3}deg`);
+    if (LOGO_SHADED.includes(key)) {
+      pic(t, `logo_${key}_bare.webp`);
+      pic(t, `logo_${key}.webp`, 'hb-tile-shade').style.setProperty('--b-shade', px(T.allLanded));
+    } else {
+      // The intact ס charges up, then is gone the instant lightning strikes.
+      const whole = pic(t, `logo_${key}.webp`, 'hb-tile-charge');
+      whole.style.setProperty('--b-charge', px(T.charge));
+      whole.style.setProperty('--b-charge-dur', px(L.chargeDur));
+    }
+    run.sound(key === 'sam' ? 'build.land' : 'build.tile', T.land[key]);
+  });
+
+  // The strike: a channel from the sky onto the top of the ס, the bolt-shaped
+  // gap flashing white-hot, and the two halves kicking apart and settling.
+  for (const half of ['samL', 'samR']) {
+    const h = layer(half, `hb-tile-split ${half === 'samL' ? 'is-left' : 'is-right'}`);
+    h.style.setProperty('--b-dur', px(L.splitDur));
+    pic(h, `logo_${half}.webp`);
+  }
+  pic(layer('bolt', 'hb-tile-bolt'), 'logo_bolt.webp').style.setProperty('--b-dur', px(L.splitDur));
+  const [bx, by, bw] = LOGO_TILE_LAYERS.bolt;
+  const sky = doc.createElement('div');
+  sky.className = 'hl-sky';
+  // Starts 70ms before the strike (the leader coming down), see .hl-sky.
+  sky.style.cssText = `left:${(bx + bw * 0.65).toFixed(2)}%;bottom:${(100 - by).toFixed(2)}%;--b-dur:${px(L.strikeDur + 70)}`;
+  sky.innerHTML = '<svg viewBox="0 0 40 1000" preserveAspectRatio="none"><polyline points="'
+    + '22,0 14,90 26,170 10,260 24,330 12,420 28,500 15,580 25,660 9,740 23,820 14,900 20,1000" /></svg>';
+  stack.appendChild(sky);
+
+  logo.appendChild(stack);
+  run.sound('build.whoosh', L.start);
+  run.sound('build.charge', T.charge);
+  run.sound('build.strike', T.strike);
+  run.sound('build.wave', T.glow);
   return true;
 }
 
