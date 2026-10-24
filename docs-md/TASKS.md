@@ -15,8 +15,9 @@
 - [x] My Games: one-time glint on your-turn cards, nudge when a game turns to you.
 - [ ] Phone check of the game exit fold (perspective transform on a cheap Android) and
   of the My Games glint visibility in bright light (it is deliberately subtle).
-- [ ] Idea (#3, not started): boost lightning from the triggering square to the boost
-  result, reusing the logo's sky lightning (spec §7.8 cause and effect).
+- [x] ~~Idea #3: boost lightning from the square to the result~~ — dropped: when the
+  result is a mini-game there is nothing to fly to, so it would be inconsistent. The
+  electric effect on the activated square stays the single cue, the same for every reward.
 - [ ] Phone check of the overlay exit: content that a controller clears right after
   `ovClose` (if any) would be visible for 180ms during the exit. Fix per overlay if seen.
 - [ ] Pre-existing e2e failure: `spine-boot.spec.js:71` clicks `#ss button` with text
