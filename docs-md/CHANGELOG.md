@@ -2,6 +2,21 @@
 
 ---
 
+## Statistics screen redesign (October 2026)
+
+- The stats screen was a long accordion of re-skinned legacy cards. It now follows the approved
+  mock-up (`tools/screens-mockup/stats-redesign.html`): a hero card with the Boostie, the tier and
+  an ELO ring toward the next tier, sticky tabs (סקירה / שיאים / סגנון / יריבים) and one flat
+  glass panel per tab.
+- סקירה: the last 7 days, recent games as win/loss margin bars (tap one for its score and
+  opponent), a win/loss/draw donut and trend chips. שיאים: the best move spelled in wooden tiles
+  with letter values, a record shelf and clutch counts. סגנון: the archetype on a wooden tile, a
+  play-style radar, favourites and word stats. יריבים: head-to-head bars, a נמסיס tag and each
+  rival's last result.
+- New stats fields: `bestMove` (word, tiles and values, kept only on a new move record) and
+  `biggestComeback` (it was shown before but never written).
+- New players see empty states instead of zeros and broken charts.
+
 ## Back button that never throws you out of a game; new ×2 / ×4 reminder (October 2026)
 
 - The Android back button was effectively broken: the handler only reacted to popstate

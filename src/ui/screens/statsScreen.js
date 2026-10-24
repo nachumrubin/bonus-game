@@ -2,12 +2,21 @@ import { $, $$, on, setText } from '../domHelpers.js';
 import { PROFILE_RENDER } from './profileScreen.js';
 import { avatarMarkup, setAvatarEl } from './avatarScreens.js';
 import { deriveInsights } from '../../game/account/playerInsights.js';
+import { HV } from '../../game/core/letterDistribution.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
+
+// Statistics screen (#sstats) — Oct 2026 redesign: a hero card (Boostie, tier,
+// ELO ring toward the next tier, three pills) above sticky tabs, each tab one
+// flat glass panel: סקירה (week, recent margins, balance, trends) · שיאים (best
+// move in wooden tiles, record shelf, clutch) · סגנון (archetype + radar,
+// favourites, word stats) · יריבים (head-to-head rows).
 
 export const STATS_INTENT = Object.freeze({
   BACK: 'stats/back',
   REFRESH: 'stats/refresh',
 });
+
+export const STATS_TABS = Object.freeze(['overview', 'records', 'style', 'rivals']);
 
 const BOOST_LABELS = {
   B1: 'בוסט 100',
@@ -25,18 +34,37 @@ const BOOST_LABELS = {
   B13: 'גלגל מזל',
 };
 
-export function mountStatsScreen({ root = globalThis.document, bus, win = globalThis } = {}) {
+const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+const DAY_LETTERS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+const MONTHS = ['בינואר', 'בפברואר', 'במרץ', 'באפריל', 'במאי', 'ביוני', 'ביולי', 'באוגוסט', 'בספטמבר', 'באוקטובר', 'בנובמבר', 'בדצמבר'];
+const DAY_MS = 24 * 3_600_000;
+const RING_C = 2 * Math.PI * 50;
+const RECENT_BARS = 10;
+
+export function mountStatsScreen({ root = globalThis.document, bus, win = globalThis, now = () => Date.now() } = {}) {
   if (!bus) throw new Error('mountStatsScreen: bus required');
 
   const screenEl = $('#sstats', root);
   const cleanups = [];
   let lastPayload = {};
+  let recent = [];
+  let rivals = {};
+  let picked = 0;
 
-  for (const header of $$('.st-section-header', root)) {
-    cleanups.push(on(header, 'click', (e) => {
+  for (const tab of $$('.sx-tab', root)) {
+    cleanups.push(on(tab, 'click', (e) => {
       e?.preventDefault?.();
-      const id = header.dataset?.section;
-      if (id) toggleSection(id, root);
+      selectTab(tab.dataset?.tab, root);
+    }));
+  }
+
+  const recentEl = $('#st-recent', root);
+  if (recentEl) {
+    cleanups.push(on(recentEl, 'click', (e) => {
+      const col = e?.target?.closest?.('[data-i]');
+      if (!col) return;
+      picked = Number(col.dataset.i) || 0;
+      paintRecent();
     }));
   }
 
@@ -53,7 +81,7 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
     paint(lastPayload);
     bus.emit(STATS_INTENT.REFRESH, {});
   };
-  win._statsToggle = (id) => toggleSection(id, root);
+  win._statsToggle = (id) => selectTab(id, root);
   win._statsShare = () => shareStats(win, lastPayload.profile);
 
   cleanups.push(bus.on(PROFILE_RENDER, (payload = {}) => {
@@ -63,63 +91,70 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
 
   function paint({ profile } = {}) {
     if (!screenEl || !profile) return;
+    const t = now();
     const stats = deriveStatsView(profile);
-    paintInsightsPanel(profile, root);
+    const ins = deriveInsights(profile, t);
+    const s = profile.stats ?? {};
 
-    // Act 1 — Identity
+    // Hero
     setAvatarEl($('#st-hero-av', root), profile.equippedAvatar, { fallback: '👑' });
     text('#st-hero-name', profile.displayName ?? 'שחקן בוסט');
     text('#st-hero-tier', stats.tier.label);
-    setTierClass($('#st-hero-tier', root), stats.tier.className);
+    setTierClass($('#st-hero-tier-pill', root), stats.tier.className);
     text('#st-rating', stats.rating);
+    const ring = ins.trends?.rating ?? {};
+    const ringEl = $('#st-ring-fill', root);
+    if (ringEl) ringEl.style.strokeDashoffset = String(RING_C * (1 - clamp(Number(ring.progressPct) || 0, 0, 100) / 100));
+    html('#st-hero-next', ring.nextTierLabel
+      ? `עוד <b>${ring.nextTierFloor - stats.rating}</b> נקודות לדרגת <b>${escapeHtml(ring.nextTierLabel)}</b>`
+      : 'הגעת לדרגה הגבוהה ביותר');
     text('#st-hero-wr', `${stats.winRate}%`);
-    text('#st-hero-streak', `${stats.currentStreak} 🔥`);
-    text('#st-hero-insight', stats.insight);
+    text('#st-hero-streak', stats.currentStreak);
+    text('#st-hero-played', stats.gamesPlayed);
 
-    // Act 2 — Form
-    paintSparkline(stats.recentGames, root);
+    // סקירה
+    html('#ins-week', renderWeek(ins.weekSnapshot, weekDays(stats.recentGames, t)));
+    recent = recentBars(stats.recentGames);
+    rivals = s.rivalStats ?? {};
+    picked = 0;
+    paintRecent();
+    html('#st-donut', renderDonut(stats));
     text('#st-won', stats.gamesWon);
     text('#st-lost', stats.gamesLost);
     text('#st-draw', stats.gamesDraw);
-    width('#st-bar-w', stats.winPct);
-    width('#st-bar-l', stats.lossPct);
-    width('#st-bar-d', stats.drawPct);
+    text('#st-balance-n', stats.gamesPlayed ? `${stats.gamesPlayed} משחקים` : '');
+    html('#ins-trends', renderTrends(ins.trends, stats));
 
-    // Act 3 — Achievements
+    // שיאים
+    html('#st-bestmove', renderBestMove(s.bestMove, stats.highestMoveScore));
     text('#st-highscore', stats.highScore);
-    text('#st-fun-bestmove', stats.highestMoveScore);
-    text('#st-fun-longest', stats.longestWord);
     text('#st-fun-streak', stats.longestStreak);
     text('#st-fun-comeback', stats.bestComeback);
+    text('#st-fun-longest', stats.longestWord);
+    text('#st-fun-longest-len', stats.longestWord === '—' ? '—' : [...stats.longestWord].length);
     text('#st-comeback', stats.comebackWins);
     text('#st-lastmove', stats.lastMoveWins);
     text('#st-closewins', stats.closeWins);
 
-    // Act 4 — Style
-    const fav = stats.favoriteStartLetter;
-    text('#st-boost-fav-icon', fav ? fav.letter : '🔤');
-    text('#st-boost-fav-name', fav ? `האות ${fav.letter}` : '—');
-    text('#st-boost-fav-pct', fav ? `${fav.count} מילים (${fav.pct}% מהמילים שלך)` : 'טרם נמדד');
+    // סגנון
+    text('#ins-arch-icon', archetypeLetter(ins.archetype?.label));
+    text('#ins-arch-label', ins.archetype?.label ?? '');
+    text('#ins-arch-blurb', ins.archetype?.blurb ?? '');
+    html('#st-radar', radarSvg(ins.playStyle));
+    html('#st-favs', renderFavorites(stats, s));
+    html('#ins-words', renderWordIntel(ins.wordIntel, stats));
 
-    // Act 5 — Rivals
-    html('#st-rivals-content', stats.rivalsHtml);
+    // יריבים
+    html('#st-rivals-content', renderRivals(rivals, stats.recentGames));
+  }
 
-    // Section header teaser text (shown when collapsed)
-    const ins = deriveInsights(profile, Date.now());
-    text('#st-form-teaser', ins.weekSnapshot?.played ? `${ins.weekSnapshot.played} משחקים השבוע` : '');
-    text('#st-ach-teaser', stats.highScore ? `שיא: ${stats.highScore}` : '');
-    text('#st-style-teaser', ins.archetype?.label ?? '');
-    text('#st-rivals-teaser', rivalsTeaser(profile.stats?.rivalStats));
-
-    // Legacy compat hidden nodes
-    text('#st-streak', stats.currentStreak);
-    text('#st-words', stats.wordsPlayed);
-    text('#stats-wr-pct', `${stats.winRate}%`);
+  function paintRecent() {
+    html('#st-recent', renderRecentBars(recent, picked));
+    html('#st-recent-pick', renderPick(recent[picked], rivals, now()));
   }
 
   function text(sel, value) { setText($(sel, root), String(value ?? '')); }
   function html(sel, value) { const el = $(sel, root); if (el) el.innerHTML = value ?? ''; }
-  function width(sel, pct) { const el = $(sel, root); if (el) el.style.width = `${clamp(Number(pct) || 0, 0, 100)}%`; }
 
   return {
     unmount() {
@@ -130,6 +165,7 @@ export function mountStatsScreen({ root = globalThis.document, bus, win = global
       if (win._statsShare) win._statsShare = function _statsShare() {};
     },
     refresh: () => paint(lastPayload),
+    selectTab: (id) => selectTab(id, root),
     _derive: deriveStatsView,
   };
 }
@@ -145,12 +181,6 @@ export function deriveStatsView(profile = {}) {
   const winRate = played > 0 ? Math.round((won / played) * 100) : 0;
   const rating = Number(profile.rating) || 0;
   const recent = Array.isArray(s.recentGames) ? s.recentGames : [];
-  const favoriteBoost = favoriteBoostFor(s.boostUsage, Number(s.bonusesTriggered) || 0);
-  const favoriteStartLetter = favoriteStartLetterFor(s.startingLetterCounts, s.wordCounts);
-  const repeated = repeatedWordFor(s.wordCounts);
-  const bestDay = bestDayFor(s.weekdayStats);
-  const favoriteSpeed = favoriteSpeedFor(s.moveSpeedStats);
-  const tier = tierFor(rating);
   const totalOutcomes = won + lost + draw;
 
   return {
@@ -170,70 +200,249 @@ export function deriveStatsView(profile = {}) {
     lossPct: totalOutcomes ? (lost / totalOutcomes) * 100 : 0,
     drawPct: totalOutcomes ? (draw / totalOutcomes) * 100 : 0,
     rating,
-    tier,
-    tierProgress: tierProgress(rating),
-    insight: played ? `${played} משחקים חיים נספרו` : '',
+    tier: tierFor(rating),
     comebackWins: Number(s.comebackWins) || 0,
     lastMoveWins: Number(s.lastMoveWins) || 0,
     closeWins: Number(s.closeWins) || 0,
     recentGames: recent,
     boostsPerGame: played > 0 ? format1((Number(s.bonusesTriggered) || 0) / played) : 0,
-    boostWinRate: boostedWinRate(recent),
-    favoriteBoost,
-    favoriteStartLetter,
-    rivalsHtml: rivalsHtml(s.rivalStats),
+    favoriteBoost: favoriteBoostFor(s.boostUsage, Number(s.bonusesTriggered) || 0),
+    favoriteStartLetter: favoriteStartLetterFor(s.startingLetterCounts, s.wordCounts),
+    repeatedWord: repeatedWordFor(s.wordCounts),
+    bestDay: bestDayFor(s.weekdayStats),
     longestWord: s.longestWord || '—',
-    repeatedWord: repeated,
-    bestComeback: s.biggestComeback != null ? String(s.biggestComeback) : '—',
-    bestDay,
-    favoriteSpeed,
+    bestComeback: s.biggestComeback != null ? `+${s.biggestComeback}` : '—',
   };
 }
 
-function toggleSection(id, root) {
-  const target = $(`#st-sec-${id}`, root);
-  if (!target) return;
-  const willOpen = !target.classList?.contains('open');
-  // Accordion: only one section open at a time. Close the rest before opening.
-  for (const card of $$('.st-section-card', root)) card.classList?.remove('open');
-  if (willOpen) target.classList?.add('open');
+// ─── Pure view helpers (exported for tests) ───────────────────────────
+
+// The last 7 days ending today, oldest first: games played on each.
+export function weekDays(recent = [], now = Date.now()) {
+  const today = startOfDay(now);
+  return Array.from({ length: 7 }, (_, i) => {
+    const from = today - (6 - i) * DAY_MS;
+    const count = recent.filter(g => Number(g?.ts) >= from && Number(g?.ts) < from + DAY_MS).length;
+    return { day: new Date(from).getDay(), count, today: i === 6 };
+  });
 }
 
-function rivalsTeaser(rivalStats = {}) {
-  const entries = Object.values(rivalStats ?? {}).sort((a, b) => (Number(b.played) || 0) - (Number(a.played) || 0));
-  if (!entries.length) return '';
-  const top = entries[0];
-  return `${top.name ?? '?'} · ${top.won ?? 0}-${top.lost ?? 0}`;
+// recentGames (newest first) → the chart's bars, newest first.
+export function recentBars(recent = []) {
+  return recent.slice(0, RECENT_BARS).map(g => {
+    const score = Number(g?.score) || 0;
+    const opp = Number(g?.opponentScore) || 0;
+    return {
+      result: g?.result ?? (score > opp ? 'win' : score < opp ? 'loss' : 'draw'),
+      margin: score - opp,
+      score,
+      opponentScore: opp,
+      opponentName: g?.opponentName ?? null,
+      opponentUid: g?.opponentUid ?? null,
+      ts: Number(g?.ts) || 0,
+    };
+  });
 }
 
-function paintSparkline(games, root = globalThis.document) {
-  const el = root?.querySelector?.('#st-sparkline') ?? root?.getElementById?.('st-sparkline');
-  if (!el) return;
-  const last = games.slice(0, 10).reverse();
-  if (!last.length) {
-    el.innerHTML = '';
-    return;
+// The rival who beats you most: more losses than wins, by the widest gap.
+export function nemesisOf(rivalStats = {}) {
+  let best = null;
+  for (const r of Object.values(rivalStats ?? {})) {
+    const gap = (Number(r?.lost) || 0) - (Number(r?.won) || 0);
+    if (gap > 0 && (Number(r?.played) || 0) >= 2 && (!best || gap > best.gap)) best = { uid: r.uid, gap };
   }
-  el.innerHTML = last.map((g) => {
-    const isWin = g.result === 'win';
-    const h = isWin ? 82 : g.result === 'draw' ? 48 : 24;
-    return `<span style="display:inline-block;width:7%;height:${h}%;margin:0 1.5%;vertical-align:bottom;border-radius:5px 5px 0 0;background:${isWin ? '#5dfc8c' : g.result === 'draw' ? 'rgba(255,255,255,.35)' : '#ff6b6b'}"></span>`;
+  return best?.uid ?? null;
+}
+
+// The archetype's wooden tile: the first letter of its last word
+// ('שחקן מדויק' → מ, 'לוקח סיכונים' → ס).
+export function archetypeLetter(label = '') {
+  const words = String(label ?? '').trim().split(/\s+/).filter(Boolean);
+  const last = words[words.length - 1] ?? '';
+  return [...last].find(ch => /[א-ת]/.test(ch)) ?? '?';
+}
+
+export function selectTab(id, root = globalThis.document) {
+  if (!STATS_TABS.includes(id)) return;
+  for (const tab of $$('.sx-tab', root)) tab.classList?.toggle('on', tab.dataset?.tab === id);
+  for (const tab of STATS_TABS) $(`#st-panel-${tab}`, root)?.classList?.toggle('on', tab === id);
+}
+
+// ─── Renderers ────────────────────────────────────────────────────────
+
+function renderWeek(w = {}, days = []) {
+  const kpi = (v, l, cls = '') => `<div><div class="v${cls}">${escapeHtml(String(v))}</div><div class="l">${l}</div></div>`;
+  return ''
+    + '<div class="sx-row4">'
+    + kpi(w.played ?? 0, 'משחקים')
+    + kpi(w.won ?? 0, 'ניצחונות', ' is-ok')
+    + kpi(w.avgScore ?? 0, 'ממוצע')
+    + kpi(w.bestStreak ?? 0, 'רצף', ' is-cy')
+    + '</div>'
+    + '<div class="sx-days">'
+    + days.map(d => `<div class="sx-day"><div class="sx-dot${d.count ? ' on' : ''}${d.today ? ' today' : ''}">${d.count || ''}</div>${DAY_LETTERS[d.day]}</div>`).join('')
+    + '</div>';
+}
+
+function renderRecentBars(bars = [], picked = 0) {
+  if (!bars.length) return '<div class="sx-empty">עוד אין משחקים ברשת — המשחק הראשון יופיע כאן</div>';
+  const max = Math.max(1, ...bars.map(b => Math.abs(b.margin)));
+  return bars.map((b, i) => {
+    const kind = b.margin > 0 ? 'w' : b.margin < 0 ? 'l' : 'd';
+    const h = kind === 'd' ? '' : ` style="height:${Math.max(4, (Math.abs(b.margin) / max) * 48).toFixed(1)}%"`;
+    return `<button class="sx-col${i === picked ? ' sel' : ''}" data-i="${i}" aria-label="${escapeHtml(b.opponentName ?? '')} ${b.score}–${b.opponentScore}"><span class="sx-bar is-${kind}"${h}></span></button>`;
   }).join('');
 }
 
-const SPEED_LABELS = { '20': '⚡ בזק (20 שנ\')', '40': '🎯 רגיל (40 שנ\')', '60': '🐢 איטי (60 שנ\')' };
-
-function favoriteSpeedFor(moveSpeedStats = {}) {
-  const entries = Object.entries(moveSpeedStats ?? {}).filter(([, v]) => v?.played > 0);
-  if (!entries.length) return '—';
-  const best = entries.reduce((a, b) => {
-    const wr = (v) => v[1].played > 0 ? v[1].won / v[1].played : 0;
-    return wr(a) >= wr(b) ? a : b;
-  });
-  const [key, val] = best;
-  const wr = val.played > 0 ? Math.round((val.won / val.played) * 100) : 0;
-  return `${SPEED_LABELS[key] ?? key} · ${wr}%`;
+function renderPick(b, rivalStats = {}, now = Date.now()) {
+  if (!b) return '';
+  const rival = b.opponentUid ? rivalStats?.[b.opponentUid] : null;
+  const kind = b.margin > 0 ? 'w' : b.margin < 0 ? 'l' : 'd';
+  const margin = b.margin > 0 ? `+${b.margin}` : String(b.margin);
+  return ''
+    + `<div class="sx-pick-in is-${kind}">`
+    + avatarMarkup(rival?.avatar, { className: 'sx-mini-av' })
+    + `<span>נגד <b>${escapeHtml(b.opponentName ?? rival?.name ?? 'יריב')}</b> · ${daysAgo(b.ts, now)}</span>`
+    + `<span class="sx-pk-s" dir="ltr">${b.score}–${b.opponentScore}</span>`
+    + `<span class="sx-pk-d" dir="ltr">${margin}</span>`
+    + '</div>';
 }
+
+function renderDonut(v) {
+  const r = 48;
+  const c = 2 * Math.PI * r;
+  const seg = (pct, offset, cls) => pct > 0
+    ? `<circle class="sx-seg ${cls}" cx="60" cy="60" r="${r}" stroke-dasharray="${(c * pct / 100).toFixed(1)} ${c.toFixed(1)}" stroke-dashoffset="${(-c * offset / 100).toFixed(1)}"/>`
+    : '';
+  return ''
+    + '<svg viewBox="0 0 120 120" aria-hidden="true">'
+    + `<circle class="sx-seg-track" cx="60" cy="60" r="${r}"/>`
+    + seg(v.winPct, 0, 'is-w')
+    + seg(v.lossPct, v.winPct, 'is-l')
+    + seg(v.drawPct, v.winPct + v.lossPct, 'is-d')
+    + '</svg>'
+    + `<div class="sx-donut-ctr"><b>${v.winRate}%</b><small>ניצחונות</small></div>`;
+}
+
+function chip(label, value, delta = 0, suffix = '') {
+  const d = Number(delta) || 0;
+  const tag = d > 0 ? `<span class="up">▲ ${d}${suffix}</span>` : d < 0 ? `<span class="dn">▼ ${Math.abs(d)}${suffix}</span>` : '';
+  return `<div class="sx-chip"><div class="l">${escapeHtml(label)}</div><div class="v">${escapeHtml(String(value))}${tag}</div></div>`;
+}
+
+function renderTrends(t = {}, v = {}) {
+  return ''
+    + chip('ניקוד ממוצע', t.avgScore?.value ?? 0, t.avgScore?.deltaAbs)
+    + chip('אחוז ניצחון', `${t.winRate?.valuePct ?? 0}%`, t.winRate?.deltaPct, '%')
+    + chip('משחקים השבוע', t.activity?.thisWeek ?? 0, t.activity?.deltaAbs)
+    + chip('בוסטים למשחק', v.boostsPerGame ?? 0);
+}
+
+function wood(letter, val, cls = '') {
+  const sub = val != null ? `<sub>${val}</sub>` : '';
+  return `<span class="sx-wood${cls}">${escapeHtml(letter)}${sub}</span>`;
+}
+
+function renderBestMove(best, highestMoveScore = 0) {
+  const kicker = '<div class="sx-best-k"><svg class="gi"><use href="#gi-star"/></svg>המהלך הטוב ביותר שלך</div>';
+  if (best?.tiles?.length) {
+    const tiles = best.tiles.map(t => wood(t.letter, Number(t.val) || HV[t.letter] || 0)).join('');
+    const d = best.ts ? new Date(best.ts) : null;
+    const meta = [best.opponentName ? `נגד ${escapeHtml(best.opponentName)}` : '', d ? `${d.getDate()} ${MONTHS[d.getMonth()]}` : '']
+      .filter(Boolean).join(' · ');
+    return kicker
+      + `<div class="sx-best-tiles" style="--n:${best.tiles.length}">${tiles}</div>`
+      + `<div class="sx-best-pts">${best.score}<small>נק׳</small></div>`
+      + (meta ? `<div class="sx-best-meta">${meta}</div>` : '');
+  }
+  if (highestMoveScore > 0) {
+    return kicker
+      + `<div class="sx-best-pts">${highestMoveScore}<small>נק׳</small></div>`
+      + '<div class="sx-best-meta">שברו את השיא — והמילה תופיע כאן באותיות עץ</div>';
+  }
+  return kicker + '<div class="sx-best-meta">עוד אין שיאים. שחקו משחק ברשת כדי להתחיל</div>';
+}
+
+function renderFavorites(v, s = {}) {
+  const fav = (tile, label, value) =>
+    `<div class="sx-fav">${tile}<div><div class="l">${label}</div><div class="v">${escapeHtml(value)}</div></div></div>`;
+  const letter = v.favoriteStartLetter;
+  const boost = v.favoriteBoost;
+  const word = v.repeatedWord;
+  const day = v.bestDay;
+  return ''
+    + fav(letter ? wood(letter.letter, HV[letter.letter] ?? 0) : wood('?'), 'אות פתיחה', letter ? `${letter.letter}׳ · ${letter.pct}%` : '—')
+    + fav('<span class="sx-wood is-ic"><svg class="gi"><use href="#gi-bolt"/></svg></span>', 'בוסט מועדף', boost ? boost.label : '—')
+    + fav(word ? wood(word.word, null, ' is-word') : wood('?'), 'מילה חוזרת', word ? `${word.count} פעמים` : '—')
+    + fav(day ? wood(DAY_LETTERS[day.day]) : wood('?'), 'היום הטוב', day ? `${DAY_NAMES[day.day]} · ${day.won} ניצחונות` : '—');
+}
+
+function renderWordIntel(w = {}, v = {}) {
+  return ''
+    + chip('מילים שהונחו', (v.wordsPlayed ?? 0).toLocaleString('en-US'))
+    + chip('אורך ממוצע', w.avgWordLength || '—')
+    + chip('נקודות למהלך', w.avgPointsPerMove || '—')
+    + chip('אורך שכיח', w.mostUsedLength ? `${w.mostUsedLength} אותיות` : '—');
+}
+
+// Play-style bars → a radar polygon (one axis per bar, pct 0–100).
+export function radarSvg(bars = []) {
+  if (!bars.length) return '';
+  const R = 78;
+  const n = bars.length;
+  const pt = (i, r) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    return [Math.cos(a) * r, Math.sin(a) * r];
+  };
+  const poly = (rf) => bars.map((b, i) => pt(i, rf(b)).map(x => x.toFixed(1)).join(',')).join(' ');
+  let out = '';
+  for (const k of [1 / 3, 2 / 3, 1]) out += `<polygon class="sx-rd-grid" points="${poly(() => R * k)}"/>`;
+  bars.forEach((b, i) => {
+    const [x, y] = pt(i, R);
+    const [lx, ly] = pt(i, R + 22);
+    out += `<line class="sx-rd-grid" x1="0" y1="0" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`;
+    out += `<text class="sx-rd-lbl" x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}">${escapeHtml(b.label)}</text>`;
+  });
+  const r = (b) => R * Math.max(0.06, clamp(Number(b.pct) || 0, 0, 100) / 100);
+  out += `<polygon class="sx-rd-shape" points="${poly(r)}"/>`;
+  bars.forEach((b, i) => {
+    const [x, y] = pt(i, r(b));
+    out += `<circle class="sx-rd-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5"/>`;
+  });
+  return out;
+}
+
+function renderRivals(rivalStats = {}, recent = []) {
+  const entries = Object.values(rivalStats ?? {})
+    .sort((a, b) => (Number(b.played) || 0) - (Number(a.played) || 0))
+    .slice(0, 8);
+  if (!entries.length) return '<div class="sx-empty">אין עדיין יריבים. שחקו נגד חברים ברשת והם יופיעו כאן</div>';
+  const nemesis = nemesisOf(rivalStats);
+  return entries.map(r => {
+    const won = Number(r.won) || 0;
+    const lost = Number(r.lost) || 0;
+    const played = Number(r.played) || won + lost;
+    const decided = Math.max(1, won + lost);
+    const last = recent.find(g => g?.opponentUid === r.uid)?.result;
+    const lastTag = last === 'win' ? '<div class="sx-last is-w">נ</div>'
+      : last === 'loss' ? '<div class="sx-last is-l">ה</div>'
+        : last === 'draw' ? '<div class="sx-last is-d">ת</div>' : '';
+    const tag = r.uid && r.uid === nemesis
+      ? '<span class="sx-nemesis"><svg class="gi"><use href="#gi-flag"/></svg>נמסיס</span>' : '';
+    return ''
+      + '<div class="sx-rv">'
+      + `<div class="sx-rv-av">${avatarMarkup(r.avatar, { fallback: '👤' })}</div>`
+      + '<div class="sx-rv-mid">'
+      +   `<div class="sx-rv-top"><div>${escapeHtml(r.name ?? r.uid ?? '?')}${tag}</div><span>${played} משחקים</span></div>`
+      +   `<div class="sx-h2h"><i class="me" style="width:${((won / decided) * 100).toFixed(1)}%"></i><i class="op" style="width:${((lost / decided) * 100).toFixed(1)}%"></i></div>`
+      +   `<div class="sx-rv-sc"><span class="a">אתה ${won}</span><span class="b">${lost}</span></div>`
+      + '</div>'
+      + lastTag
+      + '</div>';
+  }).join('');
+}
+
+// ─── Small derivations ────────────────────────────────────────────────
 
 // Favorite starting letter: the letter you've built the most words from.
 // Prefer the dedicated startingLetterCounts tally; fall back to deriving it
@@ -272,35 +481,19 @@ function favoriteBoostFor(usage = {}, total) {
 
 function repeatedWordFor(wordCounts = {}) {
   const top = Object.entries(wordCounts ?? {}).sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0))[0];
-  return top ? `${top[0]} (${top[1]})` : '—';
+  return top && Number(top[1]) > 1 ? { word: top[0], count: Number(top[1]) } : null;
 }
 
 function bestDayFor(days = {}) {
-  const names = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
   const top = Object.entries(days ?? {}).sort((a, b) => (Number(b[1]?.won) || 0) - (Number(a[1]?.won) || 0))[0];
-  return top ? names[Number(top[0])] ?? '—' : '—';
-}
-
-function boostedWinRate(recent = []) {
-  const boosted = recent.filter(g => Number(g?.bonusesTriggered) > 0);
-  if (!boosted.length) return '0%';
-  return `${Math.round((boosted.filter(g => g.result === 'win').length / boosted.length) * 100)}%`;
-}
-
-function rivalsHtml(rivals = {}) {
-  const entries = Object.values(rivals ?? {}).sort((a, b) => (Number(b.played) || 0) - (Number(a.played) || 0)).slice(0, 3);
-  if (!entries.length) return '<div class="champs-empty">אין עדיין יריבים חיים</div>';
-  return entries.map(r => {
-    const wr = r.played ? Math.round(((Number(r.won) || 0) / r.played) * 100) : 0;
-    return `<div class="fun-card"><div class="fun-card-icon">${avatarMarkup(r.avatar, { fallback: '👤' })}</div><div class="fun-card-info"><div class="fun-card-lbl">${escapeHtml(r.name ?? r.uid ?? '?')}</div><div class="fun-card-val">${r.won ?? 0}-${r.lost ?? 0}-${r.draw ?? 0} · ${wr}%</div></div></div>`;
-  }).join('');
+  return top && Number(top[1]?.won) > 0 ? { day: Number(top[0]), won: Number(top[1].won) } : null;
 }
 
 function tierFor(rating) {
-  if (rating >= 1200) return { label: '💎 יהלום', className: 'legend' };
-  if (rating >= 950) return { label: '⚡ זהב', className: 'gold' };
-  if (rating >= 800) return { label: '🥈 כסף', className: 'silver' };
-  return { label: '🥉 ארד', className: 'bronze' };
+  if (rating >= 1200) return { label: 'יהלום', className: 'legend' };
+  if (rating >= 950) return { label: 'זהב', className: 'gold' };
+  if (rating >= 800) return { label: 'כסף', className: 'silver' };
+  return { label: 'ארד', className: 'bronze' };
 }
 
 function setTierClass(el, className) {
@@ -309,9 +502,19 @@ function setTierClass(el, className) {
   el.classList?.add(className);
 }
 
-function tierProgress(rating) {
-  if (!rating) return 0;
-  return clamp(((rating - 650) / 700) * 100, 0, 100);
+function daysAgo(ts, now) {
+  if (!ts) return '';
+  const days = Math.round((startOfDay(now) - startOfDay(ts)) / DAY_MS);
+  if (days <= 0) return 'היום';
+  if (days === 1) return 'אתמול';
+  if (days === 2) return 'שלשום';
+  return `לפני ${days} ימים`;
+}
+
+function startOfDay(ts) {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
 }
 
 function format1(n) {
@@ -321,187 +524,6 @@ function format1(n) {
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
-}
-
-// ─── Insights panel painting ──────────────────────────────────────────
-// Pure-render helpers that consume the playerInsights output and project
-// it onto the #st-panel-insights DOM. Exported only for tests via
-// `mountStatsScreen()._derive` and the module's exports below.
-
-export function paintInsightsPanel(profile, root) {
-  if (!profile) return;
-  const ins = deriveInsights(profile, Date.now());
-  // §2 Archetype
-  setEl('#ins-arch-icon',  root, t => t.textContent = ins.archetype.icon);
-  setEl('#ins-arch-label', root, t => t.textContent = ins.archetype.label);
-  setEl('#ins-arch-blurb', root, t => t.textContent = ins.archetype.blurb);
-  // §1 Insights cards
-  setEl('#ins-cards',      root, t => t.innerHTML = renderInsightCards(ins.insights));
-  // §3 Trends
-  setEl('#ins-trends',     root, t => t.innerHTML = renderTrends(ins.trends));
-  // §7 This-week snapshot
-  setEl('#ins-week',       root, t => t.innerHTML = renderWeekSnapshot(ins.weekSnapshot));
-  // §4 Word Intelligence
-  setEl('#ins-words',      root, t => t.innerHTML = renderWordIntel(ins.wordIntel));
-  // §5 Play style
-  setEl('#ins-style',      root, t => t.innerHTML = renderPlayStyle(ins.playStyle));
-  // §8 Opponent insights
-  setEl('#ins-opps',       root, t => t.innerHTML = renderOpponents(ins.opponents));
-  // §9 Milestones
-  setEl('#ins-milestones', root, t => t.innerHTML = renderMilestones(ins.milestones));
-  // §10 Did You Know
-  setEl('#ins-dyk-icon',   root, t => t.textContent = ins.didYouKnow.icon);
-  setEl('#ins-dyk-text',   root, t => t.textContent = ins.didYouKnow.text);
-}
-
-function setEl(sel, root, fn) {
-  const el = $(sel, root);
-  if (el) fn(el);
-}
-
-function renderInsightCards(items = []) {
-  if (!items.length) return '';
-  return items.map(i =>
-    `<div class="ins-card">`
-    + `<span class="ins-card-icon" aria-hidden="true">${escapeHtml(i.icon)}</span>`
-    + `<span class="ins-card-text">${escapeHtml(i.text)}</span>`
-    + '</div>',
-  ).join('');
-}
-
-function trendChip(label, valueText, delta, deltaSuffix = '') {
-  let arrow = '·';
-  let cls = 'trend-flat';
-  if (delta > 0)      { arrow = '▲'; cls = 'trend-up';   }
-  else if (delta < 0) { arrow = '▼'; cls = 'trend-down'; }
-  const deltaStr = (delta === 0 || delta == null) ? '' :
-    `<span class="ins-trend-delta ${cls}">${arrow} ${Math.abs(delta)}${deltaSuffix}</span>`;
-  return ''
-    + '<div class="ins-trend">'
-    + `<div class="ins-trend-lbl">${escapeHtml(label)}</div>`
-    + `<div class="ins-trend-val">${escapeHtml(valueText)}</div>`
-    + deltaStr
-    + '</div>';
-}
-
-function renderTrends(t = {}) {
-  const out = [];
-  out.push(trendChip('אחוז ניצחון', `${t.winRate?.valuePct ?? 0}%`, t.winRate?.deltaPct ?? 0, '%'));
-  out.push(trendChip('ציון ממוצע', `${t.avgScore?.value ?? 0}`, t.avgScore?.deltaAbs ?? 0));
-  out.push(trendChip('פעילות שבועית', `${t.activity?.thisWeek ?? 0} משחקים`, t.activity?.deltaAbs ?? 0));
-  // ELO: no historical snapshot, so show "X / next-tier-floor".
-  const r = t.rating ?? {};
-  const ratingVal = r.nextTierFloor != null
-    ? `${r.value ?? 0} / ${r.nextTierFloor}`
-    : `${r.value ?? 0}`;
-  const ratingLabel = r.nextTierLabel ? `דירוג (${r.nextTierLabel})` : 'דירוג';
-  out.push(''
-    + '<div class="ins-trend">'
-    + `<div class="ins-trend-lbl">${escapeHtml(ratingLabel)}</div>`
-    + `<div class="ins-trend-val">${escapeHtml(ratingVal)}</div>`
-    + `<div class="ins-trend-bar"><div class="ins-trend-bar-fill" style="width:${Number(r.progressPct) || 0}%"></div></div>`
-    + '</div>');
-  return out.join('');
-}
-
-function renderWeekSnapshot(w = {}) {
-  return ''
-    + '<div class="ins-week-grid">'
-    +   weekKpi('stats-games-icon', 'משחקים', w.played ?? 0)
-    +   weekKpi('stats-wins-icon', 'ניצחונות', w.won ?? 0)
-    +   weekKpi('stats-streak-icon', 'רצף', w.bestStreak ?? 0)
-    +   weekKpi('stats-average-icon', 'ממוצע', w.avgScore ?? 0)
-    + '</div>';
-}
-function weekKpi(iconName, label, value) {
-  return ''
-    + '<div class="ins-week-kpi">'
-    + `<img class="ins-week-kpi-icon" src="assets/icons/${iconName}.png" alt="" aria-hidden="true">`
-    + `<div class="ins-week-kpi-val">${escapeHtml(String(value))}</div>`
-    + `<div class="ins-week-kpi-lbl">${escapeHtml(label)}</div>`
-    + '</div>';
-}
-
-function renderWordIntel(w = {}) {
-  // Note: longest word + best move score live in "השיאים שלי" — don't repeat
-  // them here. This section focuses on word-shape averages instead.
-  const rows = [
-    { icon: '📚', label: 'אורך מילה ממוצע',   val: w.avgWordLength ? String(w.avgWordLength) : 'טרם נמדד' },
-    { icon: '⚡', label: 'נקודות למהלך (ממוצע)', val: w.avgPointsPerMove ? `${w.avgPointsPerMove}` : 'טרם נמדד' },
-    { icon: '🎯', label: 'אורך המילה השכיח',  val: w.mostUsedLength ? `${w.mostUsedLength} אותיות` : 'טרם נמדד' },
-  ];
-  return rows.map(r => ''
-    + '<div class="ins-word-row">'
-    + `<span class="ins-word-icon" aria-hidden="true">${escapeHtml(r.icon)}</span>`
-    + `<span class="ins-word-lbl">${escapeHtml(r.label)}</span>`
-    + `<span class="ins-word-val">${escapeHtml(r.val)}</span>`
-    + '</div>',
-  ).join('');
-}
-
-function renderPlayStyle(bars = []) {
-  if (!bars.length) return '';
-  return bars.map(b => ''
-    + '<div class="ins-style-row">'
-    +   '<div class="ins-style-meta">'
-    +     `<span class="ins-style-lbl">${escapeHtml(b.label)}</span>`
-    +     `<span class="ins-style-pct">${escapeHtml(b.valueText ?? `${b.pct}%`)}</span>`
-    +   '</div>'
-    +   '<div class="ins-style-bar">'
-    +     `<div class="ins-style-bar-fill" style="width:${Number(b.pct) || 0}%"></div>`
-    +   '</div>'
-    +   (b.hint ? `<div class="ins-style-hint">${escapeHtml(b.hint)}</div>` : '')
-    + '</div>',
-  ).join('');
-}
-
-function renderOpponents(o = {}) {
-  const rows = [
-    { icon: '👑', label: 'היריב הגדול',           opp: o.rival },
-    { icon: '🤝', label: 'היריב האהוב',           opp: o.favorite },
-    { icon: '🔥', label: 'הצמיתות הכי תחרותית',   opp: o.competitive },
-    { icon: '🏆', label: 'הביצוע הכי טוב מולו',   opp: o.bestRecord },
-  ];
-  if (rows.every(r => !r.opp)) {
-    return '<div class="ins-empty">אין עדיין יריבים מתועדים. שחק כמה משחקים ברשת.</div>';
-  }
-  return rows.map(r => {
-    if (!r.opp) {
-      return ''
-        + '<div class="ins-opp-row ins-opp-row--empty">'
-        + `<span class="ins-opp-icon" aria-hidden="true">${escapeHtml(r.icon)}</span>`
-        + `<span class="ins-opp-lbl">${escapeHtml(r.label)}</span>`
-        + '<span class="ins-opp-val">טרם זמין</span>'
-        + '</div>';
-    }
-    const wlt = `${r.opp.won}-${r.opp.lost}-${r.opp.draw}`;
-    return ''
-      + '<div class="ins-opp-row">'
-      + `<span class="ins-opp-icon" aria-hidden="true">${escapeHtml(r.icon)}</span>`
-      + '<div class="ins-opp-body">'
-      +   `<div class="ins-opp-lbl">${escapeHtml(r.label)}</div>`
-      +   `<div class="ins-opp-name">${escapeHtml(r.opp.name)}</div>`
-      + '</div>'
-      + `<div class="ins-opp-val">${escapeHtml(wlt)}<div class="ins-opp-wr">${escapeHtml(String(r.opp.winPct))}%</div></div>`
-      + '</div>';
-  }).join('');
-}
-
-function renderMilestones(items = []) {
-  if (!items.length) return '';
-  return items.map(m => {
-    const pct = m.target > 0 ? Math.max(0, Math.min(100, Math.round((m.current / m.target) * 100))) : 0;
-    return ''
-      + '<div class="ins-ms">'
-      +   '<div class="ins-ms-head">'
-      +     `<span class="ins-ms-icon" aria-hidden="true">${escapeHtml(m.icon)}</span>`
-      +     `<span class="ins-ms-lbl">${escapeHtml(m.label)}</span>`
-      +     `<span class="ins-ms-prog">${escapeHtml(String(m.current))} / ${escapeHtml(String(m.target))}</span>`
-      +   '</div>'
-      +   `<div class="ins-ms-bar"><div class="ins-ms-bar-fill" style="width:${pct}%"></div></div>`
-      +   (m.blurb ? `<div class="ins-ms-blurb">${escapeHtml(m.blurb)}</div>` : '')
-      + '</div>';
-  }).join('');
 }
 
 async function shareStats(win, profile) {
@@ -526,9 +548,9 @@ registerOnboardingContent('sstats', {
   icon: '📊',
   title: 'סטטיסטיקות',
   bullets: [
-    '🆔 זהות — דירוג ELO, אחוז ניצחון, רצף ואבטיפוס שחקן',
-    '📈 ביצועים — סנפשוט שבועי, ספרקליין ומגמות',
-    '🏆 שיאים — שיא ניקוד, המילה הארוכה, קאמבקים וניצחונות קלאץ׳',
-    '🤺 יריבים — מי מנצח אתכם ומי מפסיד',
+    '🆔 למעלה — דירוג ELO, הדרך לדרגה הבאה, אחוז ניצחון ורצף',
+    '📈 סקירה — השבוע שלך, הפרש הנקודות במשחקים האחרונים ומגמות',
+    '🏆 שיאים — המהלך הטוב ביותר באותיות עץ, מדף השיאים וקלאץ׳',
+    '🤺 סגנון ויריבים — הסגנון שלך, המועדפים ומאזן ראש בראש',
   ],
 });

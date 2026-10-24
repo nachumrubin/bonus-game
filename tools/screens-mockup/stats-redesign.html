@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stats Redesign Mock-up</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p1:#28d4ff; --p2:#ffc93d; --ink:#eaf4ff; --dim:rgba(234,244,255,.58); --faint:rgba(234,244,255,.36);
+  --glass:rgba(12,26,74,.72); --line:rgba(120,190,255,.22); --ok:#2ee59d; --bad:#ff5a6e; --draw:#8fa3c8;
+  --wood: repeating-linear-gradient(92deg, rgba(150,95,40,.10) 0 1px, transparent 1px 3px, rgba(150,95,40,.06) 3px 4px, transparent 4px 7px),
+          radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.35), transparent 60%),
+          linear-gradient(165deg, #f6ddb0, #e7c08a 60%, #d9ad73);
+}
+*{box-sizing:border-box;margin:0}
+body{background:#01040f;font-family:'Heebo',system-ui,sans-serif;color:var(--ink);padding:24px 16px;}
+.frames{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;}
+.cap{font:700 13px/1.3 'Heebo';color:var(--dim);text-align:center;margin-bottom:8px}
+.phone{width:412px;min-height:860px;border-radius:28px;overflow:hidden;position:relative;
+  background:radial-gradient(ellipse 90% 45% at 50% 0, rgba(40,110,255,.30), transparent 70%),
+             radial-gradient(ellipse 80% 40% at 50% 100%, rgba(40,212,255,.10), transparent 70%),
+             linear-gradient(180deg,#07123d,#040a22 55%,#030817);
+  box-shadow:0 0 0 1px rgba(255,255,255,.08),0 20px 60px rgba(0,0,0,.6);padding:14px 16px 24px;}
+.gi{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+/* header */
+.hdr{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;margin-bottom:12px}
+.chip{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink)}
+.ttl{display:flex;gap:7px;align-items:center;justify-content:center;font:900 19px/1 'Heebo'}
+.ttl .gi{color:var(--p1)}
+
+/* glass surface */
+.glass{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,0) 40%),var(--glass);
+  border:1px solid var(--line);border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.08)}
+
+/* ── HERO ── */
+.hero{padding:14px 14px 14px;display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:auto -40px -60px auto;width:220px;height:220px;border-radius:50%;
+  background:radial-gradient(circle,rgba(40,212,255,.22),transparent 65%);pointer-events:none}
+.who{display:flex;align-items:center;gap:10px;min-width:0}
+.av{width:62px;height:62px;border-radius:50%;flex-shrink:0;position:relative;
+  background:radial-gradient(circle at 50% 35%,#1d4fae,#0a1640 70%);border:2px solid #46dcf5;box-shadow:0 0 14px rgba(40,212,255,.45);overflow:hidden}
+.av img{position:absolute;inset:-4px 0 0 0;width:100%;height:115%;object-fit:cover;object-position:50% 10%}
+.nm{font:900 20px/1.1 'Heebo';white-space:nowrap}
+.tier{margin-top:5px;display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 10px;border-radius:999px;
+  font:800 12px/1 'Heebo';color:#bff4ff;background:linear-gradient(180deg,rgba(70,220,245,.22),rgba(70,220,245,.06)),#0a1640;
+  border:1px solid rgba(70,220,245,.55);box-shadow:0 0 10px rgba(70,220,245,.25)}
+.tier .gi{width:13px;height:13px;color:#7fe9ff}
+.ring{grid-row:1/3;grid-column:2;position:relative;width:118px;height:118px}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.elo{font:900 32px/1 'Heebo';letter-spacing:-.5px;background:linear-gradient(180deg,#fff,#9fe9ff);-webkit-background-clip:text;color:transparent}
+.elo-l{font:800 10px/1 'Heebo';color:var(--dim);margin-top:3px;letter-spacing:.5px}
+.next{font:700 11px/1.3 'Heebo';color:var(--dim);margin-top:2px}
+.next b{color:#7fe9ff}
+.pills{grid-column:1/-1;display:flex;gap:8px;margin-top:10px}
+.pill{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border-radius:12px;
+  background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.08);font:800 15px/1 'Heebo'}
+.pill small{font:700 11px/1 'Heebo';color:var(--dim)}
+.pill .gi{width:16px;height:16px}
+
+/* ── TABS ── */
+.tabs{display:flex;padding:4px;gap:4px;margin:14px 0 12px;border-radius:14px;background:rgba(0,0,0,.28);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.05)}
+.tab{flex:1;height:34px;border-radius:10px;color:var(--dim);font:800 13px/1 'Heebo';display:flex;align-items:center;justify-content:center}
+.tab.on{background:linear-gradient(180deg,#43e0ff,#1597d6);color:#022038;box-shadow:0 3px 10px rgba(40,212,255,.35)}
+
+/* ── sections (flat, one surface per tab) ── */
+.sheet{padding:4px 14px 14px}
+.sec{padding:12px 0 14px;border-bottom:1px solid rgba(120,190,255,.12)}
+.sec:last-child{border-bottom:none;padding-bottom:2px}
+.sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.sh h3{font:900 14px/1 'Heebo'}
+.sh span{font:700 11px/1 'Heebo';color:var(--faint)}
+
+/* week */
+.week{display:grid;grid-template-columns:repeat(4,1fr);text-align:center}
+.week div+div{border-right:1px solid rgba(120,190,255,.12)}
+.wv{font:900 22px/1 'Heebo'}
+.wl{font:700 10.5px/1 'Heebo';color:var(--dim);margin-top:4px}
+.days{display:flex;justify-content:space-between;margin-top:12px;padding:0 4px}
+.day{display:flex;flex-direction:column;align-items:center;gap:4px;font:700 10px/1 'Heebo';color:var(--faint)}
+.dot{width:24px;height:24px;border-radius:8px;background:rgba(255,255,255,.05);border:1px dashed rgba(255,255,255,.12);display:grid;place-items:center;font:900 10px/1 'Heebo'}
+.dot.on{background:rgba(40,212,255,.18);border:1px solid rgba(40,212,255,.6);color:#bff4ff;box-shadow:0 0 8px rgba(40,212,255,.3)}
+.dot.today{outline:2px solid rgba(255,201,61,.7);outline-offset:2px}
+
+/* diverging recent-games chart */
+.div{position:relative;height:104px;display:flex;align-items:center;gap:6px;direction:ltr;padding:0 2px}
+.div::before{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(255,255,255,.18)}
+.col{flex:1;height:100%;position:relative}
+.bar{position:absolute;left:0;right:0;border-radius:5px}
+.bar.w{bottom:50%;background:linear-gradient(0deg,#16b877,#5dfcb4);box-shadow:0 0 8px rgba(46,229,157,.35)}
+.bar.l{top:50%;background:linear-gradient(180deg,#d63a50,#ff7a8a);box-shadow:0 0 8px rgba(255,90,110,.3)}
+.bar.d{top:calc(50% - 3px);height:6px;background:var(--draw)}
+.col.sel .bar{outline:2px solid #fff;outline-offset:1px}
+.tip{position:absolute;top:-6px;left:50%;transform:translate(-50%,-100%);white-space:nowrap;direction:rtl;
+  padding:6px 9px;border-radius:10px;background:#0a1640;border:1px solid rgba(46,229,157,.6);font:700 11px/1.25 'Heebo';
+  box-shadow:0 6px 16px rgba(0,0,0,.5);z-index:2;text-align:center}
+.tip b{color:var(--ok);font-weight:900}
+.pick{display:flex;align-items:center;gap:8px;margin-top:10px;padding:7px 10px;border-radius:12px;background:rgba(46,229,157,.08);border:1px solid rgba(46,229,157,.35);font:600 12px/1 'Heebo';color:var(--dim)}
+.pick img{width:24px;height:24px;border-radius:50%;object-fit:cover;object-position:50% 10%;background:#0a1640}
+.pick b{color:var(--ink)} .pick .pk-s{margin-right:auto;font:900 14px/1 'Heebo';color:var(--ink);direction:ltr}
+.pick .pk-d{font:900 12px/1 'Heebo';color:var(--ok);direction:ltr}
+.legend{max-width:160px}
+.axis{display:flex;justify-content:space-between;font:700 10px/1 'Heebo';color:var(--faint);margin-top:6px}
+
+/* W/L ring */
+.wl-row{display:flex;align-items:center;gap:16px}
+.donut{width:104px;height:104px;position:relative;flex-shrink:0}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg)}
+.donut .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.donut .ctr b{font:900 24px/1 'Heebo'}
+.donut .ctr small{font:700 10px/1 'Heebo';color:var(--dim);margin-top:3px}
+.legend{flex:1;display:flex;flex-direction:column;gap:9px}
+.lg{display:flex;align-items:center;gap:8px;font:700 13px/1 'Heebo';color:var(--dim)}
+.lg i{width:10px;height:10px;border-radius:3px}
+.lg b{margin-right:auto;font:900 16px/1 'Heebo';color:var(--ink)}
+
+/* trend chips */
+.trends{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tc{padding:9px 10px;border-radius:12px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.06)}
+.tc .l{font:700 10.5px/1 'Heebo';color:var(--dim)}
+.tc .v{display:flex;align-items:baseline;gap:6px;margin-top:5px;font:900 18px/1 'Heebo'}
+.up{font:800 11px/1 'Heebo';color:var(--ok)} .dn{font:800 11px/1 'Heebo';color:var(--bad)}
+
+/* ── RECORDS ── */
+.best{padding:14px 12px 12px;border-radius:16px;text-align:center;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse 80% 70% at 50% 0,rgba(255,201,61,.18),transparent 70%),rgba(0,0,0,.2);border:1px solid rgba(255,201,61,.35)}
+.best .k{display:inline-flex;align-items:center;gap:5px;font:800 11px/1 'Heebo';color:var(--p2);letter-spacing:.4px}
+.best .k .gi{width:14px;height:14px}
+.tiles{display:flex;gap:5px;justify-content:center;margin:12px 0 10px;direction:rtl}
+.tile{width:40px;height:42px;border-radius:7px;background:var(--wood);border:1.5px solid #3aaecb;position:relative;
+  box-shadow:0 0 0 1px rgba(0,50,80,.5),0 0 6px rgba(40,212,255,.35),inset 0 0 0 1px rgba(255,255,255,.35),0 3px 0 1px #7a5530;
+  display:grid;place-items:center;font:900 23px/1 'Heebo';color:#8a5324;text-shadow:0 1px 0 rgba(255,245,220,.8),0 -1px 0 rgba(70,35,10,.55)}
+.tile sub{position:absolute;bottom:2px;left:4px;font:800 10px/1 'Heebo';color:#8a5324;opacity:.85}
+.tile.x2{border-color:#c08cff;box-shadow:0 0 0 1px rgba(0,50,80,.5),0 0 10px rgba(192,140,255,.6),inset 0 0 0 1px rgba(255,255,255,.35),0 3px 0 1px #7a5530}
+.best .pts{font:900 26px/1 'Heebo';color:#ffe08a}
+.best .pts small{font:700 12px/1 'Heebo';color:var(--dim);margin-right:4px}
+.best .meta{font:700 11px/1.3 'Heebo';color:var(--faint);margin-top:4px}
+.shelf{display:flex;gap:10px;overflow:hidden;margin:0 -14px;padding:2px 14px 6px}
+.rc{flex:0 0 118px;padding:12px 10px 10px;border-radius:16px;text-align:center;
+  background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 50%),rgba(0,0,0,.22);border:1px solid var(--line)}
+.rc img{width:44px;height:44px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(40,212,255,.35))}
+.rc .v{font:900 22px/1 'Heebo';margin-top:6px}
+.rc .l{font:700 10.5px/1.2 'Heebo';color:var(--dim);margin-top:4px}
+.rc .d{font:600 9.5px/1.2 'Heebo';color:var(--faint);margin-top:4px}
+.clutch{display:grid;grid-template-columns:repeat(3,1fr);text-align:center}
+.clutch div+div{border-right:1px solid rgba(120,190,255,.12)}
+
+/* ── STYLE ── */
+.arch{display:flex;gap:12px;align-items:center}
+.arch-ic{width:58px;height:58px;border-radius:14px;flex-shrink:0;background:var(--wood);border:2px solid #46dcf5;
+  box-shadow:0 0 12px rgba(40,212,255,.4),0 3px 0 1px #7a5530;display:grid;place-items:center;font:900 30px/1 'Heebo';color:#8a5324}
+.arch .t{font:800 10.5px/1 'Heebo';color:var(--p1);letter-spacing:.4px}
+.arch .n{font:900 19px/1.1 'Heebo';margin-top:4px}
+.arch .b{font:500 12px/1.4 'Heebo';color:var(--dim);margin-top:4px}
+.radar{display:block;margin:6px auto 0}
+.fav{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fv{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.06)}
+.fv .tile{width:34px;height:36px;font-size:19px}
+.fv .l{font:700 10.5px/1 'Heebo';color:var(--dim)}
+.fv .v{font:900 15px/1.1 'Heebo';margin-top:4px}
+
+/* ── RIVALS ── */
+.rv{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(120,190,255,.10)}
+.rv:last-child{border-bottom:none}
+.rv .av{width:44px;height:44px;border-width:1.5px}
+.rv .mid{flex:1;min-width:0}
+.rv .nm2{display:flex;justify-content:space-between;font:800 14px/1 'Heebo'}
+.rv .nm2 span{font:700 11px/1 'Heebo';color:var(--faint)}
+.h2h{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:7px;background:rgba(255,255,255,.06)}
+.h2h .me{background:linear-gradient(90deg,#5dfcb4,#16b877)} .h2h .op{background:linear-gradient(90deg,#d63a50,#ff7a8a)}
+.rv .sc{display:flex;justify-content:space-between;font:800 11px/1 'Heebo';margin-top:5px}
+.rv .sc .a{color:var(--ok)} .rv .sc .b{color:var(--bad)}
+.last{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font:900 11px/1 'Heebo'}
+.last.w{background:rgba(46,229,157,.16);color:var(--ok);border:1px solid rgba(46,229,157,.5)}
+.last.l{background:rgba(255,90,110,.14);color:var(--bad);border:1px solid rgba(255,90,110,.5)}
+.nemesis{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;border-radius:999px;font:800 10px/1 'Heebo';
+  color:#ffb0ba;background:rgba(255,90,110,.12);border:1px solid rgba(255,90,110,.45);margin-right:6px}
+.nemesis .gi{width:11px;height:11px}
+</style>
+</head>
+<body>
+<div id="sprite-host"></div>
+<div class="frames">
+
+<!-- ═════════ FRAME 1: OVERVIEW ═════════ -->
+<div>
+<div class="cap">1 · סקירה (ברירת מחדל)</div>
+<div class="phone" id="f-overview">
+  <div class="hdr">
+    <div class="chip"><svg class="gi"><use href="#gi-back"/></svg></div>
+    <div class="ttl"><svg class="gi"><use href="#gi-chart"/></svg>הסטטיסטיקות שלי</div>
+    <div class="chip"><svg class="gi"><use href="#gi-share"/></svg></div>
+  </div>
+
+  <div class="glass hero">
+    <div class="who">
+      <div class="av"><img src="../../assets/avatars/boosties/lumi/l4_bust.webp" alt=""></div>
+      <div>
+        <div class="nm">אריאל כהן</div>
+        <div class="tier"><svg class="gi"><use href="#gi-crown"/></svg>יהלום</div>
+      </div>
+    </div>
+    <div class="ring">
+      <svg viewBox="0 0 120 120">
+        <defs><linearGradient id="rg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fe9ff"/><stop offset="1" stop-color="#1597d6"/></linearGradient></defs>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9"/>
+        <circle cx="60" cy="60" r="50" fill="none" stroke="url(#rg)" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="314" stroke-dashoffset="166" style="filter:drop-shadow(0 0 5px rgba(40,212,255,.7))"/>
+      </svg>
+      <div class="ctr"><div class="elo">1240</div><div class="elo-l">ELO</div></div>
+    </div>
+    <div class="next">עוד <b>160</b> נקודות לדרגת <b>אגדה</b></div>
+    <div class="pills">
+      <div class="pill" style="color:var(--ok)"><svg class="gi"><use href="#gi-trophy"/></svg>60%<small>ניצחונות</small></div>
+      <div class="pill" style="color:#ffa24a"><svg class="gi"><use href="#gi-fire"/></svg>4<small>ברצף</small></div>
+      <div class="pill" style="color:#bff4ff"><svg class="gi"><use href="#gi-games"/></svg>87<small>משחקים</small></div>
+    </div>
+  </div>
+
+  <div class="tabs"><div class="tab on">סקירה</div><div class="tab">שיאים</div><div class="tab">סגנון</div><div class="tab">יריבים</div></div>
+
+  <div class="glass sheet">
+    <div class="sec">
+      <div class="sh"><h3>השבוע שלך</h3><span>א׳–ש׳</span></div>
+      <div class="week">
+        <div><div class="wv">6</div><div class="wl">משחקים</div></div>
+        <div><div class="wv" style="color:var(--ok)">4</div><div class="wl">ניצחונות</div></div>
+        <div><div class="wv">248</div><div class="wl">ממוצע</div></div>
+        <div><div class="wv" style="color:#7fe9ff">+38</div><div class="wl">ELO</div></div>
+      </div>
+      <div class="days">
+        <div class="day"><div class="dot on">1</div>א׳</div>
+        <div class="day"><div class="dot"></div>ב׳</div>
+        <div class="day"><div class="dot on">2</div>ג׳</div>
+        <div class="day"><div class="dot on">1</div>ד׳</div>
+        <div class="day"><div class="dot"></div>ה׳</div>
+        <div class="day"><div class="dot on today">2</div>ו׳</div>
+        <div class="day"><div class="dot" style="opacity:.4"></div>ש׳</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h3>10 משחקים אחרונים</h3><span>הפרש נקודות</span></div>
+      <div class="div" id="divchart"></div>
+      <div class="axis"><span>עכשיו</span><span>לפני כן</span></div>
+      <div class="pick"><img src="../../assets/avatars/boosties/zapi/l3_bust.webp" alt=""><span>נגד <b>דנה</b> · לפני יומיים</span><span class="pk-s">312–274</span><span class="pk-d">+38</span></div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h3>מאזן כולל</h3><span>87 משחקים</span></div>
+      <div class="wl-row">
+        <div class="donut">
+          <svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
+            <!-- C = 301.6 ; wins 52/87=.598 → 180 ; losses 32/87=.368 → 111 ; draws 3/87 → 10 -->
+            <circle cx="60" cy="60" r="48" fill="none" stroke="#2ee59d" stroke-width="14" stroke-dasharray="178 302"/>
+            <circle cx="60" cy="60" r="48" fill="none" stroke="#ff5a6e" stroke-width="14" stroke-dasharray="109 302" stroke-dashoffset="-180"/>
+            <circle cx="60" cy="60" r="48" fill="none" stroke="#8fa3c8" stroke-width="14" stroke-dasharray="8 302" stroke-dashoffset="-291"/>
+          </svg>
+          <div class="ctr"><b>60%</b><small>ניצחונות</small></div>
+        </div>
+        <div class="legend">
+          <div class="lg"><i style="background:var(--ok)"></i>ניצחונות<b>52</b></div>
+          <div class="lg"><i style="background:var(--bad)"></i>הפסדים<b>32</b></div>
+          <div class="lg"><i style="background:var(--draw)"></i>תיקו<b>3</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h3>מגמות</h3><span>מול החודש הקודם</span></div>
+      <div class="trends">
+        <div class="tc"><div class="l">ניקוד ממוצע</div><div class="v">248<span class="up">▲ 12</span></div></div>
+        <div class="tc"><div class="l">אחוז ניצחון</div><div class="v">64%<span class="up">▲ 5%</span></div></div>
+        <div class="tc"><div class="l">אורך מילה</div><div class="v">4.6<span class="up">▲ 0.3</span></div></div>
+        <div class="tc"><div class="l">שימוש בבוסטים</div><div class="v">71%<span class="dn">▼ 4%</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═════════ FRAME 2: RECORDS ═════════ -->
+<div>
+<div class="cap">2 · שיאים</div>
+<div class="phone" id="f-records">
+  <div class="hdr">
+    <div class="chip"><svg class="gi"><use href="#gi-back"/></svg></div>
+    <div class="ttl"><svg class="gi"><use href="#gi-chart"/></svg>הסטטיסטיקות שלי</div>
+    <div class="chip"><svg class="gi"><use href="#gi-share"/></svg></div>
+  </div>
+  <div class="tabs"><div class="tab">סקירה</div><div class="tab on">שיאים</div><div class="tab">סגנון</div><div class="tab">יריבים</div></div>
+
+  <div class="glass sheet">
+    <div class="sec">
+      <div class="best">
+        <div class="k"><svg class="gi"><use href="#gi-star"/></svg>המהלך הטוב ביותר שלך</div>
+        <div class="tiles">
+          <div class="tile">מ<sub>2</sub></div><div class="tile">ת<sub>1</sub></div><div class="tile x2">ר<sub>2</sub></div>
+          <div class="tile">ג<sub>4</sub></div><div class="tile">ש<sub>2</sub></div><div class="tile">י<sub>1</sub></div><div class="tile">ם<sub>3</sub></div>
+        </div>
+        <div class="pts">94<small>נק׳</small></div>
+        <div class="meta">כולל בונוס בינגו · נגד דנה · 14 באוקטובר</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h3>מדף השיאים</h3><span>החלק ←</span></div>
+      <div class="shelf">
+        <div class="rc"><img src="../../assets/icons/stats-records-icon.webp" alt=""><div class="v">412</div><div class="l">ניקוד שיא</div><div class="d">במשחק אחד</div></div>
+        <div class="rc"><img src="../../assets/icons/stats-streak-icon.webp" alt=""><div class="v">9</div><div class="l">רצף ניצחונות</div><div class="d">הארוך ביותר</div></div>
+        <div class="rc"><img src="../../assets/icons/stats-wins-icon.webp" alt=""><div class="v">+86</div><div class="l">קאמבק גדול</div><div class="d">מפיגור</div></div>
+        <div class="rc"><img src="../../assets/icons/stats-average-icon.webp" alt=""><div class="v">7</div><div class="l">המילה הארוכה</div><div class="d">אותיות</div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h3>קלאץ׳</h3><span>רגעים מכריעים</span></div>
+      <div class="clutch">
+        <div><div class="wv">11</div><div class="wl">קאמבקים</div></div>
+        <div><div class="wv">5</div><div class="wl">ניצחון במהלך אחרון</div></div>
+        <div><div class="wv">14</div><div class="wl">ניצחונות צמודים</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═════════ FRAME 3: STYLE ═════════ -->
+<div>
+<div class="cap">3 · סגנון</div>
+<div class="phone" id="f-style">
+  <div class="hdr">
+    <div class="chip"><svg class="gi"><use href="#gi-back"/></svg></div>
+    <div class="ttl"><svg class="gi"><use href="#gi-chart"/></svg>הסטטיסטיקות שלי</div>
+    <div class="chip"><svg class="gi"><use href="#gi-share"/></svg></div>
+  </div>
+  <div class="tabs"><div class="tab">סקירה</div><div class="tab">שיאים</div><div class="tab on">סגנון</div><div class="tab">יריבים</div></div>
+
+  <div class="glass sheet">
+    <div class="sec">
+      <div class="arch">
+        <div class="arch-ic">א</div>
+        <div><div class="t">הסגנון שלך</div><div class="n">מומחה לאוצר מילים</div>
+          <div class="b">המילים הארוכות שלך מציבות אותך מעל הממוצע. אתה רואה את הלוח כמילון.</div></div>
+      </div>
+      <svg class="radar" id="radar" width="300" height="250" viewBox="-150 -125 300 250"></svg>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h3>המועדפים שלך</h3></div>
+      <div class="fav">
+        <div class="fv"><div class="tile">מ<sub>2</sub></div><div><div class="l">אות פתיחה</div><div class="v">מ׳ · 18%</div></div></div>
+        <div class="fv"><div class="tile" style="font-size:15px">⚡</div><div><div class="l">בוסט מועדף</div><div class="v">×2 תור</div></div></div>
+        <div class="fv"><div class="tile" style="font-size:14px">שלום</div><div><div class="l">מילה חוזרת</div><div class="v">6 פעמים</div></div></div>
+        <div class="fv"><div class="tile" style="font-size:14px">ו׳</div><div><div class="l">היום הטוב</div><div class="v">72% ניצחון</div></div></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><h3>ניתוח מילים</h3></div>
+      <div class="trends">
+        <div class="tc"><div class="l">מילים שהונחו</div><div class="v">1,204</div></div>
+        <div class="tc"><div class="l">אורך ממוצע</div><div class="v">4.6</div></div>
+        <div class="tc"><div class="l">בינגו</div><div class="v">7</div></div>
+        <div class="tc"><div class="l">זמן תור ממוצע</div><div class="v">38ש׳</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═════════ FRAME 4: RIVALS ═════════ -->
+<div>
+<div class="cap">4 · יריבים</div>
+<div class="phone" id="f-rivals">
+  <div class="hdr">
+    <div class="chip"><svg class="gi"><use href="#gi-back"/></svg></div>
+    <div class="ttl"><svg class="gi"><use href="#gi-chart"/></svg>הסטטיסטיקות שלי</div>
+    <div class="chip"><svg class="gi"><use href="#gi-share"/></svg></div>
+  </div>
+  <div class="tabs"><div class="tab">סקירה</div><div class="tab">שיאים</div><div class="tab">סגנון</div><div class="tab on">יריבים</div></div>
+
+  <div class="glass sheet" id="rivals"></div>
+</div>
+</div>
+
+</div>
+
+<script>
+// pull the real glass-icon sprite from the app shell
+fetch('../../index.html').then(r => r.text()).then(t => {
+  const m = t.match(/<svg width="0" height="0" style="position:absolute"[\s\S]*?<\/svg>\s*(?=<)/);
+  if (m) document.getElementById('sprite-host').innerHTML = m[0];
+});
+
+// recent games: margin per game, oldest first (rendered LTR: oldest left, newest right? → RTL reading: newest on the right)
+const games = [27, 52, -15, 38, 20, 0, 65, -30, 12, 44];
+const max = Math.max(...games.map(Math.abs));
+const dc = document.getElementById('divchart');
+games.slice().reverse().forEach((g, i) => {
+  const col = document.createElement('div'); col.className = 'col' + (i === 3 ? ' sel' : '');
+  const b = document.createElement('div');
+  b.className = 'bar ' + (g > 0 ? 'w' : g < 0 ? 'l' : 'd');
+  if (g !== 0) b.style.height = (Math.abs(g) / max * 48) + '%';
+  col.appendChild(b);
+  dc.appendChild(col);
+});
+document.querySelector('.axis').style.direction = 'ltr';
+document.querySelector('.axis').innerHTML = '<span>עכשיו</span><span>לפני כן</span>';
+
+// radar: play-style axes 0..1
+const axes = [['מילים ארוכות', .86], ['בוסטים', .7], ['מהירות', .45], ['משבצות כפולות', .78], ['הגנה', .35], ['סיכון', .6]];
+const R = 82, svg = document.getElementById('radar');
+const pt = (i, r) => { const a = -Math.PI / 2 + i * 2 * Math.PI / axes.length; return [Math.cos(a) * r, Math.sin(a) * r]; };
+let s = '';
+[.33, .66, 1].forEach(k => {
+  s += `<polygon points="${axes.map((_, i) => pt(i, R * k).join(',')).join(' ')}" fill="none" stroke="rgba(120,190,255,.16)"/>`;
+});
+axes.forEach((a, i) => {
+  const [x, y] = pt(i, R); s += `<line x1="0" y1="0" x2="${x}" y2="${y}" stroke="rgba(120,190,255,.12)"/>`;
+  const [lx, ly] = pt(i, R + 24);
+  s += `<text x="${lx}" y="${ly + 4}" text-anchor="middle" fill="rgba(234,244,255,.7)" font-family="Heebo" font-weight="700" font-size="11">${a[0]}</text>`;
+});
+s += `<polygon points="${axes.map((a, i) => pt(i, R * a[1]).join(',')).join(' ')}" fill="rgba(40,212,255,.25)" stroke="#43e0ff" stroke-width="2" style="filter:drop-shadow(0 0 6px rgba(40,212,255,.6))"/>`;
+axes.forEach((a, i) => { const [x, y] = pt(i, R * a[1]); s += `<circle cx="${x}" cy="${y}" r="3.5" fill="#bff4ff"/>`; });
+svg.innerHTML = s;
+
+// rivals
+const rivals = [
+  ['דנה לוי', 'zapi', 9, 6, 'w', ''],
+  ['יוסי ברק', 'drako', 4, 8, 'l', 'נמסיס'],
+  ['מיכל אור', 'bubo', 7, 3, 'w', ''],
+  ['בוט קשה', null, 5, 5, 'l', ''],
+  ['נועם שגיא', 'rocco', 3, 1, 'w', ''],
+];
+document.getElementById('rivals').innerHTML =
+  '<div class="sec" style="padding-bottom:4px"><div class="sh"><h3>ראש בראש</h3><span>לפי מספר משחקים</span></div>' +
+  rivals.map(([n, b, w, l, last, tag]) => `
+    <div class="rv">
+      <div class="av"><img src="../../assets/avatars/${b ? 'boosties/' + b + '/l3_bust.webp' : 'bots/bot_hard_bust.webp'}" alt=""></div>
+      <div class="mid">
+        <div class="nm2"><div>${n}${tag ? `<span class="nemesis"><svg class="gi"><use href="#gi-flag"/></svg>${tag}</span>` : ''}</div><span>${w + l} משחקים</span></div>
+        <div class="h2h"><div class="me" style="width:${w / (w + l) * 100}%"></div><div class="op" style="width:${l / (w + l) * 100}%"></div></div>
+        <div class="sc"><span class="a">אתה ${w}</span><span class="b">${l}</span></div>
+      </div>
+      <div class="last ${last}">${last === 'w' ? 'נ' : 'ה'}</div>
+    </div>`).join('') + '</div>';
+</script>
+</body>
+</html>

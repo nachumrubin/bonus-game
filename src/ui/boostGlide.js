@@ -164,11 +164,11 @@ export const REVEAL_PLANS = Object.freeze({
     { sel: '#mg-tabs', step: 1 },
     { sel: '.g-scroll', step: 2 },
   ]),
-  // Statistics: header → summary (hero + archetype) → sections feed.
+  // Statistics: header → hero card + tabs → the open tab's panel.
   sstats: Object.freeze([
     { sel: '.g-hdr', step: 0 },
-    { sel: '.stats-hero, .st-archetype-card', step: 1 },
-    { sel: '.stats-feed', step: 2 },
+    { sel: '.sx-hero, .sx-tabs', step: 1 },
+    { sel: '.sx-panels', step: 2 },
   ]),
   // Achievements: header → progress summary → grid container.
   'sav-gallery': Object.freeze([

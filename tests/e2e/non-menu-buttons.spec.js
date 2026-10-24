@@ -85,9 +85,10 @@ test.describe('non-menu button wiring', () => {
 
     await page.locator('#sprofile .g-li', { hasText: 'סטטיסטיקות' }).click();
     await expect(page.locator('#sstats')).toBeVisible();
-    // Collapsible sections: the share button lives in the records section.
-    await page.locator('.st-section-header[data-section="achievements"]').click();
-    await expect(page.locator('#st-sec-achievements')).toHaveClass(/open/);
+    // Tabs: each shows its own panel; share sits in the header.
+    await page.locator('#sstats .sx-tab[data-tab="records"]').click();
+    await expect(page.locator('#st-panel-records')).toHaveClass(/\bon\b/);
+    await expect(page.locator('#st-panel-overview')).not.toHaveClass(/\bon\b/);
     await page.locator('.stats-share-btn').click();
 
     await showScreen(page, 'sprofile');

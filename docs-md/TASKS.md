@@ -1,5 +1,14 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Statistics screen redesign — October 2026
+
+- [x] Hero + ELO ring, sticky tabs, flat panels; best-move tiles, margin bars, radar, rivals.
+- [x] `stats.bestMove` and `stats.biggestComeback` written by `computeLiveGameStatsDelta`.
+- [ ] Phone check: sticky tabs while scrolling, ring/radar animations, the record shelf's
+  side-scroll on a narrow phone.
+- [ ] Best move fills in only after the player's next record move (older profiles show the
+  score-only fallback until then).
+
 ## Build sequences — October 2026
 
 - [x] Home cold-launch build, game-board build (new games), 300ms resume settle,

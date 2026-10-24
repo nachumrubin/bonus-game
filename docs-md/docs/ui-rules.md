@@ -307,34 +307,42 @@ Each tile is `<button class="store-tile" data-store-id="{id}" data-action="equip
 Equipped store avatars render everywhere via `avatarIconSrc()` (resolves store ids → PNG); `avatarEmoji()` passes
 store ids through so they survive into online `player.avatar`.
 
-### Stats Screen (4-tab layout, June 2026 insights addition)
+### Stats Screen (hero + 4 tabs, October 2026 redesign)
 
-Stats screen lives in `partials/screens/stats-screen.html`, painted by `src/ui/screens/statsScreen.js`.
+Stats screen lives in `partials/screens/stats-screen.html`, painted by `src/ui/screens/statsScreen.js`
+(mock-up: `tools/screens-mockup/stats-redesign.html`).
 
-Tabs (parsed from button text by `tabFromButton()`, FIRST tab is the default):
-- `תובנות` → `#st-panel-insights` (default)
-- `התקדמות` → `#st-panel-progress`
-- `שיאים`  → `#st-panel-records`
+Layout: a hero card (avatar, name, tier pill, ELO ring toward the next tier, win% / streak / games pills),
+sticky tabs `.sx-tab[data-tab]`, and one flat glass panel per tab. `selectTab(id)` toggles `.on` on the
+tab and on `#st-panel-{id}`; the first tab is the default.
+- `סקירה` → `#st-panel-overview` (default)
+- `שיאים` → `#st-panel-records`
+- `סגנון` → `#st-panel-style`
 - `יריבים` → `#st-panel-rivals`
 
 Load-bearing IDs (do not rename without updating `statsScreen.js` paint code):
 
 ```
-Hero:     #st-hero-av, #st-hero-name, #st-hero-tier, #st-hero-wr, #st-hero-streak, #st-hero-insight
-Insights: #ins-arch-icon, #ins-arch-label, #ins-arch-blurb,
-          #ins-cards, #ins-trends, #ins-week, #ins-words, #ins-style,
-          #ins-opps, #ins-milestones,
-          #ins-dyk, #ins-dyk-icon, #ins-dyk-text
-Progress: #st-sparkline, #st-rating, #st-tier-bar, #st-highscore, #st-avg, #st-played,
-          #st-won, #st-lost, #st-draw, #st-bar-w, #st-bar-l, #st-bar-d
-Records:  #st-fun-bestmove, #st-fun-longest, #st-fun-streak, #st-fun-comeback, #st-fun-repeated, #st-fun-bestday
-Rivals:   #st-rivals-content, #st-boost-total, #st-boost-avg, #st-boost-winrate,
-          #st-boost-fav-icon, #st-boost-fav-name, #st-boost-fav-pct,
-          #st-comeback, #st-lastmove, #st-closewins
-Legacy hidden compat: #st-streak, #st-words, #stats-wr-pct, #stats-donut-arc
+Hero:     #st-hero-av, #st-hero-name, #st-hero-tier-pill, #st-hero-tier, #st-ring-fill, #st-rating,
+          #st-hero-next, #st-hero-wr, #st-hero-streak, #st-hero-played
+Overview: #ins-week, #st-recent (bars, tap → [data-i]), #st-recent-pick, #st-donut, #st-won, #st-lost,
+          #st-draw, #st-balance-n, #ins-trends
+Records:  #st-bestmove, #st-highscore, #st-fun-streak, #st-fun-comeback, #st-fun-longest-len,
+          #st-fun-longest, #st-comeback, #st-lastmove, #st-closewins
+Style:    #ins-arch-icon, #ins-arch-label, #ins-arch-blurb, #st-radar, #st-favs, #ins-words
+Rivals:   #st-rivals-content
+Header:   .stats-share-btn
 ```
 
-The Insights panel renders into innerHTML-managed containers; the JS owns the markup inside `#ins-cards`, `#ins-trends`, `#ins-week`, `#ins-words`, `#ins-style`, `#ins-opps`, `#ins-milestones`. All derivation lives in `src/game/account/playerInsights.js` (pure module, 23 unit tests).
+The JS owns the markup inside `#ins-week`, `#st-recent`, `#st-recent-pick`, `#st-donut`, `#ins-trends`,
+`#st-bestmove`, `#st-radar`, `#st-favs`, `#ins-words` and `#st-rivals-content`. Derivation lives in
+`src/game/account/playerInsights.js` and the pure helpers exported by `statsScreen.js` (`weekDays`,
+`recentBars`, `nemesisOf`, `archetypeLetter`, `radarSvg`). Styles are the `#sstats .sx-*` block in
+`screens-glass.css`; the old `.stats-*` / `.st-archetype-*` classes in `styles.css` are no longer used here.
+
+Removed in the Oct 2026 redesign: the accordion sections, the rating sparkline, the W/L/D bars, the
+teasers, `#st-hero-insight`, `#ins-cards`, `#ins-style`, `#ins-opps`, `#ins-milestones`, `#ins-dyk*`,
+`#st-boost-*`, and the legacy hidden `#st-streak`, `#st-words`, `#stats-wr-pct`, `#stats-donut-arc`.
 
 Removed in May 2026 simplification (do not re-add without product reason): `#st-avgword`, `#st-pts-tile`, `#st-move-time`, `#st-pts-move`, `#st-vs-stronger-w`, `#st-vs-weaker-w`, `#st-boost-impact-wins`, `#st-boost-impact-best`, `#st-boost-combo`, `#st-fun-luck`, `#st-fun-fastest`, `#st-perf-tier-badge`, `#st-hero-rank`, `#st-wr-pct-lbl`, `#st-streak-lbl`, `#st-best-streak`, `#st-bonuses`. The stats-screen topbar (`.stats-topbar`) and time filter (`.stats-tfseg`) are also removed — navigation lives on the persistent app top bar; cards reflect cumulative totals only.
 
@@ -854,7 +862,7 @@ classes on the game screen (`bb-panel` on `.board-center-inner`, `bb-unfold` on 
 `.bot`, `#brack > .bt2`, `#btn-recall`, `#btn-exchange`, `#btn-play`.
 `revealCurrentScreen()` replays the main-menu reveal when the boot loader lifts.
 Selectors used by `REVEAL_PLANS` (e.g. `.hlogo`, `.hm-cards`, `.g-hdr`, `.g-scroll`,
-`#home-bottom-nav`, `#mg-tabs`, `.stats-feed`, `.ach-g-summary`) are load-bearing: renaming
+`#home-bottom-nav`, `#mg-tabs`, `.sx-hero`, `.sx-panels`, `.ach-g-summary`) are load-bearing: renaming
 one silently drops that group from the entrance.
 
 ---

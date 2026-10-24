@@ -79,8 +79,8 @@ function makeDoc({ dir = 'rtl', reduced = false } = {}) {
   // A glass screen with header + content (Statistics).
   const st = elements.get('sstats');
   const hdr = makeEl({ classes: ['g-hdr'] });
-  const hero = makeEl({ classes: ['stats-hero'] });
-  const feed = makeEl({ classes: ['stats-feed'] });
+  const hero = makeEl({ classes: ['sx-hero'] });
+  const feed = makeEl({ classes: ['sx-panels'] });
   st.append(hdr, hero, feed);
 
   const root = makeEl({});
