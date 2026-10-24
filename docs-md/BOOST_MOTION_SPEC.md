@@ -510,7 +510,8 @@ Instead of the Glide, the new screen grows out of the card: its clip starts as t
 outline (rounded corners included) and opens to the full screen, 380ms; a copy of the card
 fades out as it grows, the content fades in, home recedes (scale .95, darker) and its top
 bar fades away. Back to home from that same screen reverses it into the card, 340ms (the
-card fades back in where it is). Only once per opening: any other way out of that screen
+card fades back in where it is). At the end, the screen that is now hidden snaps hidden (no
+`.screen.hidden` fade at full size). Only once per opening: any other way out of that screen
 drops the way back. No staggered reveal on a morph (it brings its content in itself).
 Reduced motion: plain swap.
 

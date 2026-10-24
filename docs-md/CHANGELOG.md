@@ -2,6 +2,17 @@
 
 ---
 
+## Fix: glitch at the end of the card morph's return to home (October 2026)
+
+- Going back from a game-mode screen, the screen shrank into its card, then flashed back
+  full-size over home and faded out for 200ms. Cause: when the morph classes came off, the
+  screen fell back to `.screen.hidden`, whose opacity transition faded it out (unclipped, and
+  above home in DOM order). Home also faded in through `.screen`'s transition under the
+  shrinking screen, so it looked washed out at first.
+- `settleGlide` now removes the classes of a morphed screen that ends hidden with
+  transitions off for one style flush (it snaps hidden); `.screen.morph-under` is fully
+  opaque at once. Regression test in `screenTransitions.test.js`.
+
 ## One entrance and exit for every overlay (October 2026)
 
 - Overlays used to come in four different ways (dialog scale-in 300ms, sheets slide-up

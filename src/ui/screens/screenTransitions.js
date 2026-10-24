@@ -35,7 +35,8 @@ export const SCREEN_IDS = Object.freeze([
   'smygames', 'sadmin',
 ]);
 
-const GLIDE_CLASSES = ['glide-in', 'glide-out', 'morph-in', 'morph-out', 'morph-close', 'morph-under'];
+const MORPH_CLASSES = ['morph-in', 'morph-out', 'morph-close', 'morph-under'];
+const GLIDE_CLASSES = ['glide-in', 'glide-out', ...MORPH_CLASSES];
 const GLIDE_PROPS = ['--glide-dir', '--ct-clip', '--ct-dur', '--ct-ease'];
 const REVEAL_CLASS = 'reveal-item';
 
@@ -84,8 +85,18 @@ function settleGlide(clearTimeoutFn = clearTimeout) {
     state.glideTimer = null;
   }
   for (const el of state.glideEls) {
+    // A morphed screen that ends hidden (home after opening, the card's screen
+    // after closing) is still painted, unclipped, the moment its classes go:
+    // without this it would fade out through `.screen.hidden`'s transition, at
+    // full size, over the screen that is now showing. Snap it instead.
+    const snap = el.classList?.contains?.('hidden') && MORPH_CLASSES.some(c => el.classList?.contains?.(c));
+    if (snap) el.style?.setProperty?.('transition', 'none');
     el.classList?.remove?.(...GLIDE_CLASSES);
     for (const k of GLIDE_PROPS) el.style?.removeProperty?.(k);
+    if (snap) {
+      void el.offsetWidth;   // flush the style change with transitions off
+      el.style?.removeProperty?.('transition');
+    }
   }
   for (const g of state.ghosts) { try { g.remove?.(); } catch { /* swallow */ } }
   state.ghosts = [];

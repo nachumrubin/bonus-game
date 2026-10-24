@@ -380,6 +380,29 @@ test('card morph: back to home from that screen shrinks it into the card again',
   assert.ok(has(sh, 'glide-in') && !has(sh, 'morph-under'));
 });
 
+test('card morph: a screen that ends hidden snaps there (no fade back in at full size)', () => {
+  const { doc, elements, card, sh } = morphDoc();
+  const t = fakeTimers();
+  showScreen('sh', { doc, ...t }); t.runAll();
+  const so = elements.get('so');
+  // What `transition` is inline at the moment each screen loses its morph class.
+  const seen = {};
+  for (const [el, cls] of [[sh, 'morph-out'], [so, 'morph-close'], [sh, 'morph-under']]) {
+    const remove = el.classList.remove.bind(el.classList);
+    el.classList.remove = (...c) => {
+      if (c.includes(cls) && el.classList.contains(cls)) seen[`${el.attrs?.id ?? el.id}:${cls}`] = el.style.getPropertyValue('transition');
+      remove(...c);
+    };
+  }
+  armCardMorph(card, { now: () => 0 });
+  showScreen('so', { doc, now: () => 5, ...t }); t.runAll();
+  showScreen('sh', { doc, ...t }); t.runAll();
+  assert.equal(seen['sh:morph-out'], 'none', 'home, hidden behind the opened screen');
+  assert.equal(seen['so:morph-close'], 'none', 'the card’s screen, hidden behind home');
+  assert.equal(seen['sh:morph-under'], '', 'the showing screen keeps its transitions');
+  assert.equal(so.style.getPropertyValue('transition'), '', 'inline override is removed again');
+});
+
 test('card morph: only for the navigation the tap triggered, forward, with motion', () => {
   const { doc, elements, card } = morphDoc();
   const t = fakeTimers();
