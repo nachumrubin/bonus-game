@@ -140,15 +140,35 @@ fail.
 
 ### Play Billing (Phase 6b)
 
-- `PLAY_PACKAGE_NAME` is in `wrangler.toml`.
-- A Google Cloud service account linked in the Play Console (Users and permissions →
-  "View financial data" and "Manage orders and subscriptions"). Paste its JSON key:
+The Android app (`android/`, billing 1.2.0) buys through `src/game/account/
+playBillingClient.js` and posts the purchase token to `/economy/credit-play`. One-time
+Google setup:
 
-  ```bash
-  npx wrangler secret put PLAY_SERVICE_ACCOUNT_JSON
-  ```
-- The in-app products `coins_500`, `coins_1200`, `coins_3000` must exist in the Play
-  Console as consumable products (`COIN_PACKS` in `economy.js`).
+1. **Play Console → Settings → Payments profile**: merchant profile (bank account, tax
+   details). Paid products can't be created without it.
+2. **Upload an app bundle with billing** (versionCode 16 or later) to the internal
+   testing track. Play shows the products page only after a build with the
+   `com.android.vending.BILLING` permission has been uploaded.
+3. **Monetize → Products → One-time products**: create `coins_500`, `coins_1200`,
+   `coins_3000` (`COIN_PACKS` in `economy.js`; the ids must match exactly), set prices,
+   activate. Don't mark them as consumable anywhere: the worker consumes each purchase
+   after crediting it.
+4. **Service account**: in Google Cloud project `boost-8ef11`, enable the *Google Play
+   Android Developer API*, create a service account and a JSON key. In the Play Console,
+   go to Users and permissions → Invite new users and enter the service account's email.
+   Under App permissions, add this app and give it "View financial data, orders, and
+   cancellation survey responses" and "Manage orders and subscriptions". New access can
+   take up to 24–48 h; until then the worker gets 401/403 from Google.
+5. Paste the key and deploy:
+
+   ```bash
+   npx wrangler secret put PLAY_SERVICE_ACCOUNT_JSON
+   npx wrangler deploy
+   ```
+6. **Settings → License testing**: add the testers' Gmail accounts so test purchases
+   aren't charged.
+
+`PLAY_PACKAGE_NAME` (`app.boost8ef11.twa`) is in `wrangler.toml`.
 
 ### Tests
 

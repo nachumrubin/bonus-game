@@ -16,7 +16,8 @@
 // Tapping a Boostie card (not its buttons) brings that Boostie to life in its card for
 // CARD_PREVIEW_MS — locked ones too, in full colour — so the player gets a feel for it.
 //
-// Render with STORE_RENDER { coins, boosties, equippedAvatar, ownedReactions }. Clicks emit:
+// Render with STORE_RENDER { coins, boosties, equippedAvatar, ownedReactions }; the coin
+// packs' Play prices with STORE_COIN_PRICES { prices }. Clicks emit:
 //   STORE_INTENT.EQUIP            { id }    — owned Boostie → equip it
 //   EVO_SHOW                { id, from, to } — replay the latest evolution (evolutionScreen)
 //   STORE_INTENT.CONFIRM_PURCHASE { id }    — confirmed buy, id = 'boostie:bubo' | 'reaction:wink'
@@ -46,6 +47,7 @@ export const STORE_INTENT = Object.freeze({
 });
 
 export const STORE_RENDER = 'store/render';
+export const STORE_COIN_PRICES = 'store/coinPrices';   // { prices } from Google Play
 
 export const DAILY_REWARD_SHOW = 'dailyReward/show';
 export const DAILY_REWARD_ACK  = 'dailyReward/ack';
@@ -158,13 +160,24 @@ export function storeHtml(state) {
     + `<div class="rx-grid">${BOOSTIE_REACTIONS.map((r) => reactionTileHtml(r, state)).join('')}</div></div>`;
 }
 
-// Coin packs for real money. The price is set in the Play Console (per country), so
-// the card shows the coins only.
-export function coinPacksHtml(packs = COIN_PACKS) {
+// Coin packs for real money. The price is set in the Play Console (per country) and
+// arrives with STORE_COIN_PRICES { prices: { coins_500: '9.90 ₪', … } } inside the
+// Android app; until then (or in a browser) the card shows the coins only.
+// Each pack has its own bag (small → large); an unknown pack shows the single coin.
+export const COIN_PACK_ICON = Object.freeze({
+  coins_500:  'assets/rewards/coin pack 500.png',
+  coins_1200: 'assets/rewards/coin pack 1200.png',
+  coins_3000: 'assets/rewards/coin pack 3000.png',
+});
+
+export function coinPacksHtml(packs = COIN_PACKS, prices = {}) {
   return `<div class="coin-packs">${Object.entries(packs).map(([id, p]) => (
     `<button class="coin-pack" data-store-action="coins" data-store-id="${escapeHtml(id)}">`
-    + `${COIN_ICON_HTML}<span class="coin-pack-n g-num">${Number(p.coins) || 0}</span>`
-    + `<span class="coin-pack-l">מטבעות</span></button>`
+    + (COIN_PACK_ICON[id] ? `<img src="${COIN_PACK_ICON[id]}" class="coin-pack-img" alt="">` : COIN_ICON_HTML)
+    + `<span class="coin-pack-n g-num">${Number(p.coins) || 0}</span>`
+    + `<span class="coin-pack-l">מטבעות</span>`
+    + (prices?.[id] ? `<span class="coin-pack-price" dir="ltr">${escapeHtml(prices[id])}</span>` : '')
+    + `</button>`
   )).join('')}</div>`;
 }
 
@@ -410,6 +423,9 @@ export function mountAvatarStoreScreen({
   }));
 
   cleanups.push(bus.on(STORE_RENDER, paint));
+  cleanups.push(bus.on(STORE_COIN_PRICES, ({ prices } = {}) => {
+    if (coinsEl) coinsEl.innerHTML = coinPacksHtml(COIN_PACKS, prices);
+  }));
 
   return {
     paint,

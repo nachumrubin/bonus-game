@@ -8,6 +8,7 @@ import android.os.Build;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationManagerCompat;
 
+import com.google.androidbrowserhelper.playbilling.digitalgoods.DigitalGoodsRequestHandler;
 import com.google.androidbrowserhelper.trusted.DelegationService;
 
 /**
@@ -23,6 +24,10 @@ import com.google.androidbrowserhelper.trusted.DelegationService;
  * to post on our OWN {@code IMPORTANCE_HIGH} channel. Created once; a no-op on
  * subsequent pushes. Users can still mute it from Android settings.
  *
+ * It is also the TWA's one DelegationService, so it registers the Digital Goods
+ * handler: the web app's getDigitalGoodsService('https://play.google.com/billing')
+ * (coin-pack prices, unconsumed purchases) is answered here.
+ *
  * NOTE: `bubblewrap update` regenerates AndroidManifest.xml and would reset the
  * DelegationService `android:name` back to the library default — re-point it at
  * this class after any Bubblewrap regeneration.
@@ -31,6 +36,12 @@ public class NotificationService extends DelegationService {
 
     private static final String CHANNEL_ID = "boost_push_high";
     private static final CharSequence CHANNEL_NAME = "התראות משחק";
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        registerExtraCommandHandler(new DigitalGoodsRequestHandler(getApplicationContext()));
+    }
 
     @Override
     public boolean onNotifyNotificationWithChannel(@NonNull String platformTag, int platformId,

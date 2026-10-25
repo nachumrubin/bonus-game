@@ -182,6 +182,9 @@ Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_invento
 * assets/navigation/statistics_nav.png
 * assets/rewards/bronze medal.png
 * assets/rewards/extra turn.png
+* assets/rewards/coin pack 1200.png — the 1200-coin pack (medium bag), store card + Play icon
+* assets/rewards/coin pack 3000.png — the 3000-coin pack (large bag), store card + Play icon
+* assets/rewards/coin pack 500.png — the 500-coin pack (small pouch), store card + Play icon
 * assets/rewards/gold coin.png
 * assets/rewards/gold medal.png
 * assets/rewards/silver medal.png

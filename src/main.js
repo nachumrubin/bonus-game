@@ -49,6 +49,8 @@ import { loadLocalGame, clearLocalGame, hasLocalSavedGame } from './game/session
 import { createTimeoutWatchdog } from './game/online/timeoutWatchdog.js';
 import * as profileService from './game/account/profileService.js';
 import { createEconomyClient } from './game/account/economyClient.js';
+import { createPlayBilling } from './game/account/playBillingClient.js';
+import { COIN_PACKS } from './game/account/economy.js';
 import { profileAvatarValue, normalizeBoosties } from './game/account/boostieXp.js';
 import { isBoostieId, parseStoreItem, boostieName, boostieAvatarValue, DEFAULT_BOOSTIE } from './game/account/boostieCatalog.js';
 import * as friendsService from './game/account/friendsService.js';
@@ -117,7 +119,7 @@ import {
   diffNewlyCompletedAchievements, progressBumps, AV_PROGRESS_BUMP, achievementSnapshot, botAvatarForLevel,
 } from './ui/screens/avatarScreens.js';
 import {
-  mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER,
+  mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER, STORE_COIN_PRICES,
   DAILY_REWARD_SHOW, DAILY_REWARD_ACK,
 } from './ui/screens/avatarStoreScreen.js';
 import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe, isSilentAuthCancel, suggestNameFromDisplayName } from './ui/screens/authScreens.js';
@@ -371,6 +373,7 @@ let evolutionScreen = null;   // ui/boostie3d/evolutionScreen.js, mounted with t
 let homeAvatarLive = null;    // ui/boostie3d/homeAvatarLive.js — the live Boostie in the home top bar
 let profileAvatarLive = null; // … and on the profile screen
 let economy = null;           // game/account/economyClient.js — the coin worker
+const playBilling = createPlayBilling();   // coin packs via Google Play (Android app only)
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCE-Im2HzYhJVlRd07uIHqcsCGTQQhYgDo',
   authDomain: 'boost-8ef11.firebaseapp.com',
@@ -3319,14 +3322,47 @@ async function boot() {
       }
       storeBackTo = from === 'home' ? 'sh' : 'sprofile';
       showLegacyScreen('savatar-store');
+      refreshCoinPacks();
     });
+    // Coin packs: Play prices on the cards, and any pack paid for but never credited
+    // (the app closed mid-purchase) is credited now. No-ops outside the Android app.
+    const packIds = Object.keys(COIN_PACKS);
+    const creditPlay = (args) => economy?.creditPlay(args) ?? { ok: false, reason: 'not-configured' };
+    let coinPricesShown = false;
+    async function refreshCoinPacks() {
+      if (!coinPricesShown) {
+        const prices = await playBilling.getPrices(packIds);
+        if (Object.keys(prices).length) { coinPricesShown = true; bus.emit(STORE_COIN_PRICES, { prices }); }
+      }
+      const recovered = await playBilling.recoverPending(creditPlay, packIds);
+      if (recovered) bus.emit(NOTIF_BANNER_SHOW, { text: 'המטבעות שקנית נוספו לחשבון! 🎉', avatar: '🪙', sound: 'store.purchase' });
+    }
     bus.on(STORE_INTENT.CLOSE, () => {
       showLegacyScreen(storeBackTo);
     });
-    // Coin packs for real money need Play Billing in the Android app (Phase 6b); the
-    // worker side (credit-play) is ready. Until the purchase flow exists, say so.
-    bus.on(STORE_INTENT.BUY_COINS, () => {
-      bus.emit(NOTIF_BANNER_SHOW, { text: 'קניית מטבעות תיפתח בקרוב', avatar: '🪙', sound: 'store.fail' });
+    // Coin packs for real money (Phase 6b): Play's sheet → the worker checks the token
+    // with Google and credits the coins; the profile watch repaints the balance.
+    let coinBuyBusy = false;
+    bus.on(STORE_INTENT.BUY_COINS, async ({ id }) => {
+      if (!COIN_PACKS[id] || coinBuyBusy) return;
+      coinBuyBusy = true;
+      try {
+        const r = await playBilling.buy(id, creditPlay);
+        if (r?.ok) {
+          bus.emit(NOTIF_BANNER_SHOW, { text: `+${COIN_PACKS[id].coins} מטבעות! 🎉`, avatar: '🪙', sound: 'store.purchase' });
+        } else if (r?.reason === 'unavailable') {
+          bus.emit(NOTIF_BANNER_SHOW, { text: 'קניית מטבעות זמינה באפליקציה לאנדרואיד', avatar: '🪙', sound: 'store.fail' });
+        } else if (r?.reason === 'pending') {
+          bus.emit(NOTIF_BANNER_SHOW, { text: 'התשלום ממתין לאישור — המטבעות יתווספו כשיאושר', avatar: '🪙' });
+        } else if (r?.reason !== 'cancelled') {
+          // Paid but not credited: the purchase stays unconsumed and refreshCoinPacks()
+          // credits it on the next store visit (Play refunds it after 3 days otherwise).
+          console.warn('[spine] coin pack', r);
+          bus.emit(NOTIF_BANNER_SHOW, { text: 'הרכישה לא הושלמה, נסו שוב', avatar: '🪙', sound: 'store.fail' });
+        }
+      } finally {
+        coinBuyBusy = false;
+      }
     });
     // Equipping a store avatar reuses the avatar-equip path (writes equippedAvatar).
     bus.on(STORE_INTENT.EQUIP, ({ id }) => bus.emit(AV_INTENT.EQUIP, { id }));

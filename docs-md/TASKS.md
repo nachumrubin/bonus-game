@@ -5,8 +5,18 @@
 - [x] Renamed to חנות; tabs: אווטארים, ערכות צבע (בקרוב...), מטבעות.
 - [x] Tapping a Boostie card brings it to life for 6.5 s (locked ones too, in colour).
 - [x] Home bottom nav: חנות replaces הישגים; הישגים moved to the profile list.
-- [ ] Coin packs: the tab shows the packs, but buying says "בקרוב". Needs Play Billing in the
-  Android app (Phase 6b below) and prices on the cards from the Play store.
+- [x] Coin packs: Play Billing purchase flow in the Android app, Play prices on the cards,
+  recovery of uncredited packs (`playBillingClient.js`, billing 1.2.0 in the TWA).
+- [ ] Coin packs, user side: Play Console merchant profile, products `coins_500` /
+  `coins_1200` / `coins_3000`, service account + `PLAY_SERVICE_ACCOUNT_JSON` secret,
+  license testers, then a test purchase on the internal track (`worker/README.md`).
+- [x] Coin pack art: a small / medium / large bag per pack on the store cards
+  (`assets/rewards/coin pack <n>.png`, `COIN_PACK_ICON`).
+- [ ] Coin packs on the web (outside the Android app): Stripe or similar. Tapping a pack
+  there now says buying is in the Android app.
+- [x] Android targetSdk raised to 36 (Play rejected 35 on upload).
+- [ ] Phone check on Android 16: launch/splash and the status bar (Android 16 ignores
+  `windowOptOutEdgeToEdgeEnforcement`; the page itself is drawn by Chrome's TWA).
 - [ ] App skins (colour palettes): design the palettes, then sell them in the ערכות צבע tab.
 - [ ] Phone check: the card preview's 3D on a mid-range phone (one WebGL board per tap).
 
@@ -200,8 +210,9 @@
   (once each) but not cheat-proof. Server-side stats would close it.
 - [ ] Old client payouts left no `achievementsPaid` record; an achievement that
   completes again after 6a ships pays once more (not in production, so accepted).
-- [ ] Phase 6b: buy coins with real money (Play Billing in the Android app, Stripe on
-  web). Needs the user's merchant accounts and coin-pack prices.
+- [x] Phase 6b (Android): buy coins with real money through Play Billing. The code is
+  done; the Play Console setup is listed under the Store section at the top.
+- [ ] Phase 6b (web): Stripe for players outside the Android app.
 - [x] No migration script (not in production): Bubo became a starter, so every profile
   owns Zapi and Bubo.
 - [x] Purchase achievements replaced with Boostie goals (level 4, a new Boostie, 2

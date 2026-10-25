@@ -52,6 +52,7 @@ three bots (no evolution sheet: attach the bot's current portrait instead).
 | 40 | [Drako level 5](40_drako_l5_turnaround.md) | `drako_sheet_b_levels_5-7.png` | ✅ |
 | 41 | [Drako level 6](41_drako_l6_turnaround.md) | `drako_sheet_b_levels_5-7.png` | ✅ |
 | 42 | [Drako level 7](42_drako_l7_turnaround.md) | `drako_sheet_b_levels_5-7.png` | ✅ |
+| 43 | [Coin packs: three bags (500 / 1200 / 3000)](43_coin_packs_sheet.md) | `assets/rewards/gold coin.png` | ✅ |
 
 Already done: the Zapi level 3 and level 4 turnarounds (`Blender designs/boosties/sources/`).
 
