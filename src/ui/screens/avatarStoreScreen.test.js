@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER,
-  DAILY_REWARD_SHOW, dailyDaysHtml,
+  DAILY_REWARD_SHOW, dailyDaysHtml, coinPacksHtml, STORE_TABS,
 } from './avatarStoreScreen.js';
+import { COIN_PACKS } from '../../game/account/economy.js';
 import { findReaction } from '../../game/account/boostieCatalog.js';
 import { LEVEL_XP } from '../../game/account/boostieXp.js';
 
@@ -243,5 +244,107 @@ test('store: tapping a reaction tile plays it on the equipped Boostie (owned or 
   bus.emit(STORE_INTENT.CLOSE, {});
   assert.equal(cls.has('hidden'), true);
   assert.deepEqual(liveCalls.at(-1), ['dispose']);
+  screen.unmount();
+});
+
+function makeClassEl(initial = []) {
+  const cls = new Set(initial);
+  const listeners = [];
+  const attrs = {};
+  return {
+    cls, attrs, listeners, dataset: {}, innerHTML: '',
+    classList: { add: (c) => cls.add(c), remove: (c) => cls.delete(c), contains: (c) => cls.has(c), toggle: (c, on) => (on ? cls.add(c) : cls.delete(c)) },
+    setAttribute: (k, v) => { attrs[k] = v; },
+    addEventListener(ev, fn) { listeners.push({ ev, fn }); },
+    removeEventListener() {},
+    fire(target) { for (const l of listeners) if (l.ev === 'click') l.fn({ target }); },
+  };
+}
+
+test('store: three tabs, avatars first; a tab shows its panel and closes the live previews', () => {
+  bus._reset?.();
+  const { root } = makeStoreRoot();
+  assert.deepEqual([...STORE_TABS], ['avatars', 'skins', 'coins']);
+  const tabs = STORE_TABS.map((t) => Object.assign(makeClassEl(t === 'avatars' ? ['on'] : []), { dataset: { tab: t } }));
+  const panels = Object.fromEntries(STORE_TABS.map((t) => [`#store-panel-${t}`, makeClassEl(t === 'avatars' ? ['on'] : [])]));
+  const r = {
+    querySelector: (sel) => panels[sel] ?? root.querySelector(sel),
+    querySelectorAll: (sel) => (sel === '.store-tab' ? tabs : []),
+  };
+  mountAvatarStoreScreen({ root: r, bus });
+  tabs[2].fire({});
+  assert.equal(panels['#store-panel-coins'].cls.has('on'), true);
+  assert.equal(panels['#store-panel-avatars'].cls.has('on'), false);
+  assert.equal(tabs[2].attrs['aria-selected'], 'true');
+  bus.emit(STORE_INTENT.OPEN, {});
+  assert.equal(panels['#store-panel-avatars'].cls.has('on'), true, 'every visit starts on avatars');
+});
+
+test('store: coin packs render from COIN_PACKS and a tap emits BUY_COINS', () => {
+  bus._reset?.();
+  const html = coinPacksHtml();
+  for (const [id, p] of Object.entries(COIN_PACKS)) {
+    assert.match(html, new RegExp(`data-store-id="${id}"`));
+    assert.match(html, new RegExp(`>${p.coins}<`));
+  }
+  const { root } = makeStoreRoot();
+  const coins = makeClassEl();
+  const r = { querySelector: (sel) => (sel === '#store-coins' ? coins : root.querySelector(sel)) };
+  const bought = [];
+  bus.on(STORE_INTENT.BUY_COINS, (e) => bought.push(e.id));
+  mountAvatarStoreScreen({ root: r, bus });
+  assert.match(coins.innerHTML, /coin-pack/);
+  const pack = (id) => ({ closest: () => ({ getAttribute: () => id }) });
+  coins.fire(pack('coins_500'));
+  coins.fire(pack('not_a_pack'));
+  assert.deepEqual(bought, ['coins_500']);
+});
+
+test('store: tapping a Boostie card (not a button) brings it to life, then back to the still', async (t) => {
+  bus._reset?.();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { els, root } = makeStoreRoot();
+  const stage = {};
+  const card = makeClassEl();
+  card.querySelector = (sel) => (sel === '.bst-stage' ? stage : null);
+  els.grid.querySelector = (sel) => (sel === '.bst-card[data-boostie="rocco"]' ? card : null);
+  const calls = [];
+  const fakeLive = {
+    sync: (v) => calls.push(['sync', v]),
+    ready: async () => true,
+    play: (slot, clip) => { calls.push(['play', clip]); return true; },
+    dispose: () => calls.push(['dispose']),
+  };
+  let look = null;
+  mountAvatarStoreScreen({ root, bus, createLive: (o) => { look = o.look; calls.push(['create', o.hosts()[0] === stage]); return fakeLive; } });
+  bus.emit(STORE_RENDER, { coins: 0, boosties: { bubo: { xp: 0 } }, equippedAvatar: 'bubo' });
+  const cardTarget = { closest: (sel) => (sel === '[data-boostie]' ? { getAttribute: () => 'rocco' } : null) };
+  els.grid.fireClick(cardTarget);
+  await Promise.resolve(); await Promise.resolve();
+  assert.equal(card.cls.has('is-alive'), true);
+  assert.deepEqual(look, { lively: true, full: true });
+  assert.deepEqual(calls.slice(0, 3), [['create', true], ['sync', [{ id: 'rocco', level: 1 }]], ['play', 'signature']],
+    'a locked Boostie previews at level 1');
+  t.mock.timers.tick(3200);
+  assert.deepEqual(calls.at(-1), ['play', 'good']);
+  t.mock.timers.tick(3300);
+  assert.deepEqual(calls.at(-1), ['dispose']);
+  assert.equal(card.cls.has('is-alive'), false, 'back to the still after ~6.5 s');
+});
+
+test('store: a card preview ends when the store repaints or closes', async () => {
+  bus._reset?.();
+  const { els, root } = makeStoreRoot();
+  const card = makeClassEl();
+  card.querySelector = () => ({});
+  els.grid.querySelector = () => card;
+  let disposed = 0;
+  const fakeLive = { sync() {}, ready: async () => true, play: () => true, dispose: () => { disposed++; } };
+  const screen = mountAvatarStoreScreen({ root, bus, createLive: () => fakeLive });
+  els.grid.fireClick({ closest: (sel) => (sel === '[data-boostie]' ? { getAttribute: () => 'bubo' } : null) });
+  await Promise.resolve();
+  bus.emit(STORE_RENDER, { coins: 5 });
+  assert.equal(disposed, 1, 'repaint replaces the card, so its 3D is freed');
+  assert.equal(card.cls.has('is-alive'), false);
   screen.unmount();
 });

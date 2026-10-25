@@ -1,10 +1,16 @@
-<!-- AVATAR STORE SCREEN (glass skin — tools/screens-mockup "#savatar-store") -->
+<!-- STORE SCREEN "חנות" (glass skin — tools/screens-mockup "#savatar-store") -->
 <div id="savatar-store" class="screen hidden g-screen">
   <div class="g-page store-room">
     <div class="g-hdr store-head">
       <button id="store-back-btn" class="g-chip ic" aria-label="חזרה"><svg class="gi"><use href="#gi-back"/></svg></button>
-      <div class="g-ttl store-title"><svg class="gi"><use href="#gi-store"/></svg>חנות אווטארים</div>
+      <div class="g-ttl store-title"><svg class="gi"><use href="#gi-store"/></svg>חנות</div>
       <div class="g-end"><span class="g-chip gd g-num store-balance-chip"><img src="assets/rewards/gold coin.png" class="coin-ic" alt=""><span id="store-coin-balance">0</span></span></div>
+    </div>
+    <!-- Tabs (avatarStoreScreen.js selectTab) -->
+    <div class="store-tabs" role="tablist">
+      <button class="store-tab on" data-tab="avatars" role="tab" aria-selected="true">אווטארים</button>
+      <button class="store-tab" data-tab="skins" role="tab" aria-selected="false">ערכות צבע</button>
+      <button class="store-tab" data-tab="coins" role="tab" aria-selected="false">מטבעות</button>
     </div>
     <div id="store-hint" class="store-hint"></div>
     <!-- Reaction preview: tapping a reaction tile plays it on your Boostie (avatarStoreScreen.js) -->
@@ -14,8 +20,22 @@
       <button type="button" class="srp-close" aria-label="סגור">×</button>
     </div>
     <div class="g-scroll">
-      <!-- Boosties + reactions sections rendered by avatarStoreScreen.js (storeHtml) -->
-      <div id="store-grid" class="store-grid"></div>
+      <div id="store-panel-avatars" class="store-panel on" role="tabpanel">
+        <!-- Boosties + reactions sections rendered by avatarStoreScreen.js (storeHtml) -->
+        <div id="store-grid" class="store-grid"></div>
+      </div>
+      <div id="store-panel-skins" class="store-panel" role="tabpanel">
+        <div class="store-soon">
+          <svg class="gi store-soon-ic"><use href="#gi-store"/></svg>
+          <div class="store-soon-t">בקרוב...</div>
+          <div class="store-soon-d">ערכות צבע חדשות לאפליקציה</div>
+        </div>
+      </div>
+      <div id="store-panel-coins" class="store-panel" role="tabpanel">
+        <div class="store-coins-lead">קנו מטבעות לבוסטים ולתגובות חדשים</div>
+        <!-- Coin packs rendered by avatarStoreScreen.js (coinPacksHtml) -->
+        <div id="store-coins"></div>
+      </div>
     </div>
   </div>
 </div>

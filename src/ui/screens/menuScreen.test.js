@@ -286,8 +286,9 @@ test('home partial has no champions navigation card', () => {
   const profile = fs.readFileSync(path.join(root, 'partials/screens/profile-screen.html'), 'utf8');
   assert.doesNotMatch(home, /btn-home-champs/);
   assert.doesNotMatch(home, /hm-rank/);
-  assert.match(home, /showAvatarGallery\(\)/);
-  assert.match(home, /הישגים/);
+  assert.match(home, /onclick="openStore\(\)"[\s\S]*?>חנות</, 'the bottom nav opens the store');
+  assert.doesNotMatch(home, /showAvatarGallery\(\)/);
+  assert.match(profile, /showAvatarGallery\(\)[\s\S]*?הישגים/, 'achievements open from the profile');
   assert.match(profile, /id="btn-profile-champs"/);
   assert.match(profile, /טבלת דירוגים/);
 });

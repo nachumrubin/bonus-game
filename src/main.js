@@ -3295,8 +3295,10 @@ async function boot() {
       showLegacyScreen('sprofile');
     });
 
-    // ── Avatar store intents ──
-    bus.on(STORE_INTENT.OPEN, () => {
+    // ── Store intents ──
+    // The store opens from the home nav ({ from: 'home' }) or the profile; back returns there.
+    let storeBackTo = 'sprofile';
+    bus.on(STORE_INTENT.OPEN, ({ from } = {}) => {
       const fbUser = activeFbCurrentUser;
       // Coins/store require a real account — anonymous profiles aren't persisted.
       if (!fbUser?.uid || fbUser.isAnonymous) {
@@ -3315,10 +3317,16 @@ async function boot() {
           ownedReactions: lastProfile?.ownedReactions ?? [],
         });
       }
+      storeBackTo = from === 'home' ? 'sh' : 'sprofile';
       showLegacyScreen('savatar-store');
     });
     bus.on(STORE_INTENT.CLOSE, () => {
-      showLegacyScreen('sprofile');
+      showLegacyScreen(storeBackTo);
+    });
+    // Coin packs for real money need Play Billing in the Android app (Phase 6b); the
+    // worker side (credit-play) is ready. Until the purchase flow exists, say so.
+    bus.on(STORE_INTENT.BUY_COINS, () => {
+      bus.emit(NOTIF_BANNER_SHOW, { text: 'קניית מטבעות תיפתח בקרוב', avatar: '🪙', sound: 'store.fail' });
     });
     // Equipping a store avatar reuses the avatar-equip path (writes equippedAvatar).
     bus.on(STORE_INTENT.EQUIP, ({ id }) => bus.emit(AV_INTENT.EQUIP, { id }));
@@ -5283,6 +5291,10 @@ function installCutoverGlobals() {
   };
   globalThis.showAvatarStore = globalThis.showAvatarStore ?? function showAvatarStore() {
     bus.emit(PROFILE_INTENT.OPEN_STORE, {});
+  };
+  // Home bottom-nav "חנות": back from the store returns home.
+  globalThis.openStore = globalThis.openStore ?? function openStore() {
+    bus.emit(STORE_INTENT.OPEN, { from: 'home' });
   };
   globalThis.showFriendsScreen = globalThis.showFriendsScreen ?? function showFriendsScreen() {
     bus.emit(PROFILE_INTENT.OPEN_FRIENDS, {});

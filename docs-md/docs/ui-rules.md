@@ -285,13 +285,20 @@ achievements trophy room — 36 purchasable avatars (`assets/avatars/<id>.png`) 
 legendary, bought with coins. Painted on `STORE_RENDER` (`{ coins, ownedAvatars, equippedAvatar }`); opened via
 `PROFILE_INTENT.OPEN_STORE` → `STORE_INTENT.OPEN` (anonymous users routed to the account-upgrade prompt).
 
+**October 2026: "חנות" with tabs.** Title `חנות`. Opened from the profile list or from the home bottom
+nav (`openStore()` → `STORE_INTENT.OPEN { from: 'home' }`); back returns to where it was opened. Tabs
+`.store-tab[data-tab]` = `avatars` (first, default on every open) | `skins` (app colour palettes, a
+"בקרוב..." card for now) | `coins` (coin packs for real money). Panels `#store-panel-<tab>` (class `on`).
+
 Load-bearing IDs (do not rename without updating `avatarStoreScreen.js`):
 ```
 #savatar-store         — screen container (also in screenTransitions.js SCREEN_IDS)
 #store-coin-balance    — coin balance number in the header
 #store-back-btn        — back → STORE_INTENT.CLOSE
 #store-hint            — transient "not enough coins" hint
-#store-grid            — category sections rendered here by paint()
+#store-grid            — category sections rendered here by paint() (inside #store-panel-avatars)
+#store-panel-avatars, #store-panel-skins, #store-panel-coins — tab panels; `.on` = shown
+#store-coins           — coin packs (coinPacksHtml: .coin-pack[data-store-action="coins"][data-store-id])
 #ov-store-confirm      — purchase-confirm overlay
   #store-confirm-avatar, #store-confirm-price, #store-confirm-yes, #store-confirm-no
 #ov-daily-reward       — daily login reward overlay
@@ -302,6 +309,10 @@ Load-bearing IDs (do not rename without updating `avatarStoreScreen.js`):
 Reaction tiles (`.rx-tile[data-reaction]`, role=button) open the preview on tap / Enter: the equipped
 Boostie plays the clip (owned or not). Stills + emoji pop under reduced motion or without 3D. The stage
 closes after 8 s idle, on ×, and on `STORE_INTENT.CLOSE` (its WebGL is freed).
+Boostie cards (`.bst-card[data-boostie]`): a tap outside the buttons brings that Boostie to life in its
+`.bst-stage` for 6.5 s (lively 3D, whole figure; signature move, then `good`). Locked Boosties show in
+colour while alive. The card gets `.is-alive`; one live 3D at a time (it and the reaction stage close each
+other); repaint, tab change and close end it. Stills under reduced motion or without 3D.
 Each tile is `<button class="store-tile" data-store-id="{id}" data-action="equip|buy|tooexpensive">`. Click:
 `equip` → `STORE_INTENT.EQUIP`; `buy` → open confirm → `STORE_INTENT.CONFIRM_PURCHASE`; `tooexpensive` → hint.
 Equipped store avatars render everywhere via `avatarIconSrc()` (resolves store ids → PNG); `avatarEmoji()` passes
@@ -882,7 +893,7 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#home-elo-label`: hidden if `!isAuthed`. When visible it is its own hit target (`role="button"`, `aria-label="טבלת דירוגים"`): click/Enter/Space emits `CHAMPS_OPEN` and stops propagation so `#btn-profile-home` does not also open. Avatar and `#home-user-label` still open profile/auth. This is the only home-screen entry to `#ov-champs`.
 - `#home-elo-value`: shows `rating` formatted as locale number
 - `#home-elo-bolt`: tier emoji (🪙/🥈/🥇/💎); set by `ratingTierEmoji()` in `menuScreen.js`
-- Home has no `#btn-home-champs` row. Bottom-nav הישגים is unchanged (`showAvatarGallery()`).
+- Home has no `#btn-home-champs` row. Bottom-nav third item is חנות (`openStore()`, Oct 2026); הישגים (`showAvatarGallery()`) moved to the profile list.
 - `#btn-profile-champs`: profile row in `.pf-btns`, above `סטטיסטיקות מלאות` and outside `.pf-danger-zone`. Label `טבלת דירוגים`, sub `ELO ודירוג עולמי`. Click emits `CHAMPS_OPEN`. Overlay stacks on the profile (`z-index` of `.ov`).
 - Medal icons (`.champ-medal-icon`) in both `#champions-wrap` (post-game) and `#champions-wrap-home` (`#ov-champs`) are 22×22. Do not size the overlay medals separately.
 - Post-game rank change: `#champions-wrap` only. The current user's row gets `.champ-rank-delta--up` (`▲` + places, green) when the rank number went down, or `.champ-rank-delta--down` (`▼` + places, red) when it went up. Zero change and a missing pre-game rank render nothing. The anytime overlay does not show this delta.

@@ -48,9 +48,9 @@ const TOPBAR_BUTTONS = [
 ];
 
 // Screen buttons live inside #sh (home screen only).
-// The home bottom-nav "הישגים" (trophy) button keeps its inline
-// `onclick="showAvatarGallery()"` — that legacy global already emits
-// PROFILE_INTENT.OPEN_AVATARS, so no dedicated bus intent is needed.
+// The home bottom-nav "חנות" (store) button keeps its inline `onclick="openStore()"`
+// — that global (main.js) emits STORE_INTENT.OPEN { from: 'home' }, so no menu
+// intent is needed. Achievements (הישגים) moved to the profile list.
 const SCREEN_BUTTONS = [
   { sel: 'button[onclick="startSetup(\'vs\')"]',   intent: MENU_INTENT.START_2P, legacyArg: 'vs' },
   { sel: 'button[onclick="startSetup(\'bot\')"]',  intent: MENU_INTENT.START_VS_BOT, legacyArg: 'bot' },

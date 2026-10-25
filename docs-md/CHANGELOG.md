@@ -2,6 +2,21 @@
 
 ---
 
+## Store becomes "חנות", with tabs (October 2026)
+
+- The avatar store is now **חנות**. It has three tabs:
+  - **אווטארים** (first): the Boosties and reactions, as before.
+  - **ערכות צבע**: app colour palettes to buy later. For now it shows "בקרוב...".
+  - **מטבעות**: coin packs for real money (500 / 1200 / 3000, from `COIN_PACKS`). Tapping a
+    pack says buying opens soon: the Play Billing purchase flow in the Android app is not
+    built yet. The worker side (`credit-play`) is ready.
+- Tapping a Boostie card (not its buttons) brings that Boostie to life in its card for
+  6.5 s: its signature move, then a second gesture, with the eyes and head moving. Locked
+  Boosties show in full colour while alive, so players can see what they would buy.
+- Home bottom nav: **חנות** replaces **הישגים**. Back from the store returns home.
+  Achievements are now a row in the profile list.
+- Guide and FAQ texts updated to match.
+
 ## Best move: joker values and move date (October 2026)
 
 Two fixes from the Codex review of PR 392 (stats redesign):
