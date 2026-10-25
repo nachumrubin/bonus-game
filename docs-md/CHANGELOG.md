@@ -2,6 +2,22 @@
 
 ---
 
+## Boostie faces no longer crack around the mouth (October 2026)
+
+- On the profile and home avatar, some Boosties showed black patches around the mouth
+  when the head turned. The dark inner-mouth skin (shown when the jaw opens) followed only
+  the head bone. The face over it is partly weighted to the neck, so the app's lively head
+  turn (up to 32°) pulled the two apart and the skin showed through.
+- Affected: every Lumi level, and Zapi L1, L2, L4 and L6 (lightly). Bubo, Rocco and Drako
+  muzzles follow the head alone and were not affected.
+- The inner skin now copies the face's bone weights (plus its jaw share):
+  - `build_boostie.py` does this for new builds.
+  - `fix_mouth_weights.py` patched the built scenes, and `optimize-boosties` refreshed
+    `assets/boosties/`.
+- New check: `face_check.py -- magenta lively` renders each face in the lively head poses
+  with the inner skin painted magenta. Before the fix it showed patches on Lumi L1, L4, L6
+  and L7 and on Zapi L1–L2; after the fix every model renders clean.
+
 ## Statistics screen redesign (October 2026)
 
 - The stats screen was a long accordion of re-skinned legacy cards. It now follows the approved

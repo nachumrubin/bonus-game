@@ -1,5 +1,11 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Boostie mouth poke-through — October 2026
+
+- [x] Inner mouth skin re-weighted to follow the face (all Boosties); app models refreshed.
+- [ ] Phone check: watch the profile avatar (Lumi) turn its head for a minute. The face
+  should stay whole; the mouth should still open for heh / laugh / wow.
+
 ## Statistics screen redesign — October 2026
 
 - [x] Hero + ELO ring, sticky tabs, flat panels; best-move tiles, margin bars, radar, rivals.

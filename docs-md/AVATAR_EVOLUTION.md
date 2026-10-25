@@ -409,6 +409,13 @@ squints, the head tilts and the jaw grins. In every other clip the app drives th
 live, so the Phase 3 player must let the wink's lid tracks through while it plays.
 `add_wink.py` patched the 14 models built before the clip existed.
 
+The dark inner mouth skin must carry the same bone weights as the face over it (plus its
+jaw share). Until Oct 25 2026 it followed `head` only. The app's lively avatar (home /
+profile) turns the head up to 32°, and on models whose muzzle is partly weighted to the
+neck (all Lumi levels; Zapi L1, L2, L4, L6) the skin then showed through as black patches.
+`build_boostie.py` now copies the weights; `fix_mouth_weights.py` patched the built models;
+`face_check.py -- magenta lively` is the check.
+
 ---
 
 ## 9. Bot avatars (Easy, Medium, Hard)

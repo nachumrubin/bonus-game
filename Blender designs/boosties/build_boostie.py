@@ -1717,9 +1717,14 @@ if MOUTH:
             if v not in vmap:
                 nv = sk.verts.new(v.co - v.normal * 0.003)
                 w = 0.5 * jaw_w(v.co, True, True) if v in cut_verts else jaw_w(v.co, below(v.co))
-                nv[sdl][0] = 1.0 - w          # the skin's own groups: 0 head, 1 jaw
+                # the face's own weights (head, neck, …), not just `head`: otherwise any
+                # turn that moves the face differently from the head bone (the app's lively
+                # head) pulls the two apart and the dark skin shows through as black patches
+                for gi, gw in v[dl].items():
+                    if gw * (1.0 - w) > 1e-4:
+                        nv[sdl][gi] = gw * (1.0 - w)
                 if w > 0:
-                    nv[sdl][1] = w
+                    nv[sdl][jaw_g.index] = w
                 vmap[v] = (nv, w)
         nf = sk.faces.new([vmap[v][0] for v in f.verts])
         for lp, v in zip(nf.loops, f.verts):
@@ -1787,8 +1792,8 @@ if MOUTH:
     sk.free()
     MOUTH_OB = bpy.data.objects.new("mouth", me_)
     scene.collection.objects.link(MOUTH_OB)
-    for n in ("head", "jaw"):
-        MOUTH_OB.vertex_groups.new(name=n)
+    for g in BODY.vertex_groups:          # same groups, same order as the body's
+        MOUTH_OB.vertex_groups.new(name=g.name)
     for poly in me_.polygons:
         poly.use_smooth = True
     gimg = bpy.data.images.new(f"{KEY}_mouth", 4, 64, alpha=False)
