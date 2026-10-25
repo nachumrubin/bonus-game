@@ -1895,9 +1895,11 @@ input.g-tog-input { width: 46px !important; height: 28px !important; min-width: 
   background: radial-gradient(90% 80% at 50% 25%, rgba(255,201,61,.18), transparent 70%), var(--sg-glass); border: 1px solid rgba(255,201,61,.4); transition: transform .1s; }
 #savatar-store .coin-pack:active { transform: scale(.96); }
 #savatar-store .coin-pack .coin-ic { width: 38px; height: 38px; }
+#savatar-store .coin-pack-img { width: 76px; height: 76px; object-fit: contain; }
 #savatar-store .coin-pack-n { font-size: 20px; font-weight: 900; color: var(--sg-p2); }
 #savatar-store .coin-pack-l { font-size: 11.5px; color: var(--sg-dim); }
-/* A tapped Boostie card comes alive: the 3D canvas over the still (locked ones in colour) */
+#savatar-store .coin-pack-price { margin-top: 4px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 800;
+  background: rgba(255,201,61,.18); border: 1px solid rgba(255,201,61,.45); color: var(--sg-p2); }/* A tapped Boostie card comes alive: the 3D canvas over the still (locked ones in colour) */
 #savatar-store .bst-card[data-boostie] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 #savatar-store .bst-stage { position: relative; }
 #savatar-store .bst-stage .b3d-cv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(0,0,0,.5)); }

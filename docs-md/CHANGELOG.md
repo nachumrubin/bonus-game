@@ -2,6 +2,36 @@
 
 ---
 
+## Coin packs: Google Play purchase flow (Phase 6b, October 2026)
+
+- **Android app (TWA)**: added `com.google.androidbrowserhelper:billing:1.2.0` (Play Billing
+  Library 8.3, which adds the `com.android.vending.BILLING` permission), its
+  `PaymentActivity` / `PaymentService` in the manifest, and the Digital Goods handler in
+  `NotificationService` (our one DelegationService). versionCode 16 / versionName 1.4.1.
+  The library needs a newer toolchain: Android Gradle plugin 8.2.2 → 8.9.1, Gradle
+  wrapper 8.4 → 8.11.1, compileSdk and targetSdk 35 → 36 (Play now requires target API 36). Billing 1.1.0 (Play
+  Billing 7) would avoid the upgrade, but Play no longer accepts Billing 7 in app updates.
+- Release signing: the default keystore path pointed at `android/android/android.keystore`
+  (wrong) and is now `android/android.keystore`. Passwords can come from `BOOST_*`
+  environment variables; `scripts/build-android-release.ps1` asks for them and builds
+  `app-release.aab`.
+- **Web app**: new `src/game/account/playBillingClient.js`. Tapping a coin pack opens Play's
+  payment sheet (PaymentRequest, `https://play.google.com/billing`), sends the purchase
+  token to the worker's `/economy/credit-play`, and shows "+N מטבעות". The worker checks
+  the token with Google, credits the coins once and consumes the purchase.
+- The cards show the Play price (per country, from `getDetails`) on store entry
+  (`STORE_COIN_PRICES`).
+- A pack that was paid for but not credited (the app closed, or the worker was down) is
+  credited on the next store visit (`listPurchases` → `credit-play`). The worker answers
+  a repeat order with `already`, so nothing pays twice.
+- Outside the Android app, tapping a pack says coin buying is in the Android app.
+- Each pack has its own art: a small pouch (500), a fuller sack (1200) and an overflowing
+  sack with a heap of coins (3000), `assets/rewards/coin pack <n>.png` (`COIN_PACK_ICON` in
+  `avatarStoreScreen.js`). Made in ChatGPT (`image-prompts/43_coin_packs_sheet.md`); the
+  white floor its background removal left under each bag was cleared before splitting.
+- Still needed in the Play Console: the merchant profile, the three products and the
+  service-account access. See `worker/README.md` → Play Billing.
+
 ## Store becomes "חנות", with tabs (October 2026)
 
 - The avatar store is now **חנות**. It has three tabs:

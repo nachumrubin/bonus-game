@@ -111,6 +111,8 @@
 | `friendsService.js` | Friends list management. |
 | `ratingService.js` | ELO rating. K=24, SCALE=400. `applyEloForFinishedGame()`. `RATINGS_LIMIT=10`. |
 | `dictionaryService.js` | Word suggestion submission + admin moderation (requires `admin` custom claim). |
+| `economyClient.js` | The app's side of the coin worker (`/economy/*`). |
+| `playBillingClient.js` | Coin packs through Google Play (Digital Goods API + PaymentRequest; Android app only). |
 | `*.test.js` | Account service tests. |
 
 ### `src/game/settings/`

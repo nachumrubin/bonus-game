@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import {
-  mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER,
+  mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER, STORE_COIN_PRICES,
   DAILY_REWARD_SHOW, dailyDaysHtml, coinPacksHtml, STORE_TABS,
 } from './avatarStoreScreen.js';
 import { COIN_PACKS } from '../../game/account/economy.js';
@@ -298,6 +298,19 @@ test('store: coin packs render from COIN_PACKS and a tap emits BUY_COINS', () =>
   coins.fire(pack('coins_500'));
   coins.fire(pack('not_a_pack'));
   assert.deepEqual(bought, ['coins_500']);
+});
+
+test('store: STORE_COIN_PRICES puts the Play price on its pack only', () => {
+  bus._reset?.();
+  assert.doesNotMatch(coinPacksHtml(), /coin-pack-price/, 'no price until Play answers');
+  for (const id of Object.keys(COIN_PACKS)) assert.match(coinPacksHtml(), new RegExp(`coin pack ${COIN_PACKS[id].coins}\\.png`), `${id} has its own bag`);
+  const { root } = makeStoreRoot();
+  const coins = makeClassEl();
+  const r = { querySelector: (sel) => (sel === '#store-coins' ? coins : root.querySelector(sel)) };
+  mountAvatarStoreScreen({ root: r, bus });
+  bus.emit(STORE_COIN_PRICES, { prices: { coins_1200: '19.90 ₪' } });
+  assert.equal(coins.innerHTML.match(/coin-pack-price/g)?.length, 1);
+  assert.match(coins.innerHTML, /data-store-id="coins_1200">.*19\.90 ₪/);
 });
 
 test('store: tapping a Boostie card (not a button) brings it to life, then back to the still', async (t) => {

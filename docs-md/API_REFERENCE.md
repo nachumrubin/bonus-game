@@ -508,6 +508,19 @@ createEconomyClient({ baseUrl, getIdToken, fetchImpl?, newId?, retries = 1 }) �
 // retry reuses the reqId, so the worker answers it once. main.js: `economy` (cfg.pushWorkerUrl).
 ```
 
+### playBillingClient.js — coin packs through Google Play (Android app only, October 2026)
+```typescript
+createPlayBilling({ win?, PaymentRequestImpl? }) → {
+  getService(),                      // DigitalGoodsService | null (null outside the TWA); asked once
+  getPrices(ids),                    // { [itemId]: '9.90 ₪' } | {}
+  buy(productId, credit),            // Play sheet → credit({productId, purchaseToken}) → worker result
+                                     //   | { ok:false, reason:'unavailable'|'cancelled'|'play-error' }
+  recoverPending(credit, knownIds?), // credits unconsumed purchases → count newly credited
+}
+formatPlayPrice({ currency, value }, locale = 'he-IL') → string
+// main.js: credit = economy.creditPlay; prices emitted as STORE_COIN_PRICES { prices }.
+```
+
 ### worker/src/economy.js — coin endpoints (Cloudflare Worker, October 2026)
 ```typescript
 // POST /economy/claim-daily | achievement | buy | claim-chain | credit-play, body { reqId, … }
