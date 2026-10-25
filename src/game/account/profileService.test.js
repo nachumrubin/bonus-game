@@ -93,7 +93,7 @@ test('computeLiveGameStatsDelta: derives live aggregate and rich stats', () => {
   assert.deepEqual(d.highScore, { max: 70 });
   assert.deepEqual(d.highestMoveScore, { max: 40 });
   assert.deepEqual(d.bestMove.set, {
-    word: 'שלום', tiles: [...'שלום'].map(letter => ({ letter, val: 0 })), score: 40, ts: 10_000, opponentName: 'Rival',
+    word: 'שלום', tiles: [...'שלום'].map(letter => ({ letter, val: null })), score: 40, ts: 2000, opponentName: 'Rival',
   });
   assert.equal(d.longestWord.set, 'שלום');
   assert.equal(d.boostUsage.set.B9, 1);
@@ -110,14 +110,15 @@ test('computeLiveGameStatsDelta: bestMove keeps the main word and letter values,
       slot: 0, tiles: [{ letter: 'ב' }, { letter: 'ת' }], words: ['אב', 'בית'], score: 62, ts: 1,
       wordTiles: [
         [{ letter: 'א', val: 1, ex: true }, { letter: 'ב', val: 3, ex: false }],
-        [{ letter: 'ב', val: 3, ex: false }, { letter: 'י', val: 1, ex: true }, { letter: 'ת', val: 4, ex: false }],
+        [{ letter: 'ב', val: 0, ex: false }, { letter: 'י', val: 1, ex: true }, { letter: 'ת', val: 4, ex: false }],
       ],
     }],
   };
   const args = { state, room: { mode: 'friend-live', players: state.players }, mySlot: 0, now: 5 };
   const d = computeLiveGameStatsDelta({ ...args, currentStats: { highestMoveScore: 40 } });
   assert.equal(d.bestMove.set.word, 'בית');
-  assert.deepEqual(d.bestMove.set.tiles.map(t => t.val), [3, 1, 4]);
+  assert.deepEqual(d.bestMove.set.tiles.map(t => t.val), [0, 1, 4], 'a joker keeps its 0');
+  assert.equal(d.bestMove.set.ts, 1, "the move's own time, not the game end");
   assert.equal(d.bestMove.set.opponentName, 'Dana');
   assert.equal(computeLiveGameStatsDelta({ ...args, currentStats: { highestMoveScore: 62 } }).bestMove, undefined);
 });

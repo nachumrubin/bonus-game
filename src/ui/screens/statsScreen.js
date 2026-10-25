@@ -346,7 +346,7 @@ function wood(letter, val, cls = '') {
 function renderBestMove(best, highestMoveScore = 0) {
   const kicker = '<div class="sx-best-k"><svg class="gi"><use href="#gi-star"/></svg>המהלך הטוב ביותר שלך</div>';
   if (best?.tiles?.length) {
-    const tiles = best.tiles.map(t => wood(t.letter, Number(t.val) || HV[t.letter] || 0)).join('');
+    const tiles = best.tiles.map(t => wood(t.letter, t.val != null ? Number(t.val) : (HV[t.letter] ?? 0))).join('');
     const d = best.ts ? new Date(best.ts) : null;
     const meta = [best.opponentName ? `נגד ${escapeHtml(best.opponentName)}` : '', d ? `${d.getDate()} ${MONTHS[d.getMonth()]}` : '']
       .filter(Boolean).join(' · ');

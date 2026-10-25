@@ -2,6 +2,17 @@
 
 ---
 
+## Best move: joker values and move date (October 2026)
+
+Two fixes from the Codex review of PR 392 (stats redesign):
+
+- A joker in the best move showed its letter's normal value. Its stored value is 0, but
+  the code treated 0 as "missing" and fell back to the letter value table (HV).
+  `bestMoveRecord` now keeps a real 0. Only a value that is truly missing (older moves
+  saved without `wordTiles`) is stored as `null`. The stats screen uses HV only for `null`.
+- The best move's date was when the game ended. In async games that can be days after the
+  move. It now uses the move's own `ts`, and the game-end time only when the move has none.
+
 ## Boostie faces no longer crack around the mouth (October 2026)
 
 - On the profile and home avatar, some Boosties showed black patches around the mouth

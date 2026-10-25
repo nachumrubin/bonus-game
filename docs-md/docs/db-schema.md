@@ -251,7 +251,9 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
     gamesPlayed: number,
     gamesWon: number,
     bestMove?: {             // the highest-scoring move, replaced only on a new highestMoveScore (Oct 2026)
-      word: string, tiles: { letter: string, val: number }[], score: number, ts: number, opponentName: string | null,
+      word: string, tiles: { letter: string, val: number | null }[], score: number, ts: number, opponentName: string | null,
+      // val: 0 = joker; null = unknown (old moves without wordTiles; the screen falls back to HV).
+      // ts: when the move was played (move.ts), not when the game ended.
     },
     biggestComeback?: number, // widest deficit (points) the player came back from to win; {max} delta
     // other stats fields: Unknown / needs verification

@@ -429,9 +429,10 @@ function bestMoveRecord(moves, score, opponentName, ts) {
   if (!main.length) return null;
   return {
     word: main.map(t => t.letter).join(''),
-    tiles: main.map(t => ({ letter: t.letter, val: Number(t.val) || 0 })),
+    // a joker's 0 is a real value; only a missing one (old `words`-only moves) is null
+    tiles: main.map(t => ({ letter: t.letter, val: t.val != null ? Number(t.val) : null })),
     score,
-    ts,
+    ts: Number(move.ts) || ts,   // when the move was played (async games end days later)
     opponentName,
   };
 }
