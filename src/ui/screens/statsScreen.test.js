@@ -87,7 +87,7 @@ const PROFILE = {
     bonusesTriggered: 6, wordsPlayed: 12, totalMoves: 30, totalTilesPlayed: 60,
     comebackWins: 1, lastMoveWins: 2, closeWins: 3, biggestComeback: 41,
     boostUsage: { B13: 4 }, longestWord: 'מבחן', wordCounts: { מבחן: 2 },
-    bestMove: { word: 'שלום', tiles: [{ letter: 'ש', val: 3 }, { letter: 'ל', val: 2 }, { letter: 'ו', val: 1 }, { letter: 'ם', val: 2 }], score: 92, ts: NOW - 3 * DAY, opponentName: 'Rival' },
+    bestMove: { word: 'שלום', tiles: [{ letter: 'ש', val: 3 }, { letter: 'ל', val: 2 }, { letter: 'ו', val: 0 }, { letter: 'ם' }], score: 92, ts: NOW - 3 * DAY, opponentName: 'Rival' },
     recentGames: [
       { ts: NOW - 1000, result: 'win', score: 300, opponentScore: 250, opponentUid: 'u2', opponentName: 'Rival' },
       { ts: NOW - DAY, result: 'loss', score: 200, opponentScore: 230, opponentUid: 'u3', opponentName: 'Nem' },
@@ -181,6 +181,8 @@ test('mountStatsScreen: paints hero, panels and rivals', () => {
   assert.equal(ids['st-won'].textContent, '4');
 
   assert.match(ids['st-bestmove'].innerHTML, /sx-wood">ש<sub>3<\/sub>/);
+  assert.match(ids['st-bestmove'].innerHTML, /sx-wood">ו<sub>0<\/sub>/, 'a joker shows 0, not the letter value');
+  assert.match(ids['st-bestmove'].innerHTML, /sx-wood">ם<sub>\d+<\/sub>/, 'a missing value falls back to the letter value');
   assert.match(ids['st-bestmove'].innerHTML, /נגד Rival · 22 באוקטובר/);
   assert.equal(ids['st-highscore'].textContent, '300');
   assert.equal(ids['st-fun-comeback'].textContent, '+41');

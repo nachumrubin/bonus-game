@@ -10,6 +10,7 @@
 
 - [x] Hero + ELO ring, sticky tabs, flat panels; best-move tiles, margin bars, radar, rivals.
 - [x] `stats.bestMove` and `stats.biggestComeback` written by `computeLiveGameStatsDelta`.
+- [x] Codex review (PR 392): joker tiles keep their 0 value; best-move date is the move's time.
 - [ ] Phone check: sticky tabs while scrolling, ring/radar animations, the record shelf's
   side-scroll on a narrow phone.
 - [ ] Best move fills in only after the player's next record move (older profiles show the
