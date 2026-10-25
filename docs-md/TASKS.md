@@ -1,5 +1,15 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Store ("חנות") with tabs — October 2026
+
+- [x] Renamed to חנות; tabs: אווטארים, ערכות צבע (בקרוב...), מטבעות.
+- [x] Tapping a Boostie card brings it to life for 6.5 s (locked ones too, in colour).
+- [x] Home bottom nav: חנות replaces הישגים; הישגים moved to the profile list.
+- [ ] Coin packs: the tab shows the packs, but buying says "בקרוב". Needs Play Billing in the
+  Android app (Phase 6b below) and prices on the cards from the Play store.
+- [ ] App skins (colour palettes): design the palettes, then sell them in the ערכות צבע tab.
+- [ ] Phone check: the card preview's 3D on a mid-range phone (one WebGL board per tap).
+
 ## Boostie mouth poke-through — October 2026
 
 - [x] Inner mouth skin re-weighted to follow the face (all Boosties); app models refreshed.

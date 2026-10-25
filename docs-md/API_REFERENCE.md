@@ -643,8 +643,11 @@ mountGameScreen(...).playBoostieReaction(slot, clip): boolean   // live3d.play o
 
 ### avatarStoreScreen.js — store UI (Boosties + reactions, October 2026)
 ```typescript
-mountAvatarStoreScreen({ root?, bus, prefersReducedMotion?, createLive? }): { paint, previewReaction(id): Promise<boolean>, unmount }
-STORE_INTENT = { OPEN, EQUIP, PURCHASE, CONFIRM_PURCHASE, CANCEL_PURCHASE, CLOSE }
+mountAvatarStoreScreen({ root?, bus, prefersReducedMotion?, createLive? }): { paint, previewReaction(id): Promise<boolean>, previewCard(boostieId): Promise<boolean>, selectTab(tab), unmount }
+STORE_INTENT = { OPEN, EQUIP, PURCHASE, CONFIRM_PURCHASE, CANCEL_PURCHASE, BUY_COINS, CLOSE }
+// OPEN { from?: 'home' } — back returns home; otherwise to the profile
+// BUY_COINS { id: COIN_PACKS key } — main.js shows "בקרוב" until Play Billing (Phase 6b)
+STORE_TABS = ['avatars', 'skins', 'coins'] | coinPacksHtml(packs = COIN_PACKS)
 STORE_RENDER  // { coins, boosties, equippedAvatar, ownedReactions }
 // EQUIP { id: boostieId }; PURCHASE / CONFIRM_PURCHASE { id: 'boostie:<id>' | 'reaction:<id>' }
 normalizeStoreState(payload) | storeHtml(state) | boostieCardHtml(id, state) | reactionTileHtml(reaction, state)

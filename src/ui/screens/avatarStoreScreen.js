@@ -1,21 +1,27 @@
-// avatarStoreScreen — wires #savatar-store (the store), plus the purchase-confirm
+// avatarStoreScreen — wires #savatar-store (the store, "חנות"), plus the purchase-confirm
 // (#ov-store-confirm) and daily-reward (#ov-daily-reward) overlays. The catalog lives
 // in game/account/boostieCatalog.js and the coin transactions in profileService.js;
 // this module is DOM + bus only.
 //
-// Two sections (D-boostie-xp):
+// Three tabs (.store-tab / #store-panel-<tab>): avatars, skins (app colour palettes —
+// "בקרוב..." for now) and coins (packs for real money, COIN_PACKS).
+//
+// The avatars tab has two sections (D-boostie-xp):
 //   Boosties  — owned ones show their level, an XP bar and the next form; locked ones
 //               unlock free when a Boostie reaches level 7, or for coins.
 //   Reactions — the free set is always owned; the rest are bought for coins. Tapping a
 //               tile (owned or not) plays it on your equipped Boostie in the preview
 //               stage (#store-rx-preview): live 3D where the scoreboard would run it,
 //               otherwise the still with the reaction's emoji.
+// Tapping a Boostie card (not its buttons) brings that Boostie to life in its card for
+// CARD_PREVIEW_MS — locked ones too, in full colour — so the player gets a feel for it.
 //
 // Render with STORE_RENDER { coins, boosties, equippedAvatar, ownedReactions }. Clicks emit:
 //   STORE_INTENT.EQUIP            { id }    — owned Boostie → equip it
 //   EVO_SHOW                { id, from, to } — replay the latest evolution (evolutionScreen)
 //   STORE_INTENT.CONFIRM_PURCHASE { id }    — confirmed buy, id = 'boostie:bubo' | 'reaction:wink'
-//   STORE_INTENT.CLOSE                      — back to profile
+//   STORE_INTENT.BUY_COINS        { id }    — coin pack tapped, id = COIN_PACKS key
+//   STORE_INTENT.CLOSE                      — back to where the store was opened from
 // main.js performs the purchase and re-emits STORE_RENDER (the profile watch).
 
 import { $, on, setText } from '../domHelpers.js';
@@ -27,6 +33,7 @@ import {
 import { normalizeBoosties, progressToNext, equippedBoostie } from '../../game/account/boostieXp.js';
 import { EVO_SHOW } from '../boostie3d/evolutionData.js';
 import { createScoreboardLive } from '../boostie3d/scoreboardLive.js';
+import { COIN_PACKS } from '../../game/account/economy.js';
 
 export const STORE_INTENT = Object.freeze({
   OPEN:             'store/open',
@@ -34,6 +41,7 @@ export const STORE_INTENT = Object.freeze({
   PURCHASE:         'store/purchase',         // tile tapped → open confirm
   CONFIRM_PURCHASE: 'store/confirmPurchase',  // confirm button → run the buy
   CANCEL_PURCHASE:  'store/cancelPurchase',
+  BUY_COINS:        'store/buyCoins',         // coin pack for real money
   CLOSE:            'store/close',
 });
 
@@ -44,6 +52,10 @@ export const DAILY_REWARD_ACK  = 'dailyReward/ack';
 
 const FALLBACK_AVATAR_SRC = 'assets/avatars/anonymous player.png';
 const PREVIEW_IDLE_MS = 8000;   // the stage closes (and frees its 3D) after this long idle
+const CARD_PREVIEW_MS = 6500;   // a tapped Boostie card stays alive this long
+const CARD_GOOD_AT_MS = 3200;   // …and does a second gesture about halfway
+
+export const STORE_TABS = Object.freeze(['avatars', 'skins', 'coins']);
 
 // The emoji each Boostie reaction shows where the Boostie is a still.
 export const REACTION_ICON = Object.freeze(Object.fromEntries(BOOSTIE_REACTIONS.map((r) => [r.id, r.emoji])));
@@ -146,6 +158,16 @@ export function storeHtml(state) {
     + `<div class="rx-grid">${BOOSTIE_REACTIONS.map((r) => reactionTileHtml(r, state)).join('')}</div></div>`;
 }
 
+// Coin packs for real money. The price is set in the Play Console (per country), so
+// the card shows the coins only.
+export function coinPacksHtml(packs = COIN_PACKS) {
+  return `<div class="coin-packs">${Object.entries(packs).map(([id, p]) => (
+    `<button class="coin-pack" data-store-action="coins" data-store-id="${escapeHtml(id)}">`
+    + `${COIN_ICON_HTML}<span class="coin-pack-n g-num">${Number(p.coins) || 0}</span>`
+    + `<span class="coin-pack-l">מטבעות</span></button>`
+  )).join('')}</div>`;
+}
+
 // createLive: the live 3D factory (scoreboardLive; injectable for tests).
 export function mountAvatarStoreScreen({
   root = globalThis.document,
@@ -159,6 +181,8 @@ export function mountAvatarStoreScreen({
   const balanceEl = $('#store-coin-balance', root);
   const hintEl    = $('#store-hint', root);
   const backBtn   = $('#store-back-btn', root);
+  const tabs      = [...(root?.querySelectorAll?.('.store-tab') ?? [])];
+  const coinsEl   = $('#store-coins', root);
 
   // Confirm overlay elements.
   const confirmOv    = $('#ov-store-confirm', root);
@@ -188,11 +212,18 @@ export function mountAvatarStoreScreen({
   let live = null;      // the preview's live 3D, while the stage is open
   let previewToken = 0;
   let idleTimer = 0;
+  let cardLive = null;  // the tapped Boostie card's live 3D
+  let cardToken = 0;
+  let cardTimers = [];
+  let cardEl = null;
+
+  if (coinsEl) coinsEl.innerHTML = coinPacksHtml();
 
   function paint(next = {}) {
     state = normalizeStoreState(next);
     if (balanceEl) setText(balanceEl, String(state.coins));
     if (!grid) return;
+    closeCardPreview();   // the card it lived in is about to be replaced
     grid.innerHTML = storeHtml(state);
     // Still load failure → the generic person icon.
     for (const img of grid.querySelectorAll?.('img.bst-img, img.bst-next-img') ?? []) {
@@ -228,6 +259,7 @@ export function mountAvatarStoreScreen({
   async function previewReaction(id) {
     const r = BOOSTIE_REACTIONS.find((x) => x.id === id);
     if (!r || !previewEl) return false;
+    closeCardPreview();   // one live 3D at a time
     const token = ++previewToken;
     const mine = equippedBoostie(state);
     if (previewStill) {
@@ -258,6 +290,51 @@ export function mountAvatarStoreScreen({
     previewEl?.classList?.remove('is-pop');
   }
 
+  // ---------- Boostie card preview ----------
+  // Brings the tapped card's Boostie to life: its signature move, a second gesture,
+  // eyes and head moving in between; back to the still after CARD_PREVIEW_MS.
+  async function previewCard(id) {
+    const card = grid?.querySelector?.(`.bst-card[data-boostie="${id}"]`);
+    const stage = card?.querySelector?.('.bst-stage');
+    if (!BOOSTIES[id] || !stage || prefersReducedMotion()) return false;
+    if (card === cardEl && cardLive) return true;   // already alive
+    closeCardPreview();
+    closePreview();       // one live 3D at a time
+    const token = ++cardToken;
+    cardEl = card;
+    card.classList?.add('is-alive');
+    const level = state.boosties[id] ? progressToNext(state.boosties[id].xp).level : 1;
+    cardTimers.push(setTimeout(closeCardPreview, CARD_PREVIEW_MS));
+    cardLive = createLive({ hosts: () => [stage], prefersReducedMotion, look: { lively: true, full: true } });
+    cardLive.sync([{ id, level }]);
+    const ok = await cardLive?.ready(0);
+    if (token !== cardToken || !cardLive || !ok) return false;
+    if (!cardLive.play(0, 'signature')) cardLive.play(0, 'good');
+    cardTimers.push(setTimeout(() => { if (token === cardToken) cardLive?.play(0, 'good'); }, CARD_GOOD_AT_MS));
+    return true;
+  }
+  function closeCardPreview() {
+    cardToken++;
+    for (const t of cardTimers) clearTimeout(t);
+    cardTimers = [];
+    cardLive?.dispose();
+    cardLive = null;
+    cardEl?.classList?.remove('is-alive');
+    cardEl = null;
+  }
+
+  function selectTab(tab) {
+    if (!STORE_TABS.includes(tab)) return;
+    closePreview();
+    closeCardPreview();
+    for (const t of tabs) {
+      const on = t.dataset?.tab === tab;
+      t.classList?.toggle('on', on);
+      t.setAttribute?.('aria-selected', on ? 'true' : 'false');
+    }
+    for (const id of STORE_TABS) $(`#store-panel-${id}`, root)?.classList?.toggle('on', id === tab);
+  }
+
   function closeConfirm() {
     pendingId = null;
     confirmOv?.classList?.add('hidden');
@@ -268,7 +345,9 @@ export function mountAvatarStoreScreen({
       const btn = e.target?.closest?.('[data-store-action]');
       if (!btn) {
         const tile = e.target?.closest?.('[data-reaction]');
-        if (tile) previewReaction(tile.getAttribute('data-reaction'));
+        if (tile) { previewReaction(tile.getAttribute('data-reaction')); return; }
+        const card = e.target?.closest?.('[data-boostie]');
+        if (card) previewCard(card.getAttribute('data-boostie'));
         return;
       }
       const id = btn.getAttribute('data-store-id');
@@ -286,6 +365,12 @@ export function mountAvatarStoreScreen({
     }));
   }
 
+  for (const t of tabs) cleanups.push(on(t, 'click', () => selectTab(t.dataset?.tab)));
+  if (coinsEl) cleanups.push(on(coinsEl, 'click', (e) => {
+    const id = e.target?.closest?.('[data-store-action="coins"]')?.getAttribute('data-store-id');
+    if (id && COIN_PACKS[id]) bus.emit(STORE_INTENT.BUY_COINS, { id });
+  }));
+
   if (backBtn) {
     backBtn.removeAttribute?.('onclick');
     cleanups.push(on(backBtn, 'click', (e) => { e?.preventDefault?.(); bus.emit(STORE_INTENT.CLOSE, {}); }));
@@ -298,7 +383,9 @@ export function mountAvatarStoreScreen({
     previewReaction(tile.getAttribute('data-reaction'));
   }));
   if (previewClose) cleanups.push(on(previewClose, 'click', closePreview));
-  cleanups.push(bus.on(STORE_INTENT.CLOSE, closePreview));
+  cleanups.push(bus.on(STORE_INTENT.CLOSE, () => { closePreview(); closeCardPreview(); }));
+  // Every visit starts on the avatars tab.
+  cleanups.push(bus.on(STORE_INTENT.OPEN, () => selectTab('avatars')));
 
   if (confirmYes) cleanups.push(on(confirmYes, 'click', () => {
     const id = pendingId;
@@ -327,8 +414,11 @@ export function mountAvatarStoreScreen({
   return {
     paint,
     previewReaction,
+    previewCard,
+    selectTab,
     unmount() {
       closePreview();
+      closeCardPreview();
       for (const off of cleanups) try { off(); } catch {}
       cleanups.length = 0;
     },
