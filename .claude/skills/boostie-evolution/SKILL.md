@@ -373,7 +373,10 @@ Every model gets all of these. Don't skip one to save time:
    get one clean edge. The lower lip and chin hang on a `jaw` bone, and behind the
    cut sits a dark inner skin that stretches across the gap. Opening = negative X
    rotation of `jaw`. The good, boost, laugh and wow clips use it, and the app adds
-   a small two-beat "heh" every 12–24 s.
+   a small two-beat "heh" every 12–24 s. The inner skin copies the bone weights of the
+   face over it (plus its jaw share). Weighted to `head` alone, it pokes through as
+   black patches whenever the face moves differently from the head bone. Models built
+   before Oct 25 2026 were patched with `fix_mouth_weights.py`.
 6. **Clips.** idle, turn, good, boost, laugh, wow, stare, yawn, wink (shared, with
    anticipation and overshoot) plus the character's `signature`, which the app plays every
    10–20 s, also on the board. Wink also keys the lids (`LID_CLIPS`); models built before it
@@ -394,6 +397,11 @@ shared clips swing them; the antenna is a `glow_bones` bone.
 
 - Read `out/<name>_l<N>/mouth_*.png`: closed, the seam is invisible; open, it
   shows the dark inner mouth, not orange fur or a hole into the body.
+- Run `blender -b out/<key>/<key>.blend --python face_check.py -- magenta lively`. It paints
+  the inner skin magenta and renders the face with the head turned the way the app's lively
+  avatar (home / profile) turns it: ±32° yaw, +9°/−6° pitch, ±4° roll. Read the
+  `fcheck_*.png` files: any magenta on a closed face is the dark skin showing through
+  (`-- magenta` alone renders the clips; magenta in boost frames is the open mouth).
 - Read `out/<name>_l<N>/full.png`, `bust.png` and `anim_*.png`. Compare with the
   sheet: colours, markings, the core shape for this level (§2), and the signature
   feature.
