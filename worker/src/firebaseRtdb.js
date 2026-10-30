@@ -113,6 +113,17 @@ export async function rtdbGet(env, path, { shallow = false } = {}) {
   return r.json();
 }
 
+// Children of `path` whose `orderBy` child equals `value` (needs an .indexOn rule).
+export async function rtdbQueryEqual(env, path, orderBy, value) {
+  const token = await getAccessToken(env);
+  const url = new URL(`${dbBase(env)}/${path}.json`);
+  url.searchParams.set('orderBy', JSON.stringify(orderBy));
+  url.searchParams.set('equalTo', JSON.stringify(value));
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) throw new Error(`RTDB query ${path} by ${orderBy} failed: ${r.status}`);
+  return r.json();
+}
+
 export async function rtdbPatch(env, path, data) {
   const token = await getAccessToken(env);
   const r = await fetch(`${dbBase(env)}/${path}.json`, {

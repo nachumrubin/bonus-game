@@ -2,6 +2,232 @@
 
 ---
 
+## Privacy policy page in the app's glass palette (October 2026)
+
+- `privacy-policy.html` still used the old teal/blue palette with yellow headings. It now uses the
+  `--sg-*` tokens from `screens-glass.css`: the navy screen gradient, a glass card, a sticky
+  frosted header with a back chip, cyan-barred section headings and a primary-style back button.
+  Content unchanged.
+
+## Help: המילון tab, FAQ rewrite, privacy update (October 2026)
+
+- New help-menu item **המילון** (`#ov-dict-help`, `partials/screens/dictionary-help-screen.html`,
+  `dictionaryHelpScreen.js`, `MENU_INTENT.OPEN_DICT_HELP`). It explains that a word passes only if
+  its exact form is in `data/dictionary.txt` (no morphology at runtime), the final-letter rule, and
+  what the list lacks: attached prefixes (הילד), possessives (ביתו), construct forms (מכונת), object
+  suffixes (ראיתיו), defective spelling (היתה), proper names and gershayim acronyms, plus the
+  `/dictionaryRejected` block list. Every ✓/✗ example was probed against the list and the live
+  block list; re-check them when either changes.
+- FAQ rewritten into seven groups (`.faq-group`) covering account, rules, boosts and tools, online
+  and friends, rating and achievements, Boosties/coins/store, settings and support. Numbers come
+  from the code: Elo 800 start (online vs registered only), coins 150 / 20+10 per day to 110 / 50–750
+  per achievement / 15 per ad ×5 / packs 500–3000, XP 10 (+10 win, +5 draw), 4 scoreless turns,
+  locks 3 (3/3/5 turns, 10 points), 30 s disconnect, 7-day async expiry. Old answers claimed the
+  dictionary accepts defective spelling and gave no Elo start.
+- Guide: dictionary section corrected and pointed at המילון; coins, Boostie XP, Elo, the stall rule
+  and lock count filled in.
+- Privacy policy: in-game reactions are muted from the reaction tray (there is no "ללא הודעות"
+  setting); game rooms are readable by anyone with the room id (not "only the two players");
+  added contact-form reports with technical info, automatic error reports and online-game debug
+  timelines, private stats/progress, email verification and Google/password linking, guest
+  upgrade, the locally stored address-form setting, and the FrequencyWords CC BY-SA 4.0 credit.
+
+## Top bar: the whole profile block opens the profile (October 2026)
+
+- Tapping the ELO chip inside `#btn-profile-home` opened the rankings table (`CHAMPS_OPEN`, with
+  stopPropagation), which surprised players aiming for their profile. The chip is now display only
+  (`menuScreen.js` handler and its `role`/`tabindex` removed), so any tap on the block opens
+  profile/auth. Rankings stay one tap away from the profile (`#btn-profile-champs`). Test updated.
+
+## Daily reward: coin tab counts up under the profile block (October 2026)
+
+- Tapping איסוף on the daily-reward overlay slides a coin tab out from behind the profile block's
+  bottom edge: same colour and border as the block, no top border, inset by its corner radius, so
+  it reads as a drawer of the block rather than a floating pill (first try was a pill under the top
+  bar; rejected as detached). It counts the balance from old to new (ease-out, 0.9 s), holds and
+  slides back in (`src/ui/coinPill.js`, `.coin-pill` in `screens-glass.css`, wired on
+  `DAILY_REWARD_ACK` in `main.js`). Reduced motion: no slide, the value jumps. Test added.
+
+## Service worker: word lists always fresh after a deploy (October 2026)
+
+- `sw.js` install precached with plain `cache.add(url)`, which goes through the browser HTTP cache
+  (Firebase `max-age=3600`): a phone that fetched a file in the hour before a deploy could precache
+  the old copy, and `.txt` files were then served cache-first until the next deploy. Install now
+  fetches with `cache: 'reload'`, and `/data/` (dictionary, bot list, tips) is network-first with the
+  cache as the offline fallback, like `/src/` and partials.
+
+## Bot vocabulary rebuilt from the new dictionary (October 2026)
+
+- `data/bot-words.txt` was a frequency-sorted list committed in June 2026 with no build script; a
+  fifth of it (prefixed forms such as ולא / הספר) is now rejected by the new dictionary.
+- New `scripts/build-bot-words.mjs`: every `dictionary.txt` word that appears ≥ 5 times in
+  FrequencyWords (Hermit Dave, OpenSubtitles 2018 Hebrew `he_full.txt`, CC-BY-SA 4.0; not
+  committed, path passed as an argument), most common first. 72,480 words.
+- Pools: easy 2,000 (≤3 letters) and medium 20,000 (≤5) stay full; hard (≤6) 61,023 words, up
+  from 50,241 before the dictionary change and 39,181 after it. Rerun the script after any
+  dictionary change.
+
+## Dictionary replaced with the new 274K list (October 2026)
+
+- `data/dictionary.txt` is the user's new list: 274,112 words (was 70,897), 221,558 new — mostly full
+  verb paradigms — and 18,343 old words dropped. Format unchanged (one word per line, sorted).
+- Its rules differ from the old list: no prefixed particles (הילד, ולא, שלא, הספר), no construct
+  forms (מכונת, מלחמת, אשת), full spelling only (הייתה / מאוד / אימא, not היתה / מאד / אמא), no
+  proper names (ישראל, ירושלים).
+- Admin-curated words since June 2026 are listed in `docs-md/dictionary-admin-review.md`: 127
+  admin-added words the new list lacks (no longer valid) and 42 admin-removed words it brings back.
+  `/dictionaryApproved` was empty; `/dictionaryRejected` (99 words, 17 of them in the new list)
+  still blocks.
+- The bot list (`data/bot-words.txt`) is filtered by the dictionary: easy and medium pools stay full
+  (2,000 / 20,000); hard drops from 50,241 to 39,181 words.
+
+## Email + Google on the same address both keep working (October 2026)
+
+- Firebase keeps one account per email. Signing in with Google on an address whose password
+  account was never verified makes Google the owner and drops the password, so email +
+  password login stopped working. Email sign-up now sends a verification email (Hebrew,
+  `sendVerificationEmail` in `main.js`): a verified address keeps its password and Firebase
+  links Google to it instead.
+- When Google sign-in fails with `auth/account-exists-with-different-credential`, the Google
+  credential is kept and linked right after the player signs in with the password
+  (`linkPendingGoogle`, LOG_IN), so both ways work from then on.
+- An account that already lost its password (Google only) gets one back through
+  "שכחתי סיסמה"; the `auth/email-already-in-use` message now points there.
+
+## Rewarded video: no false "update the app" while the ad loads (October 2026)
+
+- `RewardedAdActivity` is translucent while it loads the ad, so the page under it can stay
+  `visible` past the 2.5 s handoff and `watch()` reported `not-handled` (store banner: update
+  the app) even though the ad screen was up. At the deadline a page that lost focus now counts
+  as `opened` (`rewardedAds.js`, test added).
+
+## Guest sign-up sheet: spinning icon (October 2026)
+
+- `#ov-guest-upgrade`'s icon is a spinner (8 rays, fading round) turned one ray at a time
+  (`.gi-spin`, `screens-glass.css`) instead of the static `gi-sparkle`. The SVG is inline in
+  `guest-upgrade-overlay.html`, not a sprite `<use>`: partials load lazily, so an app left open
+  across a deploy got the new partial against the old index.html sprite and showed an empty circle.
+  Reduced motion stops it through the global blanket in `styles.css`, so the in-app
+  "תנועה מופחתת: לא" (`[data-full-motion]`) still turns it back on.
+
+## Guest → email sign-up keeps the guest's account (October 2026)
+
+- Email sign-up from a guest now links the email to the anonymous account
+  (`linkWithCredential`) instead of creating a new one, as Google sign-in already did:
+  the uid stays, so running online games, invites and friends carry over. On a taken
+  name the email is unlinked again (the player stays a guest) instead of deleting the
+  user. `auth/credential-already-in-use` reads "הדוא״ל הזה כבר רשום".
+
+## Online play needs an account, except a friend's invite (October 2026)
+
+- A guest (anonymous) tapping the online card, or create-room / matchmaking in the lobby,
+  gets the sign-up sheet (`#ov-guest-upgrade`) worded for online play instead of the
+  lobby: guests' games live on one device and earn no rating. The card stays visible.
+- Exception: the sheet's **קיבלתי קוד מחבר** (`#ovgu-code-btn`, `AUTH_INTENT.GUEST_JOIN_CODE`)
+  opens the lobby's join-by-code, so a friend's WhatsApp invite still works without an
+  account. After that online game, arriving home shows the sheet once more with
+  after-game wording (`guestSignupAfterOnline` in main.js).
+- `authScreens.showUpgrade(reason)` with `GUEST_UPGRADE_COPY` (`default` = the store's
+  old wording, `online`, `afterOnline`); the store uses it too.
+
+## Login: autofill colours and one-tap כניסה (October 2026)
+
+- Chrome's autofill painted a light box behind a saved password. `screens-glass.css`
+  covers `:-webkit-autofill` in `.g-fld` inputs with an inset shadow in the field's
+  colour and keeps the text white (the general `.g-fld input` rule's
+  `box-shadow: none !important` had blocked the usual fix).
+- כניסה looked dead on the first tap: sign-in takes a second or two with no feedback, so
+  players tapped again. The button now reads "נכנס…" and is disabled until Firebase
+  answers (`setLoginBusy`, released by `showError('login')` or success); repeat taps are
+  ignored. An empty password is re-read once 60 ms later, for Chrome handing over an
+  autofilled value only after the tap. Enter / "Go" on the password field signs in.
+
+## Top bar: line-style admin icon (October 2026)
+
+- The admin button (`#topbar-admin-btn`) uses a new `gi-admin` symbol (a shield with a
+  check mark) in the same line style as the bell, music, gear and help icons, replacing
+  the 3-D `assets/navigation/admin.png`. The admin screen's header still uses the PNG.
+
+## App icon: the Blender ב tile (October 2026)
+
+- The launcher icon, `icon-512.png` (web / PWA) and `store_icon.png` (Play listing) are
+  now the Blender ב tile from the home logo (upright, cyan rim) on a navy gradient,
+  replacing the flat ב with the lightning ring. New `Blender designs/logo/make_app_icon.py`
+  builds every size from `render/row_bet.png`.
+- The adaptive icon gets its own background and monochrome layers
+  (`ic_launcher_background.webp`, `ic_launcher_monochrome.webp`): Android 13+ themed icons
+  show the carved letter instead of a solid square. The template's green-grid
+  `drawable/ic_launcher_background.xml` is gone.
+
+## Exit question: "יציאה" closes the Android app (October 2026)
+
+- In the TWA the home screen's exit question's **יציאה** did nothing: `window.close()`
+  is refused and the page is the first history entry, so `history.back()` has nowhere
+  to go. In the app (Play Billing service present) the button now closes the question
+  and opens `APP_EXIT_URL` (`intent://exit#Intent;scheme=boost-ad;end`,
+  `src/ui/backButton.js`); the new native `ExitActivity` sends the app to the
+  background, as the home key does. Browsers keep the close / back fallback.
+- Needs the new app build: versionCode 18 (1.5.1). On 17 the button just closes the
+  question.
+
+## Digital Asset Links: Play app signing key (October 2026)
+
+- `.well-known/assetlinks.json` now lists the Play **app signing** key's SHA-256
+  (`83:9A:…:F9:57`) next to the upload key's. The Play-installed app is re-signed by
+  Google, so without it the TWA failed verification and opened as a Chrome Custom Tab
+  (URL bar visible): no Digital Goods API, so no coin-pack prices and no rewarded-video
+  card.
+
+## In-app account deletion (October 2026)
+
+- **Profile screen**: a quiet **מחיקת חשבון** link under the list opens a red dialog
+  (`#ov-delete-account`). The delete button arms only after the player types "מחק",
+  and the dialog says what is lost (coins aren't refunded). Google Play requires an
+  in-app path for apps with accounts.
+- **Worker**: new `POST /account/delete` (`worker/src/accountDelete.js`). With the
+  service account it removes, in one multi-path update: `users/<uid>`, `globalRatings`,
+  `presence`, `invites`, `inviteAcks`, `userNotifications`, `coinLedger`, the
+  matchmaking ticket, the `usernames/` and `userIds/` claims (only while they still point
+  at the uid), the player's friend lists, the friend edges and friend requests they left
+  in other players' data. In rooms it renames them to "שחקן שנמחק", so the opponent's
+  history stays readable. Then it deletes the OneSignal user (best effort) and, last,
+  the Firebase Auth user (Identity Toolkit `accounts:delete`). Every step is
+  idempotent, so a retry after a failure finishes the job. `coinOrders/` is kept for
+  refunds and fraud checks.
+- **App**: `src/game/account/accountDeletion.js` calls the worker. main.js stops
+  presence first (otherwise its last offline write would recreate `presence/<uid>`),
+  then on success runs the normal logout and shows "החשבון נמחק". On failure presence
+  restarts and the dialog shows the error, so the player can try again.
+- **Rules**: `rooms` also indexes `players/0/uid` and `players/1/uid`, so the worker can
+  find a player's rooms without scanning them all.
+- **Privacy policy**: deletion is in-app again (פרופיל ← מחיקת חשבון), with a
+  `#delete-account` section. Use `privacy-policy.html#delete-account` as the Play
+  Console's web deletion link. Email remains the fallback.
+
+---
+
+## Rewarded videos for coins: AdMob (October 2026)
+
+- The store's coins tab has a new card, **צפו בסרטון קצר**, worth +15 coins
+  (`AD_REWARD_COINS`), up to 5 a day (`AD_REWARDS_PER_DAY`). It shows only in the
+  Android app and only to signed-in players. The rewards are kept small so they top up
+  coins rather than replace buying packs.
+- **Android app**: `play-services-ads:25.5.0` and a new `RewardedAdActivity`. The web
+  page can't run the native ads SDK, so it opens
+  `intent://reward?uid=…#Intent;scheme=boost-ad;end`. The activity plays one rewarded ad
+  with the uid as the server-side-verification (SSV) user id, then returns to the game.
+  The AdMob ids come from `android/gradle.properties` (`admobAppId`,
+  `admobRewardedUnitId`). These are Google's test ids until the real ones are filled in,
+  and debug builds always use the test ids. versionCode 17 / versionName 1.5.0.
+- **Worker**: new `GET /admob/ssv` (`worker/src/admobSsv.js`). Coins are credited only
+  when AdMob's ECDSA-signed callback checks out against Google's published keys, once per
+  AdMob transaction id and capped per day (`applyAdReward` in `economy.js`). The page
+  never asks for ad coins itself, so a modified client can't mint them.
+- **Web app**: `src/game/account/rewardedAds.js` opens the ad screen. The profile watch
+  shows "+15 מטבעות על הצפייה!" when the credit lands. An older app version has no
+  handler for the link, so in that case the store asks the player to update.
+- **Rules**: `users/<uid>/profile/adRewards` (`{ day, count }`) is worker-only.
+
 ## Coin packs: Google Play purchase flow (Phase 6b, October 2026)
 
 - **Android app (TWA)**: added `com.google.androidbrowserhelper:billing:1.2.0` (Play Billing

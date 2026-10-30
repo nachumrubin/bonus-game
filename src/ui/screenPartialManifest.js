@@ -33,6 +33,7 @@ export const SCREEN_PARTIALS = [
   './partials/screens/help-dropdown.html',
   './partials/screens/guide-screen.html',
   './partials/screens/faq-screen.html',
+  './partials/screens/dictionary-help-screen.html',
   './partials/screens/sign-up-screen.html',
   './partials/screens/log-in-screen.html',
   './partials/screens/profile-screen.html',

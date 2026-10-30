@@ -38,6 +38,7 @@ function makeDom() {
     Object.assign(makeEl({ attrs: { 'data-action': 'guide' } }),    { _action: 'guide' }),
     Object.assign(makeEl({ attrs: { 'data-action': 'faq' } }),      { _action: 'faq' }),
     Object.assign(makeEl({ attrs: { 'data-action': 'report' } }),   { _action: 'report' }),
+    Object.assign(makeEl({ attrs: { 'data-action': 'dict' } }),     { _action: 'dict' }),
   ];
   // Make each item click-callable.
   for (const it of items) {
@@ -117,6 +118,17 @@ test('faq item click emits OPEN_FAQ', () => {
   mountHelpDropdown({ root, bus });
   bus.emit(MENU_INTENT.OPEN_HELP_MENU);
   items[2].click();
+  assert.equal(seen.length, 1);
+});
+
+test('dictionary item click emits OPEN_DICT_HELP', () => {
+  bus._reset();
+  const { root, items } = makeDom();
+  const seen = [];
+  bus.on(MENU_INTENT.OPEN_DICT_HELP, (p) => seen.push(p));
+  mountHelpDropdown({ root, bus });
+  bus.emit(MENU_INTENT.OPEN_HELP_MENU);
+  items[4].click();
   assert.equal(seen.length, 1);
 });
 

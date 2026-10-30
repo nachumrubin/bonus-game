@@ -293,34 +293,11 @@ test('home partial has no champions navigation card', () => {
   assert.match(profile, /טבלת דירוגים/);
 });
 
-test('ELO chip opens champions and does not bubble into profile', () => {
+test('ELO chip is display only, so its tap opens the profile block', () => {
   bus._reset();
   const { root, buttons } = makeMenuDom();
-  let opens = 0;
-  let profiles = 0;
-  bus.on(CHAMPS_OPEN, () => { opens++; });
-  bus.on(MENU_INTENT.OPEN_PROFILE, () => { profiles++; });
   mountMenuScreen({ root, bus });
-  assert.equal(buttons.elo.getAttribute('role'), 'button');
-  assert.equal(buttons.elo.getAttribute('aria-label'), 'טבלת דירוגים');
-  const ev = {
-    stopped: false,
-    preventDefault() {},
-    stopPropagation() { ev.stopped = true; },
-  };
-  for (const l of buttons.elo._listeners) if (l.ev === 'click') l.fn(ev);
-  assert.equal(ev.stopped, true);
-  assert.equal(opens, 1);
-  assert.equal(profiles, 0);
-  const key = {
-    key: 'Enter',
-    stopped: false,
-    preventDefault() {},
-    stopPropagation() { key.stopped = true; },
-  };
-  for (const l of buttons.elo._listeners) if (l.ev === 'keydown') l.fn(key);
-  assert.equal(key.stopped, true);
-  assert.equal(opens, 2);
+  assert.equal(buttons.elo._listeners.length, 0, 'no handler that could stop the profile click');
 });
 
 test('mount throws when bus is not provided', () => {

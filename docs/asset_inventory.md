@@ -28,6 +28,14 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 
 ## Existing
 
+### App icon (October 2026)
+
+* android/app/src/main/res/mipmap-*/ic_launcher_{foreground,background,monochrome}.webp,
+  ic_launcher.webp, ic_launcher_round.webp; icon-512.png (web / PWA, maskable);
+  store_icon.png (Play listing, 512, no alpha). The Blender ב tile (upright, cyan rim) on
+  a navy gradient; the themed (monochrome) icon is the carved letter. Built by
+  `Blender designs/logo/make_app_icon.py` from `render/row_bet.png`.
+
 ### Boostie models and stills (October 2026)
 
 In-app Boostie assets (paths built by `src/game/account/boostieCatalog.js`):
@@ -185,7 +193,7 @@ Audio lives under `assets/sfx/` and is tracked separately in `docs/sound_invento
 * assets/rewards/coin pack 1200.png — the 1200-coin pack (medium bag), store card + Play icon
 * assets/rewards/coin pack 3000.png — the 3000-coin pack (large bag), store card + Play icon
 * assets/rewards/coin pack 500.png — the 500-coin pack (small pouch), store card + Play icon
-* assets/rewards/gold coin.png
+* assets/rewards/gold coin.png — coin icon (COIN_ICON_HTML), incl. the daily-reward coin tab under the profile block
 * assets/rewards/gold medal.png
 * assets/rewards/silver medal.png
 * assets/rewards/trophy.png

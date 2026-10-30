@@ -8,6 +8,9 @@
 ## `/rooms/{roomId}`
 
 The primary game document. Created by `roomService.createRoom()` / `inviteService.acceptInvite()` / `roomCodeService.claimByCode()`.
+Indexed on `createdAt`, `players/0/uid` and `players/1/uid`. Account deletion
+(`worker/src/accountDelete.js`) uses the uid indexes to find a player's rooms and sets
+their `players/<slot>/displayName` to "שחקן שנמחק"; the uid stays.
 
 ```
 {
@@ -267,6 +270,7 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
   achievementsPaid?: { [achievementId: string]: number },  // ts the coin reward was paid (once each)
   econRecent?: { [reqId: string]: { result: object, ts: number } },  // last 30 worker requests (idempotency)
   coinOrders?: { [orderKey: string]: { productId: string, coins: number, ts: number } },  // credited Play orders
+  adRewards?: { day: string, count: number },  // rewarded videos credited on 'YYYY-MM-DD' (worker-only, /admob/ssv)
   activeRoom?: string,       // roomId of current live game (or null)
   asyncRooms?: {             // per-user index of async games
     [roomId: string]: {
@@ -294,6 +298,7 @@ writes. Best effort: a failed ledger write doesn't undo the coin change.
 `{ uid, productId, ts }`: which account a Google Play order was credited to. Created
 once by the worker before crediting, so one purchase token can never pay two accounts.
 No client read or write. `orderKey` is the Play order id with `.#$/[]` replaced by `_`.
+Kept when the account is deleted (refunds, fraud checks).
 
 ---
 

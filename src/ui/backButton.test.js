@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   decideBack, previousScreen, backSnapshot, clickOverlayClose,
-  BACK_ACTION as A, EXIT_OVERLAY, GAME_MENU_OVERLAY,
+  BACK_ACTION as A, EXIT_OVERLAY, GAME_MENU_OVERLAY, APP_EXIT_URL,
 } from './backButton.js';
 
 test('game screen: back opens the end menu, never leaves the game', () => {
@@ -76,4 +76,9 @@ test('backSnapshot reads the visible screen, open overlays and their ✕', () =>
   assert.ok(clickOverlayClose(doc, 'ov-guide'));
   assert.equal(x.clicked, 1);
   assert.ok(!clickOverlayClose(doc, 'ov-bonus'));
+});
+
+test('APP_EXIT_URL: the app\'s boost-ad scheme, exit host, no package (debug builds too)', () => {
+  assert.equal(APP_EXIT_URL, 'intent://exit#Intent;scheme=boost-ad;end');
+  assert.doesNotMatch(APP_EXIT_URL, /package=/);
 });

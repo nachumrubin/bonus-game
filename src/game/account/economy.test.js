@@ -6,6 +6,7 @@ import {
   rememberRequest, coinDelta, isRequestId, orderKey, ymdIn,
   DAILY_BASE, DAILY_STREAK_INCREMENT, ACHIEVEMENT_COIN_REWARD, MAX_COIN_BALANCE,
   COIN_PACKS, RECENT_REQUESTS_MAX,
+  applyAdReward, adRewardsLeft, AD_REWARD_COINS, AD_REWARDS_PER_DAY,
 } from './economy.js';
 import { STARTER_BOOSTIES, BOOSTIE_LEVELS } from './boostieCatalog.js';
 
@@ -75,6 +76,23 @@ test('applyCoinCredit: credits a pack once per order', () => {
   assert.deepEqual([again.next, again.result.already], [undefined, true]);
   assert.equal(applyCoinCredit({}, { orderId: 'x', productId: 'coins_free' }).result.reason, 'unknown-product');
   assert.equal(applyCoinCredit({}, { orderId: '', productId: 'coins_500' }).result.reason, 'no-order');
+});
+
+test('applyAdReward: pays AD_REWARD_COINS up to the daily cap, which resets the next day', () => {
+  let p = { coins: 10 };
+  for (let i = 0; i < AD_REWARDS_PER_DAY; i++) {
+    const r = applyAdReward(p, '2026-10-27');
+    assert.equal(r.result.ok, true);
+    assert.equal(r.result.left, AD_REWARDS_PER_DAY - i - 1);
+    p = r.next;
+  }
+  assert.equal(p.coins, 10 + AD_REWARD_COINS * AD_REWARDS_PER_DAY);
+  assert.equal(adRewardsLeft(p, '2026-10-27'), 0);
+  const capped = applyAdReward(p, '2026-10-27');
+  assert.deepEqual([capped.next, capped.result.reason], [undefined, 'daily-cap']);
+  const tomorrow = applyAdReward(p, '2026-10-28');
+  assert.deepEqual(tomorrow.next.adRewards, { day: '2026-10-28', count: 1 });
+  assert.equal(adRewardsLeft({}, '2026-10-28'), AD_REWARDS_PER_DAY);
 });
 
 test('rememberRequest: keeps only the newest request ids', () => {

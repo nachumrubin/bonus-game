@@ -3,64 +3,101 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07123d">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <title>מדיניות פרטיות — בוסט</title>
 <style>
+  /* Palette mirrors the app's glass skin (screens-glass.css :root --sg-*). */
+  :root {
+    --sg-p1: #28d4ff;
+    --sg-p2: #ffc93d;
+    --sg-ink: #eaf4ff;
+    --sg-dim: rgba(234,244,255,.72);
+    --sg-faint: rgba(234,244,255,.42);
+    --sg-glass: rgba(12,26,74,.72);
+    --sg-line: rgba(120,190,255,.22);
+  }
+  html { background: #030817; }
   body {
-    font-family: 'Heebo', sans-serif;
-    background: #1a3a50;
-    color: #e8f4ff;
+    font-family: 'Heebo', system-ui, sans-serif;
+    min-height: 100vh;
     margin: 0;
-    padding: 16px;
-    line-height: 1.7;
+    padding: 0 16px 32px;
+    background:
+      radial-gradient(ellipse 90% 45% at 50% 0, rgba(40,110,255,.30), transparent 70%),
+      radial-gradient(ellipse 80% 40% at 50% 100%, rgba(40,212,255,.10), transparent 70%),
+      linear-gradient(180deg, #07123d, #040a22 55%, #030817) fixed;
+    color: var(--sg-dim);
+    line-height: 1.75;
     font-size: 15px;
   }
-  .container {
-    max-width: 680px;
-    margin: 0 auto;
-    background: #2d6080;
-    border-radius: 12px;
-    padding: 28px 24px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  .container { max-width: 680px; margin: 0 auto; }
+  .hdr {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 0 12px;
+    margin: 0 -16px; padding-inline: 16px;
+    background: rgba(7,18,61,.88);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--sg-line);
   }
-  h1 {
-    font-size: 22px;
-    color: #ffe870;
-    margin: 0 0 4px 0;
+  .card { margin-top: 14px; }
+  .chip {
+    flex: none; width: 42px; height: 42px; border-radius: 14px;
+    display: grid; place-items: center;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%), var(--sg-glass);
+    border: 1px solid var(--sg-line);
+    box-shadow: 0 6px 16px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.10);
+    color: var(--sg-ink); text-decoration: none; font-size: 20px; line-height: 1;
   }
-  .subtitle {
-    font-size: 12px;
-    color: rgba(255,255,255,0.45);
-    margin-bottom: 24px;
+  .hdr-ttl { flex: 1; min-width: 0; }
+  h1 { font-size: 22px; font-weight: 900; color: var(--sg-ink); margin: 0; line-height: 1.2; }
+  .subtitle { font-size: 12px; color: var(--sg-faint); }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%), var(--sg-glass);
+    border: 1px solid var(--sg-line);
+    border-radius: 18px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.10);
+    padding: 6px 20px 22px;
   }
   h2 {
-    font-size: 15px;
-    color: #ffe870;
-    margin: 22px 0 6px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.15);
-    padding-bottom: 4px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 16px; font-weight: 800;
+    color: var(--sg-ink);
+    margin: 22px 0 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--sg-line);
   }
-  ul {
-    margin: 6px 0 6px 0;
-    padding-right: 20px;
-    padding-left: 0;
+  h2::before {
+    content: ""; flex: none; width: 4px; height: 18px; border-radius: 2px;
+    background: var(--sg-p1); box-shadow: 0 0 10px rgba(40,212,255,.6);
   }
-  li { margin-bottom: 4px; }
-  a { color: #7dd3fc; }
+  h3 { font-size: 14px; font-weight: 800; color: var(--sg-p2); margin: 16px 0 4px; }
+  p { margin: 6px 0; }
+  strong { color: var(--sg-ink); font-weight: 700; }
+  ul { margin: 6px 0; padding: 0 18px 0 0; }
+  li { margin-bottom: 6px; }
+  li::marker { color: var(--sg-p1); }
+  a { color: var(--sg-p1); text-underline-offset: 2px; }
   .back {
-    display: inline-block;
-    margin-top: 24px;
-    color: #7dd3fc;
-    text-decoration: none;
-    font-size: 13px;
+    display: block; margin: 20px auto 0; max-width: 260px;
+    padding: 12px 18px; border-radius: 14px; text-align: center;
+    background: linear-gradient(180deg, #4fe0ff, #19a9e0);
+    color: #04122e; font-weight: 800; font-size: 15px; text-decoration: none;
+    box-shadow: 0 6px 18px rgba(40,212,255,.35), inset 0 1px 0 rgba(255,255,255,.5);
   }
-  .back:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>מדיניות פרטיות</h1>
-  <div class="subtitle">בוסט &nbsp;|&nbsp; עדכון אחרון: יוני 2026</div>
+  <header class="hdr">
+    <a class="chip" href="index.html" aria-label="חזרה למשחק">→</a>
+    <div class="hdr-ttl">
+      <h1>מדיניות פרטיות</h1>
+      <div class="subtitle">בוסט &nbsp;|&nbsp; עדכון אחרון: 30 באוקטובר 2026</div>
+    </div>
+  </header>
+  <main class="card">
 
   <h2>מי אנחנו</h2>
   <p>
@@ -75,30 +112,72 @@
   <ul>
     <li><strong>דוא"ל וסיסמה</strong> — נשמרים אצל Firebase Authentication של Google. אנחנו רואים רק את כתובת הדוא"ל ומזהה משתמש (UID); הסיסמה אינה זמינה לנו.</li>
     <li><strong>התחברות עם Google</strong> — Google מעבירה אלינו את כתובת הדוא"ל, שם ותמונת פרופיל (אם בחרתם להציגה).</li>
-    <li><strong>התחברות עם Facebook</strong> — Facebook מעבירה אלינו את כתובת הדוא"ל ושם תצוגה.</li>
+<li><strong>אימות דוא"ל וקישור חשבונות</strong> — בהרשמה עם דוא"ל נשלח אליכם מייל אימות (דרך Firebase). אם אותה כתובת משמשת גם להתחברות עם Google, שתי דרכי הכניסה מקושרות לאותו חשבון.</li>
+<li><strong>מעבר מאורח לחשבון</strong> — אורח מקבל מזהה משתמש אנונימי. כשיוצרים חשבון, ההתקדמות של האורח עוברת אליו.</li>
+  </ul>
+  <h3 id="delete-account">מחיקת חשבון</h3>
+  <p>
+    ניתן למחוק את החשבון בכל עת מתוך האפליקציה: <strong>פרופיל ← מחיקת חשבון</strong>, ולאשר בהקלדת "מחק". המחיקה מיידית ואינה הפיכה, ומסירה:
+  </p>
+  <ul>
+    <li>את חשבון ההתחברות (Firebase Authentication), הפרופיל, השם ומספר המשתמש;</li>
+    <li>את המטבעות, הבוסטים והפריטים שנרכשו (ללא החזר על מטבעות שנקנו), הדירוג והרשומה בטבלת השיאים;</li>
+    <li>את רשימת החברים ובקשות החברות, הזמנות, התראות ומנוי ההתראות במכשיר;</li>
+    <li>בחדרי משחק קודמים — השם שלכם מוחלף ב"שחקן שנמחק", כדי שהיסטוריית המשחקים של היריב תישאר תקינה בלי לזהות אתכם.</li>
   </ul>
   <p>
-    ניתן למחוק את החשבון בכל עת מתוך מסך הפרופיל באפליקציה (כפתור "מחיקת חשבון"). מחיקה מסירה את הפרופיל, הדירוג, רשימת החברים והשיוך מטבלת השיאים.
+    נשמרים רק רישומי הזמנות Google Play (מספר הזמנה, מוצר ותאריך), הנדרשים לטיפול בהחזרים ולמניעת הונאה. אם אין לכם גישה לאפליקציה, אפשר לבקש מחיקה בדוא"ל ל-<a href="mailto:privacy@boost-game.app">privacy@boost-game.app</a> מכתובת הדוא"ל של החשבון, והיא תתבצע תוך 30 ימים.
   </p>
 
   <h2>מה אנחנו אוספים</h2>
   <ul>
-    <li><strong>פרופיל ציבורי</strong> — שם תצוגה, אווטאר שבחרתם, דירוג (Elo), ניצחונות והפסדים. הפרופיל גלוי לשחקנים אחרים בלוח השיאים וברשימת חברים.</li>
+    <li><strong>פרופיל ציבורי</strong> — שם תצוגה, אווטאר (בוסטי) שבחרתם, דירוג (Elo), ניצחונות והפסדים. הם גלויים לשחקנים אחרים בטבלת הדירוגים, ברשימת החברים ובמשחק עצמו.</li>
+<li><strong>סטטיסטיקות והתקדמות</strong> — מילים ששיחקתם, ניקוד ושיאים, ימים ושעות משחק, מהירות מהלכים, תוצאות מול יריבים קבועים, הישגים, שלבי הבוסטי ופריטים שבבעלותכם. נשמרים בחשבון שלכם וגלויים רק לכם.</li>
     <li><strong>חברים והזמנות</strong> — קשרי חברות, הזמנות נכנסות ויוצאות, ובקשות משחק. נשמרים בשרת כדי לאפשר התראות והתאמה למשחק.</li>
     <li><strong>היסטוריית דירוג</strong> — דירוג Elo מתעדכן אחרי כל משחק מקוון נגד שחקן אמיתי ונשמר בפרופיל ובטבלת השיאים הציבורית.</li>
-    <li><strong>מצב משחק מקוון</strong> — לוח, אסימונים, ניקוד, תורות, מצב מיני-משחקים ובוסטים, ושעון תור. נשמרים זמנית במהלך המשחק לפי מזהה חדר; נמחקים אוטומטית זמן קצר אחרי סיום המשחק.</li>
-    <li><strong>הודעות בתוך המשחק</strong> — תגובות אימוג'י ומשפטים קצרים מתוך רשימה סגורה ומתורגמת מראש. ההודעות גלויות רק לשני השחקנים בחדר, נשמרות זמנית עם מצב המשחק, ונמחקות עם סיומו. ניתן לכבות הודעות לחלוטין בהגדרות.</li>
+    <li><strong>מצב משחק מקוון</strong> — לוח, אסימונים, ניקוד, תורות, מצב מיני-משחקים ובוסטים, ושעון תור. נשמרים לפי מזהה חדר, וגם אחרי סיום המשחק. חדר משחק אינו מוצפן או פרטי: מי שיודע את מזהה החדר יכול לקרוא אותו, ולכן הוא כולל רק שמות תצוגה ומזהי משתמש, ולא דוא"ל. החדרים נשמרים לצורך היסטוריית המשחקים, הסטטיסטיקה ובירור תקלות. במחיקת חשבון השם בהם מוחלף ב"שחקן שנמחק"; ניתן לבקש את מחיקתם המלאה בדוא"ל.</li>
+    <li><strong>הודעות בתוך המשחק</strong> — תגובות אימוג'י, משפטים קצרים ותגובות בוסטי מתוך רשימה סגורה. אין צ'אט חופשי. התגובות נשמרות יחד עם מצב המשחק. ניתן להשתיק את התגובות של היריב מתוך מגש התגובות במשחק.</li>
     <li><strong>הצעות מילים למילון</strong> — מילים שמציעים לשמור במילון נשמרות לבדיקה, יחד עם ה-UID של המציע למניעת ספאם.</li>
-    <li><strong>נוכחות (Presence)</strong> — סימון "מחובר/מנותק" כדי לדעת אם היריב זמין במשחק חי. נמחק אוטומטית כשמתנתקים.</li>
+    <li><strong>פניות לצוות</strong> — מה שכתבתם בטופס "צור קשר", יחד עם מידע טכני: מזהה משתמש, שם תצוגה, המסך שבו הייתם, גרסת האפליקציה, סוג המכשיר והדפדפן, הפעולות האחרונות באפליקציה ותמונת מצב של המשחק הנוכחי. תשובות הצוות נשמרות בהתראות שלכם, תחת "עדכוני פניות".</li>
+<li><strong>מידע אבחוני</strong> — כשמתרחשת שגיאה באפליקציה נשלח אלינו דיווח אוטומטי עם אותו מידע טכני. במשחקים ברשת נשמר גם יומן אירועים של המשחק (מהלכים, תורות וסנכרון), כדי שנוכל לבדוק תקלות. המידע הזה גלוי רק לצוות.</li>
+<li><strong>נוכחות (Presence)</strong> — סימון "מחובר/מנותק" כדי לדעת אם היריב זמין במשחק חי. נמחק אוטומטית כשמתנתקים.</li>
     <li><strong>טוקן התראות (Push)</strong> — אם הסכמתם להתראות, אנחנו שומרים מזהה התקן של OneSignal כדי לשלוח התראה כשתורכם, כשמישהו מצטרף למשחק שלכם, או כשמתקרב סיום משחק אסינכרוני.</li>
-    <li><strong>העדפות מקומיות ומשחק מושהה</strong> — מוזיקה, אפקטי קול, רטט, "ללא הודעות", ומצב משחק שמור נשמרים בדפדפן שלכם בלבד (localStorage) ואינם מועברים לשרת.</li>
+    <li><strong>העדפות מקומיות ומשחק מושהה</strong> — מוזיקה, אפקטי קול, רטט, תנועה מופחתת, לשון פנייה (זכר/נקבה), השתקת תגובות ומצב משחק שמור נשמרים בדפדפן שלכם בלבד (localStorage) ואינם מועברים לשרת.</li>
   </ul>
+
+  <h2>פרסומות (באפליקציית האנדרואיד)</h2>
+  <p>
+    באפליקציה לאנדרואיד ניתן לצפות, מרצונכם, בסרטון פרסומת קצר כדי לקבל מטבעות. הסרטון מוצג רק כשאתם לוחצים
+    על "צפו בסרטון קצר" בחנות. אין באפליקציה באנרים או פרסומות שקופצות מעצמן. הפרסומות מוגשות על ידי
+    <strong>Google AdMob</strong>.
+  </p>
+  <ul>
+    <li><strong>מה AdMob אוסף:</strong> מזהה הפרסום של המכשיר (Advertising ID), כתובת IP ומיקום משוער שנגזר ממנה,
+      פרטי מכשיר ומערכת הפעלה, ונתוני אינטראקציה עם הפרסומת (צפייה, לחיצה). המידע משמש להצגת פרסומות, למדידתן
+      ולמניעת הונאות, ועשוי לשמש את Google להתאמה אישית של פרסומות.</li>
+    <li><strong>מה אנחנו מעבירים ל-AdMob:</strong> רק את מזהה המשתמש (UID) שלכם במשחק, כדי ש-Google תאשר לשרת
+      שלנו שהסרטון נצפה עד הסוף ונוכל לזכות את המטבעות. איננו מעבירים שם, דוא"ל או נתוני משחק.</li>
+    <li><strong>מה אנחנו שומרים:</strong> כמה סרטונים צפיתם היום (לצורך המכסה היומית), ואת זיכוי המטבעות ביומן
+      המטבעות של החשבון.</li>
+    <li><strong>שליטה בפרסומות מותאמות אישית:</strong> בהגדרות המכשיר ← Google ← מודעות ניתן לאפס או למחוק את
+      מזהה הפרסום ולבטל התאמה אישית של מודעות. ניתן גם פשוט לא לצפות בסרטונים — המשחק כולו זמין בלעדיהם.</li>
+  </ul>
+  <p>
+    פרטים נוספים: <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">כיצד Google משתמשת במידע מאתרים ואפליקציות שמשתמשים בשירותים שלה</a>.
+  </p>
+
+  <h2>רכישות</h2>
+  <p>
+    באפליקציה לאנדרואיד ניתן לקנות חבילות מטבעות דרך <strong>Google Play</strong>. התשלום מתבצע כולו אצל Google;
+    פרטי התשלום שלכם (כרטיס אשראי וכדומה) אינם מגיעים אלינו. אנחנו מקבלים מ-Google רק אישור על הרכישה
+    (מזהה הזמנה ומוצר) כדי לזכות את המטבעות בחשבון.
+  </p>
 
   <h2>מה אנחנו לא אוספים</h2>
   <ul>
-    <li>אין איסוף מספרי טלפון, רשימת אנשי קשר, או מיקום</li>
-    <li>אין מעקב צד-שלישי, פרסום ממוקד או פרופיילינג שיווקי</li>
-    <li>אין שיתוף נתונים עם מפרסמים או דאטה-ברוקרים</li>
+    <li>אין איסוף מספרי טלפון, רשימת אנשי קשר, או מיקום מדויק (GPS)</li>
+    <li>איננו מוכרים מידע אישי, ואיננו משתפים נתונים עם דאטה-ברוקרים</li>
+    <li>מלבד המידע שספריית AdMob של Google אוספת כמתואר בסעיף "פרסומות", אין באפליקציה מעקב שיווקי של צד שלישי</li>
   </ul>
 
   <h2>שירותי צד שלישי</h2>
@@ -108,8 +187,9 @@
   <ul>
     <li><strong>Firebase של Google</strong> — אימות, Realtime Database לחדרים ופרופילים, ואחסון. כפוף ל<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">מדיניות הפרטיות של Google</a>.</li>
     <li><strong>OneSignal</strong> — שירות שליחת התראות Push (רק אם הפעלתם התראות). כפוף ל<a href="https://onesignal.com/privacy_policy" target="_blank" rel="noopener">מדיניות הפרטיות של OneSignal</a>.</li>
-    <li><strong>Cloudflare Workers</strong> — שרת ביניים שמשמש לשליחת ההתראות בלי לחשוף מפתחות API. בקשות מאומתות מול Firebase ID Token.</li>
-    <li><strong>Facebook Login</strong> — אם בחרתם להתחבר עם פייסבוק. כפוף ל<a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener">מדיניות הפרטיות של Meta</a>.</li>
+    <li><strong>Cloudflare Workers</strong> — שרת ביניים שמשמש לשליחת ההתראות ולניהול המטבעות (רכישות, פרסים וזיכוי על צפייה בסרטונים) בלי לחשוף מפתחות API. בקשות מאומתות מול Firebase ID Token.</li>
+    <li><strong>Google AdMob</strong> — סרטוני פרסומת שאתם בוחרים לצפות בהם (אפליקציית האנדרואיד בלבד). כפוף ל<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">מדיניות הפרטיות של Google</a>.</li>
+    <li><strong>Google Play Billing</strong> — רכישת חבילות מטבעות (אפליקציית האנדרואיד בלבד).</li>
     <li><strong>Google Fonts</strong> — גופן Heebo נטען מ-Google Fonts.</li>
   </ul>
 
@@ -121,17 +201,20 @@
 
   <h2>זכויות המשתמש</h2>
   <ul>
-    <li><strong>מחיקת החשבון:</strong> דרך מסך הפרופיל באפליקציה. מסיר את הפרופיל, הדירוג, רשימת החברים והרשומה בלוח השיאים.</li>
+    <li><strong>מחיקת החשבון:</strong> באפליקציה, פרופיל ← מחיקת חשבון (ראו <a href="#delete-account">מחיקת חשבון</a> למעלה), או בדוא"ל. מסיר את הפרופיל, הדירוג, המטבעות, רשימת החברים והרשומה בלוח השיאים.</li>
     <li><strong>מחיקת נתונים מקומיים:</strong> דרך הגדרות הדפדפן ← אחסון ← מחיקת נתוני האתר.</li>
     <li><strong>הסרה מטבלת האלופים:</strong> מחיקת החשבון מסירה את הרשומה אוטומטית. לאלופים ללא חשבון — פנו אלינו בדוא"ל עם השם המדויק שהוזן.</li>
-    <li><strong>כיבוי הודעות במשחק:</strong> דרך מסך ההגדרות (כפתור "ללא הודעות").</li>
+    <li><strong>השתקת תגובות במשחק:</strong> במשחק, לוחצים על הבוסטי שלכם ובמגש התגובות בוחרים "השתק תגובות".</li>
+    <li><strong>פרסומות מותאמות אישית:</strong> דרך הגדרות המכשיר ← Google ← מודעות (איפוס או מחיקה של מזהה הפרסום).</li>
     <li><strong>כיבוי התראות:</strong> דרך הגדרות הדפדפן או מתוך מסך ההגדרות באפליקציה.</li>
     <li><strong>גישה לנתונים שלכם:</strong> שלחו לנו בקשה בדוא"ל ואנחנו נספק עותק תוך 30 ימים.</li>
   </ul>
 
   <h2>ילדים</h2>
   <p>
-    המשחק מתאים לכל הגילאים. אנחנו לא דורשים פרטים מזהים מעבר לכתובת דוא"ל (אופציונלית) ושם תצוגה. רשימת ההודעות במשחק סגורה ומסוננת ואינה כוללת תוכן חופשי.
+    האפליקציה מיועדת לגילאי 13 ומעלה ואינה מכוונת לילדים. איננו אוספים ביודעין מידע אישי מילדים מתחת לגיל 13;
+    אם נודע לנו שנוצר חשבון של ילד מתחת לגיל זה, נמחק אותו. הורים יכולים לפנות אלינו בדוא"ל.
+    אנחנו לא דורשים פרטים מזהים מעבר לכתובת דוא"ל (אופציונלית) ושם תצוגה. רשימת ההודעות במשחק סגורה ומסוננת ואינה כוללת תוכן חופשי.
   </p>
 
   <h2>מידע משפטי וקרדיטים</h2>
@@ -142,7 +225,8 @@
   <ul>
     <li><strong>פרויקט Hspell:</strong> מערכת בדיקת האיות והלקסיקון מבוססת באופן חלקי על רשימות המילים החופשיות של פרויקט Hspell (נדב הראל ודן קניגסברג), המופצות תחת רישיון GNU GPL. השימוש נעשה ברשימות הנתונים הגולמיות בלבד ללא שינוי בקוד המקור של הפרויקט. <a href="http://ivrix.org.il" target="_blank" rel="noopener">אתר הפרויקט: ivrix.org.il</a></li>
     <li><strong>ויקימילון (Wiktionary):</strong> הגדרות ומילים מסוימות במשחק מבוססות על נתונים מתוך פרויקט ויקימילון העברי, ומוגשים בכפוף לתנאי רישיון קריאייטיב קומונס (<a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a> / <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a> "ייחוס-שיתוף זהה").</li>
-    <li><strong>מאגרי נתונים ממשלתיים (Gov.il):</strong> נתוני שמות ערים, ארצות ומקצועות מבוססים על מאגרי המידע הפתוחים לציבור של מדינת ישראל (<a href="https://data.gov.il" target="_blank" rel="noopener">Data.gov.il</a>).</li>
+    <li><strong>FrequencyWords:</strong> רשימת המילים שהמחשב משחק בהן נבנתה בעזרת רשימת השכיחות של פרויקט FrequencyWords (Hermit Dave, על בסיס OpenSubtitles), המופצת תחת רישיון <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>. <a href="https://github.com/hermitdave/FrequencyWords" target="_blank" rel="noopener">github.com/hermitdave/FrequencyWords</a></li>
+<li><strong>מאגרי נתונים ממשלתיים (Gov.il):</strong> נתוני שמות ערים, ארצות ומקצועות מבוססים על מאגרי המידע הפתוחים לציבור של מדינת ישראל (<a href="https://data.gov.il" target="_blank" rel="noopener">Data.gov.il</a>).</li>
   </ul>
   <p>
     כל הזכויות על העיצוב הגרפי, קוד המקור, הממשק והמותג "בוסט" (Boost) שמורות ל-Rubin Studios.
@@ -152,6 +236,7 @@
   <p>
     כל שינוי מהותי יתעדכן בדף זה. המשך שימוש באפליקציה לאחר עדכון מהווה הסכמה למדיניות המעודכנת.
   </p>
+  </main>
 
   <a class="back" href="index.html">← חזרה למשחק</a>
 </div>

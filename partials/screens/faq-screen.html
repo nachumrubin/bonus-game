@@ -1,4 +1,6 @@
-<!-- FAQ - app-wide Q&A, opened from the `?` dropdown. -->
+<!-- FAQ - app-wide Q&A, opened from the `?` dropdown. Grouped by area; numbers here
+     (coins, XP, timers, rating) mirror the code constants named in docs-md/CHANGELOG.md
+     ("Help: FAQ rewrite") - update both when one changes. -->
 <div id="ov-faq" class="ov hidden" onclick="if(event.target===this)ovClose('ov-faq')">
   <div class="ovc guide-ovc g-full" dir="rtl">
     <div class="g-hdr">
@@ -7,103 +9,338 @@
       <span></span>
     </div>
 
+    <!-- ── Getting started & account ── -->
+    <div class="faq-group">התחלה וחשבון</div>
     <div class="guide-body">
 
-      <details class="guide-section" open>
+      <details class="guide-section">
         <summary>איך מתחילים משחק?</summary>
         <div class="guide-section-body">
-          <p>במסך הבית בוחרים משחק ברשת, נגד המחשב או שני שחקנים על אותו מכשיר. משחק ברשת דורש חשבון כדי לשמור דירוג, חברים והתקדמות.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>מה ההבדל בין משחק חי למשחק אסינכרוני?</summary>
-        <div class="guide-section-body">
-          <p><strong>משחק חי</strong> מתנהל בזמן אמת עם שעון תור. <strong>משחק אסינכרוני</strong> מתנהל בקצב שלך, בלי שעון, ומקבלים התראה כשמגיע תורך. משחק אסינכרוני נסגר אחרי 7 ימים בלי מהלך.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>למה המילה שלי נדחתה?</summary>
-        <div class="guide-section-body">
-          <p>המילה נבדקת מול מילון עברי עם תמיכה בהטיות, ריבוי, נקבה, אותיות סופיות וכתיב מלא/חסר. אם היא לא נמצאה או נמצאת ברשימת מילים חסומות, היא נדחית והתור עובר אחרי רגע קצר.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>איך מציעים מילה למילון?</summary>
-        <div class="guide-section-body">
-          <p>פותחים הגדרות, נכנסים לאזור הצעות מילון, ובוחרים אם להציע מילה להוספה או לבקש הסרה של מילה. מילים שאושרו מקדמות את הישג "תורם מילים".</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>איך עובד הדירוג?</summary>
-        <div class="guide-section-body">
-          <p>הדירוג משתמש בשיטת Elo במשחקים מקוונים מול שחקנים אמיתיים. ניצחון מול יריב חזק שווה יותר נקודות; הפסד ליריב חלש מוריד יותר. משחקי אימון ומקומיים לא משנים דירוג.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>איפה רואים סטטיסטיקות ותובנות?</summary>
-        <div class="guide-section-body">
-          <p>מהפרופיל או מסרגל הניווט נכנסים לסטטיסטיקות. שם רואים ניצחונות, רצפים, שיאים, דירוג, תובנות על סגנון משחק, יריבים חזקים והתקדמות ליעדים.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>איך מוסיפים חברים ומזמינים למשחק?</summary>
-        <div class="guide-section-body">
-          <p>במסך חברים אפשר לשלוח בקשת חברות, לאשר בקשות נכנסות ולהזמין חבר למשחק חי או אסינכרוני. אפשר גם לפתוח חדר עם קוד ולשתף אותו ידנית.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>מה קורה אם היריב מתנתק?</summary>
-        <div class="guide-section-body">
-          <p>במשחק חי תופיע התראת ניתוק. אם היריב לא חוזר אחרי חלון החסד, אפשר לסיים לפי מצב המשחק. במשחק אסינכרוני פשוט מחכים לתור הבא עד מגבלת 7 הימים.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>איך משיגים מטבעות ואווטארים?</summary>
-        <div class="guide-section-body">
-          <p>מטבעות מתקבלים מכניסה יומית ומהשלמת הישגים. בחנות אפשר לקנות בוסטים ותגובות, לבחור את הבוסטי שלך, ולהציג אותו בפרופיל ובמשחקים. לחיצה על כרטיס של בוסטי מעוררת אותו לחיים לכמה שניות.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>מהם הישגים?</summary>
-        <div class="guide-section-body">
-          <p>הישגים הם יעדי התקדמות: מספר משחקים, ניצחונות, רצפים, שיאי ניקוד, חברים, הזמנות, מילים ייחודיות, רכישת אווטארים ועוד. השלמת הישג נותנת מטבעות ולעיתים גביע תצוגה.</p>
-        </div>
-      </details>
-
-      <details class="guide-section">
-        <summary>למה לא קיבלתי התראת push?</summary>
-        <div class="guide-section-body">
-          <p>צריך לאשר הרשאות התראה בדפדפן או באפליקציה. אם דחית בעבר, יש להפעיל ידנית בהגדרות המכשיר/דפדפן. במצב שבו האפליקציה פתוחה, חלק מההודעות מופיעות בתוך המשחק במקום כהתראת מערכת.</p>
+          <p>במסך הבית בוחרים <strong>משחק ברשת</strong> (מול שחקנים אמיתיים), <strong>נגד המחשב</strong> (שלוש רמות קושי) או <strong>שני שחקנים</strong> על אותו מכשיר. בתחילת כל משחק מטבע מוגרל קובע מי פותח. כדי ללמוד את החוקים אפשר לפתוח את <strong>הדרכה</strong> מתפריט העזרה.</p>
         </div>
       </details>
 
       <details class="guide-section">
         <summary>האם חייבים חשבון?</summary>
         <div class="guide-section-body">
-          <p>אפשר להכיר את המשחק גם כאורח, אבל חשבון נדרש לשמירת התקדמות מלאה: דירוג, חברים, משחקים ברשת, מטבעות, אווטארים והישגים.</p>
+          <p>לא. אפשר לשחק כאורח בכל המצבים. אבל אורח לא מקבל דירוג, מטבעות יומיים ומטבעות על הישגים, וההתקדמות שלו נשמרת רק במכשיר הזה. חשבון חינמי שומר הכול ועובד בכל מכשיר. כשיוצרים חשבון מתוך מצב אורח, מה שצברתם עובר לחשבון.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך נרשמים?</summary>
+        <div class="guide-section-body">
+          <p>עם <strong>Google</strong> או עם <strong>דוא״ל וסיסמה</strong>. בהרשמה עם דוא״ל נשלח אליכם מייל לאימות הכתובת. חשוב לאשר אותו: כתובת מאומתת מאפשרת להיכנס בעתיד גם עם Google וגם עם הסיסמה לאותו חשבון.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>נכנסתי פעם עם Google ועכשיו הסיסמה לא עובדת</summary>
+        <div class="guide-section-body">
+          <p>לכל כתובת דוא״ל יש חשבון אחד. אם נכנסתם עם Google לכתובת שלא אומתה, Google הופך לדרך הכניסה של החשבון. כדי להחזיר סיסמה לוחצים במסך הכניסה על <strong>שכחתי סיסמה</strong> וקובעים סיסמה חדשה מהמייל. מאותו רגע עובדות שתי הדרכים.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך משנים את השם או את התמונה?</summary>
+        <div class="guide-section-body">
+          <p>בפרופיל. השם הוא מה שהיריבים רואים: עד 15 תווים, ולא יכול להיות זהה לשם של שחקן אחר. התמונה היא הבוסטי שבחרתם (ראו ״בוסטי, מטבעות וחנות״).</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך מוחקים את החשבון?</summary>
+        <div class="guide-section-body">
+          <p>פרופיל ← <strong>מחיקת חשבון</strong>, ומאשרים. המחיקה מיידית ולא הפיכה: הפרופיל, המטבעות, הבוסטים, הדירוג והחברים נמחקים, ומטבעות שנקנו לא מוחזרים. במשחקים קודמים השם שלכם מוחלף ב״שחקן שנמחק״.</p>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- ── Rules ── -->
+    <div class="faq-group">חוקי המשחק</div>
+    <div class="guide-body">
+
+      <details class="guide-section">
+        <summary>איך מניחים מילה?</summary>
+        <div class="guide-section-body">
+          <p>מניחים אות אחת או יותר באותה שורה או באותו טור, בלי רווחים ביניהן, ולוחצים <strong>שבץ</strong>. המהלך הראשון במשחק לא יכול לגעת במשבצות הבוסט. מהמהלך השני והלאה, כל מהלך חייב לגעת באות שכבר נמצאת על הלוח.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך מחושב הניקוד?</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li>כל אות שווה את הערך שרשום עליה. אותיות נדירות שוות יותר (צ׳ = 9, ז׳ וט׳ = 8).</li>
+            <li>כל מילה שהמהלך יצר נספרת, כולל מילים שנוצרו בניצב.</li>
+            <li>אין משבצות כפל על הלוח. תוספות מגיעות רק ממשבצות הבוסט.</li>
+            <li>הנחת כל 8 האותיות מהמגש במהלך אחד נותנת <strong>+50</strong>.</li>
+            <li>ג׳וקר שווה 0 נקודות.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>למה המילה שלי נדחתה?</summary>
+        <div class="guide-section-body">
+          <p>מילה מתקבלת רק אם הצורה המדויקת שלה נמצאת במילון. מילים עם אותיות שימוש מחוברות (הילד, ולא), עם כינוי שייכות (ביתו), בסמיכות (מכונת), בכתיב חסר (היתה) או שמות פרטיים בדרך כלל לא נמצאות בו. כל הכללים, עם דוגמאות, נמצאים בתפריט העזרה ← <strong>המילון</strong>.</p>
+          <p>כשמילה נדחית, התור עובר אחרי רגע קצר ונספר כתור בלי ניקוד.</p>
         </div>
       </details>
 
       <details class="guide-section">
         <summary>אפשר לבטל מהלך אחרי שאישרתי?</summary>
         <div class="guide-section-body">
-          <p>לפני שלוחצים "שבץ" אפשר להחזיר אותיות למגש עם "בטל". אחרי אישור המהלך הוא נחתם ונשלח ליריב, ולכן אי אפשר לבטל אותו.</p>
+          <p>לפני שלוחצים <strong>שבץ</strong> אפשר להחזיר את האותיות למגש עם <strong>בטל</strong>. אחרי האישור המהלך נחתם, ובמשחק ברשת הוא כבר נשלח ליריב.</p>
         </div>
       </details>
 
       <details class="guide-section">
-        <summary>איך מדווחים על תקלה או שולחים פנייה?</summary>
+        <summary>מתי המשחק נגמר?</summary>
         <div class="guide-section-body">
-          <p>פותחים את תפריט העזרה ולוחצים "צור קשר". בוחרים סיבה, למשל "דווח על בעיה במשחק", וכותבים מה קרה. בפניית תקלה נשלח גם מידע טכני שיעזור לבדיקה.</p>
+          <ul>
+            <li>כשהשק ריק ולאחד השחקנים נגמרו האותיות.</li>
+            <li>אחרי 4 תורות ברצף בלי ניקוד (של שני השחקנים יחד). דילוג, החלפת אותיות, מילה שנדחתה ותור שהזמן שלו נגמר נספרים כולם.</li>
+            <li>כששחקן פורש. היריב מנצח.</li>
+            <li>כשהשחקן המוביל לוחץ <strong>סיים וזכה</strong>.</li>
+          </ul>
+          <p>בסוף מנצח מי שצבר יותר נקודות. ניקוד שווה הוא תיקו.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה זה ״סיים וזכה״?</summary>
+        <div class="guide-section-body">
+          <p>אחרי 2 תורות ברצף בלי ניקוד, השחקן שמוביל בניקוד יכול לסיים את המשחק מיד ולזכות. הכפתור מופיע רק למוביל, וכך שחקן שמפגר לא יכול למשוך משחק תקוע בלי סוף.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה קורה כשנגמר הזמן לתור?</summary>
+        <div class="guide-section-body">
+          <p>התור עובר ליריב ונספר כתור בלי ניקוד. במשחק חי ברשת, שני תורות ברצף שהזמן שלהם נגמר הם הפסד. את אורך התור (20, 40 או 60 שניות, או ללא הגבלה) בוחרים לפני המשחק. במשחק אסינכרוני אין שעון תור.</p>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- ── Boosts & turn tools ── -->
+    <div class="faq-group">בוסטים וכלי תור</div>
+    <div class="guide-body">
+
+      <details class="guide-section">
+        <summary>מה עושות משבצות הבוסט?</summary>
+        <div class="guide-section-body">
+          <p>סביב הלוח יש 12 משבצות בוסט. מילה שנוגעת במשבצת כזו מפעילה אותה. מה מסתתר בכל משבצת מתגלה רק כשמפעילים אותה, כי כולן נראות אותו דבר. אפשר לקבל נקודות מיד, תור נוסף, מכפיל ניקוד לתורות הבאים, מיני-משחק קצר או גלגל מזל.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך עובדים המיני-משחקים?</summary>
+        <div class="guide-section-body">
+          <p>אתגר מילים קצר עם זמן מוגבל, למשל מילה נסתרת, כוורת או תשבץ. הנקודות שצברתם בו מתווספות למהלך, והמהלך נחתם רק כשהמיני-משחק נגמר. במשחק ברשת היריב רואה שאתם במיני-משחק ומחכה.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>הופיע לי ״הבוסט בוטל״</summary>
+        <div class="guide-section-body">
+          <p>היריב זכה בגלגל המזל בפרס ״ביטול בוסט״, שמבטל את הבוסט הבא שתפעילו. המילה עצמה נשארת על הלוח ונספרת כרגיל.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך עובדת נעילה?</summary>
+        <div class="guide-section-body">
+          <p>לכל שחקן יש 3 מנעולים: שניים ל-3 תורות ואחד ל-5. בוחרים מנעול, לוחצים על משבצת ריקה ומאשרים עם <strong>שבץ</strong>. היריב לא יכול להניח אות במשבצת נעולה. כל נעילה עולה <strong>10 נקודות</strong>, ולכן אפשר לנעול רק כשיש לכם לפחות 10 נקודות. המנעול נפתח בתחילת התור שלכם, אחרי שהספירה שלו נגמרה.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>החלפת אותיות וג׳וקר</summary>
+        <div class="guide-section-body">
+          <p><strong>החלפה</strong> מחזירה אותיות שבחרתם לשק ומושכת חדשות. היא מסיימת את התור ונספרת כתור בלי ניקוד. בשק יש 2 <strong>ג׳וקרים</strong>. גוררים ג׳וקר ללוח ובוחרים איזו אות הוא מייצג. הוא שווה 0 נקודות.</p>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- ── Online & friends ── -->
+    <div class="faq-group">משחק ברשת וחברים</div>
+    <div class="guide-body">
+
+      <details class="guide-section">
+        <summary>מה ההבדל בין משחק חי למשחק אסינכרוני?</summary>
+        <div class="guide-section-body">
+          <p><strong>חי</strong>: שני השחקנים מחוברים יחד ויש שעון לכל תור. <strong>אסינכרוני</strong>: כל אחד משחק מתי שנוח לו, בלי שעון, ומקבלים התראה כשמגיע התור. את המשחקים הפתוחים רואים ב<strong>המשחקים שלי</strong>.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך מוצאים יריב?</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li><strong>יריב אקראי</strong>: המשחק מחבר אתכם לשחקן זמין.</li>
+            <li><strong>קוד משחק</strong>: פותחים משחק ושולחים לחבר קוד בן 6 ספרות. הקוד תקף 30 דקות.</li>
+            <li><strong>הזמנת חבר</strong>: מתוך רשימת החברים. הזמנה למשחק חי תקפה 5 דקות, והזמנה למשחק אסינכרוני תקפה 7 ימים.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה קורה אם היריב מתנתק?</summary>
+        <div class="guide-section-body">
+          <p>במשחק חי מופיעה ספירה של 30 שניות. אם היריב לא חוזר בזמן הזה, אתם זוכים בניצחון טכני. במשחק אסינכרוני אין ניתוק: פשוט מחכים לתור שלו.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>למה משחק אסינכרוני נעלם?</summary>
+        <div class="guide-section-body">
+          <p>משחק אסינכרוני נסגר אחרי 7 ימים בלי מהלך. אחרי 24 שעות בלי מהלך נשלחת תזכורת למי שתורו.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך מוסיפים חברים?</summary>
+        <div class="guide-section-body">
+          <p>במסך <strong>חברים</strong> לכל שחקן יש קוד חבר בן 6 תווים. משתפים את הקוד שלכם, או מקלידים את הקוד של חבר ושולחים בקשה. בקשות נכנסות מופיעות במסך החברים ובהתראות. הזמנה של 5 חברים לבוסט פותחת את ההישג ״חבר מביא חבר״.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>אפשר לשלוח הודעות ליריב?</summary>
+        <div class="guide-section-body">
+          <p>אפשר לשלוח תגובות: לוחצים על הבוסטי שלכם במשחק ובוחרים אימוג׳י, משפט קצר מרשימה קבועה או תגובה של הבוסטי. אין צ׳אט חופשי. אם התגובות של היריב מפריעות, אפשר להשתיק אותן מתוך מגש התגובות.</p>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- ── Rating, stats & achievements ── -->
+    <div class="faq-group">דירוג, סטטיסטיקות והישגים</div>
+    <div class="guide-body">
+
+      <details class="guide-section">
+        <summary>איך עובד הדירוג?</summary>
+        <div class="guide-section-body">
+          <p>הדירוג (ELO) מתחיל ב-800 ומשתנה אחרי כל משחק ברשת מול שחקן רשום, כולל משחקים מול חברים. ניצחון מול יריב חזק ממכם שווה יותר, והפסד ליריב חלש מוריד יותר. את 10 השחקנים המובילים רואים ב<strong>טבלת דירוגים</strong> בפרופיל.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>למה הדירוג שלי לא השתנה?</summary>
+        <div class="guide-section-body">
+          <p>הדירוג לא משתנה במשחק נגד המחשב, במשחק של שני שחקנים על אותו מכשיר, כששחקים כאורח, או כשמשחק ברשת נגמר לפני שנעשה בו מהלך.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה רואים בסטטיסטיקות?</summary>
+        <div class="guide-section-body">
+          <p>ניצחונות, רצפים, שיאים, המהלך הטוב ביותר, המילים שהכי שיחקתם, היריבים הקבועים ותובנות על סגנון המשחק שלכם. נכנסים מהפרופיל ← <strong>סטטיסטיקות מלאות</strong>.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מהם הישגים ומה מקבלים עליהם?</summary>
+        <div class="guide-section-body">
+          <p>הישגים הם יעדים, כמו מספר משחקים, ניצחונות, רצפים, 100 נקודות במהלך אחד, חברים, מילים שונות או פיתוח בוסטי. כל הישג שמושלם מזכה במטבעות באופן אוטומטי: ארד 50, כסף 100, זהב 250, אגדה 750. את ההישגים רואים בפרופיל ← <strong>הישגים</strong>.</p>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- ── Boosties, coins & store ── -->
+    <div class="faq-group">בוסטי, מטבעות וחנות</div>
+    <div class="guide-body">
+
+      <details class="guide-section">
+        <summary>מה זה בוסטי?</summary>
+        <div class="guide-section-body">
+          <p>הדמות שמייצגת אתכם בפרופיל, בלוח התוצאות ומול היריבים. ארבעה בוסטים חינמיים: זאפי, בובו, רוקו ולומי. דרקו זמין בחנות. בוחרים את הבוסטי מהחנות או מהפרופיל, ולחיצה על כרטיס של בוסטי בחנות מעוררת אותו לחיים לכמה שניות.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך הבוסטי מתפתח?</summary>
+        <div class="guide-section-body">
+          <p>לכל בוסטי 7 שלבים. כל משחק שהסתיים מזכה את הבוסטי שבחרתם ב-10 נקודות ניסיון, ניצחון מוסיף עוד 10 ותיקו עוד 5. נספרים משחקים ברשת ומשחקים נגד המחשב. ההדרכה ומשחק של שני שחקנים על אותו מכשיר לא נספרים, וגם משחק בלי מהלכים או משחק שעזבתם באמצעו לא נספר. כל בוסטי שומר את השלב שלו, כך שמעבר לבוסטי אחר לא מוחק התקדמות.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך משיגים מטבעות?</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li><strong>מתנת פתיחה</strong>: 150 מטבעות לחשבון חדש.</li>
+            <li><strong>מטבעות יומיים</strong>: 20 ביום הראשון, ועוד 10 על כל יום רצוף, עד 110 ביום העשירי והלאה. יום שמדלגים עליו מתחיל את הרצף מחדש. היום מתחלף בחצות לפי שעון ישראל.</li>
+            <li><strong>הישגים</strong>: 50 עד 750 מטבעות להישג.</li>
+            <li><strong>סרטון קצר</strong> (באפליקציית האנדרואיד): 15 מטבעות לסרטון, עד 5 סרטונים ביום.</li>
+            <li><strong>קנייה</strong> (באפליקציית האנדרואיד): חבילות של 500, 1,200 או 3,000 מטבעות דרך Google Play.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה אפשר לקנות בחנות?</summary>
+        <div class="guide-section-body">
+          <p>בלשונית <strong>אווטארים</strong> יש בוסטים ותגובות. שלוש תגובות של הבוסטי חינמיות, ותגובות נוספות עולות 250 מטבעות. ערכות צבע לאפליקציה יגיעו בקרוב. פריט שנקנה נשאר שלכם בכל מכשיר.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>לא רואים מחירים של מטבעות או סרטון בחנות</summary>
+        <div class="guide-section-body">
+          <p>קניית מטבעות וצפייה בסרטון עובדות רק באפליקציית האנדרואיד שהורדה מ-Google Play, ולא בדפדפן. אם אתם באפליקציה והמחירים לא מופיעים, ודאו שהאפליקציה מעודכנת ושיש חיבור לאינטרנט. אם זה לא עוזר, כתבו לנו דרך <strong>צור קשר</strong>.</p>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- ── Settings, notifications & support ── -->
+    <div class="faq-group">הגדרות, התראות ותמיכה</div>
+    <div class="guide-body">
+
+      <details class="guide-section">
+        <summary>למה לא קיבלתי התראה?</summary>
+        <div class="guide-section-body">
+          <p>צריך לאשר התראות: בהגדרות ← <strong>התראות משחקים</strong> ← הפעל. אם דחיתם בעבר, צריך להפעיל אותן ידנית בהגדרות המכשיר או הדפדפן. כשהאפליקציה פתוחה, חלק מההודעות מופיעות בתוך המשחק במקום כהתראת מערכת.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה אפשר לשנות בהגדרות?</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li><strong>שמע</strong>: מוזיקה, אפקטי קול ועוצמה.</li>
+            <li><strong>רטט</strong> במכשירים שתומכים בו.</li>
+            <li><strong>תנועה מופחתת</strong>: פחות אנימציות. כברירת מחדל ההגדרה עוקבת אחר הגדרת המכשיר.</li>
+            <li><strong>לשון פנייה</strong>: זכר או נקבה, בכפתורים ובהתראות.</li>
+            <li><strong>מילון</strong>: בדיקת מילה והצעת מילים להוספה או להסרה.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>אפשר לעצור משחק ולהמשיך אחר כך?</summary>
+        <div class="guide-section-body">
+          <p>במשחק נגד המחשב או בשני שחקנים: בתפריט המשחק לוחצים <strong>סיים/השהה</strong> ובוחרים <strong>השהה ושמור</strong>. ממשיכים מ<strong>המשחקים שלי</strong> במסך הבית. משחק ברשת נשמר תמיד, ואפשר לחזור אליו מאותו מקום.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איך מדווחים על תקלה או פונים לצוות?</summary>
+        <div class="guide-section-body">
+          <p>תפריט העזרה ← <strong>צור קשר</strong>. בוחרים סיבה וכותבים מה קרה. בדיווח על תקלה נשלח גם מידע טכני על המשחק והמכשיר, כדי שנוכל לבדוק. התשובות שלנו מגיעות להתראות, תחת <strong>עדכוני פניות</strong>.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>איפה מדיניות הפרטיות?</summary>
+        <div class="guide-section-body">
+          <p>בהגדרות ← אודות ← <strong>מדיניות פרטיות</strong>. שם מפורט איזה מידע נשמר, מי רואה אותו ואיך מוחקים אותו.</p>
         </div>
       </details>
 

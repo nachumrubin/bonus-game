@@ -21,6 +21,10 @@ export const GAME_SCREEN = 'sg';
 export const EXIT_OVERLAY = 'ov-exit-confirm';
 export const GAME_MENU_OVERLAY = 'ov-back-confirm';
 
+// The exit question's "יציאה" in the Android app: a TWA page can't close itself, so
+// it opens the app's ExitActivity, which sends the app to the background.
+export const APP_EXIT_URL = 'intent://exit#Intent;scheme=boost-ad;end';
+
 export const BACK_ACTION = Object.freeze({
   CLOSE_EXIT: 'closeExit',
   CLOSE_GAME_MENU: 'closeGameMenu',

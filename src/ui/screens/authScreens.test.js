@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import {
-  mountAuthScreens, validateSignupForm, validateLoginForm, validateResetForm,
+  mountAuthScreens, GUEST_UPGRADE_COPY, validateSignupForm, validateLoginForm, validateResetForm,
   AUTH_ERROR_HE, AUTH_INTENT, firebaseAuthErrorHe,
   validatePickNameForm, suggestNameFromDisplayName, isSilentAuthCancel,
 } from './authScreens.js';
@@ -14,7 +14,7 @@ test('firebaseAuthErrorHe: maps backend codes to Hebrew, never the raw string', 
     assert.equal(firebaseAuthErrorHe({ code }), 'הדוא״ל או הסיסמה שגויים');
   }
   assert.equal(firebaseAuthErrorHe({ code: 'auth/invalid-email' }), 'דוא״ל לא חוקי');
-  assert.equal(firebaseAuthErrorHe({ code: 'auth/email-already-in-use' }), 'הדוא״ל הזה כבר רשום');
+  assert.equal(firebaseAuthErrorHe({ code: 'auth/email-already-in-use' }), 'הדוא״ל הזה כבר רשום. נרשמתם עם Google? היכנסו עם Google, או הגדירו סיסמה ב״שכחתי סיסמה״');
   // Unknown code → Hebrew fallback, not the English message.
   const e = { code: 'auth/something-new', message: 'The supplied auth credential is incorrect.' };
   const msg = firebaseAuthErrorHe(e);
@@ -99,6 +99,9 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
     pnName: makeInput(pnName),
     pnError: makeLabel(),
     pnSubmit: makeBtn(),
+    ovguTitle: makeLabel(),
+    ovguDesc:  makeLabel(),
+    ovguCode:  Object.assign(makeBtn(), { style: { display: 'none' } }),
   };
   const root = {
     querySelector(sel) {
@@ -124,6 +127,9 @@ function makeRoot({ name = '', email = '', password = '', liEmail = '', liPass =
         case '#pn-name':         return els.pnName;
         case '#pn-error':        return els.pnError;
         case '#pn-submit':       return els.pnSubmit;
+        case '#ovgu-title':      return els.ovguTitle;
+        case '#ovgu-desc':       return els.ovguDesc;
+        case '#ovgu-code-btn':   return els.ovguCode;
         default: return null;
       }
     },
@@ -168,6 +174,51 @@ test('login submit: valid → LOG_IN intent', () => {
   els.liSubmit.fireClick();
   assert.equal(events.length, 1);
   assert.equal(events[0].email, 'me@x.com');
+});
+
+test('login submit: busy until answered (a second tap is ignored); a late autofill is read', async () => {
+  bus._reset();
+  const { root, els } = makeRoot({ liEmail: 'me@x.com', liPass: 'Pass1234' });
+  els.liSubmit.textContent = 'כניסה';
+  const events = [];
+  bus.on(AUTH_INTENT.LOG_IN, (p) => events.push(p));
+  const screen = mountAuthScreens({ root, bus });
+  els.liSubmit.fireClick();
+  els.liSubmit.fireClick();
+  assert.equal(events.length, 1);
+  assert.equal(els.liSubmit.disabled, true);
+  assert.equal(els.liSubmit.textContent, 'נכנס…');
+  screen.showError('login', 'סיסמה שגויה');
+  assert.equal(els.liSubmit.disabled, false);
+  assert.equal(els.liSubmit.textContent, 'כניסה');
+  // Chrome hands over the autofilled password only after the tap.
+  els.liPass.value = '';
+  els.liSubmit.fireClick();
+  els.liPass.value = 'Pass1234';
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(events.length, 2);
+  screen.setLoginBusy(false);
+});
+
+test('showUpgrade: worded per reason; online offers the friend-code way in', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  const got = [];
+  bus.on(AUTH_INTENT.GUEST_JOIN_CODE, () => got.push('code'));
+  const screen = mountAuthScreens({ root, bus });
+  els.upgradeOverlay.classList.add('hidden');
+  screen.showUpgrade('online');
+  assert.equal(els.upgradeOverlay.classList.contains('hidden'), false);
+  assert.equal(els.ovguTitle.textContent, GUEST_UPGRADE_COPY.online.title);
+  assert.equal(els.ovguCode.style.display, '');
+  els.ovguCode.fireClick();
+  assert.deepEqual(got, ['code']);
+  assert.equal(els.upgradeOverlay.classList.contains('hidden'), true);
+  screen.showUpgrade('afterOnline');
+  assert.equal(els.ovguDesc.textContent, GUEST_UPGRADE_COPY.afterOnline.desc);
+  assert.equal(els.ovguCode.style.display, 'none');
+  screen.showUpgrade('nonsense');
+  assert.equal(els.ovguTitle.textContent, GUEST_UPGRADE_COPY.default.title);
 });
 
 test('go-signup / go-login / continue-as-guest emit intents', () => {

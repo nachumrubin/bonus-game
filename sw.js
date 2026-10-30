@@ -69,7 +69,7 @@ function mapKindToRoute(kind, roomId) {
   }
 }
 
-var CACHE_NAME = 'boost-20261023051952';
+var CACHE_NAME = 'boost-20261030054156';
 var ASSETS = [
   './',
   './index.html',
@@ -263,7 +263,9 @@ self.addEventListener('install', function(e){
       // the app is left with NO offline cache AND NO push. Per-asset add()
       // with a catch degrades gracefully: a stale entry is just skipped.
       return Promise.all(core.map(function(url){
-        return cache.add(url).catch(function(err){
+        // cache:'reload' — fetch past the browser's HTTP cache (max-age 3600), so a
+        // deploy never precaches the previous version of a file.
+        return cache.add(new Request(url, { cache: 'reload' })).catch(function(err){
           console.warn('[sw] precache skip', url, err && err.message);
         });
       }));
@@ -303,7 +305,8 @@ self.addEventListener('fetch', function(e){
   var isSourceAsset = url.indexOf('/src/') !== -1 ||
     url.indexOf('/partials/') !== -1 ||
     url.indexOf('.js') !== -1 ||
-    url.indexOf('.css') !== -1;
+    url.indexOf('.css') !== -1 ||
+    url.indexOf('/data/') !== -1;   // dictionary + bot list: network-first, cache offline
   var isHTML = e.request.mode === 'navigate' ||
     url.endsWith('/') ||
     url.indexOf('index.html') !== -1 ||

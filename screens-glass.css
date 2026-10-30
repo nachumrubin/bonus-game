@@ -74,6 +74,22 @@
 .em-player-name { font: 800 12px/1.1 'Heebo', sans-serif !important; max-width: 90px !important; }
 .em-elo-badge { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; font: 800 10px/1 'Heebo', sans-serif !important; color: var(--sg-p1) !important; }
 .em-elo-bolt { font-size: 10px !important; }
+/* Daily-reward coin tab (src/ui/coinPill.js): a drawer that slides out from behind the
+   profile block's bottom edge and back. JS lines #topbar-coin-pill-clip up with the block
+   (inset by its 14px corner radius); the clip hides the tab while it is tucked in. */
+#topbar-coin-pill-clip { position: absolute; height: 34px; overflow: hidden; pointer-events: none; display: flex; justify-content: center; }
+.coin-pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  width: 100%; height: 26px; box-sizing: border-box;
+  border: 1px solid var(--sg-line); border-top: none; border-radius: 0 0 12px 12px;
+  background: rgb(22, 41, 90);   /* opaque match of .em-profile-btn over the menu backdrop */
+  box-shadow: 0 6px 12px rgba(0,0,0,.35);
+  color: #ffd75a; font: 800 12px/1 'Heebo', sans-serif; font-variant-numeric: tabular-nums;
+  direction: ltr; white-space: nowrap;
+  transform: translateY(calc(-100% - 20px));   /* tucked fully, shadow included */ transition: transform 320ms cubic-bezier(.25, .8, .3, 1);
+}
+.coin-pill.is-out { transform: translateY(0); }
+.coin-pill .coin-ic { width: 14px; height: 14px; }
 
 /* ── Notification banner ── */
 #notif-banner {
@@ -616,6 +632,12 @@ svg.gi.g-chev { color: var(--sg-faint); width: 16px; height: 16px; }
 .g-fld svg.gi { color: var(--sg-faint); }
 .g-fld:focus-within { border-color: var(--sg-p1); box-shadow: 0 0 0 3px rgba(40,212,255,.18), inset 0 2px 5px rgba(0,0,0,.4); }
 .g-fld input, .g-fld textarea { flex: 1; min-width: 0; height: 100% !important; background: none !important; border: none !important; outline: none; box-shadow: none !important; color: inherit !important; font: inherit !important; padding: 0 !important; margin: 0 !important; width: auto !important; }
+/* Autofill (saved email / password): Chrome paints its own light box behind the text.
+   Cover it with an inset shadow in the field's colour and keep our text colour. */
+.g-fld input:-webkit-autofill, .g-fld input:-webkit-autofill:hover, .g-fld input:-webkit-autofill:focus, .g-fld input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #050d2b inset !important; box-shadow: 0 0 0 1000px #050d2b inset !important;
+  -webkit-text-fill-color: var(--sg-ink, #fff) !important; caret-color: var(--sg-ink, #fff);
+  border-radius: 6px; transition: background-color 9999s ease-out 0s; }
 .g-fld input::placeholder, .g-fld textarea::placeholder { color: var(--sg-faint); font-weight: 600; }
 .g-flbl { font: 800 12px/1.2 'Heebo', sans-serif; color: var(--sg-dim); margin: 0 4px 6px; display: block; }
 
@@ -694,6 +716,12 @@ svg.gi.g-chev { color: var(--sg-faint); width: 16px; height: 16px; }
 #sprofile .pf-g-av .g-avr.b3d-on #profile-avatar-display { visibility: hidden; }
 #sprofile .pf-g-pen { position: absolute; bottom: 4px; left: -4px; width: 32px; height: 32px; min-width: 32px; background: #0b1d5c; }
 #sprofile .pf-g-name { font: 900 24px/1.2 'Heebo', sans-serif; margin-top: 14px; cursor: pointer; color: var(--sg-ink); }
+/* Account deletion: a quiet text link under the list; the red dialog asks for "מחק". */
+#sprofile .pf-delete-link { align-self: center; margin: 4px 0 18px; padding: 8px 14px; background: none; border: 0; color: var(--sg-faint); font: 600 12px 'Heebo', sans-serif; text-decoration: underline; cursor: pointer; }
+#ov-delete-account .pf-delete-fld { margin: 12px 0 4px; }
+#ov-delete-account .pf-delete-fld input { text-align: center; }
+#ov-delete-account .pf-delete-err { min-height: 16px; font-size: 12px; color: #ff8f9c; text-align: center; }
+#ov-delete-account .ovb[disabled] { opacity: .45; pointer-events: none; }
 #sprofile .pf-name-edit { max-width: 260px; margin: 10px auto 0; }
 #sprofile .g-stat3 b span { font-size: inherit; }
 #sprofile #friends-req-badge:empty { display: none !important; }
@@ -1229,6 +1257,10 @@ svg.gi.g-chev { color: var(--sg-faint); width: 16px; height: 16px; }
 .g-btn.google:active { background: #f1f3f4; }
 .g-btn.google .g-google-mark { flex: none; }
 .g-btn.google.ovgu-google { width: 100%; height: 46px; margin: 4px 0 10px; }
+.g-btn.link.ovgu-code { display: block; margin: 12px auto 0; }
+/* Spinner icon: 8 rays of falling opacity (inline SVG in guest-upgrade-overlay.html), turned one ray at a time. */
+.gi.gi-spin { animation: gi-spin 0.9s steps(8) infinite; transform-origin: 50% 50%; }
+@keyframes gi-spin { to { transform: rotate(360deg); } }
 #ov-pick-name .sf { width: 100%; margin: 10px 0 4px; }
 .auth-g .pw-wrap { position: relative; }
 .auth-g .pw-toggle { position: static !important; transform: none !important; width: 32px; height: 32px; flex: none; display: grid; place-items: center; background: none !important; border: none !important; color: var(--sg-faint); padding: 0; }
@@ -1329,10 +1361,10 @@ svg.gi.em-help-dropdown-ic { color: var(--sg-p1); width: 18px; height: 18px; }
   background: radial-gradient(circle, #0b1d5c 58%, #081440 60%); box-shadow: 0 0 0 1px var(--sg-line), 0 0 0 6px rgba(40,212,255,.14), 0 0 30px rgba(40,212,255,.35);
   color: #fff; text-shadow: 0 0 8px var(--sg-p1); }
 
-/* ── Guide / FAQ (#ov-guide, #ov-faq): full screen, accordion list ── */
-#ov-guide, #ov-faq { align-items: stretch !important; justify-content: stretch !important; backdrop-filter: none !important;
+/* ── Guide / FAQ / dictionary (#ov-guide, #ov-faq, #ov-dict-help): full screen, accordion list ── */
+#ov-guide, #ov-faq, #ov-dict-help { align-items: stretch !important; justify-content: stretch !important; backdrop-filter: none !important;
   background: radial-gradient(ellipse 90% 45% at 50% 0, rgba(40,110,255,.30), transparent 70%), linear-gradient(180deg, #07123d, #040a22 55%, #030817) !important; }
-#ov-guide > .g-full, #ov-faq > .g-full { width: 100% !important; max-width: 520px !important; max-height: none !important; height: 100%; margin: 0 auto; border: none !important; border-radius: 0 !important;
+#ov-guide > .g-full, #ov-faq > .g-full, #ov-dict-help > .g-full { width: 100% !important; max-width: 520px !important; max-height: none !important; height: 100%; margin: 0 auto; border: none !important; border-radius: 0 !important;
   background: none !important; box-shadow: none !important; padding: max(10px, env(safe-area-inset-top)) 14px 22px !important; overflow-y: auto; text-align: right; }
 .g-full .guide-body { border-radius: 18px; overflow: hidden; background: var(--sg-glass); border: 1px solid var(--sg-line); }
 .g-full .guide-section { margin: 0 !important; border: none !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; }
@@ -1343,11 +1375,22 @@ svg.gi.em-help-dropdown-ic { color: var(--sg-p1); width: 18px; height: 18px; }
 .g-full .guide-section > summary::before { content: ""; width: 38px; height: 38px; flex: none; border-radius: 12px;
   background: radial-gradient(circle at 50% 40%, rgba(40,212,255,.26), rgba(8,22,70,.95) 72%); border: 1.5px solid rgba(40,212,255,.55); box-shadow: 0 0 10px rgba(40,212,255,.25), inset 0 0 6px rgba(40,212,255,.25); }
 #ov-faq .guide-section > summary::before { content: "?"; display: grid; place-items: center; color: #e9fbff; font-weight: 900; font-size: 16px; text-shadow: 0 0 3px #28d4ff; }
+#ov-dict-help .guide-section > summary::before { content: "א"; display: grid; place-items: center; color: #e9fbff; font-weight: 900; font-size: 16px; text-shadow: 0 0 3px #28d4ff; }
 .g-full .guide-section > summary::after { content: "‹"; margin-inline-start: auto; color: var(--sg-faint); font-size: 18px; transform: rotate(-90deg); transition: transform .15s; }
 .g-full .guide-section[open] > summary::after { transform: rotate(90deg); color: var(--sg-p1); }
 .g-full .guide-section-body { padding: 0 14px 14px !important; color: var(--sg-dim) !important; font-size: 12.5px !important; font-weight: 600; line-height: 1.6; }
 .g-full .guide-section-body strong { color: var(--sg-p1); }
 .g-full .guide-shot img { border-radius: 12px; border: 1px solid var(--sg-line); }
+.g-full .faq-group { margin: 16px 4px 6px; color: var(--sg-p1); font: 800 12px/1.2 'Heebo', sans-serif; letter-spacing: .02em; }
+/* Dictionary help: intro line + accepted (green) / rejected (red) word chips */
+#ov-dict-help .dh-intro { margin: 0 4px 12px; color: var(--sg-dim); font-size: 13px; font-weight: 600; line-height: 1.6; }
+#ov-dict-help .dh-intro strong { color: var(--sg-ink); }
+#ov-dict-help .dh-ex { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+#ov-dict-help .dh-ex span { padding: 3px 9px; border-radius: 9px; font: 800 13px/1.4 'Heebo', sans-serif; }
+#ov-dict-help .dh-ok { color: #8ff5b4; background: rgba(46,204,113,.12); border: 1px solid rgba(46,204,113,.4); }
+#ov-dict-help .dh-ok::before { content: "✓ "; }
+#ov-dict-help .dh-no { color: #ff9aa2; background: rgba(255,82,96,.12); border: 1px solid rgba(255,82,96,.4); }
+#ov-dict-help .dh-no::before { content: "✗ "; }
 
 /* ── Tutorial intro (#tut-intro) → dialog with medal ── */
 #tut-intro-box { background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,0) 35%), rgba(10,22,66,.97) !important; border: 1px solid rgba(120,190,255,.35) !important;
@@ -1898,6 +1941,17 @@ input.g-tog-input { width: 46px !important; height: 28px !important; min-width: 
 #savatar-store .coin-pack-img { width: 76px; height: 76px; object-fit: contain; }
 #savatar-store .coin-pack-n { font-size: 20px; font-weight: 900; color: var(--sg-p2); }
 #savatar-store .coin-pack-l { font-size: 11.5px; color: var(--sg-dim); }
+#savatar-store .store-ad { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "play t c" "play left c"; align-items: center; column-gap: 12px;
+  width: 100%; margin-bottom: 12px; padding: 12px 14px; border-radius: 18px; cursor: pointer; font: inherit; color: inherit; text-align: start;
+  background: radial-gradient(80% 120% at 0% 50%, rgba(80,200,255,.18), transparent 70%), var(--sg-glass); border: 1px solid rgba(80,200,255,.45); transition: transform .1s; }
+#savatar-store .store-ad:active { transform: scale(.98); }
+#savatar-store .store-ad.is-done { opacity: .5; cursor: default; }
+#savatar-store .store-ad-play { grid-area: play; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font-size: 16px;
+  background: rgba(80,200,255,.22); border: 1px solid rgba(80,200,255,.55); }
+#savatar-store .store-ad-t { grid-area: t; font-size: 15px; font-weight: 800; }
+#savatar-store .store-ad-left { grid-area: left; font-size: 12px; color: var(--sg-dim); }
+#savatar-store .store-ad-c { grid-area: c; display: flex; align-items: center; gap: 4px; font-size: 18px; font-weight: 900; color: var(--sg-p2); }
+#savatar-store .store-ad-c .coin-ic { width: 22px; height: 22px; }
 #savatar-store .coin-pack-price { margin-top: 4px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 800;
   background: rgba(255,201,61,.18); border: 1px solid rgba(255,201,61,.45); color: var(--sg-p2); }/* A tapped Boostie card comes alive: the 3D canvas over the still (locked ones in colour) */
 #savatar-store .bst-card[data-boostie] { cursor: pointer; -webkit-tap-highlight-color: transparent; }

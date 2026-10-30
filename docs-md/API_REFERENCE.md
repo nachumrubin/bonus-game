@@ -521,6 +521,51 @@ formatPlayPrice({ currency, value }, locale = 'he-IL') → string
 // main.js: credit = economy.creditPlay; prices emitted as STORE_COIN_PRICES { prices }.
 ```
 
+### rewardedAds.js — rewarded videos for coins (Android app only, October 2026)
+```typescript
+createRewardedAds({ win?, inApp: async () => boolean, handoffMs = 2500 }) → {
+  watch(uid),     // opens the app's RewardedAdActivity → 'opened' | 'not-handled' (old app)
+                  //   | 'unavailable' (browser / no uid) | 'busy'
+  isAvailable(),  // = inApp()
+}
+rewardedAdIntentUrl(uid) → 'intent://reward?uid=…#Intent;scheme=boost-ad;end'
+// Coins come from the worker's /admob/ssv, never from here. main.js: inApp = Play Billing
+// service exists; store card via STORE_ADS { left, coins }, tap → STORE_INTENT.WATCH_AD.
+```
+economy.js: `AD_REWARD_COINS`, `AD_REWARDS_PER_DAY`, `adRewardsLeft(profile, today)`,
+`applyAdReward(profile, today)` → `{ next, result: { ok, credited, coins, left } }` | `{ result: { ok:false, reason:'daily-cap' } }`.
+
+### worker/src/admobSsv.js — AdMob SSV callback (October 2026)
+```typescript
+// GET /admob/ssv?…&user_id=<uid>&transaction_id=…&signature=…&key_id=…  (called by AdMob)
+// 403 bad signature; 200 for the console test ping (no user) and other ad units
+// (env.ADMOB_AD_UNIT_ID); else 200 + applyAdReward result, request id 'ad-<transaction_id>'
+verifySsvQuery(rawQuery, { fetchImpl }) → Promise<boolean>   // Google's verifier keys, cached 24 h
+handleAdmobSsv(request, env, deps)
+```
+
+### accountDeletion.js — in-app account deletion (October 2026)
+```typescript
+createAccountDeletion({ baseUrl, getIdToken, fetchImpl?, retries = 1 }) → {
+  deleteAccount() → { ok: true } | { ok: false, reason: 'not-configured'|'signed-out'|'offline'|'server-error'|'http-<n>'|… }
+}
+// main.js: PROFILE_INTENT.DELETE_ACCOUNT → stop presence → deleteAccount() → LOGOUT;
+// dialog state via PROFILE_DELETE_STATE { busy } | { error } | { close: true }.
+// profileScreen.js: DELETE_CONFIRM_WORD = 'מחק'.
+```
+
+### worker/src/accountDelete.js — account deletion (October 2026)
+```typescript
+// POST /account/delete (Bearer ID token) → 200 { ok: true } | 401 | 400 bad-uid | 500 server-error
+buildDeletionUpdate(env, uid, db) → { [path]: null | DELETED_NAME }   // one multi-path update
+deleteAccount(env, uid, { db, auth, push })   // db patch → OneSignal user (best effort) → Auth user last
+deleteAuthUser(env, uid, { fetchImpl })       // Identity Toolkit accounts:delete; USER_NOT_FOUND = done
+deletePushUser(env, uid, { fetchImpl })       // OneSignal DELETE users/by/external_id/<uid>
+handleAccountDelete(request, env, cors, deps)
+DELETED_NAME = 'שחקן שנמחק'
+// firebaseRtdb.js: rtdbQueryEqual(env, path, orderBy, value)  (needs .indexOn)
+```
+
 ### worker/src/economy.js — coin endpoints (Cloudflare Worker, October 2026)
 ```typescript
 // POST /economy/claim-daily | achievement | buy | claim-chain | credit-play, body { reqId, … }

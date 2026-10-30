@@ -97,7 +97,11 @@ Two paths exist; the active one is selected by `setDictionaryMode('v1' | 'v2')`,
 
 ### v1 (legacy, default)
 
-- Dictionary: `data/dictionary.base.txt` (464 KB Hebrew word list)
+- Dictionary: `data/dictionary.txt` (plain sorted UTF-8 list, 274,112 words since 2026-10-29). Lookup is
+  exact match plus terminal final-letter variants (`isValid` in `hebrewDictionary.js`); the lemmatization
+  chain below is historical. The Oct 2026 list has no prefixed particles (הילד, ולא, שלא), no construct
+  forms (מכונת, מלחמת), uses full spelling (הייתה, מאוד, אימא) and has no proper names; full verb
+  paradigms are listed as surface forms. Admin-curated words it dropped: `docs-md/dictionary-admin-review.md`.
 - Loaded at boot via `loadDict()` → `DICT` Set
 - Validation: `isValid(word)` → `analyze()` with morphological analysis
 - **Normalization:** Final forms (ך,ם,ן,ף,ץ) → medial forms before lookup

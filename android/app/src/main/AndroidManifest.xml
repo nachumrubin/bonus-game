@@ -17,6 +17,11 @@
             android:name="asset_statements"
             android:resource="@string/assetStatements" />
 
+        <!-- AdMob app id (gradle.properties → admobAppId). -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}" />
+
         <!-- TWA Activity -->
         <activity
             android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
@@ -95,6 +100,37 @@
                 <action android:name="org.chromium.intent.action.IS_READY_TO_PAY" />
             </intent-filter>
         </service>
+
+        <!-- Rewarded video ads: the web app opens
+             intent://reward?uid=…#Intent;scheme=boost-ad;end (rewardedAds.js). -->
+        <activity
+            android:name="app.boost8ef11.twa.RewardedAdActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:configChanges="keyboardHidden|keyboard|orientation|screenLayout|screenSize"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="boost-ad" android:host="reward" />
+            </intent-filter>
+        </activity>
+
+        <!-- The exit question's "יציאה": the web app opens
+             intent://exit#Intent;scheme=boost-ad;end (APP_EXIT_URL, backButton.js). -->
+        <activity
+            android:name="app.boost8ef11.twa.ExitActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="boost-ad" android:host="exit" />
+            </intent-filter>
+        </activity>
 
     </application>
 

@@ -170,6 +170,44 @@ Google setup:
 
 `PLAY_PACKAGE_NAME` (`app.boost8ef11.twa`) is in `wrangler.toml`.
 
+### AdMob rewarded videos (`/admob/ssv`)
+
+The Android app plays rewarded videos natively (`RewardedAdActivity`) with the player's
+uid as the SSV user id. AdMob then calls `GET /admob/ssv`, and `admobSsv.js` verifies the
+signature against Google's keys and credits `AD_REWARD_COINS`, at most
+`AD_REWARDS_PER_DAY` times a day. One-time setup:
+
+1. **AdMob** (admob.google.com): add the Android app (link it to the Play listing), then
+   create a **Rewarded** ad unit. Under the unit's *Server-side verification*, set the
+   callback URL to `https://<this worker>/admob/ssv` and press *Verify URL*. The worker
+   answers the signed test ping with 200.
+2. Put the ids in `android/gradle.properties`: `admobAppId` (`ca-app-pub-…~…`) and
+   `admobRewardedUnitId` (`ca-app-pub-…/…`). Optionally add `ADMOB_AD_UNIT_ID` (the
+   numeric part after `/`) to `[vars]` in `wrangler.toml` so callbacks for other units
+   are ignored.
+3. Publish `https://boost-8ef11.web.app/app-ads.txt` with the line AdMob shows
+   (*Apps → app-ads.txt*).
+4. **Play Console**: *App content → Ads* = "Yes, contains ads". In *Data safety*, declare
+   the advertising ID and the data the ads SDK collects.
+5. `npx wrangler deploy`, then build and upload the new app bundle (versionCode 17).
+
+Use a test device, or the test ids that debug builds use. Tapping your own live ads can
+get the AdMob account suspended.
+
+### Account deletion (`/account/delete`)
+
+The profile screen's מחיקת חשבון posts here with the player's ID token.
+`accountDelete.js` removes the player's data in one multi-path update, renames them in
+rooms to "שחקן שנמחק", deletes their OneSignal user, then deletes the Firebase Auth user
+through Identity Toolkit (`accounts:delete`). It uses the existing
+`FIREBASE_SERVICE_ACCOUNT_JSON` secret, so no new secret is needed. The Firebase Admin
+SDK service account may already delete users. If the worker logs `Auth delete failed:
+403`, grant the service account the **Firebase Authentication Admin** role in Google
+Cloud IAM.
+
+Deploy the database rules too (`firebase deploy --only database`): the worker finds a
+player's rooms through the `players/0/uid` and `players/1/uid` indexes on `rooms`.
+
 ### Tests
 
 `worker/test/*.test.js` run with `npm run test:unit` from the repo root.
