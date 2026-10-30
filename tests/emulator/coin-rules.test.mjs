@@ -50,6 +50,7 @@ test('coins: owned items, payouts and orders are worker-only', async () => {
     await assertFails(me.ref(profile('/achievementsPaid/first_steps')).set(1));
     await assertFails(me.ref(profile('/econRecent/req-0000001')).set({ result: { ok: true } }));
     await assertFails(me.ref(profile('/coinOrders/GPA_1')).set({ coins: 500 }));
+    await assertFails(me.ref(profile('/adRewards')).set({ day: '2026-10-27', count: 0 }));
   });
 });
 

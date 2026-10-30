@@ -42,13 +42,16 @@ App-wide "glass + wood" language from `tools/screens-mockup/index.html` (see DEC
   Notices go in centred dialogs led by `.ovic`, which is drawn as a medallion
   (`.ovic--gold`, `.ovic--red`; `.ovc.dlg-gold/.dlg-red` tint the border). In `.ovbtns`
   the primary `.ovb.p` sits on the left at ×2 width. `#ov-end`, `#ov-settings`,
-  `#ov-guide` and `#ov-faq` are full screen.
+  `#ov-guide`, `#ov-faq` and `#ov-dict-help` are full screen.
 - **Top bar:** `#global-topbar` shows on `#sh` only (`screenTransitions.js`). Other screens
   own a header with a back chip. `#topbar-home-btn` is hidden.
 - **New glass-skin IDs:** `#fr-my-id-tiles`, `#wr-code-tiles` (codes as wood tiles),
   `#av-gallery-bar`, `#end-lead-0` / `#end-lead-1` (end-screen lead bar),
   `#coin-p1-name`, `#coin-p2-name`, `#coin-side-0/1`, `#coin-tag-0/1`,
   `#profile-elo-pill` / `#profile-elo-val` / `#profile-coins-pill` / `#profile-coins-val`,
+  `#btn-delete-account`, `#ov-delete-account`, `#delete-account-input`,
+  `#delete-account-yes`, `#delete-account-no`, `#delete-account-error` (account
+  deletion: profileScreen.js; the yes button arms only when the input is "מחק"),
   `#home-turn-strip` / `#home-turn-strip-text` / `#home-turn-strip-avs`,
   `#home-lb-row` / `#home-lb-rank`, `#daily-reward-days`, `#mg-tabs` (buttons
   `[data-mg-tab="mine|theirs"]`).
@@ -203,12 +206,14 @@ Reaction system (online games only):
                          free set + owned; sending plays the clip on the sender's live 3D Boostie
                          on both screens, else the emoji bubble (Phase 5). Rebuilt on every open.
 
-Help dropdown / Guide / FAQ (top-bar `?` button):
-#em-help-dropdown      — anchored dropdown opened by MENU_INTENT.OPEN_HELP_MENU; items emit OPEN_TUTORIAL/OPEN_GUIDE/OPEN_FAQ
-.em-help-dropdown-item — dropdown rows (data-action: tutorial|guide|faq)
+Help dropdown / Guide / FAQ / Dictionary (top-bar `?` button):
+#em-help-dropdown      — anchored dropdown opened by MENU_INTENT.OPEN_HELP_MENU; items emit OPEN_TUTORIAL/OPEN_GUIDE/OPEN_FAQ/OPEN_DICT_HELP (report opens contact)
+.em-help-dropdown-item — dropdown rows (data-action: tutorial|guide|faq|dict|report)
 #ov-guide              — game guide overlay (collapsible <details> sections by topic)
-#ov-faq                — FAQ overlay (collapsible <details> Q&As)
-.guide-section         — accordion section (used inside both #ov-guide and #ov-faq)
+#ov-faq                — FAQ overlay: .faq-group headings, each followed by a .guide-body of <details> Q&As
+#ov-dict-help          — "המילון" overlay: how words are checked, accepted (.dh-ok) vs rejected (.dh-no) examples in .dh-ex rows
+#dict-help-close-btn   — close button of #ov-dict-help
+.guide-section         — accordion section (used inside #ov-guide, #ov-faq and #ov-dict-help)
 
 App boot loader tip carousel (inside #app-loading, wired by wireAppLoading() in main.js):
 #app-loading           — full-screen boot overlay; removed from DOM 600 ms after .is-hidden is added.
@@ -298,6 +303,7 @@ Load-bearing IDs (do not rename without updating `avatarStoreScreen.js`):
 #store-hint            — transient "not enough coins" hint
 #store-grid            — category sections rendered here by paint() (inside #store-panel-avatars)
 #store-panel-avatars, #store-panel-skins, #store-panel-coins — tab panels; `.on` = shown
+#store-ad              — rewarded-video card (adCardHtml: .store-ad[data-store-action="ad"]; Android app only)
 #store-coins           — coin packs (coinPacksHtml: .coin-pack[data-store-action="coins"][data-store-id])
 #ov-store-confirm      — purchase-confirm overlay
   #store-confirm-avatar, #store-confirm-price, #store-confirm-yes, #store-confirm-no
@@ -890,7 +896,8 @@ render({ hasSavedGame, isAuthed, displayName, hasOnlineUnread, rating, avatar })
 - `#btn-share-game`: hidden if `!isAuthed`; on first reveal: plays `menuBtnIn` animation
 - `#home-user-label`: shows `displayName`
 - `#home-avatar-ic`: shows the equipped avatar still; its `.em-avatar-wrap` gets a live 3D canvas (`.b3d-cv`, `.b3d-on` hides the still) while `#sh` shows (homeAvatarLive.js); lively mode (eyes and head move) and a gesture every 5–9 s. The profile ring does the same while `#sprofile` shows
-- `#home-elo-label`: hidden if `!isAuthed`. When visible it is its own hit target (`role="button"`, `aria-label="טבלת דירוגים"`): click/Enter/Space emits `CHAMPS_OPEN` and stops propagation so `#btn-profile-home` does not also open. Avatar and `#home-user-label` still open profile/auth. This is the only home-screen entry to `#ov-champs`.
+- `#home-elo-label`: hidden if `!isAuthed`. Display only, no handler of its own: a tap on it opens profile/auth like the rest of `#btn-profile-home`. `#ov-champs` opens from the profile's `#btn-profile-champs`.
+- `#topbar-coin-pill-clip` / `#topbar-coin-pill`: created by `src/ui/coinPill.js` inside `#global-topbar`, hung from `#btn-profile-home`'s bottom edge (inset by its 14px corner radius) so it reads as a tab of the block. After the daily reward's איסוף (`DAILY_REWARD_ACK`) the tab slides out, counts the coin balance from old to new, and slides back. `aria-hidden`, no hit target.
 - `#home-elo-value`: shows `rating` formatted as locale number
 - `#home-elo-bolt`: tier emoji (🪙/🥈/🥇/💎); set by `ratingTierEmoji()` in `menuScreen.js`
 - Home has no `#btn-home-champs` row. Bottom-nav third item is חנות (`openStore()`, Oct 2026); הישגים (`showAvatarGallery()`) moved to the profile list.
@@ -992,6 +999,8 @@ Do not remove these until the corresponding legacy code is removed.
 #li-google-btn         — log-in screen "המשך עם Google" (AUTH_INTENT.GOOGLE, scope login)
 #su-google-btn         — sign-up screen "הרשמה עם Google" (scope signup)
 #ovgu-google-btn       — guest-upgrade overlay Google button (scope upgrade)
+#ovgu-title / #ovgu-desc — guest-upgrade overlay text, set per reason by authScreens.showUpgrade()
+#ovgu-code-btn         — guest-upgrade overlay "קיבלתי קוד מחבר" (online reason only) → AUTH_INTENT.GUEST_JOIN_CODE
 #ov-pick-name          — first Google sign-in: choose a game name (partials/screens/pick-name-overlay.html)
 #pn-name, #pn-error, #pn-submit — its input (maxlength 15), error line, submit (AUTH_INTENT.PICK_NAME)
 ```

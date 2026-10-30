@@ -1,0 +1,159 @@
+<!-- DICTIONARY HELP - how the game dictionary decides, opened from the `?` dropdown ("המילון").
+     The examples are checked against data/dictionary.txt and /dictionaryRejected; re-check them
+     whenever the word list changes (docs-md/CHANGELOG.md, "Help: המילון tab"). -->
+<div id="ov-dict-help" class="ov hidden" onclick="if(event.target===this)ovClose('ov-dict-help')">
+  <div class="ovc guide-ovc g-full" dir="rtl">
+    <div class="g-hdr">
+      <button class="g-chip ic" onclick="ovClose('ov-dict-help')" aria-label="סגור"><svg class="gi"><use href="#gi-x"/></svg></button>
+      <div class="g-ttl"><svg class="gi"><use href="#gi-search"/></svg><span class="ovt" style="margin:0">המילון</span></div>
+      <span></span>
+    </div>
+
+    <p class="dh-intro">כל מילה שנוצרת על הלוח נבדקת מול רשימה של כ-274 אלף מילים בעברית. מילה מתקבלת רק אם <strong>הצורה המדויקת</strong> שלה נמצאת ברשימה. המשחק לא מנחש ולא מפרק מילים: אם הצורה הזאת לא ברשימה, היא נדחית גם כשהמילה עצמה נכונה.</p>
+
+    <div class="guide-body">
+
+      <details class="guide-section" open>
+        <summary>איך נבדק מהלך</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li>נבדקות <strong>כל</strong> המילים שהמהלך יוצר: המילה הראשית וגם כל מילה שנוצרת בניצב לאותיות שהונחו.</li>
+            <li>מילה היא רצף של 2 אותיות ומעלה. אות בודדת לא נבדקת.</li>
+            <li>אם אחת המילים לא חוקית, המהלך כולו נדחה, התור עובר אחרי רגע קצר ונספר כתור בלי ניקוד.</li>
+            <li>ג'וקר נבדק לפי האות שבחרתם עבורו.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>אותיות סופיות</summary>
+        <div class="guide-section-body">
+          <p>על הלוח אין אותיות סופיות. כשכ, מ, נ, פ או צ נמצאת בסוף מילה, היא נקראת אוטומטית כסופית.</p>
+          <div class="dh-ex"><span class="dh-ok">מלכ ← מלך</span><span class="dh-ok">שלומ ← שלום</span><span class="dh-ok">ארצ ← ארץ</span></div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מה כן נמצא במילון</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li><strong>צורת היסוד, ריבוי ונקבה</strong> של שמות ותארים.</li>
+          </ul>
+          <div class="dh-ex"><span class="dh-ok">ילד</span><span class="dh-ok">ילדים</span><span class="dh-ok">ילדות</span><span class="dh-ok">גדולה</span><span class="dh-ok">גדולות</span></div>
+          <ul>
+            <li><strong>צורות זוגיות</strong>.</li>
+          </ul>
+          <div class="dh-ex"><span class="dh-ok">ידיים</span><span class="dh-ok">עיניים</span></div>
+          <ul>
+            <li><strong>כל הנטיות של הפועל</strong>: כל הזמנים, הגופים והבניינים, שם הפועל וציווי.</li>
+          </ul>
+          <div class="dh-ex"><span class="dh-ok">שבר</span><span class="dh-ok">נשבר</span><span class="dh-ok">שיבר</span><span class="dh-ok">השתבר</span><span class="dh-ok">תשבור</span><span class="dh-ok">לכתוב</span><span class="dh-ok">כותבת</span><span class="dh-ok">כתבתם</span><span class="dh-ok">כתבי</span></div>
+          <ul>
+            <li><strong>מילים קצרות</strong>, מילות יחס ומספרים.</li>
+          </ul>
+          <div class="dh-ex"><span class="dh-ok">אב</span><span class="dh-ok">יד</span><span class="dh-ok">על</span><span class="dh-ok">זה</span><span class="dh-ok">שלוש</span><span class="dh-ok">עשרים</span></div>
+          <ul>
+            <li><strong>מילים לועזיות וסלנג</strong> שנכנסו לעברית המדוברת.</li>
+          </ul>
+          <div class="dh-ex"><span class="dh-ok">טלפון</span><span class="dh-ok">אינטרנט</span><span class="dh-ok">סבבה</span><span class="dh-ok">יאללה</span></div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>אותיות שימוש בתחילת מילה (ה, ו, ב, כ, ל, מ, ש)</summary>
+        <div class="guide-section-body">
+          <p>המילון שומר מילים בלי אותיות שימוש מחוברות, כך שצירוף כמו ״ה + ילד״ לא מתקבל. משחקים את המילה עצמה.</p>
+          <div class="dh-ex"><span class="dh-no">הילד</span><span class="dh-no">ולא</span><span class="dh-no">שלא</span><span class="dh-no">מהבית</span><span class="dh-no">כשהוא</span></div>
+          <p>יוצאות מן הכלל מילים שהן מילה בפני עצמה, וגם כמה צירופים נפוצים מאוד שנכנסו לרשימה:</p>
+          <div class="dh-ex"><span class="dh-ok">היום</span><span class="dh-ok">לכן</span><span class="dh-ok">ביחד</span><span class="dh-ok">לבד</span><span class="dh-ok">הים</span><span class="dh-ok">בבית</span></div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>כינויי שייכות (ביתו, ספרך)</summary>
+        <div class="guide-section-body">
+          <p>שם עם סיומת שייכות (״שלו״, ״שלך״, ״שלנו״) לא נמצא במילון.</p>
+          <div class="dh-ex"><span class="dh-no">ביתו</span><span class="dh-no">ספרך</span><span class="dh-no">אבינו</span><span class="dh-no">אחותו</span></div>
+          <p>לפעמים אותן אותיות הן גם מילה אחרת, ואז הן מתקבלות בזכות המילה האחרת:</p>
+          <div class="dh-ex"><span class="dh-ok">ספרו (הם ספרו)</span><span class="dh-ok">שמו (הם שמו)</span><span class="dh-ok">ספרה (ספרה 7)</span></div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>סמיכות (מכונת, מלחמת)</summary>
+        <div class="guide-section-body">
+          <p>צורת הנסמך, כמו ״מכונת כביסה״, לא נמצאת במילון. צורת היסוד כן.</p>
+          <div class="dh-ex"><span class="dh-no">מכונת</span><span class="dh-no">מלחמת</span><span class="dh-no">ארוחת</span><span class="dh-no">אנשי</span></div>
+          <div class="dh-ex"><span class="dh-ok">מכונה</span><span class="dh-ok">מלחמה</span><span class="dh-ok">ארוחה</span></div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>פועל עם כינוי מושא (ראיתיו)</summary>
+        <div class="guide-section-body">
+          <p>פועל שהמושא מחובר אליו, כמו ״ראיתי אותו״ בכתיב ״ראיתיו״, לא נמצא במילון.</p>
+          <div class="dh-ex"><span class="dh-no">ראיתיו</span><span class="dh-no">אהבתיך</span><span class="dh-ok">ראיתי</span></div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>כתיב מלא</summary>
+        <div class="guide-section-body">
+          <p>המילון כתוב בכתיב מלא, כמו בכללי האקדמיה ללשון העברית. כתיב חסר לא מתקבל.</p>
+          <div class="dh-ex"><span class="dh-ok">הייתה</span><span class="dh-no">היתה</span><span class="dh-ok">מאוד</span><span class="dh-no">מאד</span><span class="dh-ok">אימא</span><span class="dh-no">אמא</span><span class="dh-ok">תוכנית</span><span class="dh-no">תכנית</span><span class="dh-ok">שולחן</span><span class="dh-no">שלחן</span></div>
+          <p>צורה חסרה מתקבלת רק כשהיא גם מילה אחרת, למשל <strong>ספור</strong> (ציווי של ״לספור״) או <strong>רצה</strong>.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>שמות פרטיים, ראשי תיבות וגרש</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li><strong>שמות של אנשים, ערים וארצות</strong> לא נמצאים במילון, אלא אם הם גם מילה רגילה.</li>
+          </ul>
+          <div class="dh-ex"><span class="dh-no">ירושלים</span><span class="dh-no">ישראל</span><span class="dh-no">לונדון</span><span class="dh-no">דני</span><span class="dh-ok">דוד (אח של ההורים)</span><span class="dh-ok">אביב (העונה)</span></div>
+          <ul>
+            <li><strong>ראשי תיבות</strong> שנכתבים עם גרשיים לא נמצאים במילון. ראשי תיבות שהפכו למילה רגילה כן.</li>
+          </ul>
+          <div class="dh-ex"><span class="dh-no">תנ״ך</span><span class="dh-no">רמטכ״ל</span><span class="dh-ok">דוח</span></div>
+          <ul>
+            <li><strong>אין גרש על הלוח</strong>. מילה עם ג׳, ז׳ או צ׳ נכתבת בלי הגרש.</li>
+          </ul>
+          <div class="dh-ex"><span class="dh-ok">גירפה</span></div>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מילים שהוסרו</summary>
+        <div class="guide-section-body">
+          <p>הצוות מסיר מהמשחק מילים שגויות או לא מתאימות, בדרך כלל בעקבות דיווחים של שחקנים. מילה שהוסרה נדחית תמיד, גם אם היא נמצאת ברשימה. ההסרה תופסת בכל הכתיבים של המילה, עם אות סופית ובלי.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>בדיקה לפני שמשחקים</summary>
+        <div class="guide-section-body">
+          <ul>
+            <li><strong>במשחק</strong>: כפתור <strong>מילון</strong> בודק מילה בלי לשחק אותה. שעון התור ממשיך לרוץ בזמן הבדיקה.</li>
+            <li><strong>מחוץ למשחק</strong>: הגדרות ← מילון ← <strong>בדיקת מילה</strong>.</li>
+          </ul>
+          <p>הבדיקה נותנת בדיוק את התשובה שהמשחק ייתן, כולל מילים שהוסרו.</p>
+        </div>
+      </details>
+
+      <details class="guide-section">
+        <summary>מילה חסרה או מילה שגויה?</summary>
+        <div class="guide-section-body">
+          <p>הרשימה גדולה אבל לא מושלמת. בהגדרות ← <strong>הצעות מילון</strong> אפשר להציע מילה חסרה או לבקש הסרה של מילה שגויה. ההצעות נבדקות ידנית, ומילה שאושרה נכנסת למשחק אצל כל השחקנים.</p>
+          <p>כל הצעה שמתקבלת מקדמת את ההישג <strong>תורם מילים</strong> (20 הצעות שהתקבלו).</p>
+          <p>כדאי להציע את הצורה שבה המילה מופיעה בפועל, לפי הכללים שבעמוד הזה. למשל ״מכונה״ ולא ״מכונת״.</p>
+        </div>
+      </details>
+
+    </div>
+
+    <div class="ovbtns" style="margin-top:14px">
+      <button type="button" class="ovb p" id="dict-help-close-btn" onclick="ovClose('ov-dict-help')">סגור</button>
+    </div>
+  </div>
+</div>

@@ -199,3 +199,51 @@ test('showError paints the error label', () => {
 test('throws if bus missing', () => {
   assert.throws(() => mountProfileScreen({}), /bus required/);
 });
+
+test('delete account: the dialog arms only after typing the confirm word, then emits the intent', async () => {
+  bus._reset();
+  const { PROFILE_DELETE_STATE, DELETE_CONFIRM_WORD } = await import('./profileScreen.js');
+  const mk = () => {
+    const ls = {};
+    const classes = new Set(['hidden']);
+    return {
+      value: '', textContent: '', disabled: false, style: {},
+      classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c), has: (c) => classes.has(c) },
+      addEventListener(ev, fn) { (ls[ev] ??= []).push(fn); },
+      removeEventListener() {},
+      fire(ev) { for (const fn of ls[ev] ?? []) fn({ preventDefault() {} }); },
+    };
+  };
+  const els = {
+    '#btn-delete-account': mk(), '#ov-delete-account': mk(), '#delete-account-input': mk(),
+    '#delete-account-yes': mk(), '#delete-account-no': mk(), '#delete-account-error': mk(),
+  };
+  const root = { querySelector: (sel) => els[sel] ?? null };
+  const hidden = () => els['#ov-delete-account'].classList.has('hidden');
+  let asked = 0;
+  bus.on(PROFILE_INTENT.DELETE_ACCOUNT, () => { asked++; });
+  const ui = mountProfileScreen({ root, bus });
+
+  els['#btn-delete-account'].fire('click');
+  assert.equal(hidden(), false);
+  assert.equal(els['#delete-account-yes'].disabled, true);
+  els['#delete-account-yes'].fire('click');
+  assert.equal(asked, 0, 'not armed yet');
+  els['#delete-account-input'].value = ` ${DELETE_CONFIRM_WORD} `;
+  els['#delete-account-input'].fire('input');
+  assert.equal(els['#delete-account-yes'].disabled, false);
+  els['#delete-account-yes'].fire('click');
+  assert.equal(asked, 1);
+
+  bus.emit(PROFILE_DELETE_STATE, { busy: true });
+  assert.equal(els['#delete-account-yes'].disabled, true);
+  els['#delete-account-no'].fire('click');
+  assert.equal(hidden(), false, 'cannot cancel while the worker runs');
+  bus.emit(PROFILE_DELETE_STATE, { busy: false, error: 'oops' });
+  assert.equal(els['#delete-account-error'].textContent, 'oops');
+  assert.equal(els['#delete-account-yes'].disabled, false, 'retry allowed');
+  bus.emit(PROFILE_DELETE_STATE, { close: true });
+  assert.equal(hidden(), true);
+  assert.equal(els['#delete-account-input'].value, '');
+  ui.unmount();
+});

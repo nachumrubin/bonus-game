@@ -9,6 +9,7 @@
 //   - CHAMPS_OPEN                 (טבלת דירוגים row → #ov-champs)
 //   - PROFILE_INTENT.UPGRADE_ACCOUNT (anonymous → signup)
 //   - PROFILE_INTENT.LOGOUT
+//   - PROFILE_INTENT.DELETE_ACCOUNT (after the #ov-delete-account confirm: typed "מחק")
 //   - PROFILE_INTENT.BACK
 //
 // main.js subscribes to these to drive profileService / friendsService / auth flows.
@@ -30,10 +31,16 @@ export const PROFILE_INTENT = Object.freeze({
   OPEN_STATS:       'profile/openStats',
   UPGRADE_ACCOUNT:  'profile/upgradeAccount',
   LOGOUT:           'profile/logout',
+  DELETE_ACCOUNT:   'profile/deleteAccount',
   BACK:             'profile/back',
 });
 
 export const PROFILE_RENDER = 'profile/render';
+// main.js → the delete dialog: { busy } while the worker runs, { error } on failure,
+// { close: true } once done.
+export const PROFILE_DELETE_STATE = 'profile/deleteState';
+// The word the player types to confirm deletion.
+export const DELETE_CONFIRM_WORD = 'מחק';
 
 // Pure: derive a derived stats object including winRate.
 export function deriveStats(profile) {
@@ -114,6 +121,47 @@ export function mountProfileScreen({ root = globalThis.document, bus } = {}) {
   if (upgradeBtn) {
     upgradeBtn.removeAttribute?.('onclick');
     cleanups.push(on(upgradeBtn, 'click', () => bus.emit(PROFILE_INTENT.UPGRADE_ACCOUNT, {})));
+  }
+
+  // Account deletion: the link opens a red dialog; the button arms once "מחק" is typed.
+  const delBtn = $('#btn-delete-account', root);
+  const delOv = $('#ov-delete-account', root);
+  const delInput = $('#delete-account-input', root);
+  const delYes = $('#delete-account-yes', root);
+  const delNo = $('#delete-account-no', root);
+  const delErr = $('#delete-account-error', root);
+  let delBusy = false;
+  const delArmed = () => !delBusy && String(delInput?.value ?? '').trim() === DELETE_CONFIRM_WORD;
+  const syncDelYes = () => { if (delYes) delYes.disabled = !delArmed(); };
+  function closeDelete() {
+    delBusy = false;
+    delOv?.classList?.add('hidden');
+    if (delInput) delInput.value = '';
+    if (delErr) setText(delErr, '');
+    if (delYes) setText(delYes, 'מחיקה לצמיתות');
+    syncDelYes();
+  }
+  if (delBtn && delOv) {
+    cleanups.push(on(delBtn, 'click', (e) => {
+      e?.preventDefault?.();
+      closeDelete();
+      delOv.classList?.remove('hidden');
+    }));
+    cleanups.push(on(delInput, 'input', syncDelYes));
+    cleanups.push(on(delNo, 'click', (e) => { e?.preventDefault?.(); if (!delBusy) closeDelete(); }));
+    cleanups.push(on(delYes, 'click', (e) => {
+      e?.preventDefault?.();
+      if (!delArmed()) return;
+      bus.emit(PROFILE_INTENT.DELETE_ACCOUNT, {});
+    }));
+    cleanups.push(bus.on(PROFILE_DELETE_STATE, ({ busy, error, close } = {}) => {
+      if (close) { closeDelete(); return; }
+      delBusy = !!busy;
+      if (delYes) setText(delYes, delBusy ? 'מוחק…' : 'מחיקה לצמיתות');
+      if (delErr) setText(delErr, error ?? '');
+      if (delNo) delNo.disabled = delBusy;
+      syncDelYes();
+    }));
   }
 
   let idle = null;

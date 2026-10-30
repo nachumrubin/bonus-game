@@ -17,11 +17,14 @@
 // CARD_PREVIEW_MS — locked ones too, in full colour — so the player gets a feel for it.
 //
 // Render with STORE_RENDER { coins, boosties, equippedAvatar, ownedReactions }; the coin
-// packs' Play prices with STORE_COIN_PRICES { prices }. Clicks emit:
+// packs' Play prices with STORE_COIN_PRICES { prices }; the rewarded-video card with
+// STORE_ADS { left, coins } (left = videos still allowed today; null hides the card,
+// outside the Android app). Clicks emit:
 //   STORE_INTENT.EQUIP            { id }    — owned Boostie → equip it
 //   EVO_SHOW                { id, from, to } — replay the latest evolution (evolutionScreen)
 //   STORE_INTENT.CONFIRM_PURCHASE { id }    — confirmed buy, id = 'boostie:bubo' | 'reaction:wink'
 //   STORE_INTENT.BUY_COINS        { id }    — coin pack tapped, id = COIN_PACKS key
+//   STORE_INTENT.WATCH_AD                   — "watch a video" card tapped (videos left)
 //   STORE_INTENT.CLOSE                      — back to where the store was opened from
 // main.js performs the purchase and re-emits STORE_RENDER (the profile watch).
 
@@ -43,11 +46,13 @@ export const STORE_INTENT = Object.freeze({
   CONFIRM_PURCHASE: 'store/confirmPurchase',  // confirm button → run the buy
   CANCEL_PURCHASE:  'store/cancelPurchase',
   BUY_COINS:        'store/buyCoins',         // coin pack for real money
+  WATCH_AD:         'store/watchAd',          // rewarded video for coins (Android app)
   CLOSE:            'store/close',
 });
 
 export const STORE_RENDER = 'store/render';
 export const STORE_COIN_PRICES = 'store/coinPrices';   // { prices } from Google Play
+export const STORE_ADS = 'store/ads';                   // { left, coins } rewarded videos
 
 export const DAILY_REWARD_SHOW = 'dailyReward/show';
 export const DAILY_REWARD_ACK  = 'dailyReward/ack';
@@ -181,6 +186,19 @@ export function coinPacksHtml(packs = COIN_PACKS, prices = {}) {
   )).join('')}</div>`;
 }
 
+// The rewarded-video card: "+15 coins for a video, 3 left today". left 0 → greyed out
+// until tomorrow; left null → no card (a browser, or a guest).
+export function adCardHtml({ left = null, coins = 0 } = {}) {
+  if (left == null) return '';
+  const n = Math.max(0, Math.floor(Number(left) || 0));
+  return `<button class="store-ad${n ? '' : ' is-done'}" data-store-action="ad"${n ? '' : ' disabled'}>`
+    + `<span class="store-ad-play" aria-hidden="true">▶</span>`
+    + `<span class="store-ad-t">צפו בסרטון קצר</span>`
+    + `<span class="store-ad-c">+${Number(coins) || 0} ${COIN_ICON_HTML}</span>`
+    + `<span class="store-ad-left">${n ? `נותרו ${n} היום` : 'חוזר מחר'}</span>`
+    + `</button>`;
+}
+
 // createLive: the live 3D factory (scoreboardLive; injectable for tests).
 export function mountAvatarStoreScreen({
   root = globalThis.document,
@@ -196,6 +214,7 @@ export function mountAvatarStoreScreen({
   const backBtn   = $('#store-back-btn', root);
   const tabs      = [...(root?.querySelectorAll?.('.store-tab') ?? [])];
   const coinsEl   = $('#store-coins', root);
+  const adEl      = $('#store-ad', root);
 
   // Confirm overlay elements.
   const confirmOv    = $('#ov-store-confirm', root);
@@ -379,6 +398,10 @@ export function mountAvatarStoreScreen({
   }
 
   for (const t of tabs) cleanups.push(on(t, 'click', () => selectTab(t.dataset?.tab)));
+  if (adEl) cleanups.push(on(adEl, 'click', (e) => {
+    const btn = e.target?.closest?.('[data-store-action="ad"]');
+    if (btn && !btn.disabled) bus.emit(STORE_INTENT.WATCH_AD, {});
+  }));
   if (coinsEl) cleanups.push(on(coinsEl, 'click', (e) => {
     const id = e.target?.closest?.('[data-store-action="coins"]')?.getAttribute('data-store-id');
     if (id && COIN_PACKS[id]) bus.emit(STORE_INTENT.BUY_COINS, { id });
@@ -425,6 +448,9 @@ export function mountAvatarStoreScreen({
   cleanups.push(bus.on(STORE_RENDER, paint));
   cleanups.push(bus.on(STORE_COIN_PRICES, ({ prices } = {}) => {
     if (coinsEl) coinsEl.innerHTML = coinPacksHtml(COIN_PACKS, prices);
+  }));
+  cleanups.push(bus.on(STORE_ADS, (ads = {}) => {
+    if (adEl) adEl.innerHTML = adCardHtml(ads);
   }));
 
   return {

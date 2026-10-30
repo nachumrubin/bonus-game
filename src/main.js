@@ -50,7 +50,9 @@ import { createTimeoutWatchdog } from './game/online/timeoutWatchdog.js';
 import * as profileService from './game/account/profileService.js';
 import { createEconomyClient } from './game/account/economyClient.js';
 import { createPlayBilling } from './game/account/playBillingClient.js';
-import { COIN_PACKS } from './game/account/economy.js';
+import { createRewardedAds } from './game/account/rewardedAds.js';
+import { createAccountDeletion } from './game/account/accountDeletion.js';
+import { COIN_PACKS, AD_REWARD_COINS, adRewardsLeft, ymdIn } from './game/account/economy.js';
 import { profileAvatarValue, normalizeBoosties } from './game/account/boostieXp.js';
 import { isBoostieId, parseStoreItem, boostieName, boostieAvatarValue, DEFAULT_BOOSTIE } from './game/account/boostieCatalog.js';
 import * as friendsService from './game/account/friendsService.js';
@@ -60,6 +62,7 @@ import * as settingsCompat from './game/settings/settingsCompat.js';
 import { applyGenderToRoot, getGender } from './ui/genderText.js';
 import * as audioService from './ui/audioService.js';
 import * as feedbackService from './ui/feedbackService.js';
+import { showCoinCountUp } from './ui/coinPill.js';
 import { startMatchmaking } from './game/online/spineMatchmaking.js';
 
 import { createGameController } from './ui/controllers/gameController.js';
@@ -85,6 +88,7 @@ import { mountMenuScreen, MENU_INTENT, MENU_REFRESH } from './ui/screens/menuScr
 import { mountHelpDropdown } from './ui/screens/helpDropdown.js';
 import { mountGuideScreen } from './ui/screens/guideScreen.js';
 import { mountFaqScreen } from './ui/screens/faqScreen.js';
+import { mountDictionaryHelpScreen } from './ui/screens/dictionaryHelpScreen.js';
 import { mountSetupScreen, SETUP_INTENT, SETUP_OPEN } from './ui/screens/setupScreen.js';
 import { mountOnlineLobbyScreen, LOBBY_INTENT } from './ui/screens/onlineLobbyScreen.js';
 import { mountMatchmakingOverlayScreen, mountPartnerSearchOverlay, MM_INTENT, PS_INTENT } from './ui/screens/matchmakingOverlayScreen.js';
@@ -111,7 +115,7 @@ import { mountCrossingWordsMiniGame, playCrossingWordsForBonus } from './ui/scre
 import { mountHoneycombMiniGame,     playHoneycombForBonus     } from './ui/screens/miniGames/honeycombMiniGame.js';
 import { mountLetterSpinnerMiniGame, playLetterSpinnerForBonus } from './ui/screens/miniGames/letterSpinnerMiniGame.js';
 import { mountScoreBonusAnimation } from './ui/controllers/scoreBonusAnimation.js';
-import { mountProfileScreen, PROFILE_INTENT, PROFILE_RENDER } from './ui/screens/profileScreen.js';
+import { mountProfileScreen, PROFILE_INTENT, PROFILE_RENDER, PROFILE_DELETE_STATE } from './ui/screens/profileScreen.js';
 import { mountStatsScreen, STATS_INTENT } from './ui/screens/statsScreen.js';
 import {
   mountAvatarPickerScreen, mountAvatarUnlockedScreen,
@@ -119,7 +123,7 @@ import {
   diffNewlyCompletedAchievements, progressBumps, AV_PROGRESS_BUMP, achievementSnapshot, botAvatarForLevel,
 } from './ui/screens/avatarScreens.js';
 import {
-  mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER, STORE_COIN_PRICES,
+  mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER, STORE_COIN_PRICES, STORE_ADS,
   DAILY_REWARD_SHOW, DAILY_REWARD_ACK,
 } from './ui/screens/avatarStoreScreen.js';
 import { mountAuthScreens, AUTH_INTENT, AUTH_ERROR_HE, firebaseAuthErrorHe, isSilentAuthCancel, suggestNameFromDisplayName } from './ui/screens/authScreens.js';
@@ -134,7 +138,7 @@ import { mountJokerPicker, JOKER_INTENT } from './ui/screens/jokerPicker.js';
 import { mountEndGameScreen,    END_INTENT,        END_OPEN }        from './ui/screens/endGameScreen.js';
 import { mountPauseScreen,      PAUSE_INTENT,      PAUSE_OPEN }      from './ui/screens/pauseScreen.js';
 import { mountBackConfirmScreen,BACK_INTENT,       BACK_OPEN, BACK_PRESSED } from './ui/screens/backConfirmScreen.js';
-import { decideBack, backSnapshot, clickOverlayClose, BACK_ACTION, EXIT_OVERLAY } from './ui/backButton.js';
+import { decideBack, backSnapshot, clickOverlayClose, BACK_ACTION, EXIT_OVERLAY, APP_EXIT_URL } from './ui/backButton.js';
 import { mountCoinTossScreen,   COIN_INTENT,       COIN_OPEN, COIN_WAITING } from './ui/screens/coinTossScreen.js';
 import { mountSettingsScreen,   SETTINGS_INTENT,   SETTINGS_OPEN, SETTINGS_CHANGED } from './ui/screens/settingsScreen.js';
 import { mountDisconnectScreen, DISCONNECT_INTENT, DISCONNECT_OPEN, DISCONNECT_CLOSE } from './ui/screens/disconnectScreen.js';
@@ -374,6 +378,10 @@ let homeAvatarLive = null;    // ui/boostie3d/homeAvatarLive.js — the live Boo
 let profileAvatarLive = null; // … and on the profile screen
 let economy = null;           // game/account/economyClient.js — the coin worker
 const playBilling = createPlayBilling();   // coin packs via Google Play (Android app only)
+// Rewarded videos for coins (AdMob, Android app only — where the Play Billing service exists).
+// Set when a guest finishes an online game; showSc('sh') then offers the sign-up sheet.
+let guestSignupAfterOnline = false;
+const rewardedAds = createRewardedAds({ inApp: async () => !!(await playBilling.getService()) });
 const DEFAULT_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyCE-Im2HzYhJVlRd07uIHqcsCGTQQhYgDo',
   authDomain: 'boost-8ef11.firebaseapp.com',
@@ -1168,8 +1176,17 @@ async function boot() {
     bus.on(MENU_INTENT.OPEN_PROFILE, () => {
       showLegacyScreen(activeFbCurrentUser?.uid ? 'sprofile' : 'sauth-login');
     });
+    // Online play needs an account: a guest's games live on one device and earn no
+    // rating. The exception is a friend's invite code (the sign-up sheet's
+    // "קיבלתי קוד מחבר"): the guest joins, and is asked again after the game.
+    const isGuest = () => !activeFbCurrentUser?.uid || !!activeFbCurrentUser?.isAnonymous;
     bus.on(MENU_INTENT.OPEN_ONLINE_LOBBY, () => {
+      if (isGuest()) { authScreens.showUpgrade('online'); return; }
       showLegacyScreen('so');
+    });
+    bus.on(AUTH_INTENT.GUEST_JOIN_CODE, () => {
+      showLegacyScreen('so');
+      bus.emit(LOBBY_INTENT.JOIN_BY_CODE, {});
     });
     bus.on(MENU_INTENT.OPEN_SETTINGS, () => {
       bus.emit(SETTINGS_OPEN, {});
@@ -1228,6 +1245,7 @@ async function boot() {
       showLegacyScreen('sh');
     });
     bus.on(LOBBY_INTENT.CREATE_ROOM, () => {
+      if (isGuest()) { authScreens.showUpgrade('online'); return; }
       globalThis.document?.getElementById?.('ov-create-room')?.classList?.remove?.('hidden');
       const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
       const nameInput = globalThis.document?.getElementById?.('cr-name');
@@ -1252,6 +1270,7 @@ async function boot() {
       if (nameRow) nameRow.style.display = isAuthed ? 'none' : '';
     });
     bus.on(LOBBY_INTENT.MATCHMAKING, () => {
+      if (isGuest()) { authScreens.showUpgrade('online'); return; }
       globalThis.document?.getElementById?.('ov-matchmaking')?.classList?.remove?.('hidden');
       const isAuthed = !!(activeFbCurrentUser?.uid && !activeFbCurrentUser?.isAnonymous);
       const nameInput = globalThis.document?.getElementById?.('mm-name');
@@ -3083,6 +3102,17 @@ async function boot() {
     }
     globalThis.__spine.replayProfile = () => { if (lastProfile) emitProfileRenders(lastProfile); };
 
+    // "איסוף" on the daily-reward overlay: the coins are already credited, so the
+    // pill under the profile button counts from the old balance up to the new one.
+    let dailyCoinsAwarded = 0;
+    bus.on(DAILY_REWARD_ACK, () => {
+      const awarded = dailyCoinsAwarded;
+      dailyCoinsAwarded = 0;
+      if (!awarded || !lastProfile) return;
+      const to = profileService.normalizeProfileEconomy(lastProfile).coins;
+      showCoinCountUp({ from: Math.max(0, to - awarded), to });
+    });
+
     function bootProfileFor(uid) {
       const fbDb = activeFbDb;
       if (!fbDb || !uid) return;
@@ -3117,6 +3147,14 @@ async function boot() {
         // skipped on the first watch fire (prev=null), so already-earned
         // achievements don't re-pay on reload. Conditions read stats, boosties and
         // ownedReactions (achievementSnapshot).
+        // A rewarded video was credited (the worker, on AdMob's callback): say so, and
+        // refresh the store's "videos left today".
+        if (prev && profile && JSON.stringify(prev.adRewards ?? null) !== JSON.stringify(profile.adRewards ?? null)) {
+          if (profile.adRewards?.day && (profile.coins ?? 0) > (prev.coins ?? 0)) {
+            bus.emit(NOTIF_BANNER_SHOW, { text: `+${AD_REWARD_COINS} מטבעות על הצפייה! 🎉`, avatar: '🪙', sound: 'store.purchase' });
+          }
+          refreshAdCard();
+        }
         if (prev && profile) {
           const newly = diffNewlyCompletedAchievements(
             achievementSnapshot(prev),
@@ -3143,7 +3181,11 @@ async function boot() {
         if (profile && !dailyRewardChecked && !activeFbCurrentUser?.isAnonymous) {
           dailyRewardChecked = true;
           economy?.claimDaily()
-            .then((r) => { if (r?.ok && r.coinsAwarded > 0) bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak, days: profileService.dailyWeek(r.newStreak) }); })
+            .then((r) => {
+              if (!(r?.ok && r.coinsAwarded > 0)) return;
+              dailyCoinsAwarded = r.coinsAwarded;
+              bus.emit(DAILY_REWARD_SHOW, { coins: r.coinsAwarded, streak: r.newStreak, days: profileService.dailyWeek(r.newStreak) });
+            })
             .catch((e) => console.warn('[spine] daily reward', e));
         }
         emitProfileRenders(profile);
@@ -3305,7 +3347,7 @@ async function boot() {
       const fbUser = activeFbCurrentUser;
       // Coins/store require a real account — anonymous profiles aren't persisted.
       if (!fbUser?.uid || fbUser.isAnonymous) {
-        globalThis.document?.getElementById?.('ov-guest-upgrade')?.classList?.remove?.('hidden');
+        authScreens.showUpgrade('default');
         return;
       }
       // Repaint from the latest profile so coins earned since the store was last
@@ -3323,12 +3365,19 @@ async function boot() {
       storeBackTo = from === 'home' ? 'sh' : 'sprofile';
       showLegacyScreen('savatar-store');
       refreshCoinPacks();
+      refreshAdCard();
     });
     // Coin packs: Play prices on the cards, and any pack paid for but never credited
     // (the app closed mid-purchase) is credited now. No-ops outside the Android app.
     const packIds = Object.keys(COIN_PACKS);
     const creditPlay = (args) => economy?.creditPlay(args) ?? { ok: false, reason: 'not-configured' };
     let coinPricesShown = false;
+    // The "watch a video" card: only in the Android app, for a signed-in player.
+    async function refreshAdCard() {
+      const fbUser = activeFbCurrentUser;
+      const show = !!fbUser?.uid && !fbUser.isAnonymous && await rewardedAds.isAvailable();
+      bus.emit(STORE_ADS, show ? { left: adRewardsLeft(lastProfile, ymdIn()), coins: AD_REWARD_COINS } : { left: null });
+    }
     async function refreshCoinPacks() {
       if (!coinPricesShown) {
         const prices = await playBilling.getPrices(packIds);
@@ -3339,6 +3388,17 @@ async function boot() {
     }
     bus.on(STORE_INTENT.CLOSE, () => {
       showLegacyScreen(storeBackTo);
+    });
+    // Rewarded video (AdMob): the app's ad screen plays it; the worker credits the coins
+    // from AdMob's signed callback and the profile watch announces them (above).
+    bus.on(STORE_INTENT.WATCH_AD, async () => {
+      const fbUser = activeFbCurrentUser;
+      if (!fbUser?.uid || fbUser.isAnonymous) return;
+      if (adRewardsLeft(lastProfile, ymdIn()) <= 0) return;
+      const r = await rewardedAds.watch(fbUser.uid);
+      if (r === 'not-handled') {
+        bus.emit(NOTIF_BANNER_SHOW, { text: 'עדכנו את האפליקציה בחנות Google Play כדי לצפות בסרטונים', avatar: '🪙', sound: 'store.fail' });
+      }
     });
     // Coin packs for real money (Phase 6b): Play's sheet → the worker checks the token
     // with Google and credits the coins; the profile watch repaints the balance.
@@ -3720,6 +3780,27 @@ async function boot() {
         .catch(() => {});
     };
 
+    function sendVerificationEmail(fbAuth, user) {
+      if (!user || user.emailVerified || typeof user.sendEmailVerification !== 'function') return;
+      try { fbAuth.languageCode = 'he'; } catch {}
+      user.sendEmailVerification()
+        .then(() => bus.emit(NOTIF_BANNER_SHOW, { avatar: '✉️', text: 'שלחנו לך אימייל לאימות הכתובת. אשרו אותו כדי שתוכלו להיכנס גם עם Google' }))
+        .catch((e) => console.warn('[spine] send verification email', e));
+    }
+
+    // A Google credential waiting for its password account (see the GOOGLE handler).
+    let pendingGoogleLink = null;
+    async function linkPendingGoogle(user) {
+      const pending = pendingGoogleLink;
+      pendingGoogleLink = null;
+      if (!pending || !user?.linkWithCredential) return;
+      if (pending.email && pending.email !== String(user.email || '').toLowerCase()) return;
+      try {
+        await user.linkWithCredential(pending.credential);
+        bus.emit(NOTIF_BANNER_SHOW, { avatar: '✅', text: 'חשבון Google חובר. מעכשיו אפשר להיכנס בשתי הדרכים' });
+      } catch (e) { console.warn('[spine] link pending google', e); }
+    }
+
     let googleSignInBusy = false;
     bus.on(AUTH_INTENT.GOOGLE, async ({ scope = 'login' } = {}) => {
       if (googleSignInBusy) return;
@@ -3753,7 +3834,17 @@ async function boot() {
             } else throw e;
           }
         } else {
-          user = (await fbAuth.signInWithPopup(provider))?.user ?? null;
+          try {
+            user = (await fbAuth.signInWithPopup(provider))?.user ?? null;
+          } catch (e) {
+            // The address has a password account Firebase won't merge on its own: keep
+            // the Google credential and link it once the player signs in with the
+            // password (LOG_IN below), so both ways work from then on.
+            if (e?.code === 'auth/account-exists-with-different-credential' && e.credential) {
+              pendingGoogleLink = { email: String(e.email || '').toLowerCase(), credential: e.credential };
+            }
+            throw e;
+          }
         }
         if (user) {
           activeFbCurrentUser = user;
@@ -3820,20 +3911,38 @@ async function boot() {
       } catch { /* read failed — fall through to the authoritative claim */ }
 
       try {
-        const cred = await fbAuth.createUserWithEmailAndPassword(email, password);
+        // A guest links the email to its anonymous account, as Google sign-in does,
+        // so its uid — running online games, invites, local progress — carries over.
+        const current = fbAuth.currentUser;
+        const EmailAuthProvider = globalThis.firebase?.auth?.EmailAuthProvider;
+        const linking = !!current?.isAnonymous && typeof EmailAuthProvider?.credential === 'function';
+        const cred = linking
+          ? await current.linkWithCredential(EmailAuthProvider.credential(email, password))
+          : await fbAuth.createUserWithEmailAndPassword(email, password);
         const uid = cred?.user?.uid;
         if (!uid) return;
         // Atomically claim the (unique) display name. If another account took
-        // it in the race window, roll back the just-created auth user so the
-        // email stays reusable and no profile-less account lingers.
+        // it in the race window, roll back so the email stays reusable and no
+        // profile-less account lingers: a linked guest drops the email again
+        // (it stays the guest), a new account is deleted.
         const prov = await provisionNewProfile(fbDb, uid, name, { wantsNotifications });
         if (!prov.ok) {
-          try { await cred.user?.delete?.(); }
+          try { await (linking ? cred.user?.unlink?.('password') : cred.user?.delete?.()); }
           catch (e) { console.warn('[spine] signup name-taken cleanup', e); }
           authScreens.showError('signup-name', AUTH_ERROR_HE['name-taken']);
           return;
         }
+        // A linked guest keeps its uid, so no auth-state change fires — re-boot
+        // the profile watch so menus pick up the new account (as PICK_NAME does).
+        if (linking) {
+          activeFbCurrentUser = cred.user;
+          try { globalThis.__spine.bootAccount?.(uid); } catch {}
+        }
         afterNewAccount({ wantsNotifications });
+        // A verified email keeps its password when the player later signs in with
+        // Google on the same address (Firebase links Google instead of replacing the
+        // password, which it does for an unverified email).
+        sendVerificationEmail(fbAuth, cred.user);
       } catch (e) {
         authScreens.showError('signup', firebaseAuthErrorHe(e, AUTH_ERROR_HE['bad-email']));
       }
@@ -3847,8 +3956,10 @@ async function boot() {
         return;
       }
       try {
-        await fbAuth.signInWithEmailAndPassword(email, password);
+        const cred = await fbAuth.signInWithEmailAndPassword(email, password);
+        authScreens.setLoginBusy?.(false);
         showLegacyScreen('sh');
+        await linkPendingGoogle(cred?.user);
       }
       catch (e) { authScreens.showError('login', firebaseAuthErrorHe(e)); }
     });
@@ -4014,9 +4125,37 @@ async function boot() {
         refreshChampions('end', elo?.ok ? { eloFrom: elo.myBefore } : null);
       } else if (oppUid && oppUid !== fbUser.uid && fbUser.isAnonymous) {
         console.info('[spine] skipping ELO — anonymous (unrated) player', { roomId: ag?.session?.state?.roomId });
+        guestSignupAfterOnline = true;   // asked to sign up once they are back home
       } else if (oppUid && oppUid !== fbUser.uid) {
         console.info('[spine] skipping ELO — no moves were played', { roomId: ag?.session?.state?.roomId, movesPlayed });
       }
+    });
+
+    // Account deletion (Play requirement): the worker removes the player's data and
+    // their Auth user (worker/src/accountDelete.js); then the normal logout runs.
+    // Presence stops first, so its final offline write lands before the worker
+    // deletes presence/<uid> instead of recreating it afterwards.
+    bus.on(PROFILE_INTENT.DELETE_ACCOUNT, async () => {
+      const uid = activeFbCurrentUser?.uid;
+      if (!uid) return;
+      bus.emit(PROFILE_DELETE_STATE, { busy: true });
+      try { await teardownCrossCuttingAuth(); } catch {}
+      const res = await createAccountDeletion({
+        baseUrl: globalThis.APP_CONFIG?.pushWorkerUrl,
+        getIdToken: async () => { try { return await activeFbCurrentUser?.getIdToken?.(); } catch { return null; } },
+      }).deleteAccount();
+      if (!res?.ok) {
+        console.warn('[spine] account delete failed', res);
+        try { bootCrossCuttingFor(uid); } catch {}
+        bus.emit(PROFILE_DELETE_STATE, {
+          busy: false,
+          error: res?.reason === 'offline' ? 'אין חיבור לאינטרנט, נסו שוב.' : 'המחיקה נכשלה. נסו שוב, או כתבו ל-privacy@boost-game.app',
+        });
+        return;
+      }
+      bus.emit(PROFILE_DELETE_STATE, { close: true });
+      bus.emit(PROFILE_INTENT.LOGOUT, {});
+      bus.emit(NOTIF_BANNER_SHOW, { text: 'החשבון נמחק. להתראות! 👋', avatar: '👋' });
     });
 
     bus.on(PROFILE_INTENT.LOGOUT, async () => {
@@ -5114,6 +5253,7 @@ async function boot() {
   const helpDropdown = mountHelpDropdown({ bus });
   const guideScreen  = mountGuideScreen({ bus });
   const faqScreen    = mountFaqScreen({ bus });
+  const dictHelpScreen = mountDictionaryHelpScreen({ bus });
   const claimStallCtl = createClaimStallEndController({
     bus,
     activeGameRef: () => globalThis.__spine?.activeGame ?? null,
@@ -5159,6 +5299,7 @@ async function boot() {
   globalThis.__spine.helpDropdown       = helpDropdown;
   globalThis.__spine.guideScreen        = guideScreen;
   globalThis.__spine.faqScreen          = faqScreen;
+  globalThis.__spine.dictHelpScreen     = dictHelpScreen;
   globalThis.__spine.claimStallController = claimStallCtl;
 
   console.info('[spine] ready. Try window.__spine.bootOffline2P() or .bootOfflineBot()');
@@ -5217,9 +5358,17 @@ async function boot() {
     for (const btn of exitOv?.querySelectorAll?.('[data-exit="stay"]') ?? []) {
       btn.addEventListener('click', closeExit);
     }
-    exitOv?.querySelector?.('[data-exit="leave"]')?.addEventListener('click', () => {
-      // A TWA closes on window.close(); a browser tab may refuse, so step
-      // back past the page instead (no sentinel is on top while asking).
+    exitOv?.querySelector?.('[data-exit="leave"]')?.addEventListener('click', async () => {
+      // The Android app (where the Play Billing service exists): the page can't
+      // close the TWA, so its ExitActivity backgrounds the app. The question is
+      // closed first, so coming back finds the home screen.
+      if (await playBilling.getService()) {
+        closeExit();
+        globalThis.location.href = APP_EXIT_URL;
+        return;
+      }
+      // A browser tab may refuse window.close(), so step back past the page
+      // instead (no sentinel is on top while asking).
       try { globalThis.close?.(); } catch { /* swallow */ }
       globalThis.setTimeout(() => { try { hist.back(); } catch { /* swallow */ } }, 150);
     });
@@ -5312,6 +5461,14 @@ function installCutoverGlobals() {
       reducedMotion: () => getMotionPreference().isReduced(),
     });
     scheduleBasicLayoutRefresh();
+    // A guest who just finished an online game (a friend's invite): ask once, on
+    // arriving home, after the screen glide.
+    if (id === 'sh' && guestSignupAfterOnline) {
+      guestSignupAfterOnline = false;
+      globalThis.setTimeout(() => {
+        if (activeFbCurrentUser?.isAnonymous) authScreens.showUpgrade('afterOnline');
+      }, 700);
+    }
   };
   globalThis.goHome = globalThis.goHome ?? function goHome() {
     globalThis.showSc?.('sh');

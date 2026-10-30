@@ -40,6 +40,12 @@ export const COIN_PACKS = Object.freeze({
   coins_3000: Object.freeze({ coins: 3000 }),
 });
 
+// Rewarded video ads (Android app, AdMob). The worker credits a watched ad only when
+// AdMob's signed server-side-verification callback arrives (worker/src/admobSsv.js).
+// Kept small next to the coin packs: an ad is a top-up, not a replacement for buying.
+export const AD_REWARD_COINS   = 15;
+export const AD_REWARDS_PER_DAY = 5;
+
 // How many recent request ids a profile remembers (a retried request returns the
 // first answer instead of paying twice).
 export const RECENT_REQUESTS_MAX = 30;
@@ -190,6 +196,23 @@ export function applyCoinCredit(p, { orderId, productId }, now = Date.now()) {
   if (p?.coinOrders?.[key]) return { result: { ok: true, already: true, coins } };
   const next = { ...withCoins(p, coins + pack.coins), coinOrders: { ...(p.coinOrders ?? {}), [key]: { productId, coins: pack.coins, ts: now } } };
   return { next, result: { ok: true, credited: pack.coins, coins: next.coins } };
+}
+
+// How many rewarded ads the player may still watch today ('YYYY-MM-DD', the economy's day).
+export function adRewardsLeft(p, today) {
+  const a = p?.adRewards;
+  const used = a?.day === today ? Math.max(0, Math.floor(Number(a.count) || 0)) : 0;
+  return Math.max(0, AD_REWARDS_PER_DAY - used);
+}
+
+// Credit one watched rewarded ad, at most AD_REWARDS_PER_DAY a day. The ad's
+// transaction id is the worker's request id, so AdMob retrying the callback pays once.
+export function applyAdReward(p, today) {
+  const coins = clampCoins(p?.coins);
+  if (adRewardsLeft(p, today) <= 0) return { result: { ok: false, reason: 'daily-cap', coins } };
+  const count = p?.adRewards?.day === today ? Math.floor(Number(p.adRewards.count) || 0) + 1 : 1;
+  const next = { ...withCoins(p, coins + AD_REWARD_COINS), adRewards: { day: today, count } };
+  return { next, result: { ok: true, credited: AD_REWARD_COINS, coins: next.coins, left: AD_REWARDS_PER_DAY - count } };
 }
 
 // Remember a request's answer on the profile (econRecent), keeping the newest few.

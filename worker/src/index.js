@@ -15,6 +15,8 @@ import { verifyFirebaseToken } from './verifyFirebaseToken.js';
 import { buildPushBody, KIND } from './pushPayloadBuilder.js';
 import { runCronSweep } from './cronSweep.js';
 import { handleEconomy } from './economy.js';
+import { handleAdmobSsv } from './admobSsv.js';
+import { handleAccountDelete } from './accountDelete.js';
 
 const ALLOWED_KINDS = new Set(Object.values(KIND));
 const MAX_RECIPIENTS = 4;        // games have 2 players; small headroom
@@ -95,6 +97,11 @@ export default {
       return handleCronDebug(request, env, origin);
     }
 
+    // ─── AdMob rewarded-ad callback (admobSsv.js) — a signed GET from Google ──
+    if (url.pathname === '/admob/ssv' && request.method === 'GET') {
+      return handleAdmobSsv(request, env);
+    }
+
     if (request.method !== 'POST') {
       return jsonResponse(405, { error: 'method_not_allowed' }, origin);
     }
@@ -102,6 +109,11 @@ export default {
     // ─── Coin economy (economy.js) ────────────────────────────────────
     if (url.pathname.startsWith('/economy/')) {
       return handleEconomy(request, env, corsHeaders(origin));
+    }
+
+    // ─── Account deletion (accountDelete.js) ──────────────────────────
+    if (url.pathname === '/account/delete') {
+      return handleAccountDelete(request, env, corsHeaders(origin));
     }
 
     // 1. AuthN

@@ -1,5 +1,19 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Help: המילון tab, FAQ, privacy — October 2026
+
+- [x] המילון help tab with verified accepted/rejected examples.
+- [x] FAQ rewritten by area; guide and privacy policy corrected.
+- [ ] Re-check the המילון examples whenever `data/dictionary.txt` or `/dictionaryRejected` changes
+  (a ✓ example that gets blocked would contradict the page).
+- [ ] Security: `globalRatings/$uid` allows `.write` for any signed-in user (validation checks the
+  `uid` field, not `auth.uid`), so one player can overwrite another's rating/name. Tighten to
+  `auth.uid === $uid` (or worker-only) and run `npm run test:emulator`.
+- [ ] Privacy: `/rooms` is world-readable (`.read: true`). Consider restricting reads to the two
+  players + admins; the policy now states rooms are readable by id.
+- [ ] Friends menu "חסום שחקן" / "דווח" buttons have no handlers; wire them or remove them.
+- [ ] `disableMessages` setting exists but settings has no UI for it (muting lives in the tray).
+
 ## Store ("חנות") with tabs — October 2026
 
 - [x] Renamed to חנות; tabs: אווטארים, ערכות צבע (בקרוב...), מטבעות.
@@ -17,6 +31,49 @@
 - [x] Android targetSdk raised to 36 (Play rejected 35 on upload).
 - [ ] Phone check on Android 16: launch/splash and the status bar (Android 16 ignores
   `windowOptOutEdgeToEdgeEnforcement`; the page itself is drawn by Chrome's TWA).
+- [x] Rewarded videos for coins (AdMob): `RewardedAdActivity` in the TWA, SSV callback
+  `/admob/ssv` in the worker, store card (+15, 5/day).
+- [ ] Rewarded videos, user side: AdMob account + app + rewarded ad unit with SSV
+  callback `https://<worker>/admob/ssv`, real ids in `android/gradle.properties`,
+  `app-ads.txt` on the site, Play Console "Contains ads" + Data safety (advertising ID),
+  deploy the worker (`worker/README.md` → AdMob).
+- [ ] Phone test: email sign-up gets the Hebrew verification email; after verifying, Google sign-in on the same address keeps the password. Reset password on a Google-only account restores email login.
+- [ ] Dictionary (Oct 29): review `docs-md/dictionary-admin-review.md` (127 dropped admin words, 42 returning removed words); decide whether prefixed / construct forms should play (the new list has none). (`bot-words.txt` rebuilt with `scripts/build-bot-words.mjs`.)
+- [ ] Phone check: daily-reward coin tab under the profile block (attached look, count-up, slide back in).
+- [ ] Rewarded videos: a GDPR consent form (UMP SDK) before ads for EEA/UK players.
+- [ ] Store on the phone (Oct 29): coin prices empty and the video didn't play in one session. Handoff false-negative fixed; still find out whether Play returned no products / AdMob no fill.
+- [ ] Phone check: the ad screen opens from the store and returns to the game, and the
+  coins arrive a few seconds later.
+- [ ] Tune `AD_REWARD_COINS` / `AD_REWARDS_PER_DAY` against pack sales once there is data.
+- [x] Privacy policy: ads (AdMob) and Play purchases sections; removed Facebook login (never
+  shipped); game rooms are kept after the game; audience 13+; account deletion by email.
+- [x] **In-app account deletion**: profile → מחיקת חשבון (type "מחק") → worker
+  `POST /account/delete` removes the data and the Auth user; policy `#delete-account`.
+- [ ] Account deletion, user side: deploy the worker and the rules (`rooms` index), then
+  in Play Console → App content → Data safety → Data deletion, give
+  `https://boost-8ef11.web.app/privacy-policy.html#delete-account` as the web link.
+- [ ] Account deletion: test once on a throwaway account against production. Confirm
+  the service account may delete Auth users; a 403 from Identity Toolkit needs the
+  "Firebase Authentication Admin" role.
+- [ ] Account deletion leaves the player's name in admin-only debug data
+  (`gameEvents` summaries, `debugGameIndex`). Clean these up too, or let them expire.
+- [x] `assetlinks.json` lists the Play app signing key (the Play-installed app opened as a
+  Chrome tab: no prices, no video card).
+- [x] Exit question's **יציאה** closes the Android app (`ExitActivity`, `APP_EXIT_URL`).
+- [ ] Exit, user side: build and upload versionCode 18 (1.5.1), then phone check that
+  יציאה goes to the phone's home screen and reopening shows the home screen.
+- [x] Online play needs an account; guests can still join a friend's game by code and are
+  asked to sign up after it.
+- [x] Guest → email sign-up links the email to the guest account (`linkWithCredential`),
+  like Google, so the uid and the guest's running online games carry over.
+- [ ] Phone check: guest plays a code game, signs up with email from the after-game sheet,
+  the game still shows in המשחקים שלי.
+- [x] Login: autofilled password on the field's own background; כניסה shows "נכנס…" and
+  works on the first tap.
+- [ ] Phone check: autofill email + password, one tap on כניסה signs in.
+- [x] App icon: the Blender ב tile (`Blender designs/logo/make_app_icon.py`).
+- [ ] App icon, user side: ships with versionCode 18; upload `store_icon.png` as the
+  Play listing's app icon; deploy hosting for `icon-512.png`.
 - [ ] App skins (colour palettes): design the palettes, then sell them in the ערכות צבע tab.
 - [ ] Phone check: the card preview's 3D on a mid-range phone (one WebGL board per tap).
 

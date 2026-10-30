@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="בוסט">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="בוסט">
-<meta name="version" content="20261023051952">
+<meta name="version" content="20261030054156">
 <link rel="apple-touch-icon" href="icon-512.png">
 <!-- App config (gitignored — holds keys outside source control) -->
 <script>window.APP_CONFIG = window.APP_CONFIG || {};</script>
@@ -23,9 +23,9 @@
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <!-- Firebase SDK (loaded lazily on first online use) -->
 <script>window._fbReady=false;</script>
-<link rel="stylesheet" href="styles.css?v=20261023051952">
-<link rel="stylesheet" href="menu-electric.css?v=20261023051952">
-<link rel="stylesheet" href="screens-glass.css?v=20261023051952">
+<link rel="stylesheet" href="styles.css?v=20261030054156">
+<link rel="stylesheet" href="menu-electric.css?v=20261030054156">
+<link rel="stylesheet" href="screens-glass.css?v=20261030054156">
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
 </head>
@@ -69,6 +69,7 @@
   <symbol id="gi-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="gi-fire" viewBox="0 0 24 24"><path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/></symbol>
   <symbol id="gi-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></symbol>
+  <symbol id="gi-admin" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
   <symbol id="gi-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
   <symbol id="gi-cap" viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/><path d="M22 9v6"/></symbol>
   <symbol id="gi-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.5 2.9 1-6.1L3.2 9.5l6.1-.9z"/></symbol>
@@ -144,7 +145,7 @@
       <span class="em-icon-badge" id="online-badge" style="display:none"></span>
     </button>
     <button class="em-icon-btn" id="topbar-admin-btn" style="display:none" aria-label="פאנל ניהול">
-      <img class="em-icon-img" src="assets/navigation/admin.png" alt="פאנל ניהול">
+      <svg class="gi em-icon-img" role="img" aria-label="פאנל ניהול"><use href="#gi-admin"/></svg>
     </button>
     <button class="em-icon-btn" id="topbar-music-btn">
       <svg class="gi em-icon-img" id="topbar-music-ic" role="img" aria-label="מוזיקה"><use href="#gi-music"/></svg>
@@ -165,7 +166,7 @@
     </div>
     <div class="em-profile-info">
       <span class="em-player-name" id="home-user-label">כניסה / הרשמה</span>
-      <span class="em-elo-badge" id="home-elo-label" style="display:none" role="button" tabindex="0" aria-label="טבלת דירוגים">
+      <span class="em-elo-badge" id="home-elo-label" style="display:none">
         <span class="em-elo-bolt" id="home-elo-bolt">🪙</span><span id="home-elo-value">1000</span>
       </span>
     </div>
@@ -185,7 +186,7 @@
   <div class="rotate-block-icon">📱↻</div>
   <div class="rotate-block-text">סובב את המכשיר למצב לאורך</div>
 </div>
-<script type="module" src="src/ui/screenPartials.js?v=20261023051952"></script>
-<script type="module" src="src/main.js?v=20261023051952"></script>
+<script type="module" src="src/ui/screenPartials.js?v=20261030054156"></script>
+<script type="module" src="src/main.js?v=20261030054156"></script>
 </body>
 </html>

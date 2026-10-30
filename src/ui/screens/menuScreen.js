@@ -7,7 +7,6 @@
 //
 import { $, on } from '../domHelpers.js';
 import { avatarIconSrc, ANON_AVATAR_SRC } from './avatarScreens.js';
-import { CHAMPS_OPEN } from './championsScreen.js';
 import { registerOnboardingContent } from '../controllers/onboardingController.js';
 import { armCardMorph } from './screenTransitions.js';
 
@@ -20,6 +19,7 @@ export const MENU_INTENT = Object.freeze({
   OPEN_TUTORIAL:      'menu/openTutorial',
   OPEN_GUIDE:         'menu/openGuide',
   OPEN_FAQ:           'menu/openFaq',
+  OPEN_DICT_HELP:     'menu/openDictHelp',
   OPEN_HELP_MENU:     'menu/openHelpMenu',
   OPEN_REPORT_PROBLEM:'menu/openReportProblem',
   OPEN_SETTINGS:      'menu/openSettings',
@@ -132,33 +132,8 @@ export function mountMenuScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
-  // Rank discovery from the authed topbar ELO chip. The chip sits inside
-  // #btn-profile-home, so its click must not bubble into OPEN_PROFILE.
-  // The home-screen navigation card (#btn-home-champs) was removed; profile
-  // still opens champs from #btn-profile-champs.
-  const eloChip = $('#home-elo-label', topbarRoot);
-  if (eloChip) {
-    eloChip.setAttribute?.('role', 'button');
-    eloChip.setAttribute?.('tabindex', '0');
-    eloChip.setAttribute?.('aria-label', 'טבלת דירוגים');
-    bindOpenChampions(eloChip, { isolate: true });
-  }
-
-  function bindOpenChampions(btn, { isolate = false } = {}) {
-    if (!btn) return;
-    btn.removeAttribute?.('onclick');
-    const open = (e) => {
-      e?.preventDefault?.();
-      if (isolate) e?.stopPropagation?.();
-      bus.emit(CHAMPS_OPEN, {});
-    };
-    cleanups.push(on(btn, 'click', open));
-    if (!isolate) return;
-    cleanups.push(on(btn, 'keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      open(e);
-    }));
-  }
+  // The topbar ELO chip is display only: a tap anywhere on #btn-profile-home,
+  // chip included, opens the profile. Champions opens from #btn-profile-champs.
 
   // Subscribe to MENU_REFRESH so external code can ask us to re-evaluate
   // the visibility of buttons that depend on app state (saved game,

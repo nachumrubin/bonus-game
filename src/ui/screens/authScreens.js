@@ -22,8 +22,29 @@ export const AUTH_INTENT = Object.freeze({
   GO_LOGIN:       'auth/goLogIn',
   UPGRADE:        'auth/upgrade',
   DISMISS_UPGRADE:'auth/dismissUpgrade',
+  GUEST_JOIN_CODE:'auth/guestJoinCode',   // the sign-up sheet's "קיבלתי קוד מחבר"
   GOOGLE:         'auth/google',
   PICK_NAME:      'auth/pickName',
+});
+
+// The guest sign-up sheet (#ov-guest-upgrade), worded for what the guest tried to do.
+// `code`: show "קיבלתי קוד מחבר" (online play: a friend's invite works without an account).
+export const GUEST_UPGRADE_COPY = Object.freeze({
+  default: {
+    title: 'שמור את ההתקדמות שלך',
+    desc: 'צור חשבון חינמי כדי לשמור סטטיסטיקות, מטבעות והישגים, ולהופיע בטבלת הדירוגים.',
+    code: false,
+  },
+  online: {
+    title: 'משחק אונליין דורש חשבון',
+    desc: 'לוקח 10 שניות. עם חשבון המשחקים שלך נשמרים גם בטלפון חדש, ואתה מקבל דירוג ומקום בטבלה.',
+    code: true,
+  },
+  afterOnline: {
+    title: 'משחק יפה!',
+    desc: 'צור חשבון חינמי כדי לקבל דירוג, לשמור את המשחקים שלך ולשחק שוב עם חברים.',
+    code: false,
+  },
 });
 
 const NAME_MAX = 15;
@@ -97,7 +118,8 @@ export const FIREBASE_AUTH_ERROR_HE = {
   'auth/user-disabled':             'החשבון הזה הושבת',
   'auth/too-many-requests':         'יותר מדי ניסיונות. נסו שוב מאוחר יותר',
   'auth/network-request-failed':    'אין חיבור לאינטרנט. נסו שוב',
-  'auth/email-already-in-use':      'הדוא״ל הזה כבר רשום',
+  'auth/email-already-in-use':      'הדוא״ל הזה כבר רשום. נרשמתם עם Google? היכנסו עם Google, או הגדירו סיסמה ב״שכחתי סיסמה״',
+  'auth/credential-already-in-use': 'הדוא״ל הזה כבר רשום',   // a guest linking a taken email
   'auth/weak-password':             `סיסמה חייבת להיות לפחות ${PASS_MIN} תווים`,
   // Google popup flow
   'auth/popup-blocked':             'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים ונסו שוב',
@@ -105,7 +127,7 @@ export const FIREBASE_AUTH_ERROR_HE = {
   'auth/web-storage-unsupported':   'פתחו את המשחק בדפדפן (Chrome / Safari) כדי להתחבר עם Google',
   'auth/unauthorized-domain':       'התחברות עם Google לא זמינה בכתובת הזו',
   'auth/operation-not-allowed':     'התחברות עם Google עדיין לא הופעלה',
-  'auth/account-exists-with-different-credential': 'הדוא״ל הזה כבר רשום עם סיסמה. היכנסו עם דוא״ל וסיסמה',
+  'auth/account-exists-with-different-credential': 'הדוא״ל הזה כבר רשום עם סיסמה. היכנסו עם דוא״ל וסיסמה, ו-Google יחובר לחשבון',
 };
 
 // The user closed / superseded the Google popup — not an error worth showing.
@@ -176,17 +198,48 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
     if (liError.style) liError.style.color = color;
   }
 
+  // While a sign-in is in flight the button says so and ignores taps: the request
+  // takes a second or two, and without feedback players tapped again.
+  const liSubmitText = liSubmit?.textContent ?? 'כניסה';
+  let loginBusy = false;
+  function setLoginBusy(busy) {
+    loginBusy = !!busy;
+    if (!liSubmit) return;
+    liSubmit.disabled = loginBusy;
+    setText(liSubmit, loginBusy ? 'נכנס…' : liSubmitText);
+  }
+
+  async function submitLogin() {
+    if (loginBusy) return;
+    let password = liPass?.value;
+    // Chrome may hand an autofilled password to the page a moment after the tap.
+    if (!password) {
+      await new Promise((r) => globalThis.setTimeout(r, 60));
+      password = liPass?.value;
+    }
+    const v = validateLoginForm({ email: liEmail?.value, password });
+    if (!v.ok) {
+      paintLogin(AUTH_ERROR_HE[v.reason] ?? v.reason);
+      return;
+    }
+    paintLogin('');
+    setLoginBusy(true);
+    bus.emit(AUTH_INTENT.LOG_IN, v.payload);
+  }
+
   if (liSubmit) {
     liSubmit.removeAttribute?.('onclick');
     cleanups.push(on(liSubmit, 'click', (e) => {
       e?.preventDefault?.();
-      const v = validateLoginForm({ email: liEmail?.value, password: liPass?.value });
-      if (!v.ok) {
-        paintLogin(AUTH_ERROR_HE[v.reason] ?? v.reason);
-        return;
-      }
-      paintLogin('');
-      bus.emit(AUTH_INTENT.LOG_IN, v.payload);
+      submitLogin();
+    }));
+  }
+  // The keyboard's Enter / "Go" on the password field signs in too.
+  if (liPass) {
+    cleanups.push(on(liPass, 'keydown', (e) => {
+      if (e?.key !== 'Enter') return;
+      e.preventDefault?.();
+      submitLogin();
     }));
   }
 
@@ -239,6 +292,24 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
       upgradeOverlay?.classList?.add?.('hidden');
       bus.emit(AUTH_INTENT.DISMISS_UPGRADE, {});
     }));
+  }
+
+  const upgradeTitle = $('#ovgu-title', root);
+  const upgradeDesc  = $('#ovgu-desc', root);
+  const upgradeCode  = $('#ovgu-code-btn', root);
+  if (upgradeCode) {
+    cleanups.push(on(upgradeCode, 'click', () => {
+      upgradeOverlay?.classList?.add?.('hidden');
+      bus.emit(AUTH_INTENT.GUEST_JOIN_CODE, {});
+    }));
+  }
+  // Opens the sheet worded for `reason` (a GUEST_UPGRADE_COPY key).
+  function showUpgrade(reason = 'default') {
+    const copy = GUEST_UPGRADE_COPY[reason] ?? GUEST_UPGRADE_COPY.default;
+    if (upgradeTitle) setText(upgradeTitle, copy.title);
+    if (upgradeDesc) setText(upgradeDesc, copy.desc);
+    if (upgradeCode?.style) upgradeCode.style.display = copy.code ? '' : 'none';
+    upgradeOverlay?.classList?.remove?.('hidden');
   }
 
   // ── Google sign-in buttons ──
@@ -318,7 +389,7 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
     if (scope === 'signup' && suError) setText(suError, msg ?? '');
     // Field-level error rendered directly under the שם תצוגה input.
     if (scope === 'signup-name' && suNameError) setText(suNameError, msg ?? '');
-    if (scope === 'login') paintLogin(msg ?? '');
+    if (scope === 'login') { paintLogin(msg ?? ''); setLoginBusy(false); }
     if (scope === 'pickname' || scope === 'pickname-name') {
       if (pnError) setText(pnError, msg ?? '');
       if (pnSubmit) pnSubmit.disabled = false;
@@ -336,6 +407,8 @@ export function mountAuthScreens({ root = globalThis.document, bus } = {}) {
     },
     showError,
     showInfo,
+    setLoginBusy,
+    showUpgrade,
     showPickName,
     hidePickName,
   };

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as bus from '../../events/bus.js';
 import {
   mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER, STORE_COIN_PRICES,
-  DAILY_REWARD_SHOW, dailyDaysHtml, coinPacksHtml, STORE_TABS,
+  DAILY_REWARD_SHOW, dailyDaysHtml, coinPacksHtml, STORE_TABS, STORE_ADS, adCardHtml,
 } from './avatarStoreScreen.js';
 import { COIN_PACKS } from '../../game/account/economy.js';
 import { findReaction } from '../../game/account/boostieCatalog.js';
@@ -311,6 +311,25 @@ test('store: STORE_COIN_PRICES puts the Play price on its pack only', () => {
   bus.emit(STORE_COIN_PRICES, { prices: { coins_1200: '19.90 ₪' } });
   assert.equal(coins.innerHTML.match(/coin-pack-price/g)?.length, 1);
   assert.match(coins.innerHTML, /data-store-id="coins_1200">.*19\.90 ₪/);
+});
+
+test('store: the rewarded-video card shows videos left today and emits WATCH_AD', () => {
+  bus._reset?.();
+  assert.equal(adCardHtml({ left: null }), '', 'no card outside the Android app');
+  assert.match(adCardHtml({ left: 3, coins: 15 }), /נותרו 3 היום/);
+  assert.match(adCardHtml({ left: 0, coins: 15 }), /is-done.*disabled/);
+  const { root } = makeStoreRoot();
+  const ad = makeClassEl();
+  const r = { querySelector: (sel) => (sel === '#store-ad' ? ad : root.querySelector(sel)) };
+  let watched = 0;
+  bus.on(STORE_INTENT.WATCH_AD, () => watched++);
+  mountAvatarStoreScreen({ root: r, bus });
+  bus.emit(STORE_ADS, { left: 2, coins: 15 });
+  assert.match(ad.innerHTML, /\+15/);
+  ad.fire({ closest: () => ({ disabled: false }) });
+  ad.fire({ closest: () => ({ disabled: true }) });
+  ad.fire({ closest: () => null });
+  assert.equal(watched, 1);
 });
 
 test('store: tapping a Boostie card (not a button) brings it to life, then back to the still', async (t) => {

@@ -15,8 +15,11 @@ android {
         applicationId 'app.boost8ef11.twa'
         minSdk 24
         targetSdk 36
-        versionCode 16
-        versionName '1.4.1'
+        versionCode 18
+        versionName '1.5.1'
+        // AdMob ids from gradle.properties (RewardedAdActivity).
+        manifestPlaceholders = [admobAppId: project.property('admobAppId')]
+        resValue 'string', 'admobRewardedUnitId', project.property('admobRewardedUnitId')
     }
 
     // Passwords come from keystore.properties or, failing that, the environment
@@ -38,6 +41,9 @@ android {
         }
         debug {
             applicationIdSuffix '.debug'
+            // Google's test ids: never click real ads from a dev build.
+            manifestPlaceholders = [admobAppId: 'ca-app-pub-3940256099942544~3347511713']
+            resValue 'string', 'admobRewardedUnitId', 'ca-app-pub-3940256099942544/5224354917'
         }
     }
 
@@ -52,4 +58,6 @@ dependencies {
     // Play Billing for the web app's Digital Goods API (coin packs). Pulls in the Play
     // Billing Library, which adds the com.android.vending.BILLING permission.
     implementation 'com.google.androidbrowserhelper:billing:1.2.0'
+    // Rewarded video ads (RewardedAdActivity); coins are credited by the worker's AdMob SSV.
+    implementation 'com.google.android.gms:play-services-ads:25.5.0'
 }

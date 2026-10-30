@@ -295,13 +295,6 @@
   pointer-events: none;
 }
 
-/* Admin icon has more transparent padding than other 3-D nav icons — scale
-   it up so its visual weight matches the rest of the pill. */
-#topbar-admin-btn .em-icon-img {
-  width: 96%;
-  height: 96%;
-}
-
 .em-help-q {
   font-size: var(--topbar-font);
   font-weight: 900;

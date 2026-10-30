@@ -83,6 +83,24 @@
           <svg class="gi g-chev"><use href="#gi-fwd"/></svg>
         </button>
       </div>
+
+      <!-- Account deletion (Google Play requirement; worker/src/accountDelete.js) -->
+      <button id="btn-delete-account" class="pf-delete-link" type="button">מחיקת חשבון</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE ACCOUNT CONFIRM — opened by #btn-delete-account (profileScreen.js) -->
+<div id="ov-delete-account" class="ov hidden">
+  <div class="ovc dlg-red">
+    <div class="ovic ovic--red"><svg class="gi"><use href="#gi-trash"/></svg></div>
+    <div class="ovt">למחוק את החשבון?</div>
+    <div class="ovd">החשבון, הפרופיל, המטבעות, הבוסטים, הדירוג והחברים יימחקו לצמיתות. אי אפשר לבטל את זה ומטבעות שנקנו לא יוחזרו. במשחקים קודמים השם שלך יוחלף ב„שחקן שנמחק”.</div>
+    <div class="g-fld pf-delete-fld"><input id="delete-account-input" type="text" autocomplete="off" placeholder="הקלידו: מחק" aria-label="הקלידו מחק לאישור"></div>
+    <div id="delete-account-error" class="pf-delete-err" role="alert"></div>
+    <div class="ovbtns">
+      <button class="ovb s danger" id="delete-account-yes" type="button" disabled>מחיקה לצמיתות</button>
+      <button class="ovb p" id="delete-account-no" type="button">ביטול</button>
     </div>
   </div>
 </div>

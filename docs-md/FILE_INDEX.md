@@ -113,6 +113,8 @@
 | `dictionaryService.js` | Word suggestion submission + admin moderation (requires `admin` custom claim). |
 | `economyClient.js` | The app's side of the coin worker (`/economy/*`). |
 | `playBillingClient.js` | Coin packs through Google Play (Digital Goods API + PaymentRequest; Android app only). |
+| `rewardedAds.js` | Rewarded videos for coins: opens the Android app's AdMob screen (`RewardedAdActivity`). |
+| `accountDeletion.js` | In-app account deletion: calls the worker's `POST /account/delete`. |
 | `*.test.js` | Account service tests. |
 
 ### `src/game/settings/`
@@ -136,7 +138,7 @@
 ### `src/ui/screens/`
 See `/partials/screens/` for corresponding HTML templates.
 
-**Menu/Home:** `menuScreen.js`, `asyncHomeButton.js`, `helpDropdown.js`, `guideScreen.js`, `faqScreen.js`
+**Menu/Home:** `menuScreen.js`, `asyncHomeButton.js`, `helpDropdown.js`, `guideScreen.js`, `faqScreen.js`, `dictionaryHelpScreen.js`
 **Setup & Lobby:** `setupScreen.js`, `createRoomScreen.js`, `joinCodeScreen.js`, `onlineLobbyScreen.js`, `waitingRoomScreen.js`, `incomingInviteScreen.js`, `matchmakingOverlayScreen.js`, `asyncGamesScreen.js`
 **Gameplay:** `gameScreen.js`, `pauseScreen.js`, `resignConfirmScreen.js`, `backConfirmScreen.js`, `coinTossScreen.js`, `endGameScreen.js`, `disconnectScreen.js`, `bonusIntroScreen.js`, `bonusSpectatorScreen.js`, `boostVetoScreen.js`, `boostBadges.js`
 **User Management:** `authScreens.js`, `profileScreen.js`, `avatarScreens.js`, `friendsScreen.js`, `notificationsScreen.js`, `championsScreen.js`, `statsScreen.js`, `dictionaryScreen.js`, `settingsScreen.js`

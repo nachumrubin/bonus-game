@@ -2,7 +2,7 @@
 //
 // Listens for MENU_INTENT.OPEN_HELP_MENU, shows #em-help-dropdown positioned
 // under the `?` button, and emits MENU_INTENT.OPEN_TUTORIAL / OPEN_GUIDE /
-// OPEN_FAQ on item activation. Dismissed by outside-click, Escape, or another
+// OPEN_FAQ / OPEN_DICT_HELP / OPEN_REPORT_PROBLEM on item activation. Dismissed by outside-click, Escape, or another
 // route change.
 //
 // Mount semantics:
@@ -17,6 +17,7 @@ const ACTION_TO_INTENT = Object.freeze({
   tutorial: MENU_INTENT.OPEN_TUTORIAL,
   guide:    MENU_INTENT.OPEN_GUIDE,
   faq:      MENU_INTENT.OPEN_FAQ,
+  dict:     MENU_INTENT.OPEN_DICT_HELP,
   report:   MENU_INTENT.OPEN_REPORT_PROBLEM,
 });
 
