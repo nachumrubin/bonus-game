@@ -3204,7 +3204,10 @@ async function boot() {
         }
       });
 
-      activeBlocksWatch = friendsService.watchBlocked(fbDb, uid, (set) => { blockedUids = set; });
+      activeBlocksWatch = friendsService.watchBlocked(fbDb, uid, (set, list) => {
+        blockedUids = set;
+        bus.emit(FRIENDS_RENDER, { blocked: list });
+      });
       activeRequestsWatch = friendsService.watchIncomingRequests(fbDb, uid, (all) => {
         const reqs = all.filter(r => !blockedUids.has(r.fromUid));
         lastRequests = reqs;
@@ -3501,17 +3504,25 @@ async function boot() {
       await friendsService.removeFriend(fbDb, { uid: fbUser.uid, friendUid });
     });
 
-    bus.on(FRIENDS_INTENT.BLOCK_FRIEND, async ({ friendUid }) => {
+    bus.on(FRIENDS_INTENT.BLOCK_FRIEND, async ({ friendUid, friendName }) => {
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !friendUid) return;
       try {
-        await friendsService.blockUser(fbDb, { uid: fbUser.uid, blockedUid: friendUid });
+        await friendsService.blockUser(fbDb, { uid: fbUser.uid, blockedUid: friendUid, name: friendName });
         inAppNotificationService.show({ kind: inAppNotificationService.TOAST_KIND.OK, text: 'השחקן נחסם', durationMs: 3000 });
       } catch (e) {
         console.warn('[spine] block friend', e);
         inAppNotificationService.show({ kind: inAppNotificationService.TOAST_KIND.ERROR, text: 'החסימה נכשלה', durationMs: 3000 });
       }
+    });
+
+    bus.on(FRIENDS_INTENT.UNBLOCK, async ({ blockedUid }) => {
+      const fbDb = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      if (!fbDb || !fbUser?.uid || !blockedUid) return;
+      await friendsService.unblockUser(fbDb, { uid: fbUser.uid, blockedUid })
+        .catch((e) => console.warn('[spine] unblock', e));
     });
 
     // The contact form opens prefilled so the report carries who it's about.

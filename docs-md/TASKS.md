@@ -13,8 +13,9 @@
   players + admins; the policy now states rooms are readable by id.
 - [x] Friends menu "חסום שחקן" / "דווח" wired (block = `blocks/{uid}` + rules; report = prefilled
   contact form, reason `player`).
-- [ ] Blocked-players list with unblock (Settings or profile). Today a block can only be undone in
-  the console.
+- [x] Blocked-players list with unblock: friends screen, "שחקנים חסומים" (`#fr-blocked-list`).
+  Not deployed yet.
+- [x] e2e `menu-routing` updated: guests tapping the online card get `#ov-guest-upgrade`, not `#so`.
 - [ ] Block/report from other places: an opponent who isn't a friend (game screen, notifications
   tray, leaderboard) can't be blocked or reported yet.
 - [x] Terms of use page (`terms-of-use.html`), linked from settings, home and privacy. Have it

@@ -63,6 +63,10 @@ App-wide "glass + wood" language from `tools/screens-mockup/index.html` (see DEC
 - **Friend detail menu (`#fd-overflow-menu`):** `[data-fd-remove]` → `FRIENDS_INTENT.REMOVE_FRIEND`;
   `[data-fd-block]` (label `.fd-block-label`, two taps) → `BLOCK_FRIEND`; `[data-fd-report]` →
   `REPORT_PLAYER`, which opens `#ov-report` with `#report-reason` = `player`.
+- **Blocked players (friends screen):** `#fr-blocked-wrap` is hidden while the list is empty.
+  `#fr-blocked-list` holds `.fr-blocked-row` rows; each row's `[data-fr-unblock]` button emits
+  `FRIENDS_INTENT.UNBLOCK`. The list comes from `FRIENDS_RENDER { blocked }`, which main.js emits
+  from `watchBlocked`.
 
 ---
 

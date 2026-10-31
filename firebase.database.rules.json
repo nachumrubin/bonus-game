@@ -189,7 +189,7 @@
         ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid",
         "$blockedUid": {
-          ".validate": "newData.val() === true && $blockedUid !== $uid"
+          ".validate": "$blockedUid !== $uid && (newData.val() === true || (newData.hasChildren(['name', 'at']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && newData.child('at').isNumber()))"
         }
       }
     },

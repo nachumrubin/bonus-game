@@ -3,7 +3,7 @@
 // Schema (matches legacy):
 //   friends/{uid}/{friendUid}              → { name, avatar, addedAt }
 //   friendRequests/{toUid}/{fromUid}       → { fromName, fromAvatar, sentAt }
-//   blocks/{uid}/{blockedUid}              → true (owner-only; rules refuse
+//   blocks/{uid}/{blockedUid}              → { name, at } (owner-only; rules refuse
 //                                            requests/invites from blocked uids)
 //
 // All operations return promise-shaped { ok, reason? } so callers can map
@@ -155,10 +155,11 @@ export async function removeFriend(db, { uid, friendUid }) {
 
 // Block a player: ends the friendship, drops their pending request and
 // records the block. The rules then refuse new requests/invites from them.
-export async function blockUser(db, { uid, blockedUid }) {
+// The name is kept so the blocked list can show who it is (profiles are private).
+export async function blockUser(db, { uid, blockedUid, name = '', serverTimestamp = Date.now() }) {
   if (!uid || !blockedUid) return { ok: false, reason: 'missing-uid' };
   if (uid === blockedUid)  return { ok: false, reason: 'self' };
-  await db.ref(`${PATH.blocks}/${uid}/${blockedUid}`).set(true);
+  await db.ref(`${PATH.blocks}/${uid}/${blockedUid}`).set({ name: String(name ?? '').slice(0, 30), at: serverTimestamp });
   await Promise.all([
     friendRef(db, uid, blockedUid).remove(),
     friendRef(db, blockedUid, uid).remove(),
@@ -167,14 +168,23 @@ export async function blockUser(db, { uid, blockedUid }) {
   return { ok: true };
 }
 
-// Subscribe to the uids `uid` has blocked. cb receives a Set. Returns
-// unsubscribe.
+export async function unblockUser(db, { uid, blockedUid }) {
+  if (!uid || !blockedUid) return { ok: false, reason: 'missing-uid' };
+  await db.ref(`${PATH.blocks}/${uid}/${blockedUid}`).remove();
+  return { ok: true };
+}
+
+// Subscribe to the players `uid` has blocked. cb receives a Set of uids and
+// the list [{ uid, name, at }] (oldest first). Returns unsubscribe.
 export function watchBlocked(db, uid, cb) {
-  if (!uid) { cb(new Set()); return () => {}; }
+  if (!uid) { cb(new Set(), []); return () => {}; }
   const ref = db.ref(`${PATH.blocks}/${uid}`);
   const handler = (snap) => {
     const raw = snap?.val ? snap.val() : null;
-    cb(new Set(Object.keys(raw ?? {})));
+    const list = Object.entries(raw ?? {}).map(([bUid, v]) => ({
+      uid: bUid, name: typeof v?.name === 'string' ? v.name : '', at: Number(v?.at) || 0,
+    })).sort((a, b) => a.at - b.at);
+    cb(new Set(list.map(b => b.uid)), list);
   };
   ref.on('value', handler);
   return () => ref.off('value', handler);

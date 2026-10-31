@@ -2,6 +2,21 @@
 
 ---
 
+## Pre-launch: blocked-players list (October 2026)
+
+Not deployed yet. These changes need both a hosting deploy and a rules deploy. Unit 1818/1818,
+emulator 91/91, worker 23/23.
+
+- **Unblock.** A block could only be undone from the console. The friends screen now shows
+  "שחקנים חסומים" (`#fr-blocked-wrap` / `#fr-blocked-list`, hidden while empty), and each row has
+  a "בטל חסימה" button that emits `FRIENDS_INTENT.UNBLOCK`, which calls
+  `friendsService.unblockUser`. `blocks/{uid}/{blockedUid}` now stores `{ name, at }` so the list
+  can show a name. The rules still accept a bare `true`. `watchBlocked` passes `(set, list)`.
+- **e2e menu-routing was stale.** Guests can't open the online lobby; tapping the card shows the
+  sign-up prompt (`#ov-guest-upgrade`). The test now expects that.
+
+---
+
 ## Pre-launch: B1 intro, reaction rules, deletion clean-up (October 2026)
 
 Deployed with build 20261031181252 (hosting and rules; the worker isn't deployed yet). Soak

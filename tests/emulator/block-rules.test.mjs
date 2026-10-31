@@ -19,6 +19,9 @@ test('blocks: only the owner reads or writes their block list', async () => {
     await assertFails(pest.ref(`blocks/${ME}/${PEST}`).remove());
     await assertFails(me.ref(`blocks/${ME}/${ME}`).set(true));
     await assertFails(me.ref(`blocks/${ME}/${OTHER}`).set('yes'));
+    await assertSucceeds(me.ref(`blocks/${ME}/${OTHER}`).set({ name: 'Other', at: 1 }));
+    await assertFails(me.ref(`blocks/${ME}/${OTHER}`).set({ name: 'x'.repeat(31), at: 1 }));
+    await assertSucceeds(me.ref(`blocks/${ME}/${OTHER}`).remove());
   });
 });
 

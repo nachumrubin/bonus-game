@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import {
-  mountFriendsScreen, buildRequestsHtml, buildFriendsListHtml,
+  mountFriendsScreen, buildRequestsHtml, buildFriendsListHtml, buildBlockedListHtml,
   FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER,
 } from './friendsScreen.js';
 
@@ -102,6 +102,8 @@ function makeRoot() {
     fdStats:     makeWrap(),
     fdRecent:    makeWrap(),
     fdGames:     makeWrap(),
+    blockedWrap: makeWrap(),
+    blockedList: makeWrap(),
   };
   const root = {
     querySelector(sel) {
@@ -124,6 +126,8 @@ function makeRoot() {
         case '#fd-rating':        return els.fdRating;
         case '#fd-stats':         return els.fdStats;
         case '#fd-recent':        return els.fdRecent;
+        case '#fr-blocked-wrap':  return els.blockedWrap;
+        case '#fr-blocked-list':  return els.blockedList;
         case 'button[onclick="sendFriendRequest()"]': return els.sendBtn;
         case 'button[onclick="openProfileOrAuth()"]': return els.backBtn;
         default: return null;
@@ -280,6 +284,32 @@ test('report in the friend menu emits REPORT_PLAYER with uid and name', () => {
   Object.assign(els.detailOv.dataset, { friendUid: 'u8', friendName: 'דנה' });
   els.detailOv.fireClick(fdButton('data-fd-report'));
   assert.deepEqual(seen, { friendUid: 'u8', friendName: 'דנה' });
+});
+
+test('buildBlockedListHtml: escapes names and falls back to שחקן', () => {
+  const html = buildBlockedListHtml([{ uid: 'u1', name: '<b>' }, { uid: 'u2', name: '' }]);
+  assert.match(html, /&lt;b&gt;/);
+  assert.match(html, /data-fr-unblock="u1"/);
+  assert.match(html, /שחקן/);
+});
+
+test('FRIENDS_RENDER blocked paints the list; unblock emits UNBLOCK', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  let unblocked = null;
+  bus.on(FRIENDS_INTENT.UNBLOCK, (p) => { unblocked = p.blockedUid; });
+  mountFriendsScreen({ root, bus });
+  bus.emit(FRIENDS_RENDER, { blocked: [] });
+  assert.equal(els.blockedWrap.style.display, 'none');
+  bus.emit(FRIENDS_RENDER, { blocked: [{ uid: 'u5', name: 'דנה' }] });
+  assert.equal(els.blockedWrap.style.display, '');
+  assert.match(els.blockedList.innerHTML, /דנה/);
+  els.blockedList.fireClick({
+    tagName: 'BUTTON',
+    getAttribute: (k) => (k === 'data-fr-unblock' ? 'u5' : null),
+    closest() { return this; },
+  });
+  assert.equal(unblocked, 'u5');
 });
 
 test('back button emits BACK', () => {

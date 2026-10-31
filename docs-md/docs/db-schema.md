@@ -452,11 +452,12 @@ or the recipient writes it, and a sender the recipient blocked can't create one.
 
 ## `/blocks/{uid}/{blockedUid}`
 
-`true`. Players `uid` has blocked (owner-only read/write; `friendsService.blockUser`). The rules
-refuse new friend requests, invites and friend-edge writes from a blocked uid, and the client
-hides their existing invites/requests. Cleared by the account-delete worker.
-
-Structure: Unknown / needs verification — `friendsService.js` not fully read.
+`{ name: string (≤30), at: number }`. Older entries may be a bare `true`, which the rules still
+accept. These are the players `uid` has blocked (owner-only read/write;
+`friendsService.blockUser` / `unblockUser`). The name is stored because profiles are private and
+the friends screen's blocked list needs something to show. The rules refuse new friend requests,
+invites and friend-edge writes from a blocked uid, and the client hides their existing invites and
+requests. The account-delete worker clears this path.
 
 ---
 
