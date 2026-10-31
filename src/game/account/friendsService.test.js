@@ -6,7 +6,7 @@ import * as bus from '../../events/bus.js';
 import {
   sendFriendRequest, acceptFriendRequest, rejectFriendRequest, cancelFriendRequest,
   watchIncomingRequests, listFriends, watchFriends, removeFriend,
-  filterFriendsByName, syncSelfToFriends, FRIENDS_EVT,
+  filterFriendsByName, syncSelfToFriends, blockUser, unblockUser, watchBlocked, FRIENDS_EVT,
 } from './friendsService.js';
 
 const ALICE = { uid: 'alice', displayName: 'Alice', equippedAvatar: 'crown' };
@@ -154,4 +154,31 @@ test('filterFriendsByName: case-insensitive substring', () => {
   assert.deepEqual(filterFriendsByName(friends, 'nachum').map(f => f.uid), ['c']);
   assert.deepEqual(filterFriendsByName(friends, 'נח').map(f => f.uid),     ['a']);
   assert.equal(filterFriendsByName(friends, '').length, 3);
+});
+
+test('blockUser: records the block, ends the friendship and drops their request', async () => {
+  const db = makeMockDb();
+  await sendFriendRequest(db, { fromUid: BOB.uid, toUid: ALICE.uid });
+  await db.ref(`friends/${ALICE.uid}/${BOB.uid}`).set({ uid: BOB.uid });
+  await db.ref(`friends/${BOB.uid}/${ALICE.uid}`).set({ uid: ALICE.uid });
+  const r = await blockUser(db, { uid: ALICE.uid, blockedUid: BOB.uid, name: 'Bob', serverTimestamp: 5 });
+  assert.equal(r.ok, true);
+  assert.deepEqual((await db.ref(`blocks/${ALICE.uid}/${BOB.uid}`).get()).val(), { name: 'Bob', at: 5 });
+  assert.equal((await db.ref(`friends/${ALICE.uid}/${BOB.uid}`).get()).val(), null);
+  assert.equal((await db.ref(`friends/${BOB.uid}/${ALICE.uid}`).get()).val(), null);
+  assert.equal((await db.ref(`friendRequests/${ALICE.uid}/${BOB.uid}`).get()).val(), null);
+  assert.equal((await blockUser(db, { uid: ALICE.uid, blockedUid: ALICE.uid })).reason, 'self');
+});
+
+test('watchBlocked reports the blocked uids and names; unblockUser removes the entry', async () => {
+  const db = makeMockDb();
+  const fires = [];
+  const off = watchBlocked(db, ALICE.uid, (set, list) => fires.push({ uids: [...set], list }));
+  await blockUser(db, { uid: ALICE.uid, blockedUid: BOB.uid, name: 'Bob', serverTimestamp: 5 });
+  await new Promise(r => setTimeout(r, 5));
+  assert.deepEqual(fires.at(-1), { uids: [BOB.uid], list: [{ uid: BOB.uid, name: 'Bob', at: 5 }] });
+  await unblockUser(db, { uid: ALICE.uid, blockedUid: BOB.uid });
+  await new Promise(r => setTimeout(r, 5));
+  assert.deepEqual(fires.at(-1).uids, []);
+  off();
 });

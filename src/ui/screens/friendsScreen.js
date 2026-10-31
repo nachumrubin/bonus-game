@@ -22,6 +22,9 @@ export const FRIENDS_INTENT = Object.freeze({
   ACCEPT_REQUEST: 'friendsUi/acceptRequest',
   REJECT_REQUEST: 'friendsUi/rejectRequest',
   REMOVE_FRIEND:  'friendsUi/removeFriend',
+  BLOCK_FRIEND:   'friendsUi/blockFriend',
+  UNBLOCK:        'friendsUi/unblock',
+  REPORT_PLAYER:  'friendsUi/reportPlayer',
   BACK:           'friendsUi/back',
   OPEN_DETAIL:    'friendsUi/openDetail',
   INVITE_FRIEND:  'friendsUi/inviteFriend',
@@ -50,6 +53,15 @@ export function buildRequestsHtml(requests = []) {
     +   `<div style="flex:1;font-size:12px;color:#fff;font-weight:700;">${escapeHtml(r.fromName ?? r.fromUid)}</div>`
     +   `<button data-fr-accept="${escapeHtml(r.fromUid)}" style="background:#1ed760;border:none;border-radius:5px;padding:4px 10px;font-family:Heebo,sans-serif;font-size:11px;font-weight:900;color:#000;cursor:pointer;">קבל</button>`
     +   `<button data-fr-reject="${escapeHtml(r.fromUid)}" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:4px 10px;font-family:Heebo,sans-serif;font-size:11px;color:#fff;cursor:pointer;">דחה</button>`
+    + `</div>`,
+  ).join('');
+}
+
+export function buildBlockedListHtml(blocked = []) {
+  return blocked.map(b =>
+    `<div class="fr-blocked-row" data-fr-blocked="${escapeHtml(b.uid)}">`
+    +   `<span class="fr-blocked-name">${escapeHtml(b.name || 'שחקן')}</span>`
+    +   `<button class="g-btn sm" data-fr-unblock="${escapeHtml(b.uid)}">בטל חסימה</button>`
     + `</div>`,
   ).join('');
 }
@@ -208,6 +220,8 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
         const reject = btn.getAttribute?.('data-fr-reject');
         const remove = btn.getAttribute?.('data-fr-remove');
         const menu   = btn.getAttribute?.('data-fr-menu');
+        const unblock = btn.getAttribute?.('data-fr-unblock');
+        if (unblock) bus.emit(FRIENDS_INTENT.UNBLOCK, { blockedUid: unblock });
         if (accept) bus.emit(FRIENDS_INTENT.ACCEPT_REQUEST, { fromUid: accept });
         if (reject) bus.emit(FRIENDS_INTENT.REJECT_REQUEST, { fromUid: reject });
         if (remove) bus.emit(FRIENDS_INTENT.REMOVE_FRIEND,  { friendUid: remove });
@@ -224,6 +238,9 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
   }
   delegateClick(reqList);
   delegateClick(friendsList);
+  const blockedWrap = $('#fr-blocked-wrap', root);
+  const blockedList = $('#fr-blocked-list', root);
+  delegateClick(blockedList);
 
   // Friend detail overlay
   const detailOv      = $('#ov-friend-detail', root);
@@ -238,9 +255,18 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
+  // Blocking takes two taps: the first arms the item and relabels it.
+  const fdBlockLabel = fdOverflowMenu ? $('.fd-block-label', fdOverflowMenu) : null;
+  let blockArmed = false;
+  function disarmBlock() {
+    blockArmed = false;
+    setText(fdBlockLabel, 'חסום שחקן');
+  }
+
   if (fdOverflowBtn && fdOverflowMenu) {
     cleanups.push(on(fdOverflowBtn, 'click', (e) => {
       e.stopPropagation();
+      disarmBlock();
       fdOverflowMenu.classList.toggle('hidden');
     }));
   }
@@ -248,7 +274,8 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
   if (detailOv) {
     cleanups.push(on(detailOv, 'click', (e) => {
       if (e.target === detailOv) detailOv.classList?.add('hidden');
-      if (fdOverflowMenu && !fdOverflowMenu.classList.contains('hidden')) {
+      const armingBlock = !blockArmed && e.target?.closest?.('[data-fd-block]');
+      if (fdOverflowMenu && !fdOverflowMenu.classList.contains('hidden') && !armingBlock) {
         fdOverflowMenu.classList.add('hidden');
       }
     }));
@@ -266,6 +293,24 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
         const uid = detailOv.dataset.friendUid;
         detailOv.classList?.add('hidden');
         bus.emit(FRIENDS_INTENT.REMOVE_FRIEND, { friendUid: uid });
+      }
+      if (btn.hasAttribute('data-fd-block')) {
+        if (!blockArmed) {
+          blockArmed = true;
+          setText(fdBlockLabel, 'לחצו שוב לחסימה');
+          return;
+        }
+        disarmBlock();
+        const uid  = detailOv.dataset.friendUid;
+        const name = detailOv.dataset.friendName;
+        detailOv.classList?.add('hidden');
+        bus.emit(FRIENDS_INTENT.BLOCK_FRIEND, { friendUid: uid, friendName: name });
+      }
+      if (btn.hasAttribute('data-fd-report')) {
+        const uid  = detailOv.dataset.friendUid;
+        const name = detailOv.dataset.friendName;
+        detailOv.classList?.add('hidden');
+        bus.emit(FRIENDS_INTENT.REPORT_PLAYER, { friendUid: uid, friendName: name });
       }
       const enterRoomId = btn.getAttribute('data-fd-enter');
       if (enterRoomId) {
@@ -337,7 +382,11 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     detailOv.classList?.remove('hidden');
   }));
 
-  cleanups.push(bus.on(FRIENDS_RENDER, ({ myUserId, requests, friends, copyStatus, addStatus: addS, invitesSent, inviteStatus } = {}) => {
+  cleanups.push(bus.on(FRIENDS_RENDER, ({ myUserId, requests, friends, blocked, copyStatus, addStatus: addS, invitesSent, inviteStatus } = {}) => {
+    if (Array.isArray(blocked)) {
+      if (blockedWrap) blockedWrap.style.display = blocked.length ? '' : 'none';
+      if (blockedList) blockedList.innerHTML = buildBlockedListHtml(blocked);
+    }
     if (myIdEl && myUserId) setText(myIdEl, myUserId);
     // Glass skin: the code is shown as wood tiles (brand element); #fr-my-id
     // keeps the plain text for copy / screen readers.

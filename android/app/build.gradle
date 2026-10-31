@@ -15,8 +15,8 @@ android {
         applicationId 'app.boost8ef11.twa'
         minSdk 24
         targetSdk 36
-        versionCode 18
-        versionName '1.5.1'
+        versionCode 20
+        versionName '1.5.3'
         // AdMob ids from gradle.properties (RewardedAdActivity).
         manifestPlaceholders = [admobAppId: project.property('admobAppId')]
         resValue 'string', 'admobRewardedUnitId', project.property('admobRewardedUnitId')

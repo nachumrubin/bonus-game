@@ -34,6 +34,9 @@ const TITLE_BY_TYPE = {
   B14: 'אות פותחת!',
 };
 
+// B1 can open fill-middle instead of the anagram (variant 'fillMiddle').
+const FILL_MIDDLE_TITLE = 'מילה חסרה!';
+
 // Medal icon HTML per bonus type. Default: the glowing bolt glyph; the wheel
 // keeps its 🎡 (legacy B13 icon, HEAD:index.html:6202).
 const ICON_HTML_BY_TYPE = {
@@ -54,11 +57,12 @@ function descByType(bonusType) {
   return key ? g(key, getGender()) : 'משחקון בוסט';
 }
 
-export function describeBonus(bonusType) {
+export function describeBonus(bonusType, variant) {
   const def = BONUS_TILE_DEFS[bonusType];
+  const fillMiddle = bonusType === 'B1' && variant === 'fillMiddle';
   return {
-    title:    TITLE_BY_TYPE[bonusType] ?? 'בוסט!',
-    desc:     descByType(bonusType),
+    title:    fillMiddle ? FILL_MIDDLE_TITLE : (TITLE_BY_TYPE[bonusType] ?? 'בוסט!'),
+    desc:     fillMiddle ? g('descB1Fill', getGender()) : descByType(bonusType),
     iconHtml: ICON_HTML_BY_TYPE[bonusType] ?? BOOST_BOLT_ICON_HTML,
     // Plain-text icon for places that can't take HTML (the online liveBonus
     // doc the opponent's spectator overlay reads).
@@ -93,7 +97,7 @@ export function mountBonusIntroScreen({ root = globalThis.document, bus } = {}) 
 
   cleanups.push(bus.on(BI_OPEN, (payload = {}) => {
     pendingPayload = payload;
-    const info = describeBonus(payload.bonusType);
+    const info = describeBonus(payload.bonusType, payload.variant);
     if (titleEl) setText(titleEl, info.title);
     if (descEl)  setText(descEl,  info.desc);
     // Points sit in their own gold pill (the B1/B3 copy already says "100

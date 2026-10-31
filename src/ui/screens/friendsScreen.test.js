@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import * as bus from '../../events/bus.js';
 import {
-  mountFriendsScreen, buildRequestsHtml, buildFriendsListHtml,
+  mountFriendsScreen, buildRequestsHtml, buildFriendsListHtml, buildBlockedListHtml,
   FRIENDS_INTENT, FRIENDS_RENDER, FRIENDS_DETAIL_RENDER,
 } from './friendsScreen.js';
 
@@ -66,6 +66,17 @@ function makeOverlay() {
     classList: { add() {}, remove() {}, contains() { return false; } },
     addEventListener(ev, fn) { listeners.push({ ev, fn }); },
     removeEventListener() {},
+    fireClick(target) { for (const l of listeners) if (l.ev === 'click') l.fn({ target }); },
+  };
+}
+
+// A detail-overlay menu button carrying one data-fd-* attribute.
+function fdButton(attr) {
+  return {
+    tagName: 'BUTTON',
+    hasAttribute: (k) => k === attr,
+    getAttribute: (k) => (k === attr ? '1' : null),
+    closest(sel) { return sel === `[${attr}]` ? this : null; },
   };
 }
 
@@ -91,6 +102,8 @@ function makeRoot() {
     fdStats:     makeWrap(),
     fdRecent:    makeWrap(),
     fdGames:     makeWrap(),
+    blockedWrap: makeWrap(),
+    blockedList: makeWrap(),
   };
   const root = {
     querySelector(sel) {
@@ -113,6 +126,8 @@ function makeRoot() {
         case '#fd-rating':        return els.fdRating;
         case '#fd-stats':         return els.fdStats;
         case '#fd-recent':        return els.fdRecent;
+        case '#fr-blocked-wrap':  return els.blockedWrap;
+        case '#fr-blocked-list':  return els.blockedList;
         case 'button[onclick="sendFriendRequest()"]': return els.sendBtn;
         case 'button[onclick="openProfileOrAuth()"]': return els.backBtn;
         default: return null;
@@ -245,6 +260,56 @@ test('remove inside the friends list emits REMOVE_FRIEND', () => {
     closest() { return this; },
   });
   assert.equal(removed, 'u9');
+});
+
+test('block in the friend menu needs a second tap, then emits BLOCK_FRIEND', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  const blocked = [];
+  bus.on(FRIENDS_INTENT.BLOCK_FRIEND, (p) => blocked.push(p.friendUid));
+  mountFriendsScreen({ root, bus });
+  els.detailOv.dataset.friendUid = 'u7';
+  els.detailOv.fireClick(fdButton('data-fd-block'));
+  assert.deepEqual(blocked, []);
+  els.detailOv.fireClick(fdButton('data-fd-block'));
+  assert.deepEqual(blocked, ['u7']);
+});
+
+test('report in the friend menu emits REPORT_PLAYER with uid and name', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  let seen = null;
+  bus.on(FRIENDS_INTENT.REPORT_PLAYER, (p) => { seen = p; });
+  mountFriendsScreen({ root, bus });
+  Object.assign(els.detailOv.dataset, { friendUid: 'u8', friendName: 'דנה' });
+  els.detailOv.fireClick(fdButton('data-fd-report'));
+  assert.deepEqual(seen, { friendUid: 'u8', friendName: 'דנה' });
+});
+
+test('buildBlockedListHtml: escapes names and falls back to שחקן', () => {
+  const html = buildBlockedListHtml([{ uid: 'u1', name: '<b>' }, { uid: 'u2', name: '' }]);
+  assert.match(html, /&lt;b&gt;/);
+  assert.match(html, /data-fr-unblock="u1"/);
+  assert.match(html, /שחקן/);
+});
+
+test('FRIENDS_RENDER blocked paints the list; unblock emits UNBLOCK', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  let unblocked = null;
+  bus.on(FRIENDS_INTENT.UNBLOCK, (p) => { unblocked = p.blockedUid; });
+  mountFriendsScreen({ root, bus });
+  bus.emit(FRIENDS_RENDER, { blocked: [] });
+  assert.equal(els.blockedWrap.style.display, 'none');
+  bus.emit(FRIENDS_RENDER, { blocked: [{ uid: 'u5', name: 'דנה' }] });
+  assert.equal(els.blockedWrap.style.display, '');
+  assert.match(els.blockedList.innerHTML, /דנה/);
+  els.blockedList.fireClick({
+    tagName: 'BUTTON',
+    getAttribute: (k) => (k === 'data-fr-unblock' ? 'u5' : null),
+    closest() { return this; },
+  });
+  assert.equal(unblocked, 'u5');
 });
 
 test('back button emits BACK', () => {

@@ -6,13 +6,32 @@
 - [x] FAQ rewritten by area; guide and privacy policy corrected.
 - [ ] Re-check the המילון examples whenever `data/dictionary.txt` or `/dictionaryRejected` changes
   (a ✓ example that gets blocked would contradict the page).
-- [ ] Security: `globalRatings/$uid` allows `.write` for any signed-in user (validation checks the
-  `uid` field, not `auth.uid`), so one player can overwrite another's rating/name. Tighten to
-  `auth.uid === $uid` (or worker-only) and run `npm run test:emulator`.
+- [x] Security: `globalRatings/$uid` is owner/admin-only with name/rating validation (Oct 2026).
+  Ratings are still client-computed, so a player can still inflate their *own* rating; moving Elo
+  to the worker would close that.
 - [ ] Privacy: `/rooms` is world-readable (`.read: true`). Consider restricting reads to the two
   players + admins; the policy now states rooms are readable by id.
-- [ ] Friends menu "חסום שחקן" / "דווח" buttons have no handlers; wire them or remove them.
-- [ ] `disableMessages` setting exists but settings has no UI for it (muting lives in the tray).
+- [x] Friends menu "חסום שחקן" / "דווח" wired (block = `blocks/{uid}` + rules; report = prefilled
+  contact form, reason `player`).
+- [x] Blocked-players list with unblock: friends screen, "שחקנים חסומים" (`#fr-blocked-list`).
+  Not deployed yet.
+- [x] e2e `menu-routing` updated: guests tapping the online card get `#ov-guest-upgrade`, not `#so`.
+- [ ] Block/report from other places: an opponent who isn't a friend (game screen, notifications
+  tray, leaderboard) can't be blocked or reported yet.
+- [x] Terms of use page (`terms-of-use.html`), linked from settings, home and privacy. Have it
+  reviewed before launch; it is not legal advice.
+- [ ] Deploy the Cloudflare worker (account delete: `blocks`, debug data, `debugReports`).
+  Hosting + rules are live (build 20261031181252).
+- [ ] Not done, needs design: room docs expose `racks` and `tileBagSeed` (`/rooms` is
+  world-readable), so the opponent's rack and the bag order can be read. Fix = hidden per-player
+  racks + server-side draws.
+- [ ] Not done: restricting `/rooms` reads breaks the `.indexOn` queries (createdAt, players uid)
+  and `scripts/debug-game.mjs`. It needs per-user room indexes first.
+- [ ] Not done: Firebase App Check (console setup + Play Integrity provider for the TWA).
+- [ ] Not done: achievement stats are client-written (`users/{uid}/profile/stats`).
+  Server-verified stats need the worker.
+- [x] `disableMessages` needs no settings UI: muting incoming reactions lives in the reaction tray
+  (🔔 השתק תגובות), and nothing reads `disableMessages`. Reduced motion has its settings toggle.
 
 ## Store ("חנות") with tabs — October 2026
 
@@ -55,8 +74,8 @@
 - [ ] Account deletion: test once on a throwaway account against production. Confirm
   the service account may delete Auth users; a 403 from Identity Toolkit needs the
   "Firebase Authentication Admin" role.
-- [ ] Account deletion leaves the player's name in admin-only debug data
-  (`gameEvents` summaries, `debugGameIndex`). Clean these up too, or let them expire.
+- [x] Account deletion now drops the debug data (`gameEvents`, `gameSnapshots`, `clientSnapshots`,
+  `debugWarnings`, `debugGameIndex`) of the player's games and their `debugReports` (Oct 2026).
 - [x] `assetlinks.json` lists the Play app signing key (the Play-installed app opened as a
   Chrome tab: no prices, no video card).
 - [x] Exit question's **יציאה** closes the Android app (`ExitActivity`, `APP_EXIT_URL`).
@@ -166,7 +185,9 @@
   recovered, so these are probably lost races handled by rollback and resync. To confirm,
   write `stats.writeErrors` to every game's summary, not just failure bundles
   (GAP_REPORT -6).
-- [ ] Re-run the soak on the same seed after deploy and confirm zero violations.
+- [x] Re-run the soak on the same seed after deploy and confirm zero violations — regress-1022,
+  Oct 31 2026: 40/40 clean (run 2026-10-31T16-58-53-2aa1ca); 41 refused room writes, all lost
+  deadline races.
 - [ ] Forfeit race (harmless): the forfeiting client's status write can beat its watchdog
   transaction, so the final `missedTurns` bump is missing (GAP_REPORT -6).
 - [x] Remaining failing Playwright specs: all 12 also failed on the base commit (stale, not
@@ -255,8 +276,8 @@
   drawn every frame in lively mode: battery and heat).
 - [ ] Phase 5 follow-up: try the reactions in a real online game between two phones (both
   sides play the clip; the opponent glances at the one reacting).
-- [ ] Phase 5 follow-up: Firebase rules still accept any `liveReaction` payload from a
-  player (the client validates on receive). Add a `.validate` on type/id if it matters.
+- [x] Phase 5 follow-up: `liveReaction` rules validate the shape (type emoji/message/boostie, id ≤ 40,
+  ts) and that `senderSlot` is the writer's own slot (Oct 2026).
 - [x] Phase 6a: coin economy in the Cloudflare Worker (`/economy/*`: claim-daily,
   achievement, buy, claim-chain, credit-play), ledger at `coinLedger/`, rules lock
   `coins`, new Boosties, `ownedReactions` and the payout records (D-coin-economy).
@@ -412,7 +433,7 @@
 - [x] `#sbar` preview lists every formed word, with invalid ones struck through.
 - [x] Google sign-in by popup on log-in, sign-up and guest-upgrade; guests are linked
   (same uid); first-time users pick a game name (`#ov-pick-name`).
-- [ ] **Firebase console:** enable the Google provider for `boost-8ef11` and make sure
+- [x] **Firebase console:** enable the Google provider for `boost-8ef11` and make sure
   `boost-8ef11.web.app` is an authorized domain. The button reports
   "not enabled yet" until this is done.
 - [ ] Verify on real devices:
@@ -504,8 +525,8 @@ Candidate themes:
 - [x] Boost mini-games (intro, play, result) redesigned to the glass + wood skin; card
   titles now match their intros (B8 "תשבץ!", B10 "מילים מצטלבות!"); spectator medal uses
   the bolt glyph.
-- [ ] B1 intro always says "אנגרמה!", but B1 can open fill-middle ("מילה חסרה!") — the
-  game is picked after the intro; decide it earlier or make the intro copy generic.
+- [x] B1 intro matches the game: the variant is picked at BONUS_PENDING, and the intro and the
+  opponent's live view say "מילה חסרה!" for fill-middle (Oct 2026).
 - [ ] Guide capture `crossing-success.png` is shot mid count-up (+37 of 40) — wait for
   the count-up to settle.
 - [ ] `#ov-tut-prompt` partial is loaded but nothing opens it — delete or wire it.
@@ -826,7 +847,7 @@ audit's §I; short list of concrete follow-ups it surfaced:
 - [ ] `domHelpers.js`'s `flashAnimation()` primitive is unused; 7+ files
   hand-roll the same reflow-restart idiom independently — worth
   consolidating onto the shared helper.
-- [ ] `animationsEnabled` (reduced motion) has no settings-screen toggle
+- [x] `animationsEnabled` (reduced motion) has no settings-screen toggle — done: `#sett-reducedmotion-*`
   despite being fully wired end-to-end; also needs verification of whether
   it actually shortens `gameScreen.js`'s interaction-gate delay
   (`activeSlotTimer`) or only suppresses visual flourishes.
@@ -1288,7 +1309,7 @@ Five issues reported from one async online game. Status:
 - [x] Friends-screen referral card made clickable (`INVITE_CONTACTS`); progress bar tracks invites, shows `/5`
 - [x] `#fr-invite-status` flash messages; `.fr-invite-status` CSS
 - [x] 14 unit tests in `tests/unit/invite-friends.test.js`
-- [ ] Replace `PLAY_STORE_URL` placeholder package id with the real listing URL at publish
+- [x] `PLAY_STORE_URL` uses the real package id `app.boost8ef11.twa` (Oct 2026).
 - [ ] Fallback paths (share/clipboard) grant the achievement on a single completed action since recipients can't be counted — revisit if abuse becomes a concern
 
 ## Loading-screen Tips system — June 2026
@@ -1472,7 +1493,7 @@ Five issues reported from one async online game. Status:
 ## Dictionary reject/accept lists → Firebase only — June 2026
 
 - [x] Removed in-code `EXACT_REJECTS` / `CLASSIC_ALLOW` / `DEFECTIVE_ACCEPT` from `hebrewDictionary.js`; reject/accept now via Firebase overlays only (`BLOCKED_OVERLAY` / approved-overlay). Kept `COMMON_FALSE_POSSESSIVE` (morphology). Tests + docs updated.
-- [ ] **Load `docs-md/dictionary-firebase-seed.txt` into Firebase** — REJECTED block → `/dictionaryRejected`, APPROVED block → `/dictionaryApproved`. Until then `נאצי` / `ירושלים` and the inflected prepositions are not blocked by the app. (Use the dictionary admin panel or Firebase console import.)
+- [x] (Done: 198 blocked words loaded.) **Load `docs-md/dictionary-firebase-seed.txt` into Firebase** — REJECTED block → `/dictionaryRejected`, APPROVED block → `/dictionaryApproved`. Until then `נאצי` / `ירושלים` and the inflected prepositions are not blocked by the app. (Use the dictionary admin panel or Firebase console import.)
 - [ ] (optional) Decide whether `tools/dictionary-build/*` should also stop applying its own `EXACT_REJECTS`/`CLASSIC_ALLOW` when the DAWG is next rebuilt.
 
 ## Fix: easy-bot default + Bubblewrap removal — June 2026
@@ -1518,6 +1539,9 @@ Five issues reported from one async online game. Status:
 ---
 
 ## TODOs — Dictionary v2 rollout
+
+> Superseded (Oct 2026): the game now uses the flat `data/dictionary.txt` list (see CHANGELOG, "new
+> dictionary"). The HSpell/DAWG pipeline items below are kept for history only.
 
 The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG). What's left before flipping the default and removing the v1 path:
 
@@ -1713,11 +1737,13 @@ The `SPINE_TODO.md` file is the authoritative tracking document for the legacy�
 ## Security Tasks
 
 ### Critical
-- [ ] **Move OneSignal REST key server-side** — The `onesignalKey` is currently used from the browser. Move push sending to a Cloud Function or edge worker to prevent key exposure.
+- [x] (Done: the Cloudflare push worker holds the key.) **Move OneSignal REST key server-side** — The `onesignalKey` is currently used from the browser. Move push sending to a Cloud Function or edge worker to prevent key exposure.
 
 ### Medium
 - [ ] Verify admin custom claim flow end-to-end (claim set → token refresh → admin UI unlocks)
-- [ ] Audit who can trigger `asyncReminderService.sweepForUser()` — currently any authenticated client can call it for any `uid`
+- [ ] Audit who can trigger `asyncReminderService.sweepForUser()` — currently any authenticated client can call it for any `uid`.
+  The worker's cron sweep (`worker/src/cronSweep.js`) now does the same job, but `main.js` still runs the
+  client sweep on boot; drop it once the cron is confirmed in production.
 
 ---
 

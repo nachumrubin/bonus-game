@@ -11,7 +11,9 @@
 //   2. removes them from other players' data: friend edges (friends/<f>/<uid>) and the
 //      friend requests they sent (friendRequests/<x>/<uid>);
 //   3. renames them in finished and running rooms to DELETED_NAME, so the opponent's
-//      game history stays readable without the deleted player's name;
+//      game history stays readable without the deleted player's name, and drops those
+//      games' admin debug data (timelines and snapshots name both players) and the
+//      player's own contact reports (debugReports);
 //   4. deletes the OneSignal user (best effort) and, last, the Firebase Auth user.
 // All database changes go in one multi-path update. Every step is idempotent, so a
 // retry after a failure (the Auth user is deleted last) finishes the job.
@@ -22,8 +24,11 @@ import { rtdbGet, rtdbPatch, rtdbQueryEqual, signJwt } from './firebaseRtdb.js';
 
 export const DELETED_NAME = 'שחקן שנמחק';
 
+// Admin debug nodes keyed by gameId (=== roomId); src/game/debug/debugSchema.js.
+const DEBUG_GAME_ROOTS = ['gameEvents', 'gameSnapshots', 'clientSnapshots', 'debugWarnings', 'debugGameIndex'];
+
 // Nodes keyed by the player's uid that go entirely.
-const OWN_ROOTS = ['users', 'globalRatings', 'presence', 'invites', 'inviteAcks', 'userNotifications', 'coinLedger', 'friends', 'friendRequests'];
+const OWN_ROOTS = ['users', 'globalRatings', 'presence', 'invites', 'inviteAcks', 'userNotifications', 'coinLedger', 'friends', 'friendRequests', 'blocks'];
 
 const keysOf = (v) => (v && typeof v === 'object' ? Object.keys(v) : []);
 
@@ -54,8 +59,16 @@ export async function buildDeletionUpdate(env, uid, db) {
   for (const slot of [0, 1]) {
     const rooms = await db.query(env, 'rooms', `players/${slot}/uid`, uid);
     for (const [roomId, room] of Object.entries(rooms ?? {})) {
-      if (room?.players?.[slot]?.uid === uid) updates[`rooms/${roomId}/players/${slot}/displayName`] = DELETED_NAME;
+      if (room?.players?.[slot]?.uid !== uid) continue;
+      updates[`rooms/${roomId}/players/${slot}/displayName`] = DELETED_NAME;
+      for (const root of DEBUG_GAME_ROOTS) updates[`${root}/${roomId}`] = null;
     }
+  }
+  // Needs debugReports/.indexOn userId. A failed lookup mustn't block the deletion.
+  try {
+    for (const id of keysOf(await db.query(env, 'debugReports', 'userId', uid))) updates[`debugReports/${id}`] = null;
+  } catch (e) {
+    console.warn('account delete: debugReports lookup failed', e?.message ?? e);
   }
   return updates;
 }

@@ -54,6 +54,22 @@ test('describeBonus: known types', () => {
   assert.match(describeBonus('B13').title, /גלגל/);
 });
 
+test('describeBonus: B1 fill-middle variant gets its own title and copy', () => {
+  const d = describeBonus('B1', 'fillMiddle');
+  assert.match(d.title, /מילה חסרה/);
+  assert.match(d.desc, /האמצעיות/);
+  assert.equal(d.pts, 100);
+  assert.match(describeBonus('B3', 'fillMiddle').title, /אנגרמה/);
+});
+
+test('BI_OPEN with the fill-middle variant paints מילה חסרה', () => {
+  bus._reset();
+  const { root, els } = makeDom();
+  mountBonusIntroScreen({ root, bus });
+  bus.emit(BI_OPEN, { bonusType: 'B1', miniGameKey: 'b1_unscramble_or_fillmiddle', variant: 'fillMiddle' });
+  assert.match(els.title.textContent, /מילה חסרה/);
+});
+
 test('describeBonus: unknown type falls back', () => {
   const d = describeBonus('BX');
   assert.match(d.title, /בוסט/);

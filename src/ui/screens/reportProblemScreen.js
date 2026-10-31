@@ -19,9 +19,10 @@ export function mountReportProblemScreen({ root = globalThis.document, bus } = {
   const sendBtn = $('#report-send', overlay);
   const cancelBtn = $('#report-cancel', overlay);
 
-  function open() {
-    if (input) input.value = '';
-    if (reason) reason.value = 'game-bug';
+  // Callers may prefill: the friend menu opens it as a player report.
+  function open({ reason: presetReason, message = '' } = {}) {
+    if (input) input.value = message;
+    if (reason) reason.value = presetReason || 'game-bug';
     setText(status, '');
     overlay.classList?.remove('hidden');
     reason?.focus?.();

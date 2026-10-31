@@ -16,9 +16,9 @@
 // `invitesSent` profile stat by the returned `count`; the achievement engine
 // (avatarScreens.js) unlocks the `ambassador` avatar at invitesSent >= 5.
 
-// Replace with the real Play Store listing URL when the app is published.
+// Play listing of the TWA (applicationId in android/app/build.gradle).
 export const PLAY_STORE_URL =
-  'https://play.google.com/store/apps/details?id=com.boost.shavetzna';
+  'https://play.google.com/store/apps/details?id=app.boost8ef11.twa';
 
 export const INVITE_REQUIRED = 5;
 

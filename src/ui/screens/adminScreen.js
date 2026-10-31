@@ -693,6 +693,7 @@ export function mountAdminScreen({ root = globalThis.document, bus } = {}) {
       'game-bug': 'דווח על בעיה במשחק',
       dictionary: 'מילון או הצעת מילה',
       account: 'חשבון, חברים או התראות',
+      player: 'דיווח על שחקן',
       feedback: 'הצעת שיפור',
       other: 'אחר',
     };

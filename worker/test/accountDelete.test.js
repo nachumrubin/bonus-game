@@ -19,6 +19,9 @@ function tree() {
     matchmakingQueue: { classic: { [ME]: { ts: 1 }, [BOB]: { ts: 2 } } },
     coinLedger: { [ME]: { a: { delta: 5 } } },
     coinOrders: { o1: { uid: ME } },
+    gameEvents: { r1: { e1: { summary: 'Nachum played' } }, r3: { e1: { summary: 'Bob played' } } },
+    debugGameIndex: { r2: { hostName: 'Bob', guestName: 'Nachum' }, r3: { hostName: 'Bob' } },
+    debugReports: { rep1: { userId: ME, playerName: 'Nachum' }, rep2: { userId: BOB } },
     rooms: {
       r1: { players: [{ uid: ME, displayName: 'Nachum' }, { uid: BOB, displayName: 'Bob' }] },
       r2: { players: [{ uid: BOB, displayName: 'Bob' }, { uid: ME, displayName: 'Nachum' }] },
@@ -91,6 +94,9 @@ test('delete: removes the player everywhere, renames them in rooms, deletes Auth
   assert.equal(d.rooms.r1.players[1].displayName, 'Bob');
   assert.equal(d.rooms.r2.players[1].displayName, DELETED_NAME);
   assert.equal(d.rooms.r3.players[1].displayName, 'Z');
+  assert.deepEqual(Object.keys(d.gameEvents), ['r3'], "debug data of the player's games goes");
+  assert.deepEqual(Object.keys(d.debugGameIndex), ['r3']);
+  assert.deepEqual(Object.keys(d.debugReports), ['rep2'], 'their contact reports go');
 });
 
 test('delete: a name or short id now claimed by someone else is left alone; a retry is harmless', async () => {

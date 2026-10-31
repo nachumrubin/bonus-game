@@ -16,7 +16,7 @@ async function bootSpine(page) {
 
 async function resetHome(page) {
   await page.evaluate(() => {
-    for (const id of ['ov-settings', 'tut-intro', 'em-help-dropdown']) {
+    for (const id of ['ov-settings', 'tut-intro', 'em-help-dropdown', 'ov-guest-upgrade']) {
       window.document.getElementById(id)?.classList.add('hidden');
     }
     window.showSc?.('sh');
@@ -28,8 +28,10 @@ test.describe('home menu routing', () => {
   test('home cards and top-bar buttons open the expected screens and overlays', async ({ page }) => {
     await bootSpine(page);
 
+    // Online play needs an account: guests get the sign-up prompt, not the lobby.
     await page.locator('#btn-online-lobby').click();
-    await expect(page.locator('#so')).toBeVisible();
+    await expect(page.locator('#ov-guest-upgrade')).toBeVisible();
+    await expect(page.locator('#so')).toBeHidden();
     await resetHome(page);
 
     await page.locator('.hm-card--bot').click();

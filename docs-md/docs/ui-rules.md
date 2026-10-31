@@ -58,7 +58,15 @@ App-wide "glass + wood" language from `tools/screens-mockup/index.html` (see DEC
 - **Menu payload:** `MENU_REFRESH` also takes `myTurnSessions` (`[{roomId, opponentName,
   opponentAvatar}]`) and `myRank`. `MENU_INTENT.OPEN_LEADERBOARD` (`#home-lb-row`) opens
   `#ov-champs`. `#home-turn-strip` opens My Games.
-- The home music credit / privacy link moved to Settings → אודות (`.credit` is hidden).
+- The home music credit / privacy link moved to Settings → אודות (`.credit` is hidden). Settings →
+  אודות also links `terms-of-use.html` (תנאי שימוש).
+- **Friend detail menu (`#fd-overflow-menu`):** `[data-fd-remove]` → `FRIENDS_INTENT.REMOVE_FRIEND`;
+  `[data-fd-block]` (label `.fd-block-label`, two taps) → `BLOCK_FRIEND`; `[data-fd-report]` →
+  `REPORT_PLAYER`, which opens `#ov-report` with `#report-reason` = `player`.
+- **Blocked players (friends screen):** `#fr-blocked-wrap` is hidden while the list is empty.
+  `#fr-blocked-list` holds `.fr-blocked-row` rows; each row's `[data-fr-unblock]` button emits
+  `FRIENDS_INTENT.UNBLOCK`. The list comes from `FRIENDS_RENDER { blocked }`, which main.js emits
+  from `watchBlocked`.
 
 ---
 

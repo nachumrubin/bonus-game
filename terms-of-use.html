@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07123d">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<title>תנאי שימוש — בוסט</title>
+<style>
+  /* Palette mirrors the app's glass skin (screens-glass.css :root --sg-*). */
+  :root {
+    --sg-p1: #28d4ff;
+    --sg-p2: #ffc93d;
+    --sg-ink: #eaf4ff;
+    --sg-dim: rgba(234,244,255,.72);
+    --sg-faint: rgba(234,244,255,.42);
+    --sg-glass: rgba(12,26,74,.72);
+    --sg-line: rgba(120,190,255,.22);
+  }
+  html { background: #030817; }
+  body {
+    font-family: 'Heebo', system-ui, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0 16px 32px;
+    background:
+      radial-gradient(ellipse 90% 45% at 50% 0, rgba(40,110,255,.30), transparent 70%),
+      radial-gradient(ellipse 80% 40% at 50% 100%, rgba(40,212,255,.10), transparent 70%),
+      linear-gradient(180deg, #07123d, #040a22 55%, #030817) fixed;
+    color: var(--sg-dim);
+    line-height: 1.75;
+    font-size: 15px;
+  }
+  .container { max-width: 680px; margin: 0 auto; }
+  .hdr {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 0 12px;
+    margin: 0 -16px; padding-inline: 16px;
+    background: rgba(7,18,61,.88);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--sg-line);
+  }
+  .card { margin-top: 14px; }
+  .chip {
+    flex: none; width: 42px; height: 42px; border-radius: 14px;
+    display: grid; place-items: center;
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%), var(--sg-glass);
+    border: 1px solid var(--sg-line);
+    box-shadow: 0 6px 16px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.10);
+    color: var(--sg-ink); text-decoration: none; font-size: 20px; line-height: 1;
+  }
+  .hdr-ttl { flex: 1; min-width: 0; }
+  h1 { font-size: 22px; font-weight: 900; color: var(--sg-ink); margin: 0; line-height: 1.2; }
+  .subtitle { font-size: 12px; color: var(--sg-faint); }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0) 40%), var(--sg-glass);
+    border: 1px solid var(--sg-line);
+    border-radius: 18px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.10);
+    padding: 6px 20px 22px;
+  }
+  h2 {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 16px; font-weight: 800;
+    color: var(--sg-ink);
+    margin: 22px 0 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--sg-line);
+  }
+  h2::before {
+    content: ""; flex: none; width: 4px; height: 18px; border-radius: 2px;
+    background: var(--sg-p1); box-shadow: 0 0 10px rgba(40,212,255,.6);
+  }
+  h3 { font-size: 14px; font-weight: 800; color: var(--sg-p2); margin: 16px 0 4px; }
+  p { margin: 6px 0; }
+  strong { color: var(--sg-ink); font-weight: 700; }
+  ul { margin: 6px 0; padding: 0 18px 0 0; }
+  li { margin-bottom: 6px; }
+  li::marker { color: var(--sg-p1); }
+  a { color: var(--sg-p1); text-underline-offset: 2px; }
+  .back {
+    display: block; margin: 20px auto 0; max-width: 260px;
+    padding: 12px 18px; border-radius: 14px; text-align: center;
+    background: linear-gradient(180deg, #4fe0ff, #19a9e0);
+    color: #04122e; font-weight: 800; font-size: 15px; text-decoration: none;
+    box-shadow: 0 6px 18px rgba(40,212,255,.35), inset 0 1px 0 rgba(255,255,255,.5);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="hdr">
+    <a class="chip" href="index.html" aria-label="חזרה למשחק">→</a>
+    <div class="hdr-ttl">
+      <h1>תנאי שימוש</h1>
+      <div class="subtitle">בוסט &nbsp;|&nbsp; עדכון אחרון: 30 באוקטובר 2026</div>
+    </div>
+  </header>
+  <main class="card">
+
+  <h2>כללי</h2>
+  <p>
+    בוסט הוא משחק מילים עברי שמפותח ומופעל על ידי Rubin Studios. השימוש באפליקציה, באתר ובגרסת האנדרואיד
+    כפוף לתנאים אלה ול<a href="privacy-policy.html">מדיניות הפרטיות</a>. אם אינכם מסכימים לתנאים, אל תשתמשו באפליקציה.
+  </p>
+
+  <h2>חשבון ושם משתמש</h2>
+  <ul>
+    <li>אפשר לשחק כאורח. חשבון (דוא"ל או Google) שומר את הפרופיל, הדירוג, החברים והמטבעות.</li>
+    <li>אתם אחראים לשמירה על פרטי הכניסה שלכם ולכל פעולה שנעשית בחשבון.</li>
+    <li>שם המשתמש מוצג לשחקנים אחרים ובטבלת הדירוגים. אסור לבחור שם פוגעני, גזעני, מיני או שמתחזה לאדם אחר.</li>
+    <li>ילדים מתחת לגיל 13 ישתמשו באפליקציה רק בהסכמת הורה או אפוטרופוס.</li>
+  </ul>
+
+  <h2>התנהגות במשחק</h2>
+  <p>אסור:</p>
+  <ul>
+    <li>להטריד, לאיים או לפגוע בשחקנים אחרים, כולל דרך שמות, בקשות חברות והזמנות;</li>
+    <li>להשתמש בבוטים, בסקריפטים או בכלים חיצוניים כדי לשחק במקומכם או לצבור יתרון;</li>
+    <li>לנצל באגים, לעקוף את מנגנוני האבטחה או לשנות את נתוני המשחק, הדירוג או המטבעות שלא דרך האפליקציה;</li>
+    <li>לנסות לגשת לחשבונות או לנתונים של שחקנים אחרים.</li>
+  </ul>
+  <p>
+    אפשר לחסום שחקן ולדווח עליו מתפריט החבר (⋮ בכרטיס החבר), או לפנות אלינו דרך <strong>עזרה ← צור קשר</strong>.
+    במקרה של הפרה אנחנו רשאים להסיר שם, לאפס דירוג או התקדמות, להגביל או לחסום חשבון.
+  </p>
+
+  <h2>מטבעות ורכישות</h2>
+  <ul>
+    <li>המטבעות, הבוסטים, דמויות ה-Boostie, הריאקציות ושאר הפריטים הם תוכן וירטואלי לשימוש בתוך המשחק בלבד.
+      אין להם ערך כספי, אי אפשר לפדות אותם בכסף, להעביר אותם לחשבון אחר או למכור אותם.</li>
+    <li>רכישות בכסף אמיתי נעשות דרך Google Play ובכפוף לתנאי Google Play. בקשות החזר מטופלות לפי מדיניות ההחזרים של Google Play.
+      אם רכישה הוחזרה, המטבעות שהתקבלו בה עשויים לרדת מהחשבון.</li>
+    <li>מטבעות מסרטוני פרסומת, מבונוס יומי ומהישגים ניתנים לפי הכללים שמוצגים במשחק, ואנחנו רשאים לשנות את הכמויות והמכסות.</li>
+    <li>מחיקת חשבון מוחקת גם את המטבעות והפריטים שבו, בלי החזר.</li>
+  </ul>
+
+  <h2>המשחק והמילון</h2>
+  <p>
+    אנחנו עובדים כל הזמן על המשחק: חוקים, ניקוד, מילון, פריטים ומחירים יכולים להשתנות. המילון מבוסס על מאגרים פתוחים
+    (ראו את הקרדיטים ב<a href="privacy-policy.html">מדיניות הפרטיות</a>) ועלול להכיל טעויות או להחסיר מילים.
+    אפשר להציע מילה או לדווח על טעות דרך <strong>עזרה ← צור קשר</strong>. החלטת המילון בזמן המשחק היא הקובעת.
+  </p>
+
+  <h2>זמינות ואחריות</h2>
+  <p>
+    המשחק ניתן כמו שהוא (AS IS). אנחנו משתדלים שיעבוד היטב, אבל ייתכנו תקלות, הפסקות שירות, משחקים שנקטעו או
+    נתונים שאבדו. ככל שהחוק מתיר, Rubin Studios אינה אחראית לנזק עקיף שנגרם מהשימוש במשחק, והאחריות שלנו לכל
+    היותר מוגבלת לסכום ששילמתם ברכישות בשלושת החודשים שלפני האירוע.
+  </p>
+
+  <h2>קניין רוחני</h2>
+  <p>
+    כל הזכויות בעיצוב, בקוד, בדמויות, באיורים, בצלילים ובמותג "בוסט" (Boost) שמורות ל-Rubin Studios, למעט רכיבים
+    בקוד פתוח וברישיונות חופשיים, שמופיעים בקרדיטים.
+  </p>
+
+  <h2>סיום שימוש</h2>
+  <p>
+    אפשר להפסיק להשתמש במשחק בכל עת ולמחוק את החשבון מתוך האפליקציה (<strong>פרופיל ← מחיקת חשבון</strong>).
+    אנחנו רשאים להפסיק את השירות, כולו או חלקו, ולחסום חשבון שמפר את התנאים.
+  </p>
+
+  <h2>שינויים בתנאים ויצירת קשר</h2>
+  <p>
+    עדכונים מהותיים יפורסמו בדף זה. המשך השימוש אחרי עדכון מהווה הסכמה לתנאים המעודכנים.
+    על התנאים חלים דיני מדינת ישראל.
+    לשאלות: <a href="mailto:rubinstudio.dev@gmail.com">rubinstudio.dev@gmail.com</a>
+  </p>
+  </main>
+
+  <a class="back" href="index.html">← חזרה למשחק</a>
+</div>
+</body>
+</html>
