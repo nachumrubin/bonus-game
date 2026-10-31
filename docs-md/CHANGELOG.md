@@ -2,6 +2,52 @@
 
 ---
 
+## Google Play listing images regenerated (October 2026)
+
+New store graphics in `Blender designs/store/out/` (gitignored with the rest of `Blender designs/`),
+built from fresh captures of the live app:
+
+- **Phone, 7-inch and 10-inch tablet screenshots** (8 each, 9:16: 1080×1920, 1350×2400, 1620×2880):
+  home, a seeded mid-game board (no final letters), כוורת, the store with Boosties, a win, stats,
+  the wheel and friends. Each has a short Hebrew headline above a framed screen. There are no calls to action.
+  Tablets are captured at a narrow CSS width with a high DPR, because the app keeps a max-width
+  column and wide viewports look empty.
+- **Feature graphic** 1024×500: the wooden logo and a tagline next to two tilted live screens.
+- **Google Play Games on PC**: a 600×400 transparent wooden logo, plus a 1920×1080 feature graphic
+  of wooden tiles in depth (no logo or text, per Play guidance).
+
+Scripts: `store/capture_screens.cjs` (raw captures; serve the app on :4173), `store/compose.cjs`
+(headlines/frames), `store/feature.cjs`, `store/pc_feature.py` + `store/finish_pc_feature.py`.
+
+---
+
+## Promo video refreshed for the current app (October 2026)
+
+`Blender designs/Boost_Promo_40s.mp4` (gitignored, like the rest of `Blender designs/`) was
+re-rendered from fresh captures of the live app. The previous cut is kept in
+`Blender designs/promo/backup_v2/`.
+
+- **Capture script updated for the redesigns** (`promo/capture_ui.cjs`). The game cards now show
+  full-body Boosties: the capture swaps the live 3D canvas and the bot face for still art (Dana =
+  Lumi L4, Yonatan = Zapi L4) and waits for the images. The home capture waits for the tile logo's
+  build and lightning split to settle, and puts Lumi in the top bar. The stats capture was
+  rewritten for the hero-ring + tabs layout (`#st-rating`, `#st-hero-wr`, `#st-hero-streak`,
+  `#ins-week .sx-row4 .v`, `#st-recent .sx-bar`), keeping the same `stats.json` shape.
+- **Scores centred** in the Blender game screen (`ui.py`), matching the new player cards.
+- **Progress shot shows Boostie evolution.** Instead of four achievement medals, Lumi at levels
+  1, 3, 5 and 7 bursts out of the stats screen and lines up, growing at each step, labelled with
+  the in-app level names. Title: "הבוסטי שלך גדל עם כל משחק".
+- The board, tile and bolt sizes didn't change (33 px pitch, 31 px tiles), so the shots' word
+  placements still fit the bigger, bolt-ringed board.
+- **Placed words now settle at board size.** After the שבץ press pulse, tiles that came from the
+  rack returned to rack size (the pulse read its rest scale from the object, which was still the
+  rack scale), so קפיצה stayed oversized through Yonatan's move. The pulse in `shot_game.py` and
+  the gold wave in `shot_win.py` now rest at `BOARD_SCL`.
+- **No final letters on the board or rack**, as in the app: שלום is placed as שלומ, ניצחון as
+  ניצחונ (`shot_game.py`, `shot_win.py`, `shot_end.py`, `ui_mini.py`).
+
+---
+
 ## Pre-launch: blocked-players list (October 2026)
 
 Not deployed yet. These changes need both a hosting deploy and a rules deploy. Unit 1818/1818,
