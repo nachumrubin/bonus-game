@@ -1,5 +1,21 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Google Play listing images — October 2026
+
+- [x] Regenerate phone, 7" and 10" tablet screenshots, the feature graphic, and the PC logo and feature graphic
+  (`Blender designs/store/out/`).
+- [ ] Upload them in Play Console (replace all 8 phone and 3 tablet shots; add the 10" set).
+- [ ] Re-run `store/capture_screens.cjs` + `store/compose.cjs` + `store/feature.cjs` after UI redesigns.
+
+## Promo video refresh — October 2026
+
+- [x] Re-capture the app screens and re-render the 40 s promo with the current design.
+- [x] Show the evolving Boosties (progress shot).
+- [ ] The store (חנות) and the new home nav entry don't have their own beat yet. If the promo is
+  re-cut, consider a store shot (Boostie tabs, live preview).
+- [ ] Re-run `node "Blender designs/promo/capture_ui.cjs"` + `promo/render_all.sh` + `promo/edit.sh`
+  after any further redesign of the game, home, stats or כוורת screens.
+
 ## Help: המילון tab, FAQ, privacy — October 2026
 
 - [x] המילון help tab with verified accepted/rejected examples.
@@ -1590,7 +1606,7 @@ The runtime swap + build-pipeline scaffolding landed in June 2026 (see CHANGELOG
   - **Commit p95:** 166–643 ms (was 1.3–1.9 s).
   - **Health:** no SLO breach and no correctness violation up to 36 games. DB load ≤2.1%.
   - The Spark 100-connection cap (about 48 games) is unchanged. That's a plan limit, not a code one.
-- [ ] Before launch: decide on Blaze (pay-as-you-go: connection cap 200k, bandwidth about $1/GB, so about $0.0015 per game) vs staying on Spark (about 48 concurrent games and about 225 games/day).
+- [x] Upgraded to Blaze (October 31, 2026). Background: Blaze is (pay-as-you-go: connection cap 200k, bandwidth about $1/GB, so about $0.0015 per game) vs staying on Spark (about 48 concurrent games and about 225 games/day).
 - ✅ Reduce bandwidth per game: lean commits (`commitPatch`, changed fields only), `livePreview` at most every 500 ms, `liveBonus` progress in 3 s steps. Measured in the next staging load run.
   - commit only the changed fields (`update`), not the full room, inside the transaction
   - throttle `livePreview` writes
