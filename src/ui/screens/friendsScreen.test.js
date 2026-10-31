@@ -66,6 +66,17 @@ function makeOverlay() {
     classList: { add() {}, remove() {}, contains() { return false; } },
     addEventListener(ev, fn) { listeners.push({ ev, fn }); },
     removeEventListener() {},
+    fireClick(target) { for (const l of listeners) if (l.ev === 'click') l.fn({ target }); },
+  };
+}
+
+// A detail-overlay menu button carrying one data-fd-* attribute.
+function fdButton(attr) {
+  return {
+    tagName: 'BUTTON',
+    hasAttribute: (k) => k === attr,
+    getAttribute: (k) => (k === attr ? '1' : null),
+    closest(sel) { return sel === `[${attr}]` ? this : null; },
   };
 }
 
@@ -245,6 +256,30 @@ test('remove inside the friends list emits REMOVE_FRIEND', () => {
     closest() { return this; },
   });
   assert.equal(removed, 'u9');
+});
+
+test('block in the friend menu needs a second tap, then emits BLOCK_FRIEND', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  const blocked = [];
+  bus.on(FRIENDS_INTENT.BLOCK_FRIEND, (p) => blocked.push(p.friendUid));
+  mountFriendsScreen({ root, bus });
+  els.detailOv.dataset.friendUid = 'u7';
+  els.detailOv.fireClick(fdButton('data-fd-block'));
+  assert.deepEqual(blocked, []);
+  els.detailOv.fireClick(fdButton('data-fd-block'));
+  assert.deepEqual(blocked, ['u7']);
+});
+
+test('report in the friend menu emits REPORT_PLAYER with uid and name', () => {
+  bus._reset();
+  const { root, els } = makeRoot();
+  let seen = null;
+  bus.on(FRIENDS_INTENT.REPORT_PLAYER, (p) => { seen = p; });
+  mountFriendsScreen({ root, bus });
+  Object.assign(els.detailOv.dataset, { friendUid: 'u8', friendName: 'דנה' });
+  els.detailOv.fireClick(fdButton('data-fd-report'));
+  assert.deepEqual(seen, { friendUid: 'u8', friendName: 'דנה' });
 });
 
 test('back button emits BACK', () => {

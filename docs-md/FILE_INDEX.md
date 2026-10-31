@@ -23,6 +23,7 @@
 | `package.json` | Build scripts: `test:unit`, `test:emulator`, `test:e2e`, `dict:add`, `dict:export`. Dev-only (no runtime `node_modules`). |
 | `playwright.config.js` | Playwright E2E config: base URL `http://127.0.0.1:4173`, Python HTTP server, 30s timeout. |
 | `privacy-policy.html` | Legal disclosure page. |
+| `terms-of-use.html` | Terms of use (same glass style as the privacy page). |
 | `README.md` | Getting-started guide. |
 | `SPINE_TODO.md` | Active cutover checklist tracking legacy → spine migration. 609 unit tests passing. |
 | `tmp.json` | Temporary scratch file (not committed to production). |

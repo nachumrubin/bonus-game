@@ -2,6 +2,59 @@
 
 ---
 
+## Pre-launch: B1 intro, reaction rules, deletion clean-up (October 2026)
+
+Deployed with build 20261031181252 (hosting and rules; the worker isn't deployed yet). Soak
+regress-1022: 40/40 clean. Unit 1816/1816, emulator 91/91.
+
+- **B1 intro matched the wrong game half the time.** B1 picks fill-middle or the anagram 50/50, but
+  the pick happened after the intro, which always said "אנגרמה!". `attachBonusFlow` now picks
+  `b1Variant` at `BONUS_PENDING`. The intro (`BI_OPEN` carries `variant`), the opponent's live
+  bonus view and `BI_INTENT.START` all use it. `describeBonus(type, variant)` returns "מילה חסרה!"
+  with the new `descB1Fill` copy.
+- **`liveReaction` rule.** A room player could write any payload, in either slot. The rule now
+  requires `{type, id, senderSlot, ts}` only, a type of emoji, message or boostie, an id of at
+  most 40 chars, and a `senderSlot` that is the writer's own slot. Tests:
+  `tests/emulator/reaction-rules.test.mjs`.
+- **Account deletion removes debug data.** The worker also deletes `gameEvents`,
+  `gameSnapshots`, `clientSnapshots`, `debugWarnings` and `debugGameIndex` for every room the
+  player was in, plus their `debugReports`. Their timelines named both players. This needs the new
+  `debugReports/.indexOn: ["userId"]`; a failed lookup doesn't block the deletion. The privacy
+  policy's deletion list says so.
+- TASKS cleanup: closed entries that were already done (Google provider, OneSignal key in the
+  worker, dictionary seed loaded, reduced-motion toggle, `disableMessages` muting in the tray) and
+  marked the Dictionary v2 pipeline as superseded.
+
+## Pre-launch: leaderboard rule, block/report players, terms of use (October 2026)
+
+- **Leaderboard rule.** `globalRatings/$uid` was writable by any signed-in user, so one player could
+  overwrite another's rating or name. Now only the owner (or an admin) writes it, and `.validate`
+  requires `uid === $uid`, a name of at most 30 chars and a rating of 0–5000. The live entries all
+  pass. Tests: `tests/emulator/rating-rules.test.mjs`; the two unit tests that pinned the old
+  `auth != null` rule were updated.
+- **Block a player.** The friend menu's "חסום שחקן" now works (two taps: the first relabels it
+  "לחצו שוב לחסימה"). `friendsService.blockUser` writes `blocks/{me}/{them} = true`, ends the
+  friendship both ways and drops their pending request. The rules then refuse that player's new
+  friend requests, invites and friend-edge writes. The client also hides their invites and
+  requests (`watchBlocked`). The account-delete worker clears `blocks/{uid}`. There is no unblock
+  UI yet.
+- **Friend requests can't be forged.** `friendRequests/$to/$from` was writable by anyone. Now only
+  the sender or the recipient can write it.
+- **Report a player.** The friend menu's "דווח" opens the contact form with the new reason
+  **דיווח על שחקן** (`player`) and a message naming the friend and their uid. `OPEN_REPORT_PROBLEM`
+  now takes an optional `{ reason, message }` prefill.
+- **Terms of use.** New `terms-of-use.html`, in the same glass style as the privacy page. It covers
+  accounts and names, conduct, block/report, virtual coins with no cash value, refunds via Google
+  Play, the dictionary, liability, IP, Israeli law and the contact email. It is linked from
+  Settings → אודות, the home credit line and the privacy page.
+
+## Contact email and Play Store link fixed (October 2026)
+
+- The privacy contact `privacy@boost-game.app` could not receive mail (the domain doesn't exist).
+  The policy and the account-deletion error message now give `rubinstudio.dev@gmail.com`.
+- `PLAY_STORE_URL` (`src/ui/inviteFriends.js`) pointed at `com.boost.shavetzna`, a package that
+  doesn't exist, so invite links led nowhere. It now uses the TWA's id `app.boost8ef11.twa`.
+
 ## Privacy policy page in the app's glass palette (October 2026)
 
 - `privacy-policy.html` still used the old teal/blue palette with yellow headings. It now uses the

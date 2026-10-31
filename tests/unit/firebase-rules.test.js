@@ -17,7 +17,8 @@ test('firebase rules index globalRatings by rating', () => {
   const indexes = ratingsRules['.indexOn'];
   assert.ok(Array.isArray(indexes), '.indexOn should be defined as an array');
   assert.ok(indexes.includes('rating'), '.indexOn should include rating for leaderboard ordering');
-  assert.equal(ratingsRules.$uid['.write'], 'auth != null');
+  // Owner-only (or admin) since the Oct 2026 leaderboard hardening.
+  assert.equal(ratingsRules.$uid['.write'], "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)");
 });
 
 test('firebase rules include dictionary moderation protections', () => {

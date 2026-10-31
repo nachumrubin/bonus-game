@@ -343,7 +343,8 @@ One entry per queued player per mode. Deleted on pair or disconnect.
 
 ## `/globalRatings/{uid}`
 
-Indexed ELO leaderboard. Indexed on `["rating"]` in security rules.
+Indexed ELO leaderboard. Indexed on `["rating"]` in security rules. Only the owner (or an
+admin) writes an entry; `.validate` requires `uid === $uid`, `name` ≤ 30 chars and `rating` 0–5000.
 
 ```
 {
@@ -444,7 +445,16 @@ boolean   // true if uid is admin
 
 ## `/friendRequests/{uid}/{senderUid}`
 
-Incoming friend request for a user.
+Incoming friend request for a user: `{ fromUid, fromName, fromAvatar, sentAt }`. Only the sender
+or the recipient writes it, and a sender the recipient blocked can't create one.
+
+---
+
+## `/blocks/{uid}/{blockedUid}`
+
+`true`. Players `uid` has blocked (owner-only read/write; `friendsService.blockUser`). The rules
+refuse new friend requests, invites and friend-edge writes from a blocked uid, and the client
+hides their existing invites/requests. Cleared by the account-delete worker.
 
 Structure: Unknown / needs verification — `friendsService.js` not fully read.
 

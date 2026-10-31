@@ -89,7 +89,8 @@ test('ratings leaderboard is public read and indexed by rating', () => {
   const r = rules().globalRatings;
   assert.equal(r['.read'], true);
   assert.deepEqual(r['.indexOn'], ['rating']);
-  assert.equal(r.$uid['.write'], 'auth != null');
+  // Owner-only (or admin) since the Oct 2026 leaderboard hardening.
+  assert.equal(r.$uid['.write'], "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)");
   assert.match(r.$uid['.validate'], /rating/);
 });
 

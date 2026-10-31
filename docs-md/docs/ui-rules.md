@@ -58,7 +58,11 @@ App-wide "glass + wood" language from `tools/screens-mockup/index.html` (see DEC
 - **Menu payload:** `MENU_REFRESH` also takes `myTurnSessions` (`[{roomId, opponentName,
   opponentAvatar}]`) and `myRank`. `MENU_INTENT.OPEN_LEADERBOARD` (`#home-lb-row`) opens
   `#ov-champs`. `#home-turn-strip` opens My Games.
-- The home music credit / privacy link moved to Settings → אודות (`.credit` is hidden).
+- The home music credit / privacy link moved to Settings → אודות (`.credit` is hidden). Settings →
+  אודות also links `terms-of-use.html` (תנאי שימוש).
+- **Friend detail menu (`#fd-overflow-menu`):** `[data-fd-remove]` → `FRIENDS_INTENT.REMOVE_FRIEND`;
+  `[data-fd-block]` (label `.fd-block-label`, two taps) → `BLOCK_FRIEND`; `[data-fd-report]` →
+  `REPORT_PLAYER`, which opens `#ov-report` with `#report-reason` = `player`.
 
 ---
 

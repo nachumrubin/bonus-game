@@ -1696,6 +1696,9 @@ async function boot() {
     // reads `${PATH.invites}/{toUid}`.
     let activeInviteListener = null;
     let activeAckListener = null;
+    // Players I've blocked (blocks/{uid}); their invites and requests are hidden.
+    let blockedUids = new Set();
+    let activeBlocksWatch = null;
     let activeSupportRepliesListener = null;
     let lastInviteCount = 0;
     let lastFriendRequestCount = 0;
@@ -1720,7 +1723,7 @@ async function boot() {
       activeInviteListener = inviteService.listenForInvites(fbDb, uid, (invites) => {
         const now = Date.now();
         const pending = (invites ?? []).filter(
-          i => i.status === 'pending' && (!i.expiresAt || i.expiresAt > now),
+          i => i.status === 'pending' && (!i.expiresAt || i.expiresAt > now) && !blockedUids.has(i.fromUid),
         );
         lastInviteCount = pending.length;
         bus.emit(NOTIF_RENDER, { invites: pending });
@@ -2619,6 +2622,7 @@ async function boot() {
       'game-bug': 'דווח על בעיה במשחק',
       dictionary: 'מילון או הצעת מילה',
       account: 'חשבון, חברים או התראות',
+      player: 'דיווח על שחקן',
       feedback: 'הצעת שיפור',
       other: 'אחר',
     };
@@ -3123,6 +3127,7 @@ async function boot() {
       try { activeProfileWatch?.();  } catch {}
       try { activeRequestsWatch?.(); } catch {}
       try { activeFriendsWatch?.();  } catch {}
+      try { activeBlocksWatch?.();   } catch {}
       for (const unsub of activePresenceUnsubs.values()) try { unsub(); } catch {}
       activePresenceUnsubs.clear();
       presenceCache.clear();
@@ -3199,7 +3204,9 @@ async function boot() {
         }
       });
 
-      activeRequestsWatch = friendsService.watchIncomingRequests(fbDb, uid, (reqs) => {
+      activeBlocksWatch = friendsService.watchBlocked(fbDb, uid, (set) => { blockedUids = set; });
+      activeRequestsWatch = friendsService.watchIncomingRequests(fbDb, uid, (all) => {
+        const reqs = all.filter(r => !blockedUids.has(r.fromUid));
         lastRequests = reqs;
         lastFriendRequestCount = reqs.length;
         bus.emit(FRIENDS_RENDER, { requests: reqs });
@@ -3458,11 +3465,12 @@ async function boot() {
         bus.emit(FRIENDS_RENDER, { addStatus: 'מזהה לא נמצא' });
         return;
       }
+      // A rules refusal (e.g. the recipient blocked us) surfaces as the generic error.
       const r = await friendsService.sendFriendRequest(fbDb, {
         fromUid: fbUser.uid, toUid: targetUid,
         fromName: lastProfile?.displayName ?? '',
         fromAvatar: lastProfile ? profileAvatarValue(lastProfile) : null,
-      });
+      }).catch(() => ({ ok: false, reason: 'denied' }));
       if (r.ok) bus.emit(FRIENDS_RENDER, { addStatus: 'בקשה נשלחה' });
       else if (r.reason === 'self') bus.emit(FRIENDS_RENDER, { addStatus: 'אי אפשר להוסיף את עצמך' });
       else if (r.reason === 'already-friends') bus.emit(FRIENDS_RENDER, { addStatus: 'כבר חברים' });
@@ -3491,6 +3499,28 @@ async function boot() {
       const fbUser = activeFbCurrentUser;
       if (!fbDb || !fbUser?.uid || !friendUid) return;
       await friendsService.removeFriend(fbDb, { uid: fbUser.uid, friendUid });
+    });
+
+    bus.on(FRIENDS_INTENT.BLOCK_FRIEND, async ({ friendUid }) => {
+      const fbDb = activeFbDb;
+      const fbUser = activeFbCurrentUser;
+      if (!fbDb || !fbUser?.uid || !friendUid) return;
+      try {
+        await friendsService.blockUser(fbDb, { uid: fbUser.uid, blockedUid: friendUid });
+        inAppNotificationService.show({ kind: inAppNotificationService.TOAST_KIND.OK, text: 'השחקן נחסם', durationMs: 3000 });
+      } catch (e) {
+        console.warn('[spine] block friend', e);
+        inAppNotificationService.show({ kind: inAppNotificationService.TOAST_KIND.ERROR, text: 'החסימה נכשלה', durationMs: 3000 });
+      }
+    });
+
+    // The contact form opens prefilled so the report carries who it's about.
+    bus.on(FRIENDS_INTENT.REPORT_PLAYER, ({ friendUid, friendName } = {}) => {
+      if (!friendUid) return;
+      bus.emit(MENU_INTENT.OPEN_REPORT_PROBLEM, {
+        reason: 'player',
+        message: `דיווח על ${friendName || 'שחקן'} (מזהה: ${friendUid})\n`,
+      });
     });
 
     bus.on(FRIENDS_INTENT.OPEN_DETAIL, async ({ friendUid } = {}) => {
@@ -4149,7 +4179,7 @@ async function boot() {
         try { bootCrossCuttingFor(uid); } catch {}
         bus.emit(PROFILE_DELETE_STATE, {
           busy: false,
-          error: res?.reason === 'offline' ? 'אין חיבור לאינטרנט, נסו שוב.' : 'המחיקה נכשלה. נסו שוב, או כתבו ל-privacy@boost-game.app',
+          error: res?.reason === 'offline' ? 'אין חיבור לאינטרנט, נסו שוב.' : 'המחיקה נכשלה. נסו שוב, או כתבו ל-rubinstudio.dev@gmail.com',
         });
         return;
       }
@@ -4170,6 +4200,7 @@ async function boot() {
       try { activeProfileWatch?.();  activeProfileWatch  = null; activeProfileUid = null; } catch {}
       try { activeRequestsWatch?.(); activeRequestsWatch = null; } catch {}
       try { activeFriendsWatch?.();  activeFriendsWatch  = null; } catch {}
+      try { activeBlocksWatch?.();   activeBlocksWatch   = null; blockedUids = new Set(); } catch {}
       try { activeInviteListener?.(); activeInviteListener = null; } catch {}
       try { activeAckListener?.(); activeAckListener = null; } catch {}
       try { activeSupportRepliesListener?.(); activeSupportRepliesListener = null; } catch {}
@@ -4314,10 +4345,15 @@ async function boot() {
     // amounts added to its score (and 0 for anything not listed).
     const LEGACY_BOT_BONUS = { B1: 50, B3: 15, B8: 20, B10: 20 };
 
+    // B1 is a 50/50 between fill-middle and unscramble. Pick it when the square
+    // fires so the intro, the opponent's live view and the game all agree.
+    let b1Variant = 'unscramble';
+
     // BONUS_PENDING → open intro overlay (works for both minigame + wheel),
     // unless the bot triggered the square, in which case auto-resolve with
     // the legacy fixed amount and skip the UI.
     subs.push(bus.on(BONUS_PENDING, (payload) => {
+      if (payload?.bonusType === 'B1') b1Variant = Math.random() < 0.5 ? 'fillMiddle' : 'unscramble';
       if (botSlot != null && payload?.slot === botSlot) {
         const amount = LEGACY_BOT_BONUS[payload.bonusType] ?? 0;
         ctl.skipPending({ earnedPts: amount });
@@ -4349,7 +4385,7 @@ async function boot() {
     // intro's presentation follows the square's shared ignition beat.
     subs.push(bus.on(BOOST_RESULT_READY, (payload) => {
       if (payload.presentation !== 'intro' || payload.slot === botSlot) return;
-      bus.emit(BI_OPEN, payload);
+      bus.emit(BI_OPEN, payload?.bonusType === 'B1' ? { ...payload, variant: b1Variant } : payload);
     }));
 
     // EV.BONUS_VETOED → the opponent's banked "ביטול בוסט" (cancel_next_opponent_bonus,
@@ -4421,12 +4457,12 @@ async function boot() {
           playWheelForBonus({ bus, controller: ctl });
           return;
         case 'b1_unscramble_or_fillmiddle': {
-          // Faithful B1 port: 50/50 between unscramble-long (6-letter word,
-          // 40s, +100 pts) and fill-middle (6-7 letter word with distinct
-          // first/last, 40s, +100 pts; player rearranges the middle letters
-          // and any morphologically valid Hebrew word with the same outer
-          // letters is accepted).
-          if (Math.random() < 0.5) {
+          // Faithful B1 port: 50/50 (b1Variant, picked at BONUS_PENDING) between
+          // unscramble-long (6-letter word, 40s, +100 pts) and fill-middle
+          // (6-7 letter word with distinct first/last, 40s, +100 pts; player
+          // rearranges the middle letters and any morphologically valid Hebrew
+          // word with the same outer letters is accepted).
+          if ((payload?.variant ?? b1Variant) === 'fillMiddle') {
             playFillMiddleForBonus({
               bus,
               words: wordsOfLengthRange(6, 7),
@@ -4580,7 +4616,7 @@ async function boot() {
       subs.push(bus.on(BONUS_PENDING, (pending) => {
         if (!pending || pending.slot !== onlineMySlot) return;
         bonusFlowActive = true;
-        const info = describeBonus(pending.bonusType);
+        const info = describeBonus(pending.bonusType, pending.bonusType === 'B1' ? b1Variant : undefined);
         writeLiveBonus({
           slot: onlineMySlot,
           kind: pending.kind ?? 'minigame',

@@ -22,6 +22,8 @@ export const FRIENDS_INTENT = Object.freeze({
   ACCEPT_REQUEST: 'friendsUi/acceptRequest',
   REJECT_REQUEST: 'friendsUi/rejectRequest',
   REMOVE_FRIEND:  'friendsUi/removeFriend',
+  BLOCK_FRIEND:   'friendsUi/blockFriend',
+  REPORT_PLAYER:  'friendsUi/reportPlayer',
   BACK:           'friendsUi/back',
   OPEN_DETAIL:    'friendsUi/openDetail',
   INVITE_FRIEND:  'friendsUi/inviteFriend',
@@ -238,9 +240,18 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
     }));
   }
 
+  // Blocking takes two taps: the first arms the item and relabels it.
+  const fdBlockLabel = fdOverflowMenu ? $('.fd-block-label', fdOverflowMenu) : null;
+  let blockArmed = false;
+  function disarmBlock() {
+    blockArmed = false;
+    setText(fdBlockLabel, 'חסום שחקן');
+  }
+
   if (fdOverflowBtn && fdOverflowMenu) {
     cleanups.push(on(fdOverflowBtn, 'click', (e) => {
       e.stopPropagation();
+      disarmBlock();
       fdOverflowMenu.classList.toggle('hidden');
     }));
   }
@@ -248,7 +259,8 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
   if (detailOv) {
     cleanups.push(on(detailOv, 'click', (e) => {
       if (e.target === detailOv) detailOv.classList?.add('hidden');
-      if (fdOverflowMenu && !fdOverflowMenu.classList.contains('hidden')) {
+      const armingBlock = !blockArmed && e.target?.closest?.('[data-fd-block]');
+      if (fdOverflowMenu && !fdOverflowMenu.classList.contains('hidden') && !armingBlock) {
         fdOverflowMenu.classList.add('hidden');
       }
     }));
@@ -266,6 +278,23 @@ export function mountFriendsScreen({ root = globalThis.document, bus } = {}) {
         const uid = detailOv.dataset.friendUid;
         detailOv.classList?.add('hidden');
         bus.emit(FRIENDS_INTENT.REMOVE_FRIEND, { friendUid: uid });
+      }
+      if (btn.hasAttribute('data-fd-block')) {
+        if (!blockArmed) {
+          blockArmed = true;
+          setText(fdBlockLabel, 'לחצו שוב לחסימה');
+          return;
+        }
+        disarmBlock();
+        const uid = detailOv.dataset.friendUid;
+        detailOv.classList?.add('hidden');
+        bus.emit(FRIENDS_INTENT.BLOCK_FRIEND, { friendUid: uid });
+      }
+      if (btn.hasAttribute('data-fd-report')) {
+        const uid  = detailOv.dataset.friendUid;
+        const name = detailOv.dataset.friendName;
+        detailOv.classList?.add('hidden');
+        bus.emit(FRIENDS_INTENT.REPORT_PLAYER, { friendUid: uid, friendName: name });
       }
       const enterRoomId = btn.getAttribute('data-fd-enter');
       if (enterRoomId) {

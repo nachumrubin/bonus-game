@@ -27,7 +27,13 @@
           ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
         },
         "liveReaction": {
-          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())"
+          ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())",
+          ".validate": "newData.hasChildren(['type', 'id', 'senderSlot', 'ts']) && ((newData.child('senderSlot').val() === 0 && auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val()) || (newData.child('senderSlot').val() === 1 && auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val()))",
+          "type": { ".validate": "newData.val() === 'emoji' || newData.val() === 'message' || newData.val() === 'boostie'" },
+          "id": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "senderSlot": { ".validate": "newData.isNumber()" },
+          "ts": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
         },
         "status": {
           ".write": "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val()) && (data.val() !== 'completed' && data.val() !== 'abandoned' && data.val() !== 'expired')"
@@ -88,8 +94,8 @@
       ".read": true,
       ".indexOn": ["rating"],
       "$uid": {
-        ".write": "auth != null",
-        ".validate": "newData.hasChildren(['uid', 'name', 'rating', 'updatedAt']) && newData.child('uid').val() === $uid && newData.child('name').isString() && newData.child('rating').isNumber() && newData.child('updatedAt').isNumber()"
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
+        ".validate": "newData.hasChildren(['uid', 'name', 'rating', 'updatedAt']) && newData.child('uid').val() === $uid && newData.child('name').isString() && newData.child('name').val().length <= 30 && newData.child('rating').isNumber() && newData.child('rating').val() >= 0 && newData.child('rating').val() <= 5000 && newData.child('updatedAt').isNumber()"
       }
     },
     "usernames": {
@@ -166,7 +172,7 @@
       "$recipientUid": {
         ".read": "$recipientUid === auth.uid",
         "$senderUid": {
-          ".write": "auth != null"
+          ".write": "auth != null && (auth.uid === $senderUid || auth.uid === $recipientUid) && (!newData.exists() || !root.child('blocks').child($recipientUid).child($senderUid).exists())"
         }
       }
     },
@@ -174,7 +180,16 @@
       "$uid": {
         ".read": "$uid === auth.uid",
         "$friendUid": {
-          ".write": "auth != null && (auth.uid === $uid || auth.uid === $friendUid)"
+          ".write": "auth != null && (auth.uid === $uid || (auth.uid === $friendUid && (!newData.exists() || !root.child('blocks').child($uid).child($friendUid).exists())))"
+        }
+      }
+    },
+    "blocks": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "$blockedUid": {
+          ".validate": "newData.val() === true && $blockedUid !== $uid"
         }
       }
     },
@@ -182,7 +197,7 @@
       "$recipientUid": {
         ".read": "$recipientUid === auth.uid",
         "$inviteId": {
-          ".write": "auth != null && (auth.uid === $recipientUid || auth.uid === newData.child('fromUid').val() || auth.uid === data.child('fromUid').val())"
+          ".write": "auth != null && (auth.uid === $recipientUid || auth.uid === newData.child('fromUid').val() || auth.uid === data.child('fromUid').val()) && (!newData.exists() || auth.uid === $recipientUid || !root.child('blocks').child($recipientUid).child(auth.uid).exists())"
         }
       }
     },
@@ -246,6 +261,7 @@
     },
     "debugReports": {
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".indexOn": ["userId"],
       "$reportId": {
         ".write": "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)"
       }

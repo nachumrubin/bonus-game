@@ -3,6 +3,8 @@
 // Schema (matches legacy):
 //   friends/{uid}/{friendUid}              → { name, avatar, addedAt }
 //   friendRequests/{toUid}/{fromUid}       → { fromName, fromAvatar, sentAt }
+//   blocks/{uid}/{blockedUid}              → true (owner-only; rules refuse
+//                                            requests/invites from blocked uids)
 //
 // All operations return promise-shaped { ok, reason? } so callers can map
 // to user-visible messages.
@@ -12,6 +14,7 @@ import * as bus from '../../events/bus.js';
 export const PATH = Object.freeze({
   friends:        'friends',
   friendRequests: 'friendRequests',
+  blocks:         'blocks',
 });
 
 export const FRIENDS_EVT = Object.freeze({
@@ -148,6 +151,33 @@ export async function removeFriend(db, { uid, friendUid }) {
     friendRef(db, friendUid, uid).remove(),
   ]);
   return { ok: true };
+}
+
+// Block a player: ends the friendship, drops their pending request and
+// records the block. The rules then refuse new requests/invites from them.
+export async function blockUser(db, { uid, blockedUid }) {
+  if (!uid || !blockedUid) return { ok: false, reason: 'missing-uid' };
+  if (uid === blockedUid)  return { ok: false, reason: 'self' };
+  await db.ref(`${PATH.blocks}/${uid}/${blockedUid}`).set(true);
+  await Promise.all([
+    friendRef(db, uid, blockedUid).remove(),
+    friendRef(db, blockedUid, uid).remove(),
+    requestRef(db, uid, blockedUid).remove(),
+  ]);
+  return { ok: true };
+}
+
+// Subscribe to the uids `uid` has blocked. cb receives a Set. Returns
+// unsubscribe.
+export function watchBlocked(db, uid, cb) {
+  if (!uid) { cb(new Set()); return () => {}; }
+  const ref = db.ref(`${PATH.blocks}/${uid}`);
+  const handler = (snap) => {
+    const raw = snap?.val ? snap.val() : null;
+    cb(new Set(Object.keys(raw ?? {})));
+  };
+  ref.on('value', handler);
+  return () => ref.off('value', handler);
 }
 
 // Pure: filter friend list by name substring (case-insensitive).

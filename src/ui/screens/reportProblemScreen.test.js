@@ -69,6 +69,17 @@ test('OPEN_REPORT_PROBLEM opens contact overlay and defaults to game-bug reason'
   assert.equal(reason.focusCalled, true);
 });
 
+test('OPEN_REPORT_PROBLEM can prefill the reason and message (player report)', () => {
+  bus._reset();
+  const { root, reason, input } = makeDom();
+  mountReportProblemScreen({ root, bus });
+
+  bus.emit(MENU_INTENT.OPEN_REPORT_PROBLEM, { reason: 'player', message: 'דיווח על דנה (מזהה: u8)\n' });
+
+  assert.equal(reason.value, 'player');
+  assert.equal(input.value, 'דיווח על דנה (מזהה: u8)\n');
+});
+
 test('send emits reason and trimmed user message', () => {
   bus._reset();
   const { root, reason, input, send } = makeDom();
