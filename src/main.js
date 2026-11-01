@@ -58,6 +58,7 @@ import { isBoostieId, parseStoreItem, boostieName, boostieAvatarValue, DEFAULT_B
 import * as friendsService from './game/account/friendsService.js';
 import * as ratingService from './game/account/ratingService.js?v=20260513111500';
 import * as dictionaryService from './game/account/dictionaryService.js';
+import { createWordInfoService } from './game/account/wordInfoService.js';
 import * as settingsCompat from './game/settings/settingsCompat.js';
 import { applyGenderToRoot, getGender } from './ui/genderText.js';
 import * as audioService from './ui/audioService.js';
@@ -132,6 +133,7 @@ import { runInviteFlow, INVITE_REQUIRED } from './ui/inviteFriends.js';
 import { mountNotificationsScreen, mountNotifBanner, NOTIF_INTENT, NOTIF_RENDER, NOTIF_BANNER_SHOW } from './ui/screens/notificationsScreen.js';
 import { mountChampionsScreen, CHAMPS_INTENT, CHAMPS_OPEN, CHAMPS_RENDER, CHAMPS_ERROR } from './ui/screens/championsScreen.js';
 import { mountDictionaryScreen, DICT_INTENT, DICT_RENDER } from './ui/screens/dictionaryScreen.js';
+import { mountWordInfoController } from './ui/controllers/wordInfoController.js';
 import { mountAdminScreen, ADMIN_INTENT, ADMIN_RENDER } from './ui/screens/adminScreen.js';
 import { mountTutorialScreen, TUTORIAL_INTENT, TUTORIAL_OPEN, TUTORIAL_CLOSE, TUTORIAL_TIP, TUTORIAL_CLEAR } from './ui/screens/tutorialScreen.js';
 import { mountJokerPicker, JOKER_INTENT } from './ui/screens/jokerPicker.js';
@@ -5235,7 +5237,15 @@ async function boot() {
   const notificationsScreen = mountNotificationsScreen({ bus });
   mountNotifBanner({ bus });
   const championsScreen    = mountChampionsScreen({ bus });
-  const dictionaryScreen   = mountDictionaryScreen({ bus });
+  // מילון "word origin" panel: one preference shared by the overlay and settings toggles.
+  const getWordInfoEnabled = () => settingsCompat.loadUiPreferences(globalThis.localStorage).wordInfoEnabled;
+  const dictionaryScreen   = mountDictionaryScreen({ bus, getWordInfoEnabled });
+  mountWordInfoController({
+    bus,
+    service: createWordInfoService(),
+    getEnabled: getWordInfoEnabled,
+    setEnabled: (enabled) => settingsCompat.mergeUiPreferences(globalThis.localStorage, { wordInfoEnabled: enabled }),
+  });
   const adminScreen        = mountAdminScreen({ bus });
   const replayScreen       = mountReplayScreen({ bus });
   const reportProblemScreen = mountReportProblemScreen({ bus });

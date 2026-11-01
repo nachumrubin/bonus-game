@@ -1,0 +1,133 @@
+{
+  "format": 1,
+  "upstream": {
+    "repo": "nachumrubin/boost-dictionary",
+    "commit": "84ada0dcdfc66ea1d3037443743b6c7574fb7377",
+    "path": "experiments/dicta_sole_source/candidate/word_info.tsv.gz"
+  },
+  "dictionarySha256": "f49bc69c077b1590ea7e3804b1e07137b8604092389d5f66c81cd83eb6b37bd1",
+  "words": 255663,
+  "columns": [
+    "word",
+    "source",
+    "more",
+    "reading…"
+  ],
+  "shard": "first letter, 4-digit lowercase hex code point",
+  "sources": {
+    "D": "מקור: מאגר המילים של דיקטה – המרכז הישראלי לניתוח טקסטים",
+    "U": "מקור: רשימת המדינות החברות באומות המאוחדות"
+  },
+  "files": {
+    "05d0.tsv.gz": {
+      "words": 16940,
+      "bytes": 164462,
+      "sha256": "afdca7e0d5f29e3e801850e09d73e6ade270808cb426783330c818186f3cb62c"
+    },
+    "05d1.tsv.gz": {
+      "words": 4885,
+      "bytes": 36434,
+      "sha256": "9e1fa58e9697caf8bf10c570c5c68cb97e04227c34ed4dfc7919032fa0a67562"
+    },
+    "05d2.tsv.gz": {
+      "words": 4218,
+      "bytes": 31629,
+      "sha256": "180cf9a9de9848200982cdd24f0489b48ac45b4444131ef6c54637b73dd43257"
+    },
+    "05d3.tsv.gz": {
+      "words": 3432,
+      "bytes": 25951,
+      "sha256": "9a1ed6d1a35e21dbfe4ccdbf5e64c1d8445ecc823b78cd3b4b3ddf07ddc6ad47"
+    },
+    "05d4.tsv.gz": {
+      "words": 41509,
+      "bytes": 289934,
+      "sha256": "f142640c5c183bb42e0649ac3eddbc17b7f593b4ce699f368f3264a838663a51"
+    },
+    "05d5.tsv.gz": {
+      "words": 487,
+      "bytes": 3674,
+      "sha256": "a5597add590aa6ffccaa4deb3d526bf455c9d1f3e6480e7c9c1885cceb367ef4"
+    },
+    "05d6.tsv.gz": {
+      "words": 2474,
+      "bytes": 18173,
+      "sha256": "929b89e192207e04fcd18cceee402d6ff3f376a2ecb687ca34ea9eb172486a6b"
+    },
+    "05d7.tsv.gz": {
+      "words": 5742,
+      "bytes": 43463,
+      "sha256": "53e7a8b1c5b0f6dab862f606b5fa83634d934ff3aec1237db65ff28cd12c6ea1"
+    },
+    "05d8.tsv.gz": {
+      "words": 2716,
+      "bytes": 20568,
+      "sha256": "fb8523297487aede80de6ef71a3aab18991d4aaad5282346d3795936d21ed6f4"
+    },
+    "05d9.tsv.gz": {
+      "words": 18835,
+      "bytes": 163054,
+      "sha256": "b6a9bffe36988434ab29939ab4cb03c3219a6184302144123bacf8073e856a66"
+    },
+    "05db.tsv.gz": {
+      "words": 3384,
+      "bytes": 25576,
+      "sha256": "d8804be84be2367ce087fd8cf70a3af17a38c973667eec052764f62a88613b72"
+    },
+    "05dc.tsv.gz": {
+      "words": 10516,
+      "bytes": 103883,
+      "sha256": "39398d21fc28709e2cfb6103e7d9806764759f5881d125af6415981deeed1244"
+    },
+    "05de.tsv.gz": {
+      "words": 35076,
+      "bytes": 293462,
+      "sha256": "9c38441a509c6fdff791e331e4824f1930be1600522728341c5012b4f832954b"
+    },
+    "05e0.tsv.gz": {
+      "words": 32069,
+      "bytes": 259780,
+      "sha256": "49cb49139ca55c926d5460fefff607fb500642929759fea80bb142a369b30182"
+    },
+    "05e1.tsv.gz": {
+      "words": 5262,
+      "bytes": 38739,
+      "sha256": "eb4197e65fd413251ef18ba897219d580a0452782cafb35be8e2774cbc453d8c"
+    },
+    "05e2.tsv.gz": {
+      "words": 4418,
+      "bytes": 33801,
+      "sha256": "471d95cf7007b81e4dd09e29c8a67a22bf1a03e9808a89c3dc1225d4f6d15128"
+    },
+    "05e4.tsv.gz": {
+      "words": 6603,
+      "bytes": 49131,
+      "sha256": "780eddafcde77d25e88679eeaf0048b7c5d06d462993c9532810dbbb3562c16a"
+    },
+    "05e6.tsv.gz": {
+      "words": 2999,
+      "bytes": 22683,
+      "sha256": "ac60d124d567074a0237388e8266728f1fdce4a931ef3226ef529bab92e8e4e1"
+    },
+    "05e7.tsv.gz": {
+      "words": 5457,
+      "bytes": 41039,
+      "sha256": "3cc37eb6f2ba3d991f33b36c25d725c725e2947a3731786f34b2f4d91ee85082"
+    },
+    "05e8.tsv.gz": {
+      "words": 4712,
+      "bytes": 35759,
+      "sha256": "a94689d03cfa493c9677012239841094611df2660823de76d9e8bd137c648897"
+    },
+    "05e9.tsv.gz": {
+      "words": 7219,
+      "bytes": 56067,
+      "sha256": "0ee6dbfd847068820ed7a393307d5e3eb5c4a68a985abb66ec01a46021f065e9"
+    },
+    "05ea.tsv.gz": {
+      "words": 36710,
+      "bytes": 274996,
+      "sha256": "17dee7368bfc7717ff4fad065f9d3f8ad7437c323971bfd40fe8bc08ef6dc62d"
+    }
+  }
+}

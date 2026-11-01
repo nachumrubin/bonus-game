@@ -1,5 +1,20 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Dictionary sync + מילון word origin — November 2026
+
+- [x] Replace `data/dictionary.txt` with the boost-dictionary candidate (255,663 words) and rebuild `bot-words.txt`.
+- [x] מילון toggle "הצג מקור ומידע על המילה" (overlay + settings) backed by sharded `data/word-info/`.
+- [x] Re-check the המילון help examples against the new list (ישראל is now valid; text updated).
+- [ ] Check `/dictionaryRejected` in Firebase for words the new list re-adds (country/continent names such
+  as ישראל): a rejected entry still blocks them and would contradict the help page's ✓ examples.
+- [ ] After every boost-dictionary release: `node scripts/sync-boost-dictionary.mjs <checkout> --write`,
+  then `node scripts/build-bot-words.mjs <he_full.txt> --write` (a unit test fails if `data/word-info`
+  no longer matches `data/dictionary.txt`).
+- [ ] Words added through `/dictionaryApproved` have no word info; the panel says "אין מידע נוסף".
+  Consider asking the boost-dictionary pipeline to cover them, or show the admin-approval as the source.
+- [ ] The upstream candidate is marked EXPERIMENTAL (not a governed release; legal blockers are open in
+  that repo). Revisit when a governed release exists.
+
 ## Google Play listing images — October 2026
 
 - [x] Regenerate phone, 7" and 10" tablet screenshots, the feature graphic, and the PC logo and feature graphic

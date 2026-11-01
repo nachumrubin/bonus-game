@@ -2,6 +2,33 @@
 
 ---
 
+## Dictionary synced from boost-dictionary + מילון word origin toggle (November 2026)
+
+- **New word list.** `data/dictionary.txt` is now `experiments/dicta_sole_source/candidate/dictionary.txt`
+  from the boost-dictionary repo: 255,663 words (was 274,112). Same lineage as the October list:
+  18,589 words removed by the owner's lemma rulings (mostly historical/biblical forms) and 140 added
+  (131 UN member-state names such as קנדה, plus owner overrides: continents אפריקה / אסיה / אירופה…,
+  and מלטה / סמואה / פלאו). The file's SHA-256 matches the upstream `candidate_manifest.json`.
+- **Bot list rebuilt** with `scripts/build-bot-words.mjs` and the same FrequencyWords source
+  (first verified that it reproduces the old list byte for byte): 72,480 → 71,854 words; easy 2,000,
+  medium 20,000, hard 61,023 → 60,384.
+- **Word origin in the מילון.** New toggle "הצג מקור ומידע על המילה" in the מילון overlay
+  (`#ov-shailta`) and in settings → מילון. Off by default; stored as `uiPreferences.wordInfoEnabled`.
+  When on, a valid word shows what it is grammatically, its headword/root and its source, e.g.
+  "ספרים — שם עצם, רבים · סְפָר / סֵפֶר / סַפָּר" and "מקור: מאגר המילים של דיקטה…". The data
+  is upstream `word_info.tsv.gz` (62 MB unpacked), split into 22 first-letter gzip shards
+  (`data/word-info/`, 2.0 MB total, ≤ 293 KB each). Nothing is downloaded until the toggle is on, and
+  then only the shard for the word being checked. Validation is unchanged: `isValid()` still decides.
+  New: `wordInfoService.js`, `wordInfoController.js`, `scripts/sync-boost-dictionary.mjs` (one command to
+  re-sync the list and the word info).
+- **המילון help** updated: ~256K words, country and continent names are now valid (ישראל moved from ✕ to ✓),
+  a note about the new toggle, and a "מאיפה המילים?" section with the DICTA attribution the upstream
+  manifest requires.
+- Tests: `wordInfoService.test.js` (incl. a guard that `data/word-info` matches `data/dictionary.txt`),
+  `wordInfoController.test.js`, new cases in `dictionaryScreen.test.js` and `settingsCompat.test.js`.
+
+---
+
 ## Google Play listing images regenerated (October 2026)
 
 New store graphics in `Blender designs/store/out/` (gitignored with the rest of `Blender designs/`),
