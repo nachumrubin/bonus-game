@@ -31,6 +31,8 @@ export const DEFAULT_UI_PREFERENCES = Object.freeze({
   sfxVolume: 'med',
   lastDisplayName: '',
   gender: 'זכר',
+  // מילון overlay: show what a valid word is and where it comes from (off by default).
+  wordInfoEnabled: false,
 });
 
 // Normalize any inbound value into the reducedMotion tri-state, migrating the
@@ -132,6 +134,7 @@ export function normalizeUiPreferences(input = {}) {
     sfxVolume: ['low', 'med', 'high'].includes(raw.sfxVolume) ? raw.sfxVolume : DEFAULT_UI_PREFERENCES.sfxVolume,
     lastDisplayName: String(raw.lastDisplayName ?? raw.displayName ?? '').trim().slice(0, 40),
     gender: raw.gender === 'נקבה' ? 'נקבה' : 'זכר',
+    wordInfoEnabled: raw.wordInfoEnabled != null ? !!raw.wordInfoEnabled : DEFAULT_UI_PREFERENCES.wordInfoEnabled,
   };
 }
 

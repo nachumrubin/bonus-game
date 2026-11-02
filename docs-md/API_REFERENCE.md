@@ -459,6 +459,26 @@ showBrowserNotification(opts: {
 
 ## Account Services (`src/game/account/`)
 
+### wordInfoService.js — מילון word origin (November 2026)
+
+```typescript
+WORD_INFO_BASE_URL: './data/word-info/'
+createWordInfoService({ fetchFn?, baseUrl?, DecompressionStreamCtor? }): {
+  // null = no entry (e.g. a /dictionaryApproved word); rejects on network/decode failure.
+  // Tries terminal final-letter variants (מלכ → מלך) like isValid().
+  lookup(word: string): Promise<{ word, source: 'D' | 'U', sourceText, readings: string[], more: number } | null>
+}
+shardFileFor(word): string            // '05d0.tsv.gz' — first letter's code point
+parseShard(text): Map<word, { source, more, readings }>
+decodeShardBytes(buffer, opts?): Promise<string>   // inflates only when gzip magic is present
+```
+
+UI side: `mountWordInfoController({ bus, service, getEnabled, setEnabled })`
+(`src/ui/controllers/wordInfoController.js`) and, in `dictionaryScreen.js`,
+`DICT_INTENT.TOGGLE_WORD_INFO` (`{ enabled }`), `DICT_RENDER.WORD_INFO`
+(`{ target: 'main' | 'settings', status: 'hidden' | 'loading' | 'ready' | 'missing' | 'error', word?, info? }`),
+`formatWordInfo(payload) → html`, and the `getWordInfoEnabled` mount option.
+
 ### profileService.js — avatar-store economy (June 2026)
 ```typescript
 // Profile gains four ROOT fields (siblings of `rating`/`stats`), seeded by

@@ -9,6 +9,12 @@
     <div class="g-dim">האם המילה קיימת? הקלד ובדוק.</div>
     <div class="shin-wrap g-fld"><svg class="gi"><use href="#gi-search"/></svg><input class="shin" id="shin" type="text" placeholder="הקלד מילה..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
     <div class="shres" id="shres"></div>
+    <!-- Word origin panel (wordInfoController / data/word-info); toggle = uiPreferences.wordInfoEnabled -->
+    <div class="shinfo hidden" id="shinfo" aria-live="polite"></div>
+    <label class="g-row g-togrow shinfo-tog">
+      <span class="g-grow">הצג מקור ומידע על המילה</span>
+      <input type="checkbox" id="shinfo-toggle" class="g-tog-input">
+    </label>
     <div class="ovbtns">
       <button class="ovb p" onclick="checkShailta()">בדוק ✓</button>
       <button class="ovb s" onclick="ovClose('ov-shailta')">סגור</button>

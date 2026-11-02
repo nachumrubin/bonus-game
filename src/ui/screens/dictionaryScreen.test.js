@@ -6,6 +6,7 @@ import {
   DICT_INTENT,
   DICT_RENDER,
   formatQueryResult,
+  formatWordInfo,
   mountDictionaryScreen,
 } from './dictionaryScreen.js';
 
@@ -34,6 +35,7 @@ function makeEl({ value = '', onclick = null, hidden = false } = {}) {
     },
     click() { for (const l of listeners) if (l.ev === 'click') l.fn({ preventDefault() {} }); },
     keydown(key) { for (const l of listeners) if (l.ev === 'keydown') l.fn({ key, preventDefault() {} }); },
+    fire(ev) { for (const l of listeners) if (l.ev === ev) l.fn({ preventDefault() {} }); },
     focus() { this.focused = true; },
     select() { this.selected = true; },
     querySelector(sel) { return this._children?.[sel] ?? null; },
@@ -121,4 +123,54 @@ test('render events paint query and suggestion status', () => {
   assert.equal(els['#settings-shres'].className, 'shres ok');
   bus.emit(DICT_RENDER.SUGGESTION_STATUS, { message: 'נוספה', isError: false });
   assert.equal(els['#dict-word-status'].textContent, 'נוספה');
+});
+
+test('formatWordInfo renders readings, extra-count and source, escaped', () => {
+  const html = formatWordInfo({
+    status: 'ready',
+    info: { word: 'ספרים', sourceText: 'מקור: דיקטה', readings: ['שם עצם, רבים', '<b>x</b>'], more: 2 },
+  });
+  assert.match(html, /shinfo-word">ספרים</);
+  assert.match(html, /<li>שם עצם, רבים<\/li>/);
+  assert.match(html, /&lt;b&gt;x&lt;\/b&gt;/);
+  assert.match(html, /ועוד 2 ניתוחים נוספים/);
+  assert.match(html, /shinfo-src">מקור: דיקטה</);
+  assert.equal(formatWordInfo({ status: 'hidden' }), '');
+  assert.match(formatWordInfo({ status: 'loading' }), /טוען/);
+  assert.match(formatWordInfo({ status: 'missing' }), /אין מידע/);
+  assert.match(formatWordInfo({ status: 'error' }), /לא ניתן/);
+});
+
+function wordInfoRoot() {
+  const r = makeRoot();
+  for (const id of ['#shinfo', '#settings-shinfo']) r.els[id] = makeEl({ hidden: true });
+  for (const id of ['#shinfo-toggle', '#settings-shinfo-toggle']) r.els[id] = makeEl();
+  return r;
+}
+
+test('word-info toggles start from the stored preference and stay in sync', () => {
+  bus._reset();
+  const { els, ...root } = wordInfoRoot();
+  const events = [];
+  bus.on(DICT_INTENT.TOGGLE_WORD_INFO, (p) => events.push(p));
+  mountDictionaryScreen({ root, bus, getWordInfoEnabled: () => true });
+  assert.equal(els['#shinfo-toggle'].checked, true);
+  assert.equal(els['#settings-shinfo-toggle'].checked, true);
+  els['#shinfo-toggle'].checked = false;
+  els['#shinfo-toggle'].fire('change');
+  assert.deepEqual(events, [{ enabled: false }]);
+  assert.equal(els['#settings-shinfo-toggle'].checked, false);
+});
+
+test('WORD_INFO render fills and hides the panel of its target', () => {
+  bus._reset();
+  const { els, ...root } = wordInfoRoot();
+  mountDictionaryScreen({ root, bus });
+  bus.emit(DICT_RENDER.WORD_INFO, { target: 'main', status: 'ready', info: { word: 'בית', readings: ['שם עצם'], more: 0 } });
+  assert.match(els['#shinfo'].innerHTML, /בית/);
+  assert.equal(els['#shinfo'].classList.contains('hidden'), false);
+  assert.equal(els['#settings-shinfo'].classList.contains('hidden'), true);
+  bus.emit(DICT_RENDER.WORD_INFO, { target: 'main', status: 'hidden' });
+  assert.equal(els['#shinfo'].innerHTML, '');
+  assert.equal(els['#shinfo'].classList.contains('hidden'), true);
 });

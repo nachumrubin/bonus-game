@@ -112,6 +112,7 @@
 | `friendsService.js` | Friends list management. |
 | `ratingService.js` | ELO rating. K=24, SCALE=400. `applyEloForFinishedGame()`. `RATINGS_LIMIT=10`. |
 | `dictionaryService.js` | Word suggestion submission + admin moderation (requires `admin` custom claim). |
+| `wordInfoService.js` | מילון "word origin" lookups: lazily fetches `data/word-info/index.json` + the one first-letter shard a word needs, parses it, returns `{ word, source, sourceText, readings, more }` or `null`. |
 | `economyClient.js` | The app's side of the coin worker (`/economy/*`). |
 | `playBillingClient.js` | Coin packs through Google Play (Digital Goods API + PaymentRequest; Android app only). |
 | `rewardedAds.js` | Rewarded videos for coins: opens the Android app's AdMob screen (`RewardedAdActivity`). |
@@ -134,6 +135,7 @@
 | `turnTimerController.js` | Turn countdown display. |
 | `disconnectController.js` | Offline grace period handling. |
 | `tutorialController.js` | Tutorial guidance overlay. |
+| `wordInfoController.js` | מילון word-origin panel: on a valid `DICT_RENDER.QUERY_RESULT` with `uiPreferences.wordInfoEnabled` on, looks the word up and emits `DICT_RENDER.WORD_INFO`; handles `DICT_INTENT.TOGGLE_WORD_INFO`. |
 | `*.test.js` | Controller unit tests. |
 
 ### `src/ui/screens/`
@@ -257,7 +259,9 @@ See `/partials/screens/` for corresponding HTML templates.
 ## `/data/`
 | File | Role |
 |------|------|
-| `dictionary.base.txt` | Hebrew word list (464 KB). Loaded by `hebrewDictionary.js` at boot. |
+| `dictionary.txt` | Hebrew word list (255,663 words, from the boost-dictionary repo). Loaded by `hebrewDictionary.js` at boot. |
+| `bot-words.txt` | Bot vocabulary, frequency-ordered subset of `dictionary.txt` (`scripts/build-bot-words.mjs`). |
+| `word-info/` | Per-word readings + source for the מילון word-origin panel: `index.json` + 22 first-letter `*.tsv.gz` shards (`scripts/sync-boost-dictionary.mjs`). Fetched on demand only. |
 
 ---
 
@@ -265,6 +269,7 @@ See `/partials/screens/` for corresponding HTML templates.
 | File | Role |
 |------|------|
 | `build-web-images.py` | Writes a ≤512px WebP next to every PNG under `assets/` (not `assets/anim/`); `sw.js` serves it in place of the PNG. Run after art changes. |
+| `sync-boost-dictionary.mjs` | Copy `dictionary.txt` (hash-checked against the candidate manifest) and shard `word_info.tsv.gz` into `data/word-info/` from a boost-dictionary checkout. `--write` to apply; then rerun `build-bot-words.mjs`. |
 | `stamp-build.js` | Update build timestamp in `sw.js` + `index.html` (cache name, version meta, SW registration query param). |
 | `export-dictionary-file.js` | Extract embedded dictionary from legacy `index.html` to `data/dictionary.base.txt`. |
 | `add-dictionary-words.js` | Bulk import words to dictionary. |

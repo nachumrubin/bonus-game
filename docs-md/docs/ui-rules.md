@@ -55,6 +55,9 @@ App-wide "glass + wood" language from `tools/screens-mockup/index.html` (see DEC
   `#home-turn-strip` / `#home-turn-strip-text` / `#home-turn-strip-avs`,
   `#home-lb-row` / `#home-lb-rank`, `#daily-reward-days`, `#mg-tabs` (buttons
   `[data-mg-tab="mine|theirs"]`).
+- **מילון word origin:** `#shinfo` + `#shinfo-toggle` (in `#ov-shailta`) and
+  `#settings-shinfo` + `#settings-shinfo-toggle` (settings → מילון), painted by
+  `dictionaryScreen.js` from `DICT_RENDER.WORD_INFO`; ids are looked up in `WORD_INFO_IDS`.
 - **Menu payload:** `MENU_REFRESH` also takes `myTurnSessions` (`[{roomId, opponentName,
   opponentAvatar}]`) and `myRank`. `MENU_INTENT.OPEN_LEADERBOARD` (`#home-lb-row`) opens
   `#ov-champs`. `#home-turn-strip` opens My Games.

@@ -400,6 +400,19 @@ input.g-tog-input:checked::after { right: 21px; background: #fff; }
 #ov-shailta .shin-wrap { margin: 0; }
 #ov-shailta .shres:empty { display: none; }
 #ov-shailta .shres { border-radius: 18px; padding: 14px 10px; text-align: center; background: var(--sg-glass); border: 1px solid var(--sg-line); font-weight: 900; }
+/* dictionary: word-origin panel + toggle (wordInfoController) */
+.shinfo.hidden { display: none; }
+.shinfo { border-radius: 18px; padding: 12px 14px; background: rgba(0,0,0,.24); border: 1px solid var(--sg-line); color: var(--sg-ink);
+  text-align: right; direction: rtl; font: 600 13px/1.55 'Heebo', sans-serif; max-height: 34svh; overflow-y: auto; }
+.shinfo-word { font-weight: 900; font-size: 16px; margin-bottom: 4px; }
+.shinfo-readings { margin: 0; padding: 0 18px 0 0; }
+.shinfo-readings li + li { margin-top: 4px; }
+.shinfo-more { margin-top: 4px; color: var(--sg-dim); font-size: 12px; }
+.shinfo-src { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sg-line); color: var(--sg-dim); font-size: 11px; font-weight: 700; }
+.shinfo-note { color: var(--sg-dim); text-align: center; }
+.shinfo-tog { font-size: 13px; font-weight: 800; color: var(--sg-ink); }
+#ov-settings .shinfo { margin: 0 0 8px; }
+#ov-settings .shinfo-tog { margin: 0 0 8px !important; }
 /* contact */
 #ov-report .contact-label { font-size: 11px; font-weight: 800; color: var(--sg-dim); }
 #ov-report .contact-select { height: 44px; border-radius: 14px; padding: 0 12px; background: rgba(0,0,0,.28); border: 1px solid var(--sg-line); color: var(--sg-ink); font: 700 14px 'Heebo', sans-serif; width: 100%; }

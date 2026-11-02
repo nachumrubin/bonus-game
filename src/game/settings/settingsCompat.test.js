@@ -76,11 +76,22 @@ test('UI preferences support animation skip, music, and last display name', () =
     sfxVolume: 'med', // default applied by normalizer when not provided
     lastDisplayName: 'Alice',
     gender: 'זכר',   // default applied by normalizer when not provided
+    wordInfoEnabled: false, // default applied by normalizer when not provided
   });
   assert.equal(loadUiPreferences(s).animationsEnabled, false);
   const next = mergeUiPreferences(s, { music: true });
   assert.equal(next.music, true);
   assert.equal(next.animationsEnabled, false);
+});
+
+test('wordInfoEnabled (מילון word-origin toggle) defaults off and round-trips', () => {
+  const s = storage();
+  assert.equal(loadUiPreferences(s).wordInfoEnabled, false);
+  assert.equal(mergeUiPreferences(s, { wordInfoEnabled: true }).wordInfoEnabled, true);
+  assert.equal(loadUiPreferences(s).wordInfoEnabled, true);
+  // Unrelated merges keep it.
+  assert.equal(mergeUiPreferences(s, { music: false }).wordInfoEnabled, true);
+  assert.equal(mergeUiPreferences(s, { wordInfoEnabled: false }).wordInfoEnabled, false);
 });
 
 test('reducedMotion tri-state: defaults to auto, round-trips on/off, derives animationsEnabled', () => {

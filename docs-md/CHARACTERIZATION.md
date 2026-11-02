@@ -298,6 +298,11 @@ Defaults:
 
 Settings stored in localStorage key `bonusGameSettingsV1` (legacy compat key).
 
+UI preferences (`spine.uiPreferences`, `loadUiPreferences` / `mergeUiPreferences`) include
+`wordInfoEnabled` (default `false`): the מילון "הצג מקור ומידע על המילה" toggle. When on, a valid
+word checked in `#ov-shailta` or the settings check shows its readings and source in `#shinfo` /
+`#settings-shinfo` (data fetched on demand from `data/word-info/`). Both toggles share the preference.
+
 ---
 
 ## Rating System
