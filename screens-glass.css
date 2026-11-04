@@ -206,8 +206,10 @@
 .hm-card-sub { font-size: 12px !important; color: var(--sg-dim) !important; font-weight: 600 !important; }
 .hm-card-chev {
   width: 30px; height: 30px; flex: none; border-radius: 10px !important; display: grid; place-items: center; margin: 0 !important;
-  background: rgba(255,255,255,.07) !important; border: 1px solid var(--sg-line) !important; color: var(--sg-dim) !important; transform: scaleX(-1);
+  background: rgba(255,255,255,.07) !important; border: 1px solid var(--sg-line) !important; color: var(--sg-dim) !important;
 }
+/* An SVG chevron (#gi-fwd points left = forward in Hebrew): never bidi-mirrored, never flipped. */
+.hm-card-chev svg.gi { width: 18px; height: 18px; }
 .hm-card--online .hm-card-chev { background: linear-gradient(180deg, #43e0ff, #1597d6) !important; color: #022038 !important; border-color: transparent !important; }
 
 /* ── Bottom nav = dock ── */

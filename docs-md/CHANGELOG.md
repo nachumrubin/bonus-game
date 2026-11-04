@@ -22,9 +22,9 @@
 - **Tests.** Marble cases in `skinCatalog.test.js`, `buildSequences.test.js` and
   `worker/test/economy.test.js` (a second skin is appended to `ownedSkins`), plus a wiring guard: every
   paid skin has its generated sheet, overrides file, `<link>`, boot theme colour and 14 logo tiles.
-- **Fix: home mode-card arrows pointed right.** The ❮ glyph is bidi-mirrored, so inside the RTL card it
-  rendered as ❯ ("back"). The three `.hm-card-chev` divs in `partials/screens/home.html` now have
-  `dir="ltr"`, so the arrow points left (forward for Hebrew readers) in every skin. SW cache bumped.
+- **Fix: home mode-card arrows pointed right.** `screens-glass.css` flipped the ❮ glyph with
+  `transform: scaleX(-1)`, so it read as "back". The three `.hm-card-chev` now hold the `#gi-fwd` SVG
+  (points left = forward in Hebrew; SVGs are never bidi-mirrored) and the flip is gone. SW cache bumped.
 - No rules or worker code changes: both already accept any id in `SKINS`. The worker still needs the
   redeploy listed for Stone (it bundles `skinCatalog.js`, so the redeploy is what lets it sell `skin:marble`).
 
