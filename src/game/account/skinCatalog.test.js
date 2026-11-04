@@ -52,8 +52,10 @@ test('every paid skin is wired up: stylesheet, link, boot colour, logo assets', 
   for (const s of Object.values(SKINS).filter((x) => x.price > 0)) {
     assert.ok(existsSync(root + `skin-${s.id}.css`), `skin-${s.id}.css (npm run build:skins)`);
     assert.ok(existsSync(root + `skins/${s.id}-overrides.css`), `skins/${s.id}-overrides.css`);
-    assert.match(html, new RegExp(`href="skin-${s.id}\.css[^"]*" data-skin-css="${s.id}" media="not all"`));
-    assert.match(html, new RegExp(`${s.id}:'${s.themeColor}'`), `boot script theme colour for ${s.id}`);
+    // The boot script writes one <link data-skin-css> per key of its T map (render-blocking for
+    // the saved skin) and loads the splash tiles from assets/ui/logo_tiles_<id>/.
+    assert.match(html, new RegExp(`T=\\{[^}]*\\b${s.id}:'${s.themeColor}'`), `boot script theme colour for ${s.id}`);
+    assert.equal(s.logoTiles, `assets/ui/logo_tiles_${s.id}/`, 'the splash script assumes this folder name');
     assert.ok(existsSync(root + s.logo), s.logo);
     assert.equal(readdirSync(root + s.logoTiles).filter((f) => f.endsWith('.webp')).length, 14, s.logoTiles);
   }

@@ -26,12 +26,19 @@
 <link rel="stylesheet" href="styles.css?v=20261103202000">
 <link rel="stylesheet" href="menu-electric.css?v=20261103202000">
 <link rel="stylesheet" href="screens-glass.css?v=20261104150000">
-<link rel="stylesheet" href="skin-stone.css?v=20261104150000" data-skin-css="stone" media="not all">
-<link rel="stylesheet" href="skin-marble.css?v=20261104150000" data-skin-css="marble" media="not all">
-<!-- App skin (ui/skinController.js): paint the saved one before first paint, so a
-     Stone/Marble player never sees Classic flash at boot (theme colours mirror SKINS[id].themeColor). Ownership is checked once the
-     profile loads (an unowned choice falls back to Classic). -->
-<script>try{var _sk=JSON.parse(localStorage.getItem('spine.uiPreferences')||'{}').skin,_tcs={stone:'#f8f2e6',marble:'#0f0f12'};if(_tcs.hasOwnProperty(_sk)){document.documentElement.setAttribute('data-skin',_sk);var _sl=document.querySelector('link[data-skin-css="'+_sk+'"]');if(_sl)_sl.media='all';var _tc=document.querySelector('meta[name="theme-color"]');if(_tc)_tc.setAttribute('content',_tcs[_sk]);}}catch(e){}</script>
+<!-- App skins (ui/skinController.js). This script WRITES each paid skin's <link data-skin-css>:
+     the saved skin's with media="all" (written during parsing = render-blocking, so a Stone/Marble
+     player never sees Classic at boot), the rest with media="not all". It also preloads the saved
+     skin's loading tiles. Theme colours mirror SKINS[id].themeColor; ownership is checked once the
+     profile loads (an unowned choice falls back to Classic). skinCatalog.test.js checks this list. -->
+<script>(function(){var V='20261104150000',T={stone:'#f8f2e6',marble:'#0f0f12'},sk=null;
+try{sk=JSON.parse(localStorage.getItem('spine.uiPreferences')||'{}').skin;}catch(e){}
+if(!T.hasOwnProperty(sk))sk=null;
+for(var id in T)document.write('<link rel="stylesheet" href="skin-'+id+'.css?v='+V+'" data-skin-css="'+id+'" media="'+(id===sk?'all':'not all')+'">');
+if(!sk)return;
+document.documentElement.setAttribute('data-skin',sk);
+['bet','vav','sam','tet'].forEach(function(k){document.write('<link rel="preload" as="image" fetchpriority="high" href="assets/ui/logo_tiles_'+sk+'/row_'+k+'.webp">');});
+var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute('content',T[sk]);})();</script>
 
 <meta name="NetsparkQuiltingResult" total-length="580029" removed="0" rules-found="w3509,w6193,w4829,w4830,w73,w11400,w1782,w341,w9768,w6243,w19266,w9674,w26854,w26912,w6808,w6524,w26485,r4554s-10p1,w3981,w1834,w1938,w10883,w18014,w17929,w15580,w17998,w19622,w27365,w19703,w17997,w10715,w8931,w6877,w4835,w6522,w3033,w2656,w5051" />
 </head>
@@ -123,6 +130,16 @@
       <img class="app-loading-tile" data-tile="tet" src="assets/ui/logo_tiles/row_tet.webp" alt="" width="205" height="220" fetchpriority="high">
       <div class="app-loading-bolt" aria-hidden="true"></div>
     </div>
+    <!-- Skin tiles: swap to the skin's row_*.webp and hold the drop-in animation until all
+         four are loaded (first launch in a new skin: otherwise they pop in together). -->
+    <script>(function(){var w=document.querySelector('.app-loading-tiles'),sk=document.documentElement.getAttribute('data-skin');if(!w)return;
+var ims=w.querySelectorAll('img.app-loading-tile'),left=ims.length;
+function go(){w.classList.remove('is-waiting');}
+function one(){if(--left<=0)go();}
+if(sk)for(var i=0;i<ims.length;i++)ims[i].src='assets/ui/logo_tiles_'+sk+'/row_'+ims[i].getAttribute('data-tile')+'.webp';
+w.classList.add('is-waiting');
+for(var j=0;j<ims.length;j++){if(ims[j].complete&&ims[j].naturalWidth)one();else{ims[j].addEventListener('load',one);ims[j].addEventListener('error',one);}}
+setTimeout(go,3000);})();</script>
     <div class="app-loading-text" id="app-loading-text">מתחבר...</div>
   </div>
   <!-- Tip card — hidden until loadingTipsService resolves -->

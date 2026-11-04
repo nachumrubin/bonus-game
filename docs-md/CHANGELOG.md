@@ -2,6 +2,14 @@
 
 ---
 
+## Skins: no Classic flash at boot, splash tiles wait for their art (November 2026)
+
+- **Classic flashed before the saved skin.** The skin sheets were `<link media="not all">`, and the boot script then switched the media. A media change made by script does not block rendering, so the first frame was painted Classic. Now the `index.html` head script document.writes the `<link data-skin-css>` tags itself, with `media="all"` only for the saved skin. That sheet blocks rendering like any other stylesheet. It also writes high-priority preloads for that skin's four splash tiles and sets the theme colour.
+- **The splash tiles appeared all at once the first time a skin was used.** The skin tiles were swapped in by CSS `content:url()`, and SW image caching happens at runtime, so the first launch played the drop animation before the images had arrived. Now an inline script after `.app-loading-tiles` sets the img `src` to `logo_tiles_<skin>/`. The wrapper gets `is-waiting` (animation paused, tiles hidden) until all four images load, with a 3 s fallback.
+- `skinController.warmSkinArt(id)` fetches a skin's logo and tiles into the image cache whenever a skin is applied (bought, chosen or previewed), so the next launch has them.
+- Measured with the skin CSS and tiles delayed by 1.2 s: the first painted frame already has the skin's background, and there is only one background throughout.
+- sw `CACHE_NAME` → `boost-20261104170000`.
+
 ## App skins: שיש וזהב (Midnight Marble), the second paid skin (November 2026)
 
 - **New skin, 1,500 coins.** A quiet, premium dark skin: near-black screens with a faint gold light,

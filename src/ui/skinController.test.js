@@ -203,3 +203,15 @@ test('try-on: unknown ids are ignored; dispose removes the bar and stops the tim
   clock.advance(SKIN_PREVIEW_MS);
   assert.equal(bus.last(SKIN_PREVIEW_ENDED), undefined);
 });
+
+test('warmSkinArt: fetches a paid skin\'s logo + loading tiles once, never Classic', async () => {
+  const { warmSkinArt } = await import('./skinController.js');
+  const got = [];
+  class Img { set src(v) { got.push(v); } }
+  assert.deepEqual(warmSkinArt('classic', Img), []);
+  const srcs = warmSkinArt('marble', Img);
+  assert.equal(srcs.length, 5);
+  assert.ok(got.includes('assets/ui/logo_tiles_marble/row_bet.webp'));
+  assert.ok(got.includes('assets/ui/boost-logo-marble.webp'));
+  assert.deepEqual(warmSkinArt('marble', Img), [], 'only once per page');
+});

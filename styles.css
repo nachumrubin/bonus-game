@@ -4591,6 +4591,9 @@ button[aria-disabled="true"] {
    sends each tile off the screen; the text and tips get out of the way. */
 .app-loading.is-exiting .app-loading-tile { animation: none !important; opacity: 1; }
 .app-loading.is-exiting .app-loading-bolt { display: none; }
+/* Until the tile images have loaded (index.html inline script): hidden, loop held at its start,
+   so the staggered drop-in plays from the first tile instead of all four popping in at once. */
+.app-loading-tiles.is-waiting .app-loading-tile { animation-play-state: paused !important; opacity: 0 !important; }
 .app-loading.is-exiting .app-loading-text,
 .app-loading.is-exiting .app-loading-tips { opacity: 0; transition: opacity 0.2s ease; }
 

@@ -36,6 +36,21 @@ export function applySkinToDocument(doc, id) {
   else html.setAttribute?.('data-skin', skin);
   const meta = doc.querySelector?.('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', SKINS[skin].themeColor);
+  warmSkinArt(skin, doc.defaultView?.Image);
+}
+
+// Fetch a skin's logo + loading tiles into the cache (the SW keeps images), so the next
+// launch's splash and home logo build have them at once. Once per skin per page.
+const warmed = new Set();
+export function warmSkinArt(id, ImageCtor = globalThis.Image) {
+  const s = SKINS[id];
+  if (!s || id === DEFAULT_SKIN || warmed.has(id) || typeof ImageCtor !== 'function') return [];
+  warmed.add(id);
+  const srcs = [s.logo, ...['bet', 'vav', 'sam', 'tet'].map((k) => `${s.logoTiles}row_${k}.webp`)];
+  for (const src of srcs) {
+    try { const im = new ImageCtor(); im.decoding = 'async'; im.src = src; } catch { /* swallow */ }
+  }
+  return srcs;
 }
 
 export function formatPreviewLeft(ms) {
