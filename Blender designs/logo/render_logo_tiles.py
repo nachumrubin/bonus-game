@@ -20,6 +20,12 @@ Two steps, like promo/render_app_logo.py (which renders the single-image logo):
     python "Blender designs/logo/render_logo_tiles.py" --pack "Blender designs/logo/render"
 
    assets/ui/logo_tiles/logo_<key>.webp, row_<key>.webp, src/ui/logoTilesLayout.js
+
+Skin variants (Nov 2026): add `--skin stone` (or `--skin marble`) to BOTH steps (render into a separate folder, e.g.
+"Blender designs/logo/render_stone"). The render swaps the tile materials (stone: limestone body, ink
+letter, teal rim; marble: black marble with white veins, gold-leaf letter and rim; see SKIN_MATERIALS); the pack writes assets/ui/logo_tiles_stone/ and
+assets/ui/boost-logo-stone.webp and checks the layer boxes still match src/ui/logoTilesLayout.js
+(same geometry, so the generated layout is shared and NOT rewritten).
 """
 import json
 import os
@@ -32,6 +38,111 @@ LOGO_W = 1100                                # boost-logo.webp width
 ROW_H = 220                                  # loading-row tile height (px)
 OUT_DIR = 'assets/ui/logo_tiles'
 LAYOUT_JS = 'src/ui/logoTilesLayout.js'
+SKIN = sys.argv[sys.argv.index('--skin') + 1] if '--skin' in sys.argv else None
+BOLT_GLOW = {None: (40, 212, 255), 'stone': (224, 160, 48), 'marble': (232, 198, 110)}   # the strike's glow colour
+
+# Linear-RGB colours for each skin's tile materials (sRGB hex in the comments).
+SKIN_MATERIALS = {
+    'stone': {
+        'stone_light': (0.887, 0.831, 0.701),   # #f1eadb limestone
+        'stone_dark':  (0.761, 0.665, 0.479),   # #e2d5b8 sand vein
+        'ink':         (0.030, 0.019, 0.010),   # #31261a carved letter
+        'rim':         (0.006, 0.117, 0.195),   # #12607a deep teal
+    },
+    'marble': {
+        'body':  (0.018, 0.018, 0.022),          # #26262a black marble
+        'vein':  (0.45, 0.44, 0.41),             # #b4b1aa white vein
+        'ink':   (0.80, 0.56, 0.16),             # #e8c66e gold leaf letter (metallic)
+        'rim':   (0.48, 0.30, 0.07),             # #b98f3e brushed gold rim
+    },
+}
+
+
+def apply_skin_materials(bpy, skin):
+    """Replace Wood / Wood_Carved / Rim_* with the skin's materials (render only, never saved)."""
+    c = SKIN_MATERIALS[skin]
+
+    def fresh(name):
+        m = bpy.data.materials[name]
+        nt = m.node_tree
+        nt.nodes.clear()
+        out = nt.nodes.new('ShaderNodeOutputMaterial')
+        bsdf = nt.nodes.new('ShaderNodeBsdfPrincipled')
+        nt.links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+        return nt, bsdf
+
+    if skin == 'marble':
+        _marble(bpy, c, fresh)
+        return
+    # Limestone: soft cloudy veining + fine pitting, matte.
+    nt, bsdf = fresh('Wood')
+    coord = nt.nodes.new('ShaderNodeTexCoord')
+    noise = nt.nodes.new('ShaderNodeTexNoise')
+    noise.inputs['Scale'].default_value = 1.6
+    noise.inputs['Detail'].default_value = 6.0
+    noise.inputs['Roughness'].default_value = 0.55
+    nt.links.new(coord.outputs['Object'], noise.inputs['Vector'])
+    ramp = nt.nodes.new('ShaderNodeValToRGB')
+    ramp.color_ramp.elements[0].position = 0.30
+    ramp.color_ramp.elements[0].color = (*c['stone_dark'], 1)
+    ramp.color_ramp.elements[1].position = 0.70
+    ramp.color_ramp.elements[1].color = (*c['stone_light'], 1)
+    nt.links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
+    nt.links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
+    pits = nt.nodes.new('ShaderNodeTexVoronoi')
+    pits.inputs['Scale'].default_value = 40.0
+    nt.links.new(coord.outputs['Object'], pits.inputs['Vector'])
+    bump = nt.nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = 0.12
+    bump.inputs['Distance'].default_value = 0.02
+    nt.links.new(pits.outputs['Distance'], bump.inputs['Height'])
+    nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    bsdf.inputs['Roughness'].default_value = 0.85
+
+    nt, bsdf = fresh('Wood_Carved')
+    bsdf.inputs['Base Color'].default_value = (*c['ink'], 1)
+    bsdf.inputs['Roughness'].default_value = 0.6
+
+    for m in bpy.data.materials:
+        if m.name.startswith('Rim_'):
+            nt, bsdf = fresh(m.name)
+            bsdf.inputs['Base Color'].default_value = (*c['rim'], 1)
+            bsdf.inputs['Roughness'].default_value = 0.4
+            bsdf.inputs['Metallic'].default_value = 0.2
+
+
+def _marble(bpy, c, fresh):
+    """Polished black marble: thin distorted white veins, glossy; gold-leaf letter and rim."""
+    nt, bsdf = fresh('Wood')
+    coord = nt.nodes.new('ShaderNodeTexCoord')
+    noise = nt.nodes.new('ShaderNodeTexNoise')
+    noise.inputs['Scale'].default_value = 0.55
+    noise.inputs['Detail'].default_value = 4.0
+    noise.inputs['Roughness'].default_value = 0.5
+    noise.inputs['Distortion'].default_value = 2.5
+    nt.links.new(coord.outputs['Object'], noise.inputs['Vector'])
+    ramp = nt.nodes.new('ShaderNodeValToRGB')       # a narrow bright band = the veins
+    els = ramp.color_ramp.elements
+    els[0].position, els[0].color = 0.485, (*c['body'], 1)
+    els[1].position, els[1].color = 0.515, (*c['body'], 1)
+    mid = els.new(0.50)
+    mid.color = (*c['vein'], 1)
+    nt.links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
+    nt.links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
+    bsdf.inputs['Roughness'].default_value = 0.18
+    bsdf.inputs['Coat Weight'].default_value = 0.6
+
+    nt, bsdf = fresh('Wood_Carved')
+    bsdf.inputs['Base Color'].default_value = (*c['ink'], 1)
+    bsdf.inputs['Metallic'].default_value = 1.0
+    bsdf.inputs['Roughness'].default_value = 0.3
+
+    for m in bpy.data.materials:
+        if m.name.startswith('Rim_'):
+            nt, bsdf = fresh(m.name)
+            bsdf.inputs['Base Color'].default_value = (*c['rim'], 1)
+            bsdf.inputs['Metallic'].default_value = 1.0
+            bsdf.inputs['Roughness'].default_value = 0.35
 
 
 def render(out_dir):
@@ -39,6 +150,8 @@ def render(out_dir):
     sc = bpy.context.scene
     out_dir = os.path.abspath(out_dir)       # Blender resolves bare relative paths oddly
     sc.frame_set(168)
+    if SKIN:
+        apply_skin_materials(bpy, SKIN)
     # Freeze frame 168: drop every action so our pose/visibility edits survive the
     # render's own frame re-evaluation.
     for o in bpy.data.objects:
@@ -74,6 +187,8 @@ def render(out_dir):
 
     final = set().union(*(tile_objs[k] for k in ('bet', 'vav', 'tet', 'samL', 'samR')))
     shot('logo_all', set(shown) - tile_objs['sam'])
+    if '--preview' in sys.argv:
+        return
     for k in LOGO_LAYERS:
         own = tile_objs[k] | ({split} if k in ('samL', 'samR') else set())
         # logo_<k>_bare: alone (in flight). logo_<k>: with the shadows the settled
@@ -104,7 +219,11 @@ def pack(src):
     box = (max(l - pad, 0), max(t - pad, 0), min(r + pad, full.width), min(b + pad, full.height))
     size = (LOGO_W, round((box[3] - box[1]) * LOGO_W / (box[2] - box[0])))
 
-    os.makedirs(OUT_DIR, exist_ok=True)
+    out = OUT_DIR + ('_' + SKIN if SKIN else '')
+    os.makedirs(out, exist_ok=True)
+    if SKIN:   # the single-image logo too (boost-logo.webp's skin twin): same crop and size
+        full.crop(box).resize(size, Image.LANCZOS).save(
+            f'assets/ui/boost-logo-{SKIN}.webp', 'WEBP', quality=88, method=6)
     layers = {}
     for k in LOGO_LAYERS:
         # The intact ס is only ever seen alone (its "shadowed" render would carry the
@@ -113,10 +232,10 @@ def pack(src):
         im = load(src_name).crop(box).resize(size, Image.LANCZOS)
         bb = im.split()[3].point(lambda a: 255 if a > 2 else 0).getbbox()
         bb = (max(bb[0] - 2, 0), max(bb[1] - 2, 0), min(bb[2] + 2, size[0]), min(bb[3] + 2, size[1]))
-        im.crop(bb).save(os.path.join(OUT_DIR, f'logo_{k}.webp'), 'WEBP', quality=88, method=6)
+        im.crop(bb).save(os.path.join(out, f'logo_{k}.webp'), 'WEBP', quality=88, method=6)
         if k in BARE_LAYERS:
             load(f'logo_{k}_bare').crop(box).resize(size, Image.LANCZOS).crop(bb).save(
-                os.path.join(OUT_DIR, f'logo_{k}_bare.webp'), 'WEBP', quality=88, method=6)
+                os.path.join(out, f'logo_{k}_bare.webp'), 'WEBP', quality=88, method=6)
         # Box as % of the logo canvas, so the layers sit on top of the logo <img>.
         layers[k] = [round(100 * bb[0] / size[0], 3), round(100 * bb[1] / size[1], 3),
                      round(100 * (bb[2] - bb[0]) / size[0], 3), round(100 * (bb[3] - bb[1]) / size[1], 3)]
@@ -130,13 +249,13 @@ def pack(src):
     gap = ImageChops.subtract(whole, halves).filter(ImageFilter.MinFilter(7)).filter(ImageFilter.MaxFilter(9))
     core = gap.filter(ImageFilter.GaussianBlur(1.2))
     glow = gap.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(9)).point(lambda a: min(255, a * 2))
-    bolt = Image.new('RGBA', size, (40, 212, 255, 0))
+    bolt = Image.new('RGBA', size, (*BOLT_GLOW[SKIN], 0))
     bolt.putalpha(glow)
     white = Image.new('RGBA', size, (255, 255, 255, 0))
     white.putalpha(core)
     bolt.alpha_composite(white)
     bb = bolt.split()[3].point(lambda a: 255 if a > 2 else 0).getbbox()
-    bolt.crop(bb).save(os.path.join(OUT_DIR, 'logo_bolt.webp'), 'WEBP', quality=88, method=6)
+    bolt.crop(bb).save(os.path.join(out, 'logo_bolt.webp'), 'WEBP', quality=88, method=6)
     layers['bolt'] = [round(100 * bb[0] / size[0], 3), round(100 * bb[1] / size[1], 3),
                       round(100 * (bb[2] - bb[0]) / size[0], 3), round(100 * (bb[3] - bb[1]) / size[1], 3)]
 
@@ -148,8 +267,19 @@ def pack(src):
     rw = round((ub[2] - ub[0]) * ROW_H / (ub[3] - ub[1]))
     for k, im in rows.items():
         im.crop(ub).resize((rw, ROW_H), Image.LANCZOS).save(
-            os.path.join(OUT_DIR, f'row_{k}.webp'), 'WEBP', quality=88, method=6)
+            os.path.join(out, f'row_{k}.webp'), 'WEBP', quality=88, method=6)
 
+    if SKIN:
+        # Same scene geometry, so the shared layout must still fit (1.5 px of alpha noise allowed).
+        txt = open(LAYOUT_JS, encoding='utf-8').read()
+        cur = json.loads(txt[txt.index('freeze(') + 7:txt.index(');')])
+        tol = [100 * 1.5 / size[0], 100 * 1.5 / size[1]] * 2
+        bad = {k: (cur[k], v) for k, v in layers.items()
+               if any(abs(a - b) > tol[i] for i, (a, b) in enumerate(zip(cur[k], v)))}
+        if bad:
+            print('WARNING: layer boxes differ from', LAYOUT_JS, bad)
+        print('WROTE', out, f'assets/ui/boost-logo-{SKIN}.webp', size, (rw, ROW_H))
+        return
     with open(LAYOUT_JS, 'w', encoding='utf-8', newline='\n') as f:
         f.write('// GENERATED by "Blender designs/logo/render_logo_tiles.py --pack" — do not edit.\n')
         f.write('// Each logo layer\'s box as [left, top, width, height] in % of boost-logo.webp\n')

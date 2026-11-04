@@ -15,6 +15,8 @@
 //   'store'   — only bought with coins
 // `price` is the coin price in the store (0 = not for sale).
 
+import { findSkin } from './skinCatalog.js';
+
 export const BOOSTIE_LEVELS = 7;
 export const DEFAULT_BOOSTIE = 'zapi';
 
@@ -111,11 +113,12 @@ export function ownsReaction(id, ownedReactions) {
   return r.price === 0 || (Array.isArray(ownedReactions) && ownedReactions.includes(id));
 }
 
-// Store items are 'boostie:<id>' or 'reaction:<id>'. { kind, id, price } or null.
+// Store items are 'boostie:<id>', 'reaction:<id>' or 'skin:<id>'. { kind, id, price } or null.
 export function parseStoreItem(item) {
-  const m = /^(boostie|reaction):([a-z]+)$/.exec(typeof item === 'string' ? item : '');
+  const m = /^(boostie|reaction|skin):([a-z]+)$/.exec(typeof item === 'string' ? item : '');
   if (!m) return null;
   const [, kind, id] = m;
+  if (kind === 'skin') { const s = findSkin(id); return s && s.price > 0 ? { kind, id, price: s.price } : null; }
   if (kind === 'boostie') return isBoostieId(id) && BOOSTIES[id].price > 0 ? { kind, id, price: BOOSTIES[id].price } : null;
   const r = findReaction(id);
   return r && r.price > 0 ? { kind, id, price: r.price } : null;

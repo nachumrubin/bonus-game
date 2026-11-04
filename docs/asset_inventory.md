@@ -28,6 +28,12 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 
 ## Existing
 
+* assets/ui/boost-logo-stone.webp, assets/ui/logo_tiles_stone/ (logo_*, row_*, logo_bolt) — the logo for
+  the אבן ירושלים skin: the Classic Blender shot re-rendered with limestone tiles, ink letters and teal
+  rims (`"Blender designs/logo/render_logo_tiles.py" --skin stone`). Same layout as `logo_tiles/`.
+* assets/ui/boost-logo-marble.webp, assets/ui/logo_tiles_marble/ — the logo for the שיש וזהב skin: the
+  same shot with black marble tiles (white veins), gold-leaf letters and gold rims (`--skin marble`).
+
 ### App icon (October 2026)
 
 * android/app/src/main/res/mipmap-*/ic_launcher_{foreground,background,monochrome}.webp,

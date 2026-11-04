@@ -1,0 +1,250 @@
+/* Jerusalem Stone — hand-tuned layer (appended after the generated re-colour).
+   Everything here is scoped to html[data-skin="stone"]. Build with
+   node scripts/build-skin-css.mjs stone → skin-stone.css. */
+
+/* ── tokens ── */
+html[data-skin="stone"] {
+  color-scheme: light;
+  --sg-p1: #12607a;
+  --sg-p2: #a8480f;
+  --sg-ink: #2a2118;
+  --sg-dim: rgba(42,33,24,.66);
+  --sg-faint: rgba(42,33,24,.42);
+  --sg-glass: rgba(255,252,245,.86);
+  --sg-line: rgba(120,90,50,.18);
+  --sg-ok: #1f8a52;
+  --sg-bad: #c0283c;
+  --stone-tile: linear-gradient(165deg, #ffffff, #fbf5e8 60%, #efe3cb);
+  --stone-shadow: 0 8px 20px rgba(90,60,20,.12);
+  --sg-wood: var(--stone-tile);
+  background: #f8f2e6;
+}
+html[data-skin="stone"] #sg {
+  --p1: #12607a;
+  --p2: #a8480f;
+  --gs-line: rgba(120,90,50,.18);
+  --gs-glass: rgba(255,252,245,.86);
+  --gs-ink: #2a2118;
+  --gs-dim: rgba(42,33,24,.66);
+}
+html[data-skin="stone"] body { background: #f8f2e6 !important; color: #2a2118; }
+
+/* ── screen backgrounds: warm limestone, low sun top-left (RTL: right) ── */
+html[data-skin="stone"] .screen:not(#sg),
+html[data-skin="stone"] #sh.screen,
+html[data-skin="stone"] #sg,
+html[data-skin="stone"] .app-loading {
+  background:
+    radial-gradient(circle at 82% 12%, rgba(255,214,140,.55), transparent 28%),
+    radial-gradient(ellipse 90% 40% at 50% 0, rgba(255,255,255,.7), transparent 70%),
+    linear-gradient(180deg, #f8f2e6, #efe5d2 60%, #e6d8bf) !important;
+  color: #2a2118;
+}
+/* Home: the arched stone wall behind the bottom nav */
+html[data-skin="stone"] #sh.screen {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 130' preserveAspectRatio='none'%3E%3Cpath fill='%23e2d1b0' fill-rule='evenodd' d='M0 130L0 40L390 40L390 130ZM30 130L30 92A22 22 0 0 1 74 92L74 130ZM118 130L118 86A26 26 0 0 1 170 86L170 130ZM220 130L220 86A26 26 0 0 1 272 86L272 130ZM316 130L316 92A22 22 0 0 1 360 92L360 130Z'/%3E%3Cpath fill='%23e2d1b0' d='M0 40L0 30L20 30L20 22L40 22L40 30L80 30L80 22L100 22L100 30L140 30L140 22L160 22L160 30L230 30L230 22L250 22L250 30L290 30L290 22L310 22L310 30L350 30L350 22L370 22L370 30L390 30L390 40Z'/%3E%3C/svg%3E") left 0 bottom calc(64px + env(safe-area-inset-bottom, 0px)) / 100% 130px no-repeat,
+    radial-gradient(circle at 82% 12%, rgba(255,214,140,.55), transparent 28%),
+    radial-gradient(ellipse 90% 40% at 50% 0, rgba(255,255,255,.7), transparent 70%),
+    linear-gradient(180deg, #f8f2e6, #efe5d2 60%, #e6d8bf) !important;
+}
+
+/* ── panels: cream, soft warm shadow instead of glow ── */
+html[data-skin="stone"] .g-card,
+html[data-skin="stone"] .fd-card, html[data-skin="stone"] .pf-card, html[data-skin="stone"] .st-section-card,
+html[data-skin="stone"] .stat-card, html[data-skin="stone"] .fun-card, html[data-skin="stone"] .stats-kpi,
+html[data-skin="stone"] .nf-empty-card, html[data-skin="stone"] .omode-btn, html[data-skin="stone"] .fr-invite-card {
+  background: rgba(255,252,245,.86) !important;
+  border-color: rgba(120,90,50,.16) !important;
+  box-shadow: var(--stone-shadow) !important;
+}
+html[data-skin="stone"] .g-card.hl { border: 2px solid #12607a !important; box-shadow: 0 10px 22px rgba(18,96,122,.16) !important; }
+html[data-skin="stone"] .g-list { background: rgba(255,252,245,.86); box-shadow: var(--stone-shadow); }
+html[data-skin="stone"] .g-li + .g-li { border-top-color: rgba(120,90,50,.12); }
+
+/* sockets: cream disc, accent icon */
+html[data-skin="stone"] .g-sock {
+  background: radial-gradient(circle at 35% 30%, #ffffff, #efe3cb) !important;
+  border: 1px solid rgba(120,90,50,.18) !important; box-shadow: none !important; color: #12607a !important;
+}
+html[data-skin="stone"] .g-sock.gold { color: #a8480f !important; }
+html[data-skin="stone"] .g-sock.red { color: #c0283c !important; }
+html[data-skin="stone"] .g-sock.mute { color: rgba(42,33,24,.5) !important; }
+html[data-skin="stone"] .g-sock svg.gi { filter: none !important; }
+html[data-skin="stone"] .g-medal { background: radial-gradient(circle at 35% 30%, #ffffff, #efe3cb); box-shadow: 0 0 0 1px rgba(120,90,50,.18), 0 0 0 6px color-mix(in srgb, var(--c) 12%, transparent), 0 10px 22px rgba(90,60,20,.16); }
+html[data-skin="stone"] .g-medal > svg.gi { color: var(--c); filter: none; }
+html[data-skin="stone"] .g-ring { background: radial-gradient(circle at 35% 30%, #ffffff, #efe3cb); }
+html[data-skin="stone"] .g-avr { background: radial-gradient(circle at 35% 30%, #ffffff, #efe3cb); }
+html[data-skin="stone"] .g-avr img, html[data-skin="stone"] .g-medal > img { filter: drop-shadow(0 3px 5px rgba(90,60,20,.25)); }
+
+/* ── buttons ── */
+html[data-skin="stone"] .g-btn.go, html[data-skin="stone"] .ovb.p,
+html[data-skin="stone"] .g-seg > .on, html[data-skin="stone"] .g-seg > .a, html[data-skin="stone"] .g-seg > .active,
+html[data-skin="stone"] .g-seg > .sel, html[data-skin="stone"] .g-seg > [aria-selected="true"],
+html[data-skin="stone"] .g-mode.hl .g-mode-go, html[data-skin="stone"] #sg .bot-acts #btn-play,
+html[data-skin="stone"] #savatar-store .store-tab.on {
+  background: linear-gradient(180deg, #1b7f9e, #0f4f66) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 0 #0b3a4a, 0 6px 14px rgba(18,96,122,.22) !important;
+}
+html[data-skin="stone"] .g-seg > .on, html[data-skin="stone"] .g-seg > .a, html[data-skin="stone"] .g-seg > .active,
+html[data-skin="stone"] .g-seg > .sel, html[data-skin="stone"] .g-seg > [aria-selected="true"],
+html[data-skin="stone"] #savatar-store .store-tab.on { box-shadow: 0 2px 6px rgba(18,96,122,.25) !important; }
+html[data-skin="stone"] .g-btn:not(.go):not(.gold):not(.wa):not(.link):not(.bad),
+html[data-skin="stone"] .ovb:not(.p):not(.gold):not(.d) {
+  background: #ffffff !important; border: 1px solid rgba(120,90,50,.22) !important; color: #2a2118 !important;
+  box-shadow: 0 2px 0 rgba(120,90,50,.18) !important;
+}
+html[data-skin="stone"] .ovb.d, html[data-skin="stone"] .g-btn.bad { color: #c0283c !important; border-color: rgba(192,40,60,.35) !important; background: #fff !important; }
+html[data-skin="stone"] .g-btn.gold, html[data-skin="stone"] .ovb.gold {
+  background: linear-gradient(180deg, #f2c35a, #e0a030) !important; color: #3a2300 !important;
+  box-shadow: 0 4px 0 #a8740f, 0 6px 14px rgba(224,160,48,.25) !important;
+}
+html[data-skin="stone"] .g-tog { background: rgba(120,90,50,.18); box-shadow: inset 0 1px 2px rgba(90,60,20,.2); }
+html[data-skin="stone"] .g-tog::after { background: #fff; box-shadow: 0 1px 3px rgba(90,60,20,.35); }
+html[data-skin="stone"] .g-tog.on { background: linear-gradient(180deg, #1b7f9e, #0f4f66); box-shadow: none; }
+html[data-skin="stone"] input.g-tog-input:checked { background: linear-gradient(180deg, #1b7f9e, #0f4f66) !important; }
+html[data-skin="stone"] .g-seg { background: rgba(120,90,50,.1); box-shadow: inset 0 1px 3px rgba(90,60,20,.18); }
+html[data-skin="stone"] .g-fld, html[data-skin="stone"] .ri, html[data-skin="stone"] .shin, html[data-skin="stone"] .g-code-input {
+  background: #ffffff !important; box-shadow: inset 0 1px 3px rgba(90,60,20,.14) !important; color: #2a2118 !important;
+}
+html[data-skin="stone"] .g-fld input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important; box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #2a2118 !important; caret-color: #2a2118;
+}
+
+/* chips & top bar */
+html[data-skin="stone"] .em-icon-btn, html[data-skin="stone"] .g-chip, html[data-skin="stone"] #sg .gm-chip,
+html[data-skin="stone"] #sg .gm-topbar #btn-shailta, html[data-skin="stone"] .em-profile-btn {
+  background: rgba(255,255,255,.6) !important; border: 1px solid rgba(120,90,50,.2) !important;
+  color: #2a2118 !important; box-shadow: none !important;
+}
+html[data-skin="stone"] .em-icon-btn:hover { background: #ffffff !important; }
+html[data-skin="stone"] .em-icon-btn svg.gi { color: #2a2118 !important; }
+html[data-skin="stone"] .coin-pill { background: rgba(255,255,255,.7) !important; border-color: rgba(201,150,42,.45) !important; color: #2a2118 !important; box-shadow: none !important; }
+html[data-skin="stone"] .em-bottom-nav {
+  background: rgba(255,250,240,.96) !important; border-top: 1px solid rgba(120,90,50,.18) !important;
+  box-shadow: 0 -6px 18px rgba(90,60,20,.1) !important;
+}
+
+/* ── overlays & sheets ── */
+html[data-skin="stone"] .ov { background: rgba(60,40,20,.32) !important; backdrop-filter: blur(2px); }
+html[data-skin="stone"] .ovc { background: #fffaf0 !important; color: #2a2118 !important; border-color: rgba(120,90,50,.16) !important; box-shadow: 0 -10px 30px rgba(90,60,20,.18) !important; }
+html[data-skin="stone"] .ovc::before { background: rgba(120,90,50,.28) !important; }
+html[data-skin="stone"] .ov .ovic { filter: none !important; }
+
+/* ── game screen ── */
+html[data-skin="stone"] #sg .board-center-inner::before {
+  background: #d9c8a6; border: 1px solid rgba(120,90,50,.25);
+  box-shadow: 0 12px 26px rgba(90,60,20,.22), inset 0 1px 0 rgba(255,255,255,.4);
+}
+html[data-skin="stone"] #sg .cell { background: #eadfc8 !important; box-shadow: inset 0 1px 2px rgba(90,60,20,.22) !important; }
+html[data-skin="stone"] #sg .cell:active:not(.lk):not(.ht):not(.locked-cell) { background: #e0d2b6 !important; }
+html[data-skin="stone"] #sg .bsq {
+  background: radial-gradient(circle, rgba(255,214,120,.7), rgba(224,160,48,.25)) , #eadfc8 !important;
+  border: 1.5px solid #c9962a !important;
+  box-shadow: 0 0 8px rgba(224,160,48,.45) !important;
+}
+html[data-skin="stone"] #sg .bsq-ic { text-shadow: 0 0 0 #9a6a0e !important; filter: none !important; }
+html[data-skin="stone"] #sg .bsq.used { background: #e4d8bf !important; border-color: rgba(120,90,50,.25) !important; box-shadow: none !important; }
+html[data-skin="stone"] #sg .bsq.used .bsq-ic { text-shadow: 0 0 0 rgba(42,33,24,.3) !important; }
+html[data-skin="stone"] body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation-name: stoneSocketPulse; }
+@keyframes stoneSocketPulse { 0%, 100% { filter: none; } 50% { filter: brightness(1.08) drop-shadow(0 0 6px rgba(224,160,48,.8)); } }
+html[data-skin="stone"] #sg .bsq.bsq-tile-host { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+
+/* tiles: white limestone */
+html[data-skin="stone"] #sg .btile, html[data-skin="stone"] #sg .bt2,
+html[data-skin="stone"] #sg .cell.last-move .btile, html[data-skin="stone"] #sg .bsq.last-move .btile,
+html[data-skin="stone"] .g-t, html[data-skin="stone"] #ov-exch .bt2, html[data-skin="stone"] #ov-joker .bt2 {
+  background: var(--stone-tile) !important;
+  border: 1px solid rgba(120,90,50,.22) !important;
+  box-shadow: 0 2px 0 #b9a47c !important;
+  color: #2a2118;
+  text-shadow: none !important;
+}
+html[data-skin="stone"] #sg #brack .bt2 { box-shadow: 0 3px 0 #b9a47c, 0 4px 8px rgba(90,60,20,.12) !important; }
+html[data-skin="stone"] #sg .bt-l, html[data-skin="stone"] #sg .bt2-l,
+html[data-skin="stone"] #sg .cell.last-move .btile .bt-l { color: #2a2118 !important; text-shadow: none !important; }
+html[data-skin="stone"] #sg .bt-v, html[data-skin="stone"] #sg .bt2-v,
+html[data-skin="stone"] #sg .cell.last-move .btile .bt-v { color: #7a6a50 !important; opacity: 1; }
+html[data-skin="stone"] #sg .btile.nw, html[data-skin="stone"] #sg #brack .bt2.sel {
+  background: var(--stone-tile) !important; border-color: #12607a !important;
+  box-shadow: 0 0 0 2px #12607a, 0 3px 8px rgba(18,96,122,.4) !important;
+}
+html[data-skin="stone"] #sg .cell.last-move .btile, html[data-skin="stone"] #sg .bsq.last-move .btile {
+  border-color: #12607a !important; box-shadow: 0 0 0 1.5px #12607a, 0 2px 0 #b9a47c !important;
+}
+html[data-skin="stone"] #sg #game-grid.lm-s1 .cell.last-move .btile, html[data-skin="stone"] #sg #game-grid.lm-s1 .bsq.last-move .btile {
+  border-color: #a8480f !important; box-shadow: 0 0 0 1.5px #a8480f, 0 2px 0 #b9a47c !important;
+}
+html[data-skin="stone"] #sg .btile.jk, html[data-skin="stone"] #sg .bt2.jok { border-color: #8a4fc8 !important; }
+html[data-skin="stone"] #sg .cell.swap-pending .btile, html[data-skin="stone"] #sg .bsq.swap-pending .btile { border-color: #e0a030 !important; box-shadow: 0 0 0 1.5px #e0a030, 0 2px 0 #b9a47c !important; }
+html[data-skin="stone"] .g-t { color: #2a2118 !important; }
+html[data-skin="stone"] .g-t.ghost { background: rgba(255,255,255,.4) !important; border: 1.5px dashed rgba(120,90,50,.35) !important; box-shadow: none !important; }
+
+/* rack dock + action buttons */
+html[data-skin="stone"] #sg .bot, html[data-skin="stone"] .g-dock {
+  background: rgba(255,250,240,.96) !important; border-top: 1px solid rgba(120,90,50,.18) !important;
+  box-shadow: 0 -8px 22px rgba(90,60,20,.12) !important;
+}
+html[data-skin="stone"] #sg #brack { background: rgba(120,90,50,.12); box-shadow: inset 0 1px 3px rgba(90,60,20,.2); }
+html[data-skin="stone"] #sg #brack .bt2.emp { background: rgba(255,255,255,.35) !important; border: 1.5px dashed rgba(120,90,50,.3) !important; box-shadow: none !important; }
+html[data-skin="stone"] #sg .bot-acts .bact { background: #ffffff !important; border: 1px solid rgba(120,90,50,.22) !important; color: #2a2118 !important; box-shadow: 0 2px 0 rgba(120,90,50,.18) !important; }
+
+/* scoreboard + status */
+html[data-skin="stone"] #sg .info-strip { background: rgba(255,252,245,.9) !important; border-color: rgba(120,90,50,.16) !important; box-shadow: var(--stone-shadow) !important; }
+html[data-skin="stone"] #sg .info-strip .is-val { text-shadow: none !important; }
+html[data-skin="stone"] #sg .info-strip .is-pcav { background: radial-gradient(circle at 35% 30%, #ffffff, #efe3cb) !important; }
+html[data-skin="stone"] #sg .info-strip .is-pcav .av-img { filter: drop-shadow(0 2px 3px rgba(90,60,20,.25)); }
+html[data-skin="stone"] #sg #info-strip #turn-timer { background: #fffaf0 !important; color: #2a2118 !important; }
+html[data-skin="stone"] #sg .sbar { background: #fffaf0 !important; color: #2a2118 !important; border-color: rgba(120,90,50,.2) !important; box-shadow: 0 4px 12px rgba(90,60,20,.1) !important; }
+html[data-skin="stone"] #sg .sbar.err { background: #fdecec !important; border-color: rgba(192,40,60,.45) !important; }
+html[data-skin="stone"] #sg .sbar.ok { background: #e9f6ee !important; border-color: rgba(31,138,82,.45) !important; }
+
+/* store */
+html[data-skin="stone"] #savatar-store .store-tabs { background: rgba(120,90,50,.1) !important; box-shadow: inset 0 1px 3px rgba(90,60,20,.18) !important; }
+html[data-skin="stone"] #savatar-store .store-tile { background: rgba(255,252,245,.9) !important; box-shadow: var(--stone-shadow) !important; }
+html[data-skin="stone"] #savatar-store .store-tile-av { background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--rc) 30%, #fff), #f3eadb 70%); }
+html[data-skin="stone"] #savatar-store .store-tile-img, html[data-skin="stone"] #ov-store-confirm .store-confirm-av img { filter: drop-shadow(0 4px 6px rgba(90,60,20,.25)); }
+html[data-skin="stone"] #savatar-store .store-tile.is-equipped { border: 2px solid #12607a !important; box-shadow: 0 8px 18px rgba(18,96,122,.16) !important; }
+
+/* toggles: sand track when off */
+html[data-skin="stone"] input.g-tog-input { background: rgba(120,90,50,.2) !important; box-shadow: inset 0 1px 2px rgba(90,60,20,.2) !important; }
+html[data-skin="stone"] input.g-tog-input::after { background: #ffffff !important; box-shadow: 0 1px 3px rgba(90,60,20,.35) !important; }
+html[data-skin="stone"] input.g-tog-input:checked { background: linear-gradient(180deg, #1b7f9e, #0f4f66) !important; box-shadow: none !important; }
+
+/* gold gradient titles: deep ochre → burnt orange (pale gold vanishes on cream) */
+html[data-skin="stone"] .end-victory-title, html[data-skin="stone"] #ov-end .end-victory-title,
+html[data-skin="stone"] #ov-exch > .ovc > .ovt, html[data-skin="stone"] .pause-title, html[data-skin="stone"] .coin-msg {
+  background: linear-gradient(180deg, #c98a1a, #a8480f) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  -webkit-text-fill-color: transparent; color: transparent !important; filter: none !important;
+}
+/* loading splash: limestone tiles */
+/* Stone logo art (Blender re-render, render_logo_tiles.py --skin stone). The <img>s keep
+   their Classic src; `content` swaps the picture (the build's JS tiles read SKINS.stone). */
+html[data-skin="stone"] .hlogo img.hl-img { content: url("assets/ui/boost-logo-stone.webp"); }
+html[data-skin="stone"] .app-loading-tile[data-tile="bet"] { content: url("assets/ui/logo_tiles_stone/row_bet.webp"); }
+html[data-skin="stone"] .app-loading-tile[data-tile="vav"] { content: url("assets/ui/logo_tiles_stone/row_vav.webp"); }
+html[data-skin="stone"] .app-loading-tile[data-tile="sam"] { content: url("assets/ui/logo_tiles_stone/row_sam.webp"); }
+html[data-skin="stone"] .app-loading-tile[data-tile="tet"] { content: url("assets/ui/logo_tiles_stone/row_tet.webp"); }
+html[data-skin="stone"] #ov-settings .set-yesno:not(.set-seg) { background: rgba(120,90,50,.2); box-shadow: inset 0 1px 2px rgba(90,60,20,.2); }
+html[data-skin="stone"] #ov-settings .set-yesno:not(.set-seg)::after { background: #ffffff; box-shadow: 0 1px 3px rgba(90,60,20,.35); }
+html[data-skin="stone"] #ov-settings .set-yesno:not(.set-seg):has(> .set-yn:first-child.active-yes) { background: linear-gradient(180deg, #1b7f9e, #0f4f66); box-shadow: none; }
+html[data-skin="stone"] .set-yesno { background: rgba(120,90,50,.1); box-shadow: inset 0 1px 3px rgba(90,60,20,.18); }
+html[data-skin="stone"] .set-yn.active-yes, html[data-skin="stone"] .set-yn.active-no, html[data-skin="stone"] .set-yn.active,
+html[data-skin="stone"] #ov-settings .set-seg .set-yn.active-yes { background: linear-gradient(180deg, #1b7f9e, #0f4f66) !important; color: #fff !important; box-shadow: 0 2px 6px rgba(18,96,122,.25) !important; }
+
+/* mini-games: limestone tiles, sand tray (tokens from screens-glass.css "BOOST MINI-GAMES") */
+html[data-skin="stone"] {
+  --bz-wood-hot: linear-gradient(165deg, #ffffff, #fdf9f0 60%, #f4ead6);
+  --bz-wood-gold: linear-gradient(165deg, #fff4d6, #f6dc9c 60%, #e9c06a);
+  --bz-cell: #eadfc8;
+  --bz-tray: #d9c8a6;
+  --bz-tile-sh: 0 2px 0 #b9a47c;
+  --bz-letter-sh: none;
+}
+/* mini-game + game-sheet scrims: warm, no blue haze */
+html[data-skin="stone"] #ov-bonus, html[data-skin="stone"] #ov-bonus-intro, html[data-skin="stone"] #ov-bonus-spectator,
+html[data-skin="stone"] .bonus-award-positioner, html[data-skin="stone"] .bz-overlay { background: radial-gradient(ellipse 90% 55% at 50% 35%, rgba(255,214,140,.35), transparent 70%), rgba(60,40,20,.32) !important; }

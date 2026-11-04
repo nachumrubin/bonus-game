@@ -5,6 +5,30 @@
 
 ---
 
+## D-app-skins: a skin is a scoped, generated stylesheet over the existing UI — November 2026
+
+**Decision:** an app skin is `data-skin="<id>"` on `<html>` plus one stylesheet whose rules are all
+scoped under `html[data-skin="<id>"]`. The sheet is *generated* (`scripts/build-skin-css.mjs`) from the
+three source sheets. Each colour is remapped by its role (text, background, line, shadow) through the
+skin's palette, and every colour declaration is re-emitted so the cascade order is kept. A hand-written
+`skins/<id>-overrides.css` is appended for what a mechanical remap can't get right (board, tiles, buttons,
+home art). Regions fenced with `/* skin:keep-start */ … /* skin:keep-end */` are not remapped. The link
+has `media="not all"` until the skin is on, so Classic players never block on it; an inline boot script
+turns it on before first paint for a Stone player.
+
+**Why:** the app has thousands of hard-coded colours across three sheets, and a token refactor would
+touch every screen. Generating keeps Classic byte-identical, and new screens pick up the skin on the next
+build.
+
+**Ownership:** `users/<uid>/ownedSkins` is worker-only, like `ownedReactions` (D-coin-economy). The
+*choice* is a per-device UI preference; an unowned choice falls back to Classic when the profile loads.
+The 30 s try-on is client-only and writes nothing.
+
+**Rule:** after a colour change in `styles.css`, `menu-electric.css` or `screens-glass.css`, run
+`npm run build:skins`.
+
+---
+
 ## D-build-sequences: two signature builds; the clock is shifted, never eaten — October 2026
 
 **Decision:** the main menu builds itself on cold launch and the game board builds itself

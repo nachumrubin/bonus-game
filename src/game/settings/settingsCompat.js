@@ -1,3 +1,5 @@
+import { DEFAULT_SKIN, isSkinId } from '../account/skinCatalog.js';
+
 export const LEGACY_SETTINGS_KEY = 'bonusGameSettingsV1';
 export const UI_PREFERENCES_KEY = 'spine.uiPreferences';
 
@@ -33,6 +35,8 @@ export const DEFAULT_UI_PREFERENCES = Object.freeze({
   gender: 'זכר',
   // מילון overlay: show what a valid word is and where it comes from (off by default).
   wordInfoEnabled: false,
+  // App skin (skinCatalog.js). Checked against profile.ownedSkins before it's shown.
+  skin: DEFAULT_SKIN,
 });
 
 // Normalize any inbound value into the reducedMotion tri-state, migrating the
@@ -135,6 +139,7 @@ export function normalizeUiPreferences(input = {}) {
     lastDisplayName: String(raw.lastDisplayName ?? raw.displayName ?? '').trim().slice(0, 40),
     gender: raw.gender === 'נקבה' ? 'נקבה' : 'זכר',
     wordInfoEnabled: raw.wordInfoEnabled != null ? !!raw.wordInfoEnabled : DEFAULT_UI_PREFERENCES.wordInfoEnabled,
+    skin: isSkinId(raw.skin) ? raw.skin : DEFAULT_SKIN,
   };
 }
 

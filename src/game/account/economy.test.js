@@ -48,6 +48,19 @@ test('applyPurchase: price from the catalog, item granted in the same write', ()
   assert.deepEqual([r2.next.coins, r2.next.ownedReactions], [100, ['wink', 'yawn']]);
 });
 
+test('applyPurchase: a skin goes into ownedSkins for the catalog price', () => {
+  const r = applyPurchase({ coins: 2000, ownedReactions: ['wink'] }, 'skin:stone');
+  assert.equal(r.result.ok, true);
+  assert.equal(r.next.coins, 500);
+  assert.deepEqual(r.next.ownedSkins, ['stone']);
+  assert.deepEqual(r.next.ownedReactions, ['wink']);
+  assert.equal(applyPurchase(r.next, 'skin:stone').result.reason, 'already-owned');
+  assert.equal(applyPurchase({ coins: 1499 }, 'skin:stone').result.reason, 'insufficient');
+  for (const item of ['skin:classic', 'skin:dusk', 'skin:']) {
+    assert.equal(applyPurchase({ coins: 5000 }, item).result.reason, 'unknown-item', item);
+  }
+});
+
 test('applyPurchase: refuses owned, unaffordable, free and unknown items without a write', () => {
   const p = { coins: 100, ownedReactions: ['yawn'] };
   for (const [item, reason] of [

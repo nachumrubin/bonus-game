@@ -1,0 +1,250 @@
+/* Midnight Marble — hand-tuned layer (appended after the generated re-colour).
+   Everything here is scoped to html[data-skin="marble"]. Build with
+   node scripts/build-skin-css.mjs marble → skin-marble.css.
+   Quiet premium dark: charcoal glass, gold hairlines, black-marble tiles with
+   gold letters, gold = me / primary, pearl blue = opponent. No neon glows. */
+
+/* ── tokens ── */
+html[data-skin="marble"] {
+  color-scheme: dark;
+  --sg-p1: #d8b25a;
+  --sg-p2: #9fb8dc;
+  --sg-ink: #f3eee3;
+  --sg-dim: rgba(243,238,227,.66);
+  --sg-faint: rgba(243,238,227,.42);
+  --sg-glass: rgba(30,30,35,.92);
+  --sg-line: rgba(216,178,90,.2);
+  --sg-ok: #5fbf8a;
+  --sg-bad: #ff6b6b;
+  --marble-tile:
+    linear-gradient(118deg, transparent 38%, rgba(220,215,205,.16) 41%, transparent 44%),
+    linear-gradient(64deg, transparent 58%, rgba(220,215,205,.1) 60%, transparent 62%),
+    linear-gradient(165deg, #44444c, #2a2a31 55%, #1a1a1f);
+  --marble-shadow: 0 10px 24px rgba(0,0,0,.45);
+  --marble-gold: linear-gradient(180deg, #ecca72, #bb913f);
+  --sg-wood: var(--marble-tile);
+  background: #0f0f12;
+}
+html[data-skin="marble"] #sg {
+  --p1: #d8b25a;
+  --p2: #9fb8dc;
+  --gs-line: rgba(216,178,90,.2);
+  --gs-glass: rgba(30,30,35,.92);
+  --gs-ink: #f3eee3;
+  --gs-dim: rgba(243,238,227,.66);
+}
+html[data-skin="marble"] body { background: #0f0f12 !important; color: #f3eee3; }
+
+/* ── screen backgrounds: near-black, a faint gold light top-right ── */
+html[data-skin="marble"] .screen:not(#sg),
+html[data-skin="marble"] #sh.screen,
+html[data-skin="marble"] #sg,
+html[data-skin="marble"] .app-loading {
+  background:
+    radial-gradient(circle at 82% 12%, rgba(216,178,90,.16), transparent 30%),
+    radial-gradient(ellipse 90% 40% at 50% 0, rgba(255,255,255,.06), transparent 70%),
+    linear-gradient(180deg, #19191d, #0f0f12 60%, #08080a) !important;
+  color: #f3eee3;
+}
+/* Home: fine gold arches behind the bottom nav */
+html[data-skin="marble"] #sh.screen {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 130' preserveAspectRatio='none'%3E%3Cpath fill='none' stroke='rgba(216,178,90,.32)' stroke-width='1.5' d='M30 130L30 92A22 22 0 0 1 74 92L74 130M118 130L118 86A26 26 0 0 1 170 86L170 130M220 130L220 86A26 26 0 0 1 272 86L272 130M316 130L316 92A22 22 0 0 1 360 92L360 130'/%3E%3Cpath fill='none' stroke='rgba(216,178,90,.22)' d='M0 44L390 44'/%3E%3C/svg%3E") left 0 bottom calc(64px + env(safe-area-inset-bottom, 0px)) / 100% 130px no-repeat,
+    radial-gradient(circle at 82% 12%, rgba(216,178,90,.16), transparent 30%),
+    radial-gradient(ellipse 90% 40% at 50% 0, rgba(255,255,255,.06), transparent 70%),
+    linear-gradient(180deg, #19191d, #0f0f12 60%, #08080a) !important;
+}
+
+/* ── panels: charcoal glass, gold hairline ── */
+html[data-skin="marble"] .g-card,
+html[data-skin="marble"] .fd-card, html[data-skin="marble"] .pf-card, html[data-skin="marble"] .st-section-card,
+html[data-skin="marble"] .stat-card, html[data-skin="marble"] .fun-card, html[data-skin="marble"] .stats-kpi,
+html[data-skin="marble"] .nf-empty-card, html[data-skin="marble"] .omode-btn, html[data-skin="marble"] .fr-invite-card {
+  background: rgba(30,30,35,.92) !important;
+  border-color: rgba(216,178,90,.2) !important;
+  box-shadow: var(--marble-shadow) !important;
+}
+html[data-skin="marble"] .g-card.hl { border: 1.5px solid #d8b25a !important; box-shadow: 0 10px 24px rgba(0,0,0,.45), 0 0 0 4px rgba(216,178,90,.08) !important; }
+html[data-skin="marble"] .g-list { background: rgba(30,30,35,.92); box-shadow: var(--marble-shadow); }
+html[data-skin="marble"] .g-li + .g-li { border-top-color: rgba(216,178,90,.12); }
+
+/* sockets: dark disc, gold icon */
+html[data-skin="marble"] .g-sock {
+  background: radial-gradient(circle at 35% 30%, #34343c, #1c1c21) !important;
+  border: 1px solid rgba(216,178,90,.28) !important; box-shadow: none !important; color: #d8b25a !important;
+}
+html[data-skin="marble"] .g-sock.gold { color: #9fb8dc !important; }
+html[data-skin="marble"] .g-sock.red { color: #ff6b6b !important; }
+html[data-skin="marble"] .g-sock.mute { color: rgba(243,238,227,.5) !important; }
+html[data-skin="marble"] .g-sock svg.gi { filter: none !important; }
+html[data-skin="marble"] .g-medal { background: radial-gradient(circle at 35% 30%, #34343c, #1c1c21); box-shadow: 0 0 0 1px rgba(216,178,90,.3), 0 0 0 6px color-mix(in srgb, var(--c) 10%, transparent), 0 10px 22px rgba(0,0,0,.45); }
+html[data-skin="marble"] .g-medal > svg.gi { color: var(--c); filter: none; }
+html[data-skin="marble"] .g-ring, html[data-skin="marble"] .g-avr { background: radial-gradient(circle at 35% 30%, #34343c, #1c1c21); }
+
+/* ── buttons: solid gold with dark text; secondary = charcoal + gold hairline ── */
+html[data-skin="marble"] .g-btn.go, html[data-skin="marble"] .ovb.p,
+html[data-skin="marble"] .g-seg > .on, html[data-skin="marble"] .g-seg > .a, html[data-skin="marble"] .g-seg > .active,
+html[data-skin="marble"] .g-seg > .sel, html[data-skin="marble"] .g-seg > [aria-selected="true"],
+html[data-skin="marble"] .g-mode.hl .g-mode-go, html[data-skin="marble"] #sg .bot-acts #btn-play,
+html[data-skin="marble"] #savatar-store .store-tab.on {
+  background: var(--marble-gold) !important;
+  border-color: transparent !important;
+  color: #1a1408 !important;
+  box-shadow: 0 4px 0 #7a5a18, 0 6px 14px rgba(216,178,90,.18) !important;
+}
+html[data-skin="marble"] .g-seg > .on, html[data-skin="marble"] .g-seg > .a, html[data-skin="marble"] .g-seg > .active,
+html[data-skin="marble"] .g-seg > .sel, html[data-skin="marble"] .g-seg > [aria-selected="true"],
+html[data-skin="marble"] #savatar-store .store-tab.on { box-shadow: 0 2px 6px rgba(0,0,0,.4) !important; }
+html[data-skin="marble"] .g-btn.go svg.gi, html[data-skin="marble"] .ovb.p svg.gi { color: #1a1408 !important; filter: none !important; }
+html[data-skin="marble"] .g-btn:not(.go):not(.gold):not(.wa):not(.link):not(.bad),
+html[data-skin="marble"] .ovb:not(.p):not(.gold):not(.d) {
+  background: #222228 !important; border: 1px solid rgba(216,178,90,.3) !important; color: #f3eee3 !important;
+  box-shadow: 0 2px 0 #000 !important;
+}
+html[data-skin="marble"] .ovb.d, html[data-skin="marble"] .g-btn.bad { color: #ff6b6b !important; border-color: rgba(255,107,107,.4) !important; background: #222228 !important; }
+html[data-skin="marble"] .g-btn.gold, html[data-skin="marble"] .ovb.gold {
+  background: var(--marble-gold) !important; color: #1a1408 !important;
+  box-shadow: 0 4px 0 #7a5a18, 0 6px 14px rgba(216,178,90,.18) !important;
+}
+html[data-skin="marble"] .g-tog { background: rgba(255,255,255,.1); box-shadow: inset 0 1px 2px rgba(0,0,0,.5); }
+html[data-skin="marble"] .g-tog::after { background: #f3eee3; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+html[data-skin="marble"] .g-tog.on { background: var(--marble-gold); box-shadow: none; }
+html[data-skin="marble"] .g-seg { background: rgba(0,0,0,.35); box-shadow: inset 0 1px 3px rgba(0,0,0,.5); }
+html[data-skin="marble"] .g-fld, html[data-skin="marble"] .ri, html[data-skin="marble"] .shin, html[data-skin="marble"] .g-code-input {
+  background: #141418 !important; box-shadow: inset 0 1px 3px rgba(0,0,0,.6), inset 0 0 0 1px rgba(216,178,90,.18) !important; color: #f3eee3 !important;
+}
+html[data-skin="marble"] .g-fld input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #141418 inset !important; box-shadow: 0 0 0 1000px #141418 inset !important;
+  -webkit-text-fill-color: #f3eee3 !important; caret-color: #d8b25a;
+}
+
+/* chips & top bar */
+html[data-skin="marble"] .em-icon-btn, html[data-skin="marble"] .g-chip, html[data-skin="marble"] #sg .gm-chip,
+html[data-skin="marble"] #sg .gm-topbar #btn-shailta, html[data-skin="marble"] .em-profile-btn {
+  background: rgba(255,255,255,.05) !important; border: 1px solid rgba(216,178,90,.25) !important;
+  color: #f3eee3 !important; box-shadow: none !important;
+}
+html[data-skin="marble"] .em-icon-btn:hover { background: rgba(255,255,255,.1) !important; }
+html[data-skin="marble"] .em-icon-btn svg.gi { color: #d8b25a !important; filter: none !important; }
+html[data-skin="marble"] .coin-pill { background: rgba(255,255,255,.05) !important; border-color: rgba(216,178,90,.45) !important; color: #f3eee3 !important; box-shadow: none !important; }
+html[data-skin="marble"] .em-bottom-nav {
+  background: rgba(20,20,24,.96) !important; border-top: 1px solid rgba(216,178,90,.22) !important;
+  box-shadow: 0 -6px 18px rgba(0,0,0,.5) !important;
+}
+
+/* ── overlays & sheets ── */
+html[data-skin="marble"] .ov { background: rgba(0,0,0,.6) !important; backdrop-filter: blur(2px); }
+html[data-skin="marble"] .ovc { background: #18181c !important; color: #f3eee3 !important; border-color: rgba(216,178,90,.25) !important; box-shadow: 0 -10px 30px rgba(0,0,0,.6) !important; }
+html[data-skin="marble"] .ovc::before { background: rgba(216,178,90,.35) !important; }
+html[data-skin="marble"] .ov .ovic { filter: none !important; }
+
+/* ── game screen ── */
+html[data-skin="marble"] #sg .board-center-inner::before {
+  background: #1b1b20; border: 1px solid rgba(216,178,90,.3);
+  box-shadow: 0 14px 30px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05);
+}
+html[data-skin="marble"] #sg .cell { background: #2a2a30 !important; box-shadow: inset 0 1px 2px rgba(0,0,0,.5) !important; }
+html[data-skin="marble"] #sg .cell:active:not(.lk):not(.ht):not(.locked-cell) { background: #34343b !important; }
+html[data-skin="marble"] #sg .bsq {
+  background: radial-gradient(circle, rgba(216,178,90,.45), rgba(216,178,90,.08)), #2a2a30 !important;
+  border: 1.5px solid #b98f3e !important;
+  box-shadow: 0 0 8px rgba(216,178,90,.35) !important;
+}
+html[data-skin="marble"] #sg .bsq-ic { text-shadow: 0 0 0 #e8c66e !important; filter: none !important; }
+html[data-skin="marble"] #sg .bsq.used { background: #232328 !important; border-color: rgba(216,178,90,.18) !important; box-shadow: none !important; }
+html[data-skin="marble"] #sg .bsq.used .bsq-ic { text-shadow: 0 0 0 rgba(243,238,227,.25) !important; }
+html[data-skin="marble"] body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) { animation-name: marbleSocketPulse; }
+@keyframes marbleSocketPulse { 0%, 100% { filter: none; } 50% { filter: brightness(1.15) drop-shadow(0 0 6px rgba(232,198,110,.7)); } }
+html[data-skin="marble"] #sg .bsq.bsq-tile-host { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+
+/* tiles: black marble, gold letters */
+html[data-skin="marble"] #sg .btile, html[data-skin="marble"] #sg .bt2,
+html[data-skin="marble"] #sg .cell.last-move .btile, html[data-skin="marble"] #sg .bsq.last-move .btile,
+html[data-skin="marble"] .g-t, html[data-skin="marble"] #ov-exch .bt2, html[data-skin="marble"] #ov-joker .bt2 {
+  background: var(--marble-tile) !important;
+  border: 1px solid rgba(216,178,90,.35) !important;
+  box-shadow: 0 2px 0 #000 !important;
+  color: #e8c66e;
+  text-shadow: none !important;
+}
+html[data-skin="marble"] #sg #brack .bt2 { box-shadow: 0 3px 0 #000, 0 4px 10px rgba(0,0,0,.45) !important; }
+html[data-skin="marble"] #sg .bt-l, html[data-skin="marble"] #sg .bt2-l,
+html[data-skin="marble"] #sg .cell.last-move .btile .bt-l { color: #e8c66e !important; text-shadow: 0 1px 0 rgba(0,0,0,.6) !important; }
+html[data-skin="marble"] #sg .bt-v, html[data-skin="marble"] #sg .bt2-v,
+html[data-skin="marble"] #sg .cell.last-move .btile .bt-v { color: #b9a06a !important; opacity: 1; }
+html[data-skin="marble"] #sg .btile.nw, html[data-skin="marble"] #sg #brack .bt2.sel {
+  background: var(--marble-tile) !important; border-color: #ecca72 !important;
+  box-shadow: 0 0 0 2px #d8b25a, 0 3px 10px rgba(216,178,90,.35) !important;
+}
+html[data-skin="marble"] #sg .cell.last-move .btile, html[data-skin="marble"] #sg .bsq.last-move .btile {
+  border-color: #d8b25a !important; box-shadow: 0 0 0 1.5px #d8b25a, 0 2px 0 #000 !important;
+}
+html[data-skin="marble"] #sg #game-grid.lm-s1 .cell.last-move .btile, html[data-skin="marble"] #sg #game-grid.lm-s1 .bsq.last-move .btile {
+  border-color: #9fb8dc !important; box-shadow: 0 0 0 1.5px #9fb8dc, 0 2px 0 #000 !important;
+}
+html[data-skin="marble"] #sg .btile.jk, html[data-skin="marble"] #sg .bt2.jok { border-color: #b48cff !important; }
+html[data-skin="marble"] #sg .cell.swap-pending .btile, html[data-skin="marble"] #sg .bsq.swap-pending .btile { border-color: #ecca72 !important; box-shadow: 0 0 0 1.5px #ecca72, 0 2px 0 #000 !important; }
+html[data-skin="marble"] .g-t { color: #e8c66e !important; }
+html[data-skin="marble"] .g-t.ghost { background: rgba(255,255,255,.03) !important; border: 1.5px dashed rgba(216,178,90,.35) !important; box-shadow: none !important; }
+
+/* rack dock + action buttons */
+html[data-skin="marble"] #sg .bot, html[data-skin="marble"] .g-dock {
+  background: rgba(20,20,24,.96) !important; border-top: 1px solid rgba(216,178,90,.22) !important;
+  box-shadow: 0 -8px 22px rgba(0,0,0,.5) !important;
+}
+html[data-skin="marble"] #sg #brack { background: #121215; box-shadow: inset 0 1px 3px rgba(0,0,0,.6), inset 0 0 0 1px rgba(216,178,90,.12); }
+html[data-skin="marble"] #sg #brack .bt2.emp { background: rgba(255,255,255,.03) !important; border: 1.5px dashed rgba(216,178,90,.25) !important; box-shadow: none !important; }
+html[data-skin="marble"] #sg .bot-acts .bact { background: #222228 !important; border: 1px solid rgba(216,178,90,.3) !important; color: #f3eee3 !important; box-shadow: 0 2px 0 #000 !important; }
+
+/* scoreboard + status */
+html[data-skin="marble"] #sg .info-strip { background: rgba(30,30,35,.92) !important; border-color: rgba(216,178,90,.2) !important; box-shadow: var(--marble-shadow) !important; }
+html[data-skin="marble"] #sg .info-strip .is-val { text-shadow: none !important; }
+html[data-skin="marble"] #sg .info-strip .is-pcav { background: radial-gradient(circle at 35% 30%, #34343c, #1c1c21) !important; }
+html[data-skin="marble"] #sg #info-strip #turn-timer { background: #18181c !important; color: #f3eee3 !important; }
+html[data-skin="marble"] #sg .sbar { background: #18181c !important; color: #f3eee3 !important; border-color: rgba(216,178,90,.25) !important; box-shadow: 0 4px 12px rgba(0,0,0,.45) !important; }
+html[data-skin="marble"] #sg .sbar.err { background: #2a1416 !important; border-color: rgba(255,107,107,.45) !important; }
+html[data-skin="marble"] #sg .sbar.ok { background: #13241a !important; border-color: rgba(95,191,138,.45) !important; }
+
+/* store */
+html[data-skin="marble"] #savatar-store .store-tabs { background: rgba(0,0,0,.35) !important; box-shadow: inset 0 1px 3px rgba(0,0,0,.5) !important; }
+html[data-skin="marble"] #savatar-store .store-tile { background: rgba(30,30,35,.92) !important; box-shadow: var(--marble-shadow) !important; }
+html[data-skin="marble"] #savatar-store .store-tile.is-equipped { border: 1.5px solid #d8b25a !important; }
+
+/* toggles */
+html[data-skin="marble"] input.g-tog-input { background: rgba(255,255,255,.1) !important; box-shadow: inset 0 1px 2px rgba(0,0,0,.5) !important; }
+html[data-skin="marble"] input.g-tog-input::after { background: #f3eee3 !important; box-shadow: 0 1px 3px rgba(0,0,0,.5) !important; }
+html[data-skin="marble"] input.g-tog-input:checked { background: var(--marble-gold) !important; box-shadow: none !important; }
+html[data-skin="marble"] #ov-settings .set-yesno:not(.set-seg) { background: rgba(255,255,255,.1); box-shadow: inset 0 1px 2px rgba(0,0,0,.5); }
+html[data-skin="marble"] #ov-settings .set-yesno:not(.set-seg)::after { background: #f3eee3; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+html[data-skin="marble"] #ov-settings .set-yesno:not(.set-seg):has(> .set-yn:first-child.active-yes) { background: var(--marble-gold); box-shadow: none; }
+html[data-skin="marble"] .set-yesno { background: rgba(0,0,0,.35); box-shadow: inset 0 1px 3px rgba(0,0,0,.5); }
+html[data-skin="marble"] .set-yn.active-yes, html[data-skin="marble"] .set-yn.active-no, html[data-skin="marble"] .set-yn.active,
+html[data-skin="marble"] #ov-settings .set-seg .set-yn.active-yes { background: var(--marble-gold) !important; color: #1a1408 !important; box-shadow: 0 2px 6px rgba(0,0,0,.4) !important; }
+
+/* gold gradient titles: keep them gold (the pearl remap is for opponent/reward text) */
+html[data-skin="marble"] .end-victory-title, html[data-skin="marble"] #ov-end .end-victory-title,
+html[data-skin="marble"] #ov-exch > .ovc > .ovt, html[data-skin="marble"] .pause-title, html[data-skin="marble"] .coin-msg {
+  background: linear-gradient(180deg, #f3dc9a, #c99a3e) !important;
+  -webkit-background-clip: text !important; background-clip: text !important;
+  -webkit-text-fill-color: transparent; color: transparent !important; filter: none !important;
+}
+
+/* Marble logo art (Blender re-render, render_logo_tiles.py --skin marble). The <img>s keep
+   their Classic src; `content` swaps the picture (the build's JS tiles read SKINS.marble). */
+html[data-skin="marble"] .hlogo img.hl-img { content: url("assets/ui/boost-logo-marble.webp"); }
+html[data-skin="marble"] .app-loading-tile[data-tile="bet"] { content: url("assets/ui/logo_tiles_marble/row_bet.webp"); }
+html[data-skin="marble"] .app-loading-tile[data-tile="vav"] { content: url("assets/ui/logo_tiles_marble/row_vav.webp"); }
+html[data-skin="marble"] .app-loading-tile[data-tile="sam"] { content: url("assets/ui/logo_tiles_marble/row_sam.webp"); }
+html[data-skin="marble"] .app-loading-tile[data-tile="tet"] { content: url("assets/ui/logo_tiles_marble/row_tet.webp"); }
+
+/* mini-games: marble tiles, charcoal tray (tokens from screens-glass.css "BOOST MINI-GAMES") */
+html[data-skin="marble"] {
+  --bz-wood-hot: linear-gradient(165deg, #50505a, #34343c 60%, #24242a);
+  --bz-wood-gold: linear-gradient(165deg, #f3dc9a, #d8b25a 60%, #b98f3e);
+  --bz-cell: #2a2a30;
+  --bz-tray: #1b1b20;
+  --bz-tile-sh: 0 2px 0 #000;
+  --bz-letter-sh: none;
+}
+html[data-skin="marble"] #ov-bonus, html[data-skin="marble"] #ov-bonus-intro, html[data-skin="marble"] #ov-bonus-spectator,
+html[data-skin="marble"] .bonus-award-positioner, html[data-skin="marble"] .bz-overlay { background: radial-gradient(ellipse 90% 55% at 50% 35%, rgba(216,178,90,.14), transparent 70%), rgba(0,0,0,.6) !important; }

@@ -167,11 +167,15 @@ export function applyPurchase(p, item) {
   const coins = clampCoins(p?.coins);
   const boosties = normalizeBoosties(p?.boosties);
   const reactions = Array.isArray(p?.ownedReactions) ? p.ownedReactions : [];
-  const owned = it.kind === 'boostie' ? !!boosties[it.id] : reactions.includes(it.id);
+  const skins = Array.isArray(p?.ownedSkins) ? p.ownedSkins : [];
+  const owned = it.kind === 'boostie' ? !!boosties[it.id]
+    : it.kind === 'skin' ? skins.includes(it.id)
+    : reactions.includes(it.id);
   if (owned) return { result: { ok: false, reason: 'already-owned', coins } };
   if (coins < it.price) return { result: { ok: false, reason: 'insufficient', coins } };
   const next = withCoins(p, coins - it.price);
   if (it.kind === 'boostie') next.boosties = { ...(p.boosties ?? {}), [it.id]: { xp: 0, level: 1 } };
+  else if (it.kind === 'skin') next.ownedSkins = [...skins, it.id];
   else next.ownedReactions = [...reactions, it.id];
   return { next, result: { ok: true, item, coins: next.coins } };
 }

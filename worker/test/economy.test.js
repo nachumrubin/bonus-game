@@ -51,6 +51,24 @@ test('buy: charges the catalog price once; a retried request id gets the same an
   assert.deepEqual(db.data[`coinLedger/${UID}/req-0000001`].delta, -250);
 });
 
+test('buy: a skin is charged once and lands in ownedSkins', async () => {
+  const db = fakeDb({ [PROFILE]: { coins: 1600 } });
+  const r = await call(db, 'buy', { reqId: 'req-0000010', item: 'skin:stone' });
+  assert.equal(r.ok, true);
+  assert.equal(db.data[PROFILE].coins, 100);
+  assert.deepEqual(db.data[PROFILE].ownedSkins, ['stone']);
+  assert.equal((await call(db, 'buy', { reqId: 'req-0000011', item: 'skin:stone' })).reason, 'already-owned');
+  assert.equal((await call(db, 'buy', { reqId: 'req-0000012', item: 'skin:classic' })).reason, 'unknown-item');
+});
+
+test('buy: a second skin is added next to the first', async () => {
+  const db = fakeDb({ [PROFILE]: { coins: 1700, ownedSkins: ['stone'] } });
+  const r = await call(db, 'buy', { reqId: 'req-0000013', item: 'skin:marble' });
+  assert.equal(r.ok, true);
+  assert.equal(db.data[PROFILE].coins, 200);
+  assert.deepEqual(db.data[PROFILE].ownedSkins, ['stone', 'marble']);
+});
+
 test('buy: refuses unaffordable, owned and unknown items without writing', async () => {
   const db = fakeDb({ [PROFILE]: { coins: 100, ownedReactions: ['yawn'] } });
   assert.equal((await call(db, 'buy', { reqId: 'req-0000002', item: 'reaction:wink' })).reason, 'insufficient');

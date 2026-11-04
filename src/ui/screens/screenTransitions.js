@@ -80,6 +80,7 @@ function isRtlDefault(doc) {
 
 function setTopbarVisible(topbar, visible) {
   if (topbar?.style) topbar.style.display = visible ? '' : 'none';
+  topbar?.classList?.toggle?.('is-off', !visible);   // #notif-banner keys its drop height off this
 }
 
 // Strip every glide/reveal artefact immediately (interrupt or settle).

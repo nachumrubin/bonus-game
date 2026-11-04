@@ -47,6 +47,7 @@ test('coins: owned items, payouts and orders are worker-only', async () => {
   await withTestEnv(async (env) => {
     const me = await seeded(env, { coins: 40 });
     await assertFails(me.ref(profile('/ownedReactions')).set(['wink']));
+    await assertFails(me.ref(profile('/ownedSkins')).set(['stone']));
     await assertFails(me.ref(profile('/achievementsPaid/first_steps')).set(1));
     await assertFails(me.ref(profile('/econRecent/req-0000001')).set({ result: { ok: true } }));
     await assertFails(me.ref(profile('/coinOrders/GPA_1')).set({ coins: 500 }));

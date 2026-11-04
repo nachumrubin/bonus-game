@@ -611,7 +611,27 @@ parseBoostieAvatar(value): { id, level } | null  // 'zapi', 'zapi:4' or { id|cha
 BOOSTIE_REACTIONS: Array<{ id, name, clip, emoji, price }>   // laugh, wow, stare free; wink, yawn 250
 // model clips: idle, turn, good, boost, signature, laugh, wow, stare, yawn, wink (wink keys lid.L/lid.R)
 findReaction(id) | ownsReaction(id, ownedReactions)
-parseStoreItem('boostie:<id>' | 'reaction:<id>'): { kind, id, price } | null   // only priced items
+parseStoreItem('boostie:<id>' | 'reaction:<id>' | 'skin:<id>'): { kind, id, price } | null   // only priced items
+```
+
+### skinCatalog.js — app skins (pure, November 2026)
+```typescript
+DEFAULT_SKIN = 'classic'; SKIN_PREVIEW_MS = 30_000
+SKINS: { [id]: { id, name, desc, price, themeColor, swatches, logo, logoTiles } }   // classic (free), stone (1,500), marble (1,500)
+// buildSequences.js: logoTilesDir(doc?) → SKINS[html data-skin].logoTiles; logoTileFiles(dir?)
+SKIN_IDS | isSkinId(id) | findSkin(id) | ownsSkin(id, ownedSkins)   // free skins are always owned
+resolveActiveSkin(chosen, ownedSkins): id   // ownedSkins undefined → trust chosen; unowned → classic
+```
+
+### skinController.js — which skin is showing + the store try-on (November 2026)
+```typescript
+createSkinController({ doc?, storage?, bus?, previewMs?, now?, setTimer?, clearTimer?, setTick?, clearTick? })
+  => { active(), snapshot(), startPreview(id), endPreview(reason?), choose(id), setOwnedSkins(list), dispose() }
+applySkinToDocument(doc, id)   // html[data-skin], link[data-skin-css] media, theme-color
+formatPreviewLeft(ms): 'm:ss'
+SKIN_CHANGED        // { active, chosen, owned, preview: { id, leftMs } | null }
+SKIN_PREVIEW_BUY    // { id } — the try-on bar's price button
+SKIN_PREVIEW_ENDED  // { id, reason: 'timeout' | 'closed' }
 ```
 
 ### boostieXp.js — XP and levels (pure, October 2026)
@@ -722,7 +742,10 @@ mountGameScreen(...).playBoostieReaction(slot, clip): boolean   // live3d.play o
 ### avatarStoreScreen.js — store UI (Boosties + reactions, October 2026)
 ```typescript
 mountAvatarStoreScreen({ root?, bus, prefersReducedMotion?, createLive? }): { paint, previewReaction(id): Promise<boolean>, previewCard(boostieId): Promise<boolean>, selectTab(tab), unmount }
-STORE_INTENT = { OPEN, EQUIP, PURCHASE, CONFIRM_PURCHASE, CANCEL_PURCHASE, BUY_COINS, CLOSE }
+STORE_INTENT = { OPEN, EQUIP, PURCHASE, CONFIRM_PURCHASE, CANCEL_PURCHASE, BUY_COINS, CLOSE, TRY_SKIN, USE_SKIN, ... }
+// OPEN { from?, tab?: 'skins' } | TRY_SKIN { id } (30 s try-on) | USE_SKIN { id } (an owned skin's הפעלה)
+// skinsHtml(state) | skinCardHtml(id, state) — state: { coins, ownedSkins, activeSkin }; repaints on SKIN_CHANGED
+// settingsScreen.js: skinOptionsHtml({ chosen, owned }) | SETTINGS_INTENT.SKIN_STORE { id }; SETTINGS_CHANGED { skin }
 // OPEN { from?: 'home' } — back returns home; otherwise to the profile
 // BUY_COINS { id: COIN_PACKS key } — main.js shows "בקרוב" until Play Billing (Phase 6b)
 STORE_TABS = ['avatars', 'skins', 'coins'] | coinPacksHtml(packs = COIN_PACKS)

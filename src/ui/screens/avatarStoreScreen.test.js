@@ -5,7 +5,9 @@ import * as bus from '../../events/bus.js';
 import {
   mountAvatarStoreScreen, STORE_INTENT, STORE_RENDER, STORE_COIN_PRICES,
   DAILY_REWARD_SHOW, dailyDaysHtml, coinPacksHtml, STORE_TABS, STORE_ADS, adCardHtml,
+  skinCardHtml, skinsHtml,
 } from './avatarStoreScreen.js';
+import { SKIN_CHANGED } from '../skinController.js';
 import { COIN_PACKS } from '../../game/account/economy.js';
 import { findReaction } from '../../game/account/boostieCatalog.js';
 import { LEVEL_XP } from '../../game/account/boostieXp.js';
@@ -15,7 +17,8 @@ function makeEl() {
 }
 function makeOverlay() {
   const cl = new Set(['hidden']);
-  return { classList: { contains: c => cl.has(c), add: c => cl.add(c), remove: c => cl.delete(c) } };
+  return { classList: { contains: c => cl.has(c), add: c => cl.add(c), remove: c => cl.delete(c),
+    toggle: (c, on) => ((on ?? !cl.has(c)) ? cl.add(c) : cl.delete(c)) } };
 }
 function makeBtn() {
   const listeners = [];
@@ -379,4 +382,88 @@ test('store: a card preview ends when the store repaints or closes', async () =>
   assert.equal(disposed, 1, 'repaint replaces the card, so its 3D is freed');
   assert.equal(card.cls.has('is-alive'), false);
   screen.unmount();
+});
+
+// ── App skins ("ערכות צבע" tab) ──
+function makeSkinRoot() {
+  const base = makeStoreRoot();
+  const extra = {
+    skins: makeGrid(), title: makeEl(), desc: makeEl(), after: makeEl(),
+  };
+  const map = { '#store-skins': extra.skins, '#store-confirm-title': extra.title, '#store-confirm-desc': extra.desc, '#store-confirm-after': extra.after };
+  const inner = base.root.querySelector;
+  return { els: { ...base.els, ...extra }, root: { querySelector: (sel) => map[sel] ?? inner(sel) } };
+}
+
+test('skins: an unowned paid skin offers a 30 s try-on and its price; Classic is in use', () => {
+  const html = skinsHtml({ coins: 2340, ownedSkins: [], activeSkin: 'classic' });
+  assert.match(html, /data-skin-card="stone"/);
+  assert.match(html, /data-store-action="tryskin" data-store-id="stone"/);
+  assert.match(html, /data-store-action="buy" data-store-id="skin:stone"/);
+  assert.match(html, /1,500/);
+  assert.match(html, /data-skin-card="classic"[\s\S]*בשימוש/);
+  assert.match(html, /ערכות נוספות בקרוב/);
+});
+
+test('skins: too few coins → the price button only hints', () => {
+  const html = skinCardHtml('stone', { coins: 100, ownedSkins: [], activeSkin: 'classic' });
+  assert.match(html, /data-store-action="tooexpensive" data-store-id="skin:stone"/);
+  assert.match(html, /is-short/);
+});
+
+test('skins: an owned skin offers "הפעלה", or shows it is in use', () => {
+  const off = skinCardHtml('stone', { coins: 0, ownedSkins: ['stone'], activeSkin: 'classic' });
+  assert.match(off, /data-store-action="useskin" data-store-id="stone"/);
+  assert.doesNotMatch(off, /tryskin|skin:stone/);
+  const on = skinCardHtml('stone', { coins: 0, ownedSkins: ['stone'], activeSkin: 'stone' });
+  assert.match(on, /בשימוש/);
+  assert.match(skinCardHtml('classic', { activeSkin: 'stone', ownedSkins: ['stone'] }), /data-store-action="useskin" data-store-id="classic"/);
+});
+
+test('skins tab: try / use / buy intents, and the buy sheet reads as "buy and switch on"', () => {
+  bus._reset();
+  const { els, root } = makeSkinRoot();
+  const seen = [];
+  for (const ev of [STORE_INTENT.TRY_SKIN, STORE_INTENT.USE_SKIN, STORE_INTENT.PURCHASE, STORE_INTENT.CONFIRM_PURCHASE]) bus.on(ev, (p) => seen.push([ev, p.id]));
+  mountAvatarStoreScreen({ root, bus });
+  bus.emit(STORE_RENDER, { coins: 2340, ownedSkins: [] });
+  assert.match(els.skins.innerHTML, /data-skin-card="stone"/);
+
+  els.skins.fireClick(tileTarget('stone', 'tryskin'));
+  els.skins.fireClick(tileTarget('classic', 'useskin'));
+  els.skins.fireClick(tileTarget('skin:stone', 'buy'));
+  assert.deepEqual(seen, [[STORE_INTENT.TRY_SKIN, 'stone'], [STORE_INTENT.USE_SKIN, 'classic'], [STORE_INTENT.PURCHASE, 'skin:stone']]);
+  assert.equal(els.confirmOv.classList.contains('hidden'), false);
+  assert.equal(els.confirmOv.classList.contains('is-skin'), true);
+  assert.match(els.title.textContent, /אבן ירושלים/);
+  assert.match(els.desc.textContent, /לחזור לקלאסי/);
+  assert.match(els.after.innerHTML, /^840 /);            // balance after the buy
+  assert.match(els.confirmYes.innerHTML, /קנייה והפעלה/);
+  assert.match(els.confirmImg.innerHTML, /data-skin-art="stone"/);
+  els.confirmYes.fireClick();
+  assert.deepEqual(seen.at(-1), [STORE_INTENT.CONFIRM_PURCHASE, 'skin:stone']);
+});
+
+test('skins tab: a non-skin buy after a skin buy drops the skin wording', () => {
+  bus._reset();
+  const { els, root } = makeSkinRoot();
+  mountAvatarStoreScreen({ root, bus });
+  bus.emit(STORE_RENDER, { coins: 5000, ownedSkins: [] });
+  els.skins.fireClick(tileTarget('skin:stone', 'buy'));
+  els.confirmNo.fireClick();
+  els.grid.fireClick(tileTarget('reaction:wink', 'buy'));
+  assert.equal(els.confirmOv.classList.contains('is-skin'), false);
+  assert.equal(els.title.textContent, 'לרכוש את התגובה?');
+  assert.equal(els.desc.textContent, '');
+});
+
+test('skins tab: SKIN_CHANGED relabels the card in use', () => {
+  bus._reset();
+  const { els, root } = makeSkinRoot();
+  mountAvatarStoreScreen({ root, bus });
+  bus.emit(STORE_RENDER, { coins: 0, ownedSkins: ['stone'] });
+  assert.match(els.skins.innerHTML, /data-store-action="useskin" data-store-id="stone"/);
+  bus.emit(SKIN_CHANGED, { active: 'stone', chosen: 'stone', owned: ['stone'], preview: null });
+  assert.doesNotMatch(els.skins.innerHTML, /data-store-id="stone"/);
+  assert.match(els.skins.innerHTML, /data-store-action="useskin" data-store-id="classic"/);
 });

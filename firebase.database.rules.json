@@ -116,6 +116,7 @@
           },
           "lastLoginDate": { ".write": "$uid === auth.uid && !data.exists() && !newData.exists()" },
           "ownedReactions": { ".write": "$uid === auth.uid && !data.exists() && !newData.exists()" },
+          "ownedSkins": { ".write": "$uid === auth.uid && !data.exists() && !newData.exists()" },
           "achievementsPaid": { ".write": false },
           "econRecent": { ".write": false },
           "coinOrders": { ".write": false },

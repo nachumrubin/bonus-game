@@ -15,11 +15,17 @@ import {
 } from './buildTimeline.js';
 import { LOGO_TILE_LAYERS } from './logoTilesLayout.js';
 import { EV } from '../events/eventTypes.js';
+import { SKINS, DEFAULT_SKIN } from '../game/account/skinCatalog.js';
 
 // Per-tile logo layers rendered from the logo's Blender shot
 // ("Blender designs/logo/render_logo_tiles.py"); LOGO_TILE_LAYERS places them
 // over boost-logo.webp pixel-for-pixel.
-const LOGO_TILES_DIR = 'assets/ui/logo_tiles/';
+// Each app skin has its own render of the same shot (same layout); the folder is
+// read from html[data-skin] whenever tiles are made, so a try-on gets its own tiles.
+export function logoTilesDir(doc = globalThis.document) {
+  const skin = doc?.documentElement?.getAttribute?.('data-skin');
+  return (SKINS[skin] ?? SKINS[DEFAULT_SKIN]).logoTiles;
+}
 // Stacking front-to-back as in the Blender scene: ס, ו, ט, ב.
 const LOGO_TILE_Z = Object.freeze({ bet: 1, tet: 2, vav: 3, sam: 4, samL: 4, samR: 4, bolt: 5 });
 // Tiles whose final render carries a neighbour's shadow: they fly as `_bare`
@@ -28,11 +34,11 @@ const LOGO_SHADED = Object.freeze(['bet', 'vav', 'tet']);
 // How far off-screen a tile starts / ends (along its exit direction).
 const OFFSCREEN_VMAX = 95;
 
-export function logoTileFiles() {
+export function logoTileFiles(dir = logoTilesDir()) {
   return [
     ...Object.keys(LOGO_TILE_LAYERS).map(k => `logo_${k}.webp`),
     ...LOGO_SHADED.map(k => `logo_${k}_bare.webp`),
-  ].map(f => LOGO_TILES_DIR + f);
+  ].map(f => dir + f);
 }
 
 // Warm the cache while the boot loader is up, so the tiles are decoded by the
@@ -410,7 +416,7 @@ function logoStack(run, doc, logo, { T = null, L = null, overlay = false }) {
   };
   const pic = (parent, file, cls = '') => {
     const im = doc.createElement('img');
-    im.src = LOGO_TILES_DIR + file;
+    im.src = logoTilesDir(doc) + file;
     im.alt = '';
     if (cls) im.className = cls;
     parent.appendChild(im);

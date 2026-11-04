@@ -3,8 +3,8 @@
 // in game/account/boostieCatalog.js and the coin transactions in profileService.js;
 // this module is DOM + bus only.
 //
-// Three tabs (.store-tab / #store-panel-<tab>): avatars, skins (app colour palettes —
-// "בקרוב..." for now) and coins (packs for real money, COIN_PACKS).
+// Three tabs (.store-tab / #store-panel-<tab>): avatars, skins (app colour palettes,
+// skinCatalog.js — try on for 30 s, buy, use) and coins (packs for real money, COIN_PACKS).
 //
 // The avatars tab has two sections (D-boostie-xp):
 //   Boosties  — owned ones show their level, an XP bar and the next form; locked ones
@@ -16,13 +16,16 @@
 // Tapping a Boostie card (not its buttons) brings that Boostie to life in its card for
 // CARD_PREVIEW_MS — locked ones too, in full colour — so the player gets a feel for it.
 //
-// Render with STORE_RENDER { coins, boosties, equippedAvatar, ownedReactions }; the coin
+// Render with STORE_RENDER { coins, boosties, equippedAvatar, ownedReactions, ownedSkins }
+// (the skin in use arrives with SKIN_CHANGED from skinController.js); the coin
 // packs' Play prices with STORE_COIN_PRICES { prices }; the rewarded-video card with
 // STORE_ADS { left, coins } (left = videos still allowed today; null hides the card,
 // outside the Android app). Clicks emit:
 //   STORE_INTENT.EQUIP            { id }    — owned Boostie → equip it
 //   EVO_SHOW                { id, from, to } — replay the latest evolution (evolutionScreen)
-//   STORE_INTENT.CONFIRM_PURCHASE { id }    — confirmed buy, id = 'boostie:bubo' | 'reaction:wink'
+//   STORE_INTENT.CONFIRM_PURCHASE { id }    — confirmed buy, id = 'boostie:bubo' | 'reaction:wink' | 'skin:stone'
+//   STORE_INTENT.TRY_SKIN         { id }    — "נסו עכשיו": a 30-second try-on of skin id
+//   STORE_INTENT.USE_SKIN         { id }    — an owned skin's "הפעלה"
 //   STORE_INTENT.BUY_COINS        { id }    — coin pack tapped, id = COIN_PACKS key
 //   STORE_INTENT.WATCH_AD                   — "watch a video" card tapped (videos left)
 //   STORE_INTENT.CLOSE                      — back to where the store was opened from
@@ -34,6 +37,8 @@ import {
   BOOSTIES, CHAIN_ORDER, STARTER_BOOSTIES, BOOSTIE_LEVELS, BOOSTIE_REACTIONS,
   boostieStillSrc, ownsReaction, parseStoreItem,
 } from '../../game/account/boostieCatalog.js';
+import { SKINS, SKIN_IDS, DEFAULT_SKIN, ownsSkin, isSkinId } from '../../game/account/skinCatalog.js';
+import { SKIN_CHANGED } from '../skinController.js';
 import { normalizeBoosties, progressToNext, equippedBoostie } from '../../game/account/boostieXp.js';
 import { EVO_SHOW } from '../boostie3d/evolutionData.js';
 import { createScoreboardLive } from '../boostie3d/scoreboardLive.js';
@@ -47,6 +52,8 @@ export const STORE_INTENT = Object.freeze({
   CANCEL_PURCHASE:  'store/cancelPurchase',
   BUY_COINS:        'store/buyCoins',         // coin pack for real money
   WATCH_AD:         'store/watchAd',          // rewarded video for coins (Android app)
+  TRY_SKIN:         'store/trySkin',          // 30-second skin try-on
+  USE_SKIN:         'store/useSkin',          // switch to an owned skin
   CLOSE:            'store/close',
 });
 
@@ -95,8 +102,74 @@ export function normalizeStoreState(next = {}) {
     boosties: normalizeBoosties(next.boosties),
     equippedAvatar: next.equippedAvatar ?? null,
     ownedReactions: Array.isArray(next.ownedReactions) ? next.ownedReactions : [],
+    ownedSkins: Array.isArray(next.ownedSkins) ? next.ownedSkins : [],
+    activeSkin: isSkinId(next.activeSkin) ? next.activeSkin : DEFAULT_SKIN,
   };
 }
+
+const fmtCoins = (n) => (Number(n) || 0).toLocaleString('en-US');
+
+// The arches of the Stone skin's limestone wall (store art, buy medallion, home decor).
+const WALL_PATH = 'M0 50 L0 10 L366 10 L366 50 Z M30 50 L30 34 A14 14 0 0 1 58 34 L58 50 Z M120 50 L120 32 A16 16 0 0 1 152 32 L152 50 Z M214 50 L214 32 A16 16 0 0 1 246 32 L246 50 Z M308 50 L308 34 A14 14 0 0 1 336 34 L336 50 Z';
+
+// The skin's preview art: a strip of board in its own colours. Styled per
+// [data-skin-art] in screens-glass.css, so the card shows the skin whatever skin is on.
+function skinArtHtml(id) {
+  const cells = ['b', '', '', '', '', '', 'b', '', 't', 't', 't', 'tp', 'tp', '', '', '', '', '', '', '', ''];
+  const letters = { 8: 'ש', 9: 'מ', 10: 'ש', 11: 'ו', 12: 'ת' };
+  return `<div class="skp" data-skin-art="${id}" aria-hidden="true">`
+    + `<svg class="skp-wall" viewBox="0 0 366 50" preserveAspectRatio="none"><path d="${WALL_PATH}" fill-rule="evenodd"/></svg>`
+    + `<div class="skp-board" dir="ltr">${cells.map((c, i) => `<span class="skp-c${c ? ` skp-${c}` : ''}">${letters[i] ?? ''}</span>`).join('')}</div>`
+    + `</div>`;
+}
+
+function skinSwatchesHtml(s) {
+  return `<span class="skin-sw" aria-hidden="true">${s.swatches.map((c) => `<span style="background:${c}"></span>`).join('')}</span>`;
+}
+
+// One skin card. Paid + unowned: "נסו עכשיו" + price; owned: "הפעלה" or "בשימוש".
+export function skinCardHtml(id, state) {
+  const s = SKINS[id];
+  const owned = ownsSkin(id, state.ownedSkins);
+  const inUse = state.activeSkin === id;
+  const info = `<div class="skin-info"><span class="skin-name">${escapeHtml(s.name)}</span>`
+    + `<span class="skin-desc">${escapeHtml(s.desc)}</span></div>${skinSwatchesHtml(s)}`;
+  const useOrOn = inUse
+    ? '<span class="skin-tag is-on">בשימוש ✓</span>'
+    : `<button class="bst-btn skin-use" data-store-action="useskin" data-store-id="${id}">הפעלה</button>`;
+  if (s.price === 0) {
+    return `<div class="skin-card skin-card--row${inUse ? ' is-on' : ''}" data-skin-card="${id}">`
+      + `<div class="skin-thumb" data-skin-art="${id}" aria-hidden="true"><span></span><span></span><span></span></div>`
+      + `<div class="skin-row-mid">${info}</div>${useOrOn}</div>`;
+  }
+  const canBuy = state.coins >= s.price;
+  const tag = owned ? '' : `<span class="skin-new">חדש${s.light ? ' · ערכה בהירה' : ''}</span>`;
+  const actions = owned ? useOrOn
+    : `<button class="bst-btn skin-try" data-store-action="tryskin" data-store-id="${id}"><svg class="gi" aria-hidden="true"><use href="#gi-eye"/></svg>נסו עכשיו</button>`
+      + `<button class="bst-btn bst-btn--buy skin-buy${canBuy ? '' : ' is-short'}" data-store-action="${canBuy ? 'buy' : 'tooexpensive'}" data-store-id="skin:${id}">${COIN_ICON_HTML}<span class="g-num">${fmtCoins(s.price)}</span></button>`;
+  return `<div class="skin-card skin-card--hero${inUse ? ' is-on' : ''}${owned ? ' is-owned' : ''}" data-skin-card="${id}">`
+    + tag + skinArtHtml(id)
+    + `<div class="skin-head">${info}</div>`
+    + `<div class="skin-actions">${actions}</div></div>`;
+}
+
+// Paid skins first (the featured card), then Classic, then the "more soon" slot.
+export function skinsHtml(state) {
+  const paid = SKIN_IDS.filter((id) => SKINS[id].price > 0);
+  const free = SKIN_IDS.filter((id) => SKINS[id].price === 0);
+  return '<div class="skin-lead">צבעו את כל האפליקציה — הלוח, האריחים והמסכים</div>'
+    + [...paid, ...free].map((id) => skinCardHtml(id, state)).join('')
+    + '<div class="skin-soon"><svg class="gi" aria-hidden="true"><use href="#gi-lock"/></svg>ערכות נוספות בקרוב</div>';
+}
+
+// The buy sheet's medallion for a skin: the limestone arches under a sun.
+export function skinMedalHtml(id) {
+  return `<span class="store-confirm-skin" data-skin-art="${id}" aria-hidden="true">`
+    + '<svg viewBox="0 0 48 48"><path d="M8 40 L8 22 L40 22 L40 40 Z M14 40 L14 32 A5 5 0 0 1 24 32 L24 40 Z M27 40 L27 32 A5 5 0 0 1 37 32 L37 40 Z" fill="#f3e6cc" fill-rule="evenodd"/>'
+    + '<path d="M8 22 L8 18 L13 18 L13 15 L18 15 L18 18 L30 18 L30 15 L35 15 L35 18 L40 18 L40 22 Z" fill="#f3e6cc"/>'
+    + '<circle cx="36" cy="9" r="4" fill="#ffd57a"/></svg></span>';
+}
+
 
 function priceButton(item, price, coins) {
   const action = coins >= price ? 'buy' : 'tooexpensive';
@@ -215,6 +288,7 @@ export function mountAvatarStoreScreen({
   const tabs      = [...(root?.querySelectorAll?.('.store-tab') ?? [])];
   const coinsEl   = $('#store-coins', root);
   const adEl      = $('#store-ad', root);
+  const skinsEl   = $('#store-skins', root);
 
   // Confirm overlay elements.
   const confirmOv    = $('#ov-store-confirm', root);
@@ -222,6 +296,9 @@ export function mountAvatarStoreScreen({
   const confirmPrice = $('#store-confirm-price', root);
   const confirmYes   = $('#store-confirm-yes', root);
   const confirmNo    = $('#store-confirm-no', root);
+  const confirmTitle = $('#store-confirm-title', root);
+  const confirmDesc  = $('#store-confirm-desc', root);
+  const confirmAfter = $('#store-confirm-after', root);
 
   // Daily-reward overlay elements.
   const dailyOv     = $('#ov-daily-reward', root);
@@ -251,9 +328,14 @@ export function mountAvatarStoreScreen({
 
   if (coinsEl) coinsEl.innerHTML = coinPacksHtml();
 
+  function paintSkins() {
+    if (skinsEl) skinsEl.innerHTML = skinsHtml(state);
+  }
+
   function paint(next = {}) {
-    state = normalizeStoreState(next);
+    state = normalizeStoreState({ activeSkin: state.activeSkin, ...next });
     if (balanceEl) setText(balanceEl, String(state.coins));
+    paintSkins();
     if (!grid) return;
     closeCardPreview();   // the card it lived in is about to be replaced
     grid.innerHTML = storeHtml(state);
@@ -276,14 +358,25 @@ export function mountAvatarStoreScreen({
     const it = parseStoreItem(item);
     if (!it) return;
     pendingId = item;
+    const skin = it.kind === 'skin' ? SKINS[it.id] : null;
     if (confirmImg) {
       const mine = equippedBoostie(state);
       confirmImg.innerHTML = it.kind === 'boostie'
         ? `<img src="${boostieStillSrc(it.id, 1, 'full')}" alt="" class="store-confirm-img">`
+        : skin ? skinMedalHtml(it.id)
         : `<img src="${boostieStillSrc(mine.id, mine.level)}" alt="" class="store-confirm-img">`
           + `<span class="store-confirm-rx" aria-hidden="true">${REACTION_ICON[it.id] ?? ''}</span>`;
     }
-    if (confirmPrice) confirmPrice.innerHTML = `${it.price} ${COIN_ICON_HTML}`;
+    // The sheet reads differently for a skin (bought and switched on in one go).
+    confirmOv?.classList?.toggle('is-skin', !!skin);
+    if (confirmTitle) setText(confirmTitle, skin ? `לקנות את ${skin.name}?`
+      : it.kind === 'boostie' ? 'לרכוש את האווטאר?' : 'לרכוש את התגובה?');
+    if (confirmDesc) setText(confirmDesc, skin
+      ? `${skin.light ? 'ערכה בהירה' : 'ערכה'} לכל המסכים, הלוח והאריחים. אפשר לחזור לקלאסי בכל רגע.` : '');
+    if (confirmAfter) confirmAfter.innerHTML = `${fmtCoins(Math.max(0, state.coins - it.price))} ${COIN_ICON_HTML}`;
+    if (confirmPrice) confirmPrice.innerHTML = `${fmtCoins(it.price)} ${COIN_ICON_HTML}`;
+    if (confirmYes) confirmYes.innerHTML = skin ? 'קנייה והפעלה' : 'קנה';
+    if (confirmNo) setText(confirmNo, skin ? 'לא עכשיו' : 'ביטול');
     confirmOv?.classList?.remove('hidden');
   }
   // ---------- reaction preview ----------
@@ -397,6 +490,24 @@ export function mountAvatarStoreScreen({
     }));
   }
 
+  if (skinsEl) cleanups.push(on(skinsEl, 'click', (e) => {
+    const btn = e.target?.closest?.('[data-store-action]');
+    const id = btn?.getAttribute('data-store-id');
+    if (!id) return;
+    const action = btn.getAttribute('data-store-action');
+    if (action === 'tryskin') bus.emit(STORE_INTENT.TRY_SKIN, { id });
+    else if (action === 'useskin') bus.emit(STORE_INTENT.USE_SKIN, { id });
+    else if (action === 'buy') { bus.emit(STORE_INTENT.PURCHASE, { id }); openConfirm(id); }
+    else if (action === 'tooexpensive') {
+      flashHint(`חסרים לך מטבעות — ${fmtCoins(parseStoreItem(id)?.price)} ${COIN_ICON_HTML} נדרשים`);
+    }
+  }));
+  // The skin in use (or being tried on) changed: relabel the cards.
+  cleanups.push(bus.on(SKIN_CHANGED, ({ chosen } = {}) => {
+    state = { ...state, activeSkin: isSkinId(chosen) ? chosen : DEFAULT_SKIN };
+    paintSkins();
+  }));
+
   for (const t of tabs) cleanups.push(on(t, 'click', () => selectTab(t.dataset?.tab)));
   if (adEl) cleanups.push(on(adEl, 'click', (e) => {
     const btn = e.target?.closest?.('[data-store-action="ad"]');
@@ -420,8 +531,9 @@ export function mountAvatarStoreScreen({
   }));
   if (previewClose) cleanups.push(on(previewClose, 'click', closePreview));
   cleanups.push(bus.on(STORE_INTENT.CLOSE, () => { closePreview(); closeCardPreview(); }));
-  // Every visit starts on the avatars tab.
-  cleanups.push(bus.on(STORE_INTENT.OPEN, () => selectTab('avatars')));
+  // Every visit starts on the avatars tab, unless the opener asks for one (Settings →
+  // skins, the try-on banner's buy button).
+  cleanups.push(bus.on(STORE_INTENT.OPEN, ({ tab } = {}) => selectTab(STORE_TABS.includes(tab) ? tab : 'avatars')));
 
   if (confirmYes) cleanups.push(on(confirmYes, 'click', () => {
     const id = pendingId;
@@ -453,8 +565,11 @@ export function mountAvatarStoreScreen({
     if (adEl) adEl.innerHTML = adCardHtml(ads);
   }));
 
+  paintSkins();
+
   return {
     paint,
+    openConfirm,
     previewReaction,
     previewCard,
     selectTab,

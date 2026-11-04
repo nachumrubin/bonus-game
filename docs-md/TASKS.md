@@ -124,7 +124,23 @@
 - [x] App icon: the Blender ב tile (`Blender designs/logo/make_app_icon.py`).
 - [ ] App icon, user side: ships with versionCode 18; upload `store_icon.png` as the
   Play listing's app icon; deploy hosting for `icon-512.png`.
-- [ ] App skins (colour palettes): design the palettes, then sell them in the ערכות צבע tab.
+- [x] App skins (colour palettes): design the palettes, then sell them in the ערכות צבע tab.
+  First skin: אבן ירושלים (Jerusalem Stone), 1,500 coins, 30 s try-on, switchable in Settings.
+- [ ] **User step:** redeploy the Cloudflare worker (`worker/`) so it can sell `skin:stone`;
+  deploy the database rules (`ownedSkins`).
+- [x] Stone skin art: limestone logo + loading tiles (Blender re-render, `render_logo_tiles.py --skin stone`).
+- [x] Skin confirm's buy button overflowed; notification banner covered the store tabs on wide screens.
+- [ ] Stone skin polish: faint teal glow blobs behind the avatars on the stats and setup screens.
+- [ ] Phone check of the Stone skin: home, game board, mini-games, try-on bar on a small screen.
+- [x] Second skin: שיש וזהב (Midnight Marble), 1,500 coins, with a marble/gold Blender logo.
+- [ ] **User step:** redeploy the Cloudflare worker again so it knows `skin:marble`.
+- [ ] Phone check of the Marble skin (same list as Stone; also the mini-games' tile colours).
+- [ ] Store: with two paid skins the ערכות צבע tab is a long scroll of hero cards; consider a carousel
+  or smaller cards once there are three or more.
+- [ ] More skins: add a palette to `scripts/build-skin-css.mjs` + `skins/<id>-overrides.css`, an entry in
+  `skinCatalog.js`, a `<link data-skin-css="<id>" media="not all">` and a theme colour in the boot
+  script in `index.html`, `[data-skin-art="<id>"]` store art in screens-glass.css, and the logo
+  (`render_logo_tiles.py --skin <id>`). `skinCatalog.test.js` checks the wiring.
 - [ ] Phone check: the card preview's 3D on a mid-range phone (one WebGL board per tap).
 
 ## Boostie mouth poke-through — October 2026

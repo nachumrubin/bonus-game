@@ -15,11 +15,31 @@
 import { $, on, setText } from '../domHelpers.js';
 import { normalizeGameSettings } from '../../game/settings/settingsCompat.js';
 import { applyGenderToRoot } from '../genderText.js';
+import { SKINS, SKIN_IDS, ownsSkin } from '../../game/account/skinCatalog.js';
+import { SKIN_CHANGED } from '../skinController.js';
+
+// The "ערכת צבע" row: one option per skin. Owned ones switch the skin (SETTINGS_CHANGED
+// { skin }); a locked one opens the store's skins tab (SETTINGS_INTENT.SKIN_STORE).
+export function skinOptionsHtml({ chosen = 'classic', owned = [] } = {}) {
+  return SKIN_IDS.map((id) => {
+    const s = SKINS[id];
+    const mine = ownsSkin(id, owned);
+    const on = mine && chosen === id;
+    const sw = s.swatches.map((c) => `<span style="background:${c}"></span>`).join('');
+    return `<button type="button" class="sett-skin${on ? ' on' : ''}${mine ? '' : ' is-locked'}" id="sett-skin-${id}" data-skin-id="${id}"`
+      + ` role="radio" aria-checked="${on}">`
+      + `<span class="sett-skin-sw" aria-hidden="true">${sw}</span>`
+      + `<span class="sett-skin-n">${s.name}</span>`
+      + (mine ? '' : '<span class="sett-skin-lock"><svg class="gi" aria-hidden="true"><use href="#gi-lock"/></svg>בחנות</span>')
+      + '</button>';
+  }).join('');
+}
 
 export const SETTINGS_INTENT = Object.freeze({
   TOGGLE:  'settings/toggle',
   ADJUST:  'settings/adjust',
   CLOSE:   'settings/close',
+  SKIN_STORE: 'settings/skinStore',   // locked skin tapped → the store's skins tab
 });
 
 export const SETTINGS_OPEN    = 'overlay/settings/open';
@@ -69,6 +89,31 @@ export function mountSettingsScreen({ root = globalThis.document, bus, getSettin
   }
 
   const cleanups = [];
+
+  // ─── App skin ("ערכת צבע") ──────────────────────────────
+  const skinOpts = $('#sett-skin-opts', overlay);
+  let skinState = { chosen: 'classic', owned: [] };
+  const paintSkins = () => { if (skinOpts) skinOpts.innerHTML = skinOptionsHtml(skinState); };
+  paintSkins();
+  cleanups.push(bus.on(SKIN_CHANGED, ({ chosen, owned } = {}) => {
+    skinState = { chosen: chosen ?? 'classic', owned: owned ?? [] };
+    paintSkins();
+  }));
+  if (skinOpts) cleanups.push(on(skinOpts, 'click', (e) => {
+    const btn = e.target?.closest?.('[data-skin-id]');
+    const id = btn?.getAttribute('data-skin-id');
+    if (!id || !SKINS[id]) return;
+    e.preventDefault?.();
+    if (!ownsSkin(id, skinState.owned)) {
+      overlay.classList?.add('hidden');
+      bus.emit(SETTINGS_INTENT.SKIN_STORE, { id });
+      return;
+    }
+    if (id === skinState.chosen) return;
+    skinState = { ...skinState, chosen: id };
+    paintSkins();
+    bus.emit(SETTINGS_CHANGED, { skin: id });
+  }));
 
   // ─── Reduced-motion toggle (UI preference, effective state) ─────────
   function paintReducedMotion(value) {

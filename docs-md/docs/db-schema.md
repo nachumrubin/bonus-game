@@ -250,6 +250,7 @@ Private per-user data. Only the owner can read/write (except `activeRoom` and `a
     [boostieId: string]: { xp: number, level: number },  // rules: xp only grows (≤ +20/write), level 1–7 only grows
   },
   ownedReactions?: string[], // bought reaction ids ('wink', 'yawn'); the free set is implicit. Worker-only (D-coin-economy)
+  ownedSkins?: string[],     // bought app skin ids ('stone', 'marble'); 'classic' is implicit. Worker-only (D-app-skins, Nov 2026)
   stats?: {
     gamesPlayed: number,
     gamesWon: number,

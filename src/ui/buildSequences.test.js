@@ -561,3 +561,13 @@ test('idle crack: scheduled every ≈30 s with jitter, until stopped', () => {
   assert.ok(!again[0].alive, 'stop() cancels it');
   finishBuilds();
 });
+
+test('logoTilesDir: each skin renders its own logo tiles (same layout)', async () => {
+  const { logoTilesDir } = await import('./buildSequences.js');
+  const doc = (skin) => ({ documentElement: { getAttribute: (k) => (k === 'data-skin' ? skin : null) } });
+  assert.equal(logoTilesDir(doc(null)), 'assets/ui/logo_tiles/');
+  assert.equal(logoTilesDir(doc('stone')), 'assets/ui/logo_tiles_stone/');
+  assert.equal(logoTilesDir(doc('marble')), 'assets/ui/logo_tiles_marble/');
+  assert.equal(logoTilesDir(doc('neon')), 'assets/ui/logo_tiles/');
+  assert.ok(logoTileFiles('assets/ui/logo_tiles_stone/').includes('assets/ui/logo_tiles_stone/logo_bolt.webp'));
+});

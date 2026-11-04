@@ -92,8 +92,12 @@
 .coin-pill .coin-ic { width: 14px; height: 14px; }
 
 /* ── Notification banner ── */
+/* Capped to the app column and centred (left/right 0 + auto margins); with no topbar
+   (every screen but home) it drops to the top edge instead of under a bar that isn't there. */
+#global-topbar.is-off ~ #notif-banner.notif-banner--shown { transform: translateY(max(10px, env(safe-area-inset-top, 0px))); }
 #notif-banner {
-  margin: 0 12px; border-radius: 18px; border: 1px solid rgba(40,212,255,.45) !important;
+  max-width: 480px; margin: 0 auto; width: auto;
+  left: 12px; right: 12px; border-radius: 18px; border: 1px solid rgba(40,212,255,.45) !important;
   background: rgba(10,22,66,.97) !important; box-shadow: 0 14px 34px rgba(0,0,0,.6), 0 0 20px rgba(40,212,255,.2);
 }
 
@@ -2024,3 +2028,120 @@ input.g-tog-input { width: 46px !important; height: 28px !important; min-width: 
   .evo-ov .evo-still, .evo-ov .evo-card, .evo-ov .evo-stage { transition: opacity .4s !important; animation: none !important; }
   .evo-ov.is-card .evo-stage { transform: translateY(-9vh) scale(.86); }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   APP SKINS (Nov 2026) — store "ערכות צבע" tab, Settings › מראה, try-on bar.
+   skinCatalog.js lists the skins; skin-<id>.css re-colours the app.
+═══════════════════════════════════════════════════════════════ */
+#savatar-store .store-skins { display: flex; flex-direction: column; gap: 12px; padding-bottom: 18px; }
+#savatar-store .skin-lead { font-size: 13px; font-weight: 700; color: var(--sg-dim); text-align: center; margin: 2px 8px 0; }
+#savatar-store .skin-card { position: relative; border-radius: 18px; padding: 12px; background: var(--sg-glass); border: 1px solid var(--sg-line); box-shadow: 0 10px 26px rgba(0,0,0,.35); }
+#savatar-store .skin-card.is-on { border: 1.5px solid var(--sg-p1); }
+#savatar-store .skin-card--hero { padding: 0 0 12px; overflow: hidden; }
+#savatar-store .skin-new { position: absolute; top: 10px; inset-inline-start: 10px; z-index: 2; height: 22px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 900; background: var(--sg-p2); color: #2a1a00; box-shadow: 0 3px 8px rgba(0,0,0,.3); }
+#savatar-store .skin-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px 0; }
+#savatar-store .skin-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#savatar-store .skin-name { font-size: 18px; font-weight: 900; color: var(--sg-ink); }
+#savatar-store .skin-desc { font-size: 12px; font-weight: 600; color: var(--sg-dim); line-height: 1.35; }
+#savatar-store .skin-sw { display: inline-flex; flex: none; }
+#savatar-store .skin-sw > span { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--sg-line), 0 1px 3px rgba(0,0,0,.3); }
+#savatar-store .skin-sw > span + span { margin-inline-start: -6px; }
+#savatar-store .skin-actions { display: flex; gap: 8px; padding: 12px 14px 0; }
+#savatar-store .skin-actions .bst-btn { flex: 1; height: 44px; justify-content: center; border-radius: 13px; font-size: 14px; font-weight: 900; }
+#savatar-store .skin-actions .skin-buy { flex: 1.2; }
+#savatar-store .skin-try { background: rgba(255,255,255,.06); border: 1px solid var(--sg-line); color: var(--sg-ink); }
+#savatar-store .skin-try svg.gi { width: 18px; height: 18px; }
+#savatar-store .skin-buy img { width: 18px; height: 18px; }
+#savatar-store .skin-card--row { display: flex; align-items: center; gap: 12px; }
+#savatar-store .skin-row-mid { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+#savatar-store .skin-row-mid .skin-name { font-size: 15px; }
+#savatar-store .skin-use { height: 34px; }
+#savatar-store .skin-tag.is-on { flex: none; display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 900;
+  color: var(--sg-ok); background: rgba(46,229,157,.1); border: 1px solid rgba(46,229,157,.4); }
+#savatar-store .skin-card--hero .skin-tag.is-on, #savatar-store .skin-card--hero .skin-use { flex: 1; height: 44px; justify-content: center; border-radius: 13px; font-size: 14px; }
+#savatar-store .skin-soon { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: 16px; border: 1.5px dashed var(--sg-line);
+  color: var(--sg-dim); font-size: 13px; font-weight: 800; }
+#savatar-store .skin-soon svg.gi { width: 16px; height: 16px; }
+
+#ov-store-confirm .store-confirm-desc { font-size: 13px; color: var(--sg-dim); margin: -4px 0 12px; text-align: center; }
+#ov-store-confirm .store-confirm-desc:empty { display: none; }
+#ov-store-confirm .store-g-price { flex-direction: column; gap: 6px; }
+#ov-store-confirm .scf-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+#ov-store-confirm .scf-after { display: none; font-size: 12px; padding-top: 6px; border-top: 1px solid var(--sg-line); }
+#ov-store-confirm.is-skin .scf-after { display: flex; }
+#ov-store-confirm #store-confirm-after { color: var(--sg-ink); font-weight: 900; display: inline-flex; align-items: center; gap: 4px; }
+#ov-store-confirm #store-confirm-after img, #ov-store-confirm #store-confirm-price img { width: 16px; height: 16px; }
+#ov-store-confirm.is-skin .store-confirm-av { background: none; border-radius: 22px; overflow: visible; }
+
+/* Settings › מראה */
+#ov-settings .sett-row--skin { flex-wrap: wrap; row-gap: 10px; }
+#ov-settings .sett-row--skin > .sett-row-info { flex: 1 1 100%; }
+#ov-settings .sett-skin-opts { flex: 1 1 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; padding: 0 0 4px; }
+#ov-settings .sett-skin { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px; margin: 0; border-radius: 14px; cursor: pointer;
+  background: rgba(255,255,255,.05); border: 1px solid var(--sg-line); color: var(--sg-ink); font: 800 13px/1.2 'Heebo', sans-serif; }
+#ov-settings .sett-skin.on { border: 1.5px solid var(--sg-p1); background: rgba(40,212,255,.1); box-shadow: 0 0 0 1px var(--sg-p1); }
+#ov-settings .sett-skin-sw { display: inline-flex; }
+#ov-settings .sett-skin-sw > span { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+#ov-settings .sett-skin-sw > span + span { margin-inline-start: -7px; }
+#ov-settings .sett-skin.is-locked .sett-skin-sw, #ov-settings .sett-skin.is-locked .sett-skin-n { opacity: .6; }
+#ov-settings .sett-skin-lock { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; color: var(--sg-p2); }
+#ov-settings .sett-skin-lock svg.gi { width: 12px; height: 12px; }
+
+/* skin:keep-start — fixed colours under every skin: the try-on bar and the per-skin preview art */
+.skin-preview-bar { position: fixed; z-index: 9000; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: min(492px, calc(100% - 20px));
+  display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 16px; direction: rtl; font-family: 'Heebo', sans-serif;
+  background: #2a2118; color: #fffaf0; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.skin-preview-bar.hidden { display: none; }
+.skin-preview-bar .spb-ic { width: 18px; height: 18px; color: #ffd57a; margin-inline-start: 4px; }
+.skin-preview-bar .spb-t { flex: 1; min-width: 0; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skin-preview-bar .spb-left { font-size: 13px; font-weight: 900; color: #ffd57a; font-variant-numeric: tabular-nums; }
+.skin-preview-bar .spb-buy { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border: none; border-radius: 11px; cursor: pointer;
+  font: 900 13px/1 'Heebo', sans-serif; background: linear-gradient(180deg, #f2c35a, #e0a030); color: #3a2300; }
+.skin-preview-bar .spb-buy img { width: 15px; height: 15px; }
+.skin-preview-bar .spb-x { width: 32px; height: 32px; border: none; border-radius: 10px; cursor: pointer; background: rgba(255,255,255,.12); color: #fffaf0; font-size: 20px; line-height: 1; }
+
+.skp { position: relative; height: 150px; overflow: hidden; }
+.skp-wall { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 46px; }
+.skp-board { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); display: grid; grid-template-columns: repeat(7, 30px); gap: 3px; padding: 6px; border-radius: 10px; }
+.skp-c { width: 30px; height: 30px; border-radius: 5px; display: grid; place-items: center; font: 900 16px/1 'Heebo', sans-serif; }
+[data-skin-art="stone"].skp { background: radial-gradient(circle at 82% 14%, rgba(255,214,140,.65), transparent 30%), linear-gradient(180deg, #f8f2e6, #efe5d2 60%, #e6d8bf); }
+[data-skin-art="stone"] .skp-wall { fill: #e2d1b0; }
+[data-skin-art="stone"] .skp-board { background: #d9c8a6; box-shadow: 0 8px 16px rgba(90,60,20,.2); }
+[data-skin-art="stone"] .skp-c { background: #eadfc8; box-shadow: inset 0 1px 2px rgba(90,60,20,.22); color: #2a2118; }
+[data-skin-art="stone"] .skp-b { background: radial-gradient(circle, rgba(255,214,120,.7), rgba(224,160,48,.25)), #eadfc8; box-shadow: inset 0 0 0 1.5px #c9962a; }
+[data-skin-art="stone"] .skp-t { background: linear-gradient(165deg, #ffffff, #fbf5e8 60%, #efe3cb); box-shadow: 0 2px 0 #b9a47c; }
+[data-skin-art="stone"] .skp-tp { background: linear-gradient(165deg, #ffffff, #fbf5e8 60%, #efe3cb); box-shadow: 0 0 0 2px #12607a, 0 3px 6px rgba(18,96,122,.4); }
+[data-skin-art="classic"].skp { background: radial-gradient(ellipse 90% 60% at 50% 0, rgba(40,110,255,.35), transparent 70%), linear-gradient(180deg, #07123d, #040a22); }
+[data-skin-art="classic"] .skp-wall { display: none; }
+[data-skin-art="classic"] .skp-board { background: rgba(6,14,48,.85); border: 1px solid rgba(120,190,255,.22); }
+[data-skin-art="classic"] .skp-c { background: linear-gradient(180deg, #22438c, #1b3778); color: #8a5324; }
+[data-skin-art="classic"] .skp-b { background: radial-gradient(circle, rgba(40,212,255,.28), rgba(8,22,70,.95) 70%); box-shadow: inset 0 0 0 1.5px rgba(40,212,255,.75), 0 0 6px rgba(40,212,255,.45); }
+[data-skin-art="classic"] .skp-t, [data-skin-art="classic"] .skp-tp { background: linear-gradient(165deg, #f6ddb0, #e7c08a 60%, #d9ad73); box-shadow: inset 0 0 0 1.5px #3aaecb, 0 2px 0 #7a5530; }
+[data-skin-art="classic"] .skp-tp { box-shadow: inset 0 0 0 1.5px #fff, 0 0 8px #28d4ff; }
+.skin-thumb { flex: none; width: 52px; height: 52px; border-radius: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 8px; align-content: center; }
+.skin-thumb > span { height: 12px; border-radius: 3px; }
+.skin-thumb[data-skin-art="classic"] { background: linear-gradient(180deg, #07123d, #040a22); border: 1px solid rgba(120,190,255,.3); }
+.skin-thumb[data-skin-art="classic"] > span { background: linear-gradient(165deg, #f6ddb0, #d9ad73); box-shadow: inset 0 0 0 1px #3aaecb; }
+.skin-thumb[data-skin-art="classic"] > span:nth-child(2) { background: radial-gradient(circle, rgba(40,212,255,.5), #08164a); }
+.skin-thumb[data-skin-art="stone"] { background: linear-gradient(180deg, #f8f2e6, #e6d8bf); border: 1px solid rgba(120,90,50,.25); }
+.skin-thumb[data-skin-art="stone"] > span { background: #fff; box-shadow: 0 1px 0 #b9a47c; }
+.skin-thumb[data-skin-art="stone"] > span:nth-child(2) { background: radial-gradient(circle, #ffd678, #e0a030); }
+.store-confirm-skin { width: 150px; height: 150px; border-radius: 28px; display: grid; place-items: center; }
+.store-confirm-skin svg { width: 96px; height: 96px; }
+.store-confirm-skin[data-skin-art="stone"] { background: radial-gradient(circle at 76% 22%, rgba(255,214,140,.8), transparent 35%), linear-gradient(180deg, #fbf6ec, #e6d8bf); box-shadow: 0 0 0 1px rgba(120,90,50,.2), 0 10px 22px rgba(90,60,20,.2); }
+.store-confirm-skin[data-skin-art="stone"] path { fill: #d9c3a0; }
+[data-skin-art="marble"].skp { background: radial-gradient(circle at 82% 14%, rgba(216,178,90,.22), transparent 32%), linear-gradient(180deg, #19191d, #0f0f12 60%, #08080a); }
+[data-skin-art="marble"] .skp-wall { fill: none; stroke: rgba(216,178,90,.4); stroke-width: 1; }
+[data-skin-art="marble"] .skp-board { background: #1b1b20; border: 1px solid rgba(216,178,90,.3); box-shadow: 0 8px 16px rgba(0,0,0,.55); }
+[data-skin-art="marble"] .skp-c { background: #2a2a30; box-shadow: inset 0 1px 2px rgba(0,0,0,.5); color: #e8c66e; }
+[data-skin-art="marble"] .skp-b { background: radial-gradient(circle, rgba(216,178,90,.45), rgba(216,178,90,.08)), #2a2a30; box-shadow: inset 0 0 0 1.5px #b98f3e; }
+[data-skin-art="marble"] .skp-t { background: linear-gradient(118deg, transparent 38%, rgba(220,215,205,.18) 41%, transparent 44%), linear-gradient(165deg, #44444c, #2a2a31 55%, #1a1a1f); box-shadow: inset 0 0 0 1px rgba(216,178,90,.4), 0 2px 0 #000; }
+[data-skin-art="marble"] .skp-tp { background: linear-gradient(165deg, #44444c, #2a2a31 55%, #1a1a1f); box-shadow: 0 0 0 2px #d8b25a, 0 3px 8px rgba(216,178,90,.35); }
+.skin-thumb[data-skin-art="marble"] { background: linear-gradient(180deg, #19191d, #08080a); border: 1px solid rgba(216,178,90,.35); }
+.skin-thumb[data-skin-art="marble"] > span { background: linear-gradient(165deg, #44444c, #1a1a1f); box-shadow: inset 0 0 0 1px rgba(216,178,90,.45); }
+.skin-thumb[data-skin-art="marble"] > span:nth-child(2) { background: radial-gradient(circle, #ecca72, #b98f3e); }
+.store-confirm-skin[data-skin-art="marble"] { background: radial-gradient(circle at 76% 22%, rgba(216,178,90,.3), transparent 35%), linear-gradient(180deg, #222228, #0c0c0f); box-shadow: 0 0 0 1px rgba(216,178,90,.35), 0 10px 22px rgba(0,0,0,.45); }
+.store-confirm-skin[data-skin-art="marble"] path { fill: none; stroke: #d8b25a; stroke-width: 1.2; }
+.store-confirm-skin[data-skin-art="marble"] circle { fill: #ecca72; }
+/* skin:keep-end */

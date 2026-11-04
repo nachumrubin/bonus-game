@@ -77,6 +77,7 @@ test('UI preferences support animation skip, music, and last display name', () =
     lastDisplayName: 'Alice',
     gender: 'זכר',   // default applied by normalizer when not provided
     wordInfoEnabled: false, // default applied by normalizer when not provided
+    skin: 'classic',        // default applied by normalizer when not provided
   });
   assert.equal(loadUiPreferences(s).animationsEnabled, false);
   const next = mergeUiPreferences(s, { music: true });
@@ -92,6 +93,14 @@ test('wordInfoEnabled (מילון word-origin toggle) defaults off and round-tri
   // Unrelated merges keep it.
   assert.equal(mergeUiPreferences(s, { music: false }).wordInfoEnabled, true);
   assert.equal(mergeUiPreferences(s, { wordInfoEnabled: false }).wordInfoEnabled, false);
+});
+
+test('skin preference: defaults to classic, keeps known skins, drops unknown ones', () => {
+  const s = storage();
+  assert.equal(loadUiPreferences(s).skin, 'classic');
+  assert.equal(mergeUiPreferences(s, { skin: 'stone' }).skin, 'stone');
+  assert.equal(mergeUiPreferences(s, { music: false }).skin, 'stone');
+  assert.equal(mergeUiPreferences(s, { skin: 'dusk' }).skin, 'classic');
 });
 
 test('reducedMotion tri-state: defaults to auto, round-trips on/off, derives animationsEnabled', () => {

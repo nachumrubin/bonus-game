@@ -303,8 +303,8 @@ legendary, bought with coins. Painted on `STORE_RENDER` (`{ coins, ownedAvatars,
 
 **October 2026: "חנות" with tabs.** Title `חנות`. Opened from the profile list or from the home bottom
 nav (`openStore()` → `STORE_INTENT.OPEN { from: 'home' }`); back returns to where it was opened. Tabs
-`.store-tab[data-tab]` = `avatars` (first, default on every open) | `skins` (app colour palettes, a
-"בקרוב..." card for now) | `coins` (coin packs for real money). Panels `#store-panel-<tab>` (class `on`).
+`.store-tab[data-tab]` = `avatars` (first, default on every open) | `skins` (app colour palettes: אבן ירושלים,
+Nov 2026; a skin is `html[data-skin="<id>"]`, see D-app-skins) | `coins` (coin packs for real money). Panels `#store-panel-<tab>` (class `on`).
 
 Load-bearing IDs (do not rename without updating `avatarStoreScreen.js`):
 ```
@@ -316,8 +316,12 @@ Load-bearing IDs (do not rename without updating `avatarStoreScreen.js`):
 #store-panel-avatars, #store-panel-skins, #store-panel-coins — tab panels; `.on` = shown
 #store-ad              — rewarded-video card (adCardHtml: .store-ad[data-store-action="ad"]; Android app only)
 #store-coins           — coin packs (coinPacksHtml: .coin-pack[data-store-action="coins"][data-store-id])
-#ov-store-confirm      — purchase-confirm overlay
+#ov-store-confirm      — purchase-confirm overlay (class `is-skin` for a skin purchase)
   #store-confirm-avatar, #store-confirm-price, #store-confirm-yes, #store-confirm-no
+  #store-confirm-title, #store-confirm-desc (empty = hidden), #store-confirm-after (balance after; skins only)
+#global-topbar.is-off  — set with display:none on every screen but home; #notif-banner drops to the top edge
+#store-skins           — skin cards (skinsHtml: .skin-card[data-skin-card]; actions tryskin / buy skin:<id> / useskin)
+#skin-preview-bar      — try-on bar, created by skinController in <body>: .spb-t, .spb-left, .spb-buy, .spb-x
 #ov-daily-reward       — daily login reward overlay
   #daily-reward-coins, #daily-reward-streak, #daily-reward-ok
 #store-rx-preview      — reaction preview stage above the list (Phase 5); class `hidden` when closed.
@@ -389,6 +393,8 @@ Elements with `data-sfx="off"` are skipped by the delegated `ui.tap` sound.
 ### Settings Screen — Gender Toggle IDs
 
 ```
+#sett-skin-opts     — "ערכת צבע" row's options (skinOptionsHtml); inside .sett-row--skin
+#sett-skin-<id>     — one option per skin (`.on` = in use, `.is-locked` = not owned → opens the store)
 #sett-gender-zachar   — gender selector pill for זכר (masculine)
 #sett-gender-nekeiva  — gender selector pill for נקבה (feminine)
 ```

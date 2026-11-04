@@ -143,6 +143,8 @@ import { mountBackConfirmScreen,BACK_INTENT,       BACK_OPEN, BACK_PRESSED } fro
 import { decideBack, backSnapshot, clickOverlayClose, BACK_ACTION, EXIT_OVERLAY, APP_EXIT_URL } from './ui/backButton.js';
 import { mountCoinTossScreen,   COIN_INTENT,       COIN_OPEN, COIN_WAITING } from './ui/screens/coinTossScreen.js';
 import { mountSettingsScreen,   SETTINGS_INTENT,   SETTINGS_OPEN, SETTINGS_CHANGED } from './ui/screens/settingsScreen.js';
+import { createSkinController, SKIN_CHANGED, SKIN_PREVIEW_BUY, SKIN_PREVIEW_ENDED } from './ui/skinController.js';
+import { SKINS } from './game/account/skinCatalog.js';
 import { mountDisconnectScreen, DISCONNECT_INTENT, DISCONNECT_OPEN, DISCONNECT_CLOSE } from './ui/screens/disconnectScreen.js';
 import { mountResignConfirmScreen, RESIGN_INTENT, RESIGN_OPEN, RESIGN_CLOSE } from './ui/screens/resignConfirmScreen.js';
 
@@ -379,6 +381,8 @@ let evolutionScreen = null;   // ui/boostie3d/evolutionScreen.js, mounted with t
 let homeAvatarLive = null;    // ui/boostie3d/homeAvatarLive.js — the live Boostie in the home top bar
 let profileAvatarLive = null; // … and on the profile screen
 let economy = null;           // game/account/economyClient.js — the coin worker
+let skinCtl = null;           // ui/skinController.js — the app skin + store try-on
+let storeScreen = null;       // the mounted avatarStoreScreen (the try-on banner opens its buy sheet)
 const playBilling = createPlayBilling();   // coin packs via Google Play (Android app only)
 // Rewarded videos for coins (AdMob, Android app only — where the Play Billing service exists).
 // Set when a guest finishes an online game; showSc('sh') then offers the sign-up sheet.
@@ -570,6 +574,7 @@ async function boot() {
     get db() { return activeFbDb; },
     get auth() { return activeFbAuth; },
     get currentUser() { return activeFbCurrentUser; },
+    get skin() { return skinCtl; },   // ui/skinController.js (tests, screenshots)
     hebrewDictionary,
     ensureDictionaryLoaded,
     ensureBotWordsLoaded,
@@ -1120,9 +1125,11 @@ async function boot() {
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { gender: changes.gender });
       applyGenderToRoot(globalThis.document, changes.gender);
     }
+    // skin: a local UI preference too (skinController saves it); never a room setting.
+    if ('skin' in changes) skinCtl?.choose(changes.skin);
     const ag = globalThis.__spine?.activeGame;
     if (!ag?.online || !activeFbDb) return;
-    const { disableMessages: _omit, gender: _omitGender, ...roomChanges } = changes;
+    const { disableMessages: _omit, gender: _omitGender, skin: _omitSkin, ...roomChanges } = changes;
     if (Object.keys(roomChanges).length === 0) return;
     const next = settingsCompat.normalizeGameSettings({ ...(ag.session.state.settings ?? {}), ...roomChanges });
     roomService.setSettings(activeFbDb, ag.session.roomId, next)
@@ -3100,7 +3107,9 @@ async function boot() {
         boosties: profile?.boosties ?? null,
         equippedAvatar: profile?.equippedAvatar ?? null,
         ownedReactions: profile?.ownedReactions ?? [],
+        ownedSkins: profile?.ownedSkins ?? [],
       });
+      skinCtl?.setOwnedSkins(profile?.ownedSkins ?? []);
       bus.emit(FRIENDS_RENDER, {
         myUserId: profile?.userId ?? '------',
         invitesSent: profile?.stats?.invitesSent ?? 0,
@@ -3355,7 +3364,7 @@ async function boot() {
     // ── Store intents ──
     // The store opens from the home nav ({ from: 'home' }) or the profile; back returns there.
     let storeBackTo = 'sprofile';
-    bus.on(STORE_INTENT.OPEN, ({ from } = {}) => {
+    bus.on(STORE_INTENT.OPEN, ({ from, tab } = {}) => {
       const fbUser = activeFbCurrentUser;
       // Coins/store require a real account — anonymous profiles aren't persisted.
       if (!fbUser?.uid || fbUser.isAnonymous) {
@@ -3372,9 +3381,10 @@ async function boot() {
           boosties: lastProfile?.boosties ?? null,
           equippedAvatar: lastProfile?.equippedAvatar ?? null,
           ownedReactions: lastProfile?.ownedReactions ?? [],
+          ownedSkins: lastProfile?.ownedSkins ?? [],
         });
       }
-      storeBackTo = from === 'home' ? 'sh' : 'sprofile';
+      storeBackTo = from === 'home' || from === 'settings' ? 'sh' : 'sprofile';
       showLegacyScreen('savatar-store');
       refreshCoinPacks();
       refreshAdCard();
@@ -3438,6 +3448,22 @@ async function boot() {
     });
     // Equipping a store avatar reuses the avatar-equip path (writes equippedAvatar).
     bus.on(STORE_INTENT.EQUIP, ({ id }) => bus.emit(AV_INTENT.EQUIP, { id }));
+    // App skins: "נסו עכשיו" (30 s try-on), "הפעלה", and Settings' locked skin → the store.
+    bus.on(STORE_INTENT.TRY_SKIN, ({ id }) => skinCtl?.startPreview(id));
+    bus.on(STORE_INTENT.USE_SKIN, ({ id }) => skinCtl?.choose(id));
+    bus.on(SETTINGS_INTENT.SKIN_STORE, () => bus.emit(STORE_INTENT.OPEN, { from: 'settings', tab: 'skins' }));
+    // The try-on banner's price button: the buy sheet over the previewed app.
+    bus.on(SKIN_PREVIEW_BUY, ({ id }) => {
+      if (!SKINS[id]) return;
+      const onStore = !globalThis.document?.getElementById?.('savatar-store')?.classList?.contains('hidden');
+      if (!onStore) bus.emit(STORE_INTENT.OPEN, { from: 'home', tab: 'skins' });
+      storeScreen?.openConfirm?.(`skin:${id}`);
+    });
+    bus.on(SKIN_PREVIEW_ENDED, ({ id, reason }) => {
+      if (reason === 'timeout' && SKINS[id]) {
+        bus.emit(NOTIF_BANNER_SHOW, { text: `התצוגה המקדימה של ${SKINS[id].name} הסתיימה`, avatar: '🎨' });
+      }
+    });
     bus.on(STORE_INTENT.CONFIRM_PURCHASE, async ({ id }) => {
       const fbDb = activeFbDb;
       const fbUser = activeFbCurrentUser;
@@ -3445,7 +3471,12 @@ async function boot() {
       // id = 'boostie:bubo' | 'reaction:wink'; the price comes from the catalog.
       const r = await economy?.buy(id) ?? { ok: false, reason: 'not-configured' };
       const item = parseStoreItem(id);
-      if (r?.ok && item?.kind === 'boostie') {
+      if (r?.ok && item?.kind === 'skin') {
+        // "קנייה והפעלה": owned now (the profile watch confirms it), so switch it on.
+        skinCtl?.setOwnedSkins([...new Set([...(lastProfile?.ownedSkins ?? []), item.id])]);
+        skinCtl?.choose(item.id);
+        bus.emit(NOTIF_BANNER_SHOW, { text: `${SKINS[item.id]?.name ?? ''} הופעלה! 🎉`, avatar: '🎨', sound: 'store.purchase' });
+      } else if (r?.ok && item?.kind === 'boostie') {
         // Auto-equip the freshly bought Boostie; the profile watch repaints the store.
         try { await profileService.updateProfile(fbDb, fbUser.uid, { equippedAvatar: item.id }); }
         catch (e) { console.warn('[spine] store equip after buy', e); }
@@ -5209,6 +5240,10 @@ async function boot() {
   const avatarPicker       = mountAvatarPickerScreen({ bus });
   const avatarUnlocked     = mountAvatarUnlockedScreen({ bus });
   const avatarStore        = mountAvatarStoreScreen({ bus, prefersReducedMotion: () => getMotionPreference().isReduced() });
+  // App skin: index.html already painted the saved one before first paint; this owns it
+  // from here (ownership from the profile watch, try-ons from the store).
+  skinCtl ??= createSkinController({ bus });
+  storeScreen = avatarStore;
   // Level-up evolution (Phase 4): fed by the profile watcher; waits while a game is
   // still being played and plays after the game-over result.
   evolutionScreen = mountEvolutionScreen({
@@ -5266,6 +5301,8 @@ async function boot() {
     getUiPrefs:  () => settingsCompat.loadUiPreferences(globalThis.localStorage),
     getReducedMotion: () => getMotionPreference().isReduced(),
   });
+  // Settings' "ערכת צבע" row and the store's skins tab paint from this.
+  bus.emit(SKIN_CHANGED, skinCtl.snapshot());
   const disconnect    = mountDisconnectScreen({ bus });
   const resignConfirm = mountResignConfirmScreen({ bus });
   const gameFlow      = createGameFlowController({
