@@ -2,6 +2,14 @@
 
 ---
 
+## Skins: splash tiles drop one by one again (November 2026)
+
+- **Root cause of "all tiles drop together" in Stone and Marble:** to point an animation at the skin's recoloured keyframes, `scripts/build-skin-css.mjs` re-emitted the whole `animation:` shorthand under `html[data-skin]`. That outranked the base `.app-loading-tile:nth-child(n) { animation-delay }` rules and reset all four delays to 0. This happened on every launch, not just the first.
+- The builder now emits `animation-name` only, recognising every keyframe name in a multi-animation list. Recoloured names get the `--<skin>` suffix; the rest stay as they are. Delays, durations and timing come from the base sheet. The same change applies to the home-logo build (`.hl-tiles`), the achievement unlock and the claim-stall pulse.
+- Regression check in the `skinCatalog.test.js` wiring test: no `animation:` shorthand containing `--<skin>` in a generated sheet.
+- Measured per-tile delays of 0 / 0.18 / 0.36 / 0.54 s in Classic, Stone and Marble.
+- Boot skin-CSS `?v=` → 20261104190000; sw `CACHE_NAME` → `boost-20261104190000`.
+
 ## Skins: no Classic flash at boot, splash tiles wait for their art (November 2026)
 
 - **Classic flashed before the saved skin.** The skin sheets were `<link media="not all">`, and the boot script then switched the media. A media change made by script does not block rendering, so the first frame was painted Classic. Now the `index.html` head script document.writes the `<link data-skin-css>` tags itself, with `media="all"` only for the saved skin. That sheet blocks rendering like any other stylesheet. It also writes high-priority preloads for that skin's four splash tiles and sets the theme colour.

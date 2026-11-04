@@ -325,6 +325,7 @@ function build(id) {
   if (!skin) throw new Error(`unknown skin "${id}" (have: ${Object.keys(SKINS).join(', ')})`);
   const scope = `html[data-skin="${id}"]`;
   const renamed = new Set();
+  const allKeyframes = new Set();
   const keyframesOut = [];
   let rules = 0, decls = 0;
 
@@ -338,6 +339,15 @@ function build(id) {
       const re = new RegExp(`(^|[\\s,])(${[...renamed].map((n) => n.replace(/[-]/g, '\\-')).join('|') || '\\b\\B'})(?=$|[\\s,])`, 'g');
       const v = value.replace(re, (_, pre, name) => `${pre}${name}--${id}`);
       if (v !== value) next = v;
+      // Re-pointing a shorthand must not re-emit it: under the higher-specificity skin
+      // scope it would reset longhands set elsewhere (e.g. the splash tiles' per-tile
+      // :nth-child animation-delay → all four dropped at once). Emit only the name.
+      if (v !== value && prop === 'animation') {
+        const names = splitTop(value, ',').map((seg) => seg.trim().split(/\s+/).find((t) => allKeyframes.has(t)));
+        if (names.every(Boolean)) {
+          return `  animation-name: ${names.map((n) => (renamed.has(n) ? `${n}--${id}` : n)).join(', ')}${important ? ' !important' : ''};`;
+        }
+      }
     }
     // A colour declaration that needs no change is still re-emitted (scoped), so a
     // later `color: var(--x)` keeps beating an earlier literal colour we did remap.
@@ -350,6 +360,7 @@ function build(id) {
   const walkKeyframes = (blocks) => blocks.forEach((b) => {
     if (b.type === 'at') walkKeyframes(b.children);
     if (b.type !== 'keyframes') return;
+    allKeyframes.add(b.name);
     const frames = parseBlocks(b.body).filter((r) => r.type === 'rule');
     let any = false;
     const txt = frames.map((fr) => {

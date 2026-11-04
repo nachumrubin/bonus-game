@@ -31,7 +31,7 @@
      player never sees Classic at boot), the rest with media="not all". It also preloads the saved
      skin's loading tiles. Theme colours mirror SKINS[id].themeColor; ownership is checked once the
      profile loads (an unowned choice falls back to Classic). skinCatalog.test.js checks this list. -->
-<script>(function(){var V='20261104150000',T={stone:'#f8f2e6',marble:'#0f0f12'},sk=null;
+<script>(function(){var V='20261104190000',T={stone:'#f8f2e6',marble:'#0f0f12'},sk=null;
 try{sk=JSON.parse(localStorage.getItem('spine.uiPreferences')||'{}').skin;}catch(e){}
 if(!T.hasOwnProperty(sk))sk=null;
 for(var id in T)document.write('<link rel="stylesheet" href="skin-'+id+'.css?v='+V+'" data-skin-css="'+id+'" media="'+(id===sk?'all':'not all')+'">');

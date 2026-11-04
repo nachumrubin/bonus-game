@@ -351,7 +351,7 @@ html[data-skin="marble"] .spine-lock-turns {
 html[data-skin="marble"] .cell.spine-pending-lock-cell {
   background: linear-gradient(145deg,rgba(187,145,63,.55),rgba(52,52,56,.55)) !important;
   box-shadow: inset 0 0 0 2px rgba(216,178,90,.275), inset 0 0 0 4px rgba(216,178,90,.09) !important;
-  animation: pendingLockPulse--marble 1.1s ease-in-out infinite;
+  animation-name: pendingLockPulse--marble;
 }
 html[data-skin="marble"] .cell.spine-pending-lock-cell .spine-lock-cost {
   border-radius: 7px;
@@ -369,7 +369,7 @@ html[data-skin="marble"] .bsq {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
 }
 html[data-skin="marble"] body.tile-selected .bsq:not(.used) {
-  animation: bonusPulse--marble 1s ease-in-out infinite;
+  animation-name: bonusPulse--marble;
 }
 html[data-skin="marble"] .bsq.used {
   background: #b0aa88;
@@ -399,7 +399,7 @@ html[data-skin="marble"] .btile.nw.picked {
   border-color: #9fb8dc;
   outline: 2px solid #9fb8dc;
   outline-offset: 1px;
-  animation: tileGlow--marble .7s ease-in-out infinite alternate;
+  animation-name: tileGlow--marble;
 }
 html[data-skin="marble"] .btile.jk {
   background: #ffe0f0;
@@ -1247,7 +1247,7 @@ html[data-skin="marble"] .turn-timer {
   color: rgba(243,238,227,.92);
 }
 html[data-skin="marble"] .turn-timer.crit {
-  animation: turnTimerCritFlash--marble .6s ease-in-out infinite alternate;
+  animation-name: turnTimerCritFlash--marble;
 }
 html[data-skin="marble"] .turn-timer .tt-value {
   color: var(--by);
@@ -1352,12 +1352,12 @@ html[data-skin="marble"] .tut-lit {
   border-radius: 6px;
 }
 html[data-skin="marble"] .tut-lit {
-  animation: tutGlow--marble 1.1s ease-in-out infinite;
+  animation-name: tutGlow--marble;
 }
 html[data-skin="marble"] .tut-spotlight {
   border-radius: 6px;
   background: rgba(255,215,0,0.08);
-  animation: tutGlow--marble 1.1s ease-in-out infinite;
+  animation-name: tutGlow--marble;
 }
 html[data-skin="marble"] .tut-pulse {
   filter: brightness(1.35) saturate(1.2) drop-shadow(0 0 8px #bb913f);
@@ -1646,7 +1646,7 @@ html[data-skin="marble"] .lock-inv-btn.active {
   color: #111;
   border-color: rgba(159,184,220,.95);
   box-shadow: 0 0 8px rgba(216,178,90,.25);
-  animation: lockSelectedGlow--marble 1s ease-in-out infinite alternate;
+  animation-name: lockSelectedGlow--marble;
 }
 html[data-skin="marble"] .info-strip {
   background: linear-gradient(180deg, rgba(17,17,21,.99), rgba(13,13,17,.99)) !important;
@@ -1660,28 +1660,22 @@ html[data-skin="marble"] .ct-frame .ct-fill {
   background: linear-gradient(180deg, rgba(255,255,255,.042), rgba(255,255,255,.02) 160px), #222226;
 }
 html[data-skin="marble"] .hb-glow {
-  animation: hbGlow--marble  var(--b-dur) ease-out          var(--b-delay) none;
+  animation-name: hbGlow--marble;
 }
 html[data-skin="marble"] .hb-logo-glow {
-  animation: hbLogoGlow--marble var(--b-dur) ease-out var(--b-delay) none;
+  animation-name: hbLogoGlow--marble;
 }
 html[data-skin="marble"] .hl-tiles {
-  animation: hbLogoFlash--marble 300ms ease-out var(--b-strike) none, hbLogoGlow--marble var(--b-glow-dur) ease-out var(--b-glow) none,
-    hbTilesOut var(--b-handoff-dur) linear var(--b-handoff) forwards;
+  animation-name: hbLogoFlash--marble, hbLogoGlow--marble, hbTilesOut;
 }
 html[data-skin="marble"] .hb-tile-in {
-  animation: hbTileIn--marble var(--b-dur) cubic-bezier(.2,.75,.25,1) var(--b-delay) backwards;
+  animation-name: hbTileIn--marble;
 }
 html[data-skin="marble"] .hl-layer > .hb-tile-charge {
-  animation: hbTileCharge--marble var(--b-charge-dur) ease-in var(--b-charge) both,
-    hbTileHit--marble calc(var(--b-split) - var(--b-strike)) ease-out var(--b-strike) forwards,
-    hbTileGone 1ms linear var(--b-split) forwards;
+  animation-name: hbTileCharge--marble, hbTileHit--marble, hbTileGone;
 }
 html[data-skin="marble"] .hl-layer > .hb-tile-charge.is-healing {
-  animation: hbTileHeal var(--b-heal) ease-out backwards,
-    hbTileCharge--marble var(--b-charge-dur) ease-in var(--b-charge) both,
-    hbTileHit--marble calc(var(--b-split) - var(--b-strike)) ease-out var(--b-strike) forwards,
-    hbTileGone 1ms linear var(--b-split) forwards;
+  animation-name: hbTileHeal, hbTileCharge--marble, hbTileHit--marble, hbTileGone;
 }
 html[data-skin="marble"] .hb-crack-idle {
   background: linear-gradient(180deg, transparent 38%, rgba(236,202,114,.75) 46%, #effdff 50%, rgba(236,202,114,.75) 54%, transparent 62%) 0 0 / 100% 300% no-repeat;
@@ -1693,7 +1687,7 @@ html[data-skin="marble"] .hl-layer.is-right {
   --b-kick: 1;
 }
 html[data-skin="marble"] .hb-tile-bolt > img {
-  animation: hbTileBolt--marble var(--b-dur) ease-out var(--b-split) both;
+  animation-name: hbTileBolt--marble;
 }
 html[data-skin="marble"] .hl-sky polyline {
   fill: none;
@@ -1701,7 +1695,7 @@ html[data-skin="marble"] .hl-sky polyline {
   filter: drop-shadow(0 0 4px #bb913f) drop-shadow(0 0 12px #bb913f);
 }
 html[data-skin="marble"] #sg .bsq.bb-boost {
-  animation: bbBoostPop--marble var(--b-dur) ease-out var(--b-delay) backwards;
+  animation-name: bbBoostPop--marble;
 }
 html[data-skin="marble"] #sg #brack.bb-tiles > .bt2:nth-child(2) {
   --b-slot: 1;
@@ -1725,7 +1719,7 @@ html[data-skin="marble"] #sg #brack.bb-tiles > .bt2:nth-child(8) {
   --b-slot: 7;
 }
 html[data-skin="marble"] .accepted-word-sweep {
-  animation: acceptedWordSweep--marble 420ms var(--ease-standard) var(--accept-delay, 0ms) both;
+  animation-name: acceptedWordSweep--marble;
 }
 html[data-skin="marble"] .accepted-word-sweep::before {
   border: 2px solid #d8b25a;
@@ -1797,7 +1791,7 @@ html[data-skin="marble"] .is-pcard.act-cell::before {
 html[data-skin="marble"] .your-turn-cue::after {
   border: 2px solid rgba(159,184,220,.95);
   border-radius: inherit;
-  animation: yourTurnHaloExpand--marble var(--motion-reward) var(--ease-standard) both;
+  animation-name: yourTurnHaloExpand--marble;
 }
 html[data-skin="marble"] .scoring-float-label {
   color: #9fb8dc;
@@ -1827,7 +1821,7 @@ html[data-skin="marble"] .turn-effect-banner.tone-good {
   box-shadow: 0 8px 26px rgba(6,6,10,.55), 0 0 18px rgba(60,220,130,.26);
 }
 html[data-skin="marble"] .score-panel-arrive {
-  animation: scorePanelArrive--marble var(--motion-normal) var(--ease-standard) both;
+  animation-name: scorePanelArrive--marble;
 }
 html[data-skin="marble"] .spine-multiplier-banner {
   --mult: #b48cff;
@@ -2038,7 +2032,7 @@ html[data-skin="marble"] .boost-combo-arrow {
   color: var(--by, #9fb8dc);
 }
 html[data-skin="marble"] .boost-badge-enter {
-  animation: boostBadgeEnter--marble var(--motion-reward) var(--ease-standard) both;
+  animation-name: boostBadgeEnter--marble;
 }
 html[data-skin="marble"] .rival-card {
   background: linear-gradient(145deg, rgba(32,32,36,.92), rgba(19,19,23,.95));
@@ -2100,7 +2094,7 @@ html[data-skin="marble"] .bsq.selected-placed {
 html[data-skin="marble"] .cell.selected-placed .btile,
 html[data-skin="marble"] .bsq.selected-placed .btile {
   filter: brightness(1.15);
-  animation: selectedPlacedPulse--marble 0.9s ease-in-out infinite alternate;
+  animation-name: selectedPlacedPulse--marble;
 }
 html[data-skin="marble"] .is-disabled,
 html[data-skin="marble"] button.is-disabled,
@@ -2293,7 +2287,7 @@ html[data-skin="marble"] .ach-iccell.is-locked .ach-reward {
 }
 html[data-skin="marble"] .ach-iccell--just-unlocked .ach-ic-img,
 html[data-skin="marble"] .ach-iccell--just-unlocked .ach-ic-emoji {
-  animation: achPop .6s cubic-bezier(.22,1.4,.5,1) both,achGlow--marble 1.2s ease-out .1s 1;
+  animation-name: achPop, achGlow--marble;
 }
 html[data-skin="marble"] .achievement-unlock-card {
   border-color: rgba(159,184,220,.7);
@@ -2472,8 +2466,7 @@ html[data-skin="marble"] .guide-shot figcaption {
   color: rgba(243,238,227,.55);
 }
 html[data-skin="marble"] #btn-claim-stall-end.claim-stall-attention {
-  animation: claimStallPulse--marble 1.05s ease-in-out infinite,
-    claimStallTint  1.05s ease-in-out infinite;
+  animation-name: claimStallPulse--marble, claimStallTint;
   border-color: #c0a800;
 }
 html[data-skin="marble"] #smygames .mg-back {
@@ -2881,7 +2874,7 @@ html[data-skin="marble"] .app-loading {
   background: radial-gradient(ellipse at 50% 30%, #3d3d41 0%, #0e0e12 70%);
 }
 html[data-skin="marble"] .app-loading-tile {
-  animation: app-loading-tile-cycle--marble 2800ms cubic-bezier(0.34, 1.45, 0.64, 1) infinite;
+  animation-name: app-loading-tile-cycle--marble;
 }
 html[data-skin="marble"] .app-loading-bolt {
   border-radius: 8px;
@@ -3860,7 +3853,7 @@ html[data-skin="marble"] .vs-strike {
   box-shadow: 0 0 14px #bb913f,0 0 30px rgba(216,178,90,.27);
 }
 html[data-skin="marble"] .vs-go .vs-txt {
-  animation: vsPunch 380ms cubic-bezier(.2,1.3,.4,1) 560ms both,vsHum--marble 900ms ease-in-out 1000ms infinite alternate;
+  animation-name: vsPunch, vsHum--marble;
 }
 html[data-skin="marble"] .av-sparkles i {
   border-radius: 50%;
@@ -4096,12 +4089,10 @@ html[data-skin="marble"] .em-platforms::before {
     radial-gradient(ellipse 42% 30% at 76% 82%, rgba(216,178,90,.091) 0%, transparent 52%);
 }
 html[data-skin="marble"] .em-lightning-main {
-  animation: emLightningFlicker 2.6s ease-in-out infinite alternate,
-    emLightningPulse--marble   3.8s ease-in-out infinite;
+  animation-name: emLightningFlicker, emLightningPulse--marble;
 }
 html[data-skin="marble"] .em-lightning-branch {
-  animation: emLightningFlicker 2.6s ease-in-out infinite alternate-reverse,
-    emLightningPulse--marble   3.8s ease-in-out 1.1s infinite;
+  animation-name: emLightningFlicker, emLightningPulse--marble;
 }
 html[data-skin="marble"] .em-circle-btn {
   border-radius: 50%;
@@ -4127,7 +4118,7 @@ html[data-skin="marble"] .em-circle-btn--online {
     #37373b 30%,
     #18181c 80%
   );
-  animation: emCirclePulse--marble 4.5s ease-in-out infinite, emCardFloat 6s ease-in-out infinite alternate;
+  animation-name: emCirclePulse--marble, emCardFloat;
 }
 html[data-skin="marble"] .em-circle-btn--resume {
   border-color: rgba(159,184,220,.8);
@@ -4716,7 +4707,7 @@ html[data-skin="marble"] .mf-setup-title {
   text-shadow: none;
 }
 html[data-skin="marble"] .ps-dice-icon {
-  animation: ps-dice-pulse--marble 2s ease-in-out infinite;
+  animation-name: ps-dice-pulse--marble;
   filter: drop-shadow(0 0 18px rgba(216,178,90,.225));
 }
 html[data-skin="marble"] .ps-dots .ps-dot {
@@ -4736,7 +4727,7 @@ html[data-skin="marble"] #ov-partner-search .ps-pcard {
   box-shadow: 0 0 20px rgba(216,178,90,.081), inset 0 1px 0 rgba(255,255,255,.028);
 }
 html[data-skin="marble"] #ps-me-card {
-  animation: ps-me-pulse--marble 2.4s ease-in-out infinite;
+  animation-name: ps-me-pulse--marble;
 }
 html[data-skin="marble"] #ov-partner-search .ps-slot-card {
   border-color: var(--by, #9fb8dc);
@@ -4895,7 +4886,7 @@ html[data-skin="marble"] #sg #info-strip #turn-timer.active {
 }
 html[data-skin="marble"] #sg #info-strip #turn-timer.crit,
 html[data-skin="marble"] #sg #info-strip #turn-timer.urgent {
-  animation: gm-timer-crit--marble .55s ease-in-out infinite alternate !important;
+  animation-name: gm-timer-crit--marble !important;
 }
 html[data-skin="marble"] #sg #info-strip #turn-timer .tt-value {
   color: var(--by, #9fb8dc) !important;
@@ -4914,7 +4905,7 @@ html[data-skin="marble"] #sg .info-strip .is-pcard {
 html[data-skin="marble"] #sg .info-strip .is-pcard.act-cell {
   background: rgba(232,200,64,.18) !important;
   border-radius: 10px !important;
-  animation: gm-card-active--marble 2.4s ease-in-out infinite !important;
+  animation-name: gm-card-active--marble !important;
 }
 html[data-skin="marble"] #sg .info-strip .is-pcav .av-img {
   border-radius: 0 !important;
@@ -5253,7 +5244,7 @@ html[data-skin="marble"] #sg .bsq.used .bsq-ic {
   text-shadow: none !important;
 }
 html[data-skin="marble"] body.tile-selected #sg .bsq:not(.used):not(.bsq-tile-host) {
-  animation: gsSocketPulse--marble 1s ease-in-out infinite;
+  animation-name: gsSocketPulse--marble;
 }
 html[data-skin="marble"] #sg .bsq.bsq-tile-host {
   background: transparent !important;
@@ -7858,7 +7849,7 @@ html[data-skin="marble"] #ov-partner-search .ps-av {
   border: 2.5px solid var(--sg-p1);
   background: radial-gradient(circle at 50% 38%, rgba(216,178,90,.182), rgba(29,29,33,.95) 70%);
   box-shadow: 0 0 0 4px rgba(216,178,90,.054), 0 0 22px rgba(216,178,90,.225);
-  animation: psMeGlow--marble 2.4s ease-in-out infinite;
+  animation-name: psMeGlow--marble;
 }
 html[data-skin="marble"] #ov-partner-search .ps-slot-ring {
   border: 2.5px solid rgba(159,184,220,.85);
@@ -8392,7 +8383,7 @@ html[data-skin="marble"] :is(#ov-bonus, .bz-card) .cw-cell.is-cross {
   background: radial-gradient(circle at 50% 45%, rgba(216,178,90,.196), rgba(37,37,41,.95) 70%);
   border: 1.5px solid rgba(216,178,90,.765);
   color: #f3eee3;
-  animation: bzSocket--marble 1.4s ease-in-out infinite;
+  animation-name: bzSocket--marble;
 }
 html[data-skin="marble"] :is(#ov-bonus, .bz-card) .cw-input {
   border: none;
@@ -8507,7 +8498,7 @@ html[data-skin="marble"] .bz-burst::before {
   border-radius: 50%;
 }
 html[data-skin="marble"] .bz-burst.is-on::before {
-  animation: bzFlash--marble .65s ease-out forwards;
+  animation-name: bzFlash--marble;
 }
 html[data-skin="marble"] .bz-wheel-rim {
   border-radius: 50%;
@@ -8545,7 +8536,7 @@ html[data-skin="marble"] .ovc.bonus-award-card > .ovic {
   background: radial-gradient(circle at 50% 36%, rgba(216,178,90,.21), rgba(29,29,33,.96) 70%) !important;
   box-shadow: inset 0 0 0 2.5px #bb913f, inset 0 0 18px rgba(216,178,90,.126), 0 0 24px rgba(216,178,90,.171) !important;
   filter: none !important;
-  animation: gMedalGlow--marble 2.2s ease-in-out infinite !important;
+  animation-name: gMedalGlow--marble !important;
 }
 html[data-skin="marble"] #ov-bonus-intro > .ovc > .ovic svg.gi,
 html[data-skin="marble"] .ovc.bonus-award-card > .ovic svg.gi {
@@ -8744,7 +8735,7 @@ html[data-skin="marble"] .evo-ov .evo-still {
   filter: drop-shadow(0 14px 22px rgba(6,6,10,.55));
 }
 html[data-skin="marble"] .evo-ov.is-stills.is-charging:not(.is-swapped) .evo-still--from {
-  animation: evo-charge--marble 1.7s ease-in forwards;
+  animation-name: evo-charge--marble;
 }
 html[data-skin="marble"] .evo-ov .evo-flash {
   background: radial-gradient(closest-side, rgba(235,250,255,.95), rgba(236,202,114,.55) 45%, rgba(216,178,90,.04));

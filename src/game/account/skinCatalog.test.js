@@ -51,6 +51,10 @@ test('every paid skin is wired up: stylesheet, link, boot colour, logo assets', 
   const html = readFileSync(root + 'index.html', 'utf8');
   for (const s of Object.values(SKINS).filter((x) => x.price > 0)) {
     assert.ok(existsSync(root + `skin-${s.id}.css`), `skin-${s.id}.css (npm run build:skins)`);
+    // Re-pointed animations must be animation-name only: a scoped shorthand resets the
+    // base sheet's per-element delays (the splash tiles all dropped at once).
+    const sheet = readFileSync(root + `skin-${s.id}.css`, 'utf8');
+    assert.doesNotMatch(sheet, new RegExp(`\\banimation:[^;]*--${s.id}\\b`), `skin-${s.id}.css re-emits an animation shorthand`);
     assert.ok(existsSync(root + `skins/${s.id}-overrides.css`), `skins/${s.id}-overrides.css`);
     // The boot script writes one <link data-skin-css> per key of its T map (render-blocking for
     // the saved skin) and loads the splash tiles from assets/ui/logo_tiles_<id>/.
