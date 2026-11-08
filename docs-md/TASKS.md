@@ -15,6 +15,12 @@
 - [ ] The upstream candidate is marked EXPERIMENTAL (not a governed release; legal blockers are open in
   that repo). Revisit when a governed release exists.
 
+## Google Play account
+
+- [x] Trader status declared in Play Console (Nov 5, 2026; required by Feb 1, 2027). If the app's
+  countries or monetisation change (EEA/UK distribution, coin packs, ads), recheck the declaration
+  under Manage account → Account details → About you, and per app under App content.
+
 ## Google Play listing images — October 2026
 
 - [x] Regenerate phone, 7" and 10" tablet screenshots, the feature graphic, and the PC logo and feature graphic
