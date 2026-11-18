@@ -1,5 +1,10 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Test environment — November 2026
+
+- [x] Internal reference document prepared outside this repo (no code change).
+- [ ] `wordInfoService.test.js` ("data/word-info matches data/dictionary.txt") fails on a Windows checkout with `core.autocrlf=true`: the test hashes the working copy, which has CRLF, while the index hash is of the committed LF file. Fix with `data/dictionary.txt text eol=lf` in `.gitattributes` or by normalizing line endings in the test.
+
 ## Dictionary sync + מילון word origin — November 2026
 
 - [x] Replace `data/dictionary.txt` with the boost-dictionary candidate (255,663 words) and rebuild `bot-words.txt`.
