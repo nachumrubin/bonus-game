@@ -2,6 +2,10 @@
 
 ---
 
+## Internal reference document (November 2026)
+
+- Prepared an internal reference document outside this repo. No app code, data or settings changed.
+
 ## Skins: splash tiles drop one by one again (November 2026)
 
 - **Root cause of "all tiles drop together" in Stone and Marble:** to point an animation at the skin's recoloured keyframes, `scripts/build-skin-css.mjs` re-emitted the whole `animation:` shorthand under `html[data-skin]`. That outranked the base `.app-loading-tile:nth-child(n) { animation-delay }` rules and reset all four delays to 0. This happened on every launch, not just the first.
