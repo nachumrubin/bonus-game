@@ -57,6 +57,10 @@ export function isCompatible(a, b) {
   const aSettings = a?.settings ?? {};
   const bSettings = b?.settings ?? {};
 
+  // Boost 2.0 and the classic game are different rulesets: never pair them
+  // (strict or not). A missing ruleset means the classic game.
+  if ((aSettings.ruleset ?? 'LEGACY') !== (bSettings.ruleset ?? 'LEGACY')) return false;
+
   if ((aSettings.strict || bSettings.strict) &&
       aSettings.timelimit !== bSettings.timelimit) {
     return false;

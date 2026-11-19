@@ -58,9 +58,17 @@ export function initialTurnDeadlineMs(mode, settings = {}, nowMs = serverNow(), 
   return Number(nowMs || serverNow()) + turnLimitMsFromSettings(settings) + lead;
 }
 
+// Boost 2.0 rooms are created by the Worker (it holds the bag, racks and
+// queue; clients may not write BOOST_V2 rooms). main.js registers the creator
+// — normally boostTurnClient.createMatch — at boot; tests inject a fake.
+let boostV2RoomCreator = null;
+export function setBoostV2RoomCreator(fn) { boostV2RoomCreator = typeof fn === 'function' ? fn : null; }
+export const isBoostV2Settings = (settings) => settings?.ruleset === 'BOOST_V2';
+
 // Create a new room from an engine state. Used after invite-accept and after
 // matchmaking pairing. Caller has already generated the roomId.
 export async function createRoom(db, { roomId, mode, players, settings, engineState, serverTimestamp }) {
+  if (isBoostV2Settings(settings)) return createBoostV2Room(db, { roomId, mode, players, settings, engineState, serverTimestamp });
   const doc = buildRoomDoc({
     roomId, mode, players, settings, engineState,
     createdAt: serverTimestamp,
@@ -92,6 +100,25 @@ export async function createRoom(db, { roomId, mode, players, settings, engineSt
     payload: { mode }, userId: players[0]?.uid ?? null,
   });
   return doc;
+}
+
+async function createBoostV2Room(db, { roomId, mode, players, settings, engineState, serverTimestamp }) {
+  if (!boostV2RoomCreator) throw new Error('boost-v2-unavailable');
+  const res = await boostV2RoomCreator({
+    roomId, mode, players, settings,
+    startingSlot: engineState?.currentTurnSlot === 1 ? 1 : 0,
+  });
+  if (!res?.ok) throw new Error(res?.reason ?? 'boost-v2-create-failed');
+  // The Worker writes the room, racks and async index; the activeRoom marks
+  // are user paths the client keeps writing as for legacy rooms.
+  await db.ref(`${PATH.users}/${players[0].uid}/activeRoom`).set(roomId);
+  await db.ref(`${PATH.users}/${players[1].uid}/activeRoom`).set(roomId);
+  upsertGameIndex(db, roomId, {
+    hostName: players[0]?.displayName ?? null, guestName: players[1]?.displayName ?? null,
+    hostUid: players[0]?.uid ?? null, guestUid: players[1]?.uid ?? null,
+    mode, status: STATUS.PLAYING, createdAt: Date.now(), ruleset: 'BOOST_V2',
+  });
+  return { roomId, mode, players, settings, ruleset: 'BOOST_V2', createdAt: serverTimestamp };
 }
 
 // Remove a room from BOTH players' async index. Idempotent.

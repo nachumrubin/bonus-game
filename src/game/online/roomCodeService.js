@@ -218,7 +218,7 @@ export async function claimByCode(db, {
   // Async games can start immediately. Live games stay WAITING until both
   // clients click through the coin screen; that ready handshake starts the
   // shared turn timer.
-  if (entry.mode?.endsWith('-async')) {
+  if (entry.mode?.endsWith('-async') && !roomService.isBoostV2Settings(entry.settings)) {
     await db.ref(`${PATH.rooms}/${roomId}`).update({ status: STATUS.PLAYING });
   }
 

@@ -83,6 +83,8 @@ import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/control
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
 import { mountBoostV2Layer } from './ui/screens/boostV2Layer.js';
+import { createBoostTurnClient } from './game/online/boostTurnClient.js';
+import { createBoostV2OnlineSession } from './game/online/boostV2OnlineSession.js';
 import { v2MaxWordLen } from './game/boostV2/botV2.js';
 import { showScreen as spineShowScreen, revealCurrentScreen, settleEntrance, SCREEN_IDS } from './ui/screens/screenTransitions.js';
 import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt, flyOutLoadingTiles, preloadLogoTiles, playLogoStrike, startLogoIdle } from './ui/buildSequences.js';
@@ -383,6 +385,7 @@ let evolutionScreen = null;   // ui/boostie3d/evolutionScreen.js, mounted with t
 let homeAvatarLive = null;    // ui/boostie3d/homeAvatarLive.js — the live Boostie in the home top bar
 let profileAvatarLive = null; // … and on the profile screen
 let economy = null;           // game/account/economyClient.js — the coin worker
+let boostTurnClient = null;
 let skinCtl = null;           // ui/skinController.js — the app skin + store try-on
 let storeScreen = null;       // the mounted avatarStoreScreen (the try-on banner opens its buy sheet)
 const playBilling = createPlayBilling();   // coin packs via Google Play (Android app only)
@@ -483,6 +486,16 @@ async function boot() {
     baseUrl: cfg.pushWorkerUrl,
     getIdToken: async () => { try { return await activeFbCurrentUser?.getIdToken?.(); } catch { return null; } },
   });
+  // Boost 2.0 online matches are run by the Worker (/boost/*): room creation
+  // goes through it (roomService.createRoom delegates for BOOST_V2 settings)
+  // and every in-game action is a request to it.
+  if (cfg.pushWorkerUrl) {
+    boostTurnClient = createBoostTurnClient({
+      baseUrl: cfg.pushWorkerUrl,
+      getIdToken: async () => { try { return await activeFbCurrentUser?.getIdToken?.(); } catch { return null; } },
+    });
+    roomService.setBoostV2RoomCreator((args) => boostTurnClient.createMatch(args));
+  }
   if (cfg.onesignalAppId) {
     notificationService.configure({
       appId: cfg.onesignalAppId,
@@ -1390,6 +1403,7 @@ async function boot() {
           botTime: filters.botTime ?? 40,
           strict: filters.strict,
           ratingRange: filters.ratingRange,
+          ...(filters.ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
         },
       });
       activeMatchmaking.onMatched(async ({ room, mySlot }) => {
@@ -1485,6 +1499,7 @@ async function boot() {
             ...settingsCompat.settingsFromLegacyGlobals(globalThis),
             timelimit: filters.timelimit,
             botTime: filters.botTime ?? 40,
+            ...(filters.ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
           },
         });
       } catch (e) {
@@ -1521,7 +1536,7 @@ async function boot() {
         pendingFriendTarget = null;
         try {
           const invMode  = filters.spineMode ?? 'friend-live';
-          const settings = { ...settingsCompat.settingsFromLegacyGlobals(globalThis), timelimit: filters.timelimit, botTime: filters.botTime ?? 40 };
+          const settings = { ...settingsCompat.settingsFromLegacyGlobals(globalThis), timelimit: filters.timelimit, botTime: filters.botTime ?? 40, ...(filters.ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}) };
           const myName   = globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן';
           const { inviteId, expiresAt } = await inviteService.sendInvite(fbDb, {
             fromUid:    fbUser.uid,
@@ -1590,6 +1605,7 @@ async function boot() {
       activePending = {
         code,
         mode: filters.spineMode,
+        ruleset: filters.ruleset === 'BOOST_V2' ? 'BOOST_V2' : null,
         // Set when this room was opened by auto-inviting a friend, so the
         // invite-ack listener can match a rejection to this waiting room and
         // close it (and so WR cancel can revoke the outstanding invite).
@@ -4871,9 +4887,17 @@ async function boot() {
           });
         };
         unwatch = roomService.watchRoom(db, room.roomId, maybeEnter);
-        roomService.markReadyAndMaybeStart(db, room.roomId, mySlot, undefined, { leadInMs: BOARD_BUILD_LEAD_MS }).then(maybeEnter).catch((e) => {
-          console.error('[spine] online ready handshake failed', e);
-        });
+        if (room.ruleset === 'BOOST_V2') {
+          // Clients cannot write BOOST_V2 rooms: the Worker records READY and
+          // starts the shared clock once both players are in.
+          boostTurnClient?.submit(room.roomId, { type: 'cmd/READY' }).catch((e) => {
+            console.error('[spine] Boost 2.0 ready handshake failed', e);
+          });
+        } else {
+          roomService.markReadyAndMaybeStart(db, room.roomId, mySlot, undefined, { leadInMs: BOARD_BUILD_LEAD_MS }).then(maybeEnter).catch((e) => {
+            console.error('[spine] online ready handshake failed', e);
+          });
+        }
       };
       showLegacyScreen('scoin');
       bus.emit(COIN_OPEN, {
@@ -4897,12 +4921,22 @@ async function boot() {
     settingsCompat.applyGameSettingsToGlobals(globalThis, normalizedRoomSettings);
     settingsCompat.saveGameSettings(globalThis.localStorage, normalizedRoomSettings);
 
+    const isBoostV2Room = room.ruleset === 'BOOST_V2';
+    if (isBoostV2Room && !boostTurnClient) {
+      console.error('[spine] Boost 2.0 room needs the Worker (pushWorkerUrl)');
+      return null;
+    }
     showLegacyScreen('sg');
     if (typeof globalThis.buildUnifiedGrid === 'function') {
-      try { globalThis.buildUnifiedGrid(); } catch { /* swallow */ }
+      try { globalThis.buildUnifiedGrid({ bonusSquares: !isBoostV2Room }); } catch { /* swallow */ }
     }
-    const session = await createOnlineGameSession({ bus, db, room, mySlot });
+    const session = isBoostV2Room
+      ? createBoostV2OnlineSession({ bus, db, room, mySlot, client: boostTurnClient, now: serverNow })
+      : await createOnlineGameSession({ bus, db, room, mySlot });
     const controller = createGameController({ bus, session, mySlot });
+    const boostV2Layer = isBoostV2Room
+      ? mountBoostV2Layer({ bus, controller, getState: () => session.state })
+      : null;
     const animationController = createAnimationController({ bus, mySlot, reducedMotion: () => getMotionPreference().isReduced(), cue: feedbackService.cue });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
@@ -4916,6 +4950,7 @@ async function boot() {
       // lookup there would be a redundant read.
       resolveAvatar: resolveAvatarForUid,
       prefersReducedMotion: () => getMotionPreference().isReduced(),
+      boostV2Hooks: boostV2Layer?.hooks ?? null,
     });
     const bonusFlow = attachBonusFlow(session);
     const reactionCtrl = mountReactionController({
@@ -4935,8 +4970,9 @@ async function boot() {
     // Live timed modes: spin up the timeout watchdog so the opponent's client
     // claims a timeout transactionally when the active player goes absent.
     // Async modes have no per-turn deadline; offline modes have no opponent.
+    // Boost 2.0: the session claims expired turns through the Worker.
     let timeoutWatchdog = null;
-    if (!isAsync && room.settings?.timelimit) {
+    if (!isAsync && !isBoostV2Room && room.settings?.timelimit) {
       const seconds = Number(room.settings.botTime || room.settings.turnSeconds || 0);
       if (seconds > 0) {
         timeoutWatchdog = createTimeoutWatchdog({
@@ -4971,6 +5007,7 @@ async function boot() {
       end() {
         finishBuilds();
         screen.unmount();
+        boostV2Layer?.unmount();
         animationController.dispose();
         controller.dispose();
         bonusFlow.dispose();
@@ -5749,7 +5786,10 @@ function installCutoverGlobals() {
 
     // activePending is set on __spine when the room is created (inside boot).
     const mode     = globalThis.__spine?.activePending?.mode ?? 'friend-live';
-    const settings = settingsCompat.settingsFromLegacyGlobals(globalThis);
+    const settings = {
+      ...settingsCompat.settingsFromLegacyGlobals(globalThis),
+      ...(globalThis.__spine?.activePending?.ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
+    };
 
     // For live invites: check whether the recipient is already in an active live
     // game. If so, notify the inviter and cancel — we don't interrupt someone

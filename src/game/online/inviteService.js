@@ -120,7 +120,7 @@ export async function acceptInvite(db, {
     // Async games can start immediately. Live invite games stay WAITING until
     // both clients click through the coin screen; that ready handshake starts
     // the shared turn timer.
-    if (invite.mode?.endsWith('-async')) {
+    if (invite.mode?.endsWith('-async') && !roomService.isBoostV2Settings(settings)) {
       await db.ref(`${PATH.rooms}/${roomId}`).update({ status: STATUS.PLAYING });
     }
   } catch (e) {

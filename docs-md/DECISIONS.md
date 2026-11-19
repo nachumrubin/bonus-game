@@ -5,6 +5,14 @@
 
 ---
 
+## D-boost-v2-online-mirror: the online Boost 2.0 session is a read-only mirror of the public room — November 2026
+
+**Decision:** `boostV2OnlineSession` rebuilds an engine-shaped state from the public room + my rack, with null placeholders for what the player may not know (opponent rack, bag, queue cards past the visible two). All actions go to the Worker; room changes are translated into the same bus events the local engine emits. The card being placed in the opening setup is public (both players see it), later setup steps stay hidden.
+
+**Why:** the screen, controller, layer, animations and push notifications already speak the engine's state and events; a mirror lets them run unchanged and keeps the hidden queue on the server. Previewing drafts locally (with hidden replacement cards) avoids `/boost/plan`, which would reveal a third card early.
+
+**Trade-offs:** a pass and an exchange look the same in the projection, so the room carries `lastAction`; a room update is held until the matching rack version arrives (≤ 1.5 s, then applied anyway) to avoid showing a new board with a stale rack.
+
 ## D-boost-v2-bot: the Boost 2.0 bot reuses the legacy search through optional hooks — November 2026
 
 **Decision:** `searchBotMove` gains optional `evaluate` / `anchorPriority` / `extraAnchors` hooks; `botV2.chooseV2Turn` supplies them so every candidate is scored by the V2 engine (`computeV2Draft`). The legacy bot passes no hooks and runs the identical code.

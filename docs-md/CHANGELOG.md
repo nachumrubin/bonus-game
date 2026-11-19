@@ -2,6 +2,16 @@
 
 ---
 
+## Boost 2.0 — Phase 7: online play (November 2026)
+
+- **Playable online:** the create-room sheet (friend code / friend invite) and the random-opponent sheet have a "כללי משחק: קלאסי / בוסט 2.0" toggle. A Boost 2.0 room is created by the Worker (`roomService.createRoom` delegates to `boostTurnClient.createMatch` when `settings.ruleset === 'BOOST_V2'`; registered in `main.js` via `setBoostV2RoomCreator`). Matchmaking never pairs Boost 2.0 with classic (`isCompatible`, strict or not).
+- **`src/game/online/boostV2OnlineSession.js`** — the app session for BOOST_V2 rooms. It builds a mirror engine state from `rooms/{id}` and `boostV2Racks/{id}/{mySlot}` only (opponent rack and bag are null placeholders of the right length; queue cards after the two visible ones are `__hidden__` placeholders), sends every action to the Worker, and turns room updates into the engine's events (`MOVE_CONFIRMED` / `OPPONENT_MOVED` with breakdown, `TURN_CHANGED`, `BOOST_PLACED`, `BOOSTS_CHANGED`, `TILES_EXCHANGED`, `GAME_COMPLETED` with `boostV2Endgame`), so the screen, animations and push notifications work unchanged. A room update waits (≤ 1.5 s) for the rack of the same version so a new board never shows with a stale rack. Live games: the waiting player claims an expired turn through the Worker (`claimTimeout`, deadline + 1 s on the server clock); the legacy timeout watchdog is not used for BOOST_V2.
+- **Client-side draft preview** keeps working online on the mirror: replacement cards beyond the visible two show as "אתגר נסתר" (revealed when the move lands). Placements for hidden cards are sent without an `instanceId` (the server validates order by position). This avoids `/boost/plan`, whose third-card early reveal is no longer on the app's path.
+- **Worker / projection:** `READY` command (live: the shared clock starts when both players are through the coin screen; clients cannot write `status` in BOOST_V2 rooms); cron expiry finishes BOOST_V2 matches through the authoritative state (`expireBoostMatch`, no deductions); the room carries `lastAction { type, slot, count? }` and `ready`; the opening-setup projection includes the definition of the card being placed now and of placed cards.
+- **Coin screen (live):** BOOST_V2 rooms send `READY` to the Worker instead of `markReadyAndMaybeStart`; the app enters when the room shows both ready.
+- **Tests:** unit `boostV2OnlineSession.test.js` (10, real authoritative service behind an in-memory RTDB), ruleset tests for matchmaking / room creation / toggles; emulator `boost-v2-online.test.mjs` — two sessions with user credentials under the production rules play opening, setup, an exchange and a resign through the Worker handlers. Unit 2036, emulator 98, e2e Boost 2.0 local + vs-bot pass. sw `CACHE_NAME` → `boost-20261119094224`.
+- Not yet verified on real devices against a deployed Worker (needs deploy of Worker + rules together).
+
 ## Boost 2.0 bot — queue planning, Boost denial, longer words (November 2026)
 
 - **Longer words:** Boost 2.0 bots search words up to 4 / 7 / 8 letters (easy / medium / hard; legacy 3 / 5 / 6 unchanged), with the bot vocabulary built to match (`botV2.v2MaxWordLen`, used by `main.js`). Medium's soft score ceiling 25 → 45 (Boost rewards push good moves past it); search breadth medium 90 / hard 160 words.

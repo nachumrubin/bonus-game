@@ -85,7 +85,7 @@ export async function createRoomForPair({
   // Async games can start immediately. Live games stay WAITING until both
   // matched clients click through the coin screen; that ready handshake
   // starts the shared turn timer.
-  if (mode?.endsWith('-async')) {
+  if (mode?.endsWith('-async') && !roomService.isBoostV2Settings(roomSettings)) {
     await db.ref(`${PATH.rooms}/${roomId}`).update({ status: STATUS.PLAYING });
   }
   return { roomId, room: { roomId, mode, players } };

@@ -9,9 +9,10 @@
 - [x] Phase 4 — placement validator, opening setup, atomic V2 turn, idempotency, invariants.
 - [x] Secure online play (AUDIT §6.1): Worker turn endpoints, protected secret + per-player racks, BOOST_V2 room lock in rules.
 - [ ] Deploy: Worker (`DICTIONARY_URL` must match the deployed app) **together with** the Firebase rules; consider Workers Paid for the cold-start dictionary decode.
-- [ ] Phase 7 wiring: create Boost 2.0 rooms through `boostTurnClient.createMatch` from invite/matchmaking/room-code flows; a V2 session adapter that subscribes to `rooms/{id}` + `boostV2Racks/{id}/{mySlot}` and sends commands (instead of `onlineGameSession`'s `commitTransaction`); route the opponent watchdog to `claimTimeout`; matchmaking must only pair players of the same ruleset.
-- [ ] Known limit: `/boost/plan` reveals a third replacement card one step early when a valid draft consumes three Boosts (preview size is 2). Alternative: a two-step commit for the third card.
-- [ ] Cron expiry (`cronSweep.js`) sets `rooms/{id}/status = 'expired'` but not the secret; teach it to finish BOOST_V2 matches through `authoritativeTurn` too.
+- [x] Phase 7 wiring: Worker room creation from invite / room code / matchmaking; `boostV2OnlineSession`; timeout claims via the Worker; ruleset-aware matchmaking; online ruleset toggles.
+- [ ] Phase 7 follow-ups: two-phone test against a deployed Worker; online rematch returns to the online menu (as for classic) — the ruleset toggle must be picked again; `/boost/plan` is unused by the app (client-side preview on the mirror) — remove or keep for tools; async lobby / My Games card does not label Boost 2.0 rooms yet; debug-online-game skill does not read `boostV2Secret`.
+- [ ] Known limit: `/boost/plan` reveals a third replacement card one step early when a valid draft consumes three Boosts (preview size is 2). The app no longer calls it (Phase 7 previews on the mirror with hidden cards).
+- [x] Cron expiry finishes BOOST_V2 matches through `authoritativeTurn.expireMatch` (Phase 7).
 - [x] Deck stays at 95 cards for now (decided Nov 2026).
 - [x] Decided: A3 (no deduction on stall claim), A4 revised (no deduction on resign/abandon/forfeit), A6 (skipped setup step → opponent places), A7 (no Bridge rule at all).
 - [x] Decided: A2 (locks off, swaps on), A4 (deduct on resign, resigner loses), A9 (no Power Word Easy), BINGO_BONUS = 25.
@@ -22,7 +23,7 @@
 - [x] Phase 6 — Boost 2.0 bot (V2-scored search, rack leave, Boost-seeking anchors, defensive placement, opening setup, fallbacks); offered vs the computer.
 - [x] Phase 6 follow-ups: V2 word lengths 4/7/8 + Boost-targeted search; queue planning (visible cards only); Boost denial via threat model.
 - [ ] Phase 8: tune `OPPONENT_COMPLETE_P`, strategy weights and the ¼ plan factor from simulation; Letter Hunt was never completed in bot self-play (18 consumed, 0 completed).
-- [ ] Phase 7 — online: persist `ruleset` + `boostV2` in room docs (`schema.buildRoomDoc`, `onlineGameSession` hydrate via `normalizeBoostV2State`), commit on `EV.BOOST_PLACED`, watchdog/timer handling for the setup phase (no `turnNumber` advance), matchmaking compatibility by ruleset.
+- [x] Phase 7 — online Boost 2.0 (Worker-authoritative rooms; the client-commit plan in this line was superseded by D-boost-v2-worker).
 - [ ] Phase 8 — balance report from `simulateV2.js` with `bots` (real bot now available; first numbers: completing moves exist on ~10 % of hard-bot turns), telemetry sink for `EV.BOOST_V2_TELEMETRY`.
 - [ ] Phase 9 — release preparation behind a feature flag.
 

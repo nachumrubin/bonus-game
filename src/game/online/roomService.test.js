@@ -246,3 +246,26 @@ test('computeExpiredOnlineTurnState forfeits on consecutive missed turns', () =>
   assert.equal(patch.abandonReason, 'missed-turns');
   assert.equal(patch.turnDeadlineMs, 0);
 });
+
+test('createRoom (Boost 2.0): delegates to the Worker creator, writes no room doc itself', async () => {
+  const { setBoostV2RoomCreator } = await import('./roomService.js');
+  const db = makeMockDb();
+  const calls = [];
+  setBoostV2RoomCreator(async (args) => { calls.push(args); return { ok: true, version: 1 }; });
+  try {
+    const engineState = createInitialState({ mode: 'friend-async', tileBagSeed: 'x', players: PLAYERS, startingSlot: 1 });
+    const out = await createRoom(db, { roomId: 'v2-room', mode: 'friend-async', players: PLAYERS, settings: { ruleset: 'BOOST_V2' }, engineState, serverTimestamp: 5 });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].startingSlot, 1);
+    assert.equal(calls[0].settings.ruleset, 'BOOST_V2');
+    assert.equal(out.ruleset, 'BOOST_V2');
+    assert.equal(await readRoom(db, 'v2-room'), null, 'the client never writes a BOOST_V2 room');
+    assert.equal(db._data.users.a.activeRoom, 'v2-room');
+    setBoostV2RoomCreator(async () => ({ ok: false, reason: 'busy' }));
+    await assert.rejects(createRoom(db, { roomId: 'v2-b', mode: 'friend-live', players: PLAYERS, settings: { ruleset: 'BOOST_V2' }, engineState, serverTimestamp: 5 }), /busy/);
+    setBoostV2RoomCreator(null);
+    await assert.rejects(createRoom(db, { roomId: 'v2-c', mode: 'friend-live', players: PLAYERS, settings: { ruleset: 'BOOST_V2' }, engineState, serverTimestamp: 5 }), /boost-v2-unavailable/);
+  } finally {
+    setBoostV2RoomCreator(null);
+  }
+});

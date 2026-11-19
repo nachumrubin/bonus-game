@@ -35,6 +35,23 @@ function readName(root) {
   return v && v.length > 0 ? v : saved || 'שחקן 1';
 }
 
+// Boost 2.0 (Worker-run) or the classic game. Classic unless picked.
+export function readRuleset(root, prefix) {
+  return $(`#${prefix}-rules-v2`, root)?.classList?.contains('active') ? 'BOOST_V2' : 'LEGACY_V1';
+}
+
+// Two-button ruleset toggle shared with the matchmaking sheet.
+export function wireRulesetToggle(root, prefix, cleanups) {
+  const btns = { LEGACY_V1: $(`#${prefix}-rules-classic`, root), BOOST_V2: $(`#${prefix}-rules-v2`, root) };
+  for (const btn of Object.values(btns)) {
+    if (!btn) continue;
+    cleanups.push(on(btn, 'click', () => {
+      for (const b of Object.values(btns)) b?.classList?.remove('active');
+      btn.classList?.add('active');
+    }));
+  }
+}
+
 export function readCreateRoomFilters(root = globalThis.document) {
   const legacyMode = readActiveMode(root);
   return {
@@ -43,6 +60,7 @@ export function readCreateRoomFilters(root = globalThis.document) {
     timelimit: legacyMode === 'live',
     botTime: readBotTime(root),
     name: readName(root),
+    ruleset: readRuleset(root, 'cr'),
   };
 }
 
@@ -60,6 +78,8 @@ export function mountCreateRoomScreen({ root = globalThis.document, bus } = {}) 
       btn.classList?.add('active');
     }));
   }
+
+  wireRulesetToggle(root, 'cr', cleanups);
 
   const confirm = $('button[onclick="crConfirm()"]', root);
   const cancel  = $('button[onclick="ovClose(\'ov-create-room\')"]', root);
