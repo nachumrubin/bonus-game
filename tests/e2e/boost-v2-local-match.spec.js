@@ -73,6 +73,11 @@ test('a full Boost 2.0 pass-and-play match: setup, opening Boosts, a Boost move,
   await expect(page.locator('#sg')).toHaveClass(/boost-v2/);
   await expect(page.locator('#v2-strip')).toContainText('הבאים בתור');
   await expect(page.locator('#game-grid .bsq')).toHaveCount(0); // no legacy bonus squares
+  // A true 10×10 board (no perimeter ring) spanning (nearly) the full width.
+  await expect(page.locator('#game-grid > *')).toHaveCount(100);
+  await expect(page.locator('#game-grid')).toHaveClass(/grid-10/);
+  const boardW = await page.locator('#game-grid').evaluate(el => el.getBoundingClientRect().width);
+  expect(boardW).toBeGreaterThan(390 * 0.9);
   await expect(page.locator('#is-locks-1')).toBeHidden();      // no locks in Boost 2.0
   await expect(page.locator('#is-locks-2')).toBeHidden();
   await page.waitForFunction(() => window.__spine.isDictReady?.() !== false);

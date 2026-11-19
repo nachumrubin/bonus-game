@@ -6080,7 +6080,11 @@ function computeBasicSizes() {
     ?? grid.parentElement;
   const rect = wrap?.getBoundingClientRect?.();
   const base = Math.min(rect?.width || 520, rect?.height || 520);
-  const size = Math.max(14, Math.floor((base - 22) / 12));
+  // Classic boards are 12×12 (the outer ring holds the bonus squares); a
+  // Boost 2.0 board is just the 10×10 play area (`grid-10`) and gets the
+  // whole width. Gaps are 2px between cells.
+  const cols = grid.classList?.contains?.('grid-10') ? 10 : 12;
+  const size = Math.max(14, Math.floor((base - (cols - 1) * 2) / cols));
   // Set --csz on BOTH the wrap and the grid so the wrap's width/height calc
   // and the grid's template-columns/rows agree. Setting only the grid (the
   // previous behavior) left the wrap sized by the CSS clamp() and the grid
@@ -6101,13 +6105,29 @@ function scheduleBasicLayoutRefresh() {
   globalThis.setTimeout?.(run, 240);
 }
 
-// `bonusSquares: false` (Boost 2.0) leaves the perimeter empty — no off-grid
-// bonus squares exist in that ruleset.
+// `bonusSquares: false` (Boost 2.0): no off-grid bonus squares exist in that
+// ruleset, so the grid is only the 10×10 play area (no perimeter ring) and
+// the board can use the full width. Cell ids (#c{r}_{c}) are the same.
 function buildSpineUnifiedGrid({ bonusSquares = true } = {}) {
   const doc = globalThis.document;
   const grid = doc?.getElementById?.('game-grid');
   if (!grid) return;
   grid.innerHTML = '';
+  const innerWrap = doc.querySelector?.('.board-center-inner');
+  grid.classList?.toggle?.('grid-10', !bonusSquares);
+  innerWrap?.classList?.toggle?.('grid-10', !bonusSquares);
+  if (!bonusSquares) {
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 10; c++) {
+        const el = doc.createElement('div');
+        el.className = 'cell';
+        el.id = `c${r}_${c}`;
+        grid.appendChild(el);
+      }
+    }
+    computeBasicSizes();
+    return;
+  }
   const map = new Map();
   if (bonusSquares) BDEFS.forEach((b, idx) => {
     map.set(`${b.br + 2},${b.bc + 2}`, idx);

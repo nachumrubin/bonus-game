@@ -2,6 +2,12 @@
 
 ---
 
+## Boost 2.0 — full-width 10×10 board (November 2026)
+
+- Boost 2.0 boards have no off-grid bonus squares, so the grid is now built as just the 10×10 play area (`buildUnifiedGrid({ bonusSquares: false })` → `.grid-10` on `#game-grid` and `.board-center-inner`, no perimeter cells) and `computeBasicSizes` divides the width by 10 instead of 12. On a 390 px phone the cells grow from ~28 px to ~37 px and the board spans the screen width. Classic games keep the 12×12 grid with the bonus-square ring (verified switching V2 → classic in one session: 100 → 144 cells).
+- e2e `boost-v2-local-match` now asserts 100 cells, `.grid-10` and a board wider than 90 % of the viewport.
+- Skins regenerated; sw `CACHE_NAME` → `boost-20261119075452`.
+
 ## Boost 2.0 — Phase 5: the game screen (November 2026)
 
 - **Playable now:** setup → two players → "כללי משחק: בוסט 2.0" starts a local Boost 2.0 match (pass-and-play). The bot and online modes stay classic until Phases 6/7 (the toggle is hidden for them).

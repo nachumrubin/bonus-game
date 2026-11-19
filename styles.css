@@ -5526,3 +5526,18 @@ button[aria-disabled="true"] {
 
 /* End screen: accumulated score and rack deduction (natural endings only). */
 .end-v2-ded{font-size:12px;font-weight:700;color:#b9c8ea;margin-top:2px;}
+
+/* Boost 2.0 board: only the 10×10 play area (no bonus-square ring), so it
+   spans the full width. --csz is computed for 10 columns (computeBasicSizes). */
+.board-center-inner.grid-10{
+  width:calc(var(--csz) * 10 + 18px);
+  height:calc(var(--csz) * 10 + 18px);
+}
+#game-grid.grid-10{
+  grid-template-columns:repeat(10, var(--csz));
+  grid-template-rows:repeat(10, var(--csz));
+}
+.board-center-inner.grid-10 #board-bg,
+.board-center-inner.grid-10 #board-border{
+  left:0; top:0; width:100%; height:100%;
+}

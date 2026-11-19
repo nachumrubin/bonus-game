@@ -267,6 +267,7 @@ https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
 
 ```
 #sg.boost-v2           — set while a Boost 2.0 match is mounted; hides the lock pills (#is-locks-1/2, #lock-inv-display)
+#game-grid.grid-10 / .board-center-inner.grid-10 — Boost 2.0 board: 10×10 cells only (no perimeter ring), --csz computed for 10 columns → full width
 #v2-strip              — above the board (game.html, `hidden` in legacy games). One of:
                          · "הבאים בתור" — the next two queue cards (.v2-card)
                          · live draft: breakdown chips (.v2-chip--words/ok/fail/rack) + total (.v2-total),
