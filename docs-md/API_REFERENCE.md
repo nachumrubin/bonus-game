@@ -117,7 +117,7 @@ validateMove(state: GameState, placed: PlacedTile[]): {
 ## Scoring Engine (`src/game/core/scoringEngine.js`)
 
 ```typescript
-BINGO_BONUS: 50
+BINGO_BONUS: 25
 
 getMainWord(state: GameState, placed: PlacedTile[]): WordTile[]
 getAllWords(state: GameState, placed: PlacedTile[]): WordTile[][]
@@ -402,6 +402,8 @@ BDEFS: BoardSlotDef[]
 - Events (V2): `EV.MOVE_CONFIRMED` adds `breakdown`, `boostPlacements`, `ruleset`; `EV.BOOSTS_CHANGED` (`publicView`); `EV.BOOST_PLACED`; `EV.BOOST_V2_TELEMETRY { type, rulesVersion, deckVersion, ... }`; `EV.GAME_COMPLETED` adds `boostV2Endgame { accumulated, deductions, final }`.
 - `planForMove(state, placed, consumedIds) → { remaining, entries, legal, plan }` — the replacement batch the engine will demand (UI/bot preview). `plan.arrangement` is always a valid submission.
 - `publicView(state.boostV2)` — what a player may see: active Boosts, `upcoming` (next 2), setup progress. Never the full queue.
+- Online (Worker): `createBoostTurnClient({ baseUrl, getIdToken })` → `createMatch`, `submit(roomId, command, { expectedVersion })`, `claimTimeout`, `plan(roomId, draft)`; `readBoostV2Room(room)`, `readMyRack(node)`. Worker-side: `authoritativeTurn.createMatch / applyCommand / planDraft`.
+- `legalOpeningSquares(state)` — legal squares for the current opening-setup Boost.
 - `evaluateBoost`, `evaluateMoveBoosts`, `buildScoreBreakdown`, `computeFinalScores`, `generateQueue`, `legalSquares`, `planReplacements`, `validatePlacements`, `checkBoostV2Invariants`, `normalizeBoostV2State` — pure.
 
 ## Notifications (`src/notifications/`)

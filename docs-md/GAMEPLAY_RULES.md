@@ -74,7 +74,7 @@ Total = sum(scoreWord(w) for each word formed) + bingo_bonus
 
 - `scoreWord(word)` = sum of `tile.val` for all tiles in that word
 - There are **no board multiplier squares** (no double/triple word/letter bonus squares like classic Scrabble). Each tile scores its face value.
-- **Bingo bonus:** +50 points if exactly 8 tiles placed in one move (`BINGO_BONUS = 50`, `scoringEngine.js`)
+- **Bingo bonus:** +25 points if exactly 8 tiles placed in one move (`BINGO_BONUS = 25`, `scoringEngine.js`; was 50 until Nov 2026 — changed for every ruleset, including legacy matches already in progress)
 - All words formed by a move are scored: main word along placement axis + all cross-words
 
 ### Word Formation
@@ -438,11 +438,14 @@ Source: `src/game/boostV2/` (see `docs-md/boost-v2/AUDIT.md`). Applies only to s
 `ruleset: 'BOOST_V2'`; everything above stays true for legacy matches.
 
 - **Opening:** first word must cover one of (4,4) (4,5) (5,4) (5,5) — reason `'opening-not-center'`. Tiles must be on the 10×10 grid (`'off-grid'`).
-- **Off in V2:** off-grid bonus squares, mini-games/wheel, future-effect boosts, locks (`'v2-locks-disabled'`), tile swaps (`'v2-tile-swaps-disabled'`).
+- **Off in V2:** off-grid bonus squares, mini-games/wheel, future-effect boosts, locks (`'v2-locks-disabled'`).
+- **Tile swaps stay available (rules 0.2):** same as legacy — at least one regular placement (`'swap-needs-placement'`), the displaced tile returns to the rack and may be played in the same move; swapped-in tiles count as new tiles for words, scoring, Tile Master and the full-rack count. Tile values always come from the letter table, never from the client.
 - **Scoring:** Σ word face values (all new/extended words, shared tiles count twice) + Σ completed Boost rewards + **25** for exactly 8 new tiles. Every move records a breakdown (`moveHistory[i].breakdown`, `MOVE_CONFIRMED.breakdown`).
-- **Endgame:** same triggers as legacy. On `completed`, each player's remaining rack value is subtracted once (`state.boostV2.endgame`); not on resign/abandon. Higher final score wins; equal = draw.
+- **Endgame:** same triggers as legacy. Each player's remaining rack value is subtracted once (`state.boostV2.endgame`) — for completed **and** resigned/abandoned matches. Higher final score wins; equal = draw; a player who resigns or abandons always loses.
 - **Exchange:** 1…min(rack, bag) tiles; bag empty → `'exchange-bag-empty'`; replacements drawn **before** the returned tiles go back; counts as a scoreless turn (existing rule).
 - **Boosts:** up to 3 active challenge markers on empty squares; a valid move covering one consumes it (success → reward 5/10/20 by difficulty, failure → 0). Nine families (Letter Hunt, Long Word, Tile Master, Double Letter, Unique Letters, Word Edge, Bridge Builder, Power Word, Exact Target).
-- **Queue:** 100-card candidate deck, shuffled once per match (first three = one Easy, one Medium, one non-Bridge Hard); strict FIFO; next two cards visible.
+- **Power Word:** Medium (≥ 12) and Hard (≥ 18) only — no Easy level (rules 0.2).
+- **Queue:** 95-card candidate deck `boost-v2.deck.0.2-candidate` (Power Word Easy removed from the 100-card table), shuffled once per match (first three = one Easy, one Medium, one non-Bridge Hard); strict FIFO; next two cards visible.
 - **Placement:** the consuming player places replacements in the same turn, within Manhattan distance 2 of a tile on the post-move board; Bridge Builder must share a row/column with another Boost or it falls back to Hard Long Word 8+. With no legal square, the entry stays pending and is placed after a later word move.
 - **Opening setup:** after each player's first turn, the second player, the starting player, then the second player each place one Boost (`CMD.PLACE_OPENING_BOOST`); all three activate together and the starting player moves next.
+- **Online:** Boost 2.0 online matches are run by the Cloudflare Worker (`/boost/*`, `worker/src/boostTurn.js`). Clients send commands; the Worker validates, scores and writes. The bag, both racks and the full queue are in `boostV2Secret/{roomId}` (no client access); each player reads only their own rack (`boostV2Racks/{roomId}/{slot}`). Timeouts are claimed by the opponent through the Worker (deadline + 1 s grace; two consecutive misses forfeit).

@@ -2,6 +2,17 @@
 
 ---
 
+## Boost 2.0 — Worker-authoritative online turns + product decisions (November 2026)
+
+- **Product decisions applied:** (1) online Boost 2.0 is run by the Cloudflare Worker; (2) locks removed in 2.0, **tile swaps stay available**; (3) **`BINGO_BONUS` = 25 for every ruleset** — legacy matches in progress included (FAQ, guide, tips and the in-game `BINGO +N` label updated; logged in `docs/intentional-change-register.md`); (4) resign/abandon in 2.0 deducts both racks but the resigner still loses; (5) **Power Word has no Easy level** → rules `boost-v2.rules.0.2-proto`, deck `boost-v2.deck.0.2-candidate` (95 cards, 40/35/20).
+- **Worker (`worker/src/boostTurn.js`):** `POST /boost/create | /boost/turn | /boost/plan`. Secret match in `boostV2Secret/{roomId}` (full engine state as JSON, ETag compare-and-set, remembered request ids), public projection on `rooms/{roomId}` (never `players`, so `oneSignalSubId` survives), per-player racks on `boostV2Racks/{roomId}/{slot}`. Identity from the ID token; client tile values, pass reasons and payload extras are discarded. Live timeouts are claimed through the Worker (deadline + 1 s grace, two misses forfeit). Bundle: 196 KiB (49 KiB gzip).
+- **Pure service (`src/game/boostV2/authoritativeTurn.js`):** `createMatch`, `applyCommand`, `planDraft`, projections — unit-tested in Node and bundled into the Worker. **`sortedDictionary.js`:** binary search on the raw sorted dictionary text + Firebase overlays, parity-tested against `isValid`.
+- **Rules:** `boostV2Secret` closed; `boostV2Racks/{room}/{slot}` readable only by that player; BOOST_V2 rooms (root, `status`, `turnDeadlineMs`, `settings`, `abandonedBy`, `abandonReason`) unwritable by clients. `npm run test:emulator`: 97/97 (6 new; the 3 restriction tests fail on the old rules).
+- **Client:** `src/game/online/boostTurnClient.js` (retries reuse one request id; `readBoostV2Room`, `readMyRack`).
+- **Engine:** V2 tile swaps; tile values recomputed from the letter table; injectable word validator; `legalOpeningSquares()`; opening preview now shows the first two queue entries before activation (spec §15 — previously skipped the cards being placed).
+- sw `CACHE_NAME` → `boost-20261119062016` (FAQ / guide / tips text changed).
+- **Tests:** unit 2001 pass (was 1961).
+
 ## Boost 2.0 — Phases 0–4: engine prototype behind the BOOST_V2 ruleset (November 2026)
 
 - **Nothing changes for players yet.** All Boost 2.0 behaviour is gated on `state.ruleset === 'BOOST_V2'`, which no UI path creates. Legacy matches (no `ruleset` field) run exactly as before; the 1870 existing unit tests pass unchanged.

@@ -1,4 +1,4 @@
-// Boost 2.0 — versioned 100-card deck manifest (spec §14).
+// Boost 2.0 — versioned deck manifests (spec §14). Current: 0.2 (95 cards).
 //
 // STATUS: CANDIDATE — generated for product-owner review, not frozen for
 // production (spec §14 "Generate a candidate fixed deck for review before
@@ -110,7 +110,19 @@ export const DECK_0_1 = buildDeck({
   wordEdgeTargets: WORD_EDGE_TARGETS_0_1,
 });
 
-export const DECK_REGISTRY = Object.freeze({ [DECK_0_1.deckVersion]: DECK_0_1 });
+// 0.2 — Power Word EASY removed (product decision, Nov 2026): 95 cards,
+// 40 / 35 / 20. Whether to refill to 100 is open (see AUDIT).
+export const DECK_COMPOSITION_0_2 = Object.freeze({ ...DECK_COMPOSITION_0_1, POWER_WORD: [0, 5, 2] });
+
+export const DECK_0_2 = buildDeck({
+  deckVersion: 'boost-v2.deck.0.2-candidate',
+  rulesVersion: 'boost-v2.rules.0.2-proto',
+  composition: DECK_COMPOSITION_0_2,
+  letterHuntTargets: LETTER_HUNT_TARGETS_0_1,
+  wordEdgeTargets: WORD_EDGE_TARGETS_0_1,
+});
+
+export const DECK_REGISTRY = Object.freeze({ [DECK_0_1.deckVersion]: DECK_0_1, [DECK_0_2.deckVersion]: DECK_0_2 });
 
 export function getDeck(version) {
   const d = DECK_REGISTRY[version];

@@ -65,11 +65,12 @@ test('multiple + mixed Boosts stack', () => {
   assert.ok(breakdownIsConsistent(b));
 });
 
-test('full-rack bonus: exactly 8 new tiles → +25 (legacy BINGO_BONUS constant untouched)', () => {
+test('full-rack bonus: exactly 8 new tiles → +25, the shared BINGO_BONUS', () => {
   assert.equal(fullRackBonusFor(8, RULES), 25);
   assert.equal(fullRackBonusFor(7, RULES), 0);
   assert.equal(fullRackBonusFor(5, RULES), 0); // emptying a short rack is not a full rack
-  assert.equal(BINGO_BONUS, 50);
+  assert.equal(BINGO_BONUS, 25);
+  assert.equal(RULES.fullRackBonus, BINGO_BONUS);
 });
 
 test('eight new tiles + two existing tiles still earns +25, and stacks with Boosts', () => {

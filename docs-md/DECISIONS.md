@@ -5,9 +5,17 @@
 
 ---
 
+## D-boost-v2-worker: Online Boost 2.0 matches are run by the Cloudflare Worker — November 2026
+
+**Decision:** for BOOST_V2 rooms the Worker is the only writer. The authoritative match (bag, racks, full hidden queue) lives in `boostV2Secret/{roomId}` as an engine-state JSON string guarded by RTDB ETags; clients see a public projection on `rooms/{roomId}` and only their own rack. The game logic is the app's pure engine bundled into the Worker (same pattern as D-coin-economy).
+
+**Why:** a hidden queue cannot stay hidden in a world-readable room computed on clients (AUDIT §6.1). Storing the state as one JSON string sidesteps Firebase's dropped-empty-array quirks for the authoritative copy; the public projection is structured so clients can subscribe to fields. Legacy rooms keep the client-commit model unchanged.
+
+**Trade-offs:** a turn needs the Worker online (a failed request is retried with the same request id); the Worker fetches the deployed app's dictionary so both sides validate identically.
+
 ## D-boost-v2-ruleset: Boost 2.0 is a separate, versioned ruleset beside the legacy engine — November 2026
 
-**Decision:** Boost 2.0 matches carry `ruleset: 'BOOST_V2'` and a `boostV2` block holding a *snapshot* of their rules, their deck's challenge definitions and their full queue. `gameEngine.dispatch()` hands V2 commands to `src/game/boostV2/engineV2.js`; legacy states (no `ruleset`) never reach it. Legacy constants that the spec changes for V2 (`BINGO_BONUS = 50`) are not edited — V2 reads `rules.fullRackBonus = 25` instead.
+**Decision:** Boost 2.0 matches carry `ruleset: 'BOOST_V2'` and a `boostV2` block holding a *snapshot* of their rules, their deck's challenge definitions and their full queue. `gameEngine.dispatch()` hands V2 commands to `src/game/boostV2/engineV2.js`; legacy states (no `ruleset`) never reach it. Rules 0.2 reads the full-rack bonus from the shared `BINGO_BONUS` (set to 25 for every ruleset by product decision, Nov 2026).
 
 **Why:** live legacy rooms must keep their rules until completion (spec §29), and several legacy constants are on the never-change list. A per-match snapshot means a later balancing change can never alter a match in progress. Keeping the V2 handlers out of `gameEngine.js` avoids touching its parity-critical swap / lock / deferred-bonus paths.
 

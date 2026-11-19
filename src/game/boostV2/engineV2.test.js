@@ -18,7 +18,7 @@ const _log = console.log;
 console.log = () => {};
 process.on('exit', () => { console.log = _log; });
 
-const WORDS = ['שלומ', 'של', 'לא', 'אב', 'אבא', 'בא', 'לאו', 'וו', 'אל', 'מא', 'למ', 'ומ'];
+const WORDS = ['שלומ', 'של', 'לא', 'אב', 'אבא', 'בא', 'לאו', 'וו', 'אל', 'מא', 'למ', 'ומ', 'שלאמב', 'שלאמו'];
 beforeEach(() => { DICT.clear(); addWordsFromText(WORDS.join('\n')); });
 
 const PLAYERS = { 0: { uid: 'a' }, 1: { uid: 'b' } };
@@ -96,12 +96,12 @@ function midGame(boosts, rack0 = ['א', 'ל', 'ו', 'ב', 'א', 'נ', 'ר', 'ת'
 test('V2 state: ruleset + versions persisted, legacy bonus/locks off, no Boosts in round 1', () => {
   const { state } = fresh();
   assert.equal(state.ruleset, 'BOOST_V2');
-  assert.equal(state.boostV2.rulesVersion, 'boost-v2.rules.0.1-proto');
-  assert.equal(state.boostV2.deckVersion, 'boost-v2.deck.0.1-candidate');
+  assert.equal(state.boostV2.rulesVersion, 'boost-v2.rules.0.2-proto');
+  assert.equal(state.boostV2.deckVersion, 'boost-v2.deck.0.2-candidate');
   assert.equal(state.boostV2.phase, PHASE.FIRST_ROUND);
   assert.deepEqual(state.bonusAssignment, []);
   assert.deepEqual(state.lockInventory, { 0: [], 1: [] });
-  assert.equal(state.boostV2.queue.entries.length, 100);
+  assert.equal(state.boostV2.queue.entries.length, 95);
   assert.deepEqual(checkBoostV2Invariants(state), []);
 });
 
@@ -124,14 +124,14 @@ test('opening word must cover a central square', () => {
   assert.equal(state.scores[0], 3);
 });
 
-test('rejections: off-grid, legacy swaps and locks, duplicate coordinates', () => {
+test('rejections: off-grid, swap without a tile, locks, duplicate coordinates', () => {
   const { state, eng, bus } = fresh();
   setRack(state, 0, ['ל', 'א']);
   const reason = () => bus.of(EV.INVALID_MOVE_REJECTED).at(-1).reason;
   eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(-1, 5, 'ל'), tile(0, 5, 'א')] } });
   assert.equal(reason(), 'off-grid');
   eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(4, 4, 'ל')], swappedTiles: [tile(4, 5, 'א')] } });
-  assert.equal(reason(), 'v2-tile-swaps-disabled');
+  assert.equal(reason(), 'swap-no-tile');
   eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(4, 4, 'ל')], lock: { r: 0, c: 0, duration: 3 } } });
   assert.equal(reason(), 'v2-locks-disabled');
   eng.dispatch({ type: CMD.PLACE_LOCK, payload: { r: 0, c: 0, duration: 3 } });
@@ -151,8 +151,9 @@ test('first round → opening setup (second, first, second) → three Boosts act
   assert.deepEqual(state.boostV2.openingSetup.order, [1, 0, 1]);
   assert.equal(state.currentTurnSlot, 1);
   const queueHead = state.boostV2.queue.entries.slice(0, 3).map(e => e.instanceId);
-  assert.deepEqual(publicView(state.boostV2).upcoming.map(u => u.instanceId), state.boostV2.queue.entries.slice(3, 5).map(e => e.instanceId),
-    'preview excludes the three being placed');
+  assert.deepEqual(publicView(state.boostV2).upcoming.map(u => u.instanceId), state.boostV2.queue.entries.slice(0, 2).map(e => e.instanceId),
+    'before initial activation the preview is the first two queue entries (spec §15)');
+  assert.equal(publicView(state.boostV2).openingSetup.current.instanceId, queueHead[0], 'card to place now is shown');
 
   const reason = () => bus.of(EV.INVALID_MOVE_REJECTED).at(-1).reason;
   eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(5, 4, 'א')] } });
@@ -405,13 +406,69 @@ test('endgame move consuming a Boost: no replacement needed; opponent rack deduc
   assert.equal(state.scores[1], 8);
 });
 
-test('resign does not apply rack deductions', () => {
+test('resign: both racks are deducted, but the resigning player still loses (AUDIT A4)', () => {
   const { state, eng, bus } = midGame([{ defId: LW_E, r: 2, c: 3 }, { defId: LW_E, r: 2, c: 6 }, { defId: LW_E, r: 6, c: 6 }]);
-  state.scores = { 0: 30, 1: 20 };
+  const pen = (slot) => state.racks[slot].reduce((sum, l) => sum + (HV[l] ?? 0), 0);
+  const p0 = pen(0), p1 = pen(1);
+  state.scores = { 0: 10, 1: 200 };
   eng.dispatch({ type: CMD.RESIGN_GAME, payload: { slot: 1 } });
   const done = bus.of(EV.GAME_COMPLETED).at(-1);
-  assert.equal(done.boostV2Endgame, undefined);
-  assert.deepEqual(done.scores, { 0: 30, 1: 20 });
+  assert.deepEqual(done.boostV2Endgame.deductions, { 0: p0, 1: p1 });
+  assert.deepEqual(done.scores, { 0: 10 - p0, 1: 200 - p1 });
+  assert.equal(done.winnerSlot, 0, 'resigner loses even with the higher final score');
+});
+
+// ── tile swaps (rules 0.2) ──────────────────────────────────────────────────
+test('tile swap: replaces a board tile, displaced tile returns to the rack, scores as a new tile', () => {
+  const { state, eng, bus } = midGame([{ defId: LW_E, r: 2, c: 3 }, { defId: LW_E, r: 2, c: 6 }, { defId: LW_E, r: 6, c: 6 }]);
+  const before = JSON.parse(JSON.stringify(state.boostV2));
+  eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(4, 7, 'ב')], swappedTiles: [tile(4, 5, 'א')] } });
+  const m = bus.of(EV.MOVE_CONFIRMED).at(-1);
+  assert.ok(m, JSON.stringify(bus.of(EV.INVALID_MOVE_REJECTED).at(-1)));
+  assert.deepEqual(m.words, ['שלאמב']);
+  assert.equal(m.score, 3 + 2 + 1 + 2 + 3);
+  assert.equal(state.board[4][5].letter, 'א');
+  assert.equal(state.racks[0].filter(l => l === 'ו').length >= 2, true, 'displaced ו is back on the rack');
+  assert.equal(state.racks[0].length, 8);
+  assert.equal(state.moveHistory.at(-1).swappedTiles[0].oldLetter, 'ו');
+  assert.deepEqual(checkBoostV2Invariants(state, before), []);
+});
+
+test('tile swap: the displaced tile can be played in the same move', () => {
+  const { state, eng, bus } = midGame(
+    [{ defId: LW_E, r: 2, c: 3 }, { defId: LW_E, r: 2, c: 6 }, { defId: LW_E, r: 6, c: 6 }],
+    ['א', 'ב', 'נ', 'ר', 'ת', 'ש', 'ל', 'מ'],
+  );
+  eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(4, 7, 'ו')], swappedTiles: [tile(4, 5, 'א')] } });
+  const m = bus.of(EV.MOVE_CONFIRMED).at(-1);
+  assert.ok(m, JSON.stringify(bus.of(EV.INVALID_MOVE_REJECTED).at(-1)));
+  assert.deepEqual(m.words, ['שלאמו']);
+});
+
+test('tile swap: needs a regular placement; a rejected swap changes nothing', () => {
+  const { state, eng, bus } = midGame([{ defId: LW_E, r: 2, c: 3 }, { defId: LW_E, r: 2, c: 6 }, { defId: LW_E, r: 6, c: 6 }]);
+  const snap = snapshot(state);
+  eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [], swappedTiles: [tile(4, 5, 'א')] } });
+  assert.equal(bus.of(EV.INVALID_MOVE_REJECTED).at(-1).reason, 'swap-needs-placement');
+  eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(4, 7, 'נ')], swappedTiles: [tile(4, 5, 'א')] } });
+  assert.equal(bus.of(EV.INVALID_MOVE_REJECTED).at(-1).reason, 'word-not-in-dictionary');
+  assert.equal(snapshot(state), snap);
+});
+
+test('client-supplied tile values are ignored; malformed tiles rejected', () => {
+  const { eng, bus } = midGame([{ defId: LW_E, r: 2, c: 3 }, { defId: LW_E, r: 2, c: 6 }, { defId: LW_E, r: 6, c: 6 }]);
+  eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [{ r: 5, c: 4, letter: 'א', val: 500 }] } });
+  assert.equal(bus.of(EV.MOVE_CONFIRMED).at(-1).score, 3);
+  eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [{ r: 5, c: 5, letter: 'x' }] } });
+  assert.equal(bus.of(EV.INVALID_MOVE_REJECTED).at(-1).reason, 'invalid-tile');
+});
+
+test('an injected word validator replaces the dictionary for V2 moves', () => {
+  const f = fresh();
+  const eng = createEngine({ state: f.state, bus: f.bus, isWordValid: () => false });
+  setRack(f.state, 0, ['ל', 'א']);
+  eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(4, 4, 'ל'), tile(4, 5, 'א')] } });
+  assert.equal(f.bus.of(EV.INVALID_MOVE_REJECTED).at(-1).reason, 'word-not-in-dictionary');
 });
 
 test('full rack: eight new tiles → +25 in the breakdown', () => {
@@ -463,8 +520,8 @@ test('telemetry carries rules and deck versions', () => {
   const t = bus.of(EV.BOOST_V2_TELEMETRY);
   assert.ok(t.some(e => e.type === 'boost-completed'));
   for (const e of t) {
-    assert.equal(e.rulesVersion, 'boost-v2.rules.0.1-proto');
-    assert.equal(e.deckVersion, 'boost-v2.deck.0.1-candidate');
+    assert.equal(e.rulesVersion, 'boost-v2.rules.0.2-proto');
+    assert.equal(e.deckVersion, 'boost-v2.deck.0.2-candidate');
     assert.equal('racks' in e, false, 'no private rack data in telemetry');
   }
 });

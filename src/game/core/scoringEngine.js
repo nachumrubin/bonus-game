@@ -12,12 +12,15 @@
 // main word and a cross-word.
 //
 // scoreMove(words, placedCount) returns the integer score:
-//   sum(tile.val) over all words + 50 if placedCount === 8 (bingo).
+//   sum(tile.val) over all words + BINGO_BONUS if placedCount === 8 (bingo).
 
 import { getTileAt } from './board.js';
 import { RACK_SIZE } from './tileBag.js';
 
-export const BINGO_BONUS = 50;
+// Full-rack (bingo) bonus. 25 since Nov 2026 (product decision for Boost 2.0,
+// applied to every ruleset — including legacy matches already in progress).
+// Boost 2.0 reads this same constant (rulesConfig.fullRackBonus).
+export const BINGO_BONUS = 25;
 
 function wordKey(word) {
   return word.map(t => `${t.r},${t.c}`).join('|');

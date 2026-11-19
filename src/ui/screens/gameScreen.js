@@ -26,6 +26,7 @@
 // The tile HTML structure mirrors legacy renderBoard() / renderRack() so
 // the existing CSS keyframes and layout rules apply unchanged.
 
+import { BINGO_BONUS } from '../../game/core/scoringEngine.js';
 import { $, on, setText, setClass, bonusOverlayOpen, flashAnimation } from '../domHelpers.js';
 import { setAvatarEl, isBotAvatar, BOT_AVATAR_BY_LEVEL } from './avatarScreens.js';
 import { playOnHost, canPlayNowOnHost, preloadFor } from '../avatarMotion/spritePlayer.js';
@@ -1696,7 +1697,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
         try { playScoreMergeSequence(root, { ...payload, onComplete }); }
         catch (error) { onComplete(); throw error; }
       },
-      bingoLabel:         (payload) => floatBonusLabel(root, payload, 'BINGO +50', 'bingo-label'),
+      bingoLabel:         (payload) => floatBonusLabel(root, payload, `BINGO +${BINGO_BONUS}`, 'bingo-label'),
       // multiplierLabel renderer removed — the directive no longer fires (it
       // rendered a misleading bare "×"; see animationController + spec §1.5).
       // bonusExtraLabel is intentionally not wired — every bonus-square
@@ -2268,7 +2269,7 @@ function playScoreMergeSequence(root, { slot, placed, words, finalScore, baseSco
   const hasMult = mult > 1 && rawTileSum >= 0 && base > rawTileSum;
   // What the ×N chip adds when it lands: the running word sum jumps from the
   // raw tile value to the multiplied word score (`base`). Any bingo folded into
-  // `base` rides along in this jump (the bingo has its own +50 label already).
+  // `base` rides along in this jump (the bingo has its own +BINGO_BONUS label already).
   const multDelta = hasMult ? Math.max(0, base - rawTileSum) : 0;
 
   const { multStart, boostStart, mergeEnd } =

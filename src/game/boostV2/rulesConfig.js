@@ -11,6 +11,7 @@
 
 import { BOARD_SIZE } from '../core/board.js';
 import { RACK_SIZE } from '../core/tileBag.js';
+import { BINGO_BONUS } from '../core/scoringEngine.js';
 
 export const RULESET = Object.freeze({
   LEGACY_V1: 'LEGACY_V1',
@@ -74,11 +75,27 @@ const RULES_0_1 = deepFreeze({
   tileSwaps: false,
 });
 
-export const RULES_REGISTRY = Object.freeze({
-  [RULES_0_1.rulesVersion]: RULES_0_1,
+// 0.2 — product decisions of Nov 2026: full-rack bonus is the shared
+// BINGO_BONUS (25), tile swaps stay available, locks stay removed, Power
+// Word has no EASY level.
+const RULES_0_2 = deepFreeze({
+  ...JSON.parse(JSON.stringify(RULES_0_1)),
+  rulesVersion: 'boost-v2.rules.0.2-proto',
+  deckVersion: 'boost-v2.deck.0.2-candidate',
+  fullRackBonus: BINGO_BONUS,
+  thresholds: {
+    ...JSON.parse(JSON.stringify(RULES_0_1.thresholds)),
+    POWER_WORD: { MEDIUM: 12, HARD: 18 },          // PROVISIONAL; EASY removed
+  },
+  tileSwaps: true,
 });
 
-export const CURRENT_BOOST_V2_RULES_VERSION = RULES_0_1.rulesVersion;
+export const RULES_REGISTRY = Object.freeze({
+  [RULES_0_1.rulesVersion]: RULES_0_1,
+  [RULES_0_2.rulesVersion]: RULES_0_2,
+});
+
+export const CURRENT_BOOST_V2_RULES_VERSION = RULES_0_2.rulesVersion;
 
 export function getRules(version = CURRENT_BOOST_V2_RULES_VERSION) {
   const r = RULES_REGISTRY[version];

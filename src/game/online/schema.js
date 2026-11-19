@@ -26,6 +26,11 @@ export const PATH = Object.freeze({
   // asyncSessionService.listAsyncSessions; cleared by setStatus on
   // completed/abandoned/expired transitions.
   usersAsyncRooms:    'asyncRooms',
+  // Boost 2.0 (worker-authoritative): the full match incl. hidden queue, bag
+  // and racks — no client access; and each player's own rack, readable only
+  // by that player. Written only by the Cloudflare Worker (boostTurn.js).
+  boostV2Secret:      'boostV2Secret',
+  boostV2Racks:       'boostV2Racks',
 });
 
 export const FIELD = Object.freeze({

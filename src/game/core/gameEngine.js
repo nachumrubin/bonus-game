@@ -143,14 +143,18 @@ const TURN_ENDING_CMDS = new Set([
   CMD.CONFIRM_MOVE, CMD.PASS_TURN, CMD.EXCHANGE_TILE, CMD.PLACE_LOCK, CMD.CLAIM_STALL_END,
 ]);
 
-export function createEngine({ state, bus }) {
+// `isWordValid` (optional) replaces the dictionary check for Boost 2.0 moves —
+// the Cloudflare Worker passes its own validator (boostV2/sortedDictionary.js).
+export function createEngine({ state, bus, isWordValid: v2IsWordValid }) {
   if (!state) throw new Error('createEngine: state is required');
   if (!bus) throw new Error('createEngine: bus is required');
 
   function emit(type, payload) { bus.emit(type, payload); }
 
   // Boost 2.0 turn orchestrator — only built for BOOST_V2 matches.
-  const v2Handlers = isBoostV2(state) ? createBoostV2Handlers({ state, emit }) : null;
+  const v2Handlers = isBoostV2(state)
+    ? createBoostV2Handlers({ state, emit, ...(v2IsWordValid ? { isWordValid: v2IsWordValid } : {}) })
+    : null;
 
   function dispatch(cmd) {
     if (!cmd || typeof cmd.type !== 'string') return;
@@ -793,7 +797,7 @@ export function createEngine({ state, bus }) {
   function finishGame() {
     state.status = state.status === 'abandoned' ? 'abandoned' : 'completed';
     // Boost 2.0 (spec §6.3): finalScore = accumulated − remaining rack value,
-    // applied exactly once, for naturally completed matches only (AUDIT A4).
+    // applied exactly once, to completed and abandoned matches (AUDIT A4).
     const v2Endgame = isBoostV2(state) ? applyEndgameV2(state) : null;
     if (v2Endgame) {
       v2Handlers?.telemetry('match-completed', { finalScores: { ...v2Endgame.final }, endReason: state.endReason ?? null });

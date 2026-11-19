@@ -87,6 +87,7 @@ export function bridgeBuilder(rules) {
 }
 export function powerWord(rules, difficulty) {
   const minimumBaseScore = rules.thresholds.POWER_WORD[difficulty];
+  if (minimumBaseScore === undefined) throw new Error(`power word has no ${difficulty} level in ${rules.rulesVersion}`);
   return def(FAMILY.POWER_WORD, difficulty, { minimumBaseScore }, rules, String(minimumBaseScore));
 }
 export function exactTarget(rules, difficulty) {

@@ -18,10 +18,11 @@
 
 import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
-import { isOnGrid, getCommittedTile } from '../core/board.js';
+import { isOnGrid, getCommittedTile, setCommittedTile } from '../core/board.js';
 import { validateMove } from '../core/moveValidator.js';
 import { getAllWords } from '../core/scoringEngine.js';
-import { isValid as isWordValid } from '../core/hebrewDictionary.js';
+import { isValid as defaultIsValid } from '../core/hebrewDictionary.js';
+import { HV } from '../core/letterDistribution.js';
 import { applyMove, applyPass, advanceTurn, isGameOver } from '../core/turnManager.js';
 import { returnTilesAndShuffle } from '../core/tileBag.js';
 import { evaluateMoveBoosts } from './challengeEvaluator.js';
@@ -59,9 +60,21 @@ export function planForMove(state, placed, consumedIds = []) {
   return { remaining, entries, legal, plan };
 }
 
+// Squares where the current opening-setup Boost may go (empty, near a tile,
+// not already holding an active or setup Boost). [] outside the setup phase.
+export function legalOpeningSquares(state) {
+  const v2 = state.boostV2;
+  if (v2?.phase !== PHASE.OPENING_SETUP || !v2.openingSetup) return [];
+  const view = makeBoardView(state.board, []);
+  return legalSquares({ view, blocked: [...v2.activeBoosts, ...v2.openingSetup.placements], rules: v2.rules });
+}
+
 export function applyEndgameV2(state) {
   const v2 = state.boostV2;
-  if (!v2 || v2.endgame || state.status !== 'completed') return v2?.endgame ?? null;
+  // AUDIT A4 (decided Nov 2026): deductions apply to every finished match,
+  // resign / abandon included. The winner of an abandoned match is still the
+  // player who did not abandon (turnManager.winnerSlot checks that first).
+  if (!v2 || v2.endgame || (state.status !== 'completed' && state.status !== 'abandoned')) return v2?.endgame ?? null;
   const fs = computeFinalScores(state.scores, state.racks);
   state.scores[0] = fs.final[0];
   state.scores[1] = fs.final[1];
@@ -69,7 +82,25 @@ export function applyEndgameV2(state) {
   return fs;
 }
 
-export function createBoostV2Handlers({ state, emit }) {
+// Normalise client tiles: integer coordinates, a real letter, and the value
+// taken from the letter table — a client-supplied `val` is never trusted.
+// Returns null when any tile is malformed.
+export function sanitizeTiles(list) {
+  if (list == null) return [];
+  if (!Array.isArray(list)) return null;
+  const out = [];
+  for (const t of list) {
+    const r = Number(t?.r), c = Number(t?.c);
+    const letter = typeof t?.letter === 'string' ? t.letter : '';
+    if (!Number.isInteger(r) || !Number.isInteger(c)) return null;
+    if (!Object.prototype.hasOwnProperty.call(HV, letter) || letter === '?') return null;
+    const isJoker = !!t.isJoker;
+    out.push({ r, c, letter, val: isJoker ? 0 : HV[letter], isJoker });
+  }
+  return out;
+}
+
+export function createBoostV2Handlers({ state, emit, isWordValid = defaultIsValid }) {
   const v2 = () => state.boostV2;
   const reject = (reason, extra = {}) => emit(EV.INVALID_MOVE_REJECTED, { reason, ruleset: 'BOOST_V2', ...extra });
   const telemetry = (type, data = {}) => emit(EV.BOOST_V2_TELEMETRY, {
@@ -121,11 +152,7 @@ export function createBoostV2Handlers({ state, emit }) {
     if (setupLegal().length === 0) activateSetup();
   }
 
-  function setupLegal() {
-    const s = v2();
-    const view = makeBoardView(state.board, []);
-    return legalSquares({ view, blocked: [...s.activeBoosts, ...s.openingSetup.placements], rules: s.rules });
-  }
+  const setupLegal = () => legalOpeningSquares(state);
 
   function activateSetup() {
     const s = v2();
@@ -191,32 +218,54 @@ export function createBoostV2Handlers({ state, emit }) {
   }
 
   // ── CONFIRM_MOVE (PLACE_WORD) ───────────────────────────────────────────
+  // Tile swaps (product decision, rules 0.2): a swap replaces a committed
+  // tile with a rack tile; the displaced tile returns to the rack and may be
+  // played in the same move. As in the legacy engine, a swap needs at least
+  // one regular placement, and swapped-in tiles count as newly placed tiles
+  // for word extraction, scoring, Tile Master and the full-rack count.
+  // Swap squares are occupied, so they can never hold a Boost.
   function handleConfirmMove(payload = {}) {
     const s = v2();
-    const { placed = [], swappedTiles = [], lock = null, boostPlacements = [] } = payload;
+    const { lock = null, boostPlacements = [] } = payload;
     if (s.phase === PHASE.OPENING_SETUP) return reject('opening-setup-pending');
     const g = guard(payload); if (g) return reject(g);
-    if (Array.isArray(swappedTiles) && swappedTiles.length) return reject('v2-tile-swaps-disabled');
     if (lock != null) return reject('v2-locks-disabled');
-    if (!Array.isArray(placed) || placed.length === 0) return reject('empty-move', { placed });
-    if (placed.some(p => !isOnGrid(p.r, p.c))) return reject('off-grid', { placed });
-    const coords = new Set(placed.map(p => `${p.r},${p.c}`));
-    if (coords.size !== placed.length) return reject('duplicate-placement', { placed });
+    const placed = sanitizeTiles(payload.placed);
+    const swaps = sanitizeTiles(payload.swappedTiles);
+    if (!placed || !swaps) return reject('invalid-tile', { placed: payload.placed });
+    if (swaps.length && !s.rules.tileSwaps) return reject('v2-tile-swaps-disabled');
+    if (placed.length === 0) return reject(swaps.length ? 'swap-needs-placement' : 'empty-move', { placed });
+    const all = [...placed, ...swaps];
+    if (all.some(p => !isOnGrid(p.r, p.c))) return reject('off-grid', { placed });
+    if (new Set(all.map(p => `${p.r},${p.c}`)).size !== all.length) return reject('duplicate-placement', { placed });
     const occ = placed.find(p => getCommittedTile(state, p.r, p.c));
     if (occ) return reject('placed-on-occupied-cell', { placed, occupiedCell: { r: occ.r, c: occ.c } });
+    if (swaps.some(sw => !getCommittedTile(state, sw.r, sw.c))) return reject('swap-no-tile', { placed, swappedTiles: swaps });
+
     const slot = state.currentTurnSlot;
     const rackCopy = [...(state.racks[slot] ?? [])];
-    for (const p of placed) {
-      const i = rackCopy.indexOf(p.isJoker ? '?' : p.letter);
-      if (i < 0) return reject('placed-not-in-rack', { placed, missing: p.isJoker ? '?' : p.letter });
+    const take = (t) => {
+      const i = rackCopy.indexOf(t.isJoker ? '?' : t.letter);
+      if (i < 0) return false;
       rackCopy.splice(i, 1);
+      return true;
+    };
+    const displaced = swaps.map(sw => getCommittedTile(state, sw.r, sw.c));
+    for (let i = 0; i < swaps.length; i++) {
+      if (!take(swaps[i])) return reject('placed-not-in-rack', { placed, missing: swaps[i].isJoker ? '?' : swaps[i].letter });
+      rackCopy.push(displaced[i].isJoker ? '?' : displaced[i].letter);
+    }
+    for (const p of placed) {
+      if (!take(p)) return reject('placed-not-in-rack', { placed, missing: p.isJoker ? '?' : p.letter });
     }
 
-    const validation = validateMove(state, placed);
+    // Validation and scoring see swaps as placements on their squares (the
+    // placed overlay wins over the committed tile), so nothing is mutated yet.
+    const validation = validateMove(state, all);
     if (!validation.ok) return reject(validation.reason, { placed });
     if (state.firstMove && !coversCenter(placed, s.rules)) return reject('opening-not-center', { placed });
 
-    const words = getAllWords(state, placed);
+    const words = getAllWords(state, all);
     if (words.length === 0 || words[0].length < s.rules.minimumWordLength) return reject('word-too-short', { placed });
     const invalidWords = words.filter(w => !isWordValid(w.map(t => t.letter).join('')));
     if (invalidWords.length) {
@@ -228,8 +277,8 @@ export function createBoostV2Handlers({ state, emit }) {
     }
 
     const activeAtStart = s.phase === PHASE.NORMAL ? s.activeBoosts : [];
-    const boostResults = evaluateMoveBoosts({ activeBoosts: activeAtStart, definitions: s.definitions, words, placed });
-    const breakdown = buildScoreBreakdown({ words, placedCount: placed.length, boostResults, rules: s.rules });
+    const boostResults = evaluateMoveBoosts({ activeBoosts: activeAtStart, definitions: s.definitions, words, placed: all });
+    const breakdown = buildScoreBreakdown({ words, placedCount: all.length, boostResults, rules: s.rules });
     const consumedIds = breakdown.consumedBoostIds;
 
     // A move that empties the rack with an empty bag ends the match — no
@@ -248,6 +297,13 @@ export function createBoostV2Handlers({ state, emit }) {
 
     // ── commit ── (nothing above mutated state)
     const moveTurn = state.turnNumber;
+    const rack = state.racks[slot];
+    for (let i = 0; i < swaps.length; i++) {
+      const sw = swaps[i];
+      setCommittedTile(state, sw.r, sw.c, { letter: sw.letter, val: sw.val, isJoker: sw.isJoker });
+      rack.splice(rack.indexOf(sw.isJoker ? '?' : sw.letter), 1);
+      rack.push(displaced[i].isJoker ? '?' : displaced[i].letter);
+    }
     applyMove(state, placed, breakdown.totalScore);
     const newBoosts = effectivePlan.effective.map((e, i) => ({
       instanceId: e.instanceId,
@@ -268,10 +324,15 @@ export function createBoostV2Handlers({ state, emit }) {
 
     const wordsText = words.map(w => w.map(t => t.letter).join(''));
     const wordTiles = words.map(w => w.map(t => ({ r: t.r, c: t.c, letter: t.letter, val: t.val, ex: !!t.ex })));
+    const swapRecord = swaps.map((sw, i) => ({
+      r: sw.r, c: sw.c,
+      newLetter: sw.letter, newVal: sw.val, newIsJoker: sw.isJoker,
+      oldLetter: displaced[i].letter, oldVal: displaced[i].val, oldIsJoker: !!displaced[i].isJoker,
+    }));
     state.moveHistory.push({
       slot,
-      tiles: placed.map(p => ({ r: p.r, c: p.c, letter: p.letter, val: p.val, isJoker: !!p.isJoker })),
-      swappedTiles: [],
+      tiles: all.map(p => ({ r: p.r, c: p.c, letter: p.letter, val: p.val, isJoker: p.isJoker })),
+      swappedTiles: swapRecord,
       words: wordsText,
       wordTiles,
       score: breakdown.totalScore,
@@ -283,7 +344,7 @@ export function createBoostV2Handlers({ state, emit }) {
     state.lastTurnEffects = [];
 
     emit(EV.MOVE_CONFIRMED, {
-      slot, placed, swappedTiles: [], words: wordsText, wordTiles,
+      slot, placed: all, swappedTiles: swaps, words: wordsText, wordTiles,
       score: breakdown.totalScore, multiplier: 1,
       ruleset: 'BOOST_V2', breakdown, boostPlacements: newBoosts,
     });

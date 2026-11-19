@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { DECK_0_1, DECK_COMPOSITION_0_1, getDeck } from './deckManifest.js';
+import { DECK_0_1, DECK_0_2, DECK_COMPOSITION_0_1, DECK_COMPOSITION_0_2, getDeck } from './deckManifest.js';
+import { CURRENT_BOOST_V2_RULES_VERSION } from './rulesConfig.js';
 import { generateQueue, peek, preview, advance, remainingCount } from './challengeQueue.js';
 import { isValidDefinition, FAMILY, ALL_FAMILIES } from './challengeCatalog.js';
 import { EXCLUDED_TARGET_LETTERS, getRules } from './rulesConfig.js';
@@ -108,4 +109,21 @@ test('queue: deck exhaustion is graceful', () => {
   advance(q, 1);
   assert.deepEqual(peek(q, 3), []);
   assert.throws(() => advance(q, 1));
+});
+
+test('deck 0.2 (current): Power Word EASY removed → 95 cards, 40/35/20, otherwise identical to 0.1', () => {
+  assert.equal(getRules(CURRENT_BOOST_V2_RULES_VERSION).deckVersion, DECK_0_2.deckVersion);
+  assert.equal(DECK_0_2.cards.length, 95);
+  const byDiff = { EASY: 0, MEDIUM: 0, HARD: 0 };
+  for (const c of DECK_0_2.cards) {
+    const d = DECK_0_2.definitions[c.definitionId];
+    byDiff[d.difficulty]++;
+    assert.ok(!(d.family === FAMILY.POWER_WORD && d.difficulty === 'EASY'));
+    assert.ok(isValidDefinition(d));
+  }
+  assert.deepEqual(byDiff, { EASY: 40, MEDIUM: 35, HARD: 20 });
+  assert.deepEqual(DECK_COMPOSITION_0_2.POWER_WORD, [0, 5, 2]);
+  const q = generateQueue(DECK_0_2, createRng('d2'));
+  assert.equal(q.entries.length, 95);
+  assert.deepEqual(q.entries.slice(0, 3).map(e => DECK_0_2.definitions[e.definitionId].difficulty).sort(), ['EASY', 'HARD', 'MEDIUM']);
 });

@@ -51,12 +51,6 @@ export function createBoostV2State({ rulesVersion, startingSlot = 0, rng }) {
   };
 }
 
-// Entries currently being placed in the opening setup — they are no longer
-// "upcoming" for preview purposes.
-function setupInFlight(v2) {
-  return v2.phase === PHASE.OPENING_SETUP && v2.openingSetup ? v2.openingSetup.effective.length : 0;
-}
-
 /**
  * What any player may see (spec §27): active Boosts, the next
  * `queuePreviewSize` cards, and the opening-setup progress. The full queue is
@@ -65,7 +59,9 @@ function setupInFlight(v2) {
 export function publicView(v2) {
   if (!v2) return null;
   const size = v2.rules.queuePreviewSize;
-  const upcoming = preview(v2.queue, size, setupInFlight(v2)).map(e => ({
+  // Spec §15: before initial activation the preview is the first two queue
+  // entries (the cursor is still 0); afterwards, the next two unplaced ones.
+  const upcoming = preview(v2.queue, size).map(e => ({
     instanceId: e.instanceId,
     definition: v2.definitions[e.definitionId],
   }));

@@ -18,8 +18,8 @@ import { searchBotMove } from '../sessions/botSearch.js';
 import { createRng } from '../../util/rng.js';
 import { RULESET } from './rulesConfig.js';
 import { PHASE, checkBoostV2Invariants } from './matchStateV2.js';
-import { planForMove, coversCenter } from './engineV2.js';
-import { makeBoardView, legalSquares, preferenceOrder } from './boostPlacement.js';
+import { planForMove, coversCenter, legalOpeningSquares } from './engineV2.js';
+import { preferenceOrder } from './boostPlacement.js';
 import { getAllWords } from '../core/scoringEngine.js';
 
 // Search profile: ignore legacy off-grid bonus squares entirely.
@@ -115,8 +115,7 @@ export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, ch
       if (v2.activeBoosts.length === 3 && v2.activeBoosts.every(b => v2.definitions[b.effectiveDefinitionId].difficulty === 'HARD')) m.turnsWithThreeHard++;
     }
     if (v2.phase === PHASE.OPENING_SETUP) {
-      const view = makeBoardView(state.board, []);
-      const legal = legalSquares({ view, blocked: [...v2.activeBoosts, ...v2.openingSetup.placements], rules: v2.rules });
+      const legal = legalOpeningSquares(state);
       const sq = legal[Math.floor(rng() * legal.length)] ?? preferenceOrder(legal)[0];
       run({ type: CMD.PLACE_OPENING_BOOST, payload: sq ?? {} });
       continue;

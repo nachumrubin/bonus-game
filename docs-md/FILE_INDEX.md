@@ -50,7 +50,7 @@
 | `tileBag.js` | Tile bag. `RACK_SIZE=8`. Seeded shuffle via `createBag(seed)`, `drawInto()`, `returnTilesAndShuffle()`. |
 | `letterDistribution.js` | Hebrew letter values (`HV`) and bag counts (`HD`). 108 total tiles, 2 jokers. |
 | `moveValidator.js` | `validateMove()`: collinearity, gap, connectivity, first-move rules. |
-| `scoringEngine.js` | `scoreMove()`, `getAllWords()`. `BINGO_BONUS=50`. |
+| `scoringEngine.js` | `scoreMove()`, `getAllWords()`. `BINGO_BONUS=25`. |
 | `turnManager.js` | `applyMove()`, `applyPass()`, `applyExchange()`, `applyLock()`, `applyResign()`, `isGameOver()`. `LEGACY_PASS_GAME_OVER_THRESHOLD=6`. |
 | `hebrewDictionary.js` | `isValid()`, `loadDict()`. Loads from `data/dictionary.base.txt`. Complex lemmatization + prefix/suffix stripping. |
 | `*.test.js` | Inline unit tests for each module. |
@@ -86,10 +86,12 @@
 | `matchStateV2.js` | `createBoostV2State`, `publicView`, `normalizeBoostV2State`, `checkBoostV2Invariants`, `PHASE`. |
 | `engineV2.js` | Turn orchestrator called from `gameEngine.dispatch()`; `planForMove`, `applyEndgameV2`. |
 | `simulateV2.js` | Headless seeded matches through the real engine with invariant checks. |
+| `authoritativeTurn.js` | Worker game logic: `createMatch`, `applyCommand`, `planDraft`, room/rack projections, state (de)serialisation. |
+| `sortedDictionary.js` | Binary-search word validator over the raw sorted dictionary + Firebase overlays (Worker). |
 | `testHelpers.js` | Test fixtures (not a test file). |
 | `*.test.js` | Unit, engine-integration and randomized property tests. |
 
-Related: `scripts/boostV2/analyze-dictionary.mjs` (offline analysis → `docs-md/boost-v2/ANALYSIS.md`), `docs-md/boost-v2/AUDIT.md`.
+Related: `worker/src/boostTurn.js` (`/boost/*` endpoints), `src/game/online/boostTurnClient.js` (client API), `tests/emulator/boost-v2-rules.test.mjs`, `scripts/boostV2/analyze-dictionary.mjs` (offline analysis → `docs-md/boost-v2/ANALYSIS.md`), `docs-md/boost-v2/AUDIT.md`.
 
 ### `src/game/sessions/` — Session Modes
 | File | Role |

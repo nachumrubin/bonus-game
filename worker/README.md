@@ -212,3 +212,21 @@ player's rooms through the `players/0/uid` and `players/1/uid` indexes on `rooms
 
 `worker/test/*.test.js` run with `npm run test:unit` from the repo root.
 
+
+---
+
+## Boost 2.0 authoritative turns (`/boost/*`, `src/boostTurn.js`)
+
+Online Boost 2.0 matches are run here: the hidden challenge queue, the bag and
+both racks live in `boostV2Secret/{roomId}` (no client access), and every move
+is validated and scored by the app's own engine
+(`src/game/boostV2/authoritativeTurn.js`, bundled by wrangler).
+
+- `POST /boost/create`, `POST /boost/turn`, `POST /boost/plan` — Firebase ID token required.
+- Uses the existing `FIREBASE_SERVICE_ACCOUNT_JSON` secret.
+- `DICTIONARY_URL` (wrangler.toml) must point at the **deployed app's** `data/dictionary.txt`,
+  so the Worker validates against exactly what the app ships. Overlays
+  (`/dictionaryRejected`, `/dictionaryApproved`) are re-read every 5 minutes.
+- Deploy the Firebase rules (`boostV2Secret`, `boostV2Racks`, BOOST_V2 room lock) together with the Worker.
+- CPU: a cold isolate decodes the 3.2 MB dictionary once; lookups are binary searches on the raw text.
+  The free plan's 10 ms CPU budget may be tight on cold starts — the Paid plan is recommended for Boost 2.0.

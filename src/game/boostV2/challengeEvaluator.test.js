@@ -221,18 +221,24 @@ test('Bridge Builder: a Boost not active at the start of the move does not count
 
 // ── BST-008 Power Word (WORD) ───────────────────────────────────────────────
 test('Power Word: single-word base score, threshold inclusive', () => {
-  const E = powerWord(RULES, 'EASY'); // ≥ 8
-  assert.equal(wordSatisfies(E, hw(0, 0, 'שלום')), true);  // 3+2+1+2 = 8 (ם valued as מ)
-  assert.equal(wordSatisfies(E, hw(0, 0, 'אבא')), false);  // 5
-  assert.equal(wordSatisfies(E, hw(0, 0, 'צבא')), true);   // 13
+  const M = powerWord(RULES, 'MEDIUM'); // ≥ 12
+  assert.equal(wordSatisfies(M, hw(0, 0, 'פרחי')), true);   // 5+2+4+1 = 12
+  assert.equal(wordSatisfies(M, hw(0, 0, 'פרח')), false);   // 11
+  assert.equal(wordSatisfies(M, hw(0, 0, 'צבא')), true);    // 13 (ם/מ values equal)
+  const H = powerWord(RULES, 'HARD'); // ≥ 18
+  assert.equal(wordSatisfies(H, hw(0, 0, 'טלפון')), true);  // 8+2+5+1+2 = 18
+  assert.equal(wordSatisfies(H, hw(0, 0, 'צלבים')), false); // 17
+});
+test('Power Word: has no EASY level (product decision, rules 0.2)', () => {
+  assert.throws(() => powerWord(RULES, 'EASY'));
 });
 test('Power Word: joker uses its existing 0 value', () => {
-  assert.equal(wordSatisfies(powerWord(RULES, 'EASY'), hw(0, 0, '*שלום')), false); // 0+2+1+2
+  assert.equal(wordSatisfies(powerWord(RULES, 'MEDIUM'), hw(0, 0, '*פרחי')), false); // 0+2+4+1
 });
 test('Power Word: other words do not add to the qualifying word', () => {
   const small = hw(5, 3, 'אב');            // 4 points, contains Boost
   const big = vw(0, 6, 'צצצצצ', [4]);      // unrelated
-  const r = evalOne(powerWord(RULES, 'EASY'), [small, big], boostAt(5, 3));
+  const r = evalOne(powerWord(RULES, 'MEDIUM'), [small, big], boostAt(5, 3));
   assert.equal(r.completed, false);
 });
 

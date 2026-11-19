@@ -67,10 +67,10 @@ Legacy matches keep every one of these: all V2 behaviour is gated on `state.rule
 
 ## 6. Architectural risks and blockers
 
-1. **BLOCKER — no authoritative server for moves; rooms are world-readable.** `firebase.database.rules.json` has `rooms/.read: true`. Every room exposes the bag, `tileBagSeed`, and *both racks* to any client today. Moves are computed client-side and written whole. A hidden Boost queue therefore **cannot be secret** in the current architecture (spec §27). Minimum backend change proposed: move V2 turn submission to a Worker endpoint (Admin SDK, already present in `worker/src/firebaseRtdb.js`) that runs the same pure engine, keeps `boostV2Secret/{roomId}/queue` in a path with `.read: false`, and writes only the public projection; tighten `rooms/.read` to the two players. Until then V2 online must not be described as secure competitive play. *(Decision required.)*
+1. **RESOLVED (Nov 2026, D-boost-v2-worker) — was: no authoritative server for moves; rooms are world-readable.** Implemented as proposed below (`worker/src/boostTurn.js`, `boostV2Secret`, `boostV2Racks`, BOOST_V2 room lock). Legacy rooms remain world-readable and client-written. `firebase.database.rules.json` has `rooms/.read: true`. Every room exposes the bag, `tileBagSeed`, and *both racks* to any client today. Moves are computed client-side and written whole. A hidden Boost queue therefore **cannot be secret** in the current architecture (spec §27). Minimum backend change proposed: move V2 turn submission to a Worker endpoint (Admin SDK, already present in `worker/src/firebaseRtdb.js`) that runs the same pure engine, keeps `boostV2Secret/{roomId}/queue` in a path with `.read: false`, and writes only the public projection; tighten `rooms/.read` to the two players. Until then V2 online must not be described as secure competitive play. *(Decision required.)*
 2. Online state is written as one blob by the moving client; rules check version + turn ownership only, not scores. Clients can already write arbitrary scores (pre-existing; same root cause as 1).
 3. `gameEngine.js` (1 054 lines) mixes legacy flows; V2 is a separate branch of handlers to avoid perturbing parity-critical legacy code.
-4. `BINGO_BONUS = 50` is on the "never change" list — resolved by a V2 rules value rather than editing the constant.
+4. `BINGO_BONUS` — **decided:** changed to 25 for every ruleset (legacy included); V2 reads it.
 5. Firebase drops empty arrays — V2 state needs normalisation on resume (same pattern as `normalizeLockInventory`).
 6. Live turn timer / watchdog assume `turnNumber + 1` on timeout writes; the opening-setup phase does not advance `turnNumber` (see §8 ambiguities).
 
@@ -92,14 +92,14 @@ Legacy matches keep every one of these: all V2 behaviour is gated on `state.rule
 | # | Item | Prototype handling |
 |---|---|---|
 | A1 | Spec §4 lists "letter/word multipliers" to remove — none exist; the legacy static bonus is the 12 off-grid squares + mini-games. | Off-grid squares disabled in V2. |
-| A2 | Locks and tile swaps are existing mechanics not mentioned as preserved; spec forbids "board locks" and replacing tiles. | Disabled in V2 (`rules.locks/tileSwaps = false`). **Review.** |
+| A2 | Locks and tile swaps are existing mechanics not mentioned as preserved. | **Decided:** locks removed in V2; tile swaps stay available (rules 0.2). |
 | A3 | Stall claim compares accumulated scores; with V2 rack deductions the claimant can finish behind. | Eligibility unchanged (accumulated score); winner = higher *final* score per spec §6.3. **Review.** |
-| A4 | Rack deductions on resign / abandonment. | Not applied — abandonment decides the winner; deductions only for `completed`. **Review.** |
+| A4 | Rack deductions on resign / abandonment. | **Decided:** both racks deducted; the resigning/abandoning player still loses. |
 | A5 | Opening setup when initialisation was deferred (board still empty after round 1). | Setup triggers after the first valid word; order = [other(next), next, other(next)] where `next` is the player whose normal turn follows — reduces to second/first/second in the normal case. |
 | A6 | Timeouts / passes / exchanges during opening setup (spec says review). | PASS/EXCHANGE/CONFIRM_MOVE rejected during setup; a PASS with `reason: 'timeout'` auto-places on the deterministic first legal square. **Review.** |
 | A7 | Multiple Bridge Builders that cannot all be retained. | Fallback applied to the latest Bridge in FIFO order first, until an arrangement exists. |
 | A8 | Move that ends the match with replacement placements attached. | Placements ignored (none required, spec §23). |
-| A9 | Power Word Easy (≥ 8): 98 % of common words qualify at word level. | Threshold kept (provisional); flagged in ANALYSIS. **Review.** |
+| A9 | Power Word Easy (≥ 8): 98 % of common words qualify at word level. | **Decided:** Easy level removed (deck 0.2, 95 cards). |
 | A10 | Rack deduction for jokers. | Joker value 0 → deducts 0 (existing value). |
 | A11 | Pending (unplaceable) queue entries retry "after subsequent valid word moves". | A move's replacement batch = consumed + previous deficit, allocated FIFO from the cursor; the longest placeable prefix is mandatory. |
 | A12 | "First round" with an exchange/pass. | Any turn-ending action (move, pass, exchange, timeout) counts as a first-round turn opportunity. |
