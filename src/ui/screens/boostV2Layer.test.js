@@ -23,12 +23,15 @@ process.on('exit', () => { console.log = _log; });
 const RULES = getRules();
 const nullRoot = { querySelector: () => null, querySelectorAll: () => [] };
 
-test('marker: difficulty class + shape + parameter + reward, accessible label, RTL-safe numbers', () => {
+test('marker + card: icon only, difficulty as the border class; level and reward only in the accessible label', () => {
   const html = markerHTML(longWord(RULES, 'MEDIUM'));
   assert.match(html, /v2-mk--medium/);
-  assert.match(html, /◆/);
-  assert.match(html, /dir="ltr"[^>]*>6\+</);
-  assert.match(html, /dir="ltr"[^>]*>\+10</);
+  assert.doesNotMatch(html, /◆/);
+  assert.match(html, /v2-ic--long_word/);
+  assert.match(html, />6\+<\/text>/);
+  assert.doesNotMatch(html, /\+10</);
+  assert.doesNotMatch(cardHTML(longWord(RULES, 'MEDIUM')).split('aria-hidden="true"><b>')[1], /בינוני|\+10/);
+  assert.match(cardHTML(longWord(RULES, 'MEDIUM')), /v2-card--medium/);
   assert.match(html, /aria-label="מילה ארוכה, בינוני, 10 נקודות"/);
   assert.match(markerHTML(letterHunt(RULES, 'EASY', 'ל'), 'is-pending'), /v2-mk--easy is-pending/);
 });
@@ -42,7 +45,11 @@ test('badges: letters read RTL, numbers LTR; Power Word shows N+', () => {
 });
 
 test('card + sheet content come from the definition', () => {
-  assert.match(cardHTML(letterHunt(RULES, 'EASY', 'ל')), /ציד אותיות/);
+  const card = cardHTML(letterHunt(RULES, 'EASY', 'ל'));
+  assert.match(card, /ציד אותיות/);
+  assert.match(card, /v2-ic--letter_hunt/);
+  assert.match(card, />ל<\/text>/);
+  assert.doesNotMatch(card, /v2-icon-slot/);
   const m = sheetModel(longWord(RULES, 'MEDIUM'));
   assert.equal(m.name, 'מילה ארוכה');
   assert.equal(m.level, 'בינוני');

@@ -93,7 +93,7 @@
 | `testHelpers.js` | Test fixtures (not a test file). |
 | `*.test.js` | Unit, engine-integration and randomized property tests. |
 
-Related: `src/ui/screens/boostV2Layer.js` (game-screen hooks, strip, sheet, result card), `tests/e2e/boost-v2-local-match.spec.js`, `worker/src/boostTurn.js` (`/boost/*` endpoints), `src/game/online/boostTurnClient.js` (client API), `src/game/online/boostV2OnlineSession.js` (online session: mirror state + Worker dispatch), `tests/emulator/boost-v2-online.test.mjs` (two sessions under the rules), `tests/emulator/boost-v2-rules.test.mjs`, `scripts/boostV2/analyze-dictionary.mjs` (offline analysis → `docs-md/boost-v2/ANALYSIS.md`), `docs-md/boost-v2/AUDIT.md`.
+Related: `src/ui/screens/boostV2Layer.js` (game-screen hooks, strip, sheet, result card), `src/ui/boostV2Icons.js` (challenge family SVG icons), `tests/e2e/boost-v2-local-match.spec.js`, `worker/src/boostTurn.js` (`/boost/*` endpoints), `src/game/online/boostTurnClient.js` (client API), `src/game/online/boostV2OnlineSession.js` (online session: mirror state + Worker dispatch), `tests/emulator/boost-v2-online.test.mjs` (two sessions under the rules), `tests/emulator/boost-v2-rules.test.mjs`, `scripts/boostV2/analyze-dictionary.mjs` (offline analysis → `docs-md/boost-v2/ANALYSIS.md`), `docs-md/boost-v2/AUDIT.md`.
 
 ### `src/game/sessions/` — Session Modes
 | File | Role |
