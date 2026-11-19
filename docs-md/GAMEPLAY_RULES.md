@@ -16,7 +16,7 @@
 
 ## Tile Bag
 
-- **Total tiles:** 108 (`src/game/core/letterDistribution.js`, sum of `HD` values)
+- **Total tiles:** 99 (`src/game/core/letterDistribution.js`, sum of `HD` values — previously misstated as 108; corrected Nov 2026)
 - **Jokers:** 2 tiles (letter `'?'`, value 0)
 - **Rack size:** 8 (`RACK_SIZE = 8`, `src/game/core/tileBag.js`)
 - **Draw order:** LIFO — tiles drawn from `.pop()` end of shuffled array
@@ -429,3 +429,20 @@ Source: `src/game/sessions/tutorialSession.js`
 - Bot has 4 scripted moves using words from `TUTORIAL_WORDS = ['שלום','לב','אח','תמ','לבדו']`
 - Bot advances `nextMove` counter on each `EV.MOVE_CONFIRMED`
 - `ensureRackLetters()` injects required letters into player rack at game start
+
+---
+
+## Boost 2.0 ruleset (`BOOST_V2`) — prototype, not yet player-facing
+
+Source: `src/game/boostV2/` (see `docs-md/boost-v2/AUDIT.md`). Applies only to states with
+`ruleset: 'BOOST_V2'`; everything above stays true for legacy matches.
+
+- **Opening:** first word must cover one of (4,4) (4,5) (5,4) (5,5) — reason `'opening-not-center'`. Tiles must be on the 10×10 grid (`'off-grid'`).
+- **Off in V2:** off-grid bonus squares, mini-games/wheel, future-effect boosts, locks (`'v2-locks-disabled'`), tile swaps (`'v2-tile-swaps-disabled'`).
+- **Scoring:** Σ word face values (all new/extended words, shared tiles count twice) + Σ completed Boost rewards + **25** for exactly 8 new tiles. Every move records a breakdown (`moveHistory[i].breakdown`, `MOVE_CONFIRMED.breakdown`).
+- **Endgame:** same triggers as legacy. On `completed`, each player's remaining rack value is subtracted once (`state.boostV2.endgame`); not on resign/abandon. Higher final score wins; equal = draw.
+- **Exchange:** 1…min(rack, bag) tiles; bag empty → `'exchange-bag-empty'`; replacements drawn **before** the returned tiles go back; counts as a scoreless turn (existing rule).
+- **Boosts:** up to 3 active challenge markers on empty squares; a valid move covering one consumes it (success → reward 5/10/20 by difficulty, failure → 0). Nine families (Letter Hunt, Long Word, Tile Master, Double Letter, Unique Letters, Word Edge, Bridge Builder, Power Word, Exact Target).
+- **Queue:** 100-card candidate deck, shuffled once per match (first three = one Easy, one Medium, one non-Bridge Hard); strict FIFO; next two cards visible.
+- **Placement:** the consuming player places replacements in the same turn, within Manhattan distance 2 of a tile on the post-move board; Bridge Builder must share a row/column with another Boost or it falls back to Hard Long Word 8+. With no legal square, the entry stays pending and is placed after a later word move.
+- **Opening setup:** after each player's first turn, the second player, the starting player, then the second player each place one Boost (`CMD.PLACE_OPENING_BOOST`); all three activate together and the starting player moves next.

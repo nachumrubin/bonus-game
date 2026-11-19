@@ -181,7 +181,8 @@ export function tryPlaceWord(state, word, sr, sc, dir, slot) {
   let r = sr, c = sc;
   for (let i = 0; i < word.length; i++) {
     const onGrid = isOnGrid(r, c);
-    const onBonus = isBonusPos(r, c);
+    // Boost 2.0 matches have no off-grid bonus squares — the grid is all there is.
+    const onBonus = state.ruleset !== 'BOOST_V2' && isBonusPos(r, c);
     if (!onGrid && !onBonus) return null;
 
     const existing = getCommittedTile(state, r, c);

@@ -2,6 +2,18 @@
 
 ---
 
+## Boost 2.0 — Phases 0–4: engine prototype behind the BOOST_V2 ruleset (November 2026)
+
+- **Nothing changes for players yet.** All Boost 2.0 behaviour is gated on `state.ruleset === 'BOOST_V2'`, which no UI path creates. Legacy matches (no `ruleset` field) run exactly as before; the 1870 existing unit tests pass unchanged.
+- **Phase 0 audit:** `docs-md/boost-v2/AUDIT.md` (architecture, legacy-bonus dependency map, risks, ambiguities A1–A12, test strategy). Blocker recorded: rooms are world-readable (`rooms/.read: true`) and moves are computed client-side, so a hidden Boost queue cannot be secret without a server-side turn endpoint.
+- **Offline analysis:** `scripts/boostV2/analyze-dictionary.mjs` → `docs-md/boost-v2/ANALYSIS.md` (tile counts/values, length/edge/repeat/unique/score distributions, data-driven Letter Hunt and Word Edge bands).
+- **New pure modules** in `src/game/boostV2/`: versioned rules (`rulesConfig.js`, +25 full rack, rewards 5/10/20), nine challenge families with typed constructors (`challengeCatalog.js`), pure evaluator (`challengeEvaluator.js`), additive scoring + breakdown + rack deductions (`scoringV2.js`), 100-card **candidate** deck (`deckManifest.js`), predetermined FIFO queue (`challengeQueue.js`), placement validator with batch planning and automatic Bridge fallback (`boostPlacement.js`), match state / public projection / resume normalisation / §43 invariant checker (`matchStateV2.js`), turn orchestrator (`engineV2.js`), headless simulation (`simulateV2.js`).
+- **Engine wiring (`gameEngine.js`):** `createInitialState({ ruleset: 'BOOST_V2', boostQueueRng })`; `dispatch()` routes V2 commands to `engineV2`; `finishGame()` applies V2 rack deductions once (completed matches only). New constants (additions only): `CMD.PLACE_OPENING_BOOST`, `EV.BOOSTS_CHANGED`, `EV.BOOST_PLACED`, `EV.BOOST_V2_TELEMETRY`. `BINGO_BONUS`, `RACK_SIZE`, `HV`, `HD` untouched.
+- **V2 rules implemented:** centre-square opening, on-grid only, no locks / swaps / legacy bonus squares, +25 full rack, multi-tile exchange (draw before return, ≤ min(rack, bag)), endgame rack deduction + draw, first round → opening setup (second/first/second, simultaneous activation), atomic word+replacement turn, pending FIFO entries when no square is legal, `moveId` / `expectedRevision` idempotency.
+- **Bot search:** `tryPlaceWord` refuses off-grid squares in V2 matches (legacy unchanged) — found by the simulation, where the V2 engine rejected every off-grid word the bot proposed.
+- **Docs fix:** the bag holds **99** tiles (Σ`HD`), not 108 as `GAMEPLAY_RULES.md` stated.
+- **Tests:** +91 (`src/game/boostV2/*.test.js`), including a seeded randomized-match property test checking every §43 invariant after every committed command.
+
 ## Internal reference document (November 2026)
 
 - Prepared an internal reference document outside this repo. No app code, data or settings changed.

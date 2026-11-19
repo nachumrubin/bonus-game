@@ -37,4 +37,8 @@ export const EV = Object.freeze({
   LIVE_BONUS_CHANGED:     'evt/LIVE_BONUS_CHANGED',
   ROOM_SETTINGS_CHANGED:  'evt/ROOM_SETTINGS_CHANGED',
   REACTION_RECEIVED:      'evt/REACTION_RECEIVED',
+  // Boost 2.0 (ruleset BOOST_V2) — additions only.
+  BOOSTS_CHANGED:         'evt/BOOSTS_CHANGED',
+  BOOST_PLACED:           'evt/BOOST_PLACED',
+  BOOST_V2_TELEMETRY:     'evt/BOOST_V2_TELEMETRY',
 });

@@ -5,6 +5,14 @@
 
 ---
 
+## D-boost-v2-ruleset: Boost 2.0 is a separate, versioned ruleset beside the legacy engine — November 2026
+
+**Decision:** Boost 2.0 matches carry `ruleset: 'BOOST_V2'` and a `boostV2` block holding a *snapshot* of their rules, their deck's challenge definitions and their full queue. `gameEngine.dispatch()` hands V2 commands to `src/game/boostV2/engineV2.js`; legacy states (no `ruleset`) never reach it. Legacy constants that the spec changes for V2 (`BINGO_BONUS = 50`) are not edited — V2 reads `rules.fullRackBonus = 25` instead.
+
+**Why:** live legacy rooms must keep their rules until completion (spec §29), and several legacy constants are on the never-change list. A per-match snapshot means a later balancing change can never alter a match in progress. Keeping the V2 handlers out of `gameEngine.js` avoids touching its parity-critical swap / lock / deferred-bonus paths.
+
+**Also decided (prototype, pending product review):** the queue RNG is never derived from `tileBagSeed` and never persisted, so the queue cannot be rebuilt from the seed. This does *not* make it secret — see AUDIT §6.1.
+
 ## D-app-skins: a skin is a scoped, generated stylesheet over the existing UI — November 2026
 
 **Decision:** an app skin is `data-skin="<id>"` on `<html>` plus one stylesheet whose rules are all

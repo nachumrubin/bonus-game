@@ -72,6 +72,25 @@
 | `futureEffects/autoExtraScore.js` | Immediate point bonus (deferred UI acknowledge). |
 | `futureEffects/plugins.test.js` | Boost integration tests. |
 
+### `src/game/boostV2/` — Boost 2.0 (ruleset `BOOST_V2`, prototype, not reachable from UI yet)
+| File | Role |
+|------|------|
+| `rulesConfig.js` | `RULESET`, versioned MatchRules (`getRules`, `snapshotRules`), rewards, thresholds, target letters, difficulty presentation. |
+| `hebrew.js` | Final-form normalisation for challenge evaluation (reuses `hebrewDictionary.norm`). |
+| `challengeCatalog.js` | Nine families, typed definition constructors, `isValidDefinition`, Hebrew requirement text, board badges. |
+| `deckManifest.js` | Versioned 100-card CANDIDATE deck (`DECK_0_1`), composition + target-letter tables. |
+| `challengeEvaluator.js` | Pure TILE / WORD / MOVE evaluation, `evaluateMoveBoosts`, `wordId`. |
+| `scoringV2.js` | Additive breakdown (`buildScoreBreakdown`), full-rack bonus, rack deductions (`computeFinalScores`). |
+| `challengeQueue.js` | `generateQueue` (1E/1M/1H non-Bridge head), `peek` / `preview` / `advance`. |
+| `boostPlacement.js` | Legal squares (Manhattan ≤ d), `planReplacements` (FIFO prefix + Bridge fallback), `validatePlacements`. |
+| `matchStateV2.js` | `createBoostV2State`, `publicView`, `normalizeBoostV2State`, `checkBoostV2Invariants`, `PHASE`. |
+| `engineV2.js` | Turn orchestrator called from `gameEngine.dispatch()`; `planForMove`, `applyEndgameV2`. |
+| `simulateV2.js` | Headless seeded matches through the real engine with invariant checks. |
+| `testHelpers.js` | Test fixtures (not a test file). |
+| `*.test.js` | Unit, engine-integration and randomized property tests. |
+
+Related: `scripts/boostV2/analyze-dictionary.mjs` (offline analysis → `docs-md/boost-v2/ANALYSIS.md`), `docs-md/boost-v2/AUDIT.md`.
+
 ### `src/game/sessions/` — Session Modes
 | File | Role |
 |------|------|

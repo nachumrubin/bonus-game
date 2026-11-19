@@ -18,4 +18,6 @@ export const CMD = Object.freeze({
   FINALIZE_BOOST_AWARD: 'cmd/FINALIZE_BOOST_AWARD',
   RESIGN_GAME:        'cmd/RESIGN_GAME',
   CLAIM_STALL_END:    'cmd/CLAIM_STALL_END',
+  // Boost 2.0: one opening-setup Boost placement (ruleset BOOST_V2 only).
+  PLACE_OPENING_BOOST: 'cmd/PLACE_OPENING_BOOST',
 });

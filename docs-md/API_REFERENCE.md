@@ -395,6 +395,15 @@ BDEFS: BoardSlotDef[]
 
 ---
 
+## Boost 2.0 (`src/game/boostV2/`) — prototype
+
+- `createInitialState({ ..., ruleset: 'BOOST_V2', boostV2RulesVersion?, boostQueueRng? })` — V2 match; `state.boostV2` holds rules snapshot, definitions, queue, phase.
+- Commands (V2): `CMD.CONFIRM_MOVE { placed, boostPlacements: [{r, c, instanceId?}], moveId?, expectedRevision? }`; `CMD.PLACE_OPENING_BOOST { r, c }`; `CMD.EXCHANGE_TILE { letters }`; `CMD.PASS_TURN { reason? }` (`'timeout'` during setup auto-places).
+- Events (V2): `EV.MOVE_CONFIRMED` adds `breakdown`, `boostPlacements`, `ruleset`; `EV.BOOSTS_CHANGED` (`publicView`); `EV.BOOST_PLACED`; `EV.BOOST_V2_TELEMETRY { type, rulesVersion, deckVersion, ... }`; `EV.GAME_COMPLETED` adds `boostV2Endgame { accumulated, deductions, final }`.
+- `planForMove(state, placed, consumedIds) → { remaining, entries, legal, plan }` — the replacement batch the engine will demand (UI/bot preview). `plan.arrangement` is always a valid submission.
+- `publicView(state.boostV2)` — what a player may see: active Boosts, `upcoming` (next 2), setup progress. Never the full queue.
+- `evaluateBoost`, `evaluateMoveBoosts`, `buildScoreBreakdown`, `computeFinalScores`, `generateQueue`, `legalSquares`, `planReplacements`, `validatePlacements`, `checkBoostV2Invariants`, `normalizeBoostV2State` — pure.
+
 ## Notifications (`src/notifications/`)
 
 ### notificationService.js

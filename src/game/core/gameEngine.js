@@ -29,6 +29,9 @@ import { createRng, shuffle as shuffleRng } from '../../util/rng.js';
 import { resolveBonusActivation } from '../boosts/bonusResolver.js';
 import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
+import { RULESET, isBoostV2 } from '../boostV2/rulesConfig.js';
+import { createBoostV2State } from '../boostV2/matchStateV2.js';
+import { createBoostV2Handlers, applyEndgameV2 } from '../boostV2/engineV2.js';
 
 const LEGACY_LOCK_INVENTORY = Object.freeze([3, 3, 5]);
 
@@ -71,7 +74,14 @@ const LEGACY_LOCK_INVENTORY = Object.freeze([3, 3, 5]);
  * @param {{ mode?: string, tileBagSeed: string, players: Record<0 | 1, SpinePlayer>, startingSlot?: 0 | 1, settings?: Record<string, any> }} [options]
  * @returns {GameState}
  */
-export function createInitialState({ mode, tileBagSeed, players, startingSlot = 0, settings = {} } = {}) {
+export function createInitialState({
+  mode, tileBagSeed, players, startingSlot = 0, settings = {},
+  // Boost 2.0 (spec §29): opt-in per match. Omitted → legacy ruleset, and the
+  // returned state is exactly what it always was. `boostQueueRng` shuffles the
+  // challenge deck; it is deliberately NOT derived from tileBagSeed and never
+  // persisted, so the hidden queue cannot be rebuilt from public room data.
+  ruleset = RULESET.LEGACY_V1, boostV2RulesVersion, boostQueueRng,
+} = {}) {
   if (!tileBagSeed) throw new Error('tileBagSeed is required');
   if (!players || !players[0] || !players[1]) throw new Error('players[0] and players[1] are required');
 
@@ -80,7 +90,14 @@ export function createInitialState({ mode, tileBagSeed, players, startingSlot = 
   drawInto(bag, racks[0]);
   drawInto(bag, racks[1]);
 
+  const v2 = ruleset === RULESET.BOOST_V2;
+  if (ruleset !== RULESET.LEGACY_V1 && !v2) throw new Error(`unknown ruleset: ${ruleset}`);
+
   return {
+    ...(v2 ? {
+      ruleset: RULESET.BOOST_V2,
+      boostV2: createBoostV2State({ rulesVersion: boostV2RulesVersion, startingSlot, rng: boostQueueRng ?? Math.random }),
+    } : {}),
     schemaVersion: 2,
     mode: mode ?? 'offline-solo',
     status: 'playing',
@@ -99,11 +116,11 @@ export function createInitialState({ mode, tileBagSeed, players, startingSlot = 
     // wheel of fortune) actually appear instead of always falling through
     // to the deterministic `BONUS_TYPES[idx % length]` fallback that only
     // ever produced B1–B10.
-    bonusAssignment: buildBonusAssignment(tileBagSeed),
+    bonusAssignment: v2 ? [] : buildBonusAssignment(tileBagSeed),
     bonusSqUsed: {},
     pendingBonuses: [],
     lockedCells: [],
-    lockInventory: { 0: [...LEGACY_LOCK_INVENTORY], 1: [...LEGACY_LOCK_INVENTORY] },
+    lockInventory: v2 ? { 0: [], 1: [] } : { 0: [...LEGACY_LOCK_INVENTORY], 1: [...LEGACY_LOCK_INVENTORY] },
     moveHistory: [],
     activeBoosts: [],
     currentTurnSlot: startingSlot,
@@ -132,6 +149,9 @@ export function createEngine({ state, bus }) {
 
   function emit(type, payload) { bus.emit(type, payload); }
 
+  // Boost 2.0 turn orchestrator — only built for BOOST_V2 matches.
+  const v2Handlers = isBoostV2(state) ? createBoostV2Handlers({ state, emit }) : null;
+
   function dispatch(cmd) {
     if (!cmd || typeof cmd.type !== 'string') return;
     if (state.status !== 'playing' && cmd.type !== CMD.RESIGN_GAME) return;
@@ -145,6 +165,14 @@ export function createEngine({ state, bus }) {
     if (state.pendingScoreCommit && TURN_ENDING_CMDS.has(cmd.type)) {
       emit(EV.INVALID_MOVE_REJECTED, { reason: 'bonus-pending', command: cmd.type });
       return;
+    }
+
+    if (v2Handlers) {
+      const routed = v2Handlers.dispatch(cmd);
+      if (routed) {
+        if (routed.result === 'game-over') finishGame();
+        return;
+      }
     }
 
     switch (cmd.type) {
@@ -764,7 +792,14 @@ export function createEngine({ state, bus }) {
 
   function finishGame() {
     state.status = state.status === 'abandoned' ? 'abandoned' : 'completed';
+    // Boost 2.0 (spec §6.3): finalScore = accumulated − remaining rack value,
+    // applied exactly once, for naturally completed matches only (AUDIT A4).
+    const v2Endgame = isBoostV2(state) ? applyEndgameV2(state) : null;
+    if (v2Endgame) {
+      v2Handlers?.telemetry('match-completed', { finalScores: { ...v2Endgame.final }, endReason: state.endReason ?? null });
+    }
     emit(EV.GAME_COMPLETED, {
+      ...(v2Endgame ? { boostV2Endgame: JSON.parse(JSON.stringify(v2Endgame)) } : {}),
       status: state.status,
       winnerSlot: winnerSlot(state),
       scores: { ...state.scores },

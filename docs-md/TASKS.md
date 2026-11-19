@@ -1,5 +1,21 @@
 # TASKS.md — TODOs, Risks, and Recommended Work
 
+## Boost 2.0 — November 2026 (see `docs-md/boost-v2/AUDIT.md`)
+
+- [x] Phase 0 — audit, dictionary/tile analysis utility, candidate 100-card deck.
+- [x] Phase 1 — V2 core rules + scoring (centre opening, +25 full rack, exchange, endgame deductions, draw).
+- [x] Phase 2 — nine challenge evaluators, typed definitions, normalisation, jokers.
+- [x] Phase 3 — deck manifest, queue generation, FIFO, preview, rules/deck version persistence.
+- [x] Phase 4 — placement validator, Bridge fallback, opening setup, atomic V2 turn, idempotency, invariants.
+- [ ] **Decision needed:** secure online play (AUDIT §6.1) — Worker turn endpoint + protected queue path + `rooms/.read` restricted to players. Until then V2 online is not secure competitive play.
+- [ ] **Product review:** Part L defaults and AUDIT ambiguities A2 (locks/swaps off), A3 (stall claim vs deductions), A4 (no deduction on resign), A6 (setup timeouts), A7 (multiple Bridges), A9 (Power Word Easy ≥ 8 looks too easy).
+- [ ] **Product review:** candidate deck `boost-v2.deck.0.1-candidate` (Letter Hunt / Word Edge targets in `deckManifest.js`) before freezing a production manifest.
+- [ ] Phase 5 — UI: Boost rendering + icons (`parameterBadge`, `DIFFICULTY_PRESENTATION`), tooltips (`describeRequirementHe`), two-card preview (`publicView().upcoming`), replacement placement mode (`planForMove`), score breakdown, opening-setup screen, ruleset choice in game creation.
+- [ ] Phase 6 — bot: rank candidates by `buildScoreBreakdown().totalScore`, choose replacement squares (opponent-opportunity heuristics), handle opening setup; `botGameSession` must dispatch `PLACE_OPENING_BOOST`.
+- [ ] Phase 7 — online: persist `ruleset` + `boostV2` in room docs (`schema.buildRoomDoc`, `onlineGameSession` hydrate via `normalizeBoostV2State`), commit on `EV.BOOST_PLACED`, watchdog/timer handling for the setup phase (no `turnNumber` advance), matchmaking compatibility by ruleset.
+- [ ] Phase 8 — balance report from `simulateV2.js` with the Phase 6 bot (the current generator ignores Boosts, so consumption is low: 3–5 per match), telemetry sink for `EV.BOOST_V2_TELEMETRY`.
+- [ ] Phase 9 — release preparation behind a feature flag.
+
 ## Test environment — November 2026
 
 - [x] Internal reference document prepared outside this repo (no code change).
