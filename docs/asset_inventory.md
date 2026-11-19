@@ -26,6 +26,23 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 * (stats-letter-icon.png was proposed for the favorite-letter card, but that card
   renders the actual Hebrew letter dynamically — no static icon needed.)
 
+### Boost 2.0 challenge-family icons (Nov 2026 — needed for Phase 5)
+
+One icon per challenge family, Boost icon family style (transparent background).
+Shown in the challenge-details sheet (64px), the next-two queue preview (28px) and
+the spec/guide; NOT on the board marker (35px cells show the parameter badge instead).
+Mockups reserve a dashed circle for each: https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
+
+* assets/icons/boost_letter_hunt.png — ציד אותיות (Letter Hunt)
+* assets/icons/boost_long_word.png — מילה ארוכה (Long Word)
+* assets/icons/boost_tile_master.png — מאסטר האותיות (Tile Master)
+* assets/icons/boost_double_letter.png — אות כפולה (Double Letter)
+* assets/icons/boost_unique_letters.png — אותיות שונות (Unique Letters)
+* assets/icons/boost_word_edge.png — קצה המילה (Word Edge)
+* assets/icons/boost_bridge_builder.png — בניית גשר (Bridge Builder)
+* assets/icons/boost_power_word.png — מילת כוח (Power Word)
+* assets/icons/boost_exact_target.png — בול במטרה (Exact Target)
+
 ## Existing
 
 * assets/ui/boost-logo-stone.webp, assets/ui/logo_tiles_stone/ (logo_*, row_*, logo_bolt) — the logo for
