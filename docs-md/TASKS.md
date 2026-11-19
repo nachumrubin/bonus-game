@@ -8,7 +8,8 @@
 - [x] Phase 3 — deck manifest, queue generation, FIFO, preview, rules/deck version persistence.
 - [x] Phase 4 — placement validator, opening setup, atomic V2 turn, idempotency, invariants.
 - [x] Secure online play (AUDIT §6.1): Worker turn endpoints, protected secret + per-player racks, BOOST_V2 room lock in rules.
-- [ ] Deploy: Worker (`DICTIONARY_URL` must match the deployed app) **together with** the Firebase rules; consider Workers Paid for the cold-start dictionary decode.
+- [x] Deploy Worker with Boost 2.0 (`bonus-game-push` version 02aaf1ff, Nov 19 2026).
+- [ ] Deploy rules (CI on merge to main) and the app (`firebase deploy --only hosting`, manual); then a two-phone Boost 2.0 online test. Consider Workers Paid for the cold-start dictionary decode.
 - [x] Phase 7 wiring: Worker room creation from invite / room code / matchmaking; `boostV2OnlineSession`; timeout claims via the Worker; ruleset-aware matchmaking; online ruleset toggles.
 - [ ] Phase 7 follow-ups: two-phone test against a deployed Worker; online rematch returns to the online menu (as for classic) — the ruleset toggle must be picked again; `/boost/plan` is unused by the app (client-side preview on the mirror) — remove or keep for tools; async lobby / My Games card does not label Boost 2.0 rooms yet; debug-online-game skill does not read `boostV2Secret`.
 - [ ] Known limit: `/boost/plan` reveals a third replacement card one step early when a valid draft consumes three Boosts (preview size is 2). The app no longer calls it (Phase 7 previews on the mirror with hidden cards).
