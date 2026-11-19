@@ -5445,7 +5445,7 @@ button[aria-disabled="true"] {
 /* menu-electric.css (loaded later) forces the lock pills visible with id
    selectors — three ids outrank all of them. */
 #sg.boost-v2 #info-strip #is-locks-1,#sg.boost-v2 #info-strip #is-locks-2,#sg.boost-v2 #lock-inv-display{display:none!important;}
-.v2-strip{width:100%;max-width:520px;margin:0 auto;flex-shrink:0;display:flex;flex-direction:column;gap:6px;padding:4px 10px;box-sizing:border-box;color:#eef3ff;font-family:'Heebo',sans-serif;}
+.v2-strip{width:100%;max-width:520px;margin:0 auto;flex-shrink:0;display:flex;flex-direction:column;justify-content:center;gap:0;height:50px;overflow:hidden;padding:0 10px;box-sizing:border-box;color:#eef3ff;font-family:'Heebo',sans-serif;}
 .v2-strip[hidden]{display:none;}
 .v2-row{display:flex;align-items:center;gap:8px;min-width:0;}
 .v2-lbl{font-size:12px;font-weight:700;color:#9fb4e0;white-space:nowrap;}
@@ -5466,19 +5466,16 @@ button[aria-disabled="true"] {
 .v2-chip--fail{color:#a9b6d3;}
 .v2-chip--rack{background:rgba(255,204,51,.14);color:#ffe08a;}
 .v2-total{font-size:24px;font-weight:900;color:#39d5ff;line-height:1;}
-.v2-tray{padding:6px 10px;border-radius:14px;background:rgba(56,230,255,.08);border:1.5px solid rgba(56,230,255,.55);}
+.v2-tray{padding:0 8px;border-radius:14px;background:rgba(56,230,255,.08);border:1.5px solid rgba(56,230,255,.55);}
 .v2-ok{font-size:12px;font-weight:800;color:#a7f3d0;white-space:nowrap;}
 .v2-hint{font-size:12px;font-weight:700;color:#9fe9ff;white-space:nowrap;}
-.v2-setup{display:flex;flex-direction:column;gap:6px;padding:8px 10px;border-radius:16px;background:rgba(15,35,90,.8);border:1px solid rgba(56,230,255,.45);}
-.v2-setup-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;}
-.v2-setup-h b{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.v2-skip{flex-shrink:0;min-height:36px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#dfe8ff;font:700 12px 'Heebo',sans-serif;cursor:pointer;}
-.v2-steps{list-style:none;margin:0;padding:0;display:flex;gap:6px;}
-.v2-step{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px;}
-.v2-step-h{font-size:11px;font-weight:800;color:#9fb4e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.v2-step.is-now .v2-step-h{color:#9fe9ff;} .v2-step.is-done .v2-step-h{color:#a7f3d0;}
-.v2-step.is-now .v2-card{border:1.5px solid var(--v2-cyan);background:rgba(56,230,255,.1);}
-.v2-step .v2-card{height:38px;padding:0 6px;gap:5px;} .v2-step .v2-icon-slot{display:none;}
+.v2-setup{padding:0 4px 0 8px;border-radius:14px;background:rgba(15,35,90,.8);border:1px solid rgba(56,230,255,.45);}
+.v2-setup-h{display:flex;flex-direction:column;justify-content:center;line-height:1.25;font-size:11px;}
+.v2-setup-h b{font-size:12px;color:#eef3ff;}
+.v2-setup .v2-card{border:1.5px solid var(--v2-cyan);background:rgba(56,230,255,.1);}
+.v2-dots{display:inline-flex;gap:3px;vertical-align:middle;margin-inline-start:2px;}
+.v2-dots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.22);}
+.v2-dots i.is-done{background:#34d399;} .v2-dots i.is-now{background:var(--v2-cyan);}
 
 /* Board marker: fills an empty cell; sizes follow the cell size (--csz). */
 #game-grid .cell.v2-boost{position:relative;}
@@ -5501,6 +5498,8 @@ button[aria-disabled="true"] {
 .v2-mk.is-setup{border-style:dashed;background:#132b63;box-shadow:none;}
 #game-grid .cell.v2-legal{outline:2px dashed rgba(56,230,255,.9);outline-offset:-3px;cursor:pointer;}
 #game-grid .cell.v2-dim{opacity:.55;}
+/* First move: the opening word must cover one of these four squares. */
+#sg #game-grid .cell.v2-center{outline:2px solid rgba(56,230,255,.7);outline-offset:-3px;background-image:linear-gradient(rgba(56,230,255,.28),rgba(56,230,255,.16))!important;}
 
 /* Non-modal move breakdown, floating on the board's top edge. */
 .v2-result{position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:30;width:min(92%,340px);display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-radius:16px;background:#10275c;border:1px solid rgba(255,204,51,.45);box-shadow:0 10px 30px rgba(0,0,0,.4);color:#eef3ff;font-family:'Heebo',sans-serif;cursor:pointer;}
@@ -5546,3 +5545,21 @@ button[aria-disabled="true"] {
 .board-center-inner.grid-10 #board-border{
   left:0; top:0; width:100%; height:100%;
 }
+
+/* Boost 2.0 strip rows are one fixed height (the board never resizes mid-turn). */
+.v2-strip > .v2-row{height:44px;min-width:0;}
+.v2-chips{flex-wrap:nowrap;overflow:hidden;}
+
+/* Boost 2.0 on short screens (phone browsers with toolbars): give the height to
+   the board so it can span the full width. Locks don't exist in Boost 2.0, so
+   their scoreboard row goes; portraits and margins shrink a little. */
+#sg.boost-v2 .info-strip { --locks-h: 0px; }
+#sg.boost-v2 .info-strip .is-pclocks { display: none !important; }
+@media (max-height: 860px) {
+  #sg.boost-v2 .info-strip { --av-w: 62px; --name-h: 30px; --score-fs: 34px; margin: 4px 6px 8px !important; }
+  #sg.boost-v2 .info-strip .is-pcard { padding-top: 3px !important; padding-bottom: 3px !important; row-gap: 0 !important; }
+  #sg.boost-v2 .gm-topbar { min-height: 0; }
+  #sg.boost-v2 .game-area { padding-top: 2px !important; padding-bottom: 2px !important; }
+  #sg.boost-v2 .bot { margin-top: 0 !important; padding-top: 8px !important; padding-bottom: max(8px, env(safe-area-inset-bottom)) !important; gap: 6px !important; }
+}
+.v2-setup .v2-skip{min-width:52px;}

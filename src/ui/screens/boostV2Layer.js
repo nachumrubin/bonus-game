@@ -174,6 +174,10 @@ export function mountBoostV2Layer({ root = globalThis.document, bus, controller,
       }
       const b = boostAt(v, r, c);
       if (b) return { html: markerHTML(defOf(v, b.effectiveDefinitionId)), classes: ['v2-boost'] };
+      // Until the first word is down, mark the four centre squares it must cover.
+      if (getState()?.firstMove && s.rules?.centerSquares?.some(([cr, cc]) => cr === r && cc === c)) {
+        return { html: '', classes: ['v2-center'] };
+      }
       const d = draftFor(v);
       if (d?.ok && d.required > 0) {
         const i = d.choices.findIndex(ch => ch.r === r && ch.c === c);
@@ -256,34 +260,33 @@ export function mountBoostV2Layer({ root = globalThis.document, bus, controller,
     return `<div class="v2-row"><span class="v2-lbl">הבאים בתור</span>${cards}</div>`;
   }
 
+  // The strip is ONE row of fixed height in every state, so the board above
+  // never has to resize mid-turn. While replacements are pending the row is
+  // the tray (the full breakdown is on the result card after the move).
   function draftStripHTML(v, d) {
-    const chips = breakdownRows(d.breakdown, v._boostV2.definitions)
-      .map(r => `<span class="v2-chip v2-chip--${r.kind}">${escapeHtml(r.label)} ${signed(r.value)}</span>`).join('');
     const total = `<span class="v2-total">${signed(d.breakdown.totalScore)}</span>`;
-    let tray = '';
     if (d.required > 0) {
       const idx = d.complete ? d.required - 1 : d.choices.length;
       const status = d.complete ? '<span class="v2-ok">✓ מוקם</span>' : '<span class="v2-hint">בחרו משבצת</span>';
-      tray = `<div class="v2-row v2-tray"><span class="v2-lbl">בוסט חדש ${Math.min(idx + 1, d.required)}/${d.required}</span>`
+      return `<div class="v2-row v2-tray">${total}<span class="v2-lbl">בוסט חדש<br>${Math.min(idx + 1, d.required)}/${d.required}</span>`
         + `${cardHTML(d.replacements[idx].definition)}${status}</div>`;
     }
-    return `<div class="v2-row v2-sum"><div class="v2-chips">${chips}</div>${total}</div>${tray}`;
+    const chips = breakdownRows(d.breakdown, v._boostV2.definitions)
+      .map(r => `<span class="v2-chip v2-chip--${r.kind}">${escapeHtml(r.label)} ${signed(r.value)}</span>`).join('');
+    return `<div class="v2-row v2-sum"><div class="v2-chips">${chips}</div>${total}</div>`;
   }
 
+  // Opening setup, one row: step + who places, the card being placed, skip.
   function setupStripHTML(v) {
     const setup = v._boostV2.openingSetup;
     const names = (slot) => escapeHtml(v._players?.[slot]?.displayName ?? `שחקן ${slot + 1}`);
-    const steps = setup.effective.map((e, i) => {
-      const def = defOf(v, e.definitionId);
-      const done = i < setup.placements.length;
-      const now = i === setup.placements.length;
-      const who = done ? names(setup.placements[i].placedBySlot) : names(setup.order[i]);
-      const state = done ? `${who} ✓` : now ? `${who} · עכשיו` : who;
-      return `<li class="v2-step${now ? ' is-now' : ''}${done ? ' is-done' : ''}"><span class="v2-step-h">${i + 1} · ${state}</span>${cardHTML(def)}</li>`;
-    }).join('');
-    return '<div class="v2-setup"><div class="v2-setup-h"><b>מציבים בוסטים — כולם יופעלו יחד</b>'
-      + '<button type="button" class="v2-skip" data-v2-skip="1">דלג · היריב יציב</button></div>'
-      + `<ol class="v2-steps">${steps}</ol></div>`;
+    const i = Math.min(setup.placements.length, setup.effective.length - 1);
+    const def = defOf(v, setup.effective[i].definitionId);
+    const dots = setup.effective.map((_, k) => `<i class="${k < setup.placements.length ? 'is-done' : k === i ? 'is-now' : ''}"></i>`).join('');
+    return '<div class="v2-row v2-setup">'
+      + `<span class="v2-lbl v2-setup-h"><b>מציבים בוסטים</b><span>${i + 1}/${setup.effective.length} · ${names(setup.order[i])} <span class="v2-dots" aria-hidden="true">${dots}</span></span></span>`
+      + `${cardHTML(def)}`
+      + '<button type="button" class="v2-skip" data-v2-skip="1" aria-label="דלג — היריב יציב">דלג</button></div>';
   }
 
   if (strip) {

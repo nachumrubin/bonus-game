@@ -2,6 +2,15 @@
 
 ---
 
+## Boost 2.0 — board layout polish (November 2026)
+
+Reported on a phone (Chrome, viewport ≈ 411×740 with toolbars): the board was only ~318 px wide, overlapped the strip and the rack during the opening setup, and nothing showed where the opening word must go.
+- **Full width:** on short screens (`max-height: 860px`) Boost 2.0 drops the unused lock row from the scoreboard, shrinks the portraits a little and tightens the rack padding. At 411×740 the board is now 398 px (was 318).
+- **No overflow:** the strip is one fixed-height row in every state. Opening setup is now one row: step i/3, who places it, progress dots, the card being placed, "דלג" (was a three-card stepper on two rows). Replacement tray is one row: total, "בוסט חדש i/n", the card, status (the full breakdown is on the result card). `main.js` also re-fits the board when its container changes height (`ResizeObserver` on `.board-center`).
+- **Centre squares:** the four middle squares are marked until the opening word is played (the engine already required covering one).
+- Fix: `gameScreen.renderBoard` now clears `v2-center` with the other per-render classes.
+- Tests: e2e `boost-v2-layout.spec.js` (411×740: board ≥ 95 % width, no overlap, same size in first round and setup, centre markers); layer unit tests for the markers and hidden cards. Unit 2038 pass; e2e Boost 2.0 local, vs bot, layout pass.
+
 ## Boost 2.0 — Phase 7: online play (November 2026)
 
 - **Playable online:** the create-room sheet (friend code / friend invite) and the random-opponent sheet have a "כללי משחק: קלאסי / בוסט 2.0" toggle. A Boost 2.0 room is created by the Worker (`roomService.createRoom` delegates to `boostTurnClient.createMatch` when `settings.ruleset === 'BOOST_V2'`; registered in `main.js` via `setBoostV2RoomCreator`). Matchmaking never pairs Boost 2.0 with classic (`isCompatible`, strict or not).

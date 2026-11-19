@@ -1349,7 +1349,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       for (let c = 0; c < 10; c++) {
         const cell = $(`#c${r}_${c}`, root);
         if (!cell) continue;
-        cell.classList?.remove('np', 'lk', 'ht', 'last-move', 'spine-live-preview', 'spine-lock-cell', 'spine-pending-lock-cell', 'locked-cell', 'selected-placed', 'swap-pending', 'v2-boost', 'v2-legal', 'v2-dim', 'v2-choice');
+        cell.classList?.remove('np', 'lk', 'ht', 'last-move', 'spine-live-preview', 'spine-lock-cell', 'spine-pending-lock-cell', 'locked-cell', 'selected-placed', 'swap-pending', 'v2-boost', 'v2-legal', 'v2-dim', 'v2-choice', 'v2-center');
         const placedHere = v.placed?.find(p => p.r === r && p.c === c);
         const swapHere = v.swappedTiles?.find(s => s.r === r && s.c === c);
         const committed = boardTileAt(v, r, c);

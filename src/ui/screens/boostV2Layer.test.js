@@ -201,3 +201,21 @@ test('legacy games are untouched: no hooks behaviour without boostV2 state', () 
   assert.equal(hooks.playPreview(controller.view), null);
   assert.equal(controller.v2Draft(), null);
 });
+
+test('first move: only the four centre squares are marked, until a word is down', () => {
+  const { session, controller, h } = startMatch();
+  const v = controller.view;
+  for (const [r, c] of [[4, 4], [4, 5], [5, 4], [5, 5]]) assert.deepEqual(h.emptyCell(r, c, v).classes, ['v2-center']);
+  assert.equal(h.emptyCell(3, 4, v), null);
+  setRack(session.state, 0, ['ל', 'א']);
+  controller.placeTile(tile(4, 4, 'ל'));
+  controller.placeTile(tile(4, 5, 'א'));
+  assert.ok(controller.confirmMove());
+  assert.equal(h.emptyCell(5, 5, controller.view), null, 'markers gone after the opening word');
+});
+
+test('hidden cards render as placeholders; the details sheet ignores them', () => {
+  const hidden = { definitionId: '__hidden__', family: 'HIDDEN', difficulty: 'MEDIUM', hidden: true };
+  assert.match(markerHTML(hidden), /v2-mk--hidden/);
+  assert.match(cardHTML(hidden), /אתגר נסתר/);
+});

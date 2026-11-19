@@ -268,15 +268,22 @@ https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
 ```
 #sg.boost-v2           — set while a Boost 2.0 match is mounted; hides the lock pills (#is-locks-1/2, #lock-inv-display)
 #game-grid.grid-10 / .board-center-inner.grid-10 — Boost 2.0 board: 10×10 cells only (no perimeter ring), --csz computed for 10 columns → full width
-#v2-strip              — above the board (game.html, `hidden` in legacy games). One of:
+#v2-strip              — above the board (game.html, `hidden` in legacy games). ONE row of fixed height (50px)
+                         in every state, so the board never resizes mid-turn. One of:
                          · "הבאים בתור" — the next two queue cards (.v2-card)
-                         · live draft: breakdown chips (.v2-chip--words/ok/fail/rack) + total (.v2-total),
-                           and the replacement tray (.v2-tray) while the draft owes replacement Boosts
-                         · opening setup: header + skip button ([data-v2-skip], "דלג · היריב יציב") + stepper (.v2-steps)
+                         · live draft: breakdown chips (.v2-chip--words/ok/fail/rack) + total (.v2-total);
+                           while the draft owes replacement Boosts the row is the tray instead (.v2-tray: total,
+                           "בוסט חדש i/n", the card, ✓ מוקם / בחרו משבצת)
+                         · opening setup (.v2-setup): "מציבים בוסטים" + step i/3 · who + progress dots (.v2-dots),
+                           the card being placed, skip button ([data-v2-skip], "דלג")
 #v2-result             — non-modal move breakdown on the board's top edge; auto-hides after V2_RESULT_MS (3.6 s), tap hides
 #v2-sheet              — challenge-details sheet (.v2-sheet); opens on a Boost tap with no rack tile selected; [data-v2-close] / backdrop / Esc close
 .v2-mk (+ --easy/--medium/--hard, .is-pending, .is-setup) — the board marker inside a cell (sizes from --csz)
 #game-grid .cell.v2-legal / .v2-dim — legal / not-legal squares while placing a replacement or setup Boost
+#game-grid .cell.v2-center — the four centre squares, marked until the opening word is played (it must cover one)
+Layout: short screens (max-height 860px) compact the Boost 2.0 scoreboard (no lock row, smaller portraits) and
+the rack padding so the board spans the width; main.js re-fits the board (ResizeObserver on .board-center)
+whenever its room changes, so it never overlaps the strip or the rack.
 .v2-icon-slot          — reserved place for the (missing) family icon — docs/asset_inventory.md
 .end-v2-ded            — "צבור X · מגש −Y" appended to #end-card-0/1 on a natural ending
 #ss-ruleset-row, #ss-rules-classic, #ss-rules-v2 — setup screen ruleset toggle (two-player mode only)

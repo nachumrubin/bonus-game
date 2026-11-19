@@ -6112,6 +6112,7 @@ function scheduleBotWordsPreload() {
 function computeBasicSizes() {
   const grid = globalThis.document?.getElementById?.('game-grid');
   if (!grid) return;
+  observeBoardFit();
   // The .board-center-inner wrap derives its own width/height from --csz, so
   // we must read from the parent FLEX container (.board-center) to learn how
   // much space the board is actually allowed to consume. Reading from the
@@ -6137,6 +6138,23 @@ function computeBasicSizes() {
   const value = `${size}px`;
   if (innerWrap) innerWrap.style?.setProperty?.('--csz', value);
   grid.style?.setProperty?.('--csz', value);
+}
+
+// The board's room changes whenever something above or below it changes
+// height (the Boost 2.0 strip, banners, the rack row). Re-fit the board then,
+// so it never grows over its neighbours. One observer for the page lifetime.
+let boardFitObserver = null;
+function observeBoardFit() {
+  if (boardFitObserver || typeof globalThis.ResizeObserver !== 'function') return;
+  const wrap = globalThis.document?.querySelector?.('.board-center');
+  if (!wrap) return;
+  let pending = false;
+  boardFitObserver = new globalThis.ResizeObserver(() => {
+    if (pending) return;
+    pending = true;
+    globalThis.requestAnimationFrame?.(() => { pending = false; computeBasicSizes(); });
+  });
+  boardFitObserver.observe(wrap);
 }
 
 function scheduleBasicLayoutRefresh() {
