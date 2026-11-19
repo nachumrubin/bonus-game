@@ -82,6 +82,10 @@ import { createTutorialController } from './ui/controllers/tutorialController.js
 import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/controllers/onboardingController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
+import { mountBoostV2Layer } from './ui/screens/boostV2Layer.js';
+import { createBoostTurnClient } from './game/online/boostTurnClient.js';
+import { createBoostV2OnlineSession } from './game/online/boostV2OnlineSession.js';
+import { v2MaxWordLen } from './game/boostV2/botV2.js';
 import { showScreen as spineShowScreen, revealCurrentScreen, settleEntrance, SCREEN_IDS } from './ui/screens/screenTransitions.js';
 import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt, flyOutLoadingTiles, preloadLogoTiles, playLogoStrike, startLogoIdle } from './ui/buildSequences.js';
 import { boardBuildKind, BOARD_BUILD_LEAD_MS } from './ui/buildTimeline.js';
@@ -381,6 +385,7 @@ let evolutionScreen = null;   // ui/boostie3d/evolutionScreen.js, mounted with t
 let homeAvatarLive = null;    // ui/boostie3d/homeAvatarLive.js — the live Boostie in the home top bar
 let profileAvatarLive = null; // … and on the profile screen
 let economy = null;           // game/account/economyClient.js — the coin worker
+let boostTurnClient = null;
 let skinCtl = null;           // ui/skinController.js — the app skin + store try-on
 let storeScreen = null;       // the mounted avatarStoreScreen (the try-on banner opens its buy sheet)
 const playBilling = createPlayBilling();   // coin packs via Google Play (Android app only)
@@ -481,6 +486,16 @@ async function boot() {
     baseUrl: cfg.pushWorkerUrl,
     getIdToken: async () => { try { return await activeFbCurrentUser?.getIdToken?.(); } catch { return null; } },
   });
+  // Boost 2.0 online matches are run by the Worker (/boost/*): room creation
+  // goes through it (roomService.createRoom delegates for BOOST_V2 settings)
+  // and every in-game action is a request to it.
+  if (cfg.pushWorkerUrl) {
+    boostTurnClient = createBoostTurnClient({
+      baseUrl: cfg.pushWorkerUrl,
+      getIdToken: async () => { try { return await activeFbCurrentUser?.getIdToken?.(); } catch { return null; } },
+    });
+    roomService.setBoostV2RoomCreator((args) => boostTurnClient.createMatch(args));
+  }
   if (cfg.onesignalAppId) {
     notificationService.configure({
       appId: cfg.onesignalAppId,
@@ -1301,7 +1316,7 @@ async function boot() {
     }
 
     const BOT_LEVEL_LABEL = ['רמה קלה', 'רמה בינונית', 'רמה קשה'];
-    bus.on(SETUP_INTENT.PLAY_CLICKED, async ({ mode, p1Name, p2Name, difficulty, botTime = 40, showBothRacks = false }) => {
+    bus.on(SETUP_INTENT.PLAY_CLICKED, async ({ mode, p1Name, p2Name, difficulty, botTime = 40, showBothRacks = false, ruleset = 'LEGACY_V1' }) => {
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: p1Name });
       const isBot = mode === 'bot';
       const startingSlot = Math.random() < 0.5 ? 0 : 1;
@@ -1315,6 +1330,7 @@ async function boot() {
           p1Name, p2Name,
           startingSlot,
           settings: { timelimit: botTime > 0, botTime, showBothRacks },
+          ...(ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
         });
       });
       if (isBot) {
@@ -1387,6 +1403,7 @@ async function boot() {
           botTime: filters.botTime ?? 40,
           strict: filters.strict,
           ratingRange: filters.ratingRange,
+          ...(filters.ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
         },
       });
       activeMatchmaking.onMatched(async ({ room, mySlot }) => {
@@ -1482,6 +1499,7 @@ async function boot() {
             ...settingsCompat.settingsFromLegacyGlobals(globalThis),
             timelimit: filters.timelimit,
             botTime: filters.botTime ?? 40,
+            ...(filters.ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
           },
         });
       } catch (e) {
@@ -1518,7 +1536,7 @@ async function boot() {
         pendingFriendTarget = null;
         try {
           const invMode  = filters.spineMode ?? 'friend-live';
-          const settings = { ...settingsCompat.settingsFromLegacyGlobals(globalThis), timelimit: filters.timelimit, botTime: filters.botTime ?? 40 };
+          const settings = { ...settingsCompat.settingsFromLegacyGlobals(globalThis), timelimit: filters.timelimit, botTime: filters.botTime ?? 40, ...(filters.ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}) };
           const myName   = globalThis.__spine?.currentProfile?.displayName ?? fbUser.displayName ?? 'שחקן';
           const { inviteId, expiresAt } = await inviteService.sendInvite(fbDb, {
             fromUid:    fbUser.uid,
@@ -1587,6 +1605,7 @@ async function boot() {
       activePending = {
         code,
         mode: filters.spineMode,
+        ruleset: filters.ruleset === 'BOOST_V2' ? 'BOOST_V2' : null,
         // Set when this room was opened by auto-inviting a friend, so the
         // invite-ack listener can match a rejection to this waiting room and
         // close it (and so WR cancel can revoke the outstanding invite).
@@ -4868,9 +4887,17 @@ async function boot() {
           });
         };
         unwatch = roomService.watchRoom(db, room.roomId, maybeEnter);
-        roomService.markReadyAndMaybeStart(db, room.roomId, mySlot, undefined, { leadInMs: BOARD_BUILD_LEAD_MS }).then(maybeEnter).catch((e) => {
-          console.error('[spine] online ready handshake failed', e);
-        });
+        if (room.ruleset === 'BOOST_V2') {
+          // Clients cannot write BOOST_V2 rooms: the Worker records READY and
+          // starts the shared clock once both players are in.
+          boostTurnClient?.submit(room.roomId, { type: 'cmd/READY' }).catch((e) => {
+            console.error('[spine] Boost 2.0 ready handshake failed', e);
+          });
+        } else {
+          roomService.markReadyAndMaybeStart(db, room.roomId, mySlot, undefined, { leadInMs: BOARD_BUILD_LEAD_MS }).then(maybeEnter).catch((e) => {
+            console.error('[spine] online ready handshake failed', e);
+          });
+        }
       };
       showLegacyScreen('scoin');
       bus.emit(COIN_OPEN, {
@@ -4894,12 +4921,22 @@ async function boot() {
     settingsCompat.applyGameSettingsToGlobals(globalThis, normalizedRoomSettings);
     settingsCompat.saveGameSettings(globalThis.localStorage, normalizedRoomSettings);
 
+    const isBoostV2Room = room.ruleset === 'BOOST_V2';
+    if (isBoostV2Room && !boostTurnClient) {
+      console.error('[spine] Boost 2.0 room needs the Worker (pushWorkerUrl)');
+      return null;
+    }
     showLegacyScreen('sg');
     if (typeof globalThis.buildUnifiedGrid === 'function') {
-      try { globalThis.buildUnifiedGrid(); } catch { /* swallow */ }
+      try { globalThis.buildUnifiedGrid({ bonusSquares: !isBoostV2Room }); } catch { /* swallow */ }
     }
-    const session = await createOnlineGameSession({ bus, db, room, mySlot });
+    const session = isBoostV2Room
+      ? createBoostV2OnlineSession({ bus, db, room, mySlot, client: boostTurnClient, now: serverNow })
+      : await createOnlineGameSession({ bus, db, room, mySlot });
     const controller = createGameController({ bus, session, mySlot });
+    const boostV2Layer = isBoostV2Room
+      ? mountBoostV2Layer({ bus, controller, getState: () => session.state })
+      : null;
     const animationController = createAnimationController({ bus, mySlot, reducedMotion: () => getMotionPreference().isReduced(), cue: feedbackService.cue });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
     const screen = mountGameScreen({
@@ -4913,6 +4950,7 @@ async function boot() {
       // lookup there would be a redundant read.
       resolveAvatar: resolveAvatarForUid,
       prefersReducedMotion: () => getMotionPreference().isReduced(),
+      boostV2Hooks: boostV2Layer?.hooks ?? null,
     });
     const bonusFlow = attachBonusFlow(session);
     const reactionCtrl = mountReactionController({
@@ -4932,8 +4970,9 @@ async function boot() {
     // Live timed modes: spin up the timeout watchdog so the opponent's client
     // claims a timeout transactionally when the active player goes absent.
     // Async modes have no per-turn deadline; offline modes have no opponent.
+    // Boost 2.0: the session claims expired turns through the Worker.
     let timeoutWatchdog = null;
-    if (!isAsync && room.settings?.timelimit) {
+    if (!isAsync && !isBoostV2Room && room.settings?.timelimit) {
       const seconds = Number(room.settings.botTime || room.settings.turnSeconds || 0);
       if (seconds > 0) {
         timeoutWatchdog = createTimeoutWatchdog({
@@ -4968,6 +5007,7 @@ async function boot() {
       end() {
         finishBuilds();
         screen.unmount();
+        boostV2Layer?.unmount();
         animationController.dispose();
         controller.dispose();
         bonusFlow.dispose();
@@ -5026,7 +5066,9 @@ async function boot() {
     beforeStart = null,
     restoredState = null,
     resumedFromLocalSave = false,
+    ruleset = null,
   } = {}) {
+    const isBoostV2Game = (restoredState?.ruleset ?? ruleset) === 'BOOST_V2';
     ensureDictionaryLoaded().catch((e) => console.warn('[spine] dictionary preload before local game failed:', e));
 
     const effectiveSettings = restoredState?.settings ?? settings;
@@ -5046,8 +5088,9 @@ async function boot() {
     // 144 cells the new gameScreen expects). The legacy fn also resets
     // bData / lockedCells / bonusSqUsed in legacy globals — harmless,
     // those globals aren't referenced by the new spine.
+    // Boost 2.0 boards have no off-grid bonus squares.
     if (typeof globalThis.buildUnifiedGrid === 'function') {
-      try { globalThis.buildUnifiedGrid(); } catch { /* swallow */ }
+      try { globalThis.buildUnifiedGrid({ bonusSquares: !isBoostV2Game }); } catch { /* swallow */ }
     }
 
     const session = restoredState
@@ -5062,6 +5105,7 @@ async function boot() {
           },
           startingSlot,
           settings,
+          ...(isBoostV2Game ? { ruleset: 'BOOST_V2' } : {}),
         });
 
     if (typeof beforeStart === 'function') {
@@ -5078,6 +5122,9 @@ async function boot() {
       // the old alphabetical-prefix bias.
       ensureBotWordsLoaded().catch((e) => console.warn('[spine] bot wordlist preload before bot game failed:', e));
       const profile = resolveProfile(difficulty);
+      // Boost 2.0 bots search longer words (botV2.V2_PROFILE_OVERRIDES) so they
+      // can reach the 7–8-letter challenges; their vocabulary must include them.
+      const botMaxWordLen = isBoostV2Game ? v2MaxWordLen(difficulty) : profile.maxWordLen;
       const VOCAB_CAPS = [2000, 20000, Infinity];
       const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
       const makeWordList = () => {
@@ -5094,7 +5141,7 @@ async function boot() {
           : [...hebrewDictionary.DICT];
         return botVocabulary.createBotWordList({
           sourceWords,
-          maxWordLen: profile.maxWordLen,
+          maxWordLen: botMaxWordLen,
           cap,
           isWordValid: (w) => hebrewDictionary.isValid(w),
           preserveOrder: usingBotList,
@@ -5124,12 +5171,17 @@ async function boot() {
     const controller = createGameController({ bus, session, mySlot: humanSlot });
     const animationController = createAnimationController({ bus, mySlot: humanSlot, reducedMotion: () => getMotionPreference().isReduced(), cue: feedbackService.cue });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
+    // Boost 2.0 layer (markers, strip, details sheet, breakdown) — V2 only.
+    const boostV2Layer = isBoostV2Game
+      ? mountBoostV2Layer({ bus, controller, getState: () => session.state })
+      : null;
     const screen = mountGameScreen({
       controller,
       animationController,
       jokerPicker: globalThis.__spine?.jokerPicker ?? null,
       bus,
       prefersReducedMotion: () => getMotionPreference().isReduced(),
+      boostV2Hooks: boostV2Layer?.hooks ?? null,
     });
 
     const bonusFlow = attachBonusFlow(session, { botSlot: bot ? 1 : null });
@@ -5144,6 +5196,7 @@ async function boot() {
       end() {
         finishBuilds();
         screen.unmount();
+        boostV2Layer?.unmount();
         animationController.dispose();
         controller.dispose();
         bonusFlow.dispose();
@@ -5733,7 +5786,10 @@ function installCutoverGlobals() {
 
     // activePending is set on __spine when the room is created (inside boot).
     const mode     = globalThis.__spine?.activePending?.mode ?? 'friend-live';
-    const settings = settingsCompat.settingsFromLegacyGlobals(globalThis);
+    const settings = {
+      ...settingsCompat.settingsFromLegacyGlobals(globalThis),
+      ...(globalThis.__spine?.activePending?.ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
+    };
 
     // For live invites: check whether the recipient is already in an active live
     // game. If so, notify the inviter and cancel — we don't interrupt someone
@@ -6068,7 +6124,11 @@ function computeBasicSizes() {
     ?? grid.parentElement;
   const rect = wrap?.getBoundingClientRect?.();
   const base = Math.min(rect?.width || 520, rect?.height || 520);
-  const size = Math.max(14, Math.floor((base - 22) / 12));
+  // Classic boards are 12×12 (the outer ring holds the bonus squares); a
+  // Boost 2.0 board is just the 10×10 play area (`grid-10`) and gets the
+  // whole width. Gaps are 2px between cells.
+  const cols = grid.classList?.contains?.('grid-10') ? 10 : 12;
+  const size = Math.max(14, Math.floor((base - (cols - 1) * 2) / cols));
   // Set --csz on BOTH the wrap and the grid so the wrap's width/height calc
   // and the grid's template-columns/rows agree. Setting only the grid (the
   // previous behavior) left the wrap sized by the CSS clamp() and the grid
@@ -6089,13 +6149,31 @@ function scheduleBasicLayoutRefresh() {
   globalThis.setTimeout?.(run, 240);
 }
 
-function buildSpineUnifiedGrid() {
+// `bonusSquares: false` (Boost 2.0): no off-grid bonus squares exist in that
+// ruleset, so the grid is only the 10×10 play area (no perimeter ring) and
+// the board can use the full width. Cell ids (#c{r}_{c}) are the same.
+function buildSpineUnifiedGrid({ bonusSquares = true } = {}) {
   const doc = globalThis.document;
   const grid = doc?.getElementById?.('game-grid');
   if (!grid) return;
   grid.innerHTML = '';
+  const innerWrap = doc.querySelector?.('.board-center-inner');
+  grid.classList?.toggle?.('grid-10', !bonusSquares);
+  innerWrap?.classList?.toggle?.('grid-10', !bonusSquares);
+  if (!bonusSquares) {
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 10; c++) {
+        const el = doc.createElement('div');
+        el.className = 'cell';
+        el.id = `c${r}_${c}`;
+        grid.appendChild(el);
+      }
+    }
+    computeBasicSizes();
+    return;
+  }
   const map = new Map();
-  BDEFS.forEach((b, idx) => {
+  if (bonusSquares) BDEFS.forEach((b, idx) => {
     map.set(`${b.br + 2},${b.bc + 2}`, idx);
   });
   for (let gr = 1; gr <= 12; gr++) {

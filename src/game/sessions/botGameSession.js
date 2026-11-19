@@ -13,6 +13,11 @@
 import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
 import { searchBotMove, DIFFICULTY } from './botSearch.js';
+import { chooseV2Turn } from '../boostV2/botV2.js';
+
+// Boost 2.0: a setup placement is quick to decide — don't make the human wait
+// the full "thinking" time for each of the bot's opening Boosts.
+const V2_SETUP_THINK_MS = 900;
 
 // Choose which rack tiles to dump when the bot can't move. Exchange the
 // most-duplicated letters first (a rack of 3×א is what usually strands the
@@ -85,12 +90,14 @@ export function attachBotPlayer(session, {
     }
     pendingActFor = null;
     cancelPendingThink();
+    const inV2Setup = state.ruleset === 'BOOST_V2' && state.boostV2?.phase === 'OPENING_SETUP';
     pendingThinkHandle = scheduler(() => {
       pendingThinkHandle = null;
       if (detached) return;
       if (state.currentTurnSlot !== slot || state.status !== 'playing') return;
       if (bonusPauseCount > 0) { pendingActFor = slot; return; }
       const activeWordList = typeof getWordList === 'function' ? getWordList() : wordList;
+      if (state.ruleset === 'BOOST_V2') { actV2(Array.isArray(activeWordList) ? activeWordList : []); return; }
       const result = searchBotMove(state, slot, Array.isArray(activeWordList) ? activeWordList : [], isWordValid, { difficulty, rng });
       if (result) {
         engine.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: result.placed } });
@@ -109,7 +116,53 @@ export function attachBotPlayer(session, {
           engine.dispatch({ type: CMD.PASS_TURN });
         }
       }
-    }, thinkingMs);
+    }, inV2Setup ? Math.min(thinkingMs, V2_SETUP_THINK_MS) : thinkingMs);
+  }
+
+  // Exchange when the bag can refill, otherwise pass (same policy as legacy).
+  function exchangeOrPass() {
+    const rackTiles = (state.racks?.[slot] ?? []).filter(Boolean);
+    const bagLen = state.bag?.length ?? 0;
+    if (rackTiles.length > 0 && bagLen > 0) {
+      const letters = pickTilesToExchange(rackTiles, Math.min(rackTiles.length, bagLen));
+      engine.dispatch({ type: CMD.EXCHANGE_TILE, payload: { letters } });
+    } else {
+      engine.dispatch({ type: CMD.PASS_TURN });
+    }
+  }
+
+  // Boost 2.0 turn. Every action goes through the engine; if the engine ever
+  // refuses one (it should not — the bot plans with the engine's own
+  // functions), the bot falls back so the match can never stall on it.
+  function actV2(activeWordList) {
+    let action = null;
+    try {
+      action = chooseV2Turn(state, slot, activeWordList, isWordValid, { difficulty, rng });
+    } catch (e) {
+      console.warn('[bot] Boost 2.0 decision failed', e);
+    }
+    const inSetup = state.boostV2?.phase === 'OPENING_SETUP';
+    let rejected = null;
+    const offReject = bus.on(EV.INVALID_MOVE_REJECTED, (p) => { rejected = p ?? {}; });
+    try {
+      if (action?.type === 'setup') {
+        engine.dispatch({ type: CMD.PLACE_OPENING_BOOST, payload: { r: action.r, c: action.c } });
+      } else if (action?.type === 'move') {
+        engine.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: action.placed, boostPlacements: action.boostPlacements } });
+      } else if (inSetup) {
+        // No legal square (practically impossible): hand the step over.
+        engine.dispatch({ type: CMD.PASS_TURN });
+      } else {
+        exchangeOrPass();
+      }
+    } finally {
+      offReject();
+    }
+    if (rejected && state.status === 'playing' && state.currentTurnSlot === slot) {
+      console.warn('[bot] Boost 2.0 action rejected — falling back', rejected.reason);
+      if (inSetup) engine.dispatch({ type: CMD.PASS_TURN });
+      else exchangeOrPass();
+    }
   }
 
   function pause() { bonusPauseCount += 1; }

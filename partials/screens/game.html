@@ -98,6 +98,11 @@
 
     </div><!-- /#info-strip -->
 
+    <!-- Boost 2.0 strip (BOOST_V2 matches only, filled by boostV2Layer.js):
+         next-two queue preview / live move breakdown + replacement tray /
+         opening-setup stepper. Hidden in legacy games. -->
+    <div id="v2-strip" class="v2-strip" dir="rtl" aria-live="polite" hidden></div>
+
     <!-- Reaction overlay (backdrop + panel, filled by reactionController) -->
     <div id="rxn-overlay" class="rxn-overlay" aria-hidden="true" style="display:none">
       <div id="rxn-panel" class="rxn-panel" dir="rtl" role="dialog" aria-modal="true"></div>
@@ -120,6 +125,8 @@
         <!-- Transient status toast (errors, game over, swap hints, setS toasts).
              Floats on the board's top edge and fades — it takes no layout row. -->
         <div class="sbar is-empty" id="sbar" aria-live="polite"></div>
+        <!-- Boost 2.0 move breakdown (non-modal, auto-hides; boostV2Layer.js) -->
+        <div id="v2-result" class="v2-result hidden" dir="rtl" role="status"></div>
         <div class="board-center-inner" id="board-center-inner">
           <div id="board-bg"></div>
           <div id="game-grid"></div>
@@ -166,4 +173,7 @@
        end overlay. Sits outside .gr so the read-only pointer-events guard on
        .gr doesn't disable it. Returns to the results table. -->
   <button id="board-review-back" class="board-review-back hidden" type="button">חזרה לתוצאות ←</button>
+
+  <!-- Boost 2.0 challenge details sheet (boostV2Layer.js) -->
+  <div id="v2-sheet" class="v2-sheet-wrap hidden" dir="rtl"></div>
 </div>

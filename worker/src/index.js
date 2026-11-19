@@ -1,5 +1,5 @@
-// Push broker and coin economy for the bonus-game app. /economy/* → economy.js; every
-// other POST is a push (below).
+// Push broker, coin economy and Boost 2.0 turns for the bonus-game app.
+// /economy/* → economy.js; /boost/* → boostTurn.js; every other POST is a push (below).
 //
 // Push flow:
 //   1. Verify caller's Firebase ID token (Bearer header)
@@ -17,6 +17,7 @@ import { runCronSweep } from './cronSweep.js';
 import { handleEconomy } from './economy.js';
 import { handleAdmobSsv } from './admobSsv.js';
 import { handleAccountDelete } from './accountDelete.js';
+import { handleBoost } from './boostTurn.js';
 
 const ALLOWED_KINDS = new Set(Object.values(KIND));
 const MAX_RECIPIENTS = 4;        // games have 2 players; small headroom
@@ -109,6 +110,11 @@ export default {
     // ─── Coin economy (economy.js) ────────────────────────────────────
     if (url.pathname.startsWith('/economy/')) {
       return handleEconomy(request, env, corsHeaders(origin));
+    }
+
+    // ─── Boost 2.0 authoritative turns (boostTurn.js) ─────────────────
+    if (url.pathname.startsWith('/boost/')) {
+      return handleBoost(request, env, corsHeaders(origin));
     }
 
     // ─── Account deletion (accountDelete.js) ──────────────────────────

@@ -117,7 +117,7 @@ validateMove(state: GameState, placed: PlacedTile[]): {
 ## Scoring Engine (`src/game/core/scoringEngine.js`)
 
 ```typescript
-BINGO_BONUS: 50
+BINGO_BONUS: 25
 
 getMainWord(state: GameState, placed: PlacedTile[]): WordTile[]
 getAllWords(state: GameState, placed: PlacedTile[]): WordTile[][]
@@ -394,6 +394,21 @@ BDEFS: BoardSlotDef[]
 ```
 
 ---
+
+## Boost 2.0 (`src/game/boostV2/`) — prototype
+
+- `createInitialState({ ..., ruleset: 'BOOST_V2', boostV2RulesVersion?, boostQueueRng? })` — V2 match; `state.boostV2` holds rules snapshot, definitions, queue, phase.
+- Commands (V2): `CMD.CONFIRM_MOVE { placed, boostPlacements: [{r, c, instanceId?}], moveId?, expectedRevision? }`; `CMD.PLACE_OPENING_BOOST { r, c }`; `CMD.EXCHANGE_TILE { letters }`; `CMD.PASS_TURN { reason? }` (`'timeout'` during setup auto-places).
+- Events (V2): `EV.MOVE_CONFIRMED` adds `breakdown`, `boostPlacements`, `ruleset`; `EV.BOOSTS_CHANGED` (`publicView`); `EV.BOOST_PLACED`; `EV.BOOST_V2_TELEMETRY { type, rulesVersion, deckVersion, ... }`; `EV.GAME_COMPLETED` adds `boostV2Endgame { accumulated, deductions, final }`.
+- `planForMove(state, placed, consumedIds) → { remaining, entries, legal, plan }` — the replacement batch the engine will demand (UI/bot preview). `plan.arrangement` is always a valid submission.
+- `publicView(state.boostV2)` — what a player may see: active Boosts, `upcoming` (next 2), setup progress. Never the full queue.
+- Online (Worker): `createBoostTurnClient({ baseUrl, getIdToken })` → `createMatch`, `submit(roomId, command, { expectedVersion })`, `claimTimeout`, `plan(roomId, draft)`; `readBoostV2Room(room)`, `readMyRack(node)`. Worker-side: `authoritativeTurn.createMatch / applyCommand / planDraft`.
+- `legalOpeningSquares(state)` — legal squares for the current opening-setup Boost.
+- UI: `mountGameScreen({ ..., boostV2Hooks })`; `mountBoostV2Layer({ bus, controller, getState }) → { hooks, unmount }`; `computeV2Draft(state, { placed, swappedTiles, boostPlacements })`; controller `v2Draft()`, `setBoostPlacements(list)`, `setV2SetupChoice({r,c}|null)`, `skipOpeningStep()`; view fields `ruleset`, `_boostV2`, `boostPlacements`, `v2SetupChoice`.
+- Bot: `chooseV2Turn(state, slot, wordList, isWordValid, { difficulty, rng }) → { type: 'setup', r, c } | { type: 'move', placed, boostPlacements, score, breakdown } | null`; `chooseBoostSquares`, `accessScore`, `rackLeaveValue`, `scoreV2Candidate`, `boostThreat`, `plannedLetters`, `queuePlanValue`, `boostTargetedCandidates`, `v2MaxWordLen`. `searchBotMove` opts gain optional `evaluate`, `anchorPriority`, `extraAnchors`.
+- Online (Phase 7): `createBoostV2OnlineSession({ bus, db, room, mySlot, client, now?, setTimer?, clearTimer? })` → `{ state, bus, mode, roomId, mySlot, start, dispatch, dispose, markReady, resync }` (`client` = `createBoostTurnClient(...)`); `HIDDEN_DEFINITION_ID = '__hidden__'`; `boostV2FromPublic(view)`, `applyRoomToState(state, room, rack, mySlot)`. `roomService.setBoostV2RoomCreator(fn)`, `roomService.isBoostV2Settings(settings)`; create-room / matchmaking filters carry `ruleset`. Layer: `HIDDEN_CARD_LABEL`; `markerHTML` / `cardHTML` render `definition.hidden`.
+- Local sessions: `createLocalGameSession({ ..., ruleset: 'BOOST_V2', boostQueueRng? })`; `startGameViaSpine({ ..., ruleset })`; setup `PLAY_CLICKED` carries `ruleset`.
+- `evaluateBoost`, `evaluateMoveBoosts`, `buildScoreBreakdown`, `computeFinalScores`, `generateQueue`, `legalSquares`, `planReplacements`, `validatePlacements`, `checkBoostV2Invariants`, `normalizeBoostV2State` — pure.
 
 ## Notifications (`src/notifications/`)
 

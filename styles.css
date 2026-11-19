@@ -902,7 +902,7 @@ body.tile-selected .bsq.bsq-tile-host{animation:none;}
 .end-card-av{font-size:30px;line-height:1;min-height:32px;display:flex;align-items:center;justify-content:center;}
 .end-card-av .av-img{width:32px;height:32px;object-fit:contain;filter:drop-shadow(0 0 6px rgba(0,200,255,.45));}
 .end-card-name{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;}
-.end-card-score{font-size:28px;font-weight:900;color:rgba(255,255,255,.75);line-height:1;}
+.end-card-score{font-size:28px;font-weight:900;color:rgba(255,255,255,.75);line-height:1;direction:ltr;unicode-bidi:isolate;}
 .end-card.is-winner .end-card-score{color:var(--by);text-shadow:0 0 12px rgba(232,200,64,.5);}
 .end-card.is-loser .end-card-score{color:rgba(255,255,255,.45);}
 
@@ -2477,6 +2477,9 @@ html .hlogo .hl-tiles .hl-layer > img {
 .scoring-float-label {
   position: fixed;
   pointer-events: none;
+  /* "+N" in the RTL page rendered as "N+" (all rulesets) — isolate as LTR. */
+  direction: ltr;
+  unicode-bidi: isolate;
   z-index: 9999;
   color: #ffe870;
   font-size: 20px;
@@ -5434,3 +5437,112 @@ button[aria-disabled="true"] {
 @keyframes endAchSpark{0%{opacity:0;transform:scale(.3)}35%{opacity:1;transform:scale(1.5)}100%{opacity:0;transform:scale(.8)}}
 @media (prefers-reduced-motion:reduce){:root:not([data-full-motion]) .end-ach-progress *{animation:none!important;}}
 :root[data-reduced-motion] .end-ach-progress *{animation:none!important;}
+
+/* ── Boost 2.0 (ruleset BOOST_V2; boostV2Layer.js) ─────────────────────────
+   Approved mockups: https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
+   Difficulty = shape + colour + label (never colour alone). */
+:root{--v2-easy:#34d399;--v2-med:#fb923c;--v2-hard:#f43f5e;--v2-cyan:#38e6ff;}
+/* menu-electric.css (loaded later) forces the lock pills visible with id
+   selectors — three ids outrank all of them. */
+#sg.boost-v2 #info-strip #is-locks-1,#sg.boost-v2 #info-strip #is-locks-2,#sg.boost-v2 #lock-inv-display{display:none!important;}
+.v2-strip{width:100%;max-width:520px;margin:0 auto;flex-shrink:0;display:flex;flex-direction:column;gap:6px;padding:4px 10px;box-sizing:border-box;color:#eef3ff;font-family:'Heebo',sans-serif;}
+.v2-strip[hidden]{display:none;}
+.v2-row{display:flex;align-items:center;gap:8px;min-width:0;}
+.v2-lbl{font-size:12px;font-weight:700;color:#9fb4e0;white-space:nowrap;}
+.v2-muted{font-size:12px;color:#9fb4e0;}
+.v2-card{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:8px;height:42px;padding:0 10px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13);}
+.v2-card-tx{display:flex;flex-direction:column;min-width:0;line-height:1.2;}
+.v2-card-tx b{display:flex;gap:4px;min-width:0;font-size:13px;font-weight:800;white-space:nowrap;}
+.v2-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.v2-bd{flex-shrink:0;}
+.v2-card-tx i{font-style:normal;font-size:11px;font-weight:700;white-space:nowrap;}
+.v2-card--easy .v2-card-tx i{color:var(--v2-easy);} .v2-card--medium .v2-card-tx i{color:var(--v2-med);} .v2-card--hard .v2-card-tx i{color:var(--v2-hard);}
+.v2-icon-slot{width:26px;height:26px;border-radius:50%;border:1.5px dashed rgba(180,205,255,.5);flex-shrink:0;box-sizing:border-box;}
+.v2-icon-slot--lg{width:58px;height:58px;border-radius:16px;border-width:2px;}
+.v2-sum{justify-content:space-between;}
+.v2-chips{display:flex;flex-wrap:wrap;gap:5px;min-width:0;}
+.v2-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:13px;background:rgba(255,255,255,.08);font-size:13px;font-weight:700;white-space:nowrap;}
+.v2-chip--ok{background:rgba(52,211,153,.16);border:1px solid rgba(52,211,153,.55);color:#a7f3d0;}
+.v2-chip--fail{color:#a9b6d3;}
+.v2-chip--rack{background:rgba(255,204,51,.14);color:#ffe08a;}
+.v2-total{font-size:24px;font-weight:900;color:#39d5ff;line-height:1;}
+.v2-tray{padding:6px 10px;border-radius:14px;background:rgba(56,230,255,.08);border:1.5px solid rgba(56,230,255,.55);}
+.v2-ok{font-size:12px;font-weight:800;color:#a7f3d0;white-space:nowrap;}
+.v2-hint{font-size:12px;font-weight:700;color:#9fe9ff;white-space:nowrap;}
+.v2-setup{display:flex;flex-direction:column;gap:6px;padding:8px 10px;border-radius:16px;background:rgba(15,35,90,.8);border:1px solid rgba(56,230,255,.45);}
+.v2-setup-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;}
+.v2-setup-h b{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.v2-skip{flex-shrink:0;min-height:36px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#dfe8ff;font:700 12px 'Heebo',sans-serif;cursor:pointer;}
+.v2-steps{list-style:none;margin:0;padding:0;display:flex;gap:6px;}
+.v2-step{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:3px;}
+.v2-step-h{font-size:11px;font-weight:800;color:#9fb4e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.v2-step.is-now .v2-step-h{color:#9fe9ff;} .v2-step.is-done .v2-step-h{color:#a7f3d0;}
+.v2-step.is-now .v2-card{border:1.5px solid var(--v2-cyan);background:rgba(56,230,255,.1);}
+.v2-step .v2-card{height:38px;padding:0 6px;gap:5px;} .v2-step .v2-icon-slot{display:none;}
+
+/* Board marker: fills an empty cell; sizes follow the cell size (--csz). */
+#game-grid .cell.v2-boost{position:relative;}
+.v2-mk{position:absolute;inset:1px;border-radius:calc(var(--csz,34px)*.17);border:2px solid;background:#0b1838;display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer;}
+.v2-mk--easy{border-color:var(--v2-easy);box-shadow:0 0 calc(var(--csz,34px)*.3) rgba(52,211,153,.55);}
+.v2-mk--medium{border-color:var(--v2-med);box-shadow:0 0 calc(var(--csz,34px)*.3) rgba(251,146,60,.55);}
+.v2-mk--hard{border-color:var(--v2-hard);box-shadow:0 0 calc(var(--csz,34px)*.3) rgba(244,63,94,.6);}
+.v2-mk-b{font-size:calc(var(--csz,34px)*.38);font-weight:800;color:#fff;line-height:1;}
+.v2-mk-s{position:absolute;top:1px;right:3px;font-size:calc(var(--csz,34px)*.24);line-height:1;}
+.v2-mk-r{position:absolute;bottom:1px;left:3px;font-size:calc(var(--csz,34px)*.24);font-weight:800;line-height:1;}
+.v2-mk--easy .v2-mk-s,.v2-mk--easy .v2-mk-r{color:var(--v2-easy);}
+.v2-mk--medium .v2-mk-s,.v2-mk--medium .v2-mk-r{color:var(--v2-med);}
+.v2-mk--hard .v2-mk-s,.v2-mk--hard .v2-mk-r{color:var(--v2-hard);}
+/* Online: a card the server has not revealed yet. */
+.v2-mk--hidden{border-color:rgba(180,205,255,.6);border-style:dashed;}
+.v2-mk--hidden .v2-mk-s{position:static;font-size:calc(var(--csz,34px)*.42);font-weight:900;color:#cfe0ff;}
+.v2-card--hidden .v2-card-tx i{color:#9fb4e0;}
+.v2-card--hidden .v2-icon-slot{display:flex;align-items:center;justify-content:center;font-weight:900;color:#cfe0ff;}
+.v2-mk.is-pending{border-style:dashed;background:#132b63;outline:2px solid rgba(255,255,255,.85);outline-offset:-1px;}
+.v2-mk.is-setup{border-style:dashed;background:#132b63;box-shadow:none;}
+#game-grid .cell.v2-legal{outline:2px dashed rgba(56,230,255,.9);outline-offset:-3px;cursor:pointer;}
+#game-grid .cell.v2-dim{opacity:.55;}
+
+/* Non-modal move breakdown, floating on the board's top edge. */
+.v2-result{position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:30;width:min(92%,340px);display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-radius:16px;background:#10275c;border:1px solid rgba(255,204,51,.45);box-shadow:0 10px 30px rgba(0,0,0,.4);color:#eef3ff;font-family:'Heebo',sans-serif;cursor:pointer;}
+.v2-result.hidden{display:none;}
+.v2-res-hd{font-size:13px;font-weight:700;color:#ffe08a;}
+.v2-res-row{display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:700;}
+.v2-res-row--ok{color:#a7f3d0;} .v2-res-row--fail{color:#a9b6d3;font-weight:500;} .v2-res-row--rack{color:#ffe08a;}
+.v2-res-total{border-top:1px solid rgba(255,255,255,.14);padding-top:6px;font-weight:900;font-size:16px;}
+.v2-res-total span:last-child{color:#ffcc33;font-size:20px;}
+
+/* Challenge details sheet. */
+.v2-sheet-wrap{position:fixed;inset:0;z-index:900;background:rgba(2,6,30,.55);display:flex;align-items:flex-end;justify-content:center;}
+.v2-sheet-wrap.hidden{display:none;}
+.v2-sheet{width:100%;max-width:520px;box-sizing:border-box;padding:10px 20px calc(20px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;background:#0d1f4f;border-top:1px solid rgba(140,185,255,.35);box-shadow:0 -12px 40px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:12px;color:#eef3ff;font-family:'Heebo',sans-serif;}
+.v2-sheet-grip{align-self:center;width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);}
+.v2-sheet-hd{display:flex;align-items:center;gap:14px;}
+.v2-sheet-hd h2{margin:0;font-size:22px;font-weight:900;}
+.v2-sheet-tags{display:flex;gap:8px;margin-top:4px;}
+.v2-tag{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:13px;font-size:13px;font-weight:800;}
+.v2-tag--easy{border:1.5px solid var(--v2-easy);color:var(--v2-easy);} .v2-tag--medium{border:1.5px solid var(--v2-med);color:var(--v2-med);} .v2-tag--hard{border:1.5px solid var(--v2-hard);color:var(--v2-hard);}
+.v2-tag--pts{background:rgba(255,255,255,.08);color:#fff;}
+.v2-sheet-req{margin:0;font-size:17px;font-weight:700;line-height:1.4;}
+.v2-ex{display:flex;flex-direction:column;gap:6px;align-items:center;padding:10px;border-radius:14px;background:rgba(255,255,255,.05);}
+.v2-ex-tiles{display:flex;gap:4px;}
+.v2-ex-t{width:30px;height:34px;background:var(--tile);border:2px solid var(--tborder);border-radius:5px;box-shadow:0 2px 0 var(--tshadow);display:flex;align-items:center;justify-content:center;color:#111;font-size:17px;font-weight:900;box-sizing:border-box;}
+.v2-sheet-notes{margin:0;padding:0 18px 0 0;display:flex;flex-direction:column;gap:5px;font-size:14px;color:#cfdcf7;line-height:1.35;}
+.v2-sheet-ok{min-height:48px;border:0;border-radius:14px;background:rgba(255,255,255,.1);color:#fff;font:800 17px 'Heebo',sans-serif;cursor:pointer;}
+
+/* End screen: accumulated score and rack deduction (natural endings only). */
+.end-v2-ded{font-size:12px;font-weight:700;color:#b9c8ea;margin-top:2px;}
+
+/* Boost 2.0 board: only the 10×10 play area (no bonus-square ring), so it
+   spans the full width. --csz is computed for 10 columns (computeBasicSizes). */
+.board-center-inner.grid-10{
+  width:calc(var(--csz) * 10 + 18px);
+  height:calc(var(--csz) * 10 + 18px);
+}
+#game-grid.grid-10{
+  grid-template-columns:repeat(10, var(--csz));
+  grid-template-rows:repeat(10, var(--csz));
+}
+.board-center-inner.grid-10 #board-bg,
+.board-center-inner.grid-10 #board-border{
+  left:0; top:0; width:100%; height:100%;
+}

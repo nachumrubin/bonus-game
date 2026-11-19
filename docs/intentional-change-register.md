@@ -75,6 +75,13 @@ All entries below are currently `approved: false`. They are documented because t
     "newBehavior": "The working-tree index.html is a small modular shell loading styles.css, config.js, screenPartials.js, and src/main.js.",
     "reason": "Modularization entrypoint. Legacy behavior must be read from git history or an archived source file.",
     "approved": false
+  },
+  {
+    "behavior": "Full-rack (bingo) bonus value",
+    "legacyBehavior": "Placing all 8 rack tiles in one move scored +50 (BINGO_BONUS = 50).",
+    "newBehavior": "The bonus is +25 (BINGO_BONUS = 25) for every ruleset, including legacy matches already in progress at release.",
+    "reason": "Product-owner decision for Boost 2.0 (Nov 2026): one full-rack value across rulesets.",
+    "approved": true
   }
 ]
 ```

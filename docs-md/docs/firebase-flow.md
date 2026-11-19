@@ -178,6 +178,17 @@ Terminal statuses: `'completed'`, `'abandoned'`, `'expired'`
 
 ---
 
+## Boost 2.0 online flow (Worker-authoritative)
+
+1. Room creation: a client calls `POST /boost/create` (`boostTurnClient.createMatch`); the Worker writes `boostV2Secret`, the public room, both racks and (async modes) `users/{uid}/asyncRooms`.
+2. Every action: `POST /boost/turn {reqId, roomId, command, expectedVersion}`. The Worker verifies the ID token, reads the secret with its ETag, runs the real engine (`authoritativeTurn.applyCommand`), writes the secret back only if the ETag still matches (retry ≤ 6), then patches the public room (never `players`) and rewrites both racks. If the secret moved on meanwhile, it re-publishes the latest projection.
+3. Retries reuse the same `reqId` → same answer, no second write. A stale `expectedVersion` → `stale-version`.
+4. Live timers: the Worker sets `turnDeadlineMs`; the opponent claims an expired turn with `cmd/CLAIM_TIMEOUT` (accepted only after deadline + 1 s; two consecutive misses → `abandoned`, `missed-turns`).
+5. Draft preview: `POST /boost/plan` returns the breakdown and the replacement cards for a valid draft without writing anything.
+6. Clients never `commitTransaction()` a BOOST_V2 room — the rules refuse it.
+7. App wiring (Phase 7): invite accept / room-code join / matchmaking pair call `roomService.createRoom`, which delegates to the Worker when `settings.ruleset === 'BOOST_V2'` (the call sites skip their async `status: playing` write; the Worker creates the room playing). Live coin screen: `cmd/READY` to the Worker; the Worker starts `turnDeadlineMs` when both are ready. In game: `boostV2OnlineSession` subscribes to `rooms/{id}` and `boostV2Racks/{id}/{mySlot}` only.
+8. Cron sweep: BOOST_V2 rooms past their TTL are expired through the secret (`expireBoostMatch`), not by patching the room.
+
 ## Transaction Pattern
 
 Source: `src/game/online/roomService.js` → `commitTransaction()`

@@ -5,6 +5,44 @@
 
 ---
 
+## D-boost-v2-online-mirror: the online Boost 2.0 session is a read-only mirror of the public room — November 2026
+
+**Decision:** `boostV2OnlineSession` rebuilds an engine-shaped state from the public room + my rack, with null placeholders for what the player may not know (opponent rack, bag, queue cards past the visible two). All actions go to the Worker; room changes are translated into the same bus events the local engine emits. The card being placed in the opening setup is public (both players see it), later setup steps stay hidden.
+
+**Why:** the screen, controller, layer, animations and push notifications already speak the engine's state and events; a mirror lets them run unchanged and keeps the hidden queue on the server. Previewing drafts locally (with hidden replacement cards) avoids `/boost/plan`, which would reveal a third card early.
+
+**Trade-offs:** a pass and an exchange look the same in the projection, so the room carries `lastAction`; a room update is held until the matching rack version arrives (≤ 1.5 s, then applied anyway) to avoid showing a new board with a stale rack.
+
+## D-boost-v2-bot: the Boost 2.0 bot reuses the legacy search through optional hooks — November 2026
+
+**Decision:** `searchBotMove` gains optional `evaluate` / `anchorPriority` / `extraAnchors` hooks; `botV2.chooseV2Turn` supplies them so every candidate is scored by the V2 engine (`computeV2Draft`). The legacy bot passes no hooks and runs the identical code.
+
+**Why:** the spec requires the bot to use the same scoring engine as humans and to reuse the existing word generation. A separate V2 search would duplicate ~400 lines of tuned placement logic; hooks keep one search and make "same engine" structural rather than a convention.
+
+## D-boost-v2-ui-hooks: Boost 2.0 UI plugs into the game screen through optional hooks — November 2026
+
+**Decision:** `mountGameScreen` takes an optional `boostV2Hooks` object (decorate an empty cell, intercept a cell tap, disable controls, relabel / re-score the play button, after-render). `boostV2Layer.js` implements them and owns its own DOM (`#v2-strip`, `#v2-sheet`, `#v2-result`). Replacement choices and the setup choice live in the controller's view (pending until שבץ), like placed tiles.
+
+**Why:** `gameScreen.js` is a 2.7k-line closure that every legacy game depends on. Hooks keep every Boost 2.0 rule out of it, so a legacy game (no hooks) runs the identical code path, and the V2 presentation can be unit-tested against a real session without a DOM.
+
+## D-boost-v2-worker: Online Boost 2.0 matches are run by the Cloudflare Worker — November 2026
+
+**Decision:** for BOOST_V2 rooms the Worker is the only writer. The authoritative match (bag, racks, full hidden queue) lives in `boostV2Secret/{roomId}` as an engine-state JSON string guarded by RTDB ETags; clients see a public projection on `rooms/{roomId}` and only their own rack. The game logic is the app's pure engine bundled into the Worker (same pattern as D-coin-economy).
+
+**Why:** a hidden queue cannot stay hidden in a world-readable room computed on clients (AUDIT §6.1). Storing the state as one JSON string sidesteps Firebase's dropped-empty-array quirks for the authoritative copy; the public projection is structured so clients can subscribe to fields. Legacy rooms keep the client-commit model unchanged.
+
+**Trade-offs:** a turn needs the Worker online (a failed request is retried with the same request id); the Worker fetches the deployed app's dictionary so both sides validate identically.
+
+## D-boost-v2-ruleset: Boost 2.0 is a separate, versioned ruleset beside the legacy engine — November 2026
+
+**Decision:** Boost 2.0 matches carry `ruleset: 'BOOST_V2'` and a `boostV2` block holding a *snapshot* of their rules, their deck's challenge definitions and their full queue. `gameEngine.dispatch()` hands V2 commands to `src/game/boostV2/engineV2.js`; legacy states (no `ruleset`) never reach it. Rules 0.2 reads the full-rack bonus from the shared `BINGO_BONUS` (set to 25 for every ruleset by product decision, Nov 2026).
+
+**Why:** live legacy rooms must keep their rules until completion (spec §29), and several legacy constants are on the never-change list. A per-match snapshot means a later balancing change can never alter a match in progress. Keeping the V2 handlers out of `gameEngine.js` avoids touching its parity-critical swap / lock / deferred-bonus paths.
+
+**Rule decisions by version:** 0.2 — `BINGO_BONUS` 25, tile swaps on, locks off, no Power Word Easy; 0.3 — no special Bridge rule, rack deductions only on natural ends, a skipped opening-setup step goes to the opponent.
+
+**Also decided (prototype, pending product review):** the queue RNG is never derived from `tileBagSeed` and never persisted, so the queue cannot be rebuilt from the seed. This does *not* make it secret — see AUDIT §6.1.
+
 ## D-app-skins: a skin is a scoped, generated stylesheet over the existing UI — November 2026
 
 **Decision:** an app skin is `data-skin="<id>"` on `<html>` plus one stylesheet whose rules are all

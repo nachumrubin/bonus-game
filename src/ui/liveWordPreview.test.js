@@ -75,5 +75,5 @@ test('illegal shapes → null: gap, not collinear, disconnected, single letter',
 test('bingo: all 8 rack tiles add the bonus', () => {
   const placed = 'אבגדהוזח'.split('').map((ch, i) => t(4, i + 1, ch, 1));
   const p = computeLiveWordPreview({ board: createEmptyBoard(), firstMove: true, placed });
-  assert.equal(p.score, 8 + 50);
+  assert.equal(p.score, 8 + 25);
 });

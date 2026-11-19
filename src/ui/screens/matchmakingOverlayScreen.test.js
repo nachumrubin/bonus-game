@@ -120,6 +120,7 @@ test('readMatchmakingFilters: live + spd-normal + any-range + strict (defaults)'
     ratingRange: null,
     strict: true,
     name: null,
+    ruleset: 'LEGACY_V1',
   });
 });
 
@@ -173,6 +174,7 @@ test('mount: search click emits SEARCH with current filters', () => {
     ratingRange: 100,
     strict: false,
     name: 'נחום',
+    ruleset: 'LEGACY_V1',
   });
 });
 

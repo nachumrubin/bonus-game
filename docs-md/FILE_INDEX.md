@@ -50,7 +50,7 @@
 | `tileBag.js` | Tile bag. `RACK_SIZE=8`. Seeded shuffle via `createBag(seed)`, `drawInto()`, `returnTilesAndShuffle()`. |
 | `letterDistribution.js` | Hebrew letter values (`HV`) and bag counts (`HD`). 108 total tiles, 2 jokers. |
 | `moveValidator.js` | `validateMove()`: collinearity, gap, connectivity, first-move rules. |
-| `scoringEngine.js` | `scoreMove()`, `getAllWords()`. `BINGO_BONUS=50`. |
+| `scoringEngine.js` | `scoreMove()`, `getAllWords()`. `BINGO_BONUS=25`. |
 | `turnManager.js` | `applyMove()`, `applyPass()`, `applyExchange()`, `applyLock()`, `applyResign()`, `isGameOver()`. `LEGACY_PASS_GAME_OVER_THRESHOLD=6`. |
 | `hebrewDictionary.js` | `isValid()`, `loadDict()`. Loads from `data/dictionary.base.txt`. Complex lemmatization + prefix/suffix stripping. |
 | `*.test.js` | Inline unit tests for each module. |
@@ -71,6 +71,29 @@
 | `futureEffects/cancelNextOpponentBonus.js` | Block opponent's next bonus activation. |
 | `futureEffects/autoExtraScore.js` | Immediate point bonus (deferred UI acknowledge). |
 | `futureEffects/plugins.test.js` | Boost integration tests. |
+
+### `src/game/boostV2/` — Boost 2.0 (ruleset `BOOST_V2`; local, vs bot and online)
+| File | Role |
+|------|------|
+| `rulesConfig.js` | `RULESET`, versioned MatchRules (`getRules`, `snapshotRules`), rewards, thresholds, target letters, difficulty presentation. |
+| `hebrew.js` | Final-form normalisation for challenge evaluation (reuses `hebrewDictionary.norm`). |
+| `challengeCatalog.js` | Nine families, typed definition constructors, `isValidDefinition`, Hebrew requirement text, board badges. |
+| `deckManifest.js` | Versioned 100-card CANDIDATE deck (`DECK_0_1`), composition + target-letter tables. |
+| `challengeEvaluator.js` | Pure TILE / WORD / MOVE evaluation, `evaluateMoveBoosts`, `wordId`. |
+| `scoringV2.js` | Additive breakdown (`buildScoreBreakdown`), full-rack bonus, rack deductions (`computeFinalScores`). |
+| `challengeQueue.js` | `generateQueue` (1E/1M/1H non-Bridge head), `peek` / `preview` / `advance`. |
+| `boostPlacement.js` | Legal squares (Manhattan ≤ d), `planReplacements` (mandatory FIFO prefix), `validatePlacements`. |
+| `matchStateV2.js` | `createBoostV2State`, `publicView`, `normalizeBoostV2State`, `checkBoostV2Invariants`, `PHASE`. |
+| `engineV2.js` | Turn orchestrator called from `gameEngine.dispatch()`; `planForMove`, `applyEndgameV2`. |
+| `simulateV2.js` | Headless seeded matches through the real engine with invariant checks. |
+| `botV2.js` | Boost 2.0 bot: `chooseV2Turn`, rack leave, defensive / favourable Boost placement. |
+| `draftPreview.js` | `computeV2Draft` — live breakdown + replacement plan for an unsubmitted draft (UI). |
+| `authoritativeTurn.js` | Worker game logic: `createMatch`, `applyCommand`, `planDraft`, room/rack projections, state (de)serialisation. |
+| `sortedDictionary.js` | Binary-search word validator over the raw sorted dictionary + Firebase overlays (Worker). |
+| `testHelpers.js` | Test fixtures (not a test file). |
+| `*.test.js` | Unit, engine-integration and randomized property tests. |
+
+Related: `src/ui/screens/boostV2Layer.js` (game-screen hooks, strip, sheet, result card), `tests/e2e/boost-v2-local-match.spec.js`, `worker/src/boostTurn.js` (`/boost/*` endpoints), `src/game/online/boostTurnClient.js` (client API), `src/game/online/boostV2OnlineSession.js` (online session: mirror state + Worker dispatch), `tests/emulator/boost-v2-online.test.mjs` (two sessions under the rules), `tests/emulator/boost-v2-rules.test.mjs`, `scripts/boostV2/analyze-dictionary.mjs` (offline analysis → `docs-md/boost-v2/ANALYSIS.md`), `docs-md/boost-v2/AUDIT.md`.
 
 ### `src/game/sessions/` — Session Modes
 | File | Role |

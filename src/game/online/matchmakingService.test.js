@@ -393,3 +393,11 @@ test('tryPair picks the oldest waiting partner', async () => {
   assert.equal(r.matched, true);
   assert.equal(r.partnerUid, 'old'); // joined earliest
 });
+
+test('isCompatible: Boost 2.0 never pairs with the classic game (strict or not)', () => {
+  const v2 = { rating: 1000, settings: { ruleset: 'BOOST_V2' } };
+  assert.equal(isCompatible(v2, { rating: 1000, settings: {} }), false);
+  assert.equal(isCompatible({ rating: 1000, settings: {} }, v2), false);
+  assert.equal(isCompatible(v2, { rating: 1000, settings: { ruleset: 'BOOST_V2' } }), true);
+  assert.equal(isCompatible({ rating: 1000, settings: { ruleset: 'LEGACY' } }, { rating: 1000, settings: {} }), true);
+});

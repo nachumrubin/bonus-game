@@ -177,6 +177,20 @@ ID format: `"${turnNumber}:${slot}:${r}:${c}:${duration}"`
 
 ---
 
+## Boost 2.0 rooms (`ruleset: 'BOOST_V2'`) — Worker-authoritative
+
+Written **only** by the Cloudflare Worker (`worker/src/boostTurn.js`, service account). Rules lock the room root and `status`, `turnDeadlineMs`, `settings`, `abandonedBy`, `abandonReason` for clients; `ready`, `livePreview`, `liveReaction`, `players/{slot}/oneSignalSubId`, `updatedAt`, `lastReminderAt`, `lastPokedAt` stay client-writable.
+
+`/rooms/{roomId}` (public projection, `authoritativeTurn.projectRoom`): `roomId, mode, status, schemaVersion: 2, ruleset: 'BOOST_V2', authority: 'worker', createdAt, updatedAt, players, settings, version, currentTurnSlot, turnNumber, turnDeadlineMs, missedTurns, scores, passCount, moveCount, firstMove, board` (flat 100), `bagCount, rackCounts {0,1}, moveHistory` (each with `breakdown`, `boostPlacements`, `swappedTiles`), `lastMove, boostV2 { rulesVersion, deckVersion, phase, activeBoosts[], upcoming[≤2], remainingInQueue, openingSetup, revision, rules }, endgame { accumulated, deductions, final } | null, winnerSlot, abandonedBy, abandonReason, endReason, ready {0,1}, lastAction { type: move|pass|exchange|setup|resign|stall-claim|timeout|forfeit, slot, count? } | null`. `boostV2.openingSetup.current` and `.placements[]` carry `definition` (the card being placed now and placed cards are public). **No** `bag`, `racks`, `tileBagSeed` or queue.
+
+## `/boostV2Secret/{roomId}` — no client access
+
+`{ schema: 1, roomId, mode, players, settings, createdAt, updatedAt, version, turnDeadlineMs, missedTurns, stateJson, recent }` — `stateJson` is the full engine state as a JSON string (bag, racks, complete hidden queue, definitions, rules snapshot); `recent` = last 40 accepted request ids → result (idempotent retries). Compare-and-set via RTDB ETags.
+
+## `/boostV2Racks/{roomId}/{slot}` — readable only by that slot's player
+
+`{ tiles: string[], version }`.
+
 ## `/pendingRooms/{code}`
 
 Temporary room codes for game invites. 6-digit numeric code, 30-minute TTL.

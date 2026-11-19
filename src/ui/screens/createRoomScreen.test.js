@@ -68,6 +68,7 @@ test('readCreateRoomFilters: live defaults (רגיל = 40s)', () => {
     timelimit: true,
     botTime: 40,
     name: 'שחקן 1',
+    ruleset: 'LEGACY_V1',
   });
 });
 
@@ -114,4 +115,12 @@ test('mount: missing root buttons are tolerated', () => {
   const root = { querySelector: () => null };
   const screen = mountCreateRoomScreen({ root, bus });
   screen.unmount();
+});
+
+test('ruleset toggle: classic by default, Boost 2.0 when picked (create room)', async () => {
+  const { readRuleset } = await import('./createRoomScreen.js');
+  const mk = (active) => ({ querySelector: (sel) => (sel === '#cr-rules-v2' ? { classList: { contains: () => active } } : null) });
+  assert.equal(readRuleset(mk(false), 'cr'), 'LEGACY_V1');
+  assert.equal(readRuleset(mk(true), 'cr'), 'BOOST_V2');
+  assert.equal(readRuleset({ querySelector: () => null }, 'cr'), 'LEGACY_V1');
 });

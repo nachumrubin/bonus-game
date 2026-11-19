@@ -14,7 +14,7 @@ These values are baked into existing game states stored in Firebase. Changing th
 - `BOARD_SIZE = 10` (`src/game/core/board.js`) — never change
 - Letter values `HV` (`letterDistribution.js`) — never change; scores are stored in room docs
 - Letter counts `HD` (`letterDistribution.js`) — never change; affects seeded bag reproducibility
-- `BINGO_BONUS = 50` (`scoringEngine.js`) — never change
+- `BINGO_BONUS = 25` (`scoringEngine.js`) — changed from 50 in Nov 2026 by explicit product-owner decision (Boost 2.0, applies to all matches); never change again without one. Boost 2.0 reads it as `rules.fullRackBonus`.
 - `LEGACY_LOCK_INVENTORY = [3, 3, 5]` (`turnManager.js`) — never change
 - `LEGACY_PASS_GAME_OVER_THRESHOLD = 4` (`turnManager.js`) — was lowered from 6 pre-launch (May 2026) together with the new "exchanges count as scoreless" rule and the stalling-claim button; before changing again, weigh impact on stored `passCount` in active games
 - `STALL_CLAIM_THRESHOLD = 2` (`turnManager.js`) — minimum scoreless turns before the leading player can fire `CMD.CLAIM_STALL_END`

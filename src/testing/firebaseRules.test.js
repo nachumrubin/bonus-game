@@ -26,9 +26,12 @@ test('room write rule requires authenticated v2 room participant and current-tur
   // Since October 2026 the watchdog path is also locked to a pure turn
   // rotation: no claim during a mini-game (liveBonus.active), scores, racks
   // and lastMove.ts unchanged, turnNumber + 1 exactly (GAP_REPORT -4).
+  // Boost 2.0 (Nov 2026): BOOST_V2 rooms are written only by the Cloudflare
+  // Worker (service account) — the client expression is prefixed with a lock.
+  const V2_ROOT_LOCK = "data.child('ruleset').val() !== 'BOOST_V2' && newData.child('ruleset').val() !== 'BOOST_V2' && ";
   assert.equal(
     expr,
-    "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && (((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/0/uid').val()) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/1/uid').val())) || (data.child('status').val() === 'playing' && data.child('settings/timelimit').val() === true && data.child('turnDeadlineMs').val() <= now && data.child('liveBonus/active').val() !== true && newData.child('scores/0').val() === data.child('scores/0').val() && newData.child('scores/1').val() === data.child('scores/1').val() && newData.child('turnNumber').val() === data.child('turnNumber').val() + 1 && newData.child('lastMove/ts').val() === data.child('lastMove/ts').val() && newData.child('racks/0/0').val() === data.child('racks/0/0').val() && newData.child('racks/0/1').val() === data.child('racks/0/1').val() && newData.child('racks/0/2').val() === data.child('racks/0/2').val() && newData.child('racks/0/3').val() === data.child('racks/0/3').val() && newData.child('racks/0/4').val() === data.child('racks/0/4').val() && newData.child('racks/0/5').val() === data.child('racks/0/5').val() && newData.child('racks/0/6').val() === data.child('racks/0/6').val() && newData.child('racks/0/7').val() === data.child('racks/0/7').val() && newData.child('racks/1/0').val() === data.child('racks/1/0').val() && newData.child('racks/1/1').val() === data.child('racks/1/1').val() && newData.child('racks/1/2').val() === data.child('racks/1/2').val() && newData.child('racks/1/3').val() === data.child('racks/1/3').val() && newData.child('racks/1/4').val() === data.child('racks/1/4').val() && newData.child('racks/1/5').val() === data.child('racks/1/5').val() && newData.child('racks/1/6').val() === data.child('racks/1/6').val() && newData.child('racks/1/7').val() === data.child('racks/1/7').val() && (newData.child('turnDeadlineMs').val() > now || (newData.child('status').val() === 'abandoned' && newData.child('turnDeadlineMs').val() === 0)) && ((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/1/uid').val() && newData.child('currentTurnSlot').val() === 1) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/0/uid').val() && newData.child('currentTurnSlot').val() === 0))))))",
+    V2_ROOT_LOCK + "auth != null && newData.child('schemaVersion').val() === 2 && (auth.uid === newData.child('players/0/uid').val() || auth.uid === newData.child('players/1/uid').val()) && (!data.exists() || (newData.child('version').val() === data.child('version').val() + 1 && (((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/0/uid').val()) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/1/uid').val())) || (data.child('status').val() === 'playing' && data.child('settings/timelimit').val() === true && data.child('turnDeadlineMs').val() <= now && data.child('liveBonus/active').val() !== true && newData.child('scores/0').val() === data.child('scores/0').val() && newData.child('scores/1').val() === data.child('scores/1').val() && newData.child('turnNumber').val() === data.child('turnNumber').val() + 1 && newData.child('lastMove/ts').val() === data.child('lastMove/ts').val() && newData.child('racks/0/0').val() === data.child('racks/0/0').val() && newData.child('racks/0/1').val() === data.child('racks/0/1').val() && newData.child('racks/0/2').val() === data.child('racks/0/2').val() && newData.child('racks/0/3').val() === data.child('racks/0/3').val() && newData.child('racks/0/4').val() === data.child('racks/0/4').val() && newData.child('racks/0/5').val() === data.child('racks/0/5').val() && newData.child('racks/0/6').val() === data.child('racks/0/6').val() && newData.child('racks/0/7').val() === data.child('racks/0/7').val() && newData.child('racks/1/0').val() === data.child('racks/1/0').val() && newData.child('racks/1/1').val() === data.child('racks/1/1').val() && newData.child('racks/1/2').val() === data.child('racks/1/2').val() && newData.child('racks/1/3').val() === data.child('racks/1/3').val() && newData.child('racks/1/4').val() === data.child('racks/1/4').val() && newData.child('racks/1/5').val() === data.child('racks/1/5').val() && newData.child('racks/1/6').val() === data.child('racks/1/6').val() && newData.child('racks/1/7').val() === data.child('racks/1/7').val() && (newData.child('turnDeadlineMs').val() > now || (newData.child('status').val() === 'abandoned' && newData.child('turnDeadlineMs').val() === 0)) && ((data.child('currentTurnSlot').val() === 0 && auth.uid === data.child('players/1/uid').val() && newData.child('currentTurnSlot').val() === 1) || (data.child('currentTurnSlot').val() === 1 && auth.uid === data.child('players/0/uid').val() && newData.child('currentTurnSlot').val() === 0))))))",
   );
 
   const players = { 0: { uid: 'a' }, 1: { uid: 'b' } };
@@ -48,17 +51,28 @@ test('room side-channel writes remain participant-scoped', () => {
     "auth != null && auth.uid === root.child('rooms').child($roomId).child('players').child($slot).child('uid').val()",
   );
   const participantExpr = "auth != null && (auth.uid === root.child('rooms').child($roomId).child('players').child('0').child('uid').val() || auth.uid === root.child('rooms').child($roomId).child('players').child('1').child('uid').val())";
-  assert.equal(roomRules.settings['.write'], participantExpr);
+  // Boost 2.0: game-affecting side fields are Worker-only in BOOST_V2 rooms.
+  const V2_LOCK = "root.child('rooms').child($roomId).child('ruleset').val() !== 'BOOST_V2' && ";
+  assert.equal(roomRules.settings['.write'], V2_LOCK + participantExpr);
   assert.equal(roomRules.livePreview['.write'], participantExpr);
   // A terminal status (completed / abandoned / expired) is final: a late
   // end-of-game write from the other client must not overwrite it (soak
   // finding, Oct 2026: a late stall-claim 'completed' landed on top of the
   // watchdog's 'abandoned').
-  assert.equal(roomRules.status['.write'], `${participantExpr} && (data.val() !== 'completed' && data.val() !== 'abandoned' && data.val() !== 'expired')`);
+  assert.equal(roomRules.status['.write'], `${V2_LOCK}${participantExpr} && (data.val() !== 'completed' && data.val() !== 'abandoned' && data.val() !== 'expired')`);
+  for (const k of ['turnDeadlineMs', 'abandonedBy', 'abandonReason']) assert.ok(roomRules[k]['.write'].startsWith(V2_LOCK), k);
   assert.equal(
     roomRules.players.$slot.oneSignalSubId['.write'],
     "auth != null && auth.uid === root.child('rooms').child($roomId).child('players').child($slot).child('uid').val()",
   );
+});
+
+test('Boost 2.0 secret is closed to clients; racks are readable only by their own player', () => {
+  const r = rules();
+  assert.equal(r.boostV2Secret['.read'], false);
+  assert.equal(r.boostV2Secret['.write'], false);
+  assert.equal(r.boostV2Racks.$roomId.$slot['.read'], "auth != null && auth.uid === root.child('rooms').child($roomId).child('players').child($slot).child('uid').val()");
+  assert.equal(r.boostV2Racks.$roomId.$slot['.write'], false);
 });
 
 test('dictionary moderation rules require an /admins/{uid} whitelist entry', () => {

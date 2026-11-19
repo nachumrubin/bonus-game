@@ -16,7 +16,7 @@
 
 ## Tile Bag
 
-- **Total tiles:** 108 (`src/game/core/letterDistribution.js`, sum of `HD` values)
+- **Total tiles:** 99 (`src/game/core/letterDistribution.js`, sum of `HD` values — previously misstated as 108; corrected Nov 2026)
 - **Jokers:** 2 tiles (letter `'?'`, value 0)
 - **Rack size:** 8 (`RACK_SIZE = 8`, `src/game/core/tileBag.js`)
 - **Draw order:** LIFO — tiles drawn from `.pop()` end of shuffled array
@@ -74,7 +74,7 @@ Total = sum(scoreWord(w) for each word formed) + bingo_bonus
 
 - `scoreWord(word)` = sum of `tile.val` for all tiles in that word
 - There are **no board multiplier squares** (no double/triple word/letter bonus squares like classic Scrabble). Each tile scores its face value.
-- **Bingo bonus:** +50 points if exactly 8 tiles placed in one move (`BINGO_BONUS = 50`, `scoringEngine.js`)
+- **Bingo bonus:** +25 points if exactly 8 tiles placed in one move (`BINGO_BONUS = 25`, `scoringEngine.js`; was 50 until Nov 2026 — changed for every ruleset, including legacy matches already in progress)
 - All words formed by a move are scored: main word along placement axis + all cross-words
 
 ### Word Formation
@@ -429,3 +429,25 @@ Source: `src/game/sessions/tutorialSession.js`
 - Bot has 4 scripted moves using words from `TUTORIAL_WORDS = ['שלום','לב','אח','תמ','לבדו']`
 - Bot advances `nextMove` counter on each `EV.MOVE_CONFIRMED`
 - `ensureRackLetters()` injects required letters into player rack at game start
+
+---
+
+## Boost 2.0 ruleset (`BOOST_V2`) — prototype, not yet player-facing
+
+Source: `src/game/boostV2/` (see `docs-md/boost-v2/AUDIT.md`). Applies only to states with
+`ruleset: 'BOOST_V2'`; everything above stays true for legacy matches.
+
+- **Opening:** first word must cover one of (4,4) (4,5) (5,4) (5,5) — reason `'opening-not-center'`. Tiles must be on the 10×10 grid (`'off-grid'`).
+- **Off in V2:** off-grid bonus squares, mini-games/wheel, future-effect boosts, locks (`'v2-locks-disabled'`).
+- **Tile swaps stay available (rules 0.2):** same as legacy — at least one regular placement (`'swap-needs-placement'`), the displaced tile returns to the rack and may be played in the same move; swapped-in tiles count as new tiles for words, scoring, Tile Master and the full-rack count. Tile values always come from the letter table, never from the client.
+- **Scoring:** Σ word face values (all new/extended words, shared tiles count twice) + Σ completed Boost rewards + **25** for exactly 8 new tiles. Every move records a breakdown (`moveHistory[i].breakdown`, `MOVE_CONFIRMED.breakdown`).
+- **Endgame:** same triggers as legacy. Remaining rack values are deducted once (`state.boostV2.endgame`) **only on a natural end** — a rack and the bag are both empty, or the scoreless-turn limit is reached (no moves available). No deduction on a stall claim, resign, abandon, missed-turn forfeit or expiry. Higher final score wins; equal = draw; a player who resigns or abandons always loses.
+- **Exchange:** 1…min(rack, bag) tiles; bag empty → `'exchange-bag-empty'`; replacements drawn **before** the returned tiles go back; counts as a scoreless turn (existing rule).
+- **Boosts:** up to 3 active challenge markers on empty squares; a valid move covering one consumes it (success → reward 5/10/20 by difficulty, failure → 0). Nine families (Letter Hunt, Long Word, Tile Master, Double Letter, Unique Letters, Word Edge, Bridge Builder, Power Word, Exact Target).
+- **Power Word:** Medium (≥ 12) and Hard (≥ 18) only — no Easy level (since rules 0.2).
+- **Queue:** 95-card candidate deck `boost-v2.deck.0.3-candidate` (Power Word Easy removed from the 100-card table; staying at 95 for now), shuffled once per match (first three = one Easy, one Medium, one non-Bridge Hard); strict FIFO; next two cards visible.
+- **Placement:** the consuming player places replacements in the same turn, within Manhattan distance 2 of a tile on the post-move board. **Bridge Builder has no special rule** (rules 0.3): it is placed like any other Boost; if no word can cover it together with another Boost, players just consume it without completing it. With no legal square, the entry stays pending and is placed after a later word move.
+- **Opening setup:** after each player's first turn, the second player, the starting player, then the second player each place one Boost (`CMD.PLACE_OPENING_BOOST`); all three activate together and the starting player moves next. A player who passes or times out on their step hands it to the opponent, who then places two in a row (setup steps are not scoreless turns).
+- **Online:** Boost 2.0 online matches are run by the Cloudflare Worker (`/boost/*`, `worker/src/boostTurn.js`). Clients send commands; the Worker validates, scores and writes. The bag, both racks and the full queue are in `boostV2Secret/{roomId}` (no client access); each player reads only their own rack (`boostV2Racks/{roomId}/{slot}`). Timeouts are claimed by the opponent through the Worker (deadline + 1 s grace; two consecutive misses forfeit).
+- **Starting a Boost 2.0 game (Nov 2026):** setup screen (שני שחקנים or נגד המחשב) → "כללי משחק: בוסט 2.0". Online: Phase 7.
+- **Boost 2.0 bot:** scores candidates with the V2 engine (Boost rewards included). Words up to 4 / 7 / 8 letters (easy / medium / hard); medium/hard also search words through each Boost using board letters, weigh the rack leave, keep letters that active or visible upcoming Letter Hunt / Word Edge cards need, and subtract the opponent's expected gain from the Boosts left on the board (so covering a reachable Boost to deny it can win). Replacement Boosts go where the opponent can reach them least (easy: random). It sees only its own rack, the board, the active Boosts, the two visible upcoming cards and the cards it places.

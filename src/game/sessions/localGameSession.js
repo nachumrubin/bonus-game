@@ -46,6 +46,10 @@ export function createLocalGameSession({
   startingSlot = 0,
   settings = {},
   initialState = null,
+  // Boost 2.0 (spec §29): opt-in per match. The challenge queue is shuffled
+  // with fresh randomness — never derived from the (persisted) tile-bag seed.
+  ruleset,
+  boostQueueRng,
 }) {
   if (!bus) throw new Error('createLocalGameSession: bus is required');
 
@@ -57,7 +61,10 @@ export function createLocalGameSession({
     if (!tileBagSeed) throw new Error('createLocalGameSession: tileBagSeed is required');
     if (!players?.[0] || !players?.[1]) throw new Error('createLocalGameSession: players are required');
     mode = mode ?? 'offline-2p';
-    state = createInitialState({ mode, tileBagSeed, players, startingSlot, settings });
+    state = createInitialState({
+      mode, tileBagSeed, players, startingSlot, settings,
+      ...(ruleset ? { ruleset, boostQueueRng: boostQueueRng ?? Math.random } : {}),
+    });
   }
   const engine = createEngine({ state, bus });
   const descriptor = modeDescriptor(mode);

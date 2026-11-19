@@ -13,6 +13,7 @@
 //
 // Mode mapping: legacy 'live' / 'async' → spine 'random-live' / 'random-async'.
 
+import { readRuleset, wireRulesetToggle } from './createRoomScreen.js';
 import { $, on } from '../domHelpers.js';
 import { avatarMarkup, setAvatarEl } from './avatarScreens.js';
 import { preloadFor } from '../avatarMotion/spritePlayer.js';
@@ -65,6 +66,7 @@ export function readMatchmakingFilters(root = globalThis.document) {
     ratingRange: readActiveRatingRange(root),
     strict: readStrict(root),
     name: readName(root),
+    ruleset: readRuleset(root, 'mm'),
   };
 }
 
@@ -185,6 +187,7 @@ export function mountMatchmakingOverlayScreen({ root = globalThis.document, bus 
   if (!bus) throw new Error('mountMatchmakingOverlayScreen: bus required');
 
   const cleanups = [];
+  wireRulesetToggle(root, 'mm', cleanups);
 
   // ─── Speed buttons ─────────────────────────────────────
   for (const v of [20, 40, 60]) {

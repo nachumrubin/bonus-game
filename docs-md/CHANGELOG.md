@@ -2,6 +2,87 @@
 
 ---
 
+## Boost 2.0 — Phase 7: online play (November 2026)
+
+- **Playable online:** the create-room sheet (friend code / friend invite) and the random-opponent sheet have a "כללי משחק: קלאסי / בוסט 2.0" toggle. A Boost 2.0 room is created by the Worker (`roomService.createRoom` delegates to `boostTurnClient.createMatch` when `settings.ruleset === 'BOOST_V2'`; registered in `main.js` via `setBoostV2RoomCreator`). Matchmaking never pairs Boost 2.0 with classic (`isCompatible`, strict or not).
+- **`src/game/online/boostV2OnlineSession.js`** — the app session for BOOST_V2 rooms. It builds a mirror engine state from `rooms/{id}` and `boostV2Racks/{id}/{mySlot}` only (opponent rack and bag are null placeholders of the right length; queue cards after the two visible ones are `__hidden__` placeholders), sends every action to the Worker, and turns room updates into the engine's events (`MOVE_CONFIRMED` / `OPPONENT_MOVED` with breakdown, `TURN_CHANGED`, `BOOST_PLACED`, `BOOSTS_CHANGED`, `TILES_EXCHANGED`, `GAME_COMPLETED` with `boostV2Endgame`), so the screen, animations and push notifications work unchanged. A room update waits (≤ 1.5 s) for the rack of the same version so a new board never shows with a stale rack. Live games: the waiting player claims an expired turn through the Worker (`claimTimeout`, deadline + 1 s on the server clock); the legacy timeout watchdog is not used for BOOST_V2.
+- **Client-side draft preview** keeps working online on the mirror: replacement cards beyond the visible two show as "אתגר נסתר" (revealed when the move lands). Placements for hidden cards are sent without an `instanceId` (the server validates order by position). This avoids `/boost/plan`, whose third-card early reveal is no longer on the app's path.
+- **Worker / projection:** `READY` command (live: the shared clock starts when both players are through the coin screen; clients cannot write `status` in BOOST_V2 rooms); cron expiry finishes BOOST_V2 matches through the authoritative state (`expireBoostMatch`, no deductions); the room carries `lastAction { type, slot, count? }` and `ready`; the opening-setup projection includes the definition of the card being placed now and of placed cards.
+- **Coin screen (live):** BOOST_V2 rooms send `READY` to the Worker instead of `markReadyAndMaybeStart`; the app enters when the room shows both ready.
+- **Tests:** unit `boostV2OnlineSession.test.js` (10, real authoritative service behind an in-memory RTDB), ruleset tests for matchmaking / room creation / toggles; emulator `boost-v2-online.test.mjs` — two sessions with user credentials under the production rules play opening, setup, an exchange and a resign through the Worker handlers. Unit 2036, emulator 98, e2e Boost 2.0 local + vs-bot pass. Build stamped with `scripts/stamp-build.js` (`20261119102439`: sw `CACHE_NAME`, index.html version + stylesheet query strings).
+- **Deployed:** Worker `bonus-game-push` version `02aaf1ff` (Nov 19 2026) with `/boost/*`, READY and V2 cron expiry. Rules deploy on merge to main (CI). The live app (Firebase Hosting, boost-8ef11.web.app) needs a separate `firebase deploy --only hosting`.
+- Not yet verified on real devices against a deployed Worker (needs deploy of Worker + rules together).
+
+## Boost 2.0 bot — queue planning, Boost denial, longer words (November 2026)
+
+- **Longer words:** Boost 2.0 bots search words up to 4 / 7 / 8 letters (easy / medium / hard; legacy 3 / 5 / 6 unchanged), with the bot vocabulary built to match (`botV2.v2MaxWordLen`, used by `main.js`). Medium's soft score ceiling 25 → 45 (Boost rewards push good moves past it); search breadth medium 90 / hard 160 words.
+- **Boost-targeted search** (`boostTargetedCandidates`): words laid through each active Boost square using board letters on that line — the rack-only main search could never extend a board word to reach Long Word 8+ / Exact 8. Medium and hard choose from both searches.
+- **Queue planning** (`plannedLetters`, `queuePlanValue`): keeping a letter needed by an active or *visible upcoming* Letter Hunt / Word Edge card is worth ¼ of its reward; hidden cards are never used. Replacement cards the move forces the bot to place count against it (the opponent plays first on them): the real card if visible in the preview, the deck-average reward otherwise.
+- **Denial** (`boostThreat`): each Boost's threat = reward × P(opponent completes by level: 0.5 / 0.3 / 0.15) × reachability after the move. The ranking subtracts the threat of every Boost left on the board, so covering a reachable Boost — even without completing it — is valued when it is worth more than the points given up, and moves that open a Boost up for the opponent cost.
+- Strategy weights: hard 1, medium ½, easy 0. `scoreV2Candidate` exposes the ranking for tests.
+- Self-play, same 6 seeds per level (before → after): medium Boosts consumed 3.8 → 6.8 and completed 0.8 → 2.2 per match, Boost points 5 → 15; hard consumed 4.8 → 6.5, Boost points 10.8 → 16.7. Decision time p50 ≈ 60–90 ms, p95 ≈ 0.7 s, max ≈ 2.1 s (thinking delay is 3–7 s). Letter Hunt was consumed 18× and completed 0× — mostly denial; a balance item for Phase 8.
+- Unit 2021 pass. sw `CACHE_NAME` → `boost-20261119090651`.
+
+## Boost 2.0 — Phase 6: the bot plays Boost 2.0 (November 2026)
+
+- **Boost 2.0 vs the computer** is now offered on the setup screen (all three levels). Online stays classic until Phase 7.
+- **`src/game/boostV2/botV2.js`** — `chooseV2Turn(state, slot, wordList, isWordValid, { difficulty, rng })` → setup placement / word + replacement Boosts / null. Candidates come from the existing search and are scored by the V2 engine itself (`computeV2Draft`: words + completed Boost rewards + full rack); V2-illegal candidates (opener off the centre) are dropped. Medium/hard add a rack-leave value (½ / full) and look for words through and around active Boosts first. Placement: easy random; medium/hard defensive (least reachable square for the opponent, who moves next); hard also spreads Boosts apart; in the opening setup the bot prefers reachable squares when it will move first. Time budget: ≤ 600 candidates scored per turn.
+- **Information discipline** (spec §36): only the bot's own rack, the board, active Boosts and the cards it is placing. Tested: changing the opponent's rack, the bag contents and hidden queue cards leaves the decision identical.
+- **`botSearch.searchBotMove` hooks** (optional, legacy path unchanged): `evaluate(placed, words)`, `anchorPriority(anchor)`, `extraAnchors`.
+- **`attachBotPlayer`** — Boost 2.0 branch: places opening Boosts (≤ 0.9 s think), plays moves with replacements, exchanges/passes when stuck; if the engine ever rejects its action it falls back (exchange/pass; in setup a pass hands the step over) so a match can never stall on the bot.
+- **Simulator:** `playV2Match({ bots: { 0: d, 1: d } })` drives seats with the real bot; records decision times and first/second-player wins.
+- **Acceptance gate met:** 2 matches × 3 difficulties in the unit suite complete with 0 rejected actions and 0 invariant violations; a bot-vs-bot match through the real bot session; e2e `boost-v2-vs-bot` plays a human vs the bot in Chromium (bot setup placements + moves).
+- **Finding for Phase 8 (balance):** in hard-bot self-play a Boost-*completing* move existed on only ~10 % of turns (7/70) and the bot took it nearly every time; ~4–5 Boosts consumed and 1–2 completed per match. The bot's word-length caps (hard 6 letters, medium 5) make 7–8-letter challenges (Long Word 8+, Exact 8, Unique 7, Tile Master 7) almost unreachable for it.
+- Unit 2016 pass. sw `CACHE_NAME` → `boost-20261119081109`.
+
+## Boost 2.0 — full-width 10×10 board (November 2026)
+
+- Boost 2.0 boards have no off-grid bonus squares, so the grid is now built as just the 10×10 play area (`buildUnifiedGrid({ bonusSquares: false })` → `.grid-10` on `#game-grid` and `.board-center-inner`, no perimeter cells) and `computeBasicSizes` divides the width by 10 instead of 12. On a 390 px phone the cells grow from ~28 px to ~37 px and the board spans the screen width. Classic games keep the 12×12 grid with the bonus-square ring (verified switching V2 → classic in one session: 100 → 144 cells).
+- e2e `boost-v2-local-match` now asserts 100 cells, `.grid-10` and a board wider than 90 % of the viewport.
+- Skins regenerated; sw `CACHE_NAME` → `boost-20261119075452`.
+
+## Boost 2.0 — Phase 5: the game screen (November 2026)
+
+- **Playable now:** setup → two players → "כללי משחק: בוסט 2.0" starts a local Boost 2.0 match (pass-and-play). The bot and online modes stay classic until Phases 6/7 (the toggle is hidden for them).
+- **New UI** (approved mockups https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS): Boost markers on the board (shape + colour + parameter + reward), "הבאים בתור" strip with the next two cards, challenge-details sheet on tap, live breakdown + replacement tray while a draft covers a Boost (legal squares highlighted, others dimmed), שבץ refuses until replacements are placed, non-modal result card after every move, opening-setup stepper with "הצב כאן" and "דלג", rack-deduction lines on the end screen. No ✓/✗ badges on board tiles (product decision); no lock pills in Boost 2.0.
+- **Architecture:** `mountGameScreen({ boostV2Hooks })` — optional hooks (`emptyCell`, `onCellClick`, `disabledControls`, `playPreview`, `afterRender`); without them the screen is unchanged. `src/ui/screens/boostV2Layer.js` supplies them; `src/game/boostV2/draftPreview.js` computes the live breakdown + replacement plan with the engine's own functions. `gameController` gains `v2Draft`, `setBoostPlacements`, `setV2SetupChoice`, `skipOpeningStep` and a V2 branch in `confirmMove`.
+- **Engine:** V2 `MOVE_CONFIRMED` carries `baseScore` (words + full-rack bonus) and `bonusExtra` (Boost rewards), so the existing score animation shows rewards as its extra chip. Badges: Power Word `N+`; Double Letter `×2` / `2×2`; difficulty symbols ● ◆ ▲.
+- **Grid:** Boost 2.0 boards are built without the off-grid bonus squares (`buildUnifiedGrid({ bonusSquares: false })`). Rematch keeps the ruleset.
+- **RTL fix (all rulesets):** floating score chips (`.scoring-float-label`) and end-screen scores rendered "+N" / "−N" as "N+" / "N−" in the RTL page; now isolated as LTR.
+- **Skins:** `skin-stone.css` / `skin-marble.css` regenerated (`npm run build:skins`). sw `CACHE_NAME` → `boost-20261119074133`.
+- **Tests:** unit 2006 pass; new `src/ui/screens/boostV2Layer.test.js` (helpers + session/controller/layer integration) and `tests/e2e/boost-v2-local-match.spec.js` (a complete match in Chromium: setup toggle, coin toss, opening word, three setup placements by tapping, details sheet, Boost move with replacement, natural ending with deductions). Existing e2e specs re-run: the only failure (`non-menu-buttons`, online create-room) also fails on the previous commit — this sandbox blocks Firebase hosts.
+
+## Boost 2.0 — rules 0.3: Bridge without special rules, natural-end deductions, setup hand-over (November 2026)
+
+- **Bridge Builder:** no alignment requirement and no Hard Long Word fallback. It is placed like any other Boost; if it can't be completed, players consume it without the reward. `boostPlacement.planReplacements` is now just the mandatory FIFO prefix; the Bridge arrangement search, `isAligned`, `findArrangement` and the `bridge-not-aligned` / `bridge-fallback-activated` paths are gone. `effectiveDefinitionId` stays (always = `definitionId`) so stored Boosts keep their shape; `fallbackApplied` is removed.
+- **Rack deductions only on natural ends** (rack + bag empty, or the scoreless-turn limit). No deduction on stall claim, resign, abandon, missed-turn forfeit or expiry — reverses the previous round's resign rule (AUDIT A3/A4).
+- **Opening setup:** a pass or timeout hands the current placement to the opponent, who places two in a row (was: timeout auto-placed, pass rejected). Setup steps still don't count as scoreless turns; the Worker's missed-turn forfeit still applies.
+- **Versions:** rules `boost-v2.rules.0.3-proto`, deck `boost-v2.deck.0.3-candidate` (same 95 cards as 0.2, Bridges without a fallback). Deck stays at 95.
+- **Tests:** unit 1999 pass.
+
+## Boost 2.0 — Worker-authoritative online turns + product decisions (November 2026)
+
+- **Product decisions applied:** (1) online Boost 2.0 is run by the Cloudflare Worker; (2) locks removed in 2.0, **tile swaps stay available**; (3) **`BINGO_BONUS` = 25 for every ruleset** — legacy matches in progress included (FAQ, guide, tips and the in-game `BINGO +N` label updated; logged in `docs/intentional-change-register.md`); (4) resign/abandon in 2.0 deducts both racks but the resigner still loses; (5) **Power Word has no Easy level** → rules `boost-v2.rules.0.2-proto`, deck `boost-v2.deck.0.2-candidate` (95 cards, 40/35/20).
+- **Worker (`worker/src/boostTurn.js`):** `POST /boost/create | /boost/turn | /boost/plan`. Secret match in `boostV2Secret/{roomId}` (full engine state as JSON, ETag compare-and-set, remembered request ids), public projection on `rooms/{roomId}` (never `players`, so `oneSignalSubId` survives), per-player racks on `boostV2Racks/{roomId}/{slot}`. Identity from the ID token; client tile values, pass reasons and payload extras are discarded. Live timeouts are claimed through the Worker (deadline + 1 s grace, two misses forfeit). Bundle: 196 KiB (49 KiB gzip).
+- **Pure service (`src/game/boostV2/authoritativeTurn.js`):** `createMatch`, `applyCommand`, `planDraft`, projections — unit-tested in Node and bundled into the Worker. **`sortedDictionary.js`:** binary search on the raw sorted dictionary text + Firebase overlays, parity-tested against `isValid`.
+- **Rules:** `boostV2Secret` closed; `boostV2Racks/{room}/{slot}` readable only by that player; BOOST_V2 rooms (root, `status`, `turnDeadlineMs`, `settings`, `abandonedBy`, `abandonReason`) unwritable by clients. `npm run test:emulator`: 97/97 (6 new; the 3 restriction tests fail on the old rules).
+- **Client:** `src/game/online/boostTurnClient.js` (retries reuse one request id; `readBoostV2Room`, `readMyRack`).
+- **Engine:** V2 tile swaps; tile values recomputed from the letter table; injectable word validator; `legalOpeningSquares()`; opening preview now shows the first two queue entries before activation (spec §15 — previously skipped the cards being placed).
+- sw `CACHE_NAME` → `boost-20261119062016` (FAQ / guide / tips text changed).
+- **Tests:** unit 2001 pass (was 1961).
+
+## Boost 2.0 — Phases 0–4: engine prototype behind the BOOST_V2 ruleset (November 2026)
+
+- **Nothing changes for players yet.** All Boost 2.0 behaviour is gated on `state.ruleset === 'BOOST_V2'`, which no UI path creates. Legacy matches (no `ruleset` field) run exactly as before; the 1870 existing unit tests pass unchanged.
+- **Phase 0 audit:** `docs-md/boost-v2/AUDIT.md` (architecture, legacy-bonus dependency map, risks, ambiguities A1–A12, test strategy). Blocker recorded: rooms are world-readable (`rooms/.read: true`) and moves are computed client-side, so a hidden Boost queue cannot be secret without a server-side turn endpoint.
+- **Offline analysis:** `scripts/boostV2/analyze-dictionary.mjs` → `docs-md/boost-v2/ANALYSIS.md` (tile counts/values, length/edge/repeat/unique/score distributions, data-driven Letter Hunt and Word Edge bands).
+- **New pure modules** in `src/game/boostV2/`: versioned rules (`rulesConfig.js`, +25 full rack, rewards 5/10/20), nine challenge families with typed constructors (`challengeCatalog.js`), pure evaluator (`challengeEvaluator.js`), additive scoring + breakdown + rack deductions (`scoringV2.js`), 100-card **candidate** deck (`deckManifest.js`), predetermined FIFO queue (`challengeQueue.js`), placement validator with batch planning and automatic Bridge fallback (`boostPlacement.js`), match state / public projection / resume normalisation / §43 invariant checker (`matchStateV2.js`), turn orchestrator (`engineV2.js`), headless simulation (`simulateV2.js`).
+- **Engine wiring (`gameEngine.js`):** `createInitialState({ ruleset: 'BOOST_V2', boostQueueRng })`; `dispatch()` routes V2 commands to `engineV2`; `finishGame()` applies V2 rack deductions once (completed matches only). New constants (additions only): `CMD.PLACE_OPENING_BOOST`, `EV.BOOSTS_CHANGED`, `EV.BOOST_PLACED`, `EV.BOOST_V2_TELEMETRY`. `BINGO_BONUS`, `RACK_SIZE`, `HV`, `HD` untouched.
+- **V2 rules implemented:** centre-square opening, on-grid only, no locks / swaps / legacy bonus squares, +25 full rack, multi-tile exchange (draw before return, ≤ min(rack, bag)), endgame rack deduction + draw, first round → opening setup (second/first/second, simultaneous activation), atomic word+replacement turn, pending FIFO entries when no square is legal, `moveId` / `expectedRevision` idempotency.
+- **Bot search:** `tryPlaceWord` refuses off-grid squares in V2 matches (legacy unchanged) — found by the simulation, where the V2 engine rejected every off-grid word the bot proposed.
+- **Docs fix:** the bag holds **99** tiles (Σ`HD`), not 108 as `GAMEPLAY_RULES.md` stated.
+- **Tests:** +91 (`src/game/boostV2/*.test.js`), including a seeded randomized-match property test checking every §43 invariant after every committed command.
+
 ## Internal reference document (November 2026)
 
 - Prepared an internal reference document outside this repo. No app code, data or settings changed.
