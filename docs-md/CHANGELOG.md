@@ -2,6 +2,16 @@
 
 ---
 
+## Boost 2.0 bot — queue planning, Boost denial, longer words (November 2026)
+
+- **Longer words:** Boost 2.0 bots search words up to 4 / 7 / 8 letters (easy / medium / hard; legacy 3 / 5 / 6 unchanged), with the bot vocabulary built to match (`botV2.v2MaxWordLen`, used by `main.js`). Medium's soft score ceiling 25 → 45 (Boost rewards push good moves past it); search breadth medium 90 / hard 160 words.
+- **Boost-targeted search** (`boostTargetedCandidates`): words laid through each active Boost square using board letters on that line — the rack-only main search could never extend a board word to reach Long Word 8+ / Exact 8. Medium and hard choose from both searches.
+- **Queue planning** (`plannedLetters`, `queuePlanValue`): keeping a letter needed by an active or *visible upcoming* Letter Hunt / Word Edge card is worth ¼ of its reward; hidden cards are never used. Replacement cards the move forces the bot to place count against it (the opponent plays first on them): the real card if visible in the preview, the deck-average reward otherwise.
+- **Denial** (`boostThreat`): each Boost's threat = reward × P(opponent completes by level: 0.5 / 0.3 / 0.15) × reachability after the move. The ranking subtracts the threat of every Boost left on the board, so covering a reachable Boost — even without completing it — is valued when it is worth more than the points given up, and moves that open a Boost up for the opponent cost.
+- Strategy weights: hard 1, medium ½, easy 0. `scoreV2Candidate` exposes the ranking for tests.
+- Self-play, same 6 seeds per level (before → after): medium Boosts consumed 3.8 → 6.8 and completed 0.8 → 2.2 per match, Boost points 5 → 15; hard consumed 4.8 → 6.5, Boost points 10.8 → 16.7. Decision time p50 ≈ 60–90 ms, p95 ≈ 0.7 s, max ≈ 2.1 s (thinking delay is 3–7 s). Letter Hunt was consumed 18× and completed 0× — mostly denial; a balance item for Phase 8.
+- Unit 2021 pass. sw `CACHE_NAME` → `boost-20261119090651`.
+
 ## Boost 2.0 — Phase 6: the bot plays Boost 2.0 (November 2026)
 
 - **Boost 2.0 vs the computer** is now offered on the setup screen (all three levels). Online stays classic until Phase 7.

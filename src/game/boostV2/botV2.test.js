@@ -14,7 +14,12 @@ import { DIFFICULTY } from '../sessions/botSearch.js';
 import { createLocalGameSession } from '../sessions/localGameSession.js';
 import { attachBotPlayer } from '../sessions/botGameSession.js';
 import * as busMod from '../../events/bus.js';
-import { chooseV2Turn, chooseBoostSquares, accessScore, rackLeaveValue, leaveAfter } from './botV2.js';
+import {
+  chooseV2Turn, chooseBoostSquares, accessScore, rackLeaveValue, leaveAfter,
+  scoreV2Candidate, boostThreat, plannedLetters, queuePlanValue, boostTargetedCandidates,
+  v2MaxWordLen, UNSEEN_CARD_REWARD, OPPONENT_COMPLETE_P,
+} from './botV2.js';
+import { preview } from './challengeQueue.js';
 import { PHASE, checkBoostV2Invariants } from './matchStateV2.js';
 import { legalOpeningSquares } from './engineV2.js';
 
@@ -189,4 +194,73 @@ test('bot session: two V2 bots play a complete match (setup, moves, replacements
   assert.ok(session.state.moveHistory.length > 2);
   assert.equal(session.state.boostV2.phase, PHASE.NORMAL);
   assert.deepEqual(checkBoostV2Invariants(session.state), []);
+});
+
+// ── Planning, denial and longer words (Phase 6 follow-ups) ─────────────────
+const tl = (r, c, letter) => ({ r, c, letter, val: HV[letter], isJoker: false });
+
+test('word length: the Boost 2.0 bot reaches 8-letter words on hard (legacy caps unchanged)', () => {
+  assert.equal(v2MaxWordLen(DIFFICULTY.EASY), 4);
+  assert.equal(v2MaxWordLen(DIFFICULTY.MEDIUM), 7);
+  assert.equal(v2MaxWordLen(DIFFICULTY.HARD), 8);
+});
+
+test('Boost-targeted search extends board words through a Boost — reaching Long Word 8+', () => {
+  DICT.clear();
+  addWordsFromText(['התקדמות', 'התקדמותי', 'מות'].join('\n'));
+  const { state } = fresh('long');
+  // Board: "התקדמות" across row 4, cols 1–7. Rack: י. Long Word HARD (8+) at (4,8).
+  setRack(state, 0, ['י']);
+  putOnBoard(state, [...'התקדמות'].map((l, i) => [4, 1 + i, l]));
+  activate(state, [{ defId: 'BST-002:HARD:8', r: 4, c: 8 }, { defId: 'BST-002:EASY:4', r: 2, c: 2 }, { defId: 'BST-002:EASY:4', r: 6, c: 2 }]);
+  const words = ['התקדמותי', 'מות'];
+  const cands = boostTargetedCandidates(state, 0, words, isValid, { maxLen: 8 });
+  assert.ok(cands.some(c => c.word === 'התקדמותי' && c.placed.length === 1 && c.placed[0].c === 8));
+  const a = chooseV2Turn(state, 0, words, isValid, { difficulty: DIFFICULTY.HARD, rng: createRng('L') });
+  assert.equal(a.breakdown.boostScore, 20, 'the main rack-only search could never find this move');
+  assert.equal(a.breakdown.boostResults[0].family, 'LONG_WORD');
+});
+
+test('denial: covering a reachable Boost removes its threat from the ranking, even when it fails', () => {
+  DICT.clear();
+  addWordsFromText(['לא', 'שב'].join('\n'));
+  const { state } = fresh('deny');
+  setRack(state, 0, ['א', 'ב']);
+  putOnBoard(state, [[4, 3, 'ש'], [4, 4, 'ל']]);
+  // A Long Word EASY Boost right under ל — easy for the opponent to reach.
+  activate(state, [{ defId: 'BST-002:EASY:4', r: 5, c: 4 }, { defId: 'BST-002:EASY:4', r: 0, c: 9 }, { defId: 'BST-002:EASY:4', r: 9, c: 0 }]);
+  const def = state.boostV2.definitions['BST-002:EASY:4'];
+  const threatAfterPlain = boostThreat(state, def, { r: 5, c: 4 }, [tl(5, 3, 'ב')]);
+  assert.ok(threatAfterPlain > 0);
+  const cover = scoreV2Candidate(state, 0, [tl(5, 4, 'א')], DIFFICULTY.HARD);   // "לא" — consumes it, fails (2 letters)
+  const plain = scoreV2Candidate(state, 0, [tl(5, 3, 'ב')], DIFFICULTY.HARD);   // "שב" — leaves it, and opens it more
+  assert.deepEqual(cover.breakdown.failedBoostIds.length, 1);
+  const coverStrategy = cover.rankScore - cover.score;
+  const plainStrategy = plain.rankScore - plain.score;
+  assert.ok(coverStrategy > plainStrategy, `denial is valued (cover ${coverStrategy.toFixed(2)} vs plain ${plainStrategy.toFixed(2)})`);
+  // Easy ignores strategy entirely.
+  const easy = scoreV2Candidate(state, 0, [tl(5, 4, 'א')], DIFFICULTY.EASY);
+  assert.equal(easy.rankScore, easy.score);
+});
+
+test('queue planning: keeps letters for active and VISIBLE upcoming Letter Hunt / Word Edge cards only', () => {
+  const { state } = fresh('plan');
+  const v2 = state.boostV2;
+  activate(state, [{ defId: 'BST-001:EASY:ל', r: 2, c: 2 }, { defId: 'BST-002:EASY:4', r: 3, c: 3 }, { defId: 'BST-002:EASY:4', r: 6, c: 6 }]);
+  // Put a Word Edge ש card first in the visible preview and a Letter Hunt ג right after the preview.
+  const q = v2.queue;
+  const move = (defId, to) => { const i = q.entries.findIndex((e, k) => k >= q.cursor && e.definitionId === defId); const [e] = q.entries.splice(i, 1); q.entries.splice(to, 0, e); };
+  move('BST-006:MEDIUM:START:ש', q.cursor);
+  move('BST-001:HARD:ג', q.cursor + 2); // hidden: just beyond the two-card preview
+  assert.deepEqual(preview(q, 2)[0].definitionId, 'BST-006:MEDIUM:START:ש');
+  const planned = plannedLetters(state).map(p => p.letter).sort();
+  assert.deepEqual(planned, ['ל', 'ש'], 'hidden card (ג) is not used');
+  assert.equal(queuePlanValue(['ל', 'ש', 'ת'], plannedLetters(state)), 5 * 0.25 + 10 * 0.25);
+  assert.equal(queuePlanValue(['?'], plannedLetters(state)), 5 * 0.25, 'a joker covers one planned letter');
+  assert.equal(queuePlanValue(['ת'], plannedLetters(state)), 0);
+});
+
+test('replacement threat uses the visible card, an average for unseen ones', () => {
+  assert.equal(UNSEEN_CARD_REWARD, Math.round((40 * 5 + 35 * 10 + 20 * 20) / 95));
+  assert.ok(OPPONENT_COMPLETE_P.EASY > OPPONENT_COMPLETE_P.HARD);
 });

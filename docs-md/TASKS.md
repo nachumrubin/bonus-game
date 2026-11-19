@@ -20,7 +20,8 @@
 - [x] Phase 5 — game screen for local Boost 2.0 matches (markers, queue strip, details sheet, replacement mode, breakdown, opening setup, end-screen deductions, ruleset toggle).
 - [ ] Phase 5 follow-ups: family icons (9, Icon Designer — asset_inventory); long-press for details while a tile is selected (spec §31 optional); guide/FAQ pages for Boost 2.0; replay screen does not show Boost markers yet.
 - [x] Phase 6 — Boost 2.0 bot (V2-scored search, rack leave, Boost-seeking anchors, defensive placement, opening setup, fallbacks); offered vs the computer.
-- [ ] Phase 6 follow-ups: bot word-length caps block 7–8-letter challenges (consider a V2-only longer `maxWordLen` for hard, measured in Phase 8); hard bot does not yet look ahead at the visible next-two cards or consume a Boost purely to deny it.
+- [x] Phase 6 follow-ups: V2 word lengths 4/7/8 + Boost-targeted search; queue planning (visible cards only); Boost denial via threat model.
+- [ ] Phase 8: tune `OPPONENT_COMPLETE_P`, strategy weights and the ¼ plan factor from simulation; Letter Hunt was never completed in bot self-play (18 consumed, 0 completed).
 - [ ] Phase 7 — online: persist `ruleset` + `boostV2` in room docs (`schema.buildRoomDoc`, `onlineGameSession` hydrate via `normalizeBoostV2State`), commit on `EV.BOOST_PLACED`, watchdog/timer handling for the setup phase (no `turnNumber` advance), matchmaking compatibility by ruleset.
 - [ ] Phase 8 — balance report from `simulateV2.js` with `bots` (real bot now available; first numbers: completing moves exist on ~10 % of hard-bot turns), telemetry sink for `EV.BOOST_V2_TELEMETRY`.
 - [ ] Phase 9 — release preparation behind a feature flag.

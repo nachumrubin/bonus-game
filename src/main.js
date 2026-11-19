@@ -83,6 +83,7 @@ import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/control
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
 import { mountBoostV2Layer } from './ui/screens/boostV2Layer.js';
+import { v2MaxWordLen } from './game/boostV2/botV2.js';
 import { showScreen as spineShowScreen, revealCurrentScreen, settleEntrance, SCREEN_IDS } from './ui/screens/screenTransitions.js';
 import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt, flyOutLoadingTiles, preloadLogoTiles, playLogoStrike, startLogoIdle } from './ui/buildSequences.js';
 import { boardBuildKind, BOARD_BUILD_LEAD_MS } from './ui/buildTimeline.js';
@@ -5084,6 +5085,9 @@ async function boot() {
       // the old alphabetical-prefix bias.
       ensureBotWordsLoaded().catch((e) => console.warn('[spine] bot wordlist preload before bot game failed:', e));
       const profile = resolveProfile(difficulty);
+      // Boost 2.0 bots search longer words (botV2.V2_PROFILE_OVERRIDES) so they
+      // can reach the 7–8-letter challenges; their vocabulary must include them.
+      const botMaxWordLen = isBoostV2Game ? v2MaxWordLen(difficulty) : profile.maxWordLen;
       const VOCAB_CAPS = [2000, 20000, Infinity];
       const cap = VOCAB_CAPS[difficulty] ?? VOCAB_CAPS[1];
       const makeWordList = () => {
@@ -5100,7 +5104,7 @@ async function boot() {
           : [...hebrewDictionary.DICT];
         return botVocabulary.createBotWordList({
           sourceWords,
-          maxWordLen: profile.maxWordLen,
+          maxWordLen: botMaxWordLen,
           cap,
           isWordValid: (w) => hebrewDictionary.isValid(w),
           preserveOrder: usingBotList,
