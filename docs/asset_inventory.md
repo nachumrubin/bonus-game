@@ -32,6 +32,8 @@ One icon per challenge family, Boost icon family style (transparent background).
 Shown in the challenge-details sheet (64px), the next-two queue preview (28px) and
 the spec/guide; NOT on the board marker (35px cells show the parameter badge instead).
 Mockups reserve a dashed circle for each: https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
+The shipped UI (Phase 5) reserves the same slot: `.v2-icon-slot` in the queue / tray cards and the
+details sheet (`src/ui/screens/boostV2Layer.js`) — swap in an `<img>` there when the art exists.
 
 * assets/icons/boost_letter_hunt.png — ציד אותיות (Letter Hunt)
 * assets/icons/boost_long_word.png — מילה ארוכה (Long Word)

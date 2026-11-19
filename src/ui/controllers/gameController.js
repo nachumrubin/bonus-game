@@ -19,6 +19,8 @@
 import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
 import { HV } from '../../game/core/letterDistribution.js';
+import { isBoostV2 } from '../../game/boostV2/rulesConfig.js';
+import { computeV2Draft } from '../../game/boostV2/draftPreview.js';
 
 // The local seat is pinned (online / bot game) and `slot` is the other one.
 // A shared-screen game (mySlot null) has no opponent.
@@ -63,6 +65,14 @@ export function createGameController({ bus, session, mySlot = null }) {
     // shown in the status pill from their move until the local player starts
     // placing tiles or their own turn ends. null when there is nothing to say.
     opponentBoost: null,
+    // Boost 2.0 (ruleset BOOST_V2 only). `boostPlacements` = the squares the
+    // player picked for the replacement Boosts of the current draft (FIFO,
+    // pending until שבץ); `v2SetupChoice` = the square picked for the current
+    // opening-setup Boost. `_boostV2` is the live engine block (read-only).
+    ruleset: 'LEGACY_V1',
+    _boostV2: null,
+    boostPlacements: [],
+    v2SetupChoice: null,
   };
 
   function syncFromState() {
@@ -125,6 +135,12 @@ export function createGameController({ bus, session, mySlot = null }) {
     // Presentation context for keeping a newly earned state banner behind
     // its square ignition. This is read-only; input never consumes it.
     view._pendingBoostAwardSlot = s.pendingScoreCommit?.slot ?? null;
+    view.ruleset = isBoostV2(s) ? 'BOOST_V2' : 'LEGACY_V1';
+    view._boostV2 = s.boostV2 ?? null;
+  }
+  function clearV2Pending() {
+    view.boostPlacements = [];
+    view.v2SetupChoice = null;
   }
 
   // Initialise immediately from current state
@@ -151,6 +167,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     view.placed = [];
     view.swappedTiles = [];
     view.pendingLock = null;
+    clearV2Pending();
     _onChange();
   }));
   subs.push(bus.on(EV.MOVE_SCORE_COMMITTED, ({ slot, score, words, wordTiles, placed, baseScore, bonusExtra, multiplier, boost }) => {
@@ -196,6 +213,7 @@ export function createGameController({ bus, session, mySlot = null }) {
     view.placed = [];
     view.swappedTiles = [];
     view.pendingLock = null;
+    clearV2Pending();
     // Clear the last-move highlight when no tiles were placed this turn
     // (pass, exchange, timeout). If tilesMoved is true, MOVE_CONFIRMED or
     // OPPONENT_MOVED already set view.lastMove with the new coords so the
@@ -233,6 +251,8 @@ export function createGameController({ bus, session, mySlot = null }) {
   subs.push(bus.on(EV.LIVE_PREVIEW_CHANGED, () => { syncFromState(); _onChange(); }));
   subs.push(bus.on(EV.LOCK_PLACED, () => { syncFromState(); view.lastInvalidReason = null; view.placed = []; view.pendingLock = null; _onChange(); }));
   subs.push(bus.on(EV.LOCKS_CHANGED, () => { syncFromState(); _onChange(); }));
+  subs.push(bus.on(EV.BOOSTS_CHANGED, () => { syncFromState(); _onChange(); }));
+  subs.push(bus.on(EV.BOOST_PLACED, () => { syncFromState(); view.v2SetupChoice = null; view.lastInvalidReason = null; _onChange(); }));
 
   // Listeners that the renderer registers to know when to re-paint.
   const changeListeners = new Set();
@@ -264,7 +284,32 @@ export function createGameController({ bus, session, mySlot = null }) {
     view.placed = [];
     view.swappedTiles = [];
     view.pendingLock = null;
+    view.boostPlacements = [];
     _onChange();
+  }
+
+  // ── Boost 2.0 ────────────────────────────────────────────────────────
+  // The live draft preview (score breakdown + replacement plan) for the
+  // current placement. Same pure functions the engine commits with.
+  function v2Draft() {
+    if (view.ruleset !== 'BOOST_V2') return null;
+    return computeV2Draft(session.state, {
+      placed: view.placed, swappedTiles: view.swappedTiles, boostPlacements: view.boostPlacements,
+    });
+  }
+  function setBoostPlacements(list) {
+    view.boostPlacements = (Array.isArray(list) ? list : []).map(p => ({ r: Number(p.r), c: Number(p.c) }));
+    view.lastInvalidReason = null;
+    _onChange();
+  }
+  function setV2SetupChoice(choice) {
+    view.v2SetupChoice = choice ? { r: Number(choice.r), c: Number(choice.c) } : null;
+    view.lastInvalidReason = null;
+    _onChange();
+  }
+  // Pass on an opening-setup step: the opponent places this Boost instead.
+  function skipOpeningStep() {
+    session.dispatch({ type: CMD.PASS_TURN, payload: { reason: 'pass' } });
   }
 
   // Tentative lock placement (pending-until-Confirm). Mirrors placeTile's UX:
@@ -356,6 +401,7 @@ export function createGameController({ bus, session, mySlot = null }) {
 
   // Command dispatchers. UI buttons call these.
   function confirmMove() {
+    if (view.ruleset === 'BOOST_V2') return confirmMoveV2();
     // Pending lock takes the same Confirm path as a tile placement — when
     // the player tapped an empty cell with no rack tile selected, the lock
     // sat in view.pendingLock as a preview; שבץ commits it. A lock ALONE is
@@ -401,6 +447,44 @@ export function createGameController({ bus, session, mySlot = null }) {
         lock: view.pendingLock
           ? { r: view.pendingLock.r, c: view.pendingLock.c, duration: view.pendingLock.duration }
           : null,
+      },
+    });
+    return true;
+  }
+  function confirmMoveV2() {
+    const st = session.state;
+    if (st.boostV2?.phase === 'OPENING_SETUP') {
+      if (!view.v2SetupChoice) {
+        view.lastInvalidReason = 'boost-setup-choose';
+        _onChange();
+        return false;
+      }
+      session.dispatch({ type: CMD.PLACE_OPENING_BOOST, payload: { ...view.v2SetupChoice } });
+      return true;
+    }
+    if (!view.placed.length) return false;
+    if (mySlot != null && view.currentTurnSlot !== mySlot) {
+      view.placed = [];
+      view.swappedTiles = [];
+      view.boostPlacements = [];
+      view.lastInvalidReason = 'turn-already-passed';
+      _onChange();
+      return false;
+    }
+    const draft = v2Draft();
+    // A valid draft that still owes replacement Boosts is held back with a
+    // hint; anything else goes to the engine, which gives the precise reason.
+    if (draft?.ok && !draft.complete) {
+      view.lastInvalidReason = 'boost-placement-needed';
+      _onChange();
+      return false;
+    }
+    session.dispatch({
+      type: CMD.CONFIRM_MOVE,
+      payload: {
+        placed: [...view.placed],
+        swappedTiles: view.swappedTiles.map(s => ({ r: s.r, c: s.c, letter: s.letter, val: s.val, isJoker: !!s.isJoker })),
+        boostPlacements: draft?.ok ? draft.choices.map(({ r, c, instanceId }) => ({ r, c, instanceId })) : [],
       },
     });
     return true;
@@ -486,6 +570,8 @@ export function createGameController({ bus, session, mySlot = null }) {
     // uses setPendingLock now). Bypasses the preview state.
     placeLock,
     finalizeBoostAward,
+    // Boost 2.0
+    v2Draft, setBoostPlacements, setV2SetupChoice, skipOpeningStep,
     dispose,
   };
 }

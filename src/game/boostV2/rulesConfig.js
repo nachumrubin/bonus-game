@@ -23,9 +23,10 @@ export const DIFFICULTY = Object.freeze({ EASY: 'EASY', MEDIUM: 'MEDIUM', HARD: 
 // Accessible presentation for each difficulty: colour is never the only
 // differentiator (spec §9) — every level also has a symbol and a label.
 export const DIFFICULTY_PRESENTATION = Object.freeze({
-  EASY:   Object.freeze({ color: 'green',  symbol: '●',   labelHe: 'קל',    labelEn: 'Easy' }),
-  MEDIUM: Object.freeze({ color: 'orange', symbol: '◆◆',  labelHe: 'בינוני', labelEn: 'Medium' }),
-  HARD:   Object.freeze({ color: 'red',    symbol: '▲▲▲', labelHe: 'קשה',   labelEn: 'Hard' }),
+  // Approved Phase 5 design: one distinct shape per level + colour + label.
+  EASY:   Object.freeze({ color: 'green',  hex: '#34d399', symbol: '●', labelHe: 'קל',     labelEn: 'Easy' }),
+  MEDIUM: Object.freeze({ color: 'orange', hex: '#fb923c', symbol: '◆', labelHe: 'בינוני', labelEn: 'Medium' }),
+  HARD:   Object.freeze({ color: 'red',    hex: '#f43f5e', symbol: '▲', labelHe: 'קשה',    labelEn: 'Hard' }),
 });
 
 // Letters excluded from specific-letter targets (Letter Hunt, Word Edge).

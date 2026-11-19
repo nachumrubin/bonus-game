@@ -3923,6 +3923,225 @@ html[data-skin="stone"] .end-ach-spark {
 html[data-skin="stone"] .end-ach-count {
   color: var(--by,#a8480f);
 }
+html[data-skin="stone"] {
+  --v2-easy: #1f8a52;
+  --v2-med: #a8480f;
+  --v2-hard: #c0283c;
+  --v2-cyan: #12607a;
+}
+html[data-skin="stone"] .v2-strip {
+  color: #2a2118;
+}
+html[data-skin="stone"] .v2-lbl {
+  color: #12607a;
+}
+html[data-skin="stone"] .v2-muted {
+  color: #12607a;
+}
+html[data-skin="stone"] .v2-card {
+  border-radius: 12px;
+  background: rgba(255,255,255,.525);
+  border: 1px solid rgba(120,90,50,.143);
+}
+html[data-skin="stone"] .v2-card--easy .v2-card-tx i {
+  color: var(--v2-easy);
+}
+html[data-skin="stone"] .v2-card--medium .v2-card-tx i {
+  color: var(--v2-med);
+}
+html[data-skin="stone"] .v2-card--hard .v2-card-tx i {
+  color: var(--v2-hard);
+}
+html[data-skin="stone"] .v2-icon-slot {
+  border-radius: 50%;
+  border: 1.5px dashed rgba(120,90,50,.3);
+}
+html[data-skin="stone"] .v2-icon-slot--lg {
+  border-radius: 16px;
+  border-width: 2px;
+}
+html[data-skin="stone"] .v2-chip {
+  border-radius: 13px;
+  background: rgba(255,255,255,.6);
+}
+html[data-skin="stone"] .v2-chip--ok {
+  background: rgba(52,211,153,.192);
+  border: 1px solid rgba(31,138,82,.55);
+  color: #1f8a52;
+}
+html[data-skin="stone"] .v2-chip--fail {
+  color: #12607a;
+}
+html[data-skin="stone"] .v2-chip--rack {
+  background: rgba(224,160,48,.168);
+  color: #a8480f;
+}
+html[data-skin="stone"] .v2-total {
+  color: #12607a;
+}
+html[data-skin="stone"] .v2-tray {
+  border-radius: 14px;
+  background: rgba(18,96,122,.064);
+  border: 1.5px solid rgba(18,96,122,.605);
+}
+html[data-skin="stone"] .v2-ok {
+  color: #1f8a52;
+}
+html[data-skin="stone"] .v2-hint {
+  color: #12607a;
+}
+html[data-skin="stone"] .v2-setup {
+  border-radius: 16px;
+  background: rgba(255,252,245,.9);
+  border: 1px solid rgba(18,96,122,.495);
+}
+html[data-skin="stone"] .v2-skip {
+  border-radius: 10px;
+  border: 1px solid rgba(120,90,50,.198);
+  background: rgba(255,255,255,.575);
+  color: #2a2118;
+}
+html[data-skin="stone"] .v2-step-h {
+  color: #12607a;
+}
+html[data-skin="stone"] .v2-step.is-now .v2-step-h {
+  color: #12607a;
+}
+html[data-skin="stone"] .v2-step.is-done .v2-step-h {
+  color: #1f8a52;
+}
+html[data-skin="stone"] .v2-step.is-now .v2-card {
+  border: 1.5px solid var(--v2-cyan);
+  background: rgba(18,96,122,.08);
+}
+html[data-skin="stone"] .v2-mk {
+  border-radius: calc(var(--csz,34px)*.17);
+  border: 2px solid;
+  background: #fffaf0;
+}
+html[data-skin="stone"] .v2-mk--easy {
+  border-color: var(--v2-easy);
+  box-shadow: 0 0 calc(var(--csz,34px)*.3) rgba(52,211,153,.275);
+}
+html[data-skin="stone"] .v2-mk--medium {
+  border-color: var(--v2-med);
+  box-shadow: 0 0 calc(var(--csz,34px)*.3) rgba(224,160,48,.33);
+}
+html[data-skin="stone"] .v2-mk--hard {
+  border-color: var(--v2-hard);
+  box-shadow: 0 0 calc(var(--csz,34px)*.3) rgba(244,63,94,.3);
+}
+html[data-skin="stone"] .v2-mk-b {
+  color: #2a2118;
+}
+html[data-skin="stone"] .v2-mk--easy .v2-mk-s,
+html[data-skin="stone"] .v2-mk--easy .v2-mk-r {
+  color: var(--v2-easy);
+}
+html[data-skin="stone"] .v2-mk--medium .v2-mk-s,
+html[data-skin="stone"] .v2-mk--medium .v2-mk-r {
+  color: var(--v2-med);
+}
+html[data-skin="stone"] .v2-mk--hard .v2-mk-s,
+html[data-skin="stone"] .v2-mk--hard .v2-mk-r {
+  color: var(--v2-hard);
+}
+html[data-skin="stone"] .v2-mk.is-pending {
+  border-style: dashed;
+  background: #fffaf0;
+  outline: 2px solid #12607a;
+  outline-offset: -1px;
+}
+html[data-skin="stone"] .v2-mk.is-setup {
+  border-style: dashed;
+  background: #fffaf0;
+  box-shadow: none;
+}
+html[data-skin="stone"] #game-grid .cell.v2-legal {
+  outline: 2px dashed rgba(18,96,122,.99);
+  outline-offset: -3px;
+}
+html[data-skin="stone"] .v2-result {
+  border-radius: 16px;
+  background: #fffaf0;
+  border: 1px solid rgba(201,150,42,.54);
+  box-shadow: 0 10px 30px rgba(90,60,20,.14);
+  color: #2a2118;
+}
+html[data-skin="stone"] .v2-res-hd {
+  color: #a8480f;
+}
+html[data-skin="stone"] .v2-res-row--ok {
+  color: #1f8a52;
+}
+html[data-skin="stone"] .v2-res-row--fail {
+  color: #12607a;
+}
+html[data-skin="stone"] .v2-res-row--rack {
+  color: #a8480f;
+}
+html[data-skin="stone"] .v2-res-total {
+  border-top: 1px solid rgba(120,90,50,.154);
+}
+html[data-skin="stone"] .v2-res-total span:last-child {
+  color: #a8480f;
+}
+html[data-skin="stone"] .v2-sheet-wrap {
+  background: rgba(255,252,245,.82);
+}
+html[data-skin="stone"] .v2-sheet {
+  border-radius: 24px 24px 0 0;
+  background: #fffaf0;
+  border-top: 1px solid rgba(18,96,122,.385);
+  box-shadow: 0 -12px 40px rgba(90,60,20,.175);
+  color: #2a2118;
+}
+html[data-skin="stone"] .v2-sheet-grip {
+  border-radius: 3px;
+  background: rgba(255,255,255,.85);
+}
+html[data-skin="stone"] .v2-tag {
+  border-radius: 13px;
+}
+html[data-skin="stone"] .v2-tag--easy {
+  border: 1.5px solid var(--v2-easy);
+  color: var(--v2-easy);
+}
+html[data-skin="stone"] .v2-tag--medium {
+  border: 1.5px solid var(--v2-med);
+  color: var(--v2-med);
+}
+html[data-skin="stone"] .v2-tag--hard {
+  border: 1.5px solid var(--v2-hard);
+  color: var(--v2-hard);
+}
+html[data-skin="stone"] .v2-tag--pts {
+  background: rgba(255,255,255,.6);
+  color: #2a2118;
+}
+html[data-skin="stone"] .v2-ex {
+  border-radius: 14px;
+  background: rgba(255,255,255,.525);
+}
+html[data-skin="stone"] .v2-ex-t {
+  background: var(--tile);
+  border: 2px solid var(--tborder);
+  border-radius: 5px;
+  box-shadow: 0 2px 0 var(--tshadow);
+  color: #111;
+}
+html[data-skin="stone"] .v2-sheet-notes {
+  color: #2a2118;
+}
+html[data-skin="stone"] .v2-sheet-ok {
+  border: 0;
+  border-radius: 14px;
+  background: rgba(255,255,255,.65);
+  color: #2a2118;
+}
+html[data-skin="stone"] .end-v2-ded {
+  color: #2a2118;
+}
 
 /* ── generated from menu-electric.css ── */
 html[data-skin="stone"] {

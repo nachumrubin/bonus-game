@@ -345,6 +345,9 @@ export function createBoostV2Handlers({ state, emit, isWordValid = defaultIsVali
     emit(EV.MOVE_CONFIRMED, {
       slot, placed: all, swappedTiles: swaps, words: wordsText, wordTiles,
       score: breakdown.totalScore, multiplier: 1,
+      // The score animation shows words (+ the full-rack bonus, like the old
+      // bingo) as the base and Boost rewards as its "extra" chip.
+      baseScore: breakdown.baseScore + breakdown.fullRackBonus, bonusExtra: breakdown.boostScore,
       ruleset: 'BOOST_V2', breakdown, boostPlacements: newBoosts,
     });
     for (const r of breakdown.boostResults) {

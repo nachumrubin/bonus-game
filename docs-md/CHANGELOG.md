@@ -2,6 +2,17 @@
 
 ---
 
+## Boost 2.0 — Phase 5: the game screen (November 2026)
+
+- **Playable now:** setup → two players → "כללי משחק: בוסט 2.0" starts a local Boost 2.0 match (pass-and-play). The bot and online modes stay classic until Phases 6/7 (the toggle is hidden for them).
+- **New UI** (approved mockups https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS): Boost markers on the board (shape + colour + parameter + reward), "הבאים בתור" strip with the next two cards, challenge-details sheet on tap, live breakdown + replacement tray while a draft covers a Boost (legal squares highlighted, others dimmed), שבץ refuses until replacements are placed, non-modal result card after every move, opening-setup stepper with "הצב כאן" and "דלג", rack-deduction lines on the end screen. No ✓/✗ badges on board tiles (product decision); no lock pills in Boost 2.0.
+- **Architecture:** `mountGameScreen({ boostV2Hooks })` — optional hooks (`emptyCell`, `onCellClick`, `disabledControls`, `playPreview`, `afterRender`); without them the screen is unchanged. `src/ui/screens/boostV2Layer.js` supplies them; `src/game/boostV2/draftPreview.js` computes the live breakdown + replacement plan with the engine's own functions. `gameController` gains `v2Draft`, `setBoostPlacements`, `setV2SetupChoice`, `skipOpeningStep` and a V2 branch in `confirmMove`.
+- **Engine:** V2 `MOVE_CONFIRMED` carries `baseScore` (words + full-rack bonus) and `bonusExtra` (Boost rewards), so the existing score animation shows rewards as its extra chip. Badges: Power Word `N+`; Double Letter `×2` / `2×2`; difficulty symbols ● ◆ ▲.
+- **Grid:** Boost 2.0 boards are built without the off-grid bonus squares (`buildUnifiedGrid({ bonusSquares: false })`). Rematch keeps the ruleset.
+- **RTL fix (all rulesets):** floating score chips (`.scoring-float-label`) and end-screen scores rendered "+N" / "−N" as "N+" / "N−" in the RTL page; now isolated as LTR.
+- **Skins:** `skin-stone.css` / `skin-marble.css` regenerated (`npm run build:skins`). sw `CACHE_NAME` → `boost-20261119074133`.
+- **Tests:** unit 2006 pass; new `src/ui/screens/boostV2Layer.test.js` (helpers + session/controller/layer integration) and `tests/e2e/boost-v2-local-match.spec.js` (a complete match in Chromium: setup toggle, coin toss, opening word, three setup placements by tapping, details sheet, Boost move with replacement, natural ending with deductions). Existing e2e specs re-run: the only failure (`non-menu-buttons`, online create-room) also fails on the previous commit — this sandbox blocks Firebase hosts.
+
 ## Boost 2.0 — rules 0.3: Bridge without special rules, natural-end deductions, setup hand-over (November 2026)
 
 - **Bridge Builder:** no alignment requirement and no Hard Long Word fallback. It is placed like any other Boost; if it can't be completed, players consume it without the reward. `boostPlacement.planReplacements` is now just the mandatory FIFO prefix; the Bridge arrangement search, `isAligned`, `findArrangement` and the `bridge-not-aligned` / `bridge-fallback-activated` paths are gone. `effectiveDefinitionId` stays (always = `definitionId`) so stored Boosts keep their shape; `fallbackApplied` is removed.

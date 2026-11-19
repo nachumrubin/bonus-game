@@ -17,7 +17,8 @@
 - [x] Decided: A2 (locks off, swaps on), A4 (deduct on resign, resigner loses), A9 (no Power Word Easy), BINGO_BONUS = 25.
 - [ ] **Product review:** remaining Part L defaults (placement distance, reward values, thresholds) after Phase 6/8 simulation data.
 - [ ] **Product review:** candidate deck `boost-v2.deck.0.1-candidate` (Letter Hunt / Word Edge targets in `deckManifest.js`) before freezing a production manifest.
-- [ ] Phase 5 — UI: Boost rendering + icons (`parameterBadge`, `DIFFICULTY_PRESENTATION`), tooltips (`describeRequirementHe`), two-card preview (`publicView().upcoming`), replacement placement mode (`planForMove`), score breakdown, opening-setup screen, ruleset choice in game creation.
+- [x] Phase 5 — game screen for local Boost 2.0 matches (markers, queue strip, details sheet, replacement mode, breakdown, opening setup, end-screen deductions, ruleset toggle).
+- [ ] Phase 5 follow-ups: family icons (9, Icon Designer — asset_inventory); long-press for details while a tile is selected (spec §31 optional); guide/FAQ pages for Boost 2.0; replay screen does not show Boost markers yet.
 - [ ] Phase 6 — bot: rank candidates by `buildScoreBreakdown().totalScore`, choose replacement squares (opponent-opportunity heuristics), handle opening setup; `botGameSession` must dispatch `PLACE_OPENING_BOOST`.
 - [ ] Phase 7 — online: persist `ruleset` + `boostV2` in room docs (`schema.buildRoomDoc`, `onlineGameSession` hydrate via `normalizeBoostV2State`), commit on `EV.BOOST_PLACED`, watchdog/timer handling for the setup phase (no `turnNumber` advance), matchmaking compatibility by ruleset.
 - [ ] Phase 8 — balance report from `simulateV2.js` with the Phase 6 bot (the current generator ignores Boosts, so consumption is low: 3–5 per match), telemetry sink for `EV.BOOST_V2_TELEMETRY`.

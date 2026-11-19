@@ -57,8 +57,25 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
                                      // bot 5-letter words while easy looked picked)
   let botTime = 40;                  // 20 | 40 | 60
   let showBothRacks = false;
+  let ruleset = 'LEGACY_V1';         // 'LEGACY_V1' | 'BOOST_V2' (vs mode only for now)
 
   const cleanups = [];
+
+  // ─── Ruleset toggle (Boost 2.0) ────────────────────────
+  const rulesClassicBtn = setup.querySelector?.('#ss-rules-classic');
+  const rulesV2Btn = setup.querySelector?.('#ss-rules-v2');
+  function applyRulesClass() {
+    rulesV2Btn?.classList?.[ruleset === 'BOOST_V2' ? 'add' : 'remove']('a');
+    rulesClassicBtn?.classList?.[ruleset === 'BOOST_V2' ? 'remove' : 'add']('a');
+  }
+  for (const [btn, value] of [[rulesClassicBtn, 'LEGACY_V1'], [rulesV2Btn, 'BOOST_V2']]) {
+    if (!btn) continue;
+    cleanups.push(on(btn, 'click', (e) => {
+      e.preventDefault?.();
+      ruleset = value;
+      applyRulesClass();
+    }));
+  }
 
   // ─── Show-both-racks toggle ────────────────────────────
   const racksShowBtn = setup.querySelector?.('#ss-racks-both');
@@ -131,7 +148,11 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
       e.preventDefault?.();
       const p1 = ($(SELECTORS.p1Input, setup)?.value ?? 'שחקן 1').trim() || 'שחקן 1';
       const p2 = ($(SELECTORS.p2Input, setup)?.value ?? 'שחקן 2').trim() || 'שחקן 2';
-      bus.emit(SETUP_INTENT.PLAY_CLICKED, { mode, p1Name: p1, p2Name: p2, difficulty, botTime, showBothRacks: mode === 'vs' ? showBothRacks : false });
+      bus.emit(SETUP_INTENT.PLAY_CLICKED, {
+        mode, p1Name: p1, p2Name: p2, difficulty, botTime,
+        showBothRacks: mode === 'vs' ? showBothRacks : false,
+        ruleset: mode === 'vs' ? ruleset : 'LEGACY_V1',
+      });
     }));
   }
 
@@ -177,6 +198,10 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
     // Show racks toggle only in vs mode
     const racksRow = setup.querySelector?.('#ss-racks-row');
     if (racksRow) racksRow.style.display = mode === 'vs' ? '' : 'none';
+    const rulesRow = setup.querySelector?.('#ss-ruleset-row');
+    if (rulesRow) rulesRow.style.display = mode === 'vs' ? '' : 'none';
+    ruleset = 'LEGACY_V1';
+    applyRulesClass();
     // Reset difficulty active class
     for (const d of diffButtons) {
       const b = d.el;

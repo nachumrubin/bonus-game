@@ -138,6 +138,7 @@ Critical element IDs referenced by game logic (must not be renamed):
 #is-sv1, #is-sv2       — player score values (mobile inline)
 #is-sn1, #is-sn2       — player name labels (mobile inline)
 #sbar                  — transient status toast (Oct 2026): errors / game over / swap hints / setS() toasts. Absolute on the top edge of .board-center, fades out (.sbar--toast, ~3s); .is-empty = display:none. Takes no layout row — do not put it back in the .gr column flow
+#btn-play .bplay-l     — in a Boost 2.0 opening setup the label becomes "הצב כאן" (playPreview hook); the "+N" then includes Boost rewards
 #btn-play-x            — live word preview INSIDE the שבץ button (renderPlayPreview, computeLiveWordPreview): "+N" (.is-ready) when every formed word is valid; .is-invalid (red button) with only the invalid word(s) as <s class="bplay-bad"> otherwise. The label is the inner .bplay-l span (data-gm/data-gf) so the gender swap never wipes the preview
 #is-boost-1 / #is-boost-2 — the opponent's last boost, gold tag in the top avatar-side corner of THEIR score card (renderOpponentBoost)
 #bag-count-text        — remaining tile count
@@ -257,6 +258,33 @@ Onboarding overlay (per-screen first-visit tooltips):
 Storage key: 'spine.onboarding.dismissed' (JSON array of permanently-dismissed screen IDs)
 Event: ONBOARDING_SCREEN_ENTER ('onboarding/screenEnter') — emitted by showLegacyScreen()
 ```
+
+### Boost 2.0 game screen (`BOOST_V2` matches, November 2026)
+
+Rendered by `src/ui/screens/boostV2Layer.js` through the optional `boostV2Hooks` of
+`mountGameScreen` (legacy games pass none and render exactly as before). Approved mockups:
+https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
+
+```
+#sg.boost-v2           — set while a Boost 2.0 match is mounted; hides the lock pills (#is-locks-1/2, #lock-inv-display)
+#v2-strip              — above the board (game.html, `hidden` in legacy games). One of:
+                         · "הבאים בתור" — the next two queue cards (.v2-card)
+                         · live draft: breakdown chips (.v2-chip--words/ok/fail/rack) + total (.v2-total),
+                           and the replacement tray (.v2-tray) while the draft owes replacement Boosts
+                         · opening setup: header + skip button ([data-v2-skip], "דלג · היריב יציב") + stepper (.v2-steps)
+#v2-result             — non-modal move breakdown on the board's top edge; auto-hides after V2_RESULT_MS (3.6 s), tap hides
+#v2-sheet              — challenge-details sheet (.v2-sheet); opens on a Boost tap with no rack tile selected; [data-v2-close] / backdrop / Esc close
+.v2-mk (+ --easy/--medium/--hard, .is-pending, .is-setup) — the board marker inside a cell (sizes from --csz)
+#game-grid .cell.v2-legal / .v2-dim — legal / not-legal squares while placing a replacement or setup Boost
+.v2-icon-slot          — reserved place for the (missing) family icon — docs/asset_inventory.md
+.end-v2-ded            — "צבור X · מגש −Y" appended to #end-card-0/1 on a natural ending
+#ss-ruleset-row, #ss-rules-classic, #ss-rules-v2 — setup screen ruleset toggle (two-player mode only)
+```
+
+Interaction: with a rack tile selected, a tap places the tile as usual. With none selected, a tap
+on a Boost opens #v2-sheet; while a replacement is owed, a tap on a `.v2-legal` square picks (or
+moves) it and a tap on a pending marker removes it. During the opening setup every tap is handled
+by the layer, the rack / exchange / recall are disabled and שבץ reads "הצב כאן".
 
 ### VS Intro (`#ov-vs-intro`, September 2026)
 

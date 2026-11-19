@@ -82,6 +82,7 @@ import { createTutorialController } from './ui/controllers/tutorialController.js
 import { mountOnboardingController, ONBOARDING_SCREEN_ENTER } from './ui/controllers/onboardingController.js';
 import { createClaimStallEndController } from './ui/controllers/claimStallEndController.js';
 import { mountGameScreen, GAME_SCREEN_INTENT, BONUS_AWARD_ACK } from './ui/screens/gameScreen.js';
+import { mountBoostV2Layer } from './ui/screens/boostV2Layer.js';
 import { showScreen as spineShowScreen, revealCurrentScreen, settleEntrance, SCREEN_IDS } from './ui/screens/screenTransitions.js';
 import { playHomeBuild, playBoardBuild, finishBuilds, wasBoardBuilt, rememberBoardBuilt, flyOutLoadingTiles, preloadLogoTiles, playLogoStrike, startLogoIdle } from './ui/buildSequences.js';
 import { boardBuildKind, BOARD_BUILD_LEAD_MS } from './ui/buildTimeline.js';
@@ -1301,7 +1302,7 @@ async function boot() {
     }
 
     const BOT_LEVEL_LABEL = ['רמה קלה', 'רמה בינונית', 'רמה קשה'];
-    bus.on(SETUP_INTENT.PLAY_CLICKED, async ({ mode, p1Name, p2Name, difficulty, botTime = 40, showBothRacks = false }) => {
+    bus.on(SETUP_INTENT.PLAY_CLICKED, async ({ mode, p1Name, p2Name, difficulty, botTime = 40, showBothRacks = false, ruleset = 'LEGACY_V1' }) => {
       settingsCompat.mergeUiPreferences(globalThis.localStorage, { lastDisplayName: p1Name });
       const isBot = mode === 'bot';
       const startingSlot = Math.random() < 0.5 ? 0 : 1;
@@ -1315,6 +1316,7 @@ async function boot() {
           p1Name, p2Name,
           startingSlot,
           settings: { timelimit: botTime > 0, botTime, showBothRacks },
+          ...(!isBot && ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
         });
       });
       if (isBot) {
@@ -5026,7 +5028,9 @@ async function boot() {
     beforeStart = null,
     restoredState = null,
     resumedFromLocalSave = false,
+    ruleset = null,
   } = {}) {
+    const isBoostV2Game = (restoredState?.ruleset ?? ruleset) === 'BOOST_V2';
     ensureDictionaryLoaded().catch((e) => console.warn('[spine] dictionary preload before local game failed:', e));
 
     const effectiveSettings = restoredState?.settings ?? settings;
@@ -5046,8 +5050,9 @@ async function boot() {
     // 144 cells the new gameScreen expects). The legacy fn also resets
     // bData / lockedCells / bonusSqUsed in legacy globals — harmless,
     // those globals aren't referenced by the new spine.
+    // Boost 2.0 boards have no off-grid bonus squares.
     if (typeof globalThis.buildUnifiedGrid === 'function') {
-      try { globalThis.buildUnifiedGrid(); } catch { /* swallow */ }
+      try { globalThis.buildUnifiedGrid({ bonusSquares: !isBoostV2Game }); } catch { /* swallow */ }
     }
 
     const session = restoredState
@@ -5062,6 +5067,7 @@ async function boot() {
           },
           startingSlot,
           settings,
+          ...(isBoostV2Game ? { ruleset: 'BOOST_V2' } : {}),
         });
 
     if (typeof beforeStart === 'function') {
@@ -5124,12 +5130,17 @@ async function boot() {
     const controller = createGameController({ bus, session, mySlot: humanSlot });
     const animationController = createAnimationController({ bus, mySlot: humanSlot, reducedMotion: () => getMotionPreference().isReduced(), cue: feedbackService.cue });
     animationController.setEnabled(getMotionPreference().animationsEnabled());
+    // Boost 2.0 layer (markers, strip, details sheet, breakdown) — V2 only.
+    const boostV2Layer = isBoostV2Game
+      ? mountBoostV2Layer({ bus, controller, getState: () => session.state })
+      : null;
     const screen = mountGameScreen({
       controller,
       animationController,
       jokerPicker: globalThis.__spine?.jokerPicker ?? null,
       bus,
       prefersReducedMotion: () => getMotionPreference().isReduced(),
+      boostV2Hooks: boostV2Layer?.hooks ?? null,
     });
 
     const bonusFlow = attachBonusFlow(session, { botSlot: bot ? 1 : null });
@@ -5144,6 +5155,7 @@ async function boot() {
       end() {
         finishBuilds();
         screen.unmount();
+        boostV2Layer?.unmount();
         animationController.dispose();
         controller.dispose();
         bonusFlow.dispose();
@@ -6089,13 +6101,15 @@ function scheduleBasicLayoutRefresh() {
   globalThis.setTimeout?.(run, 240);
 }
 
-function buildSpineUnifiedGrid() {
+// `bonusSquares: false` (Boost 2.0) leaves the perimeter empty — no off-grid
+// bonus squares exist in that ruleset.
+function buildSpineUnifiedGrid({ bonusSquares = true } = {}) {
   const doc = globalThis.document;
   const grid = doc?.getElementById?.('game-grid');
   if (!grid) return;
   grid.innerHTML = '';
   const map = new Map();
-  BDEFS.forEach((b, idx) => {
+  if (bonusSquares) BDEFS.forEach((b, idx) => {
     map.set(`${b.br + 2},${b.bc + 2}`, idx);
   });
   for (let gr = 1; gr <= 12; gr++) {

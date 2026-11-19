@@ -86,12 +86,13 @@
 | `matchStateV2.js` | `createBoostV2State`, `publicView`, `normalizeBoostV2State`, `checkBoostV2Invariants`, `PHASE`. |
 | `engineV2.js` | Turn orchestrator called from `gameEngine.dispatch()`; `planForMove`, `applyEndgameV2`. |
 | `simulateV2.js` | Headless seeded matches through the real engine with invariant checks. |
+| `draftPreview.js` | `computeV2Draft` — live breakdown + replacement plan for an unsubmitted draft (UI). |
 | `authoritativeTurn.js` | Worker game logic: `createMatch`, `applyCommand`, `planDraft`, room/rack projections, state (de)serialisation. |
 | `sortedDictionary.js` | Binary-search word validator over the raw sorted dictionary + Firebase overlays (Worker). |
 | `testHelpers.js` | Test fixtures (not a test file). |
 | `*.test.js` | Unit, engine-integration and randomized property tests. |
 
-Related: `worker/src/boostTurn.js` (`/boost/*` endpoints), `src/game/online/boostTurnClient.js` (client API), `tests/emulator/boost-v2-rules.test.mjs`, `scripts/boostV2/analyze-dictionary.mjs` (offline analysis → `docs-md/boost-v2/ANALYSIS.md`), `docs-md/boost-v2/AUDIT.md`.
+Related: `src/ui/screens/boostV2Layer.js` (game-screen hooks, strip, sheet, result card), `tests/e2e/boost-v2-local-match.spec.js`, `worker/src/boostTurn.js` (`/boost/*` endpoints), `src/game/online/boostTurnClient.js` (client API), `tests/emulator/boost-v2-rules.test.mjs`, `scripts/boostV2/analyze-dictionary.mjs` (offline analysis → `docs-md/boost-v2/ANALYSIS.md`), `docs-md/boost-v2/AUDIT.md`.
 
 ### `src/game/sessions/` — Session Modes
 | File | Role |

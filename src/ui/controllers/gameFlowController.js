@@ -123,7 +123,7 @@ export function createGameFlowController({
     const ag = activeGameRef();
     const session = ag?.session;
     if (!session?.state) return;
-    const { mode, players } = session.state;
+    const { mode, players, ruleset } = session.state;
     exitBoardReview();
     endActiveGame();
     hideOverlay('ov-end');
@@ -133,6 +133,7 @@ export function createGameFlowController({
         bot: mode === 'offline-solo',
         p1Name: players?.[0]?.displayName,
         p2Name: players?.[1]?.displayName,
+        ...(ruleset ? { ruleset } : {}),
       });
     } else {
       showScreen('so');

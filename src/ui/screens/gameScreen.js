@@ -89,7 +89,14 @@ function cellIdFor(r, c) {
 // `resolveAvatar(uid) => Promise<avatar|null>` (optional): looks up a player's
 // CURRENT avatar, so the identity strip doesn't render the copy frozen into the
 // room document at invite time. Omitted → the stored room avatar is used as-is.
-export function mountGameScreen({ controller, animationController, jokerPicker = null, bus = null, resolveAvatar = null, root = globalThis.document, prefersReducedMotion = () => false }) {
+// `boostV2Hooks` (optional; Boost 2.0 matches only — see boostV2Layer.js):
+//   emptyCell(r, c, v)        → { html, classes } | null   decorate an empty cell
+//   onCellClick(r, c, ctx)    → true when it handled the tap
+//   disabledControls(v)       → array of 'play'|'recall'|'exchange'|'rack'
+//   playPreview(v)            → { label?, score?, hidePreview? } | null
+//   afterRender(v)            → void
+// Without it the screen behaves exactly as before.
+export function mountGameScreen({ controller, animationController, jokerPicker = null, bus = null, resolveAvatar = null, root = globalThis.document, prefersReducedMotion = () => false, boostV2Hooks = null }) {
   if (!controller) throw new Error('mountGameScreen: controller required');
 
   const cleanups = [];
@@ -105,6 +112,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   const botFaces = createBotFaces({ hostOf: (slot) => lookup(root, `is-av${slot + 1}`), prefersReducedMotion });
   // Last word|points|validity shown by the live word-points pill (renderStatus).
   let lastPreviewKey = '';
+  let playLabelOverridden = false;
   // Last status-toast text (renderStatus) and opponent-boost tag (renderOpponentBoost).
   let lastStatusText = null;
   let lastOppBoostKey = '';
@@ -540,6 +548,10 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       controller.unswapBoardTile?.(r, c);
       return;
     }
+    // Boost 2.0: Boost details, replacement / opening-setup square choice.
+    if (boostV2Hooks?.onCellClick?.(r, c, {
+      hasSelection: selectedRackIndex != null || selectedPlacedCoord != null || selectedLock != null,
+    })) return;
     // Pending lock at this cell. Same two-step interaction as a placed tile:
     //   click once  → select it (glows); an empty cell then MOVES it there
     //   click again → send it back to the lock box (so a double-click on the
@@ -817,6 +829,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     renderLockInventory(v);
     renderRack(v);
     renderInteractionGate(v);
+    boostV2Hooks?.afterRender?.(v);
   }
 
   // Disable the rack + action buttons whenever it isn't this client's turn,
@@ -839,6 +852,15 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
     }
     if (lockInvDisplay) {
       lockInvDisplay.classList?.toggle?.('is-disabled', !enabled);
+    }
+    const off = boostV2Hooks?.disabledControls?.(v) ?? [];
+    const byName = { play: btnPlay, recall: btnRecall, exchange: btnExchange, rack: brack };
+    for (const name of off) {
+      const el = byName[name];
+      if (!el) continue;
+      if (name !== 'rack') el.disabled = true;
+      el.classList?.add?.('is-disabled');
+      el.setAttribute?.('aria-disabled', 'true');
     }
   }
 
@@ -1150,6 +1172,20 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
   function renderPlayPreview(v) {
     if (!btnPlay) return;
     const x = $('#btn-play-x', root);
+    // Boost 2.0: the button can be relabelled (opening setup: "הצב כאן") and
+    // its "+N" shows the full move total including Boost rewards.
+    const v2 = boostV2Hooks?.playPreview?.(v) ?? null;
+    const labelEl = $('.bplay-l', root);
+    if (labelEl) {
+      if (v2?.label) { labelEl.textContent = v2.label; playLabelOverridden = true; }
+      else if (playLabelOverridden) { labelEl.textContent = g('confirmBtn'); playLabelOverridden = false; }
+    }
+    if (v2?.hidePreview) {
+      btnPlay.classList?.remove?.('is-ready', 'is-invalid');
+      if (x) x.innerHTML = '';
+      lastPreviewKey = '';
+      return;
+    }
     const busy = v.lastInvalidReason || v.status === 'completed' || v.status === 'abandoned';
     const preview = !busy && (v.placed?.length || v.swappedTiles?.length)
       ? computeLiveWordPreview({
@@ -1175,6 +1211,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       btnPlay.setAttribute?.('aria-label', `${label} — ${badWords.join(', ')} לא במילון`);
     } else {
       btnPlay.classList?.add?.('is-ready');
+      if (v2?.score != null) preview.score = v2.score;
       if (x) x.innerHTML = `<span dir="ltr">+${preview.score}</span>`;
       btnPlay.setAttribute?.('aria-label', `${label} — ${items.map(i => i.text).join(', ')} — ${preview.score} נקודות`);
     }
@@ -1312,7 +1349,7 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
       for (let c = 0; c < 10; c++) {
         const cell = $(`#c${r}_${c}`, root);
         if (!cell) continue;
-        cell.classList?.remove('np', 'lk', 'ht', 'last-move', 'spine-live-preview', 'spine-lock-cell', 'spine-pending-lock-cell', 'locked-cell', 'selected-placed', 'swap-pending');
+        cell.classList?.remove('np', 'lk', 'ht', 'last-move', 'spine-live-preview', 'spine-lock-cell', 'spine-pending-lock-cell', 'locked-cell', 'selected-placed', 'swap-pending', 'v2-boost', 'v2-legal', 'v2-dim', 'v2-choice');
         const placedHere = v.placed?.find(p => p.r === r && p.c === c);
         const swapHere = v.swappedTiles?.find(s => s.r === r && s.c === c);
         const committed = boardTileAt(v, r, c);
@@ -1356,7 +1393,9 @@ export function mountGameScreen({ controller, animationController, jokerPicker =
           // player can see which lock will move on the next cell tap.
           if (pendingLockSelected) cell.classList?.add('selected-placed');
         } else {
-          cell.innerHTML = '';
+          const deco = boostV2Hooks?.emptyCell?.(r, c, v);
+          cell.innerHTML = deco?.html ?? '';
+          for (const k of deco?.classes ?? []) cell.classList?.add(k);
         }
         // Re-apply an in-flight scoring-word-glow that would otherwise be
         // wiped by the innerHTML rewrite above.
@@ -2694,6 +2733,20 @@ function invalidReasonText(reason) {
     case 'swap-no-tile':            return 'במשבצת אין אות להחלפה';
     case 'turn-already-passed':     return g('turnPassedDuringPlace');
     case 'turn-expired':            return 'הזמן שלך נגמר — התור עובר ליריב';
+    // Boost 2.0
+    case 'opening-not-center':      return 'המילה הראשונה חייבת לעבור באחת מ־4 המשבצות שבמרכז';
+    case 'boost-placement-needed':  return 'מקמו את הבוסט החדש על משבצת מסומנת לפני השבץ';
+    case 'boost-placement-count':   return 'צריך למקם את כל הבוסטים החדשים';
+    case 'boost-placement-illegal': return 'אי אפשר להציב בוסט במשבצת הזו';
+    case 'boost-placement-duplicate': return 'שני בוסטים לא יכולים לשבת באותה משבצת';
+    case 'boost-placement-order':   return 'הבוסטים מוצבים לפי סדר התור';
+    case 'boost-setup-choose':      return 'בחרו משבצת מסומנת להצבת הבוסט';
+    case 'opening-setup-pending':   return 'קודם מסיימים להציב את הבוסטים';
+    case 'off-grid':                return 'אפשר להניח אותיות רק בתוך הלוח';
+    case 'v2-locks-disabled':       return 'אין נעילות בבוסט 2.0';
+    case 'exchange-too-many':       return 'אין מספיק אותיות בקופה להחלפה הזו';
+    case 'placed-not-in-rack':      return 'האות לא נמצאת במגש';
+    case 'duplicate-placement':     return 'שתי אותיות באותה משבצת';
     default:                        return reason;
   }
 }

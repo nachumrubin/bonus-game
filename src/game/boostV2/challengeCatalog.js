@@ -152,11 +152,11 @@ export function parameterBadge(d) {
     case FAMILY.LETTER_HUNT:    return p.targetLetter;
     case FAMILY.LONG_WORD:      return `${p.minimumLength}+`;
     case FAMILY.TILE_MASTER:    return `×${p.minimumNewTiles}`;
-    case FAMILY.DOUBLE_LETTER:  return p.minRepeatedLetters >= 2 ? '2×2' : (p.minWordLength > 2 ? `${p.minWordLength}+` : '×2');
+    case FAMILY.DOUBLE_LETTER:  return p.minRepeatedLetters >= 2 ? '2×2' : '×2';
     case FAMILY.UNIQUE_LETTERS: return `${p.minimumLength}≠`;
     case FAMILY.WORD_EDGE:      return p.position === 'START' ? `${p.targetLetter}…` : `…${p.targetLetter}`;
     case FAMILY.BRIDGE_BUILDER: return '⇄';
-    case FAMILY.POWER_WORD:     return `${p.minimumBaseScore}⚡`;
+    case FAMILY.POWER_WORD:     return `${p.minimumBaseScore}+`;
     case FAMILY.EXACT_TARGET:   return `=${p.exactLength}`;
     default: return '';
   }

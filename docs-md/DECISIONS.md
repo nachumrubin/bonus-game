@@ -5,6 +5,12 @@
 
 ---
 
+## D-boost-v2-ui-hooks: Boost 2.0 UI plugs into the game screen through optional hooks — November 2026
+
+**Decision:** `mountGameScreen` takes an optional `boostV2Hooks` object (decorate an empty cell, intercept a cell tap, disable controls, relabel / re-score the play button, after-render). `boostV2Layer.js` implements them and owns its own DOM (`#v2-strip`, `#v2-sheet`, `#v2-result`). Replacement choices and the setup choice live in the controller's view (pending until שבץ), like placed tiles.
+
+**Why:** `gameScreen.js` is a 2.7k-line closure that every legacy game depends on. Hooks keep every Boost 2.0 rule out of it, so a legacy game (no hooks) runs the identical code path, and the V2 presentation can be unit-tested against a real session without a DOM.
+
 ## D-boost-v2-worker: Online Boost 2.0 matches are run by the Cloudflare Worker — November 2026
 
 **Decision:** for BOOST_V2 rooms the Worker is the only writer. The authoritative match (bag, racks, full hidden queue) lives in `boostV2Secret/{roomId}` as an engine-state JSON string guarded by RTDB ETags; clients see a public projection on `rooms/{roomId}` and only their own rack. The game logic is the app's pure engine bundled into the Worker (same pattern as D-coin-economy).
