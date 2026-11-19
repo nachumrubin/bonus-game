@@ -5450,7 +5450,7 @@ button[aria-disabled="true"] {
 .v2-row{display:flex;align-items:center;gap:8px;min-width:0;}
 .v2-lbl{font-size:12px;font-weight:700;color:#9fb4e0;white-space:nowrap;}
 .v2-muted{font-size:12px;color:#9fb4e0;}
-.v2-card{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:8px;height:42px;padding:0 10px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13);}
+.v2-card{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:8px;height:42px;padding:0 6px 0 10px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13);}
 .v2-card-tx{display:flex;flex-direction:column;min-width:0;line-height:1.2;}
 .v2-card-tx b{display:flex;gap:4px;min-width:0;font-size:13px;font-weight:800;white-space:nowrap;}
 .v2-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;}
@@ -5458,14 +5458,6 @@ button[aria-disabled="true"] {
 .v2-card-tx i{font-style:normal;font-size:11px;font-weight:700;white-space:nowrap;}
 .v2-card--easy .v2-card-tx i{color:var(--v2-easy);} .v2-card--medium .v2-card-tx i{color:var(--v2-med);} .v2-card--hard .v2-card-tx i{color:var(--v2-hard);}
 .v2-icon-slot{width:26px;height:26px;border-radius:50%;border:1.5px dashed rgba(180,205,255,.5);flex-shrink:0;box-sizing:border-box;}
-.v2-icon-slot--lg{width:58px;height:58px;border-radius:16px;border-width:2px;}
-.v2-sum{justify-content:space-between;}
-.v2-chips{display:flex;flex-wrap:wrap;gap:5px;min-width:0;}
-.v2-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:13px;background:rgba(255,255,255,.08);font-size:13px;font-weight:700;white-space:nowrap;}
-.v2-chip--ok{background:rgba(52,211,153,.16);border:1px solid rgba(52,211,153,.55);color:#a7f3d0;}
-.v2-chip--fail{color:#a9b6d3;}
-.v2-chip--rack{background:rgba(255,204,51,.14);color:#ffe08a;}
-.v2-total{font-size:24px;font-weight:900;color:#39d5ff;line-height:1;}
 .v2-tray{padding:0 8px;border-radius:14px;background:rgba(56,230,255,.08);border:1.5px solid rgba(56,230,255,.55);}
 .v2-ok{font-size:12px;font-weight:800;color:#a7f3d0;white-space:nowrap;}
 .v2-hint{font-size:12px;font-weight:700;color:#9fe9ff;white-space:nowrap;}
@@ -5483,9 +5475,11 @@ button[aria-disabled="true"] {
 .v2-mk--easy{border-color:var(--v2-easy);box-shadow:0 0 calc(var(--csz,34px)*.3) rgba(52,211,153,.55);}
 .v2-mk--medium{border-color:var(--v2-med);box-shadow:0 0 calc(var(--csz,34px)*.3) rgba(251,146,60,.55);}
 .v2-mk--hard{border-color:var(--v2-hard);box-shadow:0 0 calc(var(--csz,34px)*.3) rgba(244,63,94,.6);}
+.v2-mk-ic{position:absolute;top:5%;bottom:25%;left:15%;right:15%;background:none!important;border:0!important;box-shadow:none!important;width:auto!important;height:auto!important;}
 .v2-mk-b{font-size:calc(var(--csz,34px)*.38);font-weight:800;color:#fff;line-height:1;}
 .v2-mk-s{position:absolute;top:1px;right:3px;font-size:calc(var(--csz,34px)*.24);line-height:1;}
 .v2-mk-r{position:absolute;bottom:1px;left:3px;font-size:calc(var(--csz,34px)*.24);font-weight:800;line-height:1;}
+.v2-mk-ic ~ .v2-mk-r{left:0;right:0;text-align:center;font-size:calc(var(--csz,34px)*.22);}
 .v2-mk--easy .v2-mk-s,.v2-mk--easy .v2-mk-r{color:var(--v2-easy);}
 .v2-mk--medium .v2-mk-s,.v2-mk--medium .v2-mk-r{color:var(--v2-med);}
 .v2-mk--hard .v2-mk-s,.v2-mk--hard .v2-mk-r{color:var(--v2-hard);}
@@ -5548,7 +5542,6 @@ button[aria-disabled="true"] {
 
 /* Boost 2.0 strip rows are one fixed height (the board never resizes mid-turn). */
 .v2-strip > .v2-row{height:44px;min-width:0;}
-.v2-chips{flex-wrap:nowrap;overflow:hidden;}
 
 /* Boost 2.0 on short screens (phone browsers with toolbars): give the height to
    the board so it can span the full width. Locks don't exist in Boost 2.0, so
@@ -5559,7 +5552,26 @@ button[aria-disabled="true"] {
   #sg.boost-v2 .info-strip { --av-w: 62px; --name-h: 30px; --score-fs: 34px; margin: 4px 6px 8px !important; }
   #sg.boost-v2 .info-strip .is-pcard { padding-top: 3px !important; padding-bottom: 3px !important; row-gap: 0 !important; }
   #sg.boost-v2 .gm-topbar { min-height: 0; }
-  #sg.boost-v2 .game-area { padding-top: 2px !important; padding-bottom: 2px !important; }
   #sg.boost-v2 .bot { margin-top: 0 !important; padding-top: 8px !important; padding-bottom: max(8px, env(safe-area-inset-bottom)) !important; gap: 6px !important; }
 }
 .v2-setup .v2-skip{min-width:52px;}
+
+/* Boost 2.0 challenge family icons (boostV2Icons.js): --ic-a is the family
+   accent, --ic-t the colour of numbers drawn on the icon background. */
+.v2-ic{--ic-a:#38e6ff;--ic-t:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:border-box;}
+.v2-ic-svg{width:100%;height:100%;display:block;overflow:visible;direction:ltr;unicode-bidi:isolate;}
+.v2-ic--letter_hunt{--ic-a:#4ade80;}
+.v2-ic--long_word{--ic-a:#38bdf8;}
+.v2-ic--tile_master{--ic-a:#60a5fa;}
+.v2-ic--double_letter{--ic-a:#fb923c;}
+.v2-ic--unique_letters{--ic-a:#22c55e;}
+.v2-ic--word_edge{--ic-a:#38e6ff;}
+.v2-ic--bridge_builder{--ic-a:#a78bfa;}
+.v2-ic--power_word{--ic-a:#facc15;}
+.v2-ic--exact_target{--ic-a:#ef4444;}
+.v2-card-ic,.v2-ic--lg{border-radius:10px;padding:3px;background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--ic-a) 32%,transparent),color-mix(in srgb,var(--ic-a) 10%,transparent));border:1px solid color-mix(in srgb,var(--ic-a) 60%,transparent);}
+.v2-card-ic{width:36px;height:36px;}
+.v2-ic--lg{width:62px;height:62px;border-radius:16px;padding:5px;}
+
+/* Breathing room between the board and the queue strip above / rack below. */
+#sg.boost-v2 .game-area{padding-top:8px!important;padding-bottom:8px!important;}

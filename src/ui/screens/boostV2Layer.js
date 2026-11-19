@@ -12,8 +12,8 @@
 //
 // All rules come from the engine's pure modules (draftPreview, engineV2,
 // matchStateV2, challengeCatalog) — this file only decides what to show.
-// The family icons are external artwork that does not exist yet
-// (docs/asset_inventory.md): their places are reserved with an empty slot.
+// Each challenge family has an inline-SVG icon with its parameter drawn in
+// (boostV2Icons.js) — on the board markers, the queue cards and the sheet.
 
 import { EV } from '../../events/eventTypes.js';
 import { $, on } from '../domHelpers.js';
@@ -21,6 +21,7 @@ import { DIFFICULTY_PRESENTATION } from '../../game/boostV2/rulesConfig.js';
 import { FAMILY, FAMILY_META, SCOPE, describeRequirementHe, parameterBadge } from '../../game/boostV2/challengeCatalog.js';
 import { PHASE, publicView } from '../../game/boostV2/matchStateV2.js';
 import { legalOpeningSquares } from '../../game/boostV2/engineV2.js';
+import { familyIconHTML } from '../boostV2Icons.js';
 
 export const V2_RESULT_MS = 3600;
 const key = (r, c) => `${r},${c}`;
@@ -51,7 +52,7 @@ export function markerHTML(def, extraClass = '') {
   const label = `${FAMILY_META[def.family].nameHe}, ${d.labelHe}, ${def.reward} נקודות`;
   return `<div class="${cls}" role="img" aria-label="${escapeHtml(label)}">`
     + `<span class="v2-mk-s" aria-hidden="true">${d.symbol}</span>`
-    + `<span class="v2-mk-b" dir="${b.dir}" aria-hidden="true">${escapeHtml(b.text)}</span>`
+    + (familyIconHTML(def, 'v2-mk-ic') || `<span class="v2-mk-b" dir="${b.dir}" aria-hidden="true">${escapeHtml(b.text)}</span>`)
     + `<span class="v2-mk-r" dir="ltr" aria-hidden="true">+${def.reward}</span></div>`;
 }
 
@@ -63,11 +64,11 @@ export function cardHTML(def, { note = '' } = {}) {
       + `<i>ייחשף אחרי המהלך${note ? ` · ${escapeHtml(note)}` : ''}</i></span></div>`;
   }
   const d = DIFFICULTY_PRESENTATION[def.difficulty];
-  const b = badgeFor(def);
-  return `<div class="v2-card v2-card--${def.difficulty.toLowerCase()}">`
-    + '<span class="v2-icon-slot" aria-hidden="true"></span>'
-    + '<span class="v2-card-tx">'
-    + `<b><span class="v2-nm">${escapeHtml(FAMILY_META[def.family].nameHe)}</span><span class="v2-bd" dir="${b.dir}">${escapeHtml(b.text)}</span></b>`
+  const name = FAMILY_META[def.family].nameHe;
+  return `<div class="v2-card v2-card--${def.difficulty.toLowerCase()}" role="img" aria-label="${escapeHtml(`${name}: ${describeRequirementHe(def)}, ${d.labelHe}, ${def.reward} נקודות`)}">`
+    + familyIconHTML(def, 'v2-card-ic')
+    + '<span class="v2-card-tx" aria-hidden="true">'
+    + `<b><span class="v2-nm">${escapeHtml(name)}</span></b>`
     + `<i>${d.symbol} ${d.labelHe} · <span dir="ltr">+${def.reward}</span>${note ? ` · ${escapeHtml(note)}` : ''}</i>`
     + '</span></div>';
 }
@@ -261,19 +262,16 @@ export function mountBoostV2Layer({ root = globalThis.document, bus, controller,
   }
 
   // The strip is ONE row of fixed height in every state, so the board above
-  // never has to resize mid-turn. While replacements are pending the row is
-  // the tray (the full breakdown is on the result card after the move).
+  // never has to resize mid-turn, and it only ever shows challenge cards: the
+  // queue, or — while a completed Boost's replacement must be placed — the
+  // card coming off the queue. Move scores are on the play button and the
+  // result card after the move.
   function draftStripHTML(v, d) {
-    const total = `<span class="v2-total">${signed(d.breakdown.totalScore)}</span>`;
-    if (d.required > 0) {
-      const idx = d.complete ? d.required - 1 : d.choices.length;
-      const status = d.complete ? '<span class="v2-ok">✓ מוקם</span>' : '<span class="v2-hint">בחרו משבצת</span>';
-      return `<div class="v2-row v2-tray">${total}<span class="v2-lbl">בוסט חדש<br>${Math.min(idx + 1, d.required)}/${d.required}</span>`
-        + `${cardHTML(d.replacements[idx].definition)}${status}</div>`;
-    }
-    const chips = breakdownRows(d.breakdown, v._boostV2.definitions)
-      .map(r => `<span class="v2-chip v2-chip--${r.kind}">${escapeHtml(r.label)} ${signed(r.value)}</span>`).join('');
-    return `<div class="v2-row v2-sum"><div class="v2-chips">${chips}</div>${total}</div>`;
+    if (!(d.required > 0)) return queueStripHTML(v);
+    const idx = d.complete ? d.required - 1 : d.choices.length;
+    const status = d.complete ? '<span class="v2-ok">✓ מוקם</span>' : '<span class="v2-hint">בחרו משבצת</span>';
+    return `<div class="v2-row v2-tray"><span class="v2-lbl">בוסט חדש<br>${Math.min(idx + 1, d.required)}/${d.required}</span>`
+      + `${cardHTML(d.replacements[idx].definition)}${status}</div>`;
   }
 
   // Opening setup, one row: step + who places, the card being placed, skip.
@@ -304,7 +302,7 @@ export function mountBoostV2Layer({ root = globalThis.document, bus, controller,
       : '';
     sheetWrap.innerHTML = '<div class="v2-sheet" role="dialog" aria-modal="true" aria-labelledby="v2-sheet-ttl">'
       + '<div class="v2-sheet-grip" aria-hidden="true"></div>'
-      + '<div class="v2-sheet-hd"><span class="v2-icon-slot v2-icon-slot--lg" aria-hidden="true"></span><div>'
+      + `<div class="v2-sheet-hd">${familyIconHTML(def, 'v2-ic--lg')}<div>`
       + `<h2 id="v2-sheet-ttl">${escapeHtml(m.name)}</h2>`
       + `<div class="v2-sheet-tags"><span class="v2-tag v2-tag--${m.levelClass}">${m.symbol} ${m.level}</span><span class="v2-tag v2-tag--pts"><span dir="ltr">+${m.reward}</span> נק׳</span></div>`
       + '</div></div>'

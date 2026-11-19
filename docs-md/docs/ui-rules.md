@@ -270,10 +270,10 @@ https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
 #game-grid.grid-10 / .board-center-inner.grid-10 — Boost 2.0 board: 10×10 cells only (no perimeter ring), --csz computed for 10 columns → full width
 #v2-strip              — above the board (game.html, `hidden` in legacy games). ONE row of fixed height (50px)
                          in every state, so the board never resizes mid-turn. One of:
-                         · "הבאים בתור" — the next two queue cards (.v2-card)
-                         · live draft: breakdown chips (.v2-chip--words/ok/fail/rack) + total (.v2-total);
-                           while the draft owes replacement Boosts the row is the tray instead (.v2-tray: total,
-                           "בוסט חדש i/n", the card, ✓ מוקם / בחרו משבצת)
+                         The strip shows challenge cards only (no move score — that is on #btn-play and #v2-result):
+                         · "הבאים בתור" — the next two queue cards (.v2-card), also while a word is being built
+                         · while the draft owes replacement Boosts: the tray (.v2-tray: "בוסט חדש i/n", the card,
+                           ✓ מוקם / בחרו משבצת)
                          · opening setup (.v2-setup): "מציבים בוסטים" + step i/3 · who + progress dots (.v2-dots),
                            the card being placed, skip button ([data-v2-skip], "דלג")
 #v2-result             — non-modal move breakdown on the board's top edge; auto-hides after V2_RESULT_MS (3.6 s), tap hides
@@ -284,7 +284,10 @@ https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
 Layout: short screens (max-height 860px) compact the Boost 2.0 scoreboard (no lock row, smaller portraits) and
 the rack padding so the board spans the width; main.js re-fits the board (ResizeObserver on .board-center)
 whenever its room changes, so it never overlaps the strip or the rack.
-.v2-icon-slot          — reserved place for the (missing) family icon — docs/asset_inventory.md
+.v2-ic (+ --<family>)  — inline-SVG challenge icon with its parameter drawn in (src/ui/boostV2Icons.js): .v2-card-ic
+                         on cards (36px), .v2-mk-ic inside board markers, .v2-ic--lg in the details sheet. --ic-a = family accent
+.v2-icon-slot          — "?" slot of a hidden (online, not yet revealed) card only
+#sg.boost-v2 .game-area — 8px padding above and below the board (spacing from the strip and the rack)
 .end-v2-ded            — "צבור X · מגש −Y" appended to #end-card-0/1 on a natural ending
 #ss-ruleset-row, #ss-rules-classic, #ss-rules-v2 — setup screen ruleset toggle (two-player mode only)
 ```

@@ -28,6 +28,11 @@ each in `describeBoost` (`src/ui/screens/gameScreen.js`).
 
 ### Boost 2.0 challenge-family icons (Nov 2026 — needed for Phase 5)
 
+**Status (19 Nov 2026): covered in code.** `src/ui/boostV2Icons.js` draws one inline-SVG icon per
+family (inspired by the owner's "Boost 2.0 – Challenge Icons" sheet) with the parameter drawn in;
+used on the cards, the board markers and the details sheet. The PNG list below is only needed if
+painted art is wanted later — swap it in inside `familyIconHTML`.
+
 One icon per challenge family, Boost icon family style (transparent background).
 Shown in the challenge-details sheet (64px), the next-two queue preview (28px) and
 the spec/guide; NOT on the board marker (35px cells show the parameter badge instead).

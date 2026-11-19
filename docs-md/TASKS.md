@@ -20,7 +20,8 @@
 - [ ] **Product review:** remaining Part L defaults (placement distance, reward values, thresholds) after Phase 6/8 simulation data.
 - [ ] **Product review:** candidate deck `boost-v2.deck.0.1-candidate` (Letter Hunt / Word Edge targets in `deckManifest.js`) before freezing a production manifest.
 - [x] Phase 5 — game screen for local Boost 2.0 matches (markers, queue strip, details sheet, replacement mode, breakdown, opening setup, end-screen deductions, ruleset toggle).
-- [ ] Phase 5 follow-ups: family icons (9, Icon Designer — asset_inventory); long-press for details while a tile is selected (spec §31 optional); guide/FAQ pages for Boost 2.0; replay screen does not show Boost markers yet.
+- [x] Boost 2.0 challenge icons (inline SVG, `boostV2Icons.js`), strip = queue only, board spacing (Nov 2026).
+- [ ] Phase 5 follow-ups: long-press for details while a tile is selected (spec §31 optional); guide/FAQ pages for Boost 2.0; replay screen does not show Boost markers yet.
 - [x] Phase 6 — Boost 2.0 bot (V2-scored search, rack leave, Boost-seeking anchors, defensive placement, opening setup, fallbacks); offered vs the computer.
 - [x] Phase 6 follow-ups: V2 word lengths 4/7/8 + Boost-targeted search; queue planning (visible cards only); Boost denial via threat model.
 - [ ] Phase 8: tune `OPPONENT_COMPLETE_P`, strategy weights and the ¼ plan factor from simulation; Letter Hunt was never completed in bot self-play (18 consumed, 0 completed).

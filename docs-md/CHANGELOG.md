@@ -2,6 +2,15 @@
 
 ---
 
+## Boost 2.0 — challenge icons, queue-only strip, board spacing (November 2026)
+
+Owner request with an icon sheet as inspiration.
+- **Icons:** new `src/ui/boostV2Icons.js` — one inline-SVG icon per challenge family (crosshair + letter, tiles + length + arrow, tile stack + count, twin tiles, three letters + check-badge, letter tile + reading-direction arrow, arch between two Boosts, bolt + score, bullseye + exact length), with the parameter drawn inside (`iconParam`). Used on the queue/tray/setup cards (replacing the empty dashed slot and the text badge), inside the board markers (difficulty border, shape and +reward kept) and in the details sheet. Cards keep the family name and difficulty · reward line, and get a full `aria-label` with the requirement.
+- **Strip = challenge queue only:** the live breakdown chips and total were removed. While a word is built the strip keeps showing the next two cards; only when a completed Boost's replacement must be placed does it show the tray (card + status, no score). The score stays on the play button and the result card.
+- **Spacing:** 8px above and below the board in Boost 2.0 (`#sg.boost-v2 .game-area`). The board still spans ≥ 95 % of a 411px-wide phone (layout e2e).
+- Removed the unused `.v2-chip*`, `.v2-sum`, `.v2-total`, `.v2-icon-slot--lg` styles.
+- Tests: `boostV2Icons.test.js` (all families distinct, parameter drawn, Word Edge start/end, escaping); layer tests updated. Unit 2042 pass; e2e Boost 2.0 layout, local match, vs bot pass.
+
 ## Boost 2.0 — board layout polish (November 2026)
 
 Reported on a phone (Chrome, viewport ≈ 411×740 with toolbars): the board was only ~318 px wide, overlapped the strip and the rack during the opening setup, and nothing showed where the opening word must go.

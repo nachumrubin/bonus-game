@@ -27,7 +27,8 @@ test('marker: difficulty class + shape + parameter + reward, accessible label, R
   const html = markerHTML(longWord(RULES, 'MEDIUM'));
   assert.match(html, /v2-mk--medium/);
   assert.match(html, /◆/);
-  assert.match(html, /dir="ltr"[^>]*>6\+</);
+  assert.match(html, /v2-ic--long_word/);
+  assert.match(html, />6\+<\/text>/);
   assert.match(html, /dir="ltr"[^>]*>\+10</);
   assert.match(html, /aria-label="מילה ארוכה, בינוני, 10 נקודות"/);
   assert.match(markerHTML(letterHunt(RULES, 'EASY', 'ל'), 'is-pending'), /v2-mk--easy is-pending/);
@@ -42,7 +43,11 @@ test('badges: letters read RTL, numbers LTR; Power Word shows N+', () => {
 });
 
 test('card + sheet content come from the definition', () => {
-  assert.match(cardHTML(letterHunt(RULES, 'EASY', 'ל')), /ציד אותיות/);
+  const card = cardHTML(letterHunt(RULES, 'EASY', 'ל'));
+  assert.match(card, /ציד אותיות/);
+  assert.match(card, /v2-ic--letter_hunt/);
+  assert.match(card, />ל<\/text>/);
+  assert.doesNotMatch(card, /v2-icon-slot/);
   const m = sheetModel(longWord(RULES, 'MEDIUM'));
   assert.equal(m.name, 'מילה ארוכה');
   assert.equal(m.level, 'בינוני');
