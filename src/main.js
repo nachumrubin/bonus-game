@@ -1316,7 +1316,7 @@ async function boot() {
           p1Name, p2Name,
           startingSlot,
           settings: { timelimit: botTime > 0, botTime, showBothRacks },
-          ...(!isBot && ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
+          ...(ruleset === 'BOOST_V2' ? { ruleset: 'BOOST_V2' } : {}),
         });
       });
       if (isBot) {

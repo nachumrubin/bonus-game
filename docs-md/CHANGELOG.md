@@ -2,6 +2,18 @@
 
 ---
 
+## Boost 2.0 — Phase 6: the bot plays Boost 2.0 (November 2026)
+
+- **Boost 2.0 vs the computer** is now offered on the setup screen (all three levels). Online stays classic until Phase 7.
+- **`src/game/boostV2/botV2.js`** — `chooseV2Turn(state, slot, wordList, isWordValid, { difficulty, rng })` → setup placement / word + replacement Boosts / null. Candidates come from the existing search and are scored by the V2 engine itself (`computeV2Draft`: words + completed Boost rewards + full rack); V2-illegal candidates (opener off the centre) are dropped. Medium/hard add a rack-leave value (½ / full) and look for words through and around active Boosts first. Placement: easy random; medium/hard defensive (least reachable square for the opponent, who moves next); hard also spreads Boosts apart; in the opening setup the bot prefers reachable squares when it will move first. Time budget: ≤ 600 candidates scored per turn.
+- **Information discipline** (spec §36): only the bot's own rack, the board, active Boosts and the cards it is placing. Tested: changing the opponent's rack, the bag contents and hidden queue cards leaves the decision identical.
+- **`botSearch.searchBotMove` hooks** (optional, legacy path unchanged): `evaluate(placed, words)`, `anchorPriority(anchor)`, `extraAnchors`.
+- **`attachBotPlayer`** — Boost 2.0 branch: places opening Boosts (≤ 0.9 s think), plays moves with replacements, exchanges/passes when stuck; if the engine ever rejects its action it falls back (exchange/pass; in setup a pass hands the step over) so a match can never stall on the bot.
+- **Simulator:** `playV2Match({ bots: { 0: d, 1: d } })` drives seats with the real bot; records decision times and first/second-player wins.
+- **Acceptance gate met:** 2 matches × 3 difficulties in the unit suite complete with 0 rejected actions and 0 invariant violations; a bot-vs-bot match through the real bot session; e2e `boost-v2-vs-bot` plays a human vs the bot in Chromium (bot setup placements + moves).
+- **Finding for Phase 8 (balance):** in hard-bot self-play a Boost-*completing* move existed on only ~10 % of turns (7/70) and the bot took it nearly every time; ~4–5 Boosts consumed and 1–2 completed per match. The bot's word-length caps (hard 6 letters, medium 5) make 7–8-letter challenges (Long Word 8+, Exact 8, Unique 7, Tile Master 7) almost unreachable for it.
+- Unit 2016 pass. sw `CACHE_NAME` → `boost-20261119081109`.
+
 ## Boost 2.0 — full-width 10×10 board (November 2026)
 
 - Boost 2.0 boards have no off-grid bonus squares, so the grid is now built as just the 10×10 play area (`buildUnifiedGrid({ bonusSquares: false })` → `.grid-10` on `#game-grid` and `.board-center-inner`, no perimeter cells) and `computeBasicSizes` divides the width by 10 instead of 12. On a 390 px phone the cells grow from ~28 px to ~37 px and the board spans the screen width. Classic games keep the 12×12 grid with the bonus-square ring (verified switching V2 → classic in one session: 100 → 144 cells).

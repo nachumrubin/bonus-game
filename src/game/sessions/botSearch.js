@@ -306,12 +306,24 @@ function shuffleInPlace(arr, rng = Math.random) {
 
 // Main entry. `wordList` is an array of valid Hebrew words sorted however
 // the caller wants; this function will further filter and try them.
+//
+// `opts.evaluate(placed, words)` (optional) replaces the scoring of every
+// candidate: it returns { score, rankScore? } or null to drop the candidate.
+// Boost 2.0 bots pass one that scores with the V2 engine (word points +
+// Boost rewards + full-rack bonus) and drops moves the V2 rules refuse.
+// `opts.anchorPriority(anchor)` (optional) → number: anchors with a higher
+// priority are tried first (after the usual shuffle), so the per-word
+// `anchLimit` slice keeps them. Boost 2.0 uses it to look near active Boosts.
+// `opts.extraAnchors` (optional) — more squares to try words through (Boost
+// 2.0: the active Boost squares, which are often not next to any tile).
+// Without these hooks the search is exactly the legacy one.
 export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
   const { difficulty = DIFFICULTY.MEDIUM, rng = Math.random } = opts;
   // Production resolves the profile from `difficulty`; tests may inject one
   // directly via opts.profile to exercise a lever without a real level.
   const profile = opts.profile ?? resolveProfile(difficulty);
   const rack = state.racks[slot];
+  const evalCandidate = candidateEvaluator(state, profile, opts.evaluate);
 
   const candidates = wordList
     .filter(w => w.length <= profile.maxWordLen)
@@ -337,8 +349,9 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
         if (placed.some(p => isBonusPos(p.r, p.c))) continue; // first move can't use bonus square
         const words = getAllWords(state, placed);
         if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
-        const score = scoreMove(words, placed.length);
-        const move = { placed, word: w, score };
+        const ev = opts.evaluate ? opts.evaluate(placed, words) : { score: scoreMove(words, placed.length) };
+        if (!ev) continue;
+        const move = { placed, word: w, ...ev };
         const crowdsBonus = placed.some(p => adjacentToBonusSquare(p.r, p.c));
         // Medium/hard keep the legacy "first valid wins" opener; only easy
         // collects all openers so it can deliberately pick a weak one. Either
@@ -357,12 +370,24 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
   }
 
   const anchors = findAnchors(state, { includeBonusSquares: profile.includeBonusSquares });
+  for (const x of opts.extraAnchors ?? []) {
+    if (!anchors.some(a => a.r === x.r && a.c === x.c) && isOnGrid(x.r, x.c) && !getCommittedTile(state, x.r, x.c)) {
+      anchors.push({ r: x.r, c: x.c });
+    }
+  }
 
   const found = [];
   const tries = Math.min(candidates.length, profile.tries);
   for (let i = 0; i < tries; i++) {
     const w = candidates[i];
-    const anchorOrder = shuffleInPlace([...anchors], rng).slice(0, profile.anchLimit);
+    let anchorOrder = shuffleInPlace([...anchors], rng);
+    if (typeof opts.anchorPriority === 'function') {
+      anchorOrder = anchorOrder
+        .map((a, i) => ({ a, i, p: opts.anchorPriority(a) }))
+        .sort((x, y) => (y.p - x.p) || (x.i - y.i))
+        .map(x => x.a);
+    }
+    anchorOrder = anchorOrder.slice(0, profile.anchLimit);
     for (const { r, c } of anchorOrder) {
       const isBonus = isBonusPos(r, c);
       const dirs = isBonus ? (r === -1 || r === BOARD_SIZE ? ['V'] : ['H']) : ['H', 'V'];
@@ -376,9 +401,9 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
           if (profile.avoidBonusTiles && placed.some(p => isBonusPos(p.r, p.c))) continue;
           const words = getAllWords(state, placed);
           if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
-          const score = scoreMove(words, placed.length);
-          const rankScore = rankScoreFor(profile, state, score, placed);
-          found.push({ placed, word: w, score, rankScore });
+          const ev = evalCandidate(placed, words);
+          if (!ev) continue;
+          found.push({ placed, word: w, ...ev });
         }
       }
     }
@@ -393,12 +418,20 @@ export function searchBotMove(state, slot, wordList, isWordValid, opts = {}) {
   // ALL anchors (bonus squares included, and bonus-tile placements allowed):
   // any legal move beats passing with a stuck rack. Difficulty still shapes
   // the final pick via pickMove.
-  return searchPlayThrough(state, slot, wordList, isWordValid, profile, rng);
+  return searchPlayThrough(state, slot, wordList, isWordValid, profile, rng, evalCandidate);
+}
+
+function candidateEvaluator(state, profile, evaluate) {
+  if (typeof evaluate === 'function') return evaluate;
+  return (placed, words) => {
+    const score = scoreMove(words, placed.length);
+    return { score, rankScore: rankScoreFor(profile, state, score, placed) };
+  };
 }
 
 // Fallback search used when the primary (rack-spellable) search finds nothing.
 // Considers words the rack can COMPLETE using letters already on the board.
-function searchPlayThrough(state, slot, wordList, isWordValid, profile, rng) {
+function searchPlayThrough(state, slot, wordList, isWordValid, profile, rng, evalCandidate = candidateEvaluator(state, profile)) {
   const rack = state.racks[slot];
   const boardLetters = collectBoardLetters(state);
   const maxLen = Math.min(profile.maxWordLen, PLAYTHROUGH_MAX_LEN);
@@ -425,9 +458,9 @@ function searchPlayThrough(state, slot, wordList, isWordValid, profile, rng) {
           if (!placed) continue;
           const words = getAllWords(state, placed);
           if (words.some(ww => !isWordValid(ww.map(t => t.letter).join('')))) continue;
-          const score = scoreMove(words, placed.length);
-          const rankScore = rankScoreFor(profile, state, score, placed);
-          found.push({ placed, word: w, score, rankScore });
+          const ev = evalCandidate(placed, words);
+          if (!ev) continue;
+          found.push({ placed, word: w, ...ev });
         }
       }
     }

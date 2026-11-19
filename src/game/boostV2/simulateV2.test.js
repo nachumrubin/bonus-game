@@ -51,3 +51,20 @@ test('bot search: off-grid squares are not playable in a V2 match (legacy unchan
   assert.equal(tryPlaceWord(v2, 'אב', -1, 1, 'V', 0), null);
   assert.ok(tryPlaceWord(legacy, 'אב', -1, 1, 'V', 0));
 });
+
+// Phase 6 acceptance gate: every bot difficulty completes matches with no
+// rejected action, no invariant violation and no placement deadlock.
+test('Boost 2.0 bot: each difficulty completes matches with zero invalid actions', () => {
+  DICT.clear();
+  addWordsFromText(WORDS.join('\n'));
+  for (const d of [0, 1, 2]) {
+    for (const seed of [`bot${d}a`, `bot${d}b`]) {
+      const { state, violations, metrics } = playV2Match({ seed, wordList: WORDS, isWordValid: isValid, bots: { 0: d, 1: d }, maxCommands: 400 });
+      assert.deepEqual(violations, [], `difficulty ${d} / ${seed}`);
+      assert.equal(state.status, 'completed', `difficulty ${d} / ${seed} finished`);
+      assert.deepEqual(metrics.rejectionReasons, {}, `difficulty ${d} / ${seed}: no rejected bot action`);
+      assert.ok(metrics.wordMoves >= 4);
+      assert.ok(Math.max(...metrics.botDecisionMs) < 5000, 'decision time budget');
+    }
+  }
+});

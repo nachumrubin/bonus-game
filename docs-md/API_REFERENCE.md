@@ -405,6 +405,7 @@ BDEFS: BoardSlotDef[]
 - Online (Worker): `createBoostTurnClient({ baseUrl, getIdToken })` → `createMatch`, `submit(roomId, command, { expectedVersion })`, `claimTimeout`, `plan(roomId, draft)`; `readBoostV2Room(room)`, `readMyRack(node)`. Worker-side: `authoritativeTurn.createMatch / applyCommand / planDraft`.
 - `legalOpeningSquares(state)` — legal squares for the current opening-setup Boost.
 - UI: `mountGameScreen({ ..., boostV2Hooks })`; `mountBoostV2Layer({ bus, controller, getState }) → { hooks, unmount }`; `computeV2Draft(state, { placed, swappedTiles, boostPlacements })`; controller `v2Draft()`, `setBoostPlacements(list)`, `setV2SetupChoice({r,c}|null)`, `skipOpeningStep()`; view fields `ruleset`, `_boostV2`, `boostPlacements`, `v2SetupChoice`.
+- Bot: `chooseV2Turn(state, slot, wordList, isWordValid, { difficulty, rng }) → { type: 'setup', r, c } | { type: 'move', placed, boostPlacements, score, breakdown } | null`; `chooseBoostSquares`, `accessScore`, `rackLeaveValue`. `searchBotMove` opts gain optional `evaluate`, `anchorPriority`, `extraAnchors`.
 - Local sessions: `createLocalGameSession({ ..., ruleset: 'BOOST_V2', boostQueueRng? })`; `startGameViaSpine({ ..., ruleset })`; setup `PLAY_CLICKED` carries `ruleset`.
 - `evaluateBoost`, `evaluateMoveBoosts`, `buildScoreBreakdown`, `computeFinalScores`, `generateQueue`, `legalSquares`, `planReplacements`, `validatePlacements`, `checkBoostV2Invariants`, `normalizeBoostV2State` — pure.
 

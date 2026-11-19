@@ -57,7 +57,7 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
                                      // bot 5-letter words while easy looked picked)
   let botTime = 40;                  // 20 | 40 | 60
   let showBothRacks = false;
-  let ruleset = 'LEGACY_V1';         // 'LEGACY_V1' | 'BOOST_V2' (vs mode only for now)
+  let ruleset = 'LEGACY_V1';         // 'LEGACY_V1' | 'BOOST_V2' (two players or vs the bot)
 
   const cleanups = [];
 
@@ -151,7 +151,7 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
       bus.emit(SETUP_INTENT.PLAY_CLICKED, {
         mode, p1Name: p1, p2Name: p2, difficulty, botTime,
         showBothRacks: mode === 'vs' ? showBothRacks : false,
-        ruleset: mode === 'vs' ? ruleset : 'LEGACY_V1',
+        ruleset,
       });
     }));
   }
@@ -199,7 +199,7 @@ export function mountSetupScreen({ root = globalThis.document, bus, getDisplayNa
     const racksRow = setup.querySelector?.('#ss-racks-row');
     if (racksRow) racksRow.style.display = mode === 'vs' ? '' : 'none';
     const rulesRow = setup.querySelector?.('#ss-ruleset-row');
-    if (rulesRow) rulesRow.style.display = mode === 'vs' ? '' : 'none';
+    if (rulesRow) rulesRow.style.display = '';
     ruleset = 'LEGACY_V1';
     applyRulesClass();
     // Reset difficulty active class

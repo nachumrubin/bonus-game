@@ -15,6 +15,7 @@ import { CMD } from '../../events/commands.js';
 import { EV } from '../../events/eventTypes.js';
 import { createEngine, createInitialState } from '../core/gameEngine.js';
 import { searchBotMove } from '../sessions/botSearch.js';
+import { chooseV2Turn } from './botV2.js';
 import { createRng } from '../../util/rng.js';
 import { RULESET } from './rulesConfig.js';
 import { PHASE, checkBoostV2Invariants } from './matchStateV2.js';
@@ -45,11 +46,14 @@ function randomArrangement(plan, legal, rng) {
 /**
  * Play one match. Returns { state, metrics, violations }.
  */
-export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, checkInvariants = true }) {
+// `bots` (optional): { 0: difficulty, 1: difficulty } — drive that seat with
+// the real Boost 2.0 bot (botV2.chooseV2Turn) instead of the Boost-blind
+// baseline generator. Metrics then reflect the bot's actual play.
+export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, checkInvariants = true, bots = null, startingSlot = 0 }) {
   const rng = createRng(`${seed}/sim`);
   const state = createInitialState({
     mode: 'offline-2p', tileBagSeed: `${seed}/bag`, players: { 0: { uid: 'p0' }, 1: { uid: 'p1' } },
-    startingSlot: 0, ruleset: RULESET.BOOST_V2, boostQueueRng: createRng(`${seed}/queue`),
+    startingSlot, ruleset: RULESET.BOOST_V2, boostQueueRng: createRng(`${seed}/queue`),
   });
   state.exchangeRng = createRng(`${seed}/exchange`);
   const events = [];
@@ -63,7 +67,9 @@ export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, ch
     byFamily: {}, byDifficulty: {},
     turnsWithFewerThanTarget: 0, turnsWithThreeHard: 0,
     placementUnavailable: 0,
+    botDecisionMs: [], firstPlayerWins: 0, secondPlayerWins: 0,
   };
+  const botRng = createRng(`${seed}/bot`);
 
   function run(cmd) {
     const before = snapshot(state);
@@ -110,6 +116,23 @@ export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, ch
       if (v2.activeBoosts.length < v2.rules.activeBoostTarget) m.turnsWithFewerThanTarget++;
       if (v2.activeBoosts.length === 3 && v2.activeBoosts.every(b => v2.definitions[b.effectiveDefinitionId].difficulty === 'HARD')) m.turnsWithThreeHard++;
     }
+    if (bots && (bots[slot] != null)) {
+      const t0 = Date.now();
+      const action = chooseV2Turn(state, slot, wordList, isWordValid, { difficulty: bots[slot], rng: botRng });
+      m.botDecisionMs.push(Date.now() - t0);
+      if (action?.type === 'setup') { run({ type: CMD.PLACE_OPENING_BOOST, payload: { r: action.r, c: action.c } }); continue; }
+      if (action?.type === 'move') {
+        if (run({ type: CMD.CONFIRM_MOVE, payload: { placed: action.placed, boostPlacements: action.boostPlacements, moveId: `${seed}:${m.commands}` } })) { m.wordMoves++; continue; }
+      }
+      if (v2.phase === PHASE.OPENING_SETUP) { run({ type: CMD.PASS_TURN, payload: {} }); continue; }
+      const rack = state.racks[slot];
+      if (state.bag.length > 0 && rack.length) {
+        if (run({ type: CMD.EXCHANGE_TILE, payload: { letters: rack.slice(0, Math.min(rack.length, state.bag.length)) } })) { m.exchanges++; continue; }
+      }
+      run({ type: CMD.PASS_TURN, payload: {} });
+      m.passes++;
+      continue;
+    }
     if (v2.phase === PHASE.OPENING_SETUP) {
       const legal = legalOpeningSquares(state);
       const sq = legal[Math.floor(rng() * legal.length)] ?? preferenceOrder(legal)[0];
@@ -136,5 +159,7 @@ export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, ch
     m.passes++;
   }
   const done = events.find(e => e.type === EV.GAME_COMPLETED)?.payload ?? null;
+  if (done?.winnerSlot === startingSlot) m.firstPlayerWins++;
+  else if (done?.winnerSlot === 1 - startingSlot) m.secondPlayerWins++;
   return { state, metrics: m, violations, result: done };
 }

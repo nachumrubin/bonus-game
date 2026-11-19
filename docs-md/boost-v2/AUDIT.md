@@ -82,7 +82,7 @@ Legacy matches keep every one of these: all V2 behaviour is gated on `state.rule
 - [x] Phase 3 — deck manifest, queue generation, FIFO, preview, persistence of rules/deck version
 - [x] Phase 4 — placement validator, batch planning, opening setup, atomic V2 turn, idempotency, invariants
 - [x] Phase 5 — UI for local matches (rendering, details sheet, preview, placement mode, breakdown, setup, end screen)
-- [ ] Phase 6 — bot
+- [x] Phase 6 — bot (all levels; vs the computer offered)
 - [ ] Phase 7 — multiplayer (blocked on decision §6.1 for the *secure* variant)
 - [ ] Phase 8 — simulation, telemetry sink, balance report (analysis utility + engine telemetry events done)
 - [ ] Phase 9 — release preparation

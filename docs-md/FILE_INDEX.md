@@ -86,6 +86,7 @@
 | `matchStateV2.js` | `createBoostV2State`, `publicView`, `normalizeBoostV2State`, `checkBoostV2Invariants`, `PHASE`. |
 | `engineV2.js` | Turn orchestrator called from `gameEngine.dispatch()`; `planForMove`, `applyEndgameV2`. |
 | `simulateV2.js` | Headless seeded matches through the real engine with invariant checks. |
+| `botV2.js` | Boost 2.0 bot: `chooseV2Turn`, rack leave, defensive / favourable Boost placement. |
 | `draftPreview.js` | `computeV2Draft` — live breakdown + replacement plan for an unsubmitted draft (UI). |
 | `authoritativeTurn.js` | Worker game logic: `createMatch`, `applyCommand`, `planDraft`, room/rack projections, state (de)serialisation. |
 | `sortedDictionary.js` | Binary-search word validator over the raw sorted dictionary + Firebase overlays (Worker). |

@@ -36,7 +36,9 @@ const key = (r, c) => `${r},${c}`;
  *   endsMatch: boolean,
  * }}
  */
-export function computeV2Draft(state, { placed = [], swappedTiles = [], boostPlacements = [] } = {}) {
+// `withPlan: false` skips the replacement plan (score only) — used by the bot
+// to rank hundreds of candidate words cheaply.
+export function computeV2Draft(state, { placed = [], swappedTiles = [], boostPlacements = [], withPlan = true } = {}) {
   const empty = { ok: false, breakdown: null, consumed: [], required: 0, replacements: [], legal: [], choices: [], complete: true, endsMatch: false };
   const v2 = state?.boostV2;
   if (!v2 || v2.phase === PHASE.OPENING_SETUP) return empty;
@@ -59,6 +61,7 @@ export function computeV2Draft(state, { placed = [], swappedTiles = [], boostPla
   const rackLeft = (state.racks?.[state.currentTurnSlot]?.length ?? 0) - p.length;
   const endsMatch = (state.bag?.length ?? 0) === 0 && rackLeft === 0;
   if (endsMatch) return { ...empty, ok: true, breakdown, consumed, endsMatch };
+  if (!withPlan) return { ...empty, ok: true, breakdown, consumed, complete: false, required: null };
 
   const { legal, plan } = planForMove(state, p, consumed);
   const replacements = plan.effective.map(e => ({

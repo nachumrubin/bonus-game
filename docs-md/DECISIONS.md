@@ -5,6 +5,12 @@
 
 ---
 
+## D-boost-v2-bot: the Boost 2.0 bot reuses the legacy search through optional hooks — November 2026
+
+**Decision:** `searchBotMove` gains optional `evaluate` / `anchorPriority` / `extraAnchors` hooks; `botV2.chooseV2Turn` supplies them so every candidate is scored by the V2 engine (`computeV2Draft`). The legacy bot passes no hooks and runs the identical code.
+
+**Why:** the spec requires the bot to use the same scoring engine as humans and to reuse the existing word generation. A separate V2 search would duplicate ~400 lines of tuned placement logic; hooks keep one search and make "same engine" structural rather than a convention.
+
 ## D-boost-v2-ui-hooks: Boost 2.0 UI plugs into the game screen through optional hooks — November 2026
 
 **Decision:** `mountGameScreen` takes an optional `boostV2Hooks` object (decorate an empty cell, intercept a cell tap, disable controls, relabel / re-score the play button, after-render). `boostV2Layer.js` implements them and owns its own DOM (`#v2-strip`, `#v2-sheet`, `#v2-result`). Replacement choices and the setup choice live in the controller's view (pending until שבץ), like placed tiles.
