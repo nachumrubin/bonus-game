@@ -40,6 +40,9 @@ export function badgeFor(def) {
 // server reveals them (definition.hidden — boostV2OnlineSession).
 export const HIDDEN_CARD_LABEL = 'אתגר נסתר';
 
+// Markers and cards show the family icon (with its parameter) only: the
+// difficulty is the border colour, the reward is in the details sheet and
+// the accessible label (owner decision, Nov 2026 — too small for more).
 export function markerHTML(def, extraClass = '') {
   if (!def) return '';
   if (def.hidden) {
@@ -51,9 +54,8 @@ export function markerHTML(def, extraClass = '') {
   const cls = `v2-mk v2-mk--${def.difficulty.toLowerCase()}${extraClass ? ` ${extraClass}` : ''}`;
   const label = `${FAMILY_META[def.family].nameHe}, ${d.labelHe}, ${def.reward} נקודות`;
   return `<div class="${cls}" role="img" aria-label="${escapeHtml(label)}">`
-    + `<span class="v2-mk-s" aria-hidden="true">${d.symbol}</span>`
     + (familyIconHTML(def, 'v2-mk-ic') || `<span class="v2-mk-b" dir="${b.dir}" aria-hidden="true">${escapeHtml(b.text)}</span>`)
-    + `<span class="v2-mk-r" dir="ltr" aria-hidden="true">+${def.reward}</span></div>`;
+    + '</div>';
 }
 
 export function cardHTML(def, { note = '' } = {}) {
@@ -69,7 +71,7 @@ export function cardHTML(def, { note = '' } = {}) {
     + familyIconHTML(def, 'v2-card-ic')
     + '<span class="v2-card-tx" aria-hidden="true">'
     + `<b><span class="v2-nm">${escapeHtml(name)}</span></b>`
-    + `<i>${d.symbol} ${d.labelHe} · <span dir="ltr">+${def.reward}</span>${note ? ` · ${escapeHtml(note)}` : ''}</i>`
+    + (note ? `<i>${escapeHtml(note)}</i>` : '')
     + '</span></div>';
 }
 

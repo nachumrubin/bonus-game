@@ -278,7 +278,9 @@ https://claude.ai/artifact/QwTp3yWjgbmyD2qaT7hUJS
                            the card being placed, skip button ([data-v2-skip], "דלג")
 #v2-result             — non-modal move breakdown on the board's top edge; auto-hides after V2_RESULT_MS (3.6 s), tap hides
 #v2-sheet              — challenge-details sheet (.v2-sheet); opens on a Boost tap with no rack tile selected; [data-v2-close] / backdrop / Esc close
-.v2-mk (+ --easy/--medium/--hard, .is-pending, .is-setup) — the board marker inside a cell (sizes from --csz)
+.v2-mk (+ --easy/--medium/--hard, .is-pending, .is-setup) — the board marker inside a cell (sizes from --csz): the
+                         family icon only; difficulty = border colour. .v2-card--<level> also sets the card border colour.
+                         Level + reward are in the details sheet and aria-label only (no symbol / +reward on markers or cards)
 #game-grid .cell.v2-legal / .v2-dim — legal / not-legal squares while placing a replacement or setup Boost
 #game-grid .cell.v2-center — the four centre squares, marked until the opening word is played (it must cover one)
 Layout: short screens (max-height 860px) compact the Boost 2.0 scoreboard (no lock row, smaller portraits) and

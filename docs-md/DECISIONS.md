@@ -5,6 +5,14 @@
 
 ---
 
+## D-boost-v2-icon-only-markers: challenge markers and cards show the icon only — November 2026
+
+**Decision:** Board markers and queue cards show the family icon (with its parameter) and, on cards, the family name. Difficulty is shown only by the border colour (green / orange / red); the difficulty shape (●◆▲) and the +reward are no longer drawn there.
+**Why:** product owner — the squares and cards are too small for that much information.
+**Trade-off:** the Phase 5 design used a distinct shape per level for colour-blind players; the level and reward are still in the details sheet (tap a Boost) and in each marker's/card's accessible label.
+
+---
+
 ## D-boost-v2-online-mirror: the online Boost 2.0 session is a read-only mirror of the public room — November 2026
 
 **Decision:** `boostV2OnlineSession` rebuilds an engine-shaped state from the public room + my rack, with null placeholders for what the player may not know (opponent rack, bag, queue cards past the visible two). All actions go to the Worker; room changes are translated into the same bus events the local engine emits. The card being placed in the opening setup is public (both players see it), later setup steps stay hidden.

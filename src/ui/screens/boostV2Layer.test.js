@@ -23,13 +23,15 @@ process.on('exit', () => { console.log = _log; });
 const RULES = getRules();
 const nullRoot = { querySelector: () => null, querySelectorAll: () => [] };
 
-test('marker: difficulty class + shape + parameter + reward, accessible label, RTL-safe numbers', () => {
+test('marker + card: icon only, difficulty as the border class; level and reward only in the accessible label', () => {
   const html = markerHTML(longWord(RULES, 'MEDIUM'));
   assert.match(html, /v2-mk--medium/);
-  assert.match(html, /◆/);
+  assert.doesNotMatch(html, /◆/);
   assert.match(html, /v2-ic--long_word/);
   assert.match(html, />6\+<\/text>/);
-  assert.match(html, /dir="ltr"[^>]*>\+10</);
+  assert.doesNotMatch(html, /\+10</);
+  assert.doesNotMatch(cardHTML(longWord(RULES, 'MEDIUM')).split('aria-hidden="true"><b>')[1], /בינוני|\+10/);
+  assert.match(cardHTML(longWord(RULES, 'MEDIUM')), /v2-card--medium/);
   assert.match(html, /aria-label="מילה ארוכה, בינוני, 10 נקודות"/);
   assert.match(markerHTML(letterHunt(RULES, 'EASY', 'ל'), 'is-pending'), /v2-mk--easy is-pending/);
 });

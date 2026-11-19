@@ -4,6 +4,8 @@
 
 ## Boost 2.0 — challenge icons, queue-only strip, board spacing (November 2026)
 
+Follow-up (owner): difficulty and points removed from the board markers and the queue cards — too small for that much. Difficulty is the border colour only (cards now have the green/orange/red border too, also in the setup strip); the marker icon grows to fill the square. Level and reward remain in the details sheet and in the accessible label. Recorded in DECISIONS (D-boost-v2-icon-only-markers).
+
 Owner request with an icon sheet as inspiration.
 - **Icons:** new `src/ui/boostV2Icons.js` — one inline-SVG icon per challenge family (crosshair + letter, tiles + length + arrow, tile stack + count, twin tiles, three letters + check-badge, letter tile + reading-direction arrow, arch between two Boosts, bolt + score, bullseye + exact length), with the parameter drawn inside (`iconParam`). Used on the queue/tray/setup cards (replacing the empty dashed slot and the text badge), inside the board markers (difficulty border, shape and +reward kept) and in the details sheet. Cards keep the family name and difficulty · reward line, and get a full `aria-label` with the requirement.
 - **Strip = challenge queue only:** the live breakdown chips and total were removed. While a word is built the strip keeps showing the next two cards; only when a completed Boost's replacement must be placed does it show the tray (card + status, no score). The score stays on the play button and the result card.
