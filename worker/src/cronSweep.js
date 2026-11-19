@@ -10,6 +10,7 @@
 
 import { rtdbGet, rtdbPatch } from './firebaseRtdb.js';
 import { buildPushBody, KIND } from './pushPayloadBuilder.js';
+import { expireBoostMatch } from './boostTurn.js';
 
 // ── Constants must match src/game/online/asyncReminderService.js ──────
 const REMINDER_HOURS = 24;
@@ -98,7 +99,9 @@ export async function runCronSweep(env, { now = Date.now() } = {}) {
     } else if (decision.action === 'expire') {
       try {
         const uids = [room.players?.[0]?.uid, room.players?.[1]?.uid].filter(Boolean);
-        await rtdbPatch(env, `rooms/${roomId}`, { status: 'expired', updatedAt: now });
+        // Boost 2.0 rooms are Worker-authoritative: expire the secret match too.
+        if (room.ruleset === 'BOOST_V2') await expireBoostMatch(env, roomId, { now: () => now });
+        else await rtdbPatch(env, `rooms/${roomId}`, { status: 'expired', updatedAt: now });
         if (uids.length) {
           await sendPushDirect(env, buildPushBody({
             appId: env.ONESIGNAL_APP_ID,

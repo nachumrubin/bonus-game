@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createMatch, applyCommand, planDraft, deserializeState, BOOST_CMD, TIMEOUT_GRACE_MS } from './authoritativeTurn.js';
+import { createMatch, applyCommand, planDraft, deserializeState, expireMatch, BOOST_CMD, TIMEOUT_GRACE_MS } from './authoritativeTurn.js';
 import { CMD } from '../../events/commands.js';
 import { createRng } from '../../util/rng.js';
 import { checkBoostV2Invariants, PHASE } from './matchStateV2.js';
@@ -72,7 +72,32 @@ test('createMatch: secret holds everything; the public room holds no bag, racks,
   assert.equal(m.room.turnDeadlineMs, null, 'async: no shared timer');
   assertNoLeak(m.room, m.secret);
   const live = newMatch({ mode: 'friend-live', settings: { timelimit: true, turnSeconds: 60 } });
-  assert.equal(live.room.turnDeadlineMs, T0 + 60_000);
+  assert.equal(live.room.turnDeadlineMs, null, 'live clock waits for both players');
+  assert.deepEqual(live.room.ready, { 0: false, 1: false });
+  assert.deepEqual(m.room.ready, { 0: true, 1: true }, 'async games are ready at once');
+});
+
+test('READY: the live clock starts only when both players are through the coin screen; idempotent', () => {
+  const m = newMatch({ mode: 'friend-live', settings: { timelimit: true, turnSeconds: 60 } });
+  const r1 = apply(m, 'bob', { type: BOOST_CMD.READY }, T0 + 500);
+  assert.ok(r1.ok);
+  assert.deepEqual(m.room.ready, { 0: false, 1: true });
+  assert.equal(m.room.turnDeadlineMs, null);
+  const again = apply(m, 'bob', { type: BOOST_CMD.READY }, T0 + 600);
+  assert.ok(again.ok);
+  assert.equal(again.secret, undefined, 'a repeated READY writes nothing');
+  apply(m, 'alice', { type: BOOST_CMD.READY }, T0 + 1000);
+  assert.equal(m.room.turnDeadlineMs, T0 + 1000 + 60_000);
+  assert.equal(apply(m, 'mallory', { type: BOOST_CMD.READY }).reason, 'not-a-player');
+});
+
+test('expireMatch: idle match expires without deductions; finished matches are left alone', () => {
+  const m = newMatch();
+  const e = expireMatch({ secret: m.secret, now: T0 + 9 });
+  assert.equal(e.room.status, 'expired');
+  assert.equal(e.room.endgame, null);
+  assert.equal(e.room.winnerSlot, null);
+  assert.equal(expireMatch({ secret: store(e.secret), now: T0 + 10 }), null);
 });
 
 test('identity and turn order come from the token, not the payload', () => {
@@ -125,6 +150,8 @@ test('a rejected command writes nothing and reports the reason', () => {
 
 test('timeout claims: only the opponent, only after deadline + grace; two misses forfeit (no deductions)', () => {
   const m = newMatch({ mode: 'friend-live', settings: { timelimit: true, turnSeconds: 60 } });
+  apply(m, 'alice', { type: BOOST_CMD.READY }, T0);
+  apply(m, 'bob', { type: BOOST_CMD.READY }, T0);
   const deadline = m.room.turnDeadlineMs;
   assert.equal(apply(m, 'bob', { type: BOOST_CMD.CLAIM_TIMEOUT }, deadline).reason, 'turn-not-expired');
   assert.equal(apply(m, 'alice', { type: BOOST_CMD.CLAIM_TIMEOUT }, deadline + 5000).reason, 'not-opponent');

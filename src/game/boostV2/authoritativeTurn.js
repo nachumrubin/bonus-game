@@ -51,6 +51,10 @@ export const BOOST_CMD = Object.freeze({
   RESIGN_GAME: CMD.RESIGN_GAME,
   CLAIM_STALL_END: CMD.CLAIM_STALL_END,
   CLAIM_TIMEOUT: 'cmd/CLAIM_TIMEOUT',
+  // Live games: a player is through the coin screen. The shared turn clock
+  // starts only when both are ready (mirrors the legacy ready handshake,
+  // which writes `status` — a field clients cannot write in BOOST_V2 rooms).
+  READY: 'cmd/READY',
 });
 
 // ── state (de)serialisation ────────────────────────────────────────────────
@@ -109,6 +113,10 @@ export function projectRoom(state, meta, now) {
     turnNumber: state.turnNumber,
     turnDeadlineMs: meta.turnDeadlineMs ?? null,
     missedTurns: meta.missedTurns,
+    ready: { 0: !!meta.ready?.[0], 1: !!meta.ready?.[1] },
+    // The last accepted action (a pass and an exchange look alike in the
+    // board and scores, so clients read this to pick the right event).
+    lastAction: meta.lastAction ?? null,
     scores: state.scores,
     passCount: state.passCount,
     moveCount: state.moveCount ?? 0,
@@ -137,7 +145,15 @@ function secretDoc({ meta, state, recent, now }) {
 
 function splitSecret(secret) {
   const { schema, stateJson, recent, updatedAt, ...meta } = secret;
-  return { meta: { ...meta, missedTurns: { 0: Number(meta.missedTurns?.[0]) || 0, 1: Number(meta.missedTurns?.[1]) || 0 } }, state: deserializeState(stateJson), recent: recent ?? {} };
+  return {
+    meta: {
+      ...meta,
+      missedTurns: { 0: Number(meta.missedTurns?.[0]) || 0, 1: Number(meta.missedTurns?.[1]) || 0 },
+      ready: { 0: !!meta.ready?.[0], 1: !!meta.ready?.[1] },
+    },
+    state: deserializeState(stateJson),
+    recent: recent ?? {},
+  };
 }
 
 // ── create ─────────────────────────────────────────────────────────────────
@@ -153,10 +169,14 @@ export function createMatch({ roomId, mode, players, settings = {}, startingSlot
     mode, tileBagSeed: randomId(rng), players, startingSlot: startingSlot === 1 ? 1 : 0, settings,
     ruleset: RULESET.BOOST_V2, boostQueueRng: rng,
   });
+  // Async games are ready at once; live games wait for both READY commands
+  // before the first deadline is set (initialTurnDeadlineMs at that moment).
+  const live = shouldUseSharedTurnTimer(mode, settings);
   const meta = {
     roomId, mode, players, settings, createdAt: now, version: 1,
-    turnDeadlineMs: initialTurnDeadlineMs(mode, settings, now, { leadInMs }) ?? null,
+    turnDeadlineMs: null, leadInMs,
     missedTurns: { 0: 0, 1: 0 },
+    ready: { 0: !live, 1: !live },
   };
   return {
     secret: secretDoc({ meta, state, recent: {}, now }),
@@ -224,6 +244,23 @@ export function applyCommand({ secret, uid, reqId, command, now, isWordValid, rn
   if (state.status !== 'playing') return { ok: false, reason: 'game-over', version: meta.version };
   const type = command?.type;
 
+  if (type === BOOST_CMD.READY) {
+    if (meta.ready[slot]) return { ok: true, result: { ready: true }, version: meta.version };
+    const ready = { ...meta.ready, [slot]: true };
+    let turnDeadlineMs = meta.turnDeadlineMs ?? null;
+    if (ready[0] && ready[1] && turnDeadlineMs == null) {
+      turnDeadlineMs = initialTurnDeadlineMs(meta.mode, meta.settings, now, { leadInMs: meta.leadInMs ?? 0 }) ?? null;
+    }
+    const nextMeta = { ...meta, ready, turnDeadlineMs, version: meta.version + 1 };
+    const result = { ready: true, version: nextMeta.version };
+    return {
+      ok: true, result, version: nextMeta.version,
+      secret: secretDoc({ meta: nextMeta, state, recent: pruneRecent({ ...recent, [reqId]: { result, ts: now } }), now }),
+      room: projectRoom(state, nextMeta, now),
+      racks: projectRacks(state, nextMeta.version),
+    };
+  }
+
   let engineCmd;
   let missedTurns = { ...meta.missedTurns };
   if (type === BOOST_CMD.CLAIM_TIMEOUT) {
@@ -246,6 +283,7 @@ export function applyCommand({ secret, uid, reqId, command, now, isWordValid, rn
   }
 
   const prevStatus = state.status;
+  const prevSlot = state.currentTurnSlot;
   const prevTurn = `${state.currentTurnSlot}:${state.turnNumber}:${state.boostV2.revision}`;
   const { events, rejected } = runEngine(state, engineCmd, isWordValid, rng);
   if (rejected) {
@@ -257,7 +295,14 @@ export function applyCommand({ secret, uid, reqId, command, now, isWordValid, rn
   if (!changed) return { ok: false, reason: 'no-op', version: meta.version };
 
   if (engineCmd.payload?.reason === 'missed-turns') state.abandonReason = 'missed-turns';
-  const nextMeta = { ...meta, version: meta.version + 1, missedTurns, turnDeadlineMs: nextDeadline(meta, state, now) };
+  const ACTION = {
+    [CMD.CONFIRM_MOVE]: 'move', [CMD.PASS_TURN]: 'pass', [CMD.EXCHANGE_TILE]: 'exchange',
+    [CMD.PLACE_OPENING_BOOST]: 'setup', [CMD.RESIGN_GAME]: 'resign', [CMD.CLAIM_STALL_END]: 'stall-claim',
+  };
+  const lastAction = type === BOOST_CMD.CLAIM_TIMEOUT
+    ? { type: engineCmd.type === CMD.RESIGN_GAME ? 'forfeit' : 'timeout', slot: prevSlot }
+    : { type: ACTION[type], slot, ...(type === CMD.EXCHANGE_TILE ? { count: (engineCmd.payload.letters ?? []).length } : {}) };
+  const nextMeta = { ...meta, version: meta.version + 1, missedTurns, turnDeadlineMs: nextDeadline(meta, state, now), lastAction };
   const result = { ...summarize(events), version: nextMeta.version };
   const nextRecent = pruneRecent({ ...recent, [reqId]: { result, ts: now } });
   return {
@@ -318,4 +363,19 @@ export function planDraft({ secret, uid, draft = {}, isWordValid, rng }) {
 export function projectionsFromSecret(secret, now) {
   const { meta, state } = splitSecret(secret);
   return { version: meta.version, room: projectRoom(state, meta, now), racks: projectRacks(state, meta.version) };
+}
+
+// The async-game cron sweep expires an idle match: no rack deductions (not a
+// natural ending), no winner. Returns null when there is nothing to do.
+export function expireMatch({ secret, now }) {
+  const { meta, state, recent } = splitSecret(secret);
+  if (state.status !== 'playing') return null;
+  state.status = 'expired';
+  const nextMeta = { ...meta, version: meta.version + 1, turnDeadlineMs: 0 };
+  return {
+    version: nextMeta.version,
+    secret: secretDoc({ meta: nextMeta, state, recent, now }),
+    room: projectRoom(state, nextMeta, now),
+    racks: projectRacks(state, nextMeta.version),
+  };
 }

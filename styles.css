@@ -5492,6 +5492,11 @@ button[aria-disabled="true"] {
 .v2-mk--easy .v2-mk-s,.v2-mk--easy .v2-mk-r{color:var(--v2-easy);}
 .v2-mk--medium .v2-mk-s,.v2-mk--medium .v2-mk-r{color:var(--v2-med);}
 .v2-mk--hard .v2-mk-s,.v2-mk--hard .v2-mk-r{color:var(--v2-hard);}
+/* Online: a card the server has not revealed yet. */
+.v2-mk--hidden{border-color:rgba(180,205,255,.6);border-style:dashed;}
+.v2-mk--hidden .v2-mk-s{position:static;font-size:calc(var(--csz,34px)*.42);font-weight:900;color:#cfe0ff;}
+.v2-card--hidden .v2-card-tx i{color:#9fb4e0;}
+.v2-card--hidden .v2-icon-slot{display:flex;align-items:center;justify-content:center;font-weight:900;color:#cfe0ff;}
 .v2-mk.is-pending{border-style:dashed;background:#132b63;outline:2px solid rgba(255,255,255,.85);outline-offset:-1px;}
 .v2-mk.is-setup{border-style:dashed;background:#132b63;box-shadow:none;}
 #game-grid .cell.v2-legal{outline:2px dashed rgba(56,230,255,.9);outline-offset:-3px;cursor:pointer;}

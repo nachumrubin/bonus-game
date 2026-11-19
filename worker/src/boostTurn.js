@@ -15,7 +15,7 @@
 // per-player racks (boostV2Racks/{roomId}/{slot}). A retried reqId gets the
 // first answer and writes nothing.
 
-import { createMatch, applyCommand, planDraft, projectionsFromSecret } from '../../src/game/boostV2/authoritativeTurn.js';
+import { createMatch, applyCommand, planDraft, projectionsFromSecret, expireMatch } from '../../src/game/boostV2/authoritativeTurn.js';
 import { createWordValidator, approvedFromSnapshot, blockedFromSnapshot } from '../../src/game/boostV2/sortedDictionary.js';
 import { isRequestId } from '../../src/game/account/economy.js';
 import { verifyFirebaseToken } from './verifyFirebaseToken.js';
@@ -171,6 +171,24 @@ export async function runBoostPlan(env, uid, body, { db = defaultDb, now = Date.
   const { value: secret } = await db.getWithEtag(env, `boostV2Secret/${roomId}`);
   if (!secret) return { ok: false, reason: 'no-match' };
   return planDraft({ secret, uid, draft: body.draft ?? {}, isWordValid, rng });
+}
+
+// ── cron: expire an idle Boost 2.0 match (cronSweep.js) ──────────────────────
+// Expires the authoritative copy first (compare-and-set), then publishes, so
+// the public room can never say 'expired' while the secret still says 'playing'.
+export async function expireBoostMatch(env, roomId, { db = defaultDb, now = Date.now } = {}) {
+  const path = `boostV2Secret/${roomId}`;
+  for (let attempt = 0; attempt < MAX_CAS_ATTEMPTS; attempt++) {
+    const { value: secret, etag } = await db.getWithEtag(env, path);
+    if (!secret) return { ok: false, reason: 'no-match' };
+    const r = expireMatch({ secret, now: now() });
+    if (!r) return { ok: true, expired: false };
+    const write = await db.putIfMatch(env, path, r.secret, etag);
+    if (!write.ok) continue;
+    await publish(env, roomId, r, db, now);
+    return { ok: true, expired: true };
+  }
+  return { ok: false, reason: 'busy' };
 }
 
 function json(status, payload, cors) {

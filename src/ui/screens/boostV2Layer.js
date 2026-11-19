@@ -35,8 +35,16 @@ export function badgeFor(def) {
   return { text, dir: /[א-ת]/.test(text) ? 'rtl' : 'ltr' };
 }
 
+// Online Boost 2.0: cards after the two visible ones stay secret until the
+// server reveals them (definition.hidden — boostV2OnlineSession).
+export const HIDDEN_CARD_LABEL = 'אתגר נסתר';
+
 export function markerHTML(def, extraClass = '') {
   if (!def) return '';
+  if (def.hidden) {
+    return `<div class="v2-mk v2-mk--hidden${extraClass ? ` ${extraClass}` : ''}" role="img" aria-label="${HIDDEN_CARD_LABEL}">`
+      + '<span class="v2-mk-s" aria-hidden="true">?</span></div>';
+  }
   const d = DIFFICULTY_PRESENTATION[def.difficulty];
   const b = badgeFor(def);
   const cls = `v2-mk v2-mk--${def.difficulty.toLowerCase()}${extraClass ? ` ${extraClass}` : ''}`;
@@ -49,6 +57,11 @@ export function markerHTML(def, extraClass = '') {
 
 export function cardHTML(def, { note = '' } = {}) {
   if (!def) return '';
+  if (def.hidden) {
+    return '<div class="v2-card v2-card--hidden"><span class="v2-icon-slot" aria-hidden="true">?</span>'
+      + `<span class="v2-card-tx"><b><span class="v2-nm">${HIDDEN_CARD_LABEL}</span></b>`
+      + `<i>ייחשף אחרי המהלך${note ? ` · ${escapeHtml(note)}` : ''}</i></span></div>`;
+  }
   const d = DIFFICULTY_PRESENTATION[def.difficulty];
   const b = badgeFor(def);
   return `<div class="v2-card v2-card--${def.difficulty.toLowerCase()}">`
@@ -281,7 +294,7 @@ export function mountBoostV2Layer({ root = globalThis.document, bus, controller,
 
   // ── sheet ───────────────────────────────────────────────────────────────
   function openSheet(def) {
-    if (!sheetWrap || !def) return;
+    if (!sheetWrap || !def || def.hidden) return;
     const m = sheetModel(def);
     const ex = m.example
       ? `<div class="v2-ex"><span class="v2-muted">לדוגמה</span><div class="v2-ex-tiles">${[...m.example].map(ch => `<span class="v2-ex-t">${escapeHtml(ch)}</span>`).join('')}</div></div>`
@@ -326,6 +339,8 @@ export function mountBoostV2Layer({ root = globalThis.document, bus, controller,
   if (resultEl) cleanups.push(on(resultEl, 'click', () => resultEl.classList?.add?.('hidden')));
   if (bus) {
     cleanups.push(bus.on(EV.MOVE_CONFIRMED, (p) => { if (p?.breakdown) showResult(p); }));
+    // Online: the opponent's move arrives as OPPONENT_MOVED (with breakdown).
+    cleanups.push(bus.on(EV.OPPONENT_MOVED, (p) => { if (p?.breakdown) showResult(p); }));
     cleanups.push(bus.on(EV.GAME_COMPLETED, (p) => { if (p?.boostV2Endgame) renderEndDeductions(p.boostV2Endgame); }));
   }
 

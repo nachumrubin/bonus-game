@@ -76,8 +76,13 @@ export function publicView(v2) {
       order: [...v2.openingSetup.order],
       step: v2.openingSetup.placements.length,
       total: v2.openingSetup.effective.length,
-      current: v2.openingSetup.effective[v2.openingSetup.placements.length] ?? null,
-      placements: v2.openingSetup.placements.map(p => ({ ...p })),
+      // The card being placed now, and cards already on the board, are
+      // public; later setup steps stay hidden (online) until their turn.
+      current: (() => {
+        const e = v2.openingSetup.effective[v2.openingSetup.placements.length];
+        return e ? { ...e, definition: v2.definitions[e.effectiveDefinitionId] } : null;
+      })(),
+      placements: v2.openingSetup.placements.map(p => ({ ...p, definition: v2.definitions[p.effectiveDefinitionId] })),
     } : null,
     revision: v2.revision,
   };
