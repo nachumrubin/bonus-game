@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { DECK_0_1, DECK_0_2, DECK_COMPOSITION_0_1, DECK_COMPOSITION_0_2, getDeck } from './deckManifest.js';
+import { DECK_0_1, DECK_0_2, DECK_0_3, DECK_COMPOSITION_0_1, DECK_COMPOSITION_0_2, getDeck } from './deckManifest.js';
 import { CURRENT_BOOST_V2_RULES_VERSION } from './rulesConfig.js';
 import { generateQueue, peek, preview, advance, remainingCount } from './challengeQueue.js';
 import { isValidDefinition, FAMILY, ALL_FAMILIES } from './challengeCatalog.js';
@@ -111,8 +111,18 @@ test('queue: deck exhaustion is graceful', () => {
   assert.throws(() => advance(q, 1));
 });
 
-test('deck 0.2 (current): Power Word EASY removed → 95 cards, 40/35/20, otherwise identical to 0.1', () => {
-  assert.equal(getRules(CURRENT_BOOST_V2_RULES_VERSION).deckVersion, DECK_0_2.deckVersion);
+test('deck 0.3 (current): same 95 cards as 0.2, Bridge Builder without fallback', () => {
+  assert.equal(getRules(CURRENT_BOOST_V2_RULES_VERSION).deckVersion, DECK_0_3.deckVersion);
+  assert.equal(getRules(CURRENT_BOOST_V2_RULES_VERSION).bridgeFallback, undefined);
+  assert.deepEqual(DECK_0_3.cards.map(c => c.definitionId), DECK_0_2.cards.map(c => c.definitionId));
+  for (const c of DECK_0_3.cards) {
+    const d = DECK_0_3.definitions[c.definitionId];
+    if (d.family === FAMILY.BRIDGE_BUILDER) assert.equal(d.fallbackDefinitionId, undefined);
+  }
+  assert.equal(Object.keys(DECK_0_3.definitions).includes('BST-002:HARD:8'), true, 'Hard Long Word cards still exist');
+});
+
+test('deck 0.2: Power Word EASY removed → 95 cards, 40/35/20, otherwise identical to 0.1', () => {
   assert.equal(DECK_0_2.cards.length, 95);
   const byDiff = { EASY: 0, MEDIUM: 0, HARD: 0 };
   for (const c of DECK_0_2.cards) {

@@ -6,15 +6,16 @@
 - [x] Phase 1 — V2 core rules + scoring (centre opening, +25 full rack, exchange, endgame deductions, draw).
 - [x] Phase 2 — nine challenge evaluators, typed definitions, normalisation, jokers.
 - [x] Phase 3 — deck manifest, queue generation, FIFO, preview, rules/deck version persistence.
-- [x] Phase 4 — placement validator, Bridge fallback, opening setup, atomic V2 turn, idempotency, invariants.
+- [x] Phase 4 — placement validator, opening setup, atomic V2 turn, idempotency, invariants.
 - [x] Secure online play (AUDIT §6.1): Worker turn endpoints, protected secret + per-player racks, BOOST_V2 room lock in rules.
 - [ ] Deploy: Worker (`DICTIONARY_URL` must match the deployed app) **together with** the Firebase rules; consider Workers Paid for the cold-start dictionary decode.
 - [ ] Phase 7 wiring: create Boost 2.0 rooms through `boostTurnClient.createMatch` from invite/matchmaking/room-code flows; a V2 session adapter that subscribes to `rooms/{id}` + `boostV2Racks/{id}/{mySlot}` and sends commands (instead of `onlineGameSession`'s `commitTransaction`); route the opponent watchdog to `claimTimeout`; matchmaking must only pair players of the same ruleset.
 - [ ] Known limit: `/boost/plan` reveals a third replacement card one step early when a valid draft consumes three Boosts (preview size is 2). Alternative: a two-step commit for the third card.
 - [ ] Cron expiry (`cronSweep.js`) sets `rooms/{id}/status = 'expired'` but not the secret; teach it to finish BOOST_V2 matches through `authoritativeTurn` too.
-- [ ] Decide whether to refill deck 0.2 to 100 cards (Power Word Easy's 5 slots).
+- [x] Deck stays at 95 cards for now (decided Nov 2026).
+- [x] Decided: A3 (no deduction on stall claim), A4 revised (no deduction on resign/abandon/forfeit), A6 (skipped setup step → opponent places), A7 (no Bridge rule at all).
 - [x] Decided: A2 (locks off, swaps on), A4 (deduct on resign, resigner loses), A9 (no Power Word Easy), BINGO_BONUS = 25.
-- [ ] **Product review:** remaining Part L defaults and AUDIT A3 (stall claim vs deductions), A6 (setup timeouts), A7 (multiple Bridges).
+- [ ] **Product review:** remaining Part L defaults (placement distance, reward values, thresholds) after Phase 6/8 simulation data.
 - [ ] **Product review:** candidate deck `boost-v2.deck.0.1-candidate` (Letter Hunt / Word Edge targets in `deckManifest.js`) before freezing a production manifest.
 - [ ] Phase 5 — UI: Boost rendering + icons (`parameterBadge`, `DIFFICULTY_PRESENTATION`), tooltips (`describeRequirementHe`), two-card preview (`publicView().upcoming`), replacement placement mode (`planForMove`), score breakdown, opening-setup screen, ruleset choice in game creation.
 - [ ] Phase 6 — bot: rank candidates by `buildScoreBreakdown().totalScore`, choose replacement squares (opponent-opportunity heuristics), handle opening setup; `botGameSession` must dispatch `PLACE_OPENING_BOOST`.

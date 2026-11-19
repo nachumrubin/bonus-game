@@ -1,4 +1,4 @@
-// Boost 2.0 — versioned deck manifests (spec §14). Current: 0.2 (95 cards).
+// Boost 2.0 — versioned deck manifests (spec §14). Current: 0.3 (95 cards).
 //
 // STATUS: CANDIDATE — generated for product-owner review, not frozen for
 // production (spec §14 "Generate a candidate fixed deck for review before
@@ -89,8 +89,10 @@ function buildDeck({ deckVersion, rulesVersion, composition, letterHuntTargets, 
           case FAMILY.EXACT_TARGET:   add(exactTarget(rules, diff)); break;
           case FAMILY.BRIDGE_BUILDER: {
             const b = bridgeBuilder(rules);
-            const fb = longWord(rules, rules.bridgeFallback.difficulty, rules.bridgeFallback.minimumLength);
-            definitions[fb.definitionId] = fb; // fallback must always resolve
+            if (rules.bridgeFallback) {   // 0.1 / 0.2 only
+              const fb = longWord(rules, rules.bridgeFallback.difficulty, rules.bridgeFallback.minimumLength);
+              definitions[fb.definitionId] = fb;
+            }
             add(b);
             break;
           }
@@ -122,7 +124,18 @@ export const DECK_0_2 = buildDeck({
   wordEdgeTargets: WORD_EDGE_TARGETS_0_1,
 });
 
-export const DECK_REGISTRY = Object.freeze({ [DECK_0_1.deckVersion]: DECK_0_1, [DECK_0_2.deckVersion]: DECK_0_2 });
+// 0.3 — same 95 cards as 0.2; Bridge Builder has no fallback (Nov 2026).
+export const DECK_0_3 = buildDeck({
+  deckVersion: 'boost-v2.deck.0.3-candidate',
+  rulesVersion: 'boost-v2.rules.0.3-proto',
+  composition: DECK_COMPOSITION_0_2,
+  letterHuntTargets: LETTER_HUNT_TARGETS_0_1,
+  wordEdgeTargets: WORD_EDGE_TARGETS_0_1,
+});
+
+export const DECK_REGISTRY = Object.freeze({
+  [DECK_0_1.deckVersion]: DECK_0_1, [DECK_0_2.deckVersion]: DECK_0_2, [DECK_0_3.deckVersion]: DECK_0_3,
+});
 
 export function getDeck(version) {
   const d = DECK_REGISTRY[version];

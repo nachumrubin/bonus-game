@@ -34,11 +34,8 @@ function snapshot(state) {
   return JSON.stringify({ ...state, bonusBoard: [...(state.bonusBoard ?? [])] });
 }
 
-// Random distinct legal squares when the batch keeps no Bridge Builder;
-// otherwise the planner's arrangement, which is guaranteed valid.
-function randomArrangement(plan, legal, rng, definitions) {
-  const keepsBridge = plan.effective.some(e => definitions[e.effectiveDefinitionId].family === 'BRIDGE_BUILDER');
-  if (keepsBridge) return plan.arrangement;
+// Random distinct legal squares for the replacement batch.
+function randomArrangement(plan, legal, rng) {
   const pool = [...legal];
   const out = [];
   for (let i = 0; i < plan.placeable; i++) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0]);
@@ -65,7 +62,7 @@ export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, ch
     consumed: 0, completed: 0, multiCompletions: 0,
     byFamily: {}, byDifficulty: {},
     turnsWithFewerThanTarget: 0, turnsWithThreeHard: 0,
-    bridgeFallbacks: 0, placementUnavailable: 0,
+    placementUnavailable: 0,
   };
 
   function run(cmd) {
@@ -100,7 +97,6 @@ export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, ch
         }
       }
       if (e.type === EV.BOOST_V2_TELEMETRY) {
-        if (e.payload.type === 'bridge-fallback-activated') m.bridgeFallbacks++;
         if (e.payload.type === 'replacement-placement-unavailable') m.placementUnavailable++;
       }
     }
@@ -126,7 +122,7 @@ export function playV2Match({ seed, wordList, isWordValid, maxCommands = 600, ch
       const placed = move.placed.map(p => ({ r: p.r, c: p.c, letter: p.letter, val: p.val, isJoker: !!p.isJoker }));
       const consumed = v2.activeBoosts.filter(b => placed.some(p => p.r === b.r && p.c === b.c)).map(b => b.instanceId);
       const { plan, legal } = planForMove(state, placed, consumed);
-      const boostPlacements = randomArrangement(plan, legal, rng, v2.definitions);
+      const boostPlacements = randomArrangement(plan, legal, rng);
       if (getAllWords(state, placed).length) played = run({ type: CMD.CONFIRM_MOVE, payload: { placed, boostPlacements, moveId: `${seed}:${m.commands}` } });
       if (played) m.wordMoves++;
     }

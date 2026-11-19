@@ -80,8 +80,10 @@ export function wordEdge(rules, difficulty, targetLetter, position) {
   }
   return def(FAMILY.WORD_EDGE, difficulty, { targetLetter, position }, rules, `${position}:${targetLetter}`);
 }
+// Rules 0.1/0.2 carried a Hard Long Word fallback; from 0.3 a Bridge has none.
 export function bridgeBuilder(rules) {
   const fb = rules.bridgeFallback;
+  if (!fb) return def(FAMILY.BRIDGE_BUILDER, DIFFICULTY.HARD, {}, rules, '');
   const fallback = longWord(rules, fb.difficulty, fb.minimumLength);
   return def(FAMILY.BRIDGE_BUILDER, DIFFICULTY.HARD, {}, rules, '', { fallbackDefinitionId: fallback.definitionId });
 }
@@ -115,7 +117,7 @@ export function isValidDefinition(d) {
     case FAMILY.DOUBLE_LETTER:  return posInt(p.minRepeatedLetters) && posInt(p.minWordLength);
     case FAMILY.UNIQUE_LETTERS: return posInt(p.minimumLength);
     case FAMILY.WORD_EDGE:      return TARGET_LETTERS.includes(p.targetLetter) && (p.position === 'START' || p.position === 'END');
-    case FAMILY.BRIDGE_BUILDER: return typeof d.fallbackDefinitionId === 'string';
+    case FAMILY.BRIDGE_BUILDER: return d.fallbackDefinitionId === undefined || typeof d.fallbackDefinitionId === 'string';
     case FAMILY.POWER_WORD:     return posInt(p.minimumBaseScore);
     case FAMILY.EXACT_TARGET:   return posInt(p.exactLength);
     default: return false;

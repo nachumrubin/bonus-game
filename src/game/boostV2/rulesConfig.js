@@ -90,12 +90,23 @@ const RULES_0_2 = deepFreeze({
   tileSwaps: true,
 });
 
+// 0.3 — product decisions of Nov 2026 (round 3): Bridge Builder has no
+// alignment rule and no fallback; rack deductions only on natural endings
+// (rack + bag empty, or the scoreless-turn limit) — engineV2.applyEndgameV2;
+// a skipped opening-setup step is placed by the opponent — engineV2.
+const RULES_0_3 = deepFreeze((() => {
+  const r = JSON.parse(JSON.stringify(RULES_0_2));
+  delete r.bridgeFallback;
+  return { ...r, rulesVersion: 'boost-v2.rules.0.3-proto', deckVersion: 'boost-v2.deck.0.3-candidate' };
+})());
+
 export const RULES_REGISTRY = Object.freeze({
   [RULES_0_1.rulesVersion]: RULES_0_1,
   [RULES_0_2.rulesVersion]: RULES_0_2,
+  [RULES_0_3.rulesVersion]: RULES_0_3,
 });
 
-export const CURRENT_BOOST_V2_RULES_VERSION = RULES_0_2.rulesVersion;
+export const CURRENT_BOOST_V2_RULES_VERSION = RULES_0_3.rulesVersion;
 
 export function getRules(version = CURRENT_BOOST_V2_RULES_VERSION) {
   const r = RULES_REGISTRY[version];

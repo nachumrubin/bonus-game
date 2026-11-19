@@ -96,8 +96,8 @@ function midGame(boosts, rack0 = ['א', 'ל', 'ו', 'ב', 'א', 'נ', 'ר', 'ת'
 test('V2 state: ruleset + versions persisted, legacy bonus/locks off, no Boosts in round 1', () => {
   const { state } = fresh();
   assert.equal(state.ruleset, 'BOOST_V2');
-  assert.equal(state.boostV2.rulesVersion, 'boost-v2.rules.0.2-proto');
-  assert.equal(state.boostV2.deckVersion, 'boost-v2.deck.0.2-candidate');
+  assert.equal(state.boostV2.rulesVersion, 'boost-v2.rules.0.3-proto');
+  assert.equal(state.boostV2.deckVersion, 'boost-v2.deck.0.3-candidate');
   assert.equal(state.boostV2.phase, PHASE.FIRST_ROUND);
   assert.deepEqual(state.bonusAssignment, []);
   assert.deepEqual(state.lockInventory, { 0: [], 1: [] });
@@ -158,8 +158,6 @@ test('first round → opening setup (second, first, second) → three Boosts act
   const reason = () => bus.of(EV.INVALID_MOVE_REJECTED).at(-1).reason;
   eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(5, 4, 'א')] } });
   assert.equal(reason(), 'opening-setup-pending');
-  eng.dispatch({ type: CMD.PASS_TURN, payload: {} });
-  assert.equal(reason(), 'opening-setup-pending');
   eng.dispatch({ type: CMD.EXCHANGE_TILE, payload: { letters: [state.racks[1][0]] } });
   assert.equal(reason(), 'opening-setup-pending');
   eng.dispatch({ type: CMD.PLACE_OPENING_BOOST, payload: { r: 0, c: 0 } });
@@ -195,15 +193,29 @@ test('opening setup deferred while the board is empty, then starts after the fir
   assert.deepEqual(state.boostV2.openingSetup.order, [0, 1, 0]);
 });
 
-test('opening setup: a timeout auto-places deterministically', () => {
-  const { state, eng } = fresh();
+test('opening setup: a pass or timeout hands the step to the opponent, who places two in a row (AUDIT A6)', () => {
+  const { state, eng, bus } = fresh();
   setRack(state, 0, ['ל', 'א']);
   eng.dispatch({ type: CMD.CONFIRM_MOVE, payload: { placed: [tile(4, 4, 'ל'), tile(4, 5, 'א')] } });
   eng.dispatch({ type: CMD.PASS_TURN, payload: {} });
-  for (let i = 0; i < 3; i++) eng.dispatch({ type: CMD.PASS_TURN, payload: { reason: 'timeout' } });
+  assert.deepEqual(state.boostV2.openingSetup.order, [1, 0, 1]);
+  // Player 1 times out on step 1 → player 0 places it, then their own step 2.
+  eng.dispatch({ type: CMD.PASS_TURN, payload: { reason: 'timeout' } });
+  assert.equal(state.currentTurnSlot, 0);
+  assert.deepEqual(state.boostV2.openingSetup.order, [0, 0, 1]);
+  assert.equal(state.boostV2.openingSetup.placements.length, 0, 'nothing auto-placed');
+  assert.equal(bus.of(EV.TURN_CHANGED).at(-1).skipReason, 'timeout');
+  eng.dispatch({ type: CMD.PLACE_OPENING_BOOST, payload: { r: 3, c: 4 } });
+  assert.equal(state.currentTurnSlot, 0, 'two in a row');
+  eng.dispatch({ type: CMD.PLACE_OPENING_BOOST, payload: { r: 5, c: 4 } });
+  // Player 1 passes step 3 voluntarily → player 0 places it too.
+  eng.dispatch({ type: CMD.PASS_TURN, payload: {} });
+  assert.equal(state.currentTurnSlot, 0);
+  eng.dispatch({ type: CMD.PLACE_OPENING_BOOST, payload: { r: 4, c: 6 } });
   assert.equal(state.boostV2.phase, PHASE.NORMAL);
-  assert.equal(state.boostV2.activeBoosts.length, 3);
-  assert.equal(state.passCount, 1, 'setup steps are not scoreless turns');
+  assert.deepEqual(state.boostV2.activeBoosts.map(b => b.placedBySlot), [0, 0, 0]);
+  assert.equal(state.currentTurnSlot, 0, 'starting player still moves next');
+  assert.equal(state.passCount, 1, 'setup skips are not scoreless turns');
   assert.deepEqual(checkBoostV2Invariants(state), []);
 });
 
@@ -406,16 +418,39 @@ test('endgame move consuming a Boost: no replacement needed; opponent rack deduc
   assert.equal(state.scores[1], 8);
 });
 
-test('resign: both racks are deducted, but the resigning player still loses (AUDIT A4)', () => {
+test('resign: no rack deduction; the resigning player loses', () => {
   const { state, eng, bus } = midGame([{ defId: LW_E, r: 2, c: 3 }, { defId: LW_E, r: 2, c: 6 }, { defId: LW_E, r: 6, c: 6 }]);
-  const pen = (slot) => state.racks[slot].reduce((sum, l) => sum + (HV[l] ?? 0), 0);
-  const p0 = pen(0), p1 = pen(1);
   state.scores = { 0: 10, 1: 200 };
   eng.dispatch({ type: CMD.RESIGN_GAME, payload: { slot: 1 } });
   const done = bus.of(EV.GAME_COMPLETED).at(-1);
+  assert.equal(done.boostV2Endgame, undefined);
+  assert.deepEqual(done.scores, { 0: 10, 1: 200 });
+  assert.equal(done.winnerSlot, 0);
+});
+
+test('stall claim: no rack deduction (the opponent stopped playing)', () => {
+  const { state, eng, bus } = midGame([{ defId: LW_E, r: 2, c: 3 }, { defId: LW_E, r: 2, c: 6 }, { defId: LW_E, r: 6, c: 6 }]);
+  state.scores = { 0: 50, 1: 20 };
+  eng.dispatch({ type: CMD.PASS_TURN, payload: {} });
+  eng.dispatch({ type: CMD.PASS_TURN, payload: {} });
+  eng.dispatch({ type: CMD.CLAIM_STALL_END, payload: { slot: 0 } });
+  const done = bus.of(EV.GAME_COMPLETED).at(-1);
+  assert.ok(done, JSON.stringify(bus.of(EV.INVALID_MOVE_REJECTED).at(-1)));
+  assert.equal(done.boostV2Endgame, undefined);
+  assert.deepEqual(done.scores, { 0: 50, 1: 20 });
+  assert.equal(done.winnerSlot, 0);
+});
+
+test('scoreless-turn limit (no moves available) is a natural end: both racks deducted', () => {
+  const { state, eng, bus } = midGame([{ defId: LW_E, r: 2, c: 3 }, { defId: LW_E, r: 2, c: 6 }, { defId: LW_E, r: 6, c: 6 }]);
+  const pen = (slot) => state.racks[slot].reduce((sum, l) => sum + (HV[l] ?? 0), 0);
+  const p0 = pen(0), p1 = pen(1);
+  state.scores = { 0: 100, 1: 100 };
+  for (let i = 0; i < 4; i++) eng.dispatch({ type: CMD.PASS_TURN, payload: {} });
+  const done = bus.of(EV.GAME_COMPLETED).at(-1);
+  assert.ok(done);
   assert.deepEqual(done.boostV2Endgame.deductions, { 0: p0, 1: p1 });
-  assert.deepEqual(done.scores, { 0: 10 - p0, 1: 200 - p1 });
-  assert.equal(done.winnerSlot, 0, 'resigner loses even with the higher final score');
+  assert.deepEqual(done.scores, { 0: 100 - p0, 1: 100 - p1 });
 });
 
 // ── tile swaps (rules 0.2) ──────────────────────────────────────────────────
@@ -520,8 +555,8 @@ test('telemetry carries rules and deck versions', () => {
   const t = bus.of(EV.BOOST_V2_TELEMETRY);
   assert.ok(t.some(e => e.type === 'boost-completed'));
   for (const e of t) {
-    assert.equal(e.rulesVersion, 'boost-v2.rules.0.2-proto');
-    assert.equal(e.deckVersion, 'boost-v2.deck.0.2-candidate');
+    assert.equal(e.rulesVersion, 'boost-v2.rules.0.3-proto');
+    assert.equal(e.deckVersion, 'boost-v2.deck.0.3-candidate');
     assert.equal('racks' in e, false, 'no private rack data in telemetry');
   }
 });

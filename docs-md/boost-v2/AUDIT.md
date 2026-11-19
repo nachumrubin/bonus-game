@@ -80,7 +80,7 @@ Legacy matches keep every one of these: all V2 behaviour is gated on `state.rule
 - [x] Phase 1 — centre rule, on-grid rule, +25 full rack, multi-tile exchange (draw-before-return), endgame deductions, draw (V2 only)
 - [x] Phase 2 — catalog, typed definitions, nine evaluators, normalisation, joker handling
 - [x] Phase 3 — deck manifest, queue generation, FIFO, preview, persistence of rules/deck version
-- [x] Phase 4 — placement validator, batch planning, Bridge fallback, opening setup, atomic V2 turn, idempotency, invariants
+- [x] Phase 4 — placement validator, batch planning, opening setup, atomic V2 turn, idempotency, invariants
 - [ ] Phase 5 — UI (rendering, tooltips, preview, placement mode, breakdown, setup)
 - [ ] Phase 6 — bot
 - [ ] Phase 7 — multiplayer (blocked on decision §6.1 for the *secure* variant)
@@ -93,13 +93,13 @@ Legacy matches keep every one of these: all V2 behaviour is gated on `state.rule
 |---|---|---|
 | A1 | Spec §4 lists "letter/word multipliers" to remove — none exist; the legacy static bonus is the 12 off-grid squares + mini-games. | Off-grid squares disabled in V2. |
 | A2 | Locks and tile swaps are existing mechanics not mentioned as preserved. | **Decided:** locks removed in V2; tile swaps stay available (rules 0.2). |
-| A3 | Stall claim compares accumulated scores; with V2 rack deductions the claimant can finish behind. | Eligibility unchanged (accumulated score); winner = higher *final* score per spec §6.3. **Review.** |
-| A4 | Rack deductions on resign / abandonment. | **Decided:** both racks deducted; the resigning/abandoning player still loses. |
+| A3 | Stall claim vs rack deductions. | **Decided:** no deduction on a stall claim; deductions only on natural ends (rack + bag empty, or the scoreless-turn limit). |
+| A4 | Rack deductions on resign / abandonment. | **Decided (revised):** no deduction on resign, abandon or missed-turn forfeit; the resigning/abandoning player loses. |
 | A5 | Opening setup when initialisation was deferred (board still empty after round 1). | Setup triggers after the first valid word; order = [other(next), next, other(next)] where `next` is the player whose normal turn follows — reduces to second/first/second in the normal case. |
-| A6 | Timeouts / passes / exchanges during opening setup (spec says review). | PASS/EXCHANGE/CONFIRM_MOVE rejected during setup; a PASS with `reason: 'timeout'` auto-places on the deterministic first legal square. **Review.** |
-| A7 | Multiple Bridge Builders that cannot all be retained. | Fallback applied to the latest Bridge in FIFO order first, until an arrangement exists. |
+| A6 | Timeouts / passes / exchanges during opening setup. | **Decided:** a pass or timeout hands the step to the opponent (who places two in a row); exchanges and words are rejected during setup. |
+| A7 | Bridge Builder alignment and fallback. | **Decided:** no special Bridge rule — no alignment requirement, no fallback (rules 0.3). |
 | A8 | Move that ends the match with replacement placements attached. | Placements ignored (none required, spec §23). |
-| A9 | Power Word Easy (≥ 8): 98 % of common words qualify at word level. | **Decided:** Easy level removed (deck 0.2, 95 cards). |
+| A9 | Power Word Easy (≥ 8): 98 % of common words qualify at word level. | **Decided:** Easy level removed (95-card deck, kept at 95). |
 | A10 | Rack deduction for jokers. | Joker value 0 → deducts 0 (existing value). |
 | A11 | Pending (unplaceable) queue entries retry "after subsequent valid word moves". | A move's replacement batch = consumed + previous deficit, allocated FIFO from the cursor; the longest placeable prefix is mandatory. |
 | A12 | "First round" with an exchange/pass. | Any turn-ending action (move, pass, exchange, timeout) counts as a first-round turn opportunity. |

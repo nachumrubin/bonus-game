@@ -123,7 +123,7 @@ test('a rejected command writes nothing and reports the reason', () => {
   assert.equal(r.secret, undefined);
 });
 
-test('timeout claims: only the opponent, only after deadline + grace; two misses forfeit (with deductions)', () => {
+test('timeout claims: only the opponent, only after deadline + grace; two misses forfeit (no deductions)', () => {
   const m = newMatch({ mode: 'friend-live', settings: { timelimit: true, turnSeconds: 60 } });
   const deadline = m.room.turnDeadlineMs;
   assert.equal(apply(m, 'bob', { type: BOOST_CMD.CLAIM_TIMEOUT }, deadline).reason, 'turn-not-expired');
@@ -148,7 +148,7 @@ test('timeout claims: only the opponent, only after deadline + grace; two misses
   assert.equal(m.room.abandonedBy, 0);
   assert.equal(m.room.abandonReason, 'missed-turns');
   assert.equal(m.room.winnerSlot, 1);
-  assert.ok(m.room.endgame, 'rack deductions recorded');
+  assert.equal(m.room.endgame, null, 'forfeit is not a natural end: no deductions');
   assert.equal(m.room.turnDeadlineMs, 0);
   assert.equal(apply(m, 'bob', openingMove(m)).reason, 'game-over');
 });

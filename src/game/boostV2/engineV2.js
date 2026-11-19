@@ -29,7 +29,7 @@ import { evaluateMoveBoosts } from './challengeEvaluator.js';
 import { buildScoreBreakdown, computeFinalScores } from './scoringV2.js';
 import { peek, advance } from './challengeQueue.js';
 import {
-  makeBoardView, legalSquares, planReplacements, validatePlacements, preferenceOrder, isAligned, isBridge,
+  makeBoardView, legalSquares, planReplacements, validatePlacements,
 } from './boostPlacement.js';
 import { PHASE, publicView } from './matchStateV2.js';
 
@@ -56,7 +56,7 @@ export function planForMove(state, placed, consumedIds = []) {
   const entries = peek(v2.queue, needed);
   const view = makeBoardView(state.board, placed);
   const legal = legalSquares({ view, blocked: remaining, rules: v2.rules });
-  const plan = planReplacements({ entries, definitions: v2.definitions, legal, fixed: remaining, size: v2.rules.boardSize });
+  const plan = planReplacements({ entries, legal, size: v2.rules.boardSize });
   return { remaining, entries, legal, plan };
 }
 
@@ -71,10 +71,13 @@ export function legalOpeningSquares(state) {
 
 export function applyEndgameV2(state) {
   const v2 = state.boostV2;
-  // AUDIT A4 (decided Nov 2026): deductions apply to every finished match,
-  // resign / abandon included. The winner of an abandoned match is still the
-  // player who did not abandon (turnManager.winnerSlot checks that first).
-  if (!v2 || v2.endgame || (state.status !== 'completed' && state.status !== 'abandoned')) return v2?.endgame ?? null;
+  // Product decision (Nov 2026, AUDIT A3/A4): rack values are deducted only
+  // when the game ends naturally — a rack and the bag are both empty, or the
+  // scoreless-turn limit is reached (no moves available). No deduction on a
+  // stall claim (the opponent stopped playing), resign, abandon, missed-turn
+  // forfeit or expiry; those keep the accumulated scores.
+  const natural = state.status === 'completed' && state.endReason !== 'stall-claim';
+  if (!v2 || v2.endgame || !natural) return v2?.endgame ?? null;
   const fs = computeFinalScores(state.scores, state.racks);
   state.scores[0] = fs.final[0];
   state.scores[1] = fs.final[1];
@@ -141,7 +144,7 @@ export function createBoostV2Handlers({ state, emit, isWordValid = defaultIsVali
     s.openingSetup = {
       order: [other, next, other].slice(0, entries.length),
       effective: entries.map(e => ({
-        instanceId: e.instanceId, definitionId: e.definitionId, effectiveDefinitionId: e.definitionId, fallbackApplied: false,
+        instanceId: e.instanceId, definitionId: e.definitionId, effectiveDefinitionId: e.definitionId,
       })),
       placements: [],
       returnSlot: next,
@@ -169,52 +172,49 @@ export function createBoostV2Handlers({ state, emit, isWordValid = defaultIsVali
   }
 
   // ── PLACE_OPENING_BOOST ─────────────────────────────────────────────────
-  function handlePlaceOpeningBoost(payload = {}, { auto = false } = {}) {
+  function handlePlaceOpeningBoost(payload = {}) {
     const s = v2();
     if (s.phase !== PHASE.OPENING_SETUP) return reject('not-in-opening-setup');
     const g = guard(payload); if (g) return reject(g);
     const setup = s.openingSetup;
-    const step = setup.placements.length;
-    const entry = setup.effective[step];
-    const legal = setupLegal();
-    // Bridge Builder in the opening (excluded from the initial three by queue
-    // generation; handled for robustness): must align with a placement that
-    // already exists, otherwise it falls back automatically.
-    let effectiveDefinitionId = entry.definitionId;
-    let fallbackApplied = false;
-    let candidates = legal;
-    if (isBridge(s.definitions, entry.definitionId)) {
-      const aligned = legal.filter(sq => isAligned(sq, setup.placements));
-      if (aligned.length === 0) {
-        effectiveDefinitionId = s.definitions[entry.definitionId].fallbackDefinitionId;
-        fallbackApplied = true;
-      } else {
-        candidates = aligned;
-      }
-    }
-    let r = Number(payload.r), c = Number(payload.c);
-    if (auto) ({ r, c } = preferenceOrder(candidates, s.rules.boardSize)[0]);
-    if (!legal.some(sq => sq.r === r && sq.c === c)) return reject('boost-placement-illegal', { r, c });
-    if (!candidates.some(sq => sq.r === r && sq.c === c)) return reject('bridge-not-aligned', { r, c });
+    const entry = setup.effective[setup.placements.length];
+    const r = Number(payload.r), c = Number(payload.c);
+    if (!setupLegal().some(sq => sq.r === r && sq.c === c)) return reject('boost-placement-illegal', { r, c });
 
     const placedBySlot = state.currentTurnSlot;
-    entry.effectiveDefinitionId = effectiveDefinitionId;
-    entry.fallbackApplied = fallbackApplied;
-    const placement = { instanceId: entry.instanceId, definitionId: entry.definitionId, effectiveDefinitionId, fallbackApplied, r, c, placedBySlot };
+    const placement = {
+      instanceId: entry.instanceId, definitionId: entry.definitionId, effectiveDefinitionId: entry.definitionId,
+      r, c, placedBySlot,
+    };
     setup.placements.push(placement);
-    if (fallbackApplied) telemetry('bridge-fallback-activated', { instanceId: entry.instanceId, phase: 'opening' });
-    telemetry('boost-placed', { instanceId: entry.instanceId, definitionId: effectiveDefinitionId, phase: 'opening', auto });
+    telemetry('boost-placed', { instanceId: entry.instanceId, definitionId: entry.definitionId, phase: 'opening' });
 
-    const done = setup.placements.length === setup.effective.length;
-    if (done) activateSetup();
+    if (setup.placements.length === setup.effective.length) activateSetup();
     else {
       state.currentTurnSlot = setup.order[setup.placements.length];
       if (setupLegal().length === 0) activateSetup();
     }
     commitMeta(payload);
-    emit(EV.BOOST_PLACED, { slot: placedBySlot, placement, phase: v2().phase, auto });
+    emit(EV.BOOST_PLACED, { slot: placedBySlot, placement, phase: v2().phase });
     boostsChanged();
     emit(EV.TURN_CHANGED, { currentTurnSlot: state.currentTurnSlot, turnNumber: state.turnNumber, reason: 'boost-setup', prevSlot: placedBySlot });
+  }
+
+  // A player who passes or times out on their opening-setup step hands that
+  // Boost to the opponent, who then places two in a row (product decision,
+  // Nov 2026, AUDIT A6). Setup steps are not turns: passCount is untouched.
+  function handleSkipOpeningStep(payload, reason) {
+    const s = v2();
+    const g = guard(payload); if (g) return reject(g);
+    const setup = s.openingSetup;
+    const step = setup.placements.length;
+    const skipped = setup.order[step];
+    setup.order[step] = skipped === 0 ? 1 : 0;
+    state.currentTurnSlot = setup.order[step];
+    commitMeta(payload);
+    telemetry('opening-step-skipped', { step, skippedSlot: skipped, reason });
+    boostsChanged();
+    emit(EV.TURN_CHANGED, { currentTurnSlot: state.currentTurnSlot, turnNumber: state.turnNumber, reason: 'boost-setup', prevSlot: skipped, skipReason: reason });
   }
 
   // ── CONFIRM_MOVE (PLACE_WORD) ───────────────────────────────────────────
@@ -287,7 +287,7 @@ export function createBoostV2Handlers({ state, emit, isWordValid = defaultIsVali
     const { remaining, entries, legal, plan } = planForMove(state, placed, consumedIds);
     const effectivePlan = endsGame ? { placeable: 0, effective: [], arrangement: [] } : plan;
     const submitted = endsGame ? [] : (Array.isArray(boostPlacements) ? boostPlacements : []);
-    const pv = validatePlacements({ plan: effectivePlan, placements: submitted, legal, fixed: remaining, definitions: s.definitions });
+    const pv = validatePlacements({ plan: effectivePlan, placements: submitted, legal });
     if (!pv.ok) {
       return reject(pv.reason, {
         placed, boostPlacements: submitted, expected: effectivePlan.placeable,
@@ -309,7 +309,6 @@ export function createBoostV2Handlers({ state, emit, isWordValid = defaultIsVali
       instanceId: e.instanceId,
       definitionId: e.definitionId,
       effectiveDefinitionId: e.effectiveDefinitionId,
-      fallbackApplied: e.fallbackApplied,
       r: Number(submitted[i].r),
       c: Number(submitted[i].c),
       placedOnTurn: moveTurn,
@@ -353,7 +352,6 @@ export function createBoostV2Handlers({ state, emit, isWordValid = defaultIsVali
       telemetry(r.completed ? 'boost-completed' : 'boost-failed', { instanceId: r.instanceId, family: r.family, difficulty: r.difficulty, reward: r.reward });
     }
     for (const b of newBoosts) {
-      if (b.fallbackApplied) telemetry('bridge-fallback-activated', { instanceId: b.instanceId, phase: 'replacement' });
       telemetry('boost-placed', { instanceId: b.instanceId, definitionId: b.effectiveDefinitionId, phase: 'replacement' });
     }
     if (pending > 0) telemetry('replacement-placement-unavailable', { pending });
@@ -378,11 +376,8 @@ export function createBoostV2Handlers({ state, emit, isWordValid = defaultIsVali
   function handlePass(payload = {}) {
     const reason = payload.reason ?? 'pass';
     if (v2().phase === PHASE.OPENING_SETUP) {
-      // AUDIT A6 (prototype): a timeout during setup auto-places the current
-      // Boost on the deterministic first legal square; nothing else may end
-      // a setup step.
-      if (reason === 'timeout') return handlePlaceOpeningBoost({}, { auto: true });
-      return reject('opening-setup-pending', { command: CMD.PASS_TURN });
+      // AUDIT A6 (decided): pass or timeout → the opponent places this Boost.
+      return handleSkipOpeningStep(payload, reason);
     }
     const g = guard(payload); if (g) return reject(g);
     const slot = state.currentTurnSlot;

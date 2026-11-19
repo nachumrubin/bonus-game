@@ -96,7 +96,7 @@ export function normalizeBoostV2State(raw) {
     queue: { deckVersion: q.deckVersion ?? raw.deckVersion, entries: arr(q.entries).map(e => ({ ...e })), cursor: Number(q.cursor) || 0 },
     openingSetup: setup ? {
       order: arr(setup.order).map(Number),
-      effective: arr(setup.effective).map(e => ({ ...e, fallbackApplied: !!e.fallbackApplied })),
+      effective: arr(setup.effective).map(e => ({ ...e })),
       placements: arr(setup.placements).map(p => ({ ...p, r: Number(p.r), c: Number(p.c) })),
       returnSlot: Number(setup.returnSlot),
     } : null,

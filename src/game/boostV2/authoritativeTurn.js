@@ -302,7 +302,6 @@ export function planDraft({ secret, uid, draft = {}, isWordValid, rng }) {
   const endsMatch = events.some(e => e.type === EV.GAME_COMPLETED);
   const replacements = endsMatch ? [] : planInfo.plan.effective.map(e => ({
     instanceId: e.instanceId,
-    fallbackApplied: e.fallbackApplied,
     definition: v2.definitions[e.effectiveDefinitionId],
   }));
   return JSON.parse(JSON.stringify({

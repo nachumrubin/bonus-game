@@ -82,7 +82,7 @@
 | `challengeEvaluator.js` | Pure TILE / WORD / MOVE evaluation, `evaluateMoveBoosts`, `wordId`. |
 | `scoringV2.js` | Additive breakdown (`buildScoreBreakdown`), full-rack bonus, rack deductions (`computeFinalScores`). |
 | `challengeQueue.js` | `generateQueue` (1E/1M/1H non-Bridge head), `peek` / `preview` / `advance`. |
-| `boostPlacement.js` | Legal squares (Manhattan ≤ d), `planReplacements` (FIFO prefix + Bridge fallback), `validatePlacements`. |
+| `boostPlacement.js` | Legal squares (Manhattan ≤ d), `planReplacements` (mandatory FIFO prefix), `validatePlacements`. |
 | `matchStateV2.js` | `createBoostV2State`, `publicView`, `normalizeBoostV2State`, `checkBoostV2Invariants`, `PHASE`. |
 | `engineV2.js` | Turn orchestrator called from `gameEngine.dispatch()`; `planForMove`, `applyEndgameV2`. |
 | `simulateV2.js` | Headless seeded matches through the real engine with invariant checks. |

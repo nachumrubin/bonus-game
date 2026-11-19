@@ -2,6 +2,14 @@
 
 ---
 
+## Boost 2.0 — rules 0.3: Bridge without special rules, natural-end deductions, setup hand-over (November 2026)
+
+- **Bridge Builder:** no alignment requirement and no Hard Long Word fallback. It is placed like any other Boost; if it can't be completed, players consume it without the reward. `boostPlacement.planReplacements` is now just the mandatory FIFO prefix; the Bridge arrangement search, `isAligned`, `findArrangement` and the `bridge-not-aligned` / `bridge-fallback-activated` paths are gone. `effectiveDefinitionId` stays (always = `definitionId`) so stored Boosts keep their shape; `fallbackApplied` is removed.
+- **Rack deductions only on natural ends** (rack + bag empty, or the scoreless-turn limit). No deduction on stall claim, resign, abandon, missed-turn forfeit or expiry — reverses the previous round's resign rule (AUDIT A3/A4).
+- **Opening setup:** a pass or timeout hands the current placement to the opponent, who places two in a row (was: timeout auto-placed, pass rejected). Setup steps still don't count as scoreless turns; the Worker's missed-turn forfeit still applies.
+- **Versions:** rules `boost-v2.rules.0.3-proto`, deck `boost-v2.deck.0.3-candidate` (same 95 cards as 0.2, Bridges without a fallback). Deck stays at 95.
+- **Tests:** unit 1999 pass.
+
 ## Boost 2.0 — Worker-authoritative online turns + product decisions (November 2026)
 
 - **Product decisions applied:** (1) online Boost 2.0 is run by the Cloudflare Worker; (2) locks removed in 2.0, **tile swaps stay available**; (3) **`BINGO_BONUS` = 25 for every ruleset** — legacy matches in progress included (FAQ, guide, tips and the in-game `BINGO +N` label updated; logged in `docs/intentional-change-register.md`); (4) resign/abandon in 2.0 deducts both racks but the resigner still loses; (5) **Power Word has no Easy level** → rules `boost-v2.rules.0.2-proto`, deck `boost-v2.deck.0.2-candidate` (95 cards, 40/35/20).

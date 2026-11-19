@@ -19,6 +19,8 @@
 
 **Why:** live legacy rooms must keep their rules until completion (spec §29), and several legacy constants are on the never-change list. A per-match snapshot means a later balancing change can never alter a match in progress. Keeping the V2 handlers out of `gameEngine.js` avoids touching its parity-critical swap / lock / deferred-bonus paths.
 
+**Rule decisions by version:** 0.2 — `BINGO_BONUS` 25, tile swaps on, locks off, no Power Word Easy; 0.3 — no special Bridge rule, rack deductions only on natural ends, a skipped opening-setup step goes to the opponent.
+
 **Also decided (prototype, pending product review):** the queue RNG is never derived from `tileBagSeed` and never persisted, so the queue cannot be rebuilt from the seed. This does *not* make it secret — see AUDIT §6.1.
 
 ## D-app-skins: a skin is a scoped, generated stylesheet over the existing UI — November 2026
